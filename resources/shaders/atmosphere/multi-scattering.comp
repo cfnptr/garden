@@ -84,12 +84,11 @@ void main()
 	texCoords = (texCoords - 0.5f / MULTI_SCAT_LUT_LENGTH) * (MULTI_SCAT_LUT_LENGTH / (MULTI_SCAT_LUT_LENGTH - 1.0f));
 
 	float cosSunZenithAngle = fma(texCoords.x, 2.0f, -1.0f);
-	float3 sunDir = float3(0.0f, sqrt(clamp(1.0f - cosSunZenithAngle * 
-		cosSunZenithAngle, 0.0f, 1.0f)), cosSunZenithAngle);
+	float3 sunDir = normalize(float3(0.0f, cosSunZenithAngle, sqrt(clamp(
+		1.0f - cosSunZenithAngle * cosSunZenithAngle, 0.0f, 1.0f))));
 	// We adjust again viewHeight according to PLANET_RADIUS_OFFSET to be in a valid range.
 	float viewHeight = atmosphere.bottomRadius + clamp(texCoords.y + PLANET_RADIUS_OFFSET, 0.0f, 1.0f) * 
 		(atmosphere.topRadius - atmosphere.bottomRadius - PLANET_RADIUS_OFFSET);
-	float3 worldPos = float3(0.0f, 0.0f, viewHeight);
 
 	const uint32 sqrtSampleCount = 8;
 	float i = 0.5f + float(gl.localInvocationID.z / sqrtSampleCount);
@@ -99,10 +98,10 @@ void main()
 	// Uniform distribution: https://mathworld.wolfram.com/SpherePointPicking.html
 	float2 thetaPhi = float2(2.0f * M_PI * randA, acosFast4(1.0f - 2.0f * randB));
 	float2 sinThetaPhi = sin(thetaPhi); float2 cosThetaPhi = cos(thetaPhi);
-	float3 worldDir = float3(cosThetaPhi.x * sinThetaPhi.y, sinThetaPhi.x * sinThetaPhi.y, cosThetaPhi.y);
+	float3 worldDir = normalize(float3(cosThetaPhi.x * sinThetaPhi.y, cosThetaPhi.y, sinThetaPhi.x * sinThetaPhi.y));
 
-	ScatteringResult result = integrateScatteredLuminance(texCoords, worldPos, 
-		worldDir, sunDir, atmosphere, SAMPLE_COUNT, DEFAULT_T_MAX_MAX, transLUT);
+	ScatteringResult result = integrateScatteredLuminance(texCoords, Ray(float3(0.0f, viewHeight, 
+		0.0f), worldDir), sunDir, atmosphere, SAMPLE_COUNT, DEFAULT_T_MAX_MAX, transLUT);
 
 	const float sphereSolidAngle = 4.0f * M_PI;
 	multiScatAs1Shared[gl.localInvocationID.z] = result.multiScatAs1 * 

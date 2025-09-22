@@ -12,15 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef ATMOSPHERE_CONSTANTS_H
-#define ATMOSPHERE_CONSTANTS_H
+#include "common/fullscreen.gsl"
 
-#define TRANSMITTANCE_LUT_WIDTH 256
-#define TRANSMITTANCE_LUT_HEIGHT 64
-#define MULTI_SCAT_LUT_LENGTH 32
-#define CAMERA_VOLUME_LENGTH 32
+out noperspective float2 fs.texCoords;
 
-#define DEFAULT_T_MAX_MAX 9000000.0f
-#define PLANET_RADIUS_OFFSET 0.1f // km
-
-#endif // ATMOSPHERE_CONSTANTS_H
+void main()
+{
+	fs.texCoords = toFullscreenTexCoords(gl.vertexIndex);
+	gl.position = float4(toFullscreenPosition(fs.texCoords), 1.0f);
+}

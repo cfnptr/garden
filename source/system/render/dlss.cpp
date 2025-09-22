@@ -21,6 +21,7 @@
 #include "garden/system/settings.hpp"
 #include "garden/system/thread.hpp"
 #include "garden/system/log.hpp"
+#include "garden/profiler.hpp"
 #include "mpio/directory.hpp"
 
 #include "nvsdk_ngx_helpers.h"
@@ -405,6 +406,8 @@ void DlssRenderSystem::evaluateDlssCommand(void* commandBuffer, void* argument)
 //**********************************************************************************************************************
 void DlssRenderSystem::preLdrRender()
 {
+	SET_CPU_ZONE_SCOPED("DLSS Pre LDR Render");
+
 	if (!parameters || quality == DlssQuality::Off)
 		return;
 

@@ -18,8 +18,9 @@
 #include "garden/system/resource.hpp"
 #include "garden/system/settings.hpp"
 #include "garden/system/camera.hpp"
-#include "atmosphere/constants.h"
+#include "garden/profiler.hpp"
 
+#include "atmosphere/constants.h"
 #include "math/matrix/projection.hpp"
 #include "math/matrix/transform.hpp"
 #include "math/angles.hpp"
@@ -428,6 +429,8 @@ static float calcSunSize(float sunAngularSize) noexcept
 //**********************************************************************************************************************
 void AtmosphereRenderSystem::preDeferredRender()
 {
+	SET_CPU_ZONE_SCOPED("Atmosphere Pre Deferred Render");
+
 	if (!isEnabled)
 		return;
 
@@ -822,6 +825,8 @@ void AtmosphereRenderSystem::updateSkybox()
 //**********************************************************************************************************************
 void AtmosphereRenderSystem::hdrRender()
 {
+	SET_CPU_ZONE_SCOPED("Atmosphere HDR Render");
+
 	if (!isEnabled)
 		return;
 

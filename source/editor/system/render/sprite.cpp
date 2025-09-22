@@ -139,7 +139,7 @@ void SpriteRenderEditorSystem::renderComponent(SpriteRenderComponent* componentV
 {
 	GARDEN_ASSERT(componentView);
 	auto editorSystem = EditorRenderSystem::Instance::get();
-	auto flags = ImageLoadFlags::ArrayType | ImageLoadFlags::LoadShared;
+	auto flags = ImageLoadFlags::TypeArray | ImageLoadFlags::LoadShared;
 	if (componentView->isArray)
 		flags |= ImageLoadFlags::LoadArray;
 	editorSystem->drawImageSelector("Color Map", componentView->colorMapPath, componentView->colorMap,
@@ -154,7 +154,7 @@ void SpriteRenderEditorSystem::renderComponent(SpriteRenderComponent* componentV
 		resourceSystem->destroyShared(componentView->colorMap);
 		resourceSystem->destroyShared(componentView->descriptorSet);
 
-		auto flags = ImageLoadFlags::ArrayType | ImageLoadFlags::LoadShared;
+		auto flags = ImageLoadFlags::TypeArray | ImageLoadFlags::LoadShared;
 		if (componentView->isArray)
 			flags |= ImageLoadFlags::LoadArray;
 		componentView->colorMap = resourceSystem->loadImage(componentView->colorMapPath,

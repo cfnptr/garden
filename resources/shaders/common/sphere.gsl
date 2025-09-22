@@ -36,13 +36,30 @@ bool isInside(Sphere sphere, float3 point)
 
 bool isIntersected(Sphere a, Sphere b)
 {
-	float3 s = a.radius + b.radius;
+	float s = a.radius + b.radius;
 	return length(a.position - b.position) <= s * s;
 }
 bool isIntersected(Sphere sphere, Aabb aabb)
 {
 	float3 closPos = closestPoint(aabb, sphere.position);
 	return length(sphere.position - closPos) < sphere.radius * sphere.radius;
+}
+
+float2 raycast2(Sphere sphere, Ray ray)
+{
+	float3 l = ray.origin - sphere.position;
+	float b = 2.0f * dot(ray.direction, l);
+	float c = dot(l, l) - sphere.radius * sphere.radius;
+	float discriminant = b * b - 4.0f * c;
+	if (discriminant < 0.0f)
+		return float2(-FLOAT32_MAX);
+
+	float discrSqrt = sqrt(discriminant);
+	return float2(-b - discrSqrt, -b + discrSqrt) * 0.5f;
+}
+bool raycast(Sphere sphere, Ray ray)
+{
+	return isIntersected(raycast2(sphere, ray));
 }
 
 #endif // RAY_GSL

@@ -21,6 +21,8 @@
  * Precomputed values: https://github.com/ebruneton/precomputed_atmospheric_scattering/blob/master/atmosphere/demo/demo.cc
  */
 
+// TODO: out of space atmosphere rendering. We need to ray trace it, can't reuse LUTs.
+
 #pragma once
 #include "garden/system/graphics.hpp"
 

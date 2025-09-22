@@ -17,7 +17,7 @@
 #ifndef ATMOSPHERE_GSL
 #define ATMOSPHERE_GSL
 
-#include "common/math.gsl"
+#include "common/sphere.gsl"
 #include "atmosphere/constants.h"
 
 //**********************************************************************************************************************
@@ -79,31 +79,19 @@ ScatteringResult initScatteringResult()
 	return result;
 }
 
-float intersectSphere(float3 rayOrigin, float3 rayDirection, float3 sphereCenter, float sphereRadius)
+float raycastAtmosphere(Sphere sphere, Ray ray)
 {
-	float3 l = rayOrigin - sphereCenter;
-	float a = dot(rayDirection, rayDirection);
-	float b = 2.0f * dot(rayDirection, l);
-	float c = dot(l, l) - sphereRadius * sphereRadius;
-	float discriminant = b * b - 4.0f * a * c;
-	if (discriminant < 0.0f)
-		return -1.0f;
-
-	float t0 = (-b - sqrt(discriminant)) / (2.0f * a);
-	float t1 = (-b + sqrt(discriminant)) / (2.0f * a);
-	if (t0 < 0.0f && t1 < 0.0f)
-		return -1.0f;
-
-	if (t0 < 0.0f) return max(0.0f, t1);
-	if (t1 < 0.0f) return max(0.0f, t0);
-	return max(0.0f, min(t0, t1));
+	float2 t = raycast2(sphere, ray);
+	if (t.x < 0.0f && t.y < 0.0f) return -FLOAT32_MAX;
+	if (t.x < 0.0f) return max(0.0f, t.y);
+	return max(0.0f, min(t.x, t.y));
 }
 bool moveToTopAtmosphere(inout float3 worldPos, float3 worldDir, float atmosphereTopRadius)
 {
 	float viewHeight = length(worldPos);
 	if (viewHeight > atmosphereTopRadius)
 	{
-		float tTop = intersectSphere(worldPos, worldDir, float3(0.0f), atmosphereTopRadius);
+		float tTop = raycastAtmosphere(Sphere(float3(0.0f), atmosphereTopRadius), Ray(worldPos, worldDir));
 		if (tTop < 0.0f)
 			return false; // Ray is not intersecting the atmosphere.
 
@@ -170,18 +158,18 @@ float2 transmittanceRmuToUV(float bottomRadius, float topRadius, float r, float 
 	float dMin = topRadius - r; float dMax = rHor + h;
 	return float2((d - dMin) / (dMax - dMin), rHor / h);
 }
-float3 getTransmittance(sampler2D transLUT, float3 worldPos, float3 worldDir, float bottomRadius, float topRadius)
+float3 getTransmittance(sampler2D transLUT, Ray ray, float bottomRadius, float topRadius)
 {
-	if (intersectSphere(worldPos, worldDir, float3(0.0f), bottomRadius) >= 0.0f)
+	if (raycast(Sphere(float3(0.0f), bottomRadius), ray))
 		return float3(0.0f);
-	float viewHeight = length(worldPos); float3 upVector = worldPos / viewHeight;
-	float viewZenithCosAngle = dot(worldDir, upVector);
+	float viewHeight = length(ray.origin); float3 upVector = ray.origin / viewHeight;
+	float viewZenithCosAngle = dot(ray.direction, upVector);
 	float2 uv = transmittanceRmuToUV(bottomRadius, topRadius, viewHeight, viewZenithCosAngle);
 	return textureLod(transLUT, uv, 0.0f).rgb;
 }
 
 //**********************************************************************************************************************
-ScatteringResult integrateScatteredLuminance(float2 texCoords, float3 worldPos, float3 worldDir, 
+ScatteringResult integrateScatteredLuminance(float2 texCoords, Ray ray, 
 	float3 sunDir, const AtmosphereParams atmosphere, float sampleCountInit, float tMaxMax
 	#ifdef USE_TRANSMITTANCE_LUT
 	, sampler2D transLUT
@@ -192,10 +180,8 @@ ScatteringResult integrateScatteredLuminance(float2 texCoords, float3 worldPos, 
 	)
 {
 	ScatteringResult result = initScatteringResult();
-
-	const float3 planetPos = float3(0.0f);
-	float tBottom = intersectSphere(worldPos, worldDir, planetPos, atmosphere.bottomRadius);
-	float tTop = intersectSphere(worldPos, worldDir, planetPos, atmosphere.topRadius);
+	float tBottom = raycastAtmosphere(Sphere(float3(0.0f), atmosphere.bottomRadius), ray);
+	float tTop = raycastAtmosphere(Sphere(float3(0.0f), atmosphere.topRadius), ray);
 
 	float tMax = 0.0f;
 	if (tBottom < 0.0f)
@@ -229,8 +215,8 @@ ScatteringResult integrateScatteredLuminance(float2 texCoords, float3 worldPos, 
 
 	#ifdef USE_TRANSMITTANCE_LUT
 	const float uniformPhase = 1.0f / (4.0f * M_PI);
-	float3 wi = sunDir; float3 wo = worldDir; float cosTheta = dot(wi, wo);
-	// Negate cosTheta because due to WorldDir being a "in" direction.
+	float cosTheta = dot(sunDir, ray.direction);
+	// Negate cosTheta because due to ray.direction being a "in" direction.
 	float miePhaseValue = miePhase(atmosphere.miePhaseG, -cosTheta);	
 	float rayleighPhaseValue = rayleighPhase(cosTheta);
 	const float3 globalL = float3(1.0f); // Light illuminance.
@@ -255,7 +241,7 @@ ScatteringResult integrateScatteredLuminance(float2 texCoords, float3 worldPos, 
 			deltaT = newT - t; t = newT;
 		#endif
 
-		float3 p = fma(float3(t), worldDir, worldPos);
+		float3 p = fma(float3(t), ray.direction, ray.origin);
 		float pHeight = length(p); float3 upVector = p / pHeight;
 		float sunZenithCosAngle = dot(sunDir, upVector);
 		MediumSampleRGB medium = sampleMediumRGB(atmosphere, pHeight);
@@ -282,9 +268,8 @@ ScatteringResult integrateScatteredLuminance(float2 texCoords, float3 worldPos, 
 		float3 phaseTimesScattering = medium.scattering * uniformPhase;
 		#endif
 
-		float tPlanet = intersectSphere(p, sunDir, fma(upVector, 
-			float3(PLANET_RADIUS_OFFSET), planetPos), atmosphere.bottomRadius);
-		float planetShadow = tPlanet >= 0.0f ? 0.0f : 1.0f;
+		float planetShadow = raycast(Sphere(upVector * PLANET_RADIUS_OFFSET, 
+			atmosphere.bottomRadius), Ray(p, sunDir)) ? 0.0f : 1.0f;
 
 		#if USE_ATMOSPHERE_SHADOWS
 		float shadow = getShadow(atmosphere, p);
@@ -308,7 +293,7 @@ ScatteringResult integrateScatteredLuminance(float2 texCoords, float3 worldPos, 
 	if (tMax == tBottom && tBottom > 0.0f)
 	{
 		// Account for bounced light off the planet
-		float3 p = fma(float3(tBottom), worldDir, worldPos);
+		float3 p = fma(float3(tBottom), ray.direction, ray.origin);
 		float pHeight = length(p); float3 upVector = p / pHeight;
 		float sunZenithCosAngle = dot(sunDir, upVector);
 		float2 uv = transmittanceRmuToUV(atmosphere.bottomRadius, 

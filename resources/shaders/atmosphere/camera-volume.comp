@@ -91,7 +91,7 @@ void main()
 {
 	AtmosphereParams atmosphere = getAtmosphereParams();
 	float2 texCoords = (float2(gl.globalInvocationID.xy) + 0.5f) * (1.0f / CAMERA_VOLUME_LENGTH);
-	float3 worldDir = calcViewDirection(0.5f, texCoords, cc.invViewProj);
+	float3 worldDir = calcViewDirection(texCoords, cc.invViewProj);
 	float slice = (float(gl.globalInvocationID.z) + 0.5f) * (1.0f / SLICE_COUNT);
 	slice = slice * slice * SLICE_COUNT;
 
@@ -129,8 +129,8 @@ void main()
 	}
 
 	float sampleCount = max(1.0f, float(gl.globalInvocationID.z + 1) * 2.0f);
-	ScatteringResult result = integrateScatteredLuminance(texCoords, worldPos, 
-		worldDir, pc.sunDir, atmosphere, sampleCount, tMaxMax, transLUT, multiScatLUT);
+	ScatteringResult result = integrateScatteredLuminance(texCoords, Ray(worldPos, 
+		worldDir), pc.sunDir, atmosphere, sampleCount, tMaxMax, transLUT, multiScatLUT);
 	float4 color = float4(result.l, 1.0f - dot(result.transmittance, float3(1.0f / 3.0f)));
 	imageStore(cameraVolume, int3(gl.globalInvocationID), color);
 }

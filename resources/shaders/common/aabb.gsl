@@ -47,11 +47,6 @@ void raycast(Aabb aabb, Ray ray, out float3 tMin, out float3 tMax)
 	float3 tTop = ray.direction * (aabb.max - ray.origin);
 	tMin = min(tTop, tBot); tMax = max(tTop, tBot);
 }
-bool isIntersected(float2 hitPoints)
-{
-	// If tMax < 0.0f, ray is intersecting AABB, but whole AABB is behing us.
-	return hitPoints.y > max(hitPoints.x, 0.0f);
-}
 
 float2 raycast2I(Aabb aabb, Ray ray)
 {

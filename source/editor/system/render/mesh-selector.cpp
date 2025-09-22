@@ -120,7 +120,7 @@ void MeshSelectorEditorSystem::render()
 				auto modelInverse = inverse4x4(model);
 				auto ray = Ray(modelInverse * f32x4(globalOrigin, 1.0f), multiply3x3(modelInverse, globalDirection));
 				auto points = raycast2(meshRenderView->aabb, ray);
-				if (points.x < 0.0f || !isAabbIntersected(points))
+				if (points.x < 0.0f || !isIntersected(points))
 					continue;
 			
 				auto distSq = distanceSq3(globalOrigin, getTranslation(model));
