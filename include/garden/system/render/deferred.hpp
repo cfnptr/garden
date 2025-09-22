@@ -55,7 +55,7 @@ namespace garden
  *   PreOitRender, OitRender, 
  *   PreLdrRender, LdrRender, 
  *   PreDepthLdrRender, DepthLdrRender, 
- *   PreUiRender, UiRender, 
+ *   PostLdrToUI, PreUiRender, UiRender, 
  *   GBufferRecreate.
  */
 class DeferredRenderSystem final : public System, public Singleton<DeferredRenderSystem>

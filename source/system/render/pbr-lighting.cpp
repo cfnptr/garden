@@ -283,7 +283,7 @@ static void createShadowFramebuffers(GraphicsSystem* graphicsSystem,
 		vector<Framebuffer::OutputAttachment> colorAttachments
 		{ Framebuffer::OutputAttachment(shadowImageViews[i], PbrLightingSystem::framebufferFlags) };
 		shadowFramebuffers[i] = graphicsSystem->createFramebuffer(framebufferSize, std::move(colorAttachments));
-		SET_RESOURCE_DEBUG_NAME(shadowFramebuffers[0], "framebuffer.pbrLighting.shadow" + to_string(i));
+		SET_RESOURCE_DEBUG_NAME(shadowFramebuffers[i], "framebuffer.pbrLighting.shadow" + to_string(i));
 	}
 }
 static void destroyShadowFramebuffers(GraphicsSystem* graphicsSystem, ID<Framebuffer>* shadowFramebuffers)

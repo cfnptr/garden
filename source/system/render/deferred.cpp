@@ -341,6 +341,7 @@ DeferredRenderSystem::DeferredRenderSystem(Options options,
 	manager->registerEvent("LdrRender");
 	manager->registerEvent("PreDepthLdrRender");
 	manager->registerEvent("DepthLdrRender");
+	manager->registerEvent("PostLdrToUI");
 	manager->tryRegisterEvent("PreUiRender");
 	manager->tryRegisterEvent("UiRender");
 	manager->registerEvent("GBufferRecreate");
@@ -374,6 +375,7 @@ DeferredRenderSystem::~DeferredRenderSystem()
 		manager->unregisterEvent("LdrRender");
 		manager->unregisterEvent("PreDepthLdrRender");
 		manager->unregisterEvent("DepthLdrRender");
+		manager->unregisterEvent("PostLdrToUI");
 		manager->tryUnregisterEvent("PreUiRender");
 		manager->tryUnregisterEvent("UiRender");
 		manager->unregisterEvent("GBufferRecreate");
@@ -720,6 +722,13 @@ void DeferredRenderSystem::render()
 			Image::blit(ldrBuffer, _uiBuffer, Sampler::Filter::Linear);
 	}
 	graphicsSystem->stopRecording();
+
+	event = &manager->getEvent("PostLdrToUI");
+	if (event->hasSubscribers())
+	{
+		SET_CPU_ZONE_SCOPED("Post LDR to UI Copy");
+		event->run();
+	}
 
 	event = &manager->getEvent("UiRender");
 	if (event->hasSubscribers())

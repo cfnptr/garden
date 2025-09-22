@@ -819,7 +819,7 @@ void EditorRenderSystem::showFileSelector()
 		ImGui::Text("%s", selectedEntry.generic_string().c_str());
 
 		ImGui::BeginChild("##itemList", ImVec2(256.0f, -(ImGui::GetFrameHeightWithSpacing() + 4.0f)),
-			ImGuiChildFlags_Border | ImGuiChildFlags_ResizeX);
+			ImGuiChildFlags_Borders | ImGuiChildFlags_ResizeX);
 		
 		if (fs::exists(fileSelectDirectory) && fs::is_directory(fileSelectDirectory))
 		{

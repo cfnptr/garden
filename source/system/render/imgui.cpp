@@ -90,9 +90,9 @@ static void setImGuiStyle()
 	colors[ImGuiCol_ResizeGripActive] = ImVec4(0.098f, 0.247f, 0.388f, 1.0f);
 	colors[ImGuiCol_Tab] = ImVec4(0.094f, 0.094f, 0.094f, 1.0f);
 	colors[ImGuiCol_TabHovered] = ImVec4(0.024f, 0.435f, 0.757f, 1.0f);
-	colors[ImGuiCol_TabActive] = ImVec4(0.024f, 0.435f, 0.757f, 1.0f);
-	colors[ImGuiCol_TabUnfocused] = ImVec4(0.094f, 0.094f, 0.094f, 1.0f); // TODO: where it used?
-	colors[ImGuiCol_TabUnfocusedActive] = ImVec4(0.024f, 0.435f, 0.757f, 1.0f);
+	colors[ImGuiCol_TabSelected] = ImVec4(0.024f, 0.435f, 0.757f, 1.0f);
+	colors[ImGuiCol_TabDimmed] = ImVec4(0.094f, 0.094f, 0.094f, 1.0f); // TODO: where it used?
+	colors[ImGuiCol_TabDimmedSelected] = ImVec4(0.024f, 0.435f, 0.757f, 1.0f);
 	colors[ImGuiCol_PlotHistogram] = ImVec4(0.42f, 0.6f, 0.33, 1.0f);
 	colors[ImGuiCol_PlotHistogramHovered] = ImVec4(0.976f, 0.627f, 0.318f, 1.0f);
 	colors[ImGuiCol_PlotLines] = ImVec4(0.42f, 0.6f, 0.33, 1.0f); // TODO:
@@ -101,7 +101,7 @@ static void setImGuiStyle()
 	colors[ImGuiCol_TableBorderStrong] = ImVec4(0.267f, 0.267f, 0.267f, 1.0f);
 	colors[ImGuiCol_TableBorderLight] = ImVec4(0.267f, 0.267f, 0.267f, 0.8f);
 	colors[ImGuiCol_TextSelectedBg] = ImVec4(0.149f, 0.310f, 0.471f, 1.0f);
-	colors[ImGuiCol_NavHighlight] = ImVec4(0.0f, 0.471f, 0.831f, 1.0f);
+	colors[ImGuiCol_NavCursor] = ImVec4(0.0f, 0.471f, 0.831f, 1.0f);
 	colors[ImGuiCol_DragDropTarget] = ImVec4(0.0f, 0.471f, 0.831f, 1.0f); // TODO:
 	colors[ImGuiCol_ModalWindowDimBg] = ImVec4(0.0f, 0.0f, 0.0f, 0.831f);
 	// TODO: others undeclared
@@ -225,13 +225,14 @@ void ImGuiRenderSystem::preInit()
 	auto windowSize = inputSystem->getWindowSize();
 	auto pixelRatio = (float2)graphicsSystem->getFramebufferSize() / windowSize;
 	io.DisplaySize = ImVec2(windowSize.x, windowSize.y);
-	io.FontGlobalScale = 1.0f / std::max(pixelRatio.x, pixelRatio.y);
 	io.DisplayFramebufferScale = ImVec2(pixelRatio.x, pixelRatio.y);
 	// TODO: dynamically detect when system scale is changed or moved to another monitor and recreate fonts.
 
 	io.BackendPlatformName = "Garden ImGui";
 	io.BackendFlags |= ImGuiBackendFlags_HasMouseCursors;
 	io.BackendFlags |= ImGuiBackendFlags_HasSetMousePos;
+	io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;
+	io.BackendFlags |= ImGuiBackendFlags_RendererHasTextures;
 
 	auto& platformIO = ImGui::GetPlatformIO();
 	platformIO.Platform_SetClipboardTextFn = [](ImGuiContext*, const char* text)
@@ -276,19 +277,10 @@ void ImGuiRenderSystem::preInit()
 	packReader.readItemData(fontIndex, fontData);
 	io.Fonts->AddFontFromMemoryTTF(fontData, fontDataSize, fontSize);
 	#endif
-
-	unsigned char* pixels; int width, height;
-	io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
-	fontTexture = graphicsSystem->createImage(Image::Format::UnormR8G8B8A8, 
-		Image::Usage::Sampled | Image::Usage::TransferDst | Image::Usage::TransferQ, 
-		{ { pixels } }, uint2(width, height), Image::Strategy::Size);
-	SET_RESOURCE_DEBUG_NAME(fontTexture, "image.imgui.fontTexture");
-
-	auto fontTextureView = graphicsSystem->get(fontTexture);
-	io.Fonts->SetTexID((ImTextureID)*fontTextureView->getDefaultView());
 }
 void ImGuiRenderSystem::postInit()
 {
+	ECSM_SUBSCRIBE_TO_EVENT("PostLdrToUI", ImGuiRenderSystem::postLdrToUI);
 	ECSM_SUBSCRIBE_TO_EVENT("UiRender", ImGuiRenderSystem::uiRender);
 }
 
@@ -300,8 +292,6 @@ void ImGuiRenderSystem::postDeinit()
 		auto graphicsSystem = GraphicsSystem::Instance::get();
 		graphicsSystem->destroy(indexBuffers);
 		graphicsSystem->destroy(vertexBuffers);
-		graphicsSystem->destroy(fontDescriptorSet);
-		graphicsSystem->destroy(fontTexture);
 		graphicsSystem->destroy(pipeline);
 
 		if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
@@ -323,6 +313,7 @@ void ImGuiRenderSystem::postDeinit()
 			ImGuiBackendFlags_HasSetMousePos | ImGuiBackendFlags_HasGamepad);
 
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Input", ImGuiRenderSystem::input);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("PostLdrToUI", ImGuiRenderSystem::postLdrToUI);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("UiRender", ImGuiRenderSystem::uiRender);
 	}
 }
@@ -594,9 +585,75 @@ void ImGuiRenderSystem::update()
 }
 
 //**********************************************************************************************************************
-void ImGuiRenderSystem::uiRender()
+static void updateImGuiTextures(ImVector<ImTextureData*>& textures, 
+	tsl::robin_map<ID<ImageView>, ID<DescriptorSet>>& dsCache)
 {
-	SET_CPU_ZONE_SCOPED("ImGui UI Render");
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	graphicsSystem->startRecording(CommandBufferType::Frame);
+
+	for (auto texture : textures)
+	{
+		if (texture->Status == ImTextureStatus_OK)
+			continue;
+
+		if (texture->Status == ImTextureStatus_WantCreate)
+		{
+			auto format = texture->Format == ImTextureFormat_Alpha8 ? 
+				Image::Format::UnormR8 : Image::Format::UnormR8G8B8A8;
+			auto image = graphicsSystem->createImage(format, Image::Usage::Sampled | Image::Usage::TransferDst, 
+				{ { texture->GetPixels() } }, uint2(texture->Width, texture->Height), Image::Strategy::Size);
+			SET_RESOURCE_DEBUG_NAME(image, "image.imgui" + to_string(*image));
+			texture->BackendUserData = (void*)(psize)*image;
+			
+			auto imageView = graphicsSystem->get(image)->getDefaultView();
+			auto emplaceResult = dsCache.emplace(imageView, ID<DescriptorSet>());
+			GARDEN_ASSERT(emplaceResult.second);
+			texture->SetTexID(*imageView);
+			texture->SetStatus(ImTextureStatus_OK);
+		}
+		else if (texture->Status == ImTextureStatus_WantUpdates)
+		{
+			auto updateRect = texture->UpdateRect;
+			auto uploadPitch = (uint64)updateRect.w * texture->BytesPerPixel;
+			auto binarySize = updateRect.h * uploadPitch;
+			auto stagingBuffer = graphicsSystem->createBuffer(Buffer::Usage::TransferSrc, 
+				Buffer::CpuAccess::SequentialWrite, binarySize, Buffer::Location::Auto, Buffer::Strategy::Speed);
+			SET_RESOURCE_DEBUG_NAME(stagingBuffer, "buffer.staging.imgui.image" + to_string(*stagingBuffer));
+
+			auto stagingView = graphicsSystem->get(stagingBuffer);
+			auto map = stagingView->getMap();
+			for (int y = 0; y < updateRect.h; y++)
+                memcpy(map + uploadPitch * y, texture->GetPixelsAt(updateRect.x, updateRect.y + y), (size_t)uploadPitch);
+			stagingView->flush();
+
+			ID<Image> image; *image = (uint32)(psize)texture->BackendUserData;
+			Image::CopyBufferRegion copyRegion;
+			copyRegion.imageOffset = uint3(updateRect.x, updateRect.y, 0);
+			copyRegion.imageExtent = uint3(updateRect.w, updateRect.h, 1);
+			copyRegion.imageLayerCount = 1;
+			Image::copy(stagingBuffer, image, copyRegion);
+
+			texture->SetStatus(ImTextureStatus_OK);
+		}
+		else if (texture->Status == ImTextureStatus_WantDestroy)
+		{
+			ID<ImageView> imageView; *imageView = (uint32)texture->GetTexID();
+			auto searchResult = dsCache.find(imageView);
+			GARDEN_ASSERT(searchResult != dsCache.end());
+			graphicsSystem->destroy(searchResult->second);
+
+			ID<Image> image; *image = (uint32)(psize)texture->BackendUserData;
+			graphicsSystem->destroy(image);
+			texture->SetStatus(ImTextureStatus_Destroyed);
+		}
+		else if (texture->Status != ImTextureStatus_Destroyed) abort();
+	}
+
+	graphicsSystem->stopRecording();
+}
+void ImGuiRenderSystem::postLdrToUI()
+{
+	SET_CPU_ZONE_SCOPED("ImGui Post LDR to UI");
 
 	if (!isEnabled)
 		return;
@@ -614,24 +671,31 @@ void ImGuiRenderSystem::uiRender()
 	}
 
 	auto pipelineView = graphicsSystem->get(pipeline);
-	auto fontTextureView = graphicsSystem->get(fontTexture);
-	if (!pipelineView->isReady() || !fontTextureView->isReady())
+	if (!pipelineView->isReady())
 		return;
 
 	ImGui::Render();
 
-	if (!fontDescriptorSet)
-	{
-		auto uniforms = getUniforms(fontTextureView->getDefaultView());
-		auto samplers = getSamplers(linearSampler);
-		fontDescriptorSet = graphicsSystem->createDescriptorSet(
-			pipeline, std::move(uniforms), std::move(samplers));
-		SET_RESOURCE_DEBUG_NAME(fontDescriptorSet, "descriptorSet.imgui.font");
-	}
+	auto drawData = ImGui::GetDrawData();
+	if (drawData->Textures)
+		updateImGuiTextures(*drawData->Textures, dsCache);
+}
+
+//**********************************************************************************************************************
+void ImGuiRenderSystem::uiRender()
+{
+	SET_CPU_ZONE_SCOPED("ImGui UI Render");
+
+	if (!isEnabled)
+		return;
+
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto pipelineView = graphicsSystem->get(pipeline);
+	if (!pipelineView->isReady())
+		return;
 
 	auto drawData = ImGui::GetDrawData();
 	auto& cmdLists = drawData->CmdLists;
-	auto defaultFontTexture = fontTextureView->getDefaultView();
 	ID<Buffer> vertexBuffer = {}, indexBuffer = {};
 
 	if (drawData->TotalVtxCount > 0 && drawData->TotalIdxCount > 0)
@@ -711,25 +775,25 @@ void ImGuiRenderSystem::uiRender()
 			pipelineView->setScissor(int4(clipMin.x, clipMin.y, clipMax.x - clipMin.x, clipMax.y - clipMin.y));
 
 			ID<DescriptorSet> descriptorSet;
-			if (cmd.TextureId == *defaultFontTexture)
-			{
-				descriptorSet = fontDescriptorSet;
-			}
-			else
-			{
-				ID<ImageView> texture;
-				*texture = cmd.TextureId;
+			ID<ImageView> imageView; *imageView = cmd.GetTexID();
+			auto searchResult = dsCache.find(imageView);
+			if (searchResult != dsCache.end())
+				descriptorSet = searchResult->second;
 
-				auto uniforms = getUniforms(texture);
+			if (!descriptorSet)
+			{
+				auto uniforms = getUniforms(imageView);
 				auto samplers = getSamplers(nearestSampler);
-				auto tmpDescriptorSet = graphicsSystem->createDescriptorSet(
+				descriptorSet = graphicsSystem->createDescriptorSet(
 					pipeline, std::move(uniforms), std::move(samplers));
-				SET_RESOURCE_DEBUG_NAME(tmpDescriptorSet, "descriptorSet.imgui.imageView.tmp");
-				graphicsSystem->destroy(tmpDescriptorSet); // TODO: use here Vulkan extensions which allows to bind resources directly without DS.
-				descriptorSet = tmpDescriptorSet;
+				SET_RESOURCE_DEBUG_NAME(descriptorSet, 
+					"descriptorSet.imgui.tmpImageView" + to_string(*imageView));
+				if (searchResult != dsCache.end())
+					searchResult.value() = descriptorSet;
+				else graphicsSystem->destroy(descriptorSet); // TODO: use here Vulkan extensions which allows to bind resources directly without DS
 			}
+
 			pipelineView->bindDescriptorSet(descriptorSet);
-			
 			pipelineView->drawIndexed(vertexBuffer, indexBuffer, indexType, cmd.ElemCount, 1, 
 				cmd.IdxOffset + globalIdxOffset, cmd.VtxOffset + globalVtxOffset);
 		}
