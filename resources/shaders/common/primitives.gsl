@@ -22,8 +22,8 @@ const float2 quadVertices[6] = float2[]
 );
 const float2 quadTexCoords[6] = float2[]
 (
-	float2(0.0f, 0.0f), float2(1.0f, 0.0f), float2(0.0f, 1.0f),
-	float2(0.0f, 1.0f), float2(1.0f, 0.0f), float2(1.0f, 1.0f)
+	float2(0.0f, 1.0f), float2(1.0f, 1.0f), float2(0.0f, 0.0f),
+	float2(0.0f, 0.0f), float2(1.0f, 1.0f), float2(1.0f, 0.0f)
 );
 
 const float3 cubeVertices[36] = float3[]

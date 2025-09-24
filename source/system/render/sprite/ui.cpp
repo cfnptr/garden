@@ -12,20 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "garden/system/render/sprite/opaque.hpp"
+#include "garden/system/render/sprite/ui.hpp"
 
 using namespace garden;
 
 //**********************************************************************************************************************
-OpaqueSpriteSystem::OpaqueSpriteSystem(bool setSingleton) : SpriteRenderCompSystem(
-	"sprite/opaque"), Singleton(setSingleton) { }
-OpaqueSpriteSystem::~OpaqueSpriteSystem() { unsetSingleton(); }
+UiSpriteSystem::UiSpriteSystem(bool setSingleton) : SpriteRenderCompSystem(
+	"sprite/translucent"), Singleton(setSingleton) { }
+UiSpriteSystem::~UiSpriteSystem() { unsetSingleton(); }
 
-string_view OpaqueSpriteSystem::getComponentName() const
+string_view UiSpriteSystem::getComponentName() const
 {
-	return "Opaque Sprite";
+	return "Sprite UI";
 }
-MeshRenderType OpaqueSpriteSystem::getMeshRenderType() const
+MeshRenderType UiSpriteSystem::getMeshRenderType() const
 {
-	return MeshRenderType::Color;
+	return MeshRenderType::UI;
 }

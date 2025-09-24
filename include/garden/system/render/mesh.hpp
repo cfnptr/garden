@@ -35,6 +35,7 @@ enum class MeshRenderType : uint8
 	OIT,         /**< Order independent transparency. (Faster than Translucent type) */
 	Refracted,   /**< Refracted or absorbed light rendering. */
 	TransDepth,  /**< Translucent depth only rendering. (Useful for ray tracing) */
+	UI,          /**< User interface redering. (Uses GUI orthographic projection matrix) */
 	Count        /**< Common mesh render type count. */
 };
 
@@ -213,7 +214,8 @@ public:
 private:
 	vector<UnsortedBuffer*> unsortedBuffers;
 	vector<SortedBuffer*> sortedBuffers;
-	vector<SortedMesh> sortedCombinedMeshes;
+	vector<SortedMesh> transSortedMeshes;
+	vector<SortedMesh> uiSortedMeshes;
 	vector<vector<SortedMesh>> sortedThreadMeshes;
 	vector<IMeshRenderSystem*> meshSystems;
 	uint32 unsortedBufferCount = 0;
@@ -224,7 +226,8 @@ private:
 	bool hasAnyRefr = false;
 	bool hasAnyOIT = false;
 	bool hasAnyTransDepth = false;
-	atomic<uint32> sortedDrawIndex = 0; // Always last.
+	atomic<uint32> transDrawIndex = 0;
+	atomic<uint32> uiDrawIndex = 0; // Always last.
 
 	/**
 	 * @brief Creates a new mesh rendering system instance.
@@ -245,7 +248,7 @@ private:
 	void sortMeshes();
 	void prepareMeshes(const f32x4x4& viewProj, f32x4 cameraOffset, uint8 frustumPlaneCount, int8 shadowPass);
 	void renderUnsorted(const f32x4x4& viewProj, MeshRenderType renderType, int8 shadowPass);
-	void renderSorted(const f32x4x4& viewProj, int8 shadowPass);
+	void renderSorted(const f32x4x4& viewProj, MeshRenderType renderType, int8 shadowPass);
 	void cleanupMeshes();
 	void renderShadows();
 
@@ -263,12 +266,13 @@ private:
 	void transDepthRender();
 	void preOitRender();
 	void oitRender();
+	void uiRender();
 
 	friend class ecsm::Manager;
 	friend class GizmosEditorSystem;
 	friend class SelectorEditorSystem;
 public:
-	bool isOpaqueOnly = false; /** Render only opaque meshes. */
+	bool isNonTranslucent = false; /** Render only non translucent meshes. */
 
 	/**
 	 * @brief Use multithreaded command buffer recording.

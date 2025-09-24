@@ -44,7 +44,7 @@ string_view CutoutSpriteSystem::getComponentName() const
 }
 MeshRenderType CutoutSpriteSystem::getMeshRenderType() const
 {
-	return MeshRenderType::Opaque;
+	return MeshRenderType::Color;
 }
 
 //**********************************************************************************************************************
@@ -84,8 +84,8 @@ void CutoutSpriteSystem::animateAsync(View<Component> component,
 {
 	SpriteRenderSystem::animateAsync(component, a, b, t);
 	auto cutoutSpriteView = View<CutoutSpriteComponent>(component);
-	auto frameA = View<CutoutSpriteFrame>(a);
-	auto frameB = View<CutoutSpriteFrame>(b);
+	const auto frameA = View<CutoutSpriteFrame>(a);
+	const auto frameB = View<CutoutSpriteFrame>(b);
 	if (frameA->animateAlphaCutoff)
 		cutoutSpriteView->alphaCutoff = lerp(frameA->alphaCutoff, frameB->alphaCutoff, t);
 }

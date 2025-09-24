@@ -627,8 +627,8 @@ ID<AnimationFrame> TransformSystem::deserializeAnimation(IDeserializer& deserial
 void TransformSystem::animateAsync(View<Component> component, View<AnimationFrame> a, View<AnimationFrame> b, float t)
 {
 	auto transformView = View<TransformComponent>(component);
-	auto frameA = View<TransformFrame>(a);
-	auto frameB = View<TransformFrame>(b);
+	const auto frameA = View<TransformFrame>(a);
+	const auto frameB = View<TransformFrame>(b);
 
 	if (frameA->animatePosition)
 		transformView->setPosition(lerp(frameA->position, frameB->position, t));

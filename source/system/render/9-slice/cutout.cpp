@@ -84,8 +84,8 @@ void Cutout9SliceSystem::animateAsync(View<Component> component,
 {
 	SpriteRenderSystem::animateAsync(component, a, b, t);
 	auto cutout9SliceView = View<Cutout9SliceComponent>(component);
-	auto frameA = View<Cutout9SliceFrame>(a);
-	auto frameB = View<Cutout9SliceFrame>(b);
+	const auto frameA = View<Cutout9SliceFrame>(a);
+	const auto frameB = View<Cutout9SliceFrame>(b);
 	if (frameA->animateAlphaCutoff)
 		cutout9SliceView->alphaCutoff = lerp(frameA->alphaCutoff, frameB->alphaCutoff, t);
 }

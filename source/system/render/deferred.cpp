@@ -487,7 +487,6 @@ void DeferredRenderSystem::render()
 
 		static const array<float4, gBufferCount> clearColors = 
 		{ float4::zero, float4::zero, float4::zero, float4::zero, float4::zero, float4::zero };
-		velocityPipelineView = graphicsSystem->get(velocityPipeline); // Note: do not remove.
 		auto inFlightIndex = graphicsSystem->getInFlightIndex();
 
 		graphicsSystem->startRecording(CommandBufferType::Frame);
@@ -498,6 +497,7 @@ void DeferredRenderSystem::render()
 					0.0f, 0x00, int4::zero, options.useAsyncRecording);
 				event->run();
 
+				velocityPipelineView = graphicsSystem->get(velocityPipeline); // Note: do not move.
 				if (options.useAsyncRecording)
 				{
 					auto threadIndex = graphicsSystem->getThreadCount() - 1;
@@ -738,7 +738,8 @@ void DeferredRenderSystem::render()
 		{
 			SET_GPU_DEBUG_LABEL("UI Pass");
 			{
-				RenderPass renderPass(getUiFramebuffer(), float4::zero);
+				RenderPass renderPass(getUiFramebuffer(), float4::zero,
+					0.0f, 0x00, int4::zero, options.useAsyncRecording);
 				event->run();
 			}
 		}
@@ -881,7 +882,7 @@ void DeferredRenderSystem::swapchainRecreate()
 		if (upscaleHdrFramebuffer)
 		{
 			colorAttachments[0] = Framebuffer::OutputAttachment(graphicsSystem->get(
-				getUpscaleHdrBuffer())->getDefaultView(), DeferredRenderSystem::upscaleHdrFlags);
+				getUpscaleHdrBuffer())->getDefaultView(), DeferredRenderSystem::hdrBufferFlags);
 			auto framebufferView = graphicsSystem->get(upscaleHdrFramebuffer);
 			framebufferView->update(graphicsSystem->useUpscaling ? 
 				graphicsSystem->getFramebufferSize() : framebufferSize, colorAttachments, 1);

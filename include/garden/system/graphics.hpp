@@ -132,6 +132,7 @@ class GraphicsSystem final : public System, public Singleton<GraphicsSystem>
 
 	friend class ecsm::Manager;
 public:
+	float uiScale = 1.0f;             /**< User interface scaling factor. (UI) */
 	ID<Entity> camera = {};           /**< Current main render camera. */
 	ID<Entity> directionalLight = {}; /**< Current main directional light. (Sun) */
 	uint16 maxFPS = 60;               /**< Frames per second limit. */

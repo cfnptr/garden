@@ -95,8 +95,8 @@ void NineSliceRenderSystem::animateAsync(View<Component> component,
 {
 	SpriteRenderSystem::animateAsync(component, a, b, t);
 	auto nineSliceView = View<NineSliceRenderComponent>(component);
-	auto frameA = View<NineSliceAnimationFrame>(a);
-	auto frameB = View<NineSliceAnimationFrame>(b);
+	const auto frameA = View<NineSliceAnimationFrame>(a);
+	const auto frameB = View<NineSliceAnimationFrame>(b);
 	if (frameA->animateTextureBorder)
 		nineSliceView->textureBorder = lerp(frameA->textureBorder, frameB->textureBorder, t);
 	if (frameA->animateWindowBorder)

@@ -15,6 +15,7 @@
 #include "garden/editor/system/render/9-slice.hpp"
 
 #if GARDEN_EDITOR
+#include "garden/system/render/9-slice/ui.hpp"
 #include "garden/system/render/9-slice/opaque.hpp"
 #include "garden/system/render/9-slice/cutout.hpp"
 #include "garden/system/render/9-slice/translucent.hpp"
@@ -64,6 +65,14 @@ void NineSliceRenderEditorSystem::init()
 			onTransEntityInspector(entity, isOpened);
 		});
 	}
+	if (Ui9SliceSystem::Instance::has())
+	{
+		editorSystem->registerEntityInspector<Ui9SliceComponent>(
+		[this](ID<Entity> entity, bool isOpened)
+		{
+			onUiEntityInspector(entity, isOpened);
+		});
+	}
 }
 void NineSliceRenderEditorSystem::deinit()
 {
@@ -73,6 +82,7 @@ void NineSliceRenderEditorSystem::deinit()
 		editorSystem->tryUnregisterEntityInspector<Opaque9SliceComponent>();
 		editorSystem->tryUnregisterEntityInspector<Cutout9SliceComponent>();
 		editorSystem->tryUnregisterEntityInspector<Trans9SliceComponent>();
+		editorSystem->tryUnregisterEntityInspector<Ui9SliceComponent>();
 	}
 }
 
@@ -131,6 +141,22 @@ void NineSliceRenderEditorSystem::onTransEntityInspector(ID<Entity> entity, bool
 	{
 		auto trans9SliceView = Trans9SliceSystem::Instance::get()->getComponent(entity);
 		renderComponent(*trans9SliceView, typeid(Trans9SliceComponent));
+	}
+}
+void NineSliceRenderEditorSystem::onUiEntityInspector(ID<Entity> entity, bool isOpened)
+{
+	if (ImGui::BeginItemTooltip())
+	{
+		auto ui9SliceView = Ui9SliceSystem::Instance::get()->getComponent(entity);
+		ImGui::Text("Enabled: %s, Path: %s", ui9SliceView->isEnabled ? "true" : "false",
+			ui9SliceView->colorMapPath.empty() ? "<null>" : 
+			ui9SliceView->colorMapPath.generic_string().c_str());
+		ImGui::EndTooltip();
+	}
+	if (isOpened)
+	{
+		auto ui9SliceView = Ui9SliceSystem::Instance::get()->getComponent(entity);
+		renderComponent(*ui9SliceView, typeid(Ui9SliceComponent));
 	}
 }
 

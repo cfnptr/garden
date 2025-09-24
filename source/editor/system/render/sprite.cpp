@@ -17,6 +17,7 @@
 #if GARDEN_EDITOR
 #include "garden/system/resource.hpp"
 #include "garden/system/transform.hpp"
+#include "garden/system/render/sprite/ui.hpp"
 #include "garden/system/render/sprite/opaque.hpp"
 #include "garden/system/render/sprite/cutout.hpp"
 #include "garden/system/render/sprite/translucent.hpp"
@@ -64,6 +65,14 @@ void SpriteRenderEditorSystem::init()
 			onTransEntityInspector(entity, isOpened);
 		});
 	}
+	if (UiSpriteSystem::Instance::has())
+	{
+		editorSystem->registerEntityInspector<UiSpriteComponent>(
+		[this](ID<Entity> entity, bool isOpened)
+		{
+			onUiEntityInspector(entity, isOpened);
+		});
+	}
 }
 void SpriteRenderEditorSystem::deinit()
 {
@@ -73,6 +82,7 @@ void SpriteRenderEditorSystem::deinit()
 		editorSystem->tryUnregisterEntityInspector<OpaqueSpriteComponent>();
 		editorSystem->tryUnregisterEntityInspector<CutoutSpriteComponent>();
 		editorSystem->tryUnregisterEntityInspector<TransSpriteComponent>();
+		editorSystem->tryUnregisterEntityInspector<UiSpriteComponent>();
 	}
 }
 
@@ -133,6 +143,22 @@ void SpriteRenderEditorSystem::onTransEntityInspector(ID<Entity> entity, bool is
 		renderComponent(*transSpriteView, typeid(TransSpriteComponent));
 	}
 }
+void SpriteRenderEditorSystem::onUiEntityInspector(ID<Entity> entity, bool isOpened)
+{
+	if (ImGui::BeginItemTooltip())
+	{
+		auto uiSpriteView = UiSpriteSystem::Instance::get()->getComponent(entity);
+		ImGui::Text("Enabled: %s, Path: %s", uiSpriteView->isEnabled ? "true" : "false",
+			uiSpriteView->colorMapPath.empty() ? "<null>" :
+			uiSpriteView->colorMapPath.generic_string().c_str());
+		ImGui::EndTooltip();
+	}
+	if (isOpened)
+	{
+		auto uiSpriteView = UiSpriteSystem::Instance::get()->getComponent(entity);
+		renderComponent(*uiSpriteView, typeid(UiSpriteComponent));
+	}
+}
 
 //**********************************************************************************************************************
 void SpriteRenderEditorSystem::renderComponent(SpriteRenderComponent* componentView, type_index componentType)
@@ -160,7 +186,12 @@ void SpriteRenderEditorSystem::renderComponent(SpriteRenderComponent* componentV
 		componentView->colorMap = resourceSystem->loadImage(componentView->colorMapPath,
 			Image::Usage::Sampled | Image::Usage::TransferDst, 1, Image::Strategy::Default, flags);
 		componentView->descriptorSet = {};
-	}
+	} ImGui::SameLine();
+
+	ImGui::BeginDisabled();
+	auto isVisible = componentView->isVisible();
+	ImGui::Checkbox("Visible", &isVisible);
+	ImGui::EndDisabled();
 
 	auto transformSystem = TransformSystem::Instance::get();
 	ImGui::BeginDisabled(!componentView->colorMap && transformSystem->hasComponent(componentView->getEntity()));
@@ -233,7 +264,7 @@ void SpriteRenderEditorSystem::renderComponent(SpriteRenderComponent* componentV
 		ImGui::EndPopup();
 	}
 
-	ImGui::SliderFloat4("Color", &componentView->color, 0.0f, 1.0f);
+	ImGui::ColorEdit4("Color", (float*)&componentView->color, ImGuiColorEditFlags_Float);
 	if (ImGui::BeginPopupContextItem("colorFactor"))
 	{
 		if (ImGui::MenuItem("Reset Default"))

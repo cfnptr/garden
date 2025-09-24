@@ -179,7 +179,7 @@ private:
 	ID<Framebuffer> skyboxFramebuffers[Image::cubemapFaceCount] = {};
 	Ref<Image> lastSkybox = {}, lastSpecular = {};
 	ID<ImageView> lastSkyboxShView = {};
-	float3 sunDir = float3::top;
+	float3 sunDir = float3::zero;
 	uint32 lastSkyboxSize = 0, shInFlightIndex = 0;
 	GraphicsQuality quality = GraphicsQuality::High;
 	bool isInitialized = false;
@@ -221,7 +221,7 @@ public:
 	float atmosphereHeight = earthAtmosphereHeight; /**< (km) */
 	float4 sunColor = float4(float3(1.0f), 64000.0f);
 	float sunAngularSize = earthSunAngularSize; /**< (degrees) */
-	float giFactor = 0.5f;
+	float giFactor = 0.25f;
 	float multiScatFactor = 1.0f;
 
 	/**

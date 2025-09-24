@@ -16,6 +16,7 @@
 #include "garden/system/render/deferred.hpp"
 #include "garden/system/render/forward.hpp"
 #include "garden/system/resource.hpp"
+#include "garden/system/thread.hpp"
 #include "garden/graphics/api.hpp"
 #include "garden/graphics/glfw.hpp" // Note: Defined before ImGUI
 #include "garden/graphics/imgui.hpp"
@@ -109,12 +110,22 @@ static void setImGuiStyle()
 
 static ID<GraphicsPipeline> createPipeline()
 {
-	ID<Framebuffer> framebuffer;
+	ID<Framebuffer> framebuffer; bool asyncRecording;
 	if (DeferredRenderSystem::Instance::has())
-		framebuffer = DeferredRenderSystem::Instance::get()->getUiFramebuffer();
+	{
+		auto deferredSystem = DeferredRenderSystem::Instance::get();
+		framebuffer = deferredSystem->getUiFramebuffer();
+		asyncRecording = deferredSystem->getOptions().useAsyncRecording;
+	}
 	else
-		framebuffer = ForwardRenderSystem::Instance::get()->getColorFramebuffer();
+	{
+		auto forwardSystem = ForwardRenderSystem::Instance::get();
+		framebuffer = forwardSystem->getColorFramebuffer();
+		asyncRecording = forwardSystem->useAsyncRecording();
+	}
+
 	ResourceSystem::GraphicsOptions options;
+	options.useAsyncRecording = asyncRecording;
 	return ResourceSystem::Instance::get()->loadGraphicsPipeline("imgui", framebuffer, options);
 }
 static ID<Sampler> createLinearSampler(GraphicsSystem* graphicsSystem)
@@ -681,7 +692,6 @@ void ImGuiRenderSystem::postLdrToUI()
 		updateImGuiTextures(*drawData->Textures, dsCache);
 }
 
-//**********************************************************************************************************************
 void ImGuiRenderSystem::uiRender()
 {
 	SET_CPU_ZONE_SCOPED("ImGui UI Render");
@@ -737,7 +747,10 @@ void ImGuiRenderSystem::uiRender()
 
 	const auto indexType = sizeof(ImDrawIdx) == 2 ? IndexType::Uint16 : IndexType::Uint32;
 	auto framebufferView = graphicsSystem->get(pipelineView->getFramebuffer());
-	auto framebufferSize = framebufferView->getSize();
+	auto framebufferSize = (float2)framebufferView->getSize();
+	auto isCurrentRenderPassAsync = graphicsSystem->isCurrentRenderPassAsync();
+	auto threadIndex = graphicsSystem->getThreadCount() - 1;
+	auto threadSystem = ThreadSystem::Instance::tryGet();
 
 	PushConstants pc;
 	pc.scale = float2(2.0f / drawData->DisplaySize.x, 2.0f / drawData->DisplaySize.y);
@@ -745,9 +758,18 @@ void ImGuiRenderSystem::uiRender()
 		-1.0f - drawData->DisplayPos.y * pc.scale.y);
 
 	SET_GPU_DEBUG_LABEL("ImGui");
-	pipelineView->bind();
-	pipelineView->setViewport();
-	pipelineView->pushConstants(&pc);
+	if (isCurrentRenderPassAsync)
+	{
+		pipelineView->bindAsync(0, threadIndex);
+		pipelineView->setViewportAsync(float4::zero, threadIndex);
+		pipelineView->pushConstantsAsync(&pc, threadIndex);
+	}
+	else
+	{
+		pipelineView->bind();
+		pipelineView->setViewport();
+		pipelineView->pushConstants(&pc);
+	}
 
 	auto clipOff = drawData->DisplayPos;
 	auto clipScale = drawData->FramebufferScale;
@@ -767,12 +789,16 @@ void ImGuiRenderSystem::uiRender()
 
 			if (clipMin.x < 0.0f) clipMin.x = 0.0f;
 			if (clipMin.y < 0.0f) clipMin.y = 0.0f;
-			if (clipMax.x > framebufferSize.x) clipMax.x = (float)framebufferSize.x;
-			if (clipMax.y > framebufferSize.y) clipMax.y = (float)framebufferSize.y;
+			if (clipMax.x > framebufferSize.x) clipMax.x = framebufferSize.x;
+			if (clipMax.y > framebufferSize.y) clipMax.y = framebufferSize.y;
 			if (clipMax.x <= clipMin.x || clipMax.y <= clipMin.y)
 				continue;
 
-			pipelineView->setScissor(int4(clipMin.x, clipMin.y, clipMax.x - clipMin.x, clipMax.y - clipMin.y));
+			auto scissor = int4(clipMin.x, clipMin.y, clipMax.x - clipMin.x, clipMax.y - clipMin.y);
+			if (isCurrentRenderPassAsync)
+				pipelineView->setScissorAsync(scissor, threadIndex);
+			else
+				pipelineView->setScissor(scissor);
 
 			ID<DescriptorSet> descriptorSet;
 			ID<ImageView> imageView; *imageView = cmd.GetTexID();
@@ -793,9 +819,18 @@ void ImGuiRenderSystem::uiRender()
 				else graphicsSystem->destroy(descriptorSet); // TODO: use here Vulkan extensions which allows to bind resources directly without DS
 			}
 
-			pipelineView->bindDescriptorSet(descriptorSet);
-			pipelineView->drawIndexed(vertexBuffer, indexBuffer, indexType, cmd.ElemCount, 1, 
-				cmd.IdxOffset + globalIdxOffset, cmd.VtxOffset + globalVtxOffset);
+			if (isCurrentRenderPassAsync)
+			{
+				pipelineView->bindDescriptorSetAsync(descriptorSet, 0, threadIndex);
+				pipelineView->drawIndexedAsync(threadIndex, vertexBuffer, indexBuffer, indexType, 
+					cmd.ElemCount, 1, cmd.IdxOffset + globalIdxOffset, cmd.VtxOffset + globalVtxOffset);
+			}
+			else
+			{
+				pipelineView->bindDescriptorSet(descriptorSet);
+				pipelineView->drawIndexed(vertexBuffer, indexBuffer, indexType, cmd.ElemCount, 
+					1, cmd.IdxOffset + globalIdxOffset, cmd.VtxOffset + globalVtxOffset);
+			}
 		}
 		globalIdxOffset += cmdList->IdxBuffer.Size;
 		globalVtxOffset += cmdList->VtxBuffer.Size;
