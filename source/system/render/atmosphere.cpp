@@ -371,9 +371,6 @@ void AtmosphereRenderSystem::init()
 	ECSM_SUBSCRIBE_TO_EVENT("HdrRender", AtmosphereRenderSystem::hdrRender);
 	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", AtmosphereRenderSystem::gBufferRecreate);
 	ECSM_SUBSCRIBE_TO_EVENT("QualityChange", AtmosphereRenderSystem::qualityChange);
-
-	auto& cc = GraphicsSystem::Instance::get()->getCommonConstants();
-	sunDir = (float3)-cc.lightDir;
 }
 void AtmosphereRenderSystem::deinit()
 {
@@ -503,6 +500,9 @@ void AtmosphereRenderSystem::preDeferredRender()
 	auto mieDensityExpScale = -1.0f / mieScaleHeight;
 	auto absDensity0ConstantTerm = ozoneLayerTip - ozoneLayerWidth * ozoneLayerSlope;
 	auto absDensity1ConstantTerm = ozoneLayerTip - ozoneLayerWidth * -ozoneLayerSlope;
+
+	if (sunDir == float3::zero)
+		sunDir = (float3)-cc.lightDir;
 
 	graphicsSystem->startRecording(CommandBufferType::Frame);
 	BEGIN_GPU_DEBUG_LABEL("Atmosphere");

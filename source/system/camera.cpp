@@ -83,9 +83,7 @@ void CameraSystem::deserialize(IDeserializer& deserializer, View<Component> comp
 {
 	auto cameraView = View<CameraComponent>(component);
 
-	string type;
-	deserializer.read("projection", type);
-
+	string type; deserializer.read("projection", type);
 	if (type == "Perspective")
 	{
 		cameraView->type = ProjectionType::Perspective;
@@ -129,18 +127,17 @@ void CameraSystem::serializeAnimation(ISerializer& serializer, View<AnimationFra
 }
 ID<AnimationFrame> CameraSystem::deserializeAnimation(IDeserializer& deserializer)
 {
-	string type;
-	deserializer.read("projection", type);
+	string type; deserializer.read("projection", type);
 
 	CameraFrame frame;
-	if (type == "perspective")
+	if (type == "Perspective")
 	{
 		frame.f.perspective.type = ProjectionType::Perspective;
 		frame.f.perspective.animateFieldOfView = deserializer.read("fieldOfView", frame.c.perspective.fieldOfView);
 		frame.f.perspective.animateAspectRatio = deserializer.read("aspectRatio", frame.c.perspective.aspectRatio);
 		frame.f.perspective.animateNearPlane = deserializer.read("nearPlane", frame.c.perspective.nearPlane);
 	}
-	else if (type == "orthographic")
+	else if (type == "Orthographic")
 	{
 		frame.f.orthographic.type = ProjectionType::Orthographic;
 		frame.f.orthographic.animateWidth = deserializer.read("width", frame.c.orthographic.width);
@@ -157,8 +154,8 @@ ID<AnimationFrame> CameraSystem::deserializeAnimation(IDeserializer& deserialize
 void CameraSystem::animateAsync(View<Component> component, View<AnimationFrame> a, View<AnimationFrame> b, float t)
 {
 	auto cameraView = View<CameraComponent>(component);
-	auto frameA = View<CameraFrame>(a);
-	auto frameB = View<CameraFrame>(b);
+	const auto frameA = View<CameraFrame>(a);
+	const auto frameB = View<CameraFrame>(b);
 
 	if (frameA->f.base.type == ProjectionType::Perspective)
 	{

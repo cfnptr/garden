@@ -53,7 +53,7 @@ struct NineSliceAnimationFrame : public SpriteAnimationFrame
 };
 
 /***********************************************************************************************************************
- * @brief 9-slice sprite rendering system.
+ * @brief 9-slice sprite rendering system. (Scale 9 grid, 9-patch)
  */
 class NineSliceRenderSystem : public SpriteRenderSystem
 {
@@ -64,6 +64,10 @@ public:
 		float2 windowBorder = float2::zero;
 	};
 protected:
+	/**
+	 * @brief Creates a new 9-slice sprite render system instance.
+	 * @param[in] pipelinePath target rendering pipeline path
+	 */
 	NineSliceRenderSystem(const fs::path& pipelinePath) : SpriteRenderSystem(pipelinePath) { }
 
 	void resetComponent(View<Component> component, bool full) override;

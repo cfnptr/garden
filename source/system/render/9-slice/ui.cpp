@@ -12,20 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "garden/system/render/sprite/opaque.hpp"
+#include "garden/system/render/9-slice/ui.hpp"
 
 using namespace garden;
 
 //**********************************************************************************************************************
-OpaqueSpriteSystem::OpaqueSpriteSystem(bool setSingleton) : SpriteRenderCompSystem(
-	"sprite/opaque"), Singleton(setSingleton) { }
-OpaqueSpriteSystem::~OpaqueSpriteSystem() { unsetSingleton(); }
+Ui9SliceSystem::Ui9SliceSystem(bool setSingleton) : NineSliceRenderCompSystem(
+	"9-slice/translucent"), Singleton(setSingleton) { }
+Ui9SliceSystem::~Ui9SliceSystem() { unsetSingleton(); }
 
-string_view OpaqueSpriteSystem::getComponentName() const
+string_view Ui9SliceSystem::getComponentName() const
 {
-	return "Opaque Sprite";
+	return "9-Slice UI";
 }
-MeshRenderType OpaqueSpriteSystem::getMeshRenderType() const
+MeshRenderType Ui9SliceSystem::getMeshRenderType() const
 {
-	return MeshRenderType::Color;
+	return MeshRenderType::UI;
 }

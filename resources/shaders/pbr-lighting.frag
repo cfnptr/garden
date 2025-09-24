@@ -52,7 +52,7 @@ uniform sampler2D shadowBuffer;
 uniform sampler2D aoBuffer;
 uniform sampler2D
 {
-	filter = linear;
+	filterMipmap = linear;
 } reflBuffer;
 uniform sampler2D giBuffer;
 

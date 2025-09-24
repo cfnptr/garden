@@ -1056,7 +1056,8 @@ void EditorRenderSystem::drawImageSelector(const char* name, fs::path& path, Ref
 	{
 		if (ImGui::MenuItem("Select Image"))
 		{
-			openFileSelector([&](const fs::path& selectedFile)
+			openFileSelector([&path, &image, &descriptorSet, entity, 
+				componentType, loadFlags](const fs::path& selectedFile)
 			{
 				if (EditorRenderSystem::Instance::get()->selectedEntity != entity ||
 					!Manager::Instance::get()->has(entity, componentType))
@@ -1071,8 +1072,8 @@ void EditorRenderSystem::drawImageSelector(const char* name, fs::path& path, Ref
 				path = selectedFile;
 				path.replace_extension();
 
-				image = resourceSystem->loadImage(path, Image::Usage::Sampled | 
-					Image::Usage::TransferDst, 1, Image::Strategy::Default, loadFlags);
+				image = resourceSystem->loadImage(path, Image::Usage::Sampled | Image::Usage::TransferDst | 
+					Image::Usage::TransferQ, 1, Image::Strategy::Default, loadFlags);
 				descriptorSet = {};
 			},
 			AppInfoSystem::Instance::get()->getResourcesPath() / "images", ResourceSystem::imageFileExts);

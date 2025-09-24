@@ -117,7 +117,6 @@ public:
 	static constexpr Framebuffer::OutputAttachment::Flags normalsBufferFlags = { false, true, true };
 	static constexpr Framebuffer::OutputAttachment::Flags transBufferFlags = { true, false, true};
 	static constexpr Framebuffer::OutputAttachment::Flags transBufferDepthFlags = { false, true, true };
-	static constexpr Framebuffer::OutputAttachment::Flags upscaleHdrFlags = { false, false, true };
 private:
 	vector<ID<Image>> gBuffers;
 	ID<Image> hdrBuffer = {};

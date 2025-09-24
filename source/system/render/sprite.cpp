@@ -96,7 +96,7 @@ void SpriteRenderSystem::resetComponent(View<Component> component, bool full)
 		spriteRenderView->aabb = Aabb::one;
 		spriteRenderView->color = f32x4::one;
 		spriteRenderView->uvSize = float2::one;
-		spriteRenderView->uvOffset = float2::zero;;
+		spriteRenderView->uvOffset = float2::zero;
 		#if GARDEN_DEBUG || GARDEN_EDITOR
 		spriteRenderView->colorMapPath = "";
 		spriteRenderView->taskPriority = 0.0f;
@@ -180,10 +180,28 @@ DescriptorSet::Uniforms SpriteRenderSystem::getSpriteUniforms(ID<ImageView> colo
 ID<GraphicsPipeline> SpriteRenderSystem::createBasePipeline()
 {
 	auto deferredSystem = DeferredRenderSystem::Instance::tryGet();
-	auto framebuffer = deferredSystem ? deferredSystem->getHdrFramebuffer() : 
-		ForwardRenderSystem::Instance::get()->getColorFramebuffer();
+	ID<Framebuffer> framebuffer; GraphicsPipeline::State pipelineState;
+	if (deferredSystem)
+	{
+		if (getMeshRenderType() == MeshRenderType::UI)
+		{
+			framebuffer = deferredSystem->getUiFramebuffer();
+		}
+		else
+		{
+			framebuffer = deferredSystem->getDepthHdrFramebuffer();
+			pipelineState.depthTesting = pipelineState.depthWriting = true;
+		}
+	}
+	else
+	{
+		framebuffer = ForwardRenderSystem::Instance::get()->getColorFramebuffer();
+	}
+	GraphicsPipeline::PipelineStates pipelineStates = { { 0, pipelineState } };
+
 	ResourceSystem::GraphicsOptions options;
 	options.useAsyncRecording = true;
+	options.pipelineStateOverrides = &pipelineStates;
 	return ResourceSystem::Instance::get()->loadGraphicsPipeline(pipelinePath, framebuffer, options);
 }
 
@@ -271,8 +289,8 @@ void SpriteRenderSystem::animateAsync(View<Component> component,
 	View<AnimationFrame> a, View<AnimationFrame> b, float t)
 {
 	auto spriteRenderView = View<SpriteRenderComponent>(component);
-	auto frameA = View<SpriteAnimationFrame>(a);
-	auto frameB = View<SpriteAnimationFrame>(b);
+	const auto frameA = View<SpriteAnimationFrame>(a);
+	const auto frameB = View<SpriteAnimationFrame>(b);
 
 	if (frameA->animateIsEnabled)
 		spriteRenderView->isEnabled = (bool)round(t);
