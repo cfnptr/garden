@@ -84,8 +84,16 @@ void LinkComponent::setTag(string_view tag)
 }
 
 //**********************************************************************************************************************
-LinkSystem::LinkSystem(bool setSingleton) : Singleton(setSingleton) { }
-LinkSystem::~LinkSystem() { unsetSingleton(); }
+LinkSystem::LinkSystem(bool setSingleton) : Singleton(setSingleton)
+{
+	Manager::Instance::get()->addGroupSystem<ISerializable>(this);
+}
+LinkSystem::~LinkSystem()
+{
+	if (Manager::Instance::get()->isRunning)
+		Manager::Instance::get()->removeGroupSystem<ISerializable>(this);
+	unsetSingleton();
+}
 
 void LinkSystem::resetComponent(View<Component> component, bool full)
 {

@@ -423,12 +423,25 @@ bool TransformComponent::hasStaticWithDescendants() const noexcept
 }
 
 //**********************************************************************************************************************
-TransformSystem::TransformSystem(bool setSingleton) : Singleton(setSingleton) { }
+TransformSystem::TransformSystem(bool setSingleton) : Singleton(setSingleton)
+{
+	auto manager = Manager::Instance::get();
+	manager->addGroupSystem<ISerializable>(this);
+	manager->addGroupSystem<IAnimatable>(this);
+}
 
 TransformSystem::~TransformSystem()
 {
-	if (!Manager::Instance::get()->isRunning)
+	if (Manager::Instance::get()->isRunning)
+	{
+		auto manager = Manager::Instance::get();
+		manager->removeGroupSystem<ISerializable>(this);
+		manager->removeGroupSystem<IAnimatable>(this);
+	}
+	else
+	{
 		components.clear(false);
+	}
 	unsetSingleton();
 }
 
@@ -730,8 +743,16 @@ ID<Entity> TransformSystem::duplicateRecursive(ID<Entity> entity)
 }
 
 //**********************************************************************************************************************
-StaticTransformSystem::StaticTransformSystem(bool setSingleton) : Singleton(setSingleton) { }
-StaticTransformSystem::~StaticTransformSystem() { unsetSingleton(); }
+StaticTransformSystem::StaticTransformSystem(bool setSingleton) : Singleton(setSingleton)
+{
+	Manager::Instance::get()->addGroupSystem<ISerializable>(this);
+}
+StaticTransformSystem::~StaticTransformSystem()
+{
+	if (Manager::Instance::get()->isRunning)
+		Manager::Instance::get()->removeGroupSystem<ISerializable>(this);
+	unsetSingleton();
+}
 
 string_view StaticTransformSystem::getComponentName() const
 {

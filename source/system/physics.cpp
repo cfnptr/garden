@@ -961,6 +961,7 @@ PhysicsSystem::PhysicsSystem(const Properties& properties, bool setSingleton) : 
 
 	auto manager = Manager::Instance::get();
 	manager->registerEventBefore("Simulate", "Update");
+	manager->addGroupSystem<ISerializable>(this);
 
 	ECSM_SUBSCRIBE_TO_EVENT("PreInit", PhysicsSystem::preInit);
 	ECSM_SUBSCRIBE_TO_EVENT("PostInit", PhysicsSystem::postInit);
@@ -987,6 +988,7 @@ PhysicsSystem::~PhysicsSystem()
 
 		auto manager = Manager::Instance::get();
 		manager->unregisterEvent("Simulate");
+		manager->removeGroupSystem<ISerializable>(this);
 
 		delete (GardenJobSystem*)jobSystem;
 		delete (JPH::PhysicsSystem*)physicsInstance;

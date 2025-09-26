@@ -36,8 +36,22 @@ float CameraComponent::getNearPlane() const noexcept
 }
 
 //**********************************************************************************************************************
-CameraSystem::CameraSystem(bool setSingleton) : Singleton(setSingleton) { }
-CameraSystem::~CameraSystem() { unsetSingleton(); }
+CameraSystem::CameraSystem(bool setSingleton) : Singleton(setSingleton)
+{
+	auto manager = Manager::Instance::get();
+	manager->addGroupSystem<ISerializable>(this);
+	manager->addGroupSystem<IAnimatable>(this);
+}
+CameraSystem::~CameraSystem()
+{
+	if (Manager::Instance::get()->isRunning)
+	{
+		auto manager = Manager::Instance::get();
+		manager->removeGroupSystem<ISerializable>(this);
+		manager->removeGroupSystem<IAnimatable>(this);
+	}
+	unsetSingleton();
+}
 
 void CameraSystem::resetComponent(View<Component> component, bool full)
 {

@@ -17,9 +17,17 @@
 using namespace garden;
 
 //**********************************************************************************************************************
-TransSpriteSystem::TransSpriteSystem(bool setSingleton) : SpriteRenderCompSystem(
-	"sprite/translucent"), Singleton(setSingleton) { }
-TransSpriteSystem::~TransSpriteSystem() { unsetSingleton(); }
+TransSpriteSystem::TransSpriteSystem(bool setSingleton) : 
+	SpriteRenderCompSystem("sprite/translucent"), Singleton(setSingleton)
+{
+	Manager::Instance::get()->addGroupSystem<IMeshRenderSystem>(this);
+}
+TransSpriteSystem::~TransSpriteSystem()
+{
+	if (Manager::Instance::get()->isRunning)
+		Manager::Instance::get()->removeGroupSystem<IMeshRenderSystem>(this);
+	unsetSingleton();
+}
 
 string_view TransSpriteSystem::getComponentName() const
 {

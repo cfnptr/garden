@@ -2100,6 +2100,14 @@ ID<Entity> ResourceSystem::loadScene(const fs::path& path, bool addRootEntity)
 {
 	GARDEN_ASSERT(!path.empty());
 
+	auto manager = Manager::Instance::get();
+	auto systemGroup = manager->tryGetSystemGroup<ISerializable>();
+	if (!systemGroup)
+	{
+		GARDEN_LOG_ERROR("No ISerializable system found.");
+		return {};
+	}
+
 	JsonDeserializer deserializer;
 	fs::path filePath = "scenes" / path; filePath += ".scene";
 
@@ -2143,10 +2151,7 @@ ID<Entity> ResourceSystem::loadScene(const fs::path& path, bool addRootEntity)
 	}
 	#endif
 
-	auto manager = Manager::Instance::get();
-	TransformSystem* transformSystem = nullptr;
-	ID<Entity> rootEntity = {};
-
+	TransformSystem* transformSystem = nullptr; ID<Entity> rootEntity = {};
 	if (addRootEntity)
 	{
 		transformSystem = TransformSystem::Instance::tryGet();
@@ -2164,12 +2169,9 @@ ID<Entity> ResourceSystem::loadScene(const fs::path& path, bool addRootEntity)
 		}
 	}
 
-	const auto& systems = manager->getSystems();
-	for (const auto& pair : systems)
+	for (auto system : *systemGroup)
 	{
-		auto serializableSystem = dynamic_cast<ISerializable*>(pair.second);
-		if (!serializableSystem)
-			continue;
+		auto serializableSystem = dynamic_cast<ISerializable*>(system);
 		serializableSystem->preDeserialize(deserializer);
 	}
 
@@ -2248,11 +2250,9 @@ ID<Entity> ResourceSystem::loadScene(const fs::path& path, bool addRootEntity)
 		deserializer.endChild();
 	}
 
-	for (const auto& pair : systems)
+	for (auto system : *systemGroup)
 	{
-		auto serializableSystem = dynamic_cast<ISerializable*>(pair.second);
-		if (!serializableSystem)
-			continue;
+		auto serializableSystem = dynamic_cast<ISerializable*>(system);
 		serializableSystem->postDeserialize(deserializer);
 	}
 
@@ -2297,6 +2297,14 @@ void ResourceSystem::storeScene(const fs::path& path, ID<Entity> rootEntity, con
 {
 	GARDEN_ASSERT(!path.empty());
 
+	auto manager = Manager::Instance::get();
+	auto systemGroup = manager->tryGetSystemGroup<ISerializable>();
+	if (!systemGroup)
+	{
+		GARDEN_LOG_ERROR("No ISerializable system found.");
+		return;
+	}
+
 	#if !GARDEN_PACK_RESOURCES || GARDEN_EDITOR
 	auto scenesPath = (directory.empty() ? appResourcesPath : directory) / "scenes";
 	#else
@@ -2310,17 +2318,13 @@ void ResourceSystem::storeScene(const fs::path& path, ID<Entity> rootEntity, con
 	auto filePath = scenesPath / path; filePath += ".scene";
 	JsonSerializer serializer(filePath);
 
-	auto manager = Manager::Instance::get();
 	auto transformSystem = TransformSystem::Instance::tryGet();
 	if (rootEntity && (!transformSystem || !manager->has<TransformComponent>(rootEntity)))
 		rootEntity = {};
 
-	const auto& systems = manager->getSystems();
-	for (const auto& pair : systems)
+	for (auto system : *systemGroup)
 	{
-		auto serializableSystem = dynamic_cast<ISerializable*>(pair.second);
-		if (!serializableSystem)
-			continue;
+		auto serializableSystem = dynamic_cast<ISerializable*>(system);
 		serializableSystem->preSerialize(serializer);
 	}
 
@@ -2390,11 +2394,9 @@ void ResourceSystem::storeScene(const fs::path& path, ID<Entity> rootEntity, con
 
 	serializer.endChild();
 
-	for (const auto& pair : systems)
+	for (auto system : *systemGroup)
 	{
-		auto serializableSystem = dynamic_cast<ISerializable*>(pair.second);
-		if (!serializableSystem)
-			continue;
+		auto serializableSystem = dynamic_cast<ISerializable*>(system);
 		serializableSystem->postSerialize(serializer);
 	}
 

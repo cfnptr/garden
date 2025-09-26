@@ -70,6 +70,10 @@ void MeshSelectorEditorSystem::render()
 		return;
 
 	auto manager = Manager::Instance::get();
+	auto systemGroup = manager->tryGetSystemGroup<IMeshRenderSystem>();
+	if (!systemGroup)
+		return;
+
 	auto inputSystem = InputSystem::Instance::get();
 	auto transformSystem = TransformSystem::Instance::get();
 	auto editorSystem = EditorRenderSystem::Instance::get();
@@ -83,7 +87,6 @@ void MeshSelectorEditorSystem::render()
 
 	if (updateSelector && !isSkipped)
 	{
-		const auto& systems = manager->getSystems();
 		auto windowSize = inputSystem->getWindowSize();
 		auto cursorPosition = inputSystem->getCursorPosition();
 		auto ndcPosition = ((cursorPosition + 0.5f) / windowSize) * 2.0f - 1.0f;
@@ -95,12 +98,9 @@ void MeshSelectorEditorSystem::render()
 		auto newDistSq = FLT_MAX;
 		ID<Entity> newSelected; Aabb newAabb;
 
-		for (const auto& pair : systems)
+		for (auto system : *systemGroup)
 		{
-			auto meshSystem = dynamic_cast<IMeshRenderSystem*>(pair.second);
-			if (!meshSystem)
-				continue;
-			
+			auto meshSystem = dynamic_cast<IMeshRenderSystem*>(system);
 			const auto& componentPool = meshSystem->getMeshComponentPool();
 			auto componentSize = meshSystem->getMeshComponentSize();
 			auto componentData = (const uint8*)componentPool.getData();
@@ -144,15 +144,10 @@ void MeshSelectorEditorSystem::render()
 
 	if (selectedEntity)
 	{
-		const auto& systems = manager->getSystems();
 		Aabb selectedEntityAabb = Aabb::inf;
-
-		for (const auto& pair : systems)
+		for (auto system : *systemGroup)
 		{
-			auto meshSystem = dynamic_cast<IMeshRenderSystem*>(pair.second);
-			if (!meshSystem)
-				continue;
-
+			auto meshSystem = dynamic_cast<IMeshRenderSystem*>(system);
 			const auto& componentPool = meshSystem->getMeshComponentPool();
 			auto componentSize = meshSystem->getMeshComponentSize();
 			auto componentData = (const uint8*)componentPool.getData();

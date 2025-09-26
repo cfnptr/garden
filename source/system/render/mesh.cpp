@@ -118,34 +118,7 @@ void MeshRenderSystem::prepareSystems()
 	SET_CPU_ZONE_SCOPED("Systems Prepare");
 
 	auto manager = Manager::Instance::get();
-	const auto& systems = manager->getSystems();
 	meshSystems.clear();
-
-	if (isNonTranslucent)
-	{
-		for (const auto& pair : systems)
-		{
-			auto meshSystem = dynamic_cast<IMeshRenderSystem*>(pair.second);
-			if (!meshSystem)
-				continue;
-
-			auto renderType = meshSystem->getMeshRenderType();
-			if (renderType == MeshRenderType::Color || renderType == MeshRenderType::Opaque || 
-				renderType == MeshRenderType::UI)
-			{
-				meshSystems.push_back(meshSystem);
-			}
-		}
-	}
-	else
-	{
-		for (const auto& pair : systems)
-		{
-			auto meshSystem = dynamic_cast<IMeshRenderSystem*>(pair.second);
-			if (meshSystem)
-				meshSystems.push_back(meshSystem);
-		}
-	}
 
 	#if GARDEN_EDITOR
 	auto graphicsEditorSystem = manager->tryGet<GraphicsEditorSystem>();
@@ -155,6 +128,30 @@ void MeshRenderSystem::prepareSystems()
 			graphicsEditorSystem->translucentDrawCount = graphicsEditorSystem->translucentTotalCount = 0;
 	}
 	#endif
+
+	auto systemGroup = manager->tryGetSystemGroup<IMeshRenderSystem>();
+	if (!systemGroup)
+		return;
+
+	if (isNonTranslucent)
+	{
+		for (auto system : *systemGroup)
+		{
+			auto meshSystem = dynamic_cast<IMeshRenderSystem*>(system);
+			auto renderType = meshSystem->getMeshRenderType();
+
+			if (renderType == MeshRenderType::Color || renderType == MeshRenderType::Opaque || 
+				renderType == MeshRenderType::UI)
+			{
+				meshSystems.push_back(meshSystem);
+			}
+		}
+	}
+	else
+	{
+		for (auto system : *systemGroup)
+			meshSystems.push_back(dynamic_cast<IMeshRenderSystem*>(system));
+	}
 }
 
 //**********************************************************************************************************************
@@ -793,19 +790,20 @@ void MeshRenderSystem::renderShadows()
 {
 	SET_CPU_ZONE_SCOPED("Shadows Mesh Render");
 
+	auto systemGroup = Manager::Instance::get()->tryGetSystemGroup<IShadowMeshRenderSystem>();
+	if (!systemGroup)
+		return;
+
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	graphicsSystem->startRecording(CommandBufferType::Frame);
 	BEGIN_GPU_DEBUG_LABEL("Shadow Pass");
 	graphicsSystem->stopRecording();
 
-	const auto& systems = Manager::Instance::get()->getSystems();
-	for (const auto& pair : systems)
+	for (auto system : *systemGroup)
 	{
-		auto shadowSystem = dynamic_cast<IShadowMeshRenderSystem*>(pair.second);
-		if (!shadowSystem)
-			continue;
-
+		auto shadowSystem = dynamic_cast<IShadowMeshRenderSystem*>(system);
 		auto passCount = shadowSystem->getShadowPassCount();
+
 		for (uint8 i = 0; i < passCount; i++)
 		{
 			f32x4x4 viewProj; f32x4 cameraOffset;

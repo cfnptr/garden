@@ -382,13 +382,16 @@ void CharacterComponent::setWorldTransform()
 //**********************************************************************************************************************
 CharacterSystem::CharacterSystem(bool setSingleton) : Singleton(setSingleton)
 {
-	auto charVsCharCollision = new JPH::CharacterVsCharacterCollisionSimple();
-	this->charVsCharCollision = charVsCharCollision;
+	Manager::Instance::get()->addGroupSystem<ISerializable>(this);
+	this->charVsCharCollision = new JPH::CharacterVsCharacterCollisionSimple();
 }
 CharacterSystem::~CharacterSystem()
 {
 	if (Manager::Instance::get()->isRunning)
+	{
 		delete (JPH::CharacterVsCharacterCollisionSimple*)charVsCharCollision;
+		Manager::Instance::get()->removeGroupSystem<ISerializable>(this);
+	}
 	unsetSingleton();
 }
 

@@ -17,9 +17,17 @@
 using namespace garden;
 
 //**********************************************************************************************************************
-OpaqueSpriteSystem::OpaqueSpriteSystem(bool setSingleton) : SpriteRenderCompSystem(
-	"sprite/opaque"), Singleton(setSingleton) { }
-OpaqueSpriteSystem::~OpaqueSpriteSystem() { unsetSingleton(); }
+OpaqueSpriteSystem::OpaqueSpriteSystem(bool setSingleton) : 
+	SpriteRenderCompSystem("sprite/opaque"), Singleton(setSingleton)
+{
+	Manager::Instance::get()->addGroupSystem<IMeshRenderSystem>(this);
+}
+OpaqueSpriteSystem::~OpaqueSpriteSystem()
+{
+	if (Manager::Instance::get()->isRunning)
+		Manager::Instance::get()->removeGroupSystem<IMeshRenderSystem>(this);
+	unsetSingleton();
+}
 
 string_view OpaqueSpriteSystem::getComponentName() const
 {

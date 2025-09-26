@@ -29,6 +29,7 @@ void SpriteRenderSystem::init()
 {
 	InstanceRenderSystem::init();
 	ECSM_SUBSCRIBE_TO_EVENT("ImageLoaded", SpriteRenderSystem::imageLoaded);
+	
 
 	#if GARDEN_DEBUG
 	debugResourceName = pipelinePath.generic_string();

@@ -81,16 +81,16 @@ LogSystem::LogSystem(LogLevel level, double rotationTime, bool setSingleton) : S
 {
 	mpmt::Thread::setName("MAIN");
 	auto appInfoSystem = AppInfoSystem::Instance::get();
+	auto directoryPath = rotationTime == 0.0 ? appInfoSystem->getAppDataName() : "logs";
 
 	try
 	{
-		this->logger = logy::Logger(appInfoSystem->getAppDataName(), level, (bool)GARDEN_DEBUG, rotationTime);
+		this->logger = logy::Logger(directoryPath, level, (bool)GARDEN_DEBUG, rotationTime, rotationTime == 0.0);
 	}
 	catch (exception& e)
 	{
 		auto tmpPath = fs::path(std::tmpnam(nullptr));
-		this->logger = logy::Logger(appInfoSystem->getAppDataName() / 
-			tmpPath.filename(), level, (bool)GARDEN_DEBUG, rotationTime);
+		this->logger = logy::Logger(directoryPath / tmpPath.filename(), level, (bool)GARDEN_DEBUG, rotationTime);
 	}
 
 	info("Started logging system. (UTC+0)");

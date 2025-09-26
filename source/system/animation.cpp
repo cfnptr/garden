@@ -42,12 +42,16 @@ AnimationSystem::AnimationSystem(bool animateAsync, bool setSingleton) :
 	random_device randomDevice;
 	this->randomGenerator = mt19937(randomDevice());
 
+	Manager::Instance::get()->addGroupSystem<ISerializable>(this);
 	ECSM_SUBSCRIBE_TO_EVENT("Update", AnimationSystem::update);
 }
 AnimationSystem::~AnimationSystem()
 {
 	if (Manager::Instance::get()->isRunning)
+	{
+		Manager::Instance::get()->removeGroupSystem<ISerializable>(this);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Update", AnimationSystem::update);
+	}
 
 	unsetSingleton();
 }
