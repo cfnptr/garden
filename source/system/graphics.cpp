@@ -101,7 +101,7 @@ GraphicsSystem::GraphicsSystem(uint2 windowSize, bool isFullscreen, bool isDecor
 	swapchainFramebuffer = graphicsAPI->framebufferPool.create(framebufferSize, swapchainImageView);
 	SET_RESOURCE_DEBUG_NAME(swapchainFramebuffer, "framebuffer.swapchain");
 
-	setShadowColor(float3::one, 0.25f);
+	setShadowColor(float3::one);
 	setSkyColor(float3::one);
 	setEmissiveCoeff(100.0f);
 

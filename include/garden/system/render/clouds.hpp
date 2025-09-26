@@ -21,7 +21,7 @@
 #pragma once
 #include "garden/system/graphics.hpp"
 
-#warning THIS IS UNFINISHED SYSTEM! WIP
+#pragma message("THIS IS UNFINISHED SYSTEM! WIP")
 
 namespace garden
 {

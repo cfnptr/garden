@@ -149,6 +149,8 @@ static DescriptorSet::Uniforms getUniforms(GraphicsSystem* graphicsSystem, ID<Im
 //**********************************************************************************************************************
 CsmRenderSystem::CsmRenderSystem(bool setSingleton) : Singleton(setSingleton)
 {
+	Manager::Instance::get()->addGroupSystem<IShadowMeshRenderSystem>(this);
+
 	ECSM_SUBSCRIBE_TO_EVENT("Init", CsmRenderSystem::init);
 	ECSM_SUBSCRIBE_TO_EVENT("Deinit", CsmRenderSystem::deinit);
 }
@@ -156,6 +158,8 @@ CsmRenderSystem::~CsmRenderSystem()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
+		Manager::Instance::get()->removeGroupSystem<IShadowMeshRenderSystem>(this);
+
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", CsmRenderSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", CsmRenderSystem::deinit);
 	}

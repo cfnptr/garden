@@ -19,12 +19,22 @@ using namespace garden;
 //**********************************************************************************************************************
 UiTransformSystem::UiTransformSystem(bool setSingleton) : Singleton(setSingleton)
 {
+	auto manager = Manager::Instance::get();
+	manager->addGroupSystem<ISerializable>(this);
+	manager->addGroupSystem<IAnimatable>(this);
+
 	ECSM_SUBSCRIBE_TO_EVENT("Update", UiTransformSystem::update);
 }
 UiTransformSystem::~UiTransformSystem()
 {
 	if (Manager::Instance::get()->isRunning)
+	{
+		auto manager = Manager::Instance::get();
+		manager->removeGroupSystem<ISerializable>(this);
+		manager->removeGroupSystem<IAnimatable>(this);
+
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Update", UiTransformSystem::update);
+	}
 	unsetSingleton();
 }
 

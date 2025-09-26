@@ -120,7 +120,7 @@ using namespace ecsm;
 #define GARDEN_LOG_FATAL(message) (void)0
 #endif
 
-/**
+/***********************************************************************************************************************
  * @brief Message logging system.
  * 
  * @details
@@ -197,7 +197,7 @@ public:
 	 */
 	void setLevel(LogLevel level) noexcept { logger.setLevel(level); }
 
-	/**
+	/*******************************************************************************************************************
 	 * @brief Returns current logger rotation delay time in seconds. (MT-Safe)
 	 * 
 	 * @details

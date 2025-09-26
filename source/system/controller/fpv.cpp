@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "garden/system/fpv-controller.hpp"
+#include "garden/system/controller/fpv.hpp"
 #include "garden/system/transform.hpp"
 #include "garden/system/graphics.hpp"
 #include "garden/system/camera.hpp"

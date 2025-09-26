@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "garden/system/2d-controller.hpp"
+#include "garden/system/controller/2d.hpp"
 #include "garden/system/transform.hpp"
 #include "garden/system/character.hpp"
 #include "garden/system/graphics.hpp"

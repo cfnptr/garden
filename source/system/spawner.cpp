@@ -159,6 +159,8 @@ void SpawnerComponent::destroySpawned()
 //**********************************************************************************************************************
 SpawnerSystem::SpawnerSystem(bool setSingleton) : Singleton(setSingleton)
 {
+	Manager::Instance::get()->addGroupSystem<ISerializable>(this);
+
 	ECSM_SUBSCRIBE_TO_EVENT("PreInit", SpawnerSystem::preInit);
 	ECSM_SUBSCRIBE_TO_EVENT("Update", SpawnerSystem::update);
 }
@@ -166,6 +168,8 @@ SpawnerSystem::~SpawnerSystem()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
+		Manager::Instance::get()->removeGroupSystem<ISerializable>(this);
+
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PreInit", SpawnerSystem::preInit);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Update", SpawnerSystem::update);
 	}
