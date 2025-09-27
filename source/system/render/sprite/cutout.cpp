@@ -59,7 +59,7 @@ MeshRenderType CutoutSpriteSystem::getMeshRenderType() const
 void CutoutSpriteSystem::serialize(ISerializer& serializer, const View<Component> component)
 {
 	SpriteRenderSystem::serialize(serializer, component);
-	auto cutoutSpriteView = View<CutoutSpriteComponent>(component);
+	const auto cutoutSpriteView = View<CutoutSpriteComponent>(component);
 	if (cutoutSpriteView->alphaCutoff != 0.5f)
 		serializer.write("alphaCutoff", cutoutSpriteView->alphaCutoff);
 }
@@ -73,7 +73,7 @@ void CutoutSpriteSystem::deserialize(IDeserializer& deserializer, View<Component
 void CutoutSpriteSystem::serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame)
 {
 	SpriteRenderSystem::serializeAnimation(serializer, frame);
-	auto cutoutFrameView = View<CutoutSpriteFrame>(frame);
+	const auto cutoutFrameView = View<CutoutSpriteFrame>(frame);
 	if (cutoutFrameView->animateAlphaCutoff)
 		serializer.write("alphaCutoff", cutoutFrameView->alphaCutoff);
 }

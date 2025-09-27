@@ -17,9 +17,17 @@
 using namespace garden;
 
 //**********************************************************************************************************************
-Trans9SliceSystem::Trans9SliceSystem(bool setSingleton) : NineSliceRenderCompSystem(
-	"9-slice/translucent"), Singleton(setSingleton) { }
-Trans9SliceSystem::~Trans9SliceSystem() { unsetSingleton(); }
+Trans9SliceSystem::Trans9SliceSystem(bool setSingleton) : 
+	NineSliceRenderCompSystem("9-slice/translucent"), Singleton(setSingleton)
+{
+	Manager::Instance::get()->addGroupSystem<IMeshRenderSystem>(this);
+}
+Trans9SliceSystem::~Trans9SliceSystem()
+{
+	if (Manager::Instance::get()->isRunning)
+		Manager::Instance::get()->removeGroupSystem<IMeshRenderSystem>(this);
+	unsetSingleton();
+}
 
 string_view Trans9SliceSystem::getComponentName() const
 {

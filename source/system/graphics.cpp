@@ -27,12 +27,13 @@
 #include "garden/graphics/glfw.hpp" // Note: Do not move it.
 #include "garden/resource/primitive.hpp"
 #include "garden/profiler.hpp"
+#include "garden/os.hpp"
 
 #include "math/matrix/projection.hpp"
 #include "math/matrix/transform.hpp"
 #include "math/random.hpp"
 #include "math/brdf.hpp"
-#include "garden/os.hpp"
+#include "mpmt/thread.hpp"
 
 using namespace garden;
 using namespace garden::primitive;
@@ -195,7 +196,7 @@ void GraphicsSystem::preInit()
 	if (settingsSystem)
 	{
 		settingsSystem->getBool("render.useVsync", useVsync);
-		settingsSystem->getInt("render.maxFPS", maxFPS);
+		settingsSystem->getInt("render.maxFrameRate", maxFrameRate);
 	}
 }
 void GraphicsSystem::preDeinit()
@@ -324,13 +325,12 @@ static void prepareCommonConstants(ID<Entity> camera, ID<Entity> directionalLigh
 	cc.invFrameSizeSq = cc.invFrameSize * 2.0f;
 }
 
-static void limitFrameRate(double beginSleepClock, uint16 maxFPS)
+static void limitFrameRate(double beginSleepClock, int maxFrameRate)
 {
-	auto endClock = mpio::OS::getCurrentClock();
-	auto deltaClock = (endClock - beginSleepClock) * 1000.0;
-	auto delayTime = 1000 / (int)maxFPS - (int)deltaClock - 1;
-	if (delayTime > 0)
-		this_thread::sleep_for(chrono::milliseconds(delayTime));
+	auto deltaClock = mpio::OS::getCurrentClock() - beginSleepClock;
+	auto delayTime = (1.0 / maxFrameRate) - deltaClock - 0.001;
+	if (delayTime > 0.0)
+		sleepThread(delayTime);
 	// TODO: use loop with empty cycles to improve sleep precision.
 }
 
@@ -466,7 +466,7 @@ void GraphicsSystem::present()
 		if (graphicsAPI->swapchain->present())
 		{
 			if (!useVsync)
-				limitFrameRate(beginSleepClock, maxFPS);
+				limitFrameRate(beginSleepClock, maxFrameRate);
 		}
 		else
 		{
@@ -479,7 +479,7 @@ void GraphicsSystem::present()
 	}
 	else
 	{
-		limitFrameRate(beginSleepClock, maxFPS);
+		limitFrameRate(beginSleepClock, maxFrameRate);
 	}
 
 	wasTeleported = false;

@@ -18,8 +18,8 @@
  */
 
 #pragma once
-#include "ecsm.hpp"
 #include "garden/thread-pool.hpp"
+#include "ecsm.hpp"
 
 namespace garden
 {

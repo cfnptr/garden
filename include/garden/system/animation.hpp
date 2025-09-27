@@ -14,7 +14,7 @@
 
 /***********************************************************************************************************************
  * @file
- * @brief Entity animations system.
+ * @brief Entity animation functions.
  */
 
 // TODO: add bezier curves support and also lerped transitions between different animations.

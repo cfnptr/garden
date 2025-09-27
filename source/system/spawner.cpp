@@ -14,6 +14,7 @@
 
 #include "garden/system/spawner.hpp"
 #include "garden/system/link.hpp"
+#include "garden/system/loop.hpp"
 #include "garden/system/input.hpp"
 #include "garden/system/resource.hpp"
 #include "garden/system/transform.hpp"
@@ -203,9 +204,12 @@ void SpawnerSystem::update()
 {
 	SET_CPU_ZONE_SCOPED("Spawners Update");
 
-	auto transformSystem = TransformSystem::Instance::get();
-	auto currentTime = InputSystem::Instance::get()->getCurrentTime();
+	double currentTime;
+	auto inputSystem = InputSystem::Instance::tryGet();
+	if (inputSystem) currentTime = inputSystem->getCurrentTime();
+	else currentTime = LoopSystem::Instance::get()->getCurrentTime();
 
+	auto transformSystem = TransformSystem::Instance::get();
 	for (auto& spawner : components)
 	{
 		if (!spawner.getEntity() || !spawner.isActive || (spawner.path.empty() && !spawner.prefab))
@@ -270,8 +274,7 @@ string_view SpawnerSystem::getComponentName() const
 //**********************************************************************************************************************
 void SpawnerSystem::serialize(ISerializer& serializer, const View<Component> component)
 {
-	auto spawnerView = View<SpawnerComponent>(component);
-
+	const auto spawnerView = View<SpawnerComponent>(component);
 	if (!spawnerView->isActive)
 		serializer.write("isActive", false);	
 	if (!spawnerView->path.empty())

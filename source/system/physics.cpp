@@ -18,6 +18,7 @@
 #include "garden/system/transform.hpp"
 #include "garden/system/thread.hpp"
 #include "garden/system/input.hpp"
+#include "garden/system/loop.hpp"
 #include "garden/system/log.hpp"
 #include "garden/profiler.hpp"
 #include "garden/base64.hpp"
@@ -1255,8 +1256,11 @@ void PhysicsSystem::simulate()
 {
 	SET_CPU_ZONE_SCOPED("Physics Simulate");
 
-	auto inputSystem = InputSystem::Instance::get();
-	auto deltaTime = (float)inputSystem->getDeltaTime();
+	float deltaTime;
+	auto inputSystem = InputSystem::Instance::tryGet();
+	if (inputSystem) deltaTime = (float)inputSystem->getDeltaTime();
+	else deltaTime = (float)LoopSystem::Instance::get()->getDeltaTime();
+
 	auto simDeltaTime = 1.0f / (float)(simulationRate + 1);
 	deltaTimeAccum += deltaTime;
 
@@ -1392,7 +1396,7 @@ static void serializeShape(ISerializer& serializer, View<Shape> shapeView, bool 
 }
 void PhysicsSystem::serializeDecoratedShape(ISerializer& serializer, ID<Shape> shape)
 {
-	auto shapeView = shapes.get(shape);
+	const auto shapeView = shapes.get(shape);
 	auto subType = shapeView->getSubType();
 	if (subType == ShapeSubType::RotatedTranslated)
 	{
@@ -1416,7 +1420,6 @@ void PhysicsSystem::serializeDecoratedShape(ISerializer& serializer, ID<Shape> s
 void PhysicsSystem::serialize(ISerializer& serializer, const View<Component> component)
 {
 	auto rigidbodyView = View<RigidbodyComponent>(component);
-
 	if (!rigidbodyView->uid)
 	{
 		auto& randomDevice = serializer.randomDevice;

@@ -135,7 +135,7 @@ public:
 	float uiScale = 1.0f;             /**< User interface scaling factor. (UI) */
 	ID<Entity> camera = {};           /**< Current main render camera. */
 	ID<Entity> directionalLight = {}; /**< Current main directional light. (Sun) */
-	uint16 maxFPS = 60;               /**< Frames per second limit. */
+	uint16 maxFrameRate = 60;         /**< Maximum frames per second count. (FPS) */
 	bool useVsync = false;            /**< Vertical synchronization state. (V-Sync) */
 	bool useTripleBuffering = false;  /**< Swapchain triple buffering state. */
 	bool useUpscaling = false;        /**< Use image upscaling. (DLSS, FSR, XeSS, etc.) */

@@ -237,7 +237,7 @@ void AnimationSystem::disposeComponents()
 //**********************************************************************************************************************
 void AnimationSystem::serialize(ISerializer& serializer, const View<Component> component)
 {
-	auto animationView = View<AnimationComponent>(component);
+	const auto animationView = View<AnimationComponent>(component);
 	const auto& animations = animationView->animations;
 
 	if (!animations.empty())

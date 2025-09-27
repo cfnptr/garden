@@ -496,7 +496,6 @@ string_view TransformSystem::getComponentName() const
 void TransformSystem::serialize(ISerializer& serializer, const View<Component> component)
 {
 	auto transformView = View<TransformComponent>(component);
-
 	if (!transformView->uid)
 	{
 		auto& randomDevice = serializer.randomDevice;
@@ -616,7 +615,7 @@ void TransformSystem::postDeserialize(IDeserializer& deserializer)
 //**********************************************************************************************************************
 void TransformSystem::serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame)
 {
-	auto transformFrameView = View<TransformFrame>(frame);
+	const auto transformFrameView = View<TransformFrame>(frame);
 	if (transformFrameView->animatePosition)
 		serializer.write("position", (float3)transformFrameView->position);
 	if (transformFrameView->animateScale)
