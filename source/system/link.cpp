@@ -132,7 +132,7 @@ string_view LinkSystem::getComponentName() const
 //**********************************************************************************************************************
 void LinkSystem::serialize(ISerializer& serializer, const View<Component> component)
 {
-	auto linkView = View<LinkComponent>(component);
+	const auto linkView = View<LinkComponent>(component);
 
 	if (linkView->uuid)
 	{

@@ -284,12 +284,12 @@ void EditorRenderSystem::showOptionsWindow()
 		ImGui::SameLine();
 		ImGui::Checkbox("Triple Buffering", &graphicsSystem->useTripleBuffering);
 
-		auto frameRate = (int)graphicsSystem->maxFPS;
-		if (ImGui::DragInt("Max FPS", &frameRate, 1, 1, UINT16_MAX))
+		auto frameRate = (int)graphicsSystem->maxFrameRate;
+		if (ImGui::DragInt("Max Frame Rate", &frameRate, 1, 1, UINT16_MAX))
 		{
-			graphicsSystem->maxFPS = (uint16)frameRate;
+			graphicsSystem->maxFrameRate = (uint16)frameRate;
 			if (settingsSystem)
-				settingsSystem->setInt("render.maxFPS", frameRate);
+				settingsSystem->setInt("render.maxFrameRate", frameRate);
 		}
 
 		ImGui::BeginDisabled(graphicsSystem->useUpscaling);

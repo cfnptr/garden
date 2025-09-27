@@ -209,7 +209,7 @@ ID<GraphicsPipeline> SpriteRenderSystem::createBasePipeline()
 //**********************************************************************************************************************
 void SpriteRenderSystem::serialize(ISerializer& serializer, const View<Component> component)
 {
-	auto spriteRenderView = View<SpriteRenderComponent>(component);
+	const auto spriteRenderView = View<SpriteRenderComponent>(component);
 	if (spriteRenderView->isArray)
 		serializer.write("isArray", true);
 	if (spriteRenderView->aabb != Aabb::one)
@@ -263,7 +263,7 @@ void SpriteRenderSystem::deserialize(IDeserializer& deserializer, View<Component
 //**********************************************************************************************************************
 void SpriteRenderSystem::serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame)
 {
-	auto spriteFrameView = View<SpriteAnimationFrame>(frame);
+	const auto spriteFrameView = View<SpriteAnimationFrame>(frame);
 	if (spriteFrameView->animateIsEnabled)
 		serializer.write("isEnabled", (bool)spriteFrameView->isEnabled);
 	if (spriteFrameView->animateColor)

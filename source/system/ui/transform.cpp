@@ -71,8 +71,7 @@ string_view UiTransformSystem::getComponentName() const
 //**********************************************************************************************************************
 void UiTransformSystem::serialize(ISerializer& serializer, const View<Component> component)
 {
-	auto uiTransformView = View<UiTransformComponent>(component);
-
+	const auto uiTransformView = View<UiTransformComponent>(component);
 	if (uiTransformView->position != float3::zero)
 		serializer.write("position", uiTransformView->position);
 	if (uiTransformView->scale != float3::one)
@@ -115,7 +114,7 @@ void UiTransformSystem::deserialize(IDeserializer& deserializer, View<Component>
 //**********************************************************************************************************************
 void UiTransformSystem::serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame)
 {
-	auto uiTransformFrameView = View<UiTransformFrame>(frame);
+	const auto uiTransformFrameView = View<UiTransformFrame>(frame);
 	if (uiTransformFrameView->animatePosition)
 		serializer.write("position", (float3)uiTransformFrameView->position);
 	if (uiTransformFrameView->animateScale)

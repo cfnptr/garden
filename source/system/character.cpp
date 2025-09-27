@@ -440,7 +440,7 @@ string_view CharacterSystem::getComponentName() const
 //**********************************************************************************************************************
 void CharacterSystem::serialize(ISerializer& serializer, const View<Component> component)
 {
-	auto characterView = View<CharacterComponent>(component);
+	const auto characterView = View<CharacterComponent>(component);
 	if (characterView->shape)
 	{
 		auto mass = characterView->getMass();

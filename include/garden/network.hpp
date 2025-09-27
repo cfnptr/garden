@@ -19,17 +19,41 @@
 
 #pragma once
 #include "garden/defines.hpp"
-#include "ecsm.hpp"
+#include "nets/defines.h"
 
 namespace garden
 {
 
-using namespace ecsm;
+/**
+ * @brief Server client session data container.
+ */
+struct ClientSession
+{
+	void* streamSession = nullptr;
+	uint8* messageBuffer = nullptr;
+	psize messageByteCount = 0;
+};
 
 /**
- * @brief Server client session data.
+ * @brief Network message container.
  */
-struct ClientSession { };
+struct NetworkMessage : public StreamMessage
+{
+	/**
+	 * @brief Reads data from the network message.
+	 * @return True if no more data to read, otherwise false.
+	 *
+	 * @param[out] data pointer to the message data
+	 * @param size message byte count to read
+	 */
+	bool read(const uint8_t*& data, size_t count)
+	{
+		if (offset + count > size)
+			return true;
+		data = buffer + offset; offset += size;
+		return false;
+	}
+};
 
 /**
  * @brief Base network system interface.
@@ -38,13 +62,26 @@ class INetworkable
 {
 public:
 	/**
-	 * @brief On message from the client receive.
+	 * @brief Returns system message type string.
 	 */
-	virtual void onRequest(ID<ClientSession> session) = 0;
+	virtual string_view getMessageType() = 0;
+
+	/**
+	 * @brief On message from the client receive.
+	 * @details Server destroys session on this function false return result.
+	 * @warning This function is called asynchronously from the receive thread!
+	 *
+	 * @param[in] session client session instance
+	 * @param message received stream message
+	 */
+	virtual NetsResult onRequest(ClientSession* session, NetworkMessage message) { return NOT_SUPPORTED_NETS_RESULT; }
 	/**
 	 * @brief On message from the server receive.
+	 * @details Client closes connection on this function false return result.
+	 * @warning This function is called asynchronously from the receive thread!
+	 * @param message received stream message
 	 */
-	virtual void onResponse() = 0;
+	virtual NetsResult onResponse(NetworkMessage message) { return NOT_SUPPORTED_NETS_RESULT; }
 };
 
 } // namespace garden

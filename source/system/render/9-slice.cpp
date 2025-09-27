@@ -66,7 +66,7 @@ void NineSliceRenderSystem::setInstanceData(SpriteRenderComponent* spriteRenderV
 void NineSliceRenderSystem::serialize(ISerializer& serializer, const View<Component> component)
 {
 	SpriteRenderSystem::serialize(serializer, component);
-	auto nineSliceView = View<NineSliceRenderComponent>(component);
+	const auto nineSliceView = View<NineSliceRenderComponent>(component);
 	if (nineSliceView->textureBorder != float2::zero)
 		serializer.write("textureBorder", nineSliceView->textureBorder);
 	if (nineSliceView->windowBorder != float2::zero)
@@ -84,7 +84,7 @@ void NineSliceRenderSystem::deserialize(IDeserializer& deserializer, View<Compon
 void NineSliceRenderSystem::serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame)
 {
 	SpriteRenderSystem::serializeAnimation(serializer, frame);
-	auto frameView = View<NineSliceAnimationFrame>(frame);
+	const auto frameView = View<NineSliceAnimationFrame>(frame);
 	if (frameView->animateTextureBorder)
 		serializer.write("textureBorder", frameView->textureBorder);
 	if (frameView->animateWindowBorder)

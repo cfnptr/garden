@@ -77,7 +77,7 @@ string_view CameraSystem::getComponentName() const
 //**********************************************************************************************************************
 void CameraSystem::serialize(ISerializer& serializer, const View<Component> component)
 {
-	auto cameraView = View<CameraComponent>(component);
+	const auto cameraView = View<CameraComponent>(component);
 	if (cameraView->type == ProjectionType::Perspective)
 	{
 		serializer.write("projection", string_view("Perspective"));
@@ -117,7 +117,7 @@ void CameraSystem::deserialize(IDeserializer& deserializer, View<Component> comp
 //**********************************************************************************************************************
 void CameraSystem::serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame)
 {
-	auto cameraFrameView = View<CameraFrame>(frame);
+	const auto cameraFrameView = View<CameraFrame>(frame);
 	if (cameraFrameView->f.base.type == ProjectionType::Perspective)
 	{
 		serializer.write("projection", string_view("Perspective"));

@@ -17,9 +17,17 @@
 using namespace garden;
 
 //**********************************************************************************************************************
-Cutout9SliceSystem::Cutout9SliceSystem(bool setSingleton) : NineSliceRenderCompSystem(
-	"9-slice/cutout"), Singleton(setSingleton) { }
-Cutout9SliceSystem::~Cutout9SliceSystem() { unsetSingleton(); }
+Cutout9SliceSystem::Cutout9SliceSystem(bool setSingleton) : 
+	NineSliceRenderCompSystem("9-slice/cutout"), Singleton(setSingleton)
+{
+	Manager::Instance::get()->addGroupSystem<IMeshRenderSystem>(this);
+}
+Cutout9SliceSystem::~Cutout9SliceSystem()
+{
+	if (Manager::Instance::get()->isRunning)
+		Manager::Instance::get()->removeGroupSystem<IMeshRenderSystem>(this);
+	unsetSingleton();
+}
 
 void Cutout9SliceSystem::setPushConstants(SpriteRenderComponent* spriteRenderView, PushConstants* pushConstants,
 	const f32x4x4& viewProj, const f32x4x4& model, uint32 drawIndex, int32 threadIndex)
@@ -51,7 +59,7 @@ MeshRenderType Cutout9SliceSystem::getMeshRenderType() const
 void Cutout9SliceSystem::serialize(ISerializer& serializer, const View<Component> component)
 {
 	SpriteRenderSystem::serialize(serializer, component);
-	auto cutout9SliceView = View<Cutout9SliceComponent>(component);
+	const auto cutout9SliceView = View<Cutout9SliceComponent>(component);
 	if (cutout9SliceView->alphaCutoff != 0.5f)
 		serializer.write("alphaCutoff", cutout9SliceView->alphaCutoff);
 }
@@ -65,7 +73,7 @@ void Cutout9SliceSystem::deserialize(IDeserializer& deserializer, View<Component
 void Cutout9SliceSystem::serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame)
 {
 	SpriteRenderSystem::serializeAnimation(serializer, frame);
-	auto frameView = View<Cutout9SliceFrame>(frame);
+	const auto frameView = View<Cutout9SliceFrame>(frame);
 	if (frameView->animateAlphaCutoff)
 		serializer.write("alphaCutoff", frameView->alphaCutoff);
 }
