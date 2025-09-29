@@ -153,8 +153,10 @@ GBufferValues gBufferValuesDefault()
 
 float3 encodeNormalOct(float3 normal)
 {
-	float3 encoded;
+	normal = normalize(normal);
 	normal /= (abs(normal.x) + abs(normal.y) + abs(normal.z));
+
+	float3 encoded;
 	encoded.y = normal.y *  0.5f + 0.5f;
 	encoded.x = normal.x *  0.5f + encoded.y;
 	encoded.y = normal.x * -0.5f + encoded.y;

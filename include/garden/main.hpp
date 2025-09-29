@@ -24,24 +24,28 @@
 #include <windows.h>
 
 /**
- * @brief Defines application main function. (Entry point)
- */
-#define GARDEN_MAIN int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmdshow)
-/**
  * @brief Shows an OS error message with target C string.
  * @param[in] cstr target error message C string
  */
 #define GARDEN_MESSAGE_ERROR(cstr) MessageBoxA(nullptr, cstr, "Error", MB_ICONERROR | MB_SYSTEMMODAL)
 #else
 /**
- * @brief Declares application main function.
- */
-#define GARDEN_MAIN int main(int argc, char *argv[])
-/**
  * @brief Shows an OS error message with target C string.
  * @param[in] cstr target error message C string
  */
 #define GARDEN_MESSAGE_ERROR(cstr) (void)0
+#endif
+
+#if GARDEN_OS_WINDOWS && !GARDEN_DEBUG && !defined(GARDEN_NO_GRAPHICS)
+/**
+ * @brief Defines application main function. (Entry point)
+ */
+#define GARDEN_MAIN int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmdshow)
+#else
+/**
+ * @brief Declares application main function.
+ */
+#define GARDEN_MAIN int main(int argc, char *argv[])
 #endif
 
 #if GARDEN_DEBUG

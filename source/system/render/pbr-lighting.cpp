@@ -681,19 +681,19 @@ void PbrLightingSystem::preHdrRender()
 		if (event->hasSubscribers())
 			event->run();
 	}
-	if (options.useReflBuffer)
-	{
-		SET_CPU_ZONE_SCOPED("Pre Reflections Render");
-
-		auto event = &manager->getEvent("PreReflRender");
-		if (event->hasSubscribers())
-			event->run();
-	}
 	if (options.useGiBuffer)
 	{
 		SET_CPU_ZONE_SCOPED("Pre GI Render");
 
 		auto event = &manager->getEvent("PreGiRender");
+		if (event->hasSubscribers())
+			event->run();
+	}
+	if (options.useReflBuffer)
+	{
+		SET_CPU_ZONE_SCOPED("Pre Reflections Render");
+
+		auto event = &manager->getEvent("PreReflRender");
 		if (event->hasSubscribers())
 			event->run();
 	}
@@ -753,6 +753,26 @@ void PbrLightingSystem::preHdrRender()
 			imageView->clear(float4::one);
 		}
 	}
+	if (options.useGiBuffer)
+	{
+		SET_CPU_ZONE_SCOPED("GI Render Pass");
+		SET_GPU_DEBUG_LABEL("GI Pass");
+
+		auto event = &manager->getEvent("GiRender");
+		if (event->hasSubscribers())
+		{
+			RenderPass renderPass(giFramebuffer, float4::zero);
+			event->run();
+		}
+
+		if (!hasAnyGI)
+		{
+			auto& cc = graphicsSystem->getCommonConstants();
+			auto skyColor = (float3)cc.skyColor;
+			auto imageView = graphicsSystem->get(giBuffer);
+			imageView->clear(float4(skyColor, 1.0f));
+		}
+	}
 	if (options.useReflBuffer)
 	{
 		SET_CPU_ZONE_SCOPED("Reflections Render Pass");
@@ -782,36 +802,8 @@ void PbrLightingSystem::preHdrRender()
 			imageView->clear(float4::zero);
 		}
 	}
-	if (options.useGiBuffer)
-	{
-		SET_CPU_ZONE_SCOPED("GI Render Pass");
-		SET_GPU_DEBUG_LABEL("GI Pass");
-
-		auto event = &manager->getEvent("GiRender");
-		if (event->hasSubscribers())
-		{
-			RenderPass renderPass(giFramebuffer, float4::zero);
-			event->run();
-		}
-
-		if (!hasAnyGI)
-		{
-			auto& cc = graphicsSystem->getCommonConstants();
-			auto skyColor = (float3)cc.skyColor;
-			auto imageView = graphicsSystem->get(giBuffer);
-			imageView->clear(float4(skyColor, 1.0f));
-		}
-	}
 	graphicsSystem->stopRecording();
 
-	if (options.useReflBuffer)
-	{
-		SET_CPU_ZONE_SCOPED("Post Reflections Render");
-
-		auto event = &manager->getEvent("PostReflRender");
-		if (event->hasSubscribers())
-			event->run();
-	}
 	if (options.useShadowBuffer)
 	{
 		SET_CPU_ZONE_SCOPED("Post Shadows Render");
@@ -833,6 +825,14 @@ void PbrLightingSystem::preHdrRender()
 		SET_CPU_ZONE_SCOPED("Post GI Render");
 
 		auto event = &manager->getEvent("PostGiRender");
+		if (event->hasSubscribers())
+			event->run();
+	}
+	if (options.useReflBuffer)
+	{
+		SET_CPU_ZONE_SCOPED("Post Reflections Render");
+
+		auto event = &manager->getEvent("PostReflRender");
 		if (event->hasSubscribers())
 			event->run();
 	}

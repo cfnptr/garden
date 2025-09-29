@@ -330,7 +330,7 @@ static void limitFrameRate(double beginSleepClock, int maxFrameRate)
 	auto deltaClock = mpio::OS::getCurrentClock() - beginSleepClock;
 	auto delayTime = (1.0 / maxFrameRate) - deltaClock - 0.001;
 	if (delayTime > 0.0)
-		sleepThread(delayTime);
+		mpmt::Thread::sleep(delayTime);
 	// TODO: use loop with empty cycles to improve sleep precision.
 }
 

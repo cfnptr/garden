@@ -112,5 +112,5 @@ void LoopSystem::output()
 	auto deltaClock = mpio::OS::getCurrentClock() - systemTime;
 	auto delayTime = (1.0 / maxTickRate) - deltaClock - 0.001;
 	if (delayTime > 0.0)
-		sleepThread(delayTime);
+		mpmt::Thread::sleep(delayTime);
 }

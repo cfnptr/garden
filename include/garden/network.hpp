@@ -19,7 +19,7 @@
 
 #pragma once
 #include "garden/defines.hpp"
-#include "nets/defines.h"
+#include "nets/stream-message.hpp"
 
 namespace garden
 {
@@ -32,27 +32,22 @@ struct ClientSession
 	void* streamSession = nullptr;
 	uint8* messageBuffer = nullptr;
 	psize messageByteCount = 0;
-};
+	bool isAuthorized = false;
 
-/**
- * @brief Network message container.
- */
-struct NetworkMessage : public StreamMessage
-{
 	/**
-	 * @brief Reads data from the network message.
-	 * @return True if no more data to read, otherwise false.
-	 *
-	 * @param[out] data pointer to the message data
-	 * @param size message byte count to read
-	 */
-	bool read(const uint8_t*& data, size_t count)
-	{
-		if (offset + count > size)
-			return true;
-		data = buffer + offset; offset += size;
-		return false;
-	}
+	* @brief Sends stream data to the specified session.
+	* @return The operation @ref NetsResult code.
+	*
+	* @param[in] sendBuffer data send buffer
+	* @param byteCount data byte count to send
+	*/
+	NetsResult send(const void* sendBuffer, size_t byteCount) noexcept;
+	/**
+	* @brief Sends stream message to the specified session.
+	* @return The operation @ref NetsResult code.
+	* @param streamMessage stream message to send
+	*/
+	NetsResult send(nets::StreamMessage streamMessage) noexcept;
 };
 
 /**
@@ -67,21 +62,24 @@ public:
 	virtual string_view getMessageType() = 0;
 
 	/**
-	 * @brief On message from the client receive.
-	 * @details Server destroys session on this function false return result.
+	 * @brief On message receive from a client.
+	 * @details Server destroys session on this function non zero return result.
 	 * @warning This function is called asynchronously from the receive thread!
 	 *
 	 * @param[in] session client session instance
 	 * @param message received stream message
 	 */
-	virtual NetsResult onRequest(ClientSession* session, NetworkMessage message) { return NOT_SUPPORTED_NETS_RESULT; }
+	virtual int onRequest(ClientSession* session, nets::StreamMessage message)
+	{
+		return NOT_SUPPORTED_NETS_RESULT;
+	}
 	/**
-	 * @brief On message from the server receive.
-	 * @details Client closes connection on this function false return result.
+	 * @brief On message receive from the server.
+	 * @details Client closes connection on this function non zero return result.
 	 * @warning This function is called asynchronously from the receive thread!
 	 * @param message received stream message
 	 */
-	virtual NetsResult onResponse(NetworkMessage message) { return NOT_SUPPORTED_NETS_RESULT; }
+	virtual int onResponse(nets::StreamMessage message) { return NOT_SUPPORTED_NETS_RESULT; }
 };
 
 } // namespace garden
