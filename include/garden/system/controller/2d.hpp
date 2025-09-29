@@ -14,7 +14,7 @@
 
 /***********************************************************************************************************************
  * @file
- * @brief Common 2D view controller functions
+ * @brief Common 2D view controller functions.
  */
 
 #pragma once

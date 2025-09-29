@@ -1221,8 +1221,7 @@ static bool openShaderFileStream(const fs::path& inputFilePath,
 		throw CompileError("failed to open output shader file");
 	outputFileStream.exceptions(ios::failbit | ios::badbit);
 
-	outputFileStream << "#version 460\n#include \"types.gsl\"\n\n#define printf debugPrintfEXT\n"
-		"#line 1 // Note: Compiler error is at the source shader file line!\n";
+	outputFileStream << "#version 460\n#include \"types.gsl\"\n\n#define printf debugPrintfEXT\n";
 	return true;
 }
 static void compileShaderFile(const fs::path& filePath, const vector<fs::path>& includePaths)
@@ -1340,6 +1339,9 @@ static bool compileGraphicsShader(const fs::path& inputPath, const fs::path& out
 	auto fileResult = openShaderFileStream(inputFilePath, outputFilePath,
 		fileData.inputFileStream, fileData.outputFileStream);
 	if (!fileResult) return false;
+
+	fileData.outputFileStream << "#define GRAPHICS_GSL\n"
+		"#line 1 // Note: Compiler error is at the source shader file line!\n";
 	
 	while (getline(fileData.inputFileStream, fileData.line))
 	{
@@ -1675,6 +1677,9 @@ bool GslCompiler::compileComputeShader(const fs::path& inputPath,
 	auto fileResult = openShaderFileStream(inputFilePath, outputFilePath,
 		fileData.inputFileStream, fileData.outputFileStream);
 	if (!fileResult) return false;
+
+	fileData.outputFileStream << "#define COMPUTE_GSL\n"
+		"#line 1 // Note: Compiler error is at the source shader file line!\n";
 	
 	while (getline(fileData.inputFileStream, fileData.line))
 	{

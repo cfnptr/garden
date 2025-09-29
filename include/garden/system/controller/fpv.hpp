@@ -14,7 +14,7 @@
 
 /***********************************************************************************************************************
  * @file
- * @brief Common first person view controller functions
+ * @brief Common first person view controller functions.
  */
 
 #pragma once

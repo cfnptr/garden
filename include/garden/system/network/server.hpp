@@ -14,7 +14,7 @@
 
 /***********************************************************************************************************************
  * @file
- * @brief Common first person view controller functions
+ * @brief Common network server functions.
  */
 
 #pragma once
@@ -43,10 +43,10 @@ public:
 	StreamServerHandle() = default;
 private:
 	bool onSessionCreate(nets::StreamSessionView streamSession, void*& handle) final;
-	void onSessionDestroy(nets::StreamSessionView streamSession, NetsResult reason) final;
-	NetsResult onStreamReceive(nets::StreamSessionView streamSession, 
+	void onSessionDestroy(nets::StreamSessionView streamSession, int reason) final;
+	int onStreamReceive(nets::StreamSessionView streamSession, 
 		const uint8_t* receiveBuffer, size_t byteCount) final;
-	static NetsResult onMessageReceive(StreamMessage streamMessage, void* argument);
+	static int onMessageReceive(StreamMessage streamMessage, void* argument);
 };
 
 /***********************************************************************************************************************
@@ -56,14 +56,14 @@ class ServerSystem final : public System, public Singleton<ServerSystem>
 {
 public:
 	/**
-	 * @brief On message from the client receive.
-	 * @details Server destroys session on this function false return result.
+	 * @brief On message receive from a client.
+	 * @details Server destroys session on this function non zero return result.
 	 * @warning This function is called asynchronously from the receive thread!
 	 *
 	 * @param[in] session client session instance
 	 * @param message received stream message
 	 */
-	using OnRequest = std::function<NetsResult(ClientSession* session, StreamMessage message)>;
+	using OnRequest = std::function<int(ClientSession*, nets::StreamMessage)>;
 private:
 	StreamServerHandle streamServer;
 	tsl::robin_map<string, INetworkable*, SvHash, SvEqual> networkables;
@@ -80,12 +80,14 @@ private:
 	~ServerSystem() final;
 
 	void preInit();
+	void update();
 
 	friend class ecsm::Manager;
 	friend class garden::StreamServerHandle;
 public:
-	std::function<bool(nets::StreamSessionView, ClientSession*&)> onSessionCreate = nullptr;
-	std::function<void(ClientSession*, NetsResult)> onSessionDestroy = nullptr;
+	std::function<int(nets::StreamSessionView, ClientSession*&)> onSessionCreate = nullptr;
+	std::function<void(ClientSession*, int)> onSessionDestroy = nullptr;
+	std::function<int(ClientSession*, nets::StreamMessage)> onSessionAuthorize = nullptr;
 
 	/**
 	 * @brief Starts server listening and receiving.
