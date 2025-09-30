@@ -12,6 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#if GARDEN_OS_WINDOWS
+// Note: goes first to fix byte compilation error.
+#include <windows.h>
+#endif
+
 #include "garden/system/loop.hpp"
 #include "garden/profiler.hpp"
 #include "mpio/os.hpp"
@@ -22,8 +27,6 @@
 using namespace garden;
 
 #if GARDEN_OS_WINDOWS
-#include <windows.h>
-
 static BOOL WINAPI consoleHandler(DWORD ctrlType)
 {
 	switch (ctrlType)
