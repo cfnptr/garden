@@ -17,15 +17,19 @@
 
 using namespace garden;
 
+string ClientSession::getAddress() const
+{
+	nets::StreamSessionView session((StreamSession_T*)streamSession);
+	return session.getAddress();
+}
+
 NetsResult ClientSession::send(const void* sendBuffer, size_t byteCount) noexcept
 {
-	GARDEN_ASSERT(streamSession);
 	nets::StreamSessionView session((StreamSession_T*)streamSession);
 	return session.send(sendBuffer, byteCount);
 }
-NetsResult ClientSession::send(nets::StreamMessage streamMessage) noexcept
+NetsResult ClientSession::send(const StreamResponse& streamResponse) noexcept
 {
-	GARDEN_ASSERT(streamMessage.validate());
 	nets::StreamSessionView session((StreamSession_T*)streamSession);
-	return session.send(streamMessage);
+	return session.send(streamResponse);
 }

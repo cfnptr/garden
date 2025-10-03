@@ -20,11 +20,194 @@
 #pragma once
 #include "garden/defines.hpp"
 #include "nets/stream-message.hpp"
+#include "math/vector.hpp"
 
 namespace garden
 {
 
 /**
+ * @brief Network stream request data container.
+ */
+class StreamRequest : public nets::StreamMessage
+{
+public:
+	using nets::StreamMessage::read;
+
+	/**
+	 * @brief Creates a new stream request.
+	 * @param streamMessage target stream message data
+	 */
+	StreamRequest(::StreamMessage streamMessage) noexcept
+	{
+		iter = streamMessage.iter;
+		end = streamMessage.end;
+	}
+	/**
+	 * @brief Creates a new stream request.
+	 * @param streamMessage target stream message data
+	 */
+	StreamRequest(nets::StreamMessage streamMessage) noexcept { *this = streamMessage; }
+	/**
+	 * @brief Creates a new empty stream request.
+	 */
+	StreamRequest() noexcept = default;
+
+	/**
+	 * @brief Reads 32-bit uint 2 component vector from the stream message and advances offset.
+	 * @return True if no more data to read, otherwise false.
+	 *
+	 * @param[in,out] streamMessage target stream message
+	 * @param[out] value pointer to the unsigned integer vector
+	 */
+	bool read(uint2& value) noexcept
+	{
+		if (iter + sizeof(uint2) > end)
+			return true;
+		#if NETS_LITTLE_ENDIAN
+		value = *((const uint2*)iter);
+		#else
+		auto data = (const uint2*)iter;
+		value = uint2(leToHost32(data->x), leToHost32(data->y));
+		#endif
+		iter += sizeof(uint2);
+		return false;
+	}
+	/**
+	 * @brief Reads 32-bit uint 3 component vector from the stream message and advances offset.
+	 * @return True if no more data to read, otherwise false.
+	 *
+	 * @param[in,out] streamMessage target stream message
+	 * @param[out] value pointer to the unsigned integer vector
+	 */
+	bool read(uint3& value) noexcept
+	{
+		if (iter + sizeof(uint3) > end)
+			return true;
+		#if NETS_LITTLE_ENDIAN
+		value = *((const uint3*)iter);
+		#else
+		auto data = (const uint3*)iter;
+		value = uint3(leToHost32(data->x), leToHost32(data->y), leToHost32(data->z));
+		#endif
+		iter += sizeof(uint3);
+		return false;
+	}
+	/**
+	 * @brief Reads 32-bit uint 4 component vector from the stream message and advances offset.
+	 * @return True if no more data to read, otherwise false.
+	 *
+	 * @param[in,out] streamMessage target stream message
+	 * @param[out] value pointer to the unsigned integer vector
+	 */
+	bool read(uint4& value) noexcept
+	{
+		if (iter + sizeof(uint4) > end)
+			return true;
+		#if NETS_LITTLE_ENDIAN
+		value = *((const uint4*)iter);
+		#else
+		auto data = (const uint4*)iter;
+		value = uint4(leToHost32(data->x), leToHost32(data->y), leToHost32(data->z), leToHost32(data->w));
+		#endif
+		iter += sizeof(uint4);
+		return false;
+	}
+};
+
+/***********************************************************************************************************************
+ * @brief Network stream response data container.
+ */
+class StreamResponse : public nets::OutStreamMessage
+{
+public:
+	using nets::OutStreamMessage::write;
+
+	/**
+	 * @brief Creates a new stream response.
+	 *
+	 * @param type message type string
+	 * @param[in,out] buffer message data buffer
+	 * @param bufferSize message buffer size in bytes
+	 * @param messageSize message size in bytes
+	 * @param lengthSize message header size in bytes
+	 * @param isSystem is this system message
+	 */
+	StreamResponse(string_view type, uint8_t* buffer, size_t bufferSize, 
+		size_t messageSize, uint8_t lengthSize, bool isSystem = false) noexcept
+		:
+		nets::OutStreamMessage(buffer, bufferSize, messageSize + type.size() + sizeof(uint8) * 2, lengthSize)
+	{
+		GARDEN_ASSERT(!type.empty());
+		GARDEN_ASSERT(type.size() <= UINT8_MAX);
+		auto result = write(isSystem);
+		result |= write(type, sizeof(uint8));
+		GARDEN_ASSERT_MSG(!result, "Stream message buffer is too small");
+	}
+	/**
+	 * @brief Creates a new empty stream response.
+	 */
+	StreamResponse() noexcept = default;
+
+	/**
+	 * @brief Writes 32-bit uint 2 component vector to the stream message and advances offset.
+	 * @return True if no more space to write data, otherwise false.
+	 *
+	 * @param[in,out] streamMessage target stream message
+	 * @param value unsigned integer vector to write
+	 */
+	bool write(uint2 value) noexcept
+	{
+		if (iter + sizeof(uint2) > end)
+			return true;
+		#if NETS_LITTLE_ENDIAN
+		*((uint2*)iter) = value;
+		#else
+		*((uint2*)iter) = uint2(leToHost32(value.x), leToHost32(value.y));
+		#endif
+		iter += sizeof(uint2);
+		return false;
+	}
+	/**
+	 * @brief Writes 32-bit uint 3 component vector to the stream message and advances offset.
+	 * @return True if no more space to write data, otherwise false.
+	 *
+	 * @param[in,out] streamMessage target stream message
+	 * @param value unsigned integer vector to write
+	 */
+	bool write(uint3 value) noexcept
+	{
+		if (iter + sizeof(uint3) > end)
+			return true;
+		#if NETS_LITTLE_ENDIAN
+		*((uint3*)iter) = value;
+		#else
+		*((uint3*)iter) = uint3(leToHost32(value.x), leToHost32(value.y), leToHost32(value.z));
+		#endif
+		iter += sizeof(uint3);
+		return false;
+	}
+	/**
+	 * @brief Writes 32-bit uint 4 component vector to the stream message and advances offset.
+	 * @return True if no more space to write data, otherwise false.
+	 *
+	 * @param[in,out] streamMessage target stream message
+	 * @param value unsigned integer vector to write
+	 */
+	bool write(uint4 value) noexcept
+	{
+		if (iter + sizeof(uint4) > end)
+			return true;
+		#if NETS_LITTLE_ENDIAN
+		*((uint4*)iter) = value;
+		#else
+		*((uint4*)iter) = uint4(leToHost32(value.x), leToHost32(value.y), leToHost32(value.z), leToHost32(value.w));
+		#endif
+		iter += sizeof(uint4);
+		return false;
+	}
+};
+
+/***********************************************************************************************************************
  * @brief Server client session data container.
  */
 struct ClientSession
@@ -35,19 +218,24 @@ struct ClientSession
 	bool isAuthorized = false;
 
 	/**
-	* @brief Sends stream data to the specified session.
-	* @return The operation @ref NetsResult code.
-	*
-	* @param[in] sendBuffer data send buffer
-	* @param byteCount data byte count to send
-	*/
+	 * @brief Returns client session IP address and port string.
+	 */
+	string getAddress() const;
+
+	/**
+	 * @brief Sends stream data to the client session.
+	 * @return The operation @ref NetsResult code.
+	 *
+	 * @param[in] sendBuffer data send buffer
+	 * @param byteCount data byte count to send
+	 */
 	NetsResult send(const void* sendBuffer, size_t byteCount) noexcept;
 	/**
-	* @brief Sends stream message to the specified session.
-	* @return The operation @ref NetsResult code.
-	* @param streamMessage stream message to send
-	*/
-	NetsResult send(nets::StreamMessage streamMessage) noexcept;
+	 * @brief Sends stream response to the client session.
+	 * @return The operation @ref NetsResult code.
+	 * @param[in] streamResponse stream response to send
+	 */
+	NetsResult send(const StreamResponse& streamResponse) noexcept;
 };
 
 /**
@@ -69,17 +257,14 @@ public:
 	 * @param[in] session client session instance
 	 * @param message received stream message
 	 */
-	virtual int onRequest(ClientSession* session, nets::StreamMessage message)
-	{
-		return NOT_SUPPORTED_NETS_RESULT;
-	}
+	virtual int onRequest(ClientSession* session, StreamRequest message) { return NOT_SUPPORTED_NETS_RESULT; }
 	/**
 	 * @brief On message receive from the server.
 	 * @details Client closes connection on this function non zero return result.
 	 * @warning This function is called asynchronously from the receive thread!
 	 * @param message received stream message
 	 */
-	virtual int onResponse(nets::StreamMessage message) { return NOT_SUPPORTED_NETS_RESULT; }
+	virtual int onResponse(StreamRequest message) { return NOT_SUPPORTED_NETS_RESULT; }
 };
 
 } // namespace garden

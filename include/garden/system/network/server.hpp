@@ -26,58 +26,57 @@ namespace garden
 {
 
 using namespace ecsm;
-class ServerSystem;
+class ServerNetworkSystem;
 
 /**
  * @brief Network stream server handle.
  */
 class StreamServerHandle final : public nets::IStreamServer
 {
-	ServerSystem* serverSystem = nullptr;
+	ServerNetworkSystem* serverSystem = nullptr;
 	psize messageBufferSize = 0;
 	uint8 messageLengthSize = 0;
 public:
-	StreamServerHandle(ServerSystem* serverSystem, SocketFamily socketFamily, const char* service, 
+	StreamServerHandle(ServerNetworkSystem* serverSystem, SocketFamily socketFamily, const char* service, 
 		size_t sessionBufferSize, size_t connectionQueueSize, size_t receiveBufferSize, 
 		size_t messageBufferSize, double timeoutTime, nets::SslContextView sslContext);
-	StreamServerHandle() = default;
 private:
 	bool onSessionCreate(nets::StreamSessionView streamSession, void*& handle) final;
 	void onSessionDestroy(nets::StreamSessionView streamSession, int reason) final;
 	int onStreamReceive(nets::StreamSessionView streamSession, 
 		const uint8_t* receiveBuffer, size_t byteCount) final;
-	static int onMessageReceive(StreamMessage streamMessage, void* argument);
+	static int onMessageReceive(::StreamMessage streamMessage, void* argument);
 };
 
 /***********************************************************************************************************************
  * @brief Network server system.
  */
-class ServerSystem final : public System, public Singleton<ServerSystem>
+class ServerNetworkSystem final : public System, public Singleton<ServerNetworkSystem>
 {
 public:
 	/**
-	 * @brief On message receive from a client.
+	 * @brief On stream message receive from a client.
 	 * @details Server destroys session on this function non zero return result.
 	 * @warning This function is called asynchronously from the receive thread!
 	 *
 	 * @param[in] session client session instance
 	 * @param message received stream message
 	 */
-	using OnRequest = std::function<int(ClientSession*, nets::StreamMessage)>;
+	using OnReceive = std::function<int(ClientSession*, StreamRequest)>;
 private:
-	StreamServerHandle streamServer;
 	tsl::robin_map<string, INetworkable*, SvHash, SvEqual> networkables;
-	tsl::robin_map<string, OnRequest, SvHash, SvEqual> listeners;
+	tsl::robin_map<string, OnReceive, SvHash, SvEqual> listeners;
+	StreamServerHandle* streamServer = nullptr;
 
 	/**
 	 * @brief Creates a new network server system instance.
 	 * @param setSingleton set system singleton instance
 	 */
-	ServerSystem(bool setSingleton = true);
+	ServerNetworkSystem(bool setSingleton = true);
 	/**
 	 * @brief Destroys network server system instance.
 	 */
-	~ServerSystem() final;
+	~ServerNetworkSystem() final;
 
 	void preInit();
 	void update();
@@ -87,7 +86,13 @@ private:
 public:
 	std::function<int(nets::StreamSessionView, ClientSession*&)> onSessionCreate = nullptr;
 	std::function<void(ClientSession*, int)> onSessionDestroy = nullptr;
-	std::function<int(ClientSession*, nets::StreamMessage)> onSessionAuthorize = nullptr;
+	std::function<int(ClientSession*, StreamRequest)> onSessionAuthorize = nullptr;
+	std::function<int(ClientSession*)> onSessionUpdate = nullptr;
+
+	/**
+	 * @brief Returns true if server receive thread is running.
+	 */
+	bool isRunning() const noexcept { return streamServer && streamServer->isRunning(); }
 
 	/**
 	 * @brief Starts server listening and receiving.
@@ -104,16 +109,12 @@ public:
 	 * @throw Error with a @ref NetsResult string on failure.
 	 */
 	void start(SocketFamily socketFamily, const char* service, size_t sessionBufferSize = 512, 
-		size_t connectionQueueSize = 256, size_t receiveBufferSize = UINT16_MAX + 1, size_t messageBufferSize = 1024, 
+		size_t connectionQueueSize = 256, size_t receiveBufferSize = UINT16_MAX + 1, size_t messageBufferSize = UINT8_MAX, 
 		double timeoutTime = 5.0f, nets::SslContextView sslContext = nets::SslContextView(nullptr));
 	/**
 	 * @brief Stops server listening and receiving.
 	 */
 	void stop();
-	/**
-	 * @brief Returns true if server is running.
-	 */
-	bool isRunning() const noexcept { return streamServer.getInstance() && streamServer.isRunning(); }
 };
 
 } // namespace garden
