@@ -89,6 +89,8 @@ InputSystem::InputSystem(bool setSingleton) : Singleton(setSingleton),
 	lastMouseStates((psize)MouseButton::Last + 1, false),
 	currMouseStates((psize)MouseButton::Last + 1, false)
 {
+	mpmt::Thread::setForegroundPriority();
+	
 	auto manager = Manager::Instance::get();
 	manager->registerEventBefore("Input", "Update");
 	manager->registerEventAfter("Output", "Update");
@@ -320,8 +322,6 @@ void InputSystem::setWindowIcon(const vector<string>& paths)
 //**********************************************************************************************************************
 void InputSystem::startRenderThread()
 {
-	mpmt::Thread::setForegroundPriority();
-
 	#if GARDEN_OS_WINDOWS
 	auto renderThread = thread(InputSystem::renderThread);
 	#else

@@ -55,6 +55,8 @@ static void signalHandler(int signum)
 
 LoopSystem::LoopSystem(bool setSingleton) : Singleton(setSingleton)
 {
+	mpmt::Thread::setForegroundPriority();
+
 	auto manager = Manager::Instance::get(); 
 	manager->registerEventBefore("Input", "Update");
 	manager->registerEventAfter("Output", "Update");
