@@ -49,6 +49,7 @@ private:
 	psize messageBufferSize = 0;
 	psize messageByteCount = 0;
 	uint8 messageLengthSize = 0;
+	bool isClientAuthorized = false;
 
 	/**
 	 * @brief Creates a new network client system instance.
@@ -79,6 +80,10 @@ public:
 	 * @brief Returns stream message length size in bytes.
 	 */
 	uint8 getMessageLengthSize() const noexcept { return messageLengthSize; }
+	/**
+	 * @brief Returns true if client is authorization on the server.
+	 */
+	bool isAuthorized() noexcept { return isClientAuthorized; }
 };
 
 } // namespace garden

@@ -236,6 +236,13 @@ struct ClientSession
 	 * @param[in] streamResponse stream response to send
 	 */
 	NetsResult send(const StreamResponse& streamResponse) noexcept;
+
+	/**
+	 * @brief Sends stream client datagram encrypion key.
+	 * @return The operation @ref NetsResult code.
+	 * @param messageType target stream message type string
+	 */
+	NetsResult sendEncKey(string_view messageType = "key") noexcept;
 };
 
 /**

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "garden/system/network.hpp"
+#include "garden/system/log.hpp"
 #include "nets/socket.hpp"
 
 using namespace garden;
@@ -38,7 +39,8 @@ NetworkSystem::~NetworkSystem()
 
 void NetworkSystem::preInit()
 {
-	initializeNetwork();
+	if (initializeNetwork())
+		GARDEN_LOG_ERROR("Failed to initialize network subsystems.");
 }
 void NetworkSystem::postDeinit()
 {

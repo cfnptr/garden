@@ -59,7 +59,7 @@ Or
 
 ## 7. Install required packages
 
-1. Run ```vcpkg install zlib:x64-windows-static openssl:x64-windows-static assimp:x64-windows-static``` using **Terminal** or **CMD** app
+1. Run ```vcpkg install zlib:x64-windows-static openssl:x64-windows-static curl:x64-windows-static assimp:x64-windows-static``` using **Terminal** or **CMD** app
 
 Alternatively run ```install-packages.bat``` from the repository **scripts/** directory
 
@@ -74,7 +74,7 @@ Alternatively run ```install-packages.bat``` from the repository **scripts/** di
 ## 2. Install required packages
 
 1. Run ```sudo apt-get update``` command using **Terminal** app
-2. And ```sudo apt-get install git cmake gcc g++ gdb clang lld lldb zlib1g-dev libssl-dev xorg-dev libassimp-dev```
+2. And ```sudo apt-get install git cmake gcc g++ gdb clang lld lldb zlib1g-dev libssl-dev libcurl4-openssl-dev xorg-dev libassimp-dev```
 
 ## 3. Install Vulkan SDK
 
@@ -94,7 +94,7 @@ Follow [this](https://vulkan.lunarg.com/doc/view/latest/linux/getting_started.ht
 
 1. Install **Homebrew** package manager from [brew.sh](https://brew.sh)
 2. Run ```brew update``` command using **Terminal** app
-3. And ```brew install git cmake zlib openssl assimp```
+3. And ```brew install git cmake zlib openssl curl assimp```
 
 ## 3. Install Vulkan SDK
 
