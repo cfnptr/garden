@@ -18,6 +18,10 @@
 #include "mpmt/thread.hpp"
 #include <cmath>
 
+#if __linux__ || __APPLE__
+#include <signal.h>
+#endif
+
 using namespace garden;
 
 // TODO: maybe add queue for each thread to reduce sync count.
@@ -34,6 +38,10 @@ void ThreadPool::threadFunction(uint32 index)
 		mpmt::Thread::setBackgroundPriority();
 	else
 		mpmt::Thread::setForegroundPriority();
+
+	#if __linux__ || __APPLE__
+	signal(SIGPIPE, SIG_IGN);
+	#endif
 
 	while (isRunning)
 	{

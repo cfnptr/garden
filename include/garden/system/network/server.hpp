@@ -86,8 +86,15 @@ private:
 public:
 	std::function<int(nets::StreamSessionView, ClientSession*&)> onSessionCreate = nullptr;
 	std::function<void(ClientSession*, int)> onSessionDestroy = nullptr;
-	std::function<int(ClientSession*, StreamRequest)> onSessionAuthorize = nullptr;
 	std::function<int(ClientSession*)> onSessionUpdate = nullptr;
+
+	/**
+	 * @brief Adds message listener to the map
+	 * 
+	 * @param messageType target message type string
+	 * @param onReceive onReceive on message receive function
+	 */
+	void addListener(string_view messageType, OnReceive onReceive);
 
 	/**
 	 * @brief Returns true if server receive thread is running.

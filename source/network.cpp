@@ -33,3 +33,9 @@ NetsResult ClientSession::send(const StreamResponse& streamResponse) noexcept
 	nets::StreamSessionView session((StreamSession_T*)streamSession);
 	return session.send(streamResponse);
 }
+
+NetsResult ClientSession::sendEncKey(string_view messageType) noexcept
+{
+	GARDEN_ASSERT(!messageType.empty());
+	
+}

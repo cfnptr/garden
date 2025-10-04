@@ -108,6 +108,7 @@ You can install **Visual Studio Code** [extension](https://marketplace.visualstu
 
 * [Assimp](https://github.com/assimp/assimp) (assimp license)
 * [Conf](https://github.com/cfnptr/conf) (Apache-2.0 license)
+* [cURL](https://github.com/curl/curl) (curl License)
 * [ECSM](https://github.com/cfnptr/ecsm) (Apache-2.0 license)
 * [FastNoise2](https://github.com/Auburn/FastNoise2) (MIT license)
 * [FreeType](https://github.com/freetype/freetype) (FreeType license)

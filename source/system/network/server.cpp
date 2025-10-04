@@ -107,9 +107,6 @@ int StreamServerHandle::onMessageReceive(::StreamMessage streamMessage, void* ar
 	string_view messageType(typeString, typeLength);
 
 	auto pair = *((std::pair<ServerNetworkSystem*, ClientSession*>*)argument);
-	if (!pair.second->isAuthorized && messageType != "a")
-		return BAD_DATA_NETS_RESULT;
-	
 	if (isSystem)
 	{
 		auto result = pair.first->networkables.find(messageType);
@@ -136,24 +133,6 @@ ServerNetworkSystem::ServerNetworkSystem(bool setSingleton) : Singleton(setSingl
 {
 	ECSM_SUBSCRIBE_TO_EVENT("PreInit", ServerNetworkSystem::preInit);
 	ECSM_SUBSCRIBE_TO_EVENT("Update", ServerNetworkSystem::update);
-
-	listeners.emplace("a", [this](ClientSession* session, StreamRequest message)
-	{
-		if (session->isAuthorized)
-			return (int)BAD_DATA_NETS_RESULT;
-
-		if (onSessionAuthorize)
-		{
-			auto result = onSessionAuthorize(session, message);
-			if (result != SUCCESS_NETS_RESULT)
-				return result;
-		}
-		if (streamServer->isSecure())
-		{
-			// TODO: UDP packets encryption key.
-		}
-		return (int)SUCCESS_NETS_RESULT;
-	});
 }
 ServerNetworkSystem::~ServerNetworkSystem()
 {
@@ -195,6 +174,9 @@ static void updateSessions(StreamServerHandle* streamServer, std::function<int(C
 		streamServer->unlockSessions();
 		return;
 	}
+
+	auto manager = Manager::Instance::get();
+	manager->unlock();
 
 	auto sessions = streamServer->getSessions();
 	if (threadSystem)
@@ -258,6 +240,7 @@ static void updateSessions(StreamServerHandle* streamServer, std::function<int(C
 		}
 	}
 
+	manager->lock();
 	streamServer->unlockSessions();
 }
 void ServerNetworkSystem::update()
@@ -276,6 +259,16 @@ void ServerNetworkSystem::update()
 	updateSessions(streamServer, onSessionUpdate);
 }
 
+void ServerNetworkSystem::addListener(string_view messageType, OnReceive onReceive)
+{
+	GARDEN_ASSERT(!messageType.empty());
+	GARDEN_ASSERT(onReceive);
+
+	auto result = listeners.emplace(messageType, onReceive);
+	if (!result.second)
+		throw GardenError("Server message listener already registered.");
+}
+
 void ServerNetworkSystem::start(SocketFamily socketFamily, const char* service, 
 	size_t sessionBufferSize, size_t connectionQueueSize, size_t receiveBufferSize, 
 	size_t messageBufferSize, double timeoutTime, nets::SslContextView sslContext)
@@ -288,6 +281,8 @@ void ServerNetworkSystem::start(SocketFamily socketFamily, const char* service,
 	GARDEN_ASSERT(timeoutTime > 0);
 	GARDEN_ASSERT(!streamServer);
 
+	if (!isNetworkInitialized())
+		throw GardenError("Failed to initialize network subsystems.");
 	streamServer = new StreamServerHandle(this, socketFamily, service, sessionBufferSize, 
 		connectionQueueSize, receiveBufferSize, messageBufferSize, timeoutTime, sslContext);
 
