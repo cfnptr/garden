@@ -102,9 +102,9 @@ static NVSDK_NGX_FeatureDiscoveryInfo getDlssDiscoveryInfo()
 	discoveryInfo.Identifier.v.ProjectDesc.ProjectId = GARDEN_NVIDIA_DLSS_PROJECT_ID;
 	discoveryInfo.Identifier.v.ProjectDesc.EngineType = NVSDK_NGX_ENGINE_TYPE_CUSTOM;
 	discoveryInfo.Identifier.v.ProjectDesc.EngineVersion = GARDEN_VERSION_STRING;
-	#elif defined(GARDEN_NVIDIA_DLSS_APPLICATION_ID)
+	#elif defined(GARDEN_NVIDIA_DLSS_APP_ID)
 	discoveryInfo.Identifier.IdentifierType = NVSDK_NGX_Application_Identifier_Type_Application_Id;
-	discoveryInfo.Identifier.v.ApplicationId = GARDEN_NVIDIA_DLSS_APPLICATION_ID;
+	discoveryInfo.Identifier.v.ApplicationId = GARDEN_NVIDIA_DLSS_APP_ID;
 	#endif
 
 	return discoveryInfo;

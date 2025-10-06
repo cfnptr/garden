@@ -37,5 +37,6 @@ NetsResult ClientSession::send(const StreamResponse& streamResponse) noexcept
 NetsResult ClientSession::sendEncKey(string_view messageType) noexcept
 {
 	GARDEN_ASSERT(!messageType.empty());
-	
+	return 1;
+	// TODO:
 }

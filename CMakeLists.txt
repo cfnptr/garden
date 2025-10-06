@@ -50,6 +50,8 @@ option(GARDEN_USE_ASAN "Use Clang address sanitizer." OFF)
 
 # By enabling this option you agree to the NVIDIA RTX SDKs license.
 option(GARDEN_USE_NVIDIA_DLSS "Use Nvidia DLSS SDK." OFF)
+# By enabling this option you agree to the Valve STEAMWORKS SDKs license.
+option(GARDEN_USE_STEAMWORKS_SDK "Use Steamworks SDK." OFF)
 
 string(TIMESTAMP GARDEN_CURRENT_YEAR "%Y")
 if(NOT DEFINED GARDEN_APP_NAME)
@@ -193,6 +195,11 @@ if(GARDEN_USE_NVIDIA_DLSS)
 else()
 	set(GARDEN_NVIDIA_DLSS 0)
 endif()
+if(GARDEN_USE_STEAMWORKS_SDK)
+	set(GARDEN_STEAMWORKS_SDK 1)
+else()
+	set(GARDEN_STEAMWORKS_SDK 0)
+endif()
 
 math(EXPR GARDEN_APP_VERSION "((${GARDEN_APP_VERSION_MAJOR} << 24) | (${GARDEN_APP_VERSION_MINOR} << 16) | (${GARDEN_APP_VERSION_PATCH} << 8))")
 set(GARDEN_APP_VERSION_STRING "${GARDEN_APP_VERSION_MAJOR}.${GARDEN_APP_VERSION_MINOR}.${GARDEN_APP_VERSION_PATCH}")
@@ -335,6 +342,9 @@ endif()
 
 if(GARDEN_USE_NVIDIA_DLSS)
 	include(cmake/nvidia-dlss.cmake)
+endif()
+if(GARDEN_USE_STEAMWORKS_SDK)
+	include(cmake/steamworks-sdk.cmake)
 endif()
 
 configure_file(cmake/defines.hpp.in include/garden/defines.hpp)

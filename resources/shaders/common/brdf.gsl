@@ -28,24 +28,26 @@ float ggx(float noh, float roughness)
 	float oneMinusNohSquared = 1.0f - noh * noh;
 	float a = noh * roughness;
 	float k = roughness / (oneMinusNohSquared + a * a);
-	return k * k * (1.0f / M_PI);
+	return k * k * M_1_PI;
 }
 float smithGGXCorrelated(float nov, float nol, float a)
 {
 	float a2 = a * a;
-	float lambdaV = nol * sqrt((nov - a2 * nov) * nov + a2);
-	float lambdaL = nov * sqrt((nol - a2 * nol) * nol + a2);
+	float lambdaV = nol * sqrt(fma(nov - a2 * nov, nov, a2));
+	float lambdaL = nov * sqrt(fma(nol - a2 * nol, nol, a2));
 	return 0.5f / (lambdaV + lambdaL);
 }
+
 float schlick(float voh, float f0, float f90)
 {
-	return f0 + (f90 - f0) * pow(1.0f - voh, 5.0f);
+	return fma(pow(1.0f - voh, 5.0f), f90 - f0, f0);
 }
 float3 schlick(float voh, float3 f0, float f90)
 {
-	return f0 + (f90 - f0) * pow(1.0f - voh, 5.0f);
+	return fma(float3(pow(1.0f - voh, 5.0f)), f90 - f0, f0);
 }
-float lambert() { return M_1_PI; } // 1.0 / Pi
+
+float lambert() { return M_1_PI; }
 
 //**********************************************************************************************************************
 float2 hammersley(uint32 index, float invSampleCount)
@@ -94,18 +96,18 @@ float3 specularDFG(sampler2D dfgLUT, float nov, float perceptualRoughness, float
 float3 computeEnergyCompensation(sampler2D dfgLUT, float nov, float perceptualRoughness, float3 f0)
 {
 	float2 dfg = sampleDFG(dfgLUT, nov, perceptualRoughness);
-	return 1.0f + f0 * (1.0f / dfg.y - 1.0f);
+	return fma(float3(1.0f / dfg.y - 1.0f), f0, float3(1.0f));
 }
 
 float specularAoLagarde(float nov, float visibility, float linearRoughness)
 {
-	return clamp(pow(nov + visibility, exp2(-16.0f * linearRoughness - 1.0f)) - 1.0f + visibility, 0.0f, 1.0f);
+	return clamp(pow(nov + visibility, exp2(fma(linearRoughness, -16.0f, -1.0f))) - 1.0f + visibility, 0.0f, 1.0f);
 }
 float3 gtaoMultiBounce(float visibility, float3 albedo)
 {
-	float3 a =  2.0404f * albedo - 0.3324f;
-	float3 b = -4.7951f * albedo + 0.6417f;
-	float3 c =  2.7552f * albedo + 0.6903f;
+	float3 a = fma(albedo, float3( 2.0404f), float3(-0.3324f));
+	float3 b = fma(albedo, float3(-4.7951f), float3( 0.6417f));
+	float3 c = fma(albedo, float3( 2.7552f), float3( 0.6903f));
 	return max(float3(visibility), ((visibility * a + b) * visibility + c) * visibility);
 }
 
@@ -115,19 +117,6 @@ float3 computeReflectedVector(float linearRoughness, float3 normal, float3 refle
 }
 
 //**********************************************************************************************************************
-float3 specularLobe(float noh, float nov, float nol, float loh, float3 f0, float linearRoughness)
-{
-	float distribution = ggx(noh, linearRoughness);
-	float visibility = smithGGXCorrelated(nov, nol, linearRoughness);
-	float f90 = clamp(dot(f0, float3(50.0f * 0.33f)), 0.0f, 1.0f);
-	float3 fresnel = schlick(loh, f0, f90);
-	return (distribution * visibility) * fresnel;
-}
-float3 diffuseLobe(float3 baseColor, float metallic)
-{
-	return computeDiffuseColor(baseColor, metallic) * lambert();
-}
-
 float iblRoughnessOneLevel(samplerCube iblSpecular)
 {
 	return textureQueryLevels(iblSpecular) - 1;

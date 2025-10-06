@@ -128,8 +128,8 @@ static NVSDK_NGX_Parameter* initializeDlss(const wstring& nvidiaDlssPath)
 			NVSDK_NGX_ENGINE_TYPE_CUSTOM,  GARDEN_VERSION_STRING, nvidiaDlssPath.c_str(), 
 			vulkanAPI->instance, vulkanAPI->physicalDevice, vulkanAPI->device,
 			nullptr, nullptr, featureCommonInfoPtr);
-		#elif defined(GARDEN_NVIDIA_DLSS_APPLICATION_ID)
-		ngxResult = NVSDK_NGX_VULKAN_Init(GARDEN_NVIDIA_DLSS_APPLICATION_ID, 
+		#elif defined(GARDEN_NVIDIA_DLSS_APP_ID)
+		ngxResult = NVSDK_NGX_VULKAN_Init(GARDEN_NVIDIA_DLSS_APP_ID, 
 			nvidiaDlssPath.c_str(), vulkanAPI->instance, vulkanAPI->physicalDevice, 
 			vulkanAPI->device, nullptr, nullptr, &featureCommonInfoPtr);
 		#endif
@@ -271,9 +271,9 @@ void DlssRenderSystem::preInit()
 	discoveryInfo.Identifier.v.ProjectDesc.ProjectId = GARDEN_NVIDIA_DLSS_PROJECT_ID;
 	discoveryInfo.Identifier.v.ProjectDesc.EngineType = NVSDK_NGX_ENGINE_TYPE_CUSTOM;
 	discoveryInfo.Identifier.v.ProjectDesc.EngineVersion = GARDEN_VERSION_STRING;
-	#elif defined(GARDEN_NVIDIA_DLSS_APPLICATION_ID)
+	#elif defined(GARDEN_NVIDIA_DLSS_APP_ID)
 	discoveryInfo.Identifier.IdentifierType = NVSDK_NGX_Application_Identifier_Type_Application_Id;
-	discoveryInfo.Identifier.v.ApplicationId = GARDEN_NVIDIA_DLSS_APPLICATION_ID;
+	discoveryInfo.Identifier.v.ApplicationId = GARDEN_NVIDIA_DLSS_APP_ID;
 	#endif
 
 	auto threadSystem = ThreadSystem::Instance::tryGet();

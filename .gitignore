@@ -9,6 +9,7 @@ build-release/
 build-debug-clang/
 build-release-clang/
 build-xcode/
+libraries/steamworks-sdk/
 
 ### Common ###
 .vs/
