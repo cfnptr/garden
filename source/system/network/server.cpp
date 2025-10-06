@@ -148,6 +148,9 @@ ServerNetworkSystem::~ServerNetworkSystem()
 
 void ServerNetworkSystem::preInit()
 {
+	if (!isNetworkInitialized())
+		throw GardenError("Failed to initialize network subsystems.");
+
 	auto systemGroup = Manager::Instance::get()->tryGetSystemGroup<INetworkable>();
 	if (systemGroup)
 	{
@@ -281,8 +284,6 @@ void ServerNetworkSystem::start(SocketFamily socketFamily, const char* service,
 	GARDEN_ASSERT(timeoutTime > 0);
 	GARDEN_ASSERT(!streamServer);
 
-	if (!isNetworkInitialized())
-		throw GardenError("Failed to initialize network subsystems.");
 	streamServer = new StreamServerHandle(this, socketFamily, service, sessionBufferSize, 
 		connectionQueueSize, receiveBufferSize, messageBufferSize, timeoutTime, sslContext);
 

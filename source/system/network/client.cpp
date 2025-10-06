@@ -74,9 +74,6 @@ ClientNetworkSystem::ClientNetworkSystem(size_t receiveBufferSize,
 	: 
 	Singleton(setSingleton), nets::IStreamClient(receiveBufferSize, timeoutTime)
 {
-	if (!isNetworkInitialized())
-		throw GardenError("Failed to initialize network subsystems.");
-
 	ECSM_SUBSCRIBE_TO_EVENT("PreInit", ClientNetworkSystem::preInit);
 	ECSM_SUBSCRIBE_TO_EVENT("PreDeinit", ClientNetworkSystem::preDeinit);
 	ECSM_SUBSCRIBE_TO_EVENT("Update", ClientNetworkSystem::update);
@@ -106,6 +103,9 @@ ClientNetworkSystem::~ClientNetworkSystem()
 
 void ClientNetworkSystem::preInit()
 {
+	if (!isNetworkInitialized())
+		throw GardenError("Failed to initialize network subsystems.");
+
 	auto systemGroup = Manager::Instance::get()->tryGetSystemGroup<INetworkable>();
 	if (systemGroup)
 	{

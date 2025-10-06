@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "garden/system/network.hpp"
-#include "garden/system/log.hpp"
 #include "nets/socket.hpp"
 
 using namespace garden;
@@ -22,29 +21,17 @@ using namespace garden;
 NetworkSystem::NetworkSystem(bool setSingleton) : Singleton(setSingleton)
 {
 	Manager::Instance::get()->addGroupSystem<ISerializable>(this);
-	ECSM_SUBSCRIBE_TO_EVENT("PreInit", NetworkSystem::preInit);
-	ECSM_SUBSCRIBE_TO_EVENT("PostDeinit", NetworkSystem::postDeinit);
+
+	if (!initializeNetwork())
+		GardenError("Failed to initialize network subsystems.");
 }
 NetworkSystem::~NetworkSystem()
 {
 	if (Manager::Instance::get()->isRunning)
-	{
 		Manager::Instance::get()->removeGroupSystem<ISerializable>(this);
-		ECSM_SUBSCRIBE_TO_EVENT("PreInit", NetworkSystem::preInit);
-		ECSM_SUBSCRIBE_TO_EVENT("PostDeinit", NetworkSystem::postDeinit);
-	}
 
-	unsetSingleton();
-}
-
-void NetworkSystem::preInit()
-{
-	if (initializeNetwork())
-		GARDEN_LOG_ERROR("Failed to initialize network subsystems.");
-}
-void NetworkSystem::postDeinit()
-{
 	terminateNetwork();
+	unsetSingleton();
 }
 
 void NetworkSystem::resetComponent(View<Component> component, bool full)

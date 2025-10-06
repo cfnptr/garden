@@ -47,9 +47,6 @@ class NetworkSystem final : public ComponentSystem<NetworkComponent, false>,
 	 */
 	~NetworkSystem() final;
 
-	void preInit();
-	void postDeinit();
-
 	void resetComponent(View<Component> component, bool full) final;
 	void copyComponent(View<Component> source, View<Component> destination) final;
 	string_view getComponentName() const final;
