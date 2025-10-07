@@ -289,6 +289,18 @@ public:
 	}
 
 	/**
+	 * @brief Stores specified image to the images directory.
+	 * 
+	 * @param[in] path target image resource path
+	 * @param[in] daat image pixel data container
+	 * @param size image size in pixels
+	 * @param quality image quality (0.0 - 1.0)
+	 * @param fileType image file type
+	 */
+	void storeImage(const fs::path& path, const void* data, uint2 size, 
+		float quality = 1.0f, ImageFileType fileType = ImageFileType::Png);
+
+	/**
 	 * @brief Destroys shared image if it's the last one.
 	 * @param[in] image target shared image reference
 	 */

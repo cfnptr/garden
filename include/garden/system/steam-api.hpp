@@ -46,6 +46,6 @@ class SteamApiSystem final : public System, public Singleton<SteamApiSystem>
 	void update();
 	friend class ecsm::Manager;
 };
-#endif
 
 } // namespace garden
+#endif

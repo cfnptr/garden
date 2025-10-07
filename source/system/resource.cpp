@@ -31,10 +31,12 @@
 
 #include "math/types.hpp"
 #include "webp/decode.h"
+#include "webp/encode.h"
 #include "png.h"
 #include "stb_image.h"
 #include "stb_image_write.h"
 
+#include <fstream>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
@@ -1342,6 +1344,77 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 	}
 
 	return imageRef;
+}
+
+//**********************************************************************************************************************
+void ResourceSystem::storeImage(const fs::path& path, const void* data, 
+	uint2 size, float quality, ImageFileType fileType)
+{
+	GARDEN_ASSERT(!path.empty());
+	GARDEN_ASSERT(data);
+	GARDEN_ASSERT(areAllTrue(size > uint2::zero));
+	GARDEN_ASSERT(quality >= 0.0f && quality <= 1.0f);
+
+	if (!fs::exists(path.parent_path()))
+		fs::create_directories(path.parent_path());
+
+	if (fileType == ImageFileType::Webp)
+	{
+		auto filePath = path;
+		filePath.replace_extension(imageFileExts[(psize)ImageFileType::Webp]);
+		ofstream outputStream(path, ios::binary | ios::trunc);
+		if (!outputStream.is_open())
+			throw GardenError("Failed to store image file. (path: " + path.generic_string() + ")");
+		outputStream.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+
+		uint8_t* encoded = nullptr; size_t encodedSize = 0;
+		if (quality == 1.0f)
+			encodedSize = WebPEncodeLosslessRGBA((const uint8_t*)data, size.x, size.y, size.x * 4, &encoded);
+		else
+			encodedSize = WebPEncodeRGBA((const uint8_t*)data, size.x, size.y, size.x * 4, quality * 100.0f, &encoded);
+		WebPFree(encoded);
+
+		if (encodedSize == 0)
+			throw GardenError("Failed to encode WebP image. (path: " + path.generic_string() + ")");
+		outputStream.write((const char*)encoded, encodedSize);
+	}
+	else if (fileType == ImageFileType::Png)
+	{
+		png_image image;
+		memset(&image, 0, (sizeof image));
+		image.version = PNG_IMAGE_VERSION;
+		image.width = size.x;
+		image.height = size.y;
+		image.format = PNG_FORMAT_RGBA;
+
+		if (!png_image_write_to_file(&image, path.generic_string().c_str(), 0, data, 0, NULL))
+			throw GardenError("Failed to write PNG image. (path: " + path.generic_string() + ")");
+	}
+	else if (fileType == ImageFileType::Jpg)
+	{
+		if (!stbi_write_jpg(path.generic_string().c_str(), size.x, size.y, 4, data, quality * 100.0f))
+			throw GardenError("Failed to write JPG image. (path: " + path.generic_string() + ")");
+	}
+	else if (fileType == ImageFileType::Exr)
+	{
+		abort(); // TODO: implement: https://github.com/syoyo/tinyexr
+	}
+	else if (fileType == ImageFileType::Hdr)
+	{
+		if (!stbi_write_hdr(path.generic_string().c_str(), size.x, size.y, 4, (const float*)data))
+			throw GardenError("Failed to write HDR image. (path: " + path.generic_string() + ")");
+	}
+	else if (fileType == ImageFileType::Bmp)
+	{
+		if (!stbi_write_bmp(path.generic_string().c_str(), size.x, size.y, 4, data))
+			throw GardenError("Failed to write BMP image. (path: " + path.generic_string() + ")");
+	}
+	else if (fileType == ImageFileType::Tga)
+	{
+		if (!stbi_write_tga(path.generic_string().c_str(), size.x, size.y, 4, data))
+			throw GardenError("Failed to write TGA image. (path: " + path.generic_string() + ")");
+	}
+	else abort();
 }
 
 void ResourceSystem::destroyShared(const Ref<Image>& image)
