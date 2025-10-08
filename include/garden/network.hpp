@@ -55,8 +55,6 @@ public:
 	/**
 	 * @brief Reads 32-bit uint 2 component vector from the stream message and advances offset.
 	 * @return True if no more data to read, otherwise false.
-	 *
-	 * @param[in,out] streamMessage target stream message
 	 * @param[out] value pointer to the unsigned integer vector
 	 */
 	bool read(uint2& value) noexcept
@@ -75,8 +73,6 @@ public:
 	/**
 	 * @brief Reads 32-bit uint 3 component vector from the stream message and advances offset.
 	 * @return True if no more data to read, otherwise false.
-	 *
-	 * @param[in,out] streamMessage target stream message
 	 * @param[out] value pointer to the unsigned integer vector
 	 */
 	bool read(uint3& value) noexcept
@@ -95,8 +91,6 @@ public:
 	/**
 	 * @brief Reads 32-bit uint 4 component vector from the stream message and advances offset.
 	 * @return True if no more data to read, otherwise false.
-	 *
-	 * @param[in,out] streamMessage target stream message
 	 * @param[out] value pointer to the unsigned integer vector
 	 */
 	bool read(uint4& value) noexcept
@@ -119,6 +113,18 @@ public:
  */
 class StreamResponse : public nets::OutStreamMessage
 {
+	inline static psize fullSize(string_view type, psize messageSize) noexcept
+	{
+		return messageSize + type.size() + sizeof(uint8) * 2;
+	}
+	inline void writeHeader(string_view type, bool isSystem) noexcept
+	{
+		GARDEN_ASSERT(!type.empty());
+		GARDEN_ASSERT(type.size() <= UINT8_MAX);
+		auto result = write(isSystem);
+		result |= write(type, sizeof(uint8));
+		GARDEN_ASSERT_MSG(!result, "Stream message buffer is too small");
+	}
 public:
 	using nets::OutStreamMessage::write;
 
@@ -129,20 +135,26 @@ public:
 	 * @param[in,out] buffer message data buffer
 	 * @param bufferSize message buffer size in bytes
 	 * @param messageSize message size in bytes
-	 * @param lengthSize message header size in bytes
+	 * @param lengthSize message header length size in bytes
 	 * @param isSystem is this system message
 	 */
-	StreamResponse(string_view type, uint8_t* buffer, size_t bufferSize, 
-		size_t messageSize, uint8_t lengthSize, bool isSystem = false) noexcept
-		:
-		nets::OutStreamMessage(buffer, bufferSize, messageSize + type.size() + sizeof(uint8) * 2, lengthSize)
-	{
-		GARDEN_ASSERT(!type.empty());
-		GARDEN_ASSERT(type.size() <= UINT8_MAX);
-		auto result = write(isSystem);
-		result |= write(type, sizeof(uint8));
-		GARDEN_ASSERT_MSG(!result, "Stream message buffer is too small");
-	}
+	StreamResponse(string_view type, uint8* buffer, psize bufferSize, 
+		psize messageSize, uint8 lengthSize, bool isSystem = false) noexcept :
+		nets::OutStreamMessage(buffer, bufferSize, fullSize(type, messageSize), lengthSize)
+	{ writeHeader(type, isSystem); }
+	/**
+	 * @brief Creates a new stream response.
+	 *
+	 * @param type message type string
+	 * @param[in,out] buffer message data buffer
+	 * @param messageSize message size in bytes
+	 * @param lengthSize message header length size in bytes
+	 * @param isSystem is this system message
+	 */
+	StreamResponse(string_view type, vector<uint8>& buffer,
+		psize messageSize, uint8 lengthSize, bool isSystem = false) noexcept :
+		nets::OutStreamMessage(buffer, fullSize(type, messageSize), lengthSize)
+	{ writeHeader(type, isSystem); }
 	/**
 	 * @brief Creates a new empty stream response.
 	 */
@@ -151,8 +163,6 @@ public:
 	/**
 	 * @brief Writes 32-bit uint 2 component vector to the stream message and advances offset.
 	 * @return True if no more space to write data, otherwise false.
-	 *
-	 * @param[in,out] streamMessage target stream message
 	 * @param value unsigned integer vector to write
 	 */
 	bool write(uint2 value) noexcept
@@ -170,8 +180,6 @@ public:
 	/**
 	 * @brief Writes 32-bit uint 3 component vector to the stream message and advances offset.
 	 * @return True if no more space to write data, otherwise false.
-	 *
-	 * @param[in,out] streamMessage target stream message
 	 * @param value unsigned integer vector to write
 	 */
 	bool write(uint3 value) noexcept
@@ -189,8 +197,6 @@ public:
 	/**
 	 * @brief Writes 32-bit uint 4 component vector to the stream message and advances offset.
 	 * @return True if no more space to write data, otherwise false.
-	 *
-	 * @param[in,out] streamMessage target stream message
 	 * @param value unsigned integer vector to write
 	 */
 	bool write(uint4 value) noexcept
@@ -212,9 +218,13 @@ public:
  */
 struct ClientSession
 {
+	inline static constexpr string_view encMessageType = "e"; /**< Datagram encryption key message type. */
+
 	void* streamSession = nullptr;
 	uint8* messageBuffer = nullptr;
 	psize messageByteCount = 0;
+	uint32 datagramUID = 0;
+	uint32 datagramIndex = 0;
 	bool isAuthorized = false;
 
 	/**
@@ -226,23 +236,16 @@ struct ClientSession
 	 * @brief Sends stream data to the client session.
 	 * @return The operation @ref NetsResult code.
 	 *
-	 * @param[in] sendBuffer data send buffer
+	 * @param[in] data send data buffer
 	 * @param byteCount data byte count to send
 	 */
-	NetsResult send(const void* sendBuffer, size_t byteCount) noexcept;
+	NetsResult send(const void* data, size_t byteCount) noexcept;
 	/**
 	 * @brief Sends stream response to the client session.
 	 * @return The operation @ref NetsResult code.
 	 * @param[in] streamResponse stream response to send
 	 */
 	NetsResult send(const StreamResponse& streamResponse) noexcept;
-
-	/**
-	 * @brief Sends stream client datagram encrypion key.
-	 * @return The operation @ref NetsResult code.
-	 * @param messageType target stream message type string
-	 */
-	NetsResult sendEncKey(string_view messageType = "key") noexcept;
 };
 
 /**

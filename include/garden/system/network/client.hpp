@@ -35,19 +35,20 @@ class ClientNetworkSystem final : public System, public nets::IStreamClient, pub
 public:
 	/**
 	 * @brief On stream message receive from the server.
-	 * @details Client stops receive thread on this function false return result.
+	 * @details Client stops receive thread on this function non zero return result.
 	 * @warning This function is called asynchronously from the receive thread!
 	 *
 	 * @param[in] session client session instance
 	 * @param message received stream message
 	 */
-	using OnReceive = std::function<bool(StreamRequest)>;
+	using OnReceive = std::function<int(StreamRequest)>;
 private:
 	tsl::robin_map<string, INetworkable*, SvHash, SvEqual> networkables;
 	tsl::robin_map<string, OnReceive, SvHash, SvEqual> listeners;
 	uint8* messageBuffer = nullptr;
 	psize messageBufferSize = 0;
 	psize messageByteCount = 0;
+	uint32 datagramIndex = 0;
 	uint8 messageLengthSize = 0;
 	bool isClientAuthorized = false;
 
@@ -70,11 +71,27 @@ private:
 
 	void onConnectionResult(NetsResult result) final;
 	bool onStreamReceive(const uint8_t* receiveBuffer, size_t byteCount) final;
-	static int onMessageReceive(::StreamMessage streamMessage, void* argument);
+	bool onDatagramReceive(const uint8_t* receiveBuffer, size_t byteCount) final;
+	static int onMessageReceive(::StreamMessage message, void* argument);
 
 	friend class ecsm::Manager;
 public:
 	std::function<void(NetsResult)> onConnection = nullptr;
+
+	/**
+	 * @brief Adds network message listener to the map.
+	 * 
+	 * @param messageType target message type string
+	 * @param[in] onReceive on message receive function
+	 */
+	void addListener(string_view messageType, const OnReceive& onReceive)
+	{
+		GARDEN_ASSERT(!messageType.empty());
+		GARDEN_ASSERT(onReceive);
+
+		if (!listeners.emplace(messageType, onReceive).second)
+			throw GardenError("Client message listener already registered.");
+	}
 
 	/**
 	 * @brief Returns stream message length size in bytes.
@@ -84,6 +101,13 @@ public:
 	 * @brief Returns true if client is authorization on the server.
 	 */
 	bool isAuthorized() noexcept { return isClientAuthorized; }
+
+	/**
+	 * @brief Processes client datagram encrypion key.
+	 * @return The operation @ref NetsResult code.
+	 * @param message received stream message
+	 */
+	NetsResult processEncKey(StreamRequest message) noexcept;
 };
 
 } // namespace garden
