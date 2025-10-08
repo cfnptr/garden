@@ -30,40 +30,75 @@ void ClientNetworkSystem::onConnectionResult(NetsResult result)
 }
 bool ClientNetworkSystem::onStreamReceive(const uint8_t* receiveBuffer, size_t byteCount)
 {
-	return handleStreamMessage(receiveBuffer, byteCount, messageBuffer, messageBufferSize, 
-		&messageByteCount, messageLengthSize, onMessageReceive, this);
+	auto reason = handleStreamMessage(receiveBuffer, byteCount, messageBuffer, 
+		messageBufferSize, &messageByteCount, messageLengthSize, onMessageReceive, this);
+	if (reason != SUCCESS_NETS_RESULT)
+	{
+		GARDEN_LOG_ERROR("Failed to process server response. (reason: " + reasonToString(reason) + ")");
+		return false;
+	}
+	return true;
 }
-int ClientNetworkSystem::onMessageReceive(::StreamMessage streamMessage, void* argument)
+bool ClientNetworkSystem::onDatagramReceive(const uint8_t* receiveBuffer, size_t byteCount)
+{
+	SET_CPU_ZONE_SCOPED("On Datagram Receive");
+
+	if (byteCount < sizeof(uint32) + sizeof(uint8) * 3)
+	{
+		GARDEN_LOG_ERROR("Bad server datagram size. (byteCount: " + to_string(byteCount) + ")");
+		return false;
+	}
+
+	::StreamMessage message;
+	if (isSecure())
+	{
+		abort(); // TODO: decrypt received datagram.
+
+		if (byteCount < sizeof(uint32) + sizeof(uint8) * 3)
+		{
+			GARDEN_LOG_ERROR("Bad server datagram size. (byteCount: " + to_string(byteCount) + ")");
+			return false;
+		}
+	}
+
+	uint32 datagramIndex;
+	if (readStreamMessageUint32(&message, &datagramIndex))
+	{
+		GARDEN_LOG_ERROR("Bad server datagram data.");
+		return false;
+	}
+
+	if (datagramIndex <= this->datagramIndex)
+		return true; // TODO: handle uint32 overflow.
+	this->datagramIndex = datagramIndex;
+
+	return onMessageReceive(message, this);
+}
+int ClientNetworkSystem::onMessageReceive(::StreamMessage message, void* argument)
 {
 	SET_CPU_ZONE_SCOPED("On Response Receive");
 
 	bool isSystem;
-	if (readStreamMessageBool(&streamMessage, &isSystem))
+	if (readStreamMessageBool(&message, &isSystem))
 		return BAD_DATA_NETS_RESULT;
 
-	const char* typeString; psize typeLength;
-	if (readStreamMessageString(&streamMessage, &typeString, &typeLength, sizeof(uint8)))
+	const void* typeString; psize typeLength;
+	if (readStreamMessageData(&message, &typeString, &typeLength, sizeof(uint8)))
 		return BAD_DATA_NETS_RESULT;
-	string_view messageType(typeString, typeLength);
+	string_view messageType((const char*)typeString, typeLength);
 
 	auto clientSystem = (ClientNetworkSystem*)argument;
 	if (isSystem)
 	{
 		auto result = clientSystem->networkables.find(messageType);
 		if (result != clientSystem->networkables.end())
-		{
-			result->second->onResponse(streamMessage);
-			return SUCCESS_NETS_RESULT;
-		}
+			return result->second->onResponse(message);
 	}
 	else
 	{
 		auto result = clientSystem->listeners.find(messageType);
 		if (result != clientSystem->listeners.end())
-		{
-			result->second(streamMessage);
-			return SUCCESS_NETS_RESULT;
-		}
+			return result->second(message);
 	}
 	return BAD_DATA_NETS_RESULT;
 }
@@ -123,4 +158,14 @@ void ClientNetworkSystem::preInit()
 void ClientNetworkSystem::preDeinit()
 {
 	destroy();
+}
+
+NetsResult ClientNetworkSystem::processEncKey(StreamRequest message) noexcept
+{
+	// TODO: use datagram encryption key.
+
+	auto manager = Manager::Instance::get();
+	manager->lock();
+	manager->unlock();
+	return SUCCESS_NETS_RESULT;
 }

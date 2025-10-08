@@ -21,6 +21,7 @@
 #include "garden/network.hpp"
 #include "nets/stream-server.hpp"
 #include "ecsm.hpp"
+#include <random>
 
 namespace garden
 {
@@ -33,6 +34,8 @@ class ServerNetworkSystem;
  */
 class StreamServerHandle final : public nets::IStreamServer
 {
+	random_device randomDevice;
+	tsl::robin_map<uint32, ClientSession*> datagramMap;
 	ServerNetworkSystem* serverSystem = nullptr;
 	psize messageBufferSize = 0;
 	uint8 messageLengthSize = 0;
@@ -45,7 +48,9 @@ private:
 	void onSessionDestroy(nets::StreamSessionView streamSession, int reason) final;
 	int onStreamReceive(nets::StreamSessionView streamSession, 
 		const uint8_t* receiveBuffer, size_t byteCount) final;
-	static int onMessageReceive(::StreamMessage streamMessage, void* argument);
+	void onDatagramReceive(nets::SocketAddressView remoteAddress, 
+		const uint8_t* receiveBuffer, size_t byteCount) final;
+	static int onMessageReceive(::StreamMessage message, void* argument);
 };
 
 /***********************************************************************************************************************
@@ -89,17 +94,28 @@ public:
 	std::function<int(ClientSession*)> onSessionUpdate = nullptr;
 
 	/**
-	 * @brief Adds message listener to the map
+	 * @brief Adds network message listener to the map.
 	 * 
 	 * @param messageType target message type string
-	 * @param onReceive onReceive on message receive function
+	 * @param[in] onReceive on message receive function
 	 */
-	void addListener(string_view messageType, OnReceive onReceive);
+	void addListener(string_view messageType, const OnReceive& onReceive)
+	{
+		GARDEN_ASSERT(!messageType.empty());
+		GARDEN_ASSERT(onReceive);
+
+		if (!listeners.emplace(messageType, onReceive).second)
+			throw GardenError("Server message listener already registered.");
+	}
 
 	/**
 	 * @brief Returns true if server receive thread is running.
 	 */
 	bool isRunning() const noexcept { return streamServer && streamServer->isRunning(); }
+	/**
+	 * @brief Returns true if server use encrypted connection.
+	 */
+	bool isSecure() const noexcept { return streamServer && streamServer->isSecure(); }
 
 	/**
 	 * @brief Starts server listening and receiving.
@@ -122,6 +138,17 @@ public:
 	 * @brief Stops server listening and receiving.
 	 */
 	void stop();
+
+	/**
+	 * @brief Sends stream client datagram encrypion key.
+	 * @return The operation @ref NetsResult code.
+	 *
+	 * @param streamSession target stream session instance
+	 * @param messageType stream message type string
+	 * @param lengthSize message header length size in bytes
+	 */
+	NetsResult sendEncKey(nets::StreamSessionView streamSession, 
+		string_view messageType = ClientSession::encMessageType, uint8 lengthSize = sizeof(uint8)) noexcept;
 };
 
 } // namespace garden

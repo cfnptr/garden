@@ -15,9 +15,45 @@
 #include "garden/system/steam-api.hpp"
 
 #if GARDEN_STEAMWORKS_SDK
+#include "garden/system/log.hpp"
 #include "steam/steam_api.h"
 
 using namespace garden;
+
+namespace garden
+{
+
+class SteamEventHandler final
+{
+	SteamApiSystem* steamApiSystem = nullptr;
+	
+	STEAM_CALLBACK(SteamEventHandler, GetTicketForWebApiResponse, GetTicketForWebApiResponse_t);
+public:
+	SteamEventHandler(SteamApiSystem* steamApiSystem) noexcept : steamApiSystem(steamApiSystem) { }
+};
+
+}; // namespace garden
+
+void SteamEventHandler::GetTicketForWebApiResponse(GetTicketForWebApiResponse_t* callback)
+{
+	if (steamApiSystem->authTicket != callback->m_hAuthTicket)
+	{
+		if (callback->m_eResult == k_EResultOK)
+			SteamUser()->CancelAuthTicket(callback->m_hAuthTicket);
+		GARDEN_LOG_WARN("Canceled unused Steam web API auth ticket.");
+		return;
+	}
+
+	if (callback->m_eResult != k_EResultOK)
+	{
+		GARDEN_LOG_ERROR("Failed to get Steam web API auth ticket. (result: " + to_string(callback->m_eResult));
+		steamApiSystem->onAuthTicket(nullptr, 0);
+		return;
+	}
+
+	steamApiSystem->onAuthTicket(callback->m_rgubTicket, callback->m_cubTicket);
+	steamApiSystem->onAuthTicket = nullptr;
+}
 
 //**********************************************************************************************************************
 SteamApiSystem::SteamApiSystem(bool setSingleton) : Singleton(setSingleton)
@@ -27,6 +63,9 @@ SteamApiSystem::SteamApiSystem(bool setSingleton) : Singleton(setSingleton)
 	if (!SteamAPI_Init())
 		throw GardenError("Failed to initialize Steam API.");
 
+	authTicket = k_HAuthTicketInvalid;
+	eventHandler = new SteamEventHandler(this);
+
 	ECSM_SUBSCRIBE_TO_EVENT("Update", SteamApiSystem::update);
 }
 SteamApiSystem::~SteamApiSystem()
@@ -34,6 +73,7 @@ SteamApiSystem::~SteamApiSystem()
 	if (Manager::Instance::get()->isRunning)
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Update", SteamApiSystem::update);
 
+	delete (SteamEventHandler*)eventHandler;
 	SteamAPI_Shutdown();
 	unsetSingleton();
 }
@@ -41,5 +81,19 @@ SteamApiSystem::~SteamApiSystem()
 void SteamApiSystem::update()
 {
 	SteamAPI_RunCallbacks();
+}
+
+bool SteamApiSystem::getAuthTicketWebAPI(const OnAuthTicket& onAuthTicket, const char* identity)
+{
+	this->onAuthTicket = onAuthTicket;
+	authTicket = SteamUser()->GetAuthTicketForWebApi(identity);
+	return authTicket != k_HAuthTicketInvalid;
+}
+void SteamApiSystem::cancelAuthTicket()
+{
+	if (authTicket == k_HAuthTicketInvalid)
+		return;
+	SteamUser()->CancelAuthTicket(authTicket);
+	authTicket = k_HAuthTicketInvalid;
 }
 #endif

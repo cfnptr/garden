@@ -41,7 +41,7 @@ using namespace ecsm;
 class ISerializer
 {
 public:
-	random_device randomDevice = {};
+	random_device randomDevice;
 
 	virtual ~ISerializer() { }
 

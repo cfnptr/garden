@@ -23,20 +23,13 @@ string ClientSession::getAddress() const
 	return session.getAddress();
 }
 
-NetsResult ClientSession::send(const void* sendBuffer, size_t byteCount) noexcept
+NetsResult ClientSession::send(const void* data, size_t byteCount) noexcept
 {
 	nets::StreamSessionView session((StreamSession_T*)streamSession);
-	return session.send(sendBuffer, byteCount);
+	return session.send(data, byteCount);
 }
 NetsResult ClientSession::send(const StreamResponse& streamResponse) noexcept
 {
 	nets::StreamSessionView session((StreamSession_T*)streamSession);
 	return session.send(streamResponse);
-}
-
-NetsResult ClientSession::sendEncKey(string_view messageType) noexcept
-{
-	GARDEN_ASSERT(!messageType.empty());
-	return 1;
-	// TODO:
 }
