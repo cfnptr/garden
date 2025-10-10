@@ -246,6 +246,32 @@ struct ClientSession
 	 * @param[in] streamResponse stream response to send
 	 */
 	NetsResult send(const StreamResponse& streamResponse) noexcept;
+
+	/**
+	 * @brief Sends stream client datagram encrypion key.
+	 * @return The operation @ref NetsResult code.
+	 *
+	 * @param messageType stream message type string
+	 * @param lengthSize message header length size in bytes
+	 */
+	NetsResult sendEncKey(string_view messageType = 
+		ClientSession::encMessageType, uint8 lengthSize = sizeof(uint8)) noexcept;
+
+	/**
+	 * @brief Shutdowns full-duplex socket connection.
+	 * @return The operation @ref NetsResult code.
+	 */
+	NetsResult shutdownFull() noexcept;
+	/**
+	 * @brief Shutdowns receive part of the full-duplex socket connection.
+	 * @return The operation @ref NetsResult code.
+	 */
+	NetsResult shutdownReceive() noexcept;
+	/**
+	 * @brief Shutdowns send part of the full-duplex socket connection.
+	 * @return The operation @ref NetsResult code.
+	 */
+	NetsResult shutdownSend() noexcept;
 };
 
 /**

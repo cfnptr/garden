@@ -103,6 +103,11 @@ public:
 	bool isAuthorized() noexcept { return isClientAuthorized; }
 
 	/**
+	 * @brief Stops stream client receive thread. (MT-Safe)
+	 * @param reason stream client stop reason.
+	 */
+	void stop(int reason) noexcept;
+	/**
 	 * @brief Processes client datagram encrypion key.
 	 * @return The operation @ref NetsResult code.
 	 * @param message received stream message

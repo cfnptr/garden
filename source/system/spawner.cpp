@@ -285,7 +285,7 @@ void SpawnerSystem::serialize(ISerializer& serializer, const View<Component> com
 		auto entity = LinkSystem::Instance::get()->findEntity(spawnerView->prefab);
 		if (entity && !Manager::Instance::get()->has<DoNotSerializeComponent>(entity))
 		{
-			spawnerView->prefab.toBase64(valueStringCache);
+			spawnerView->prefab.toBase64URL(valueStringCache);
 			serializer.write("prefab", valueStringCache);
 		}
 	}
@@ -311,7 +311,7 @@ void SpawnerSystem::deserialize(IDeserializer& deserializer, View<Component> com
 	if (deserializer.read("path", valueStringCache))
 		spawnerView->path = valueStringCache;
 	if (deserializer.read("prefab", valueStringCache))
-		spawnerView->prefab.fromBase64(valueStringCache);
+		spawnerView->prefab.fromBase64URL(valueStringCache);
 
 	deserializer.read("maxCount", spawnerView->maxCount);
 	deserializer.read("delay", spawnerView->delay);

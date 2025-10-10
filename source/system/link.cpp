@@ -136,7 +136,7 @@ void LinkSystem::serialize(ISerializer& serializer, const View<Component> compon
 
 	if (linkView->uuid)
 	{
-		linkView->uuid.toBase64(uuidStringCache);
+		linkView->uuid.toBase64URL(uuidStringCache);
 		serializer.write("uuid", uuidStringCache);
 	}
 
@@ -149,7 +149,7 @@ void LinkSystem::deserialize(IDeserializer& deserializer, View<Component> compon
 
 	if (deserializer.read("uuid", uuidStringCache))
 	{
-		if (!linkView->uuid.fromBase64(uuidStringCache))
+		if (!linkView->uuid.fromBase64URL(uuidStringCache))
 			GARDEN_LOG_ERROR("Deserialized entity with invalid link uuid. (uuid: " + uuidStringCache + ")");
 
 		auto result = uuidMap.emplace(linkView->uuid, linkView->entity);

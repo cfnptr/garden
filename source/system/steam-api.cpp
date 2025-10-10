@@ -16,6 +16,7 @@
 
 #if GARDEN_STEAMWORKS_SDK
 #include "garden/system/log.hpp"
+#include "garden/profiler.hpp"
 #include "steam/steam_api.h"
 
 using namespace garden;
@@ -51,6 +52,7 @@ void SteamEventHandler::GetTicketForWebApiResponse(GetTicketForWebApiResponse_t*
 		return;
 	}
 
+	GARDEN_LOG_DEBUG("Got Steam web API auth ticket.");
 	steamApiSystem->onAuthTicket(callback->m_rgubTicket, callback->m_cubTicket);
 	steamApiSystem->onAuthTicket = nullptr;
 }
@@ -80,6 +82,7 @@ SteamApiSystem::~SteamApiSystem()
 
 void SteamApiSystem::update()
 {
+	SET_CPU_ZONE_SCOPED("Steam API Update");
 	SteamAPI_RunCallbacks();
 }
 
@@ -87,13 +90,18 @@ bool SteamApiSystem::getAuthTicketWebAPI(const OnAuthTicket& onAuthTicket, const
 {
 	this->onAuthTicket = onAuthTicket;
 	authTicket = SteamUser()->GetAuthTicketForWebApi(identity);
-	return authTicket != k_HAuthTicketInvalid;
+	if (authTicket != k_HAuthTicketInvalid)
+		return true;
+	GARDEN_LOG_ERROR("Failed to request Steam web API auth ticket.");
+	return false;
 }
 void SteamApiSystem::cancelAuthTicket()
 {
 	if (authTicket == k_HAuthTicketInvalid)
 		return;
+
 	SteamUser()->CancelAuthTicket(authTicket);
 	authTicket = k_HAuthTicketInvalid;
+	GARDEN_LOG_DEBUG("Canceled Steam web API auth ticket.");
 }
 #endif

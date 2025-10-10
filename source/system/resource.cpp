@@ -1470,7 +1470,7 @@ Ref<DescriptorSet> ResourceSystem::createSharedDS(const Hash128& hash,
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto descriptorSet = graphicsSystem->createDescriptorSet(graphicsPipeline, std::move(uniforms), {}, index);
-	SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.shared." + hash.toBase64());
+	SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.shared." + hash.toBase64URL());
 
 	auto sharedDescriptorSet = Ref<DescriptorSet>(descriptorSet);
 	auto result = sharedDescriptorSets.emplace(hash, sharedDescriptorSet);
@@ -1490,7 +1490,7 @@ Ref<DescriptorSet> ResourceSystem::createSharedDS(const Hash128& hash,
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto descriptorSet = graphicsSystem->createDescriptorSet(computePipeline, std::move(uniforms), {}, index);
-	SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.shared." + hash.toBase64());
+	SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.shared." + hash.toBase64URL());
 
 	auto sharedDescriptorSet = Ref<DescriptorSet>(descriptorSet);
 	auto result = sharedDescriptorSets.emplace(hash, sharedDescriptorSet);
