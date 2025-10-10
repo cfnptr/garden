@@ -40,10 +40,14 @@ class StreamServerHandle final : public nets::IStreamServer
 	psize messageBufferSize = 0;
 	uint8 messageLengthSize = 0;
 public:
+	using nets::IStreamServer::closeSession;
+
 	StreamServerHandle(ServerNetworkSystem* serverSystem, SocketFamily socketFamily, const char* service, 
 		size_t sessionBufferSize, size_t connectionQueueSize, size_t receiveBufferSize, 
 		size_t messageBufferSize, double timeoutTime, nets::SslContextView sslContext);
+	void closeSession(ClientSession* clientSession, int reason);
 private:
+	
 	bool onSessionCreate(nets::StreamSessionView streamSession, void*& handle) final;
 	void onSessionDestroy(nets::StreamSessionView streamSession, int reason) final;
 	int onStreamReceive(nets::StreamSessionView streamSession, 
@@ -138,17 +142,6 @@ public:
 	 * @brief Stops server listening and receiving.
 	 */
 	void stop();
-
-	/**
-	 * @brief Sends stream client datagram encrypion key.
-	 * @return The operation @ref NetsResult code.
-	 *
-	 * @param streamSession target stream session instance
-	 * @param messageType stream message type string
-	 * @param lengthSize message header length size in bytes
-	 */
-	NetsResult sendEncKey(nets::StreamSessionView streamSession, 
-		string_view messageType = ClientSession::encMessageType, uint8 lengthSize = sizeof(uint8)) noexcept;
 };
 
 } // namespace garden

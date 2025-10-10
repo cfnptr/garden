@@ -37,6 +37,11 @@ StreamServerHandle::StreamServerHandle(ServerNetworkSystem* serverSystem, Socket
 	GARDEN_ASSERT(this->messageBufferSize <= receiveBufferSize);
 }
 
+void StreamServerHandle::closeSession(ClientSession* clientSession, int reason)
+{
+	nets::IStreamServer::closeSession((StreamSession_T*)clientSession->streamSession, reason);
+}
+
 bool StreamServerHandle::onSessionCreate(nets::StreamSessionView streamSession, void*& handle)
 {
 	SET_CPU_ZONE_SCOPED("On Server Session Create");
@@ -47,11 +52,11 @@ bool StreamServerHandle::onSessionCreate(nets::StreamSessionView streamSession, 
 	if (serverSystem->onSessionCreate)
 	{
 		clientSession = nullptr;
-		auto reason = serverSystem->onSessionCreate(streamSession, clientSession);
-		if (reason != SUCCESS_NETS_RESULT)
+		auto result = serverSystem->onSessionCreate(streamSession, clientSession);
+		if (result != SUCCESS_NETS_RESULT)
 		{
 			GARDEN_LOG_INFO("Rejected client session. (address: " + 
-				streamSession.getAddress() + ", reason: " + reasonToString(reason) + ")");
+				streamSession.getAddress() + ", reason: " + reasonToString(result) + ")");
 			return false;
 		}
 	}
@@ -115,8 +120,8 @@ void StreamServerHandle::onDatagramReceive(nets::SocketAddressView remoteAddress
 		return;
 
 	auto datagramUID = leToHost32(*((const uint32*)receiveBuffer));
-	auto result = datagramMap.find(datagramUID);
-	if (result == datagramMap.end())
+	auto searchResult = datagramMap.find(datagramUID);
+	if (searchResult == datagramMap.end())
 		return;
 
 	::StreamMessage message;
@@ -133,18 +138,25 @@ void StreamServerHandle::onDatagramReceive(nets::SocketAddressView remoteAddress
 		message.end = message.iter + (byteCount -  sizeof(uint32));
 	}
 
+	auto clientSession = searchResult->second;
+	if (!clientSession->isAuthorized)
+	{
+		closeSession(clientSession, BAD_DATA_NETS_RESULT);
+		return;
+	}
+
 	uint32 datagramIndex;
 	if (readStreamMessageUint32(&message, &datagramIndex))
 		return;
 
-	std::pair<ServerNetworkSystem*, ClientSession*> pair = { serverSystem, result->second };
+	std::pair<ServerNetworkSystem*, ClientSession*> pair = { serverSystem, clientSession };
 	if (datagramIndex <= pair.second->datagramIndex)
 		return; // TODO: handle uint32 overflow.
 	pair.second->datagramIndex = datagramIndex;
 
-	auto reason = onMessageReceive(message, &pair);
-	if (reason != SUCCESS_NETS_RESULT)
-		closeSession((StreamSession_T*)result->second->streamSession, reason);
+	auto result = onMessageReceive(message, &pair);
+	if (result != SUCCESS_NETS_RESULT)
+		closeSession(clientSession, result);
 }
 int StreamServerHandle::onMessageReceive(::StreamMessage message, void* argument)
 {
@@ -157,20 +169,21 @@ int StreamServerHandle::onMessageReceive(::StreamMessage message, void* argument
 	const void* typeString; psize typeLength;
 	if (readStreamMessageData(&message, &typeString, &typeLength, sizeof(uint8)))
 		return BAD_DATA_NETS_RESULT;
-	string_view messageType((const char*)typeString, typeLength);
 
+	string_view messageType((const char*)typeString, typeLength);
 	auto pair = *((std::pair<ServerNetworkSystem*, ClientSession*>*)argument);
+
 	if (isSystem)
 	{
-		auto result = pair.first->networkables.find(messageType);
-		if (result != pair.first->networkables.end())
-			return result->second->onRequest(pair.second, message);
+		auto searchResult = pair.first->networkables.find(messageType);
+		if (searchResult != pair.first->networkables.end())
+			return searchResult->second->onRequest(pair.second, message);
 	}
 	else
 	{
-		auto result = pair.first->listeners.find(messageType);
-		if (result != pair.first->listeners.end())
-			return result->second(pair.second, message);
+		auto searchResult = pair.first->listeners.find(messageType);
+		if (searchResult != pair.first->listeners.end())
+			return searchResult->second(pair.second, message);
 	}
 	return BAD_DATA_NETS_RESULT;
 }
@@ -245,9 +258,9 @@ static void updateSessions(StreamServerHandle* streamServer, std::function<int(C
 				auto streamSession = sessions[i];
 				if (!streamSession.getSocket().getInstance())
 					continue;
-				auto reason = streamServer->updateSession(streamSession, currentTime);
-				if (reason != SUCCESS_NETS_RESULT)
-					streamServer->closeSession(streamSession, reason);
+				auto result = streamServer->updateSession(streamSession, currentTime);
+				if (result != SUCCESS_NETS_RESULT)
+					streamServer->closeSession(streamSession, result);
 			}
 			if (onSessionUpdate)
 			{
@@ -256,9 +269,9 @@ static void updateSessions(StreamServerHandle* streamServer, std::function<int(C
 					auto streamSession = sessions[i];
 					if (!streamSession.getSocket().getInstance())
 						continue;
-					auto reason = onSessionUpdate((ClientSession*)streamSession.getHandle());
-					if (reason != SUCCESS_NETS_RESULT)
-						streamServer->closeSession(streamSession, reason);
+					auto result = onSessionUpdate((ClientSession*)streamSession.getHandle());
+					if (result != SUCCESS_NETS_RESULT)
+						streamServer->closeSession(streamSession, result);
 				}
 			}
 		},
@@ -273,9 +286,9 @@ static void updateSessions(StreamServerHandle* streamServer, std::function<int(C
 			auto streamSession = sessions[i];
 			if (!streamSession.getSocket().getInstance())
 				continue;
-			auto reason = streamServer->updateSession(streamSession, currentTime);
-			if (reason != SUCCESS_NETS_RESULT)
-				streamServer->closeSession(streamSession, reason);
+			auto result = streamServer->updateSession(streamSession, currentTime);
+			if (result != SUCCESS_NETS_RESULT)
+				streamServer->closeSession(streamSession, result);
 		}
 		if (onSessionUpdate)
 		{
@@ -284,9 +297,9 @@ static void updateSessions(StreamServerHandle* streamServer, std::function<int(C
 				auto streamSession = sessions[i];
 				if (!streamSession.getSocket().getInstance())
 					continue;
-				auto reason = onSessionUpdate((ClientSession*)streamSession.getHandle());
-				if (reason != SUCCESS_NETS_RESULT)
-					streamServer->closeSession(streamSession, reason);
+				auto result = onSessionUpdate((ClientSession*)streamSession.getHandle());
+				if (result != SUCCESS_NETS_RESULT)
+					streamServer->closeSession(streamSession, result);
 			}
 		}
 	}
@@ -304,6 +317,7 @@ void ServerNetworkSystem::update()
 	if (!streamServer->isRunning())
 	{
 		stop();
+		Manager::Instance::get()->isRunning = false;
 		return;
 	}
 
@@ -343,13 +357,4 @@ void ServerNetworkSystem::stop()
 	streamServer->destroy();
 	delete streamServer;
 	streamServer = nullptr;
-}
-
-NetsResult ServerNetworkSystem::sendEncKey(nets::StreamSessionView streamSession, 
-	string_view messageType, uint8 lengthSize) noexcept
-{
-	GARDEN_ASSERT(!messageType.empty());
-	auto messageSize = 16; // TODO: generate and write encryption key.
-	vector<uint8> sendBuffer; StreamResponse message(messageType, sendBuffer, messageSize, lengthSize);
-	return streamSession.send(message);
 }

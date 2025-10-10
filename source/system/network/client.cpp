@@ -30,11 +30,11 @@ void ClientNetworkSystem::onConnectionResult(NetsResult result)
 }
 bool ClientNetworkSystem::onStreamReceive(const uint8_t* receiveBuffer, size_t byteCount)
 {
-	auto reason = handleStreamMessage(receiveBuffer, byteCount, messageBuffer, 
+	auto result = handleStreamMessage(receiveBuffer, byteCount, messageBuffer, 
 		messageBufferSize, &messageByteCount, messageLengthSize, onMessageReceive, this);
-	if (reason != SUCCESS_NETS_RESULT)
+	if (result != SUCCESS_NETS_RESULT)
 	{
-		GARDEN_LOG_ERROR("Failed to process server response. (reason: " + reasonToString(reason) + ")");
+		GARDEN_LOG_ERROR("Failed to process server response. (reason: " + reasonToString(result) + ")");
 		return false;
 	}
 	return true;
@@ -85,20 +85,21 @@ int ClientNetworkSystem::onMessageReceive(::StreamMessage message, void* argumen
 	const void* typeString; psize typeLength;
 	if (readStreamMessageData(&message, &typeString, &typeLength, sizeof(uint8)))
 		return BAD_DATA_NETS_RESULT;
-	string_view messageType((const char*)typeString, typeLength);
 
+	string_view messageType((const char*)typeString, typeLength);
 	auto clientSystem = (ClientNetworkSystem*)argument;
+
 	if (isSystem)
 	{
-		auto result = clientSystem->networkables.find(messageType);
-		if (result != clientSystem->networkables.end())
-			return result->second->onResponse(message);
+		auto searchResult = clientSystem->networkables.find(messageType);
+		if (searchResult != clientSystem->networkables.end())
+			return searchResult->second->onResponse(message);
 	}
 	else
 	{
-		auto result = clientSystem->listeners.find(messageType);
-		if (result != clientSystem->listeners.end())
-			return result->second(message);
+		auto searchResult = clientSystem->listeners.find(messageType);
+		if (searchResult != clientSystem->listeners.end())
+			return searchResult->second(message);
 	}
 	return BAD_DATA_NETS_RESULT;
 }
@@ -160,6 +161,11 @@ void ClientNetworkSystem::preDeinit()
 	destroy();
 }
 
+void ClientNetworkSystem::stop(int reason) noexcept
+{
+	nets::IStreamClient::stop();
+	GARDEN_LOG_ERROR("Stopped network client. (reason: " + reasonToString(reason) + ")");
+}
 NetsResult ClientNetworkSystem::processEncKey(StreamRequest message) noexcept
 {
 	// TODO: use datagram encryption key.

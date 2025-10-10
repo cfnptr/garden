@@ -69,7 +69,7 @@ static void renderUuidList(const string& searchString, bool searchCaseSensitive)
 
 	for (const auto& pair : uuidMap)
 	{
-		auto uuid = pair.first.toBase64();
+		auto uuid = pair.first.toBase64URL();
 
 		if (!searchString.empty())
 		{
@@ -203,7 +203,7 @@ void LinkEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	if ((linkView->getUUID() || !linkView->getTag().empty()) && ImGui::BeginItemTooltip())
 	{
 		if (linkView->getUUID())
-			ImGui::Text("UUID: %s", linkView->getUUID().toBase64().c_str());
+			ImGui::Text("UUID: %s", linkView->getUUID().toBase64URL().c_str());
 		if (!linkView->getTag().empty())
 			ImGui::Text("Tag: %s", linkView->getTag().c_str());
 		ImGui::EndTooltip();
@@ -216,11 +216,11 @@ void LinkEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	if (ImGui::InputText("Tag", &tag))
 		linkView->setTag(tag);
 
-	auto uuid = linkView->getUUID() ? linkView->getUUID().toBase64() : "";
+	auto uuid = linkView->getUUID() ? linkView->getUUID().toBase64URL() : "";
 	if (ImGui::InputText("UUID", &uuid))
 	{
 		auto hash = linkView->getUUID();
-		if (hash.fromBase64(uuid))
+		if (hash.fromBase64URL(uuid))
 			linkView->trySetUUID(hash);
 	}
 	if (ImGui::BeginPopupContextItem("uuid"))

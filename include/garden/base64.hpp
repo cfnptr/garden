@@ -3,7 +3,7 @@
 /**
  * \file
  * <PRE>
- * High performance base64 encoder / decoder
+ * High performance base64 url encoder / decoder
  * Version 1.3 -- 17-Mar-2006
  *
  * Copyright &copy; 2005-2025, Nick Galbreath -- nickg [at] modp [dot] com
@@ -22,7 +22,7 @@
 extern "C" {
 #endif
 /**
- * Encode a raw binary string into base 64.
+ * Encode a raw binary string into base 64 url.
  * src contains the bytes
  * len contains the number of bytes in the src
  * dest should be allocated by the caller to contain
@@ -139,12 +139,12 @@ size_t modp_b64_decode(
 #include <string>
 #include <string_view>
 
-static void encodeBase64(std::string& dest, const void* src, size_t len)
+static void encodeBase64URL(std::string& dest, const void* src, size_t len)
 {
     dest.resize(modp_b64_encode_data_len(len));
     modp_b64_encode_data(dest.data(), (const char*)src, len);
 }
-static bool decodeBase64(void* dest, std::string_view src, ModpDecodePolicy policy)
+static bool decodeBase64URL(void* dest, std::string_view src, ModpDecodePolicy policy)
 {
     return modp_b64_decode((char*)dest, src.data(), 
         src.length(), ModpDecodePolicy::kForgiving) != MODP_B64_ERROR;

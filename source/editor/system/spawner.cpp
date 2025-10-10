@@ -78,7 +78,7 @@ static void renderSpawners(const string& searchString, bool searchCaseSensitive)
 		if (!searchString.empty())
 		{
 			if (!find(spawner.path.generic_string(), searchString, *entity, searchCaseSensitive) &&
-				!find(spawner.prefab.toBase64(), searchString, *entity, searchCaseSensitive))
+				!find(spawner.prefab.toBase64URL(), searchString, *entity, searchCaseSensitive))
 			{
 				continue;
 			}
@@ -109,7 +109,7 @@ static void renderSpawners(const string& searchString, bool searchCaseSensitive)
 					name += ", ";
 			}
 			if (spawner.prefab)
-				name += spawner.prefab.toBase64();
+				name += spawner.prefab.toBase64URL();
 			name += ")";
 		}
 		if (ImGui::TreeNodeEx(name.c_str(), flags))
@@ -146,7 +146,7 @@ static void renderSharedPrefabs(const string& searchString, bool searchCaseSensi
 		if (!searchString.empty())
 		{
 			if (!find(pair.first, searchString, searchCaseSensitive) &&
-				!find(pair.second.toBase64(), searchString, searchCaseSensitive))
+				!find(pair.second.toBase64URL(), searchString, searchCaseSensitive))
 			{
 				continue;
 			}
@@ -158,7 +158,7 @@ static void renderSharedPrefabs(const string& searchString, bool searchCaseSensi
 		if (editorSystem->selectedEntity == entity)
 			flags |= ImGuiTreeNodeFlags_Selected;
 
-		auto name = pair.first + " (" + pair.second.toBase64() + ")";
+		auto name = pair.first + " (" + pair.second.toBase64URL() + ")";
 		if (!entity)
 			name += " [Destroyed]";
 
@@ -227,7 +227,7 @@ static void renderSpawnedEntities(const vector<Hash128>& spawnedEntities)
 		if (editorSystem->selectedEntity == entity)
 			flags |= ImGuiTreeNodeFlags_Selected;
 
-		auto name = uuid.toBase64();
+		auto name = uuid.toBase64URL();
 		if (!entity)
 			name += " [Destroyed]";
 
@@ -258,7 +258,7 @@ void SpawnerEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 		auto spawnerView = SpawnerSystem::Instance::get()->getComponent(entity);
 		ImGui::Text("Active: %s, Path: %s, Prefab: %s",
 			spawnerView->isActive ? "true" : "false", spawnerView->path.generic_string().c_str(),
-			spawnerView->prefab ? spawnerView->prefab.toBase64().c_str() : "");
+			spawnerView->prefab ? spawnerView->prefab.toBase64URL().c_str() : "");
 		ImGui::EndTooltip();
 	}
 
@@ -273,11 +273,11 @@ void SpawnerEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	EditorRenderSystem::Instance::get()->drawFileSelector("Prefab", spawnerView->path,
 		spawnerView->getEntity(), typeid(SpawnerComponent), "scenes", extensions);
 	
-	auto uuid = spawnerView->prefab ? spawnerView->prefab.toBase64() : "";
+	auto uuid = spawnerView->prefab ? spawnerView->prefab.toBase64URL() : "";
 	if (ImGui::InputText("UUID", &uuid))
 	{
 		auto prefab = spawnerView->prefab;
-		if (prefab.fromBase64(uuid))
+		if (prefab.fromBase64URL(uuid))
 			spawnerView->prefab = prefab;
 	}
 	if (ImGui::BeginPopupContextItem("uuid"))

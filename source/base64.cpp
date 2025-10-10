@@ -47,7 +47,7 @@
 #include "garden/defines.hpp"
 #include <stdint.h>
 
-#define CHARPAD '='
+#define CHARPAD '.'
 
 static constexpr char e0[256] = {
  'A',  'A',  'A',  'A',  'B',  'B',  'B',  'B',  'C',  'C',

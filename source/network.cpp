@@ -33,3 +33,31 @@ NetsResult ClientSession::send(const StreamResponse& streamResponse) noexcept
 	nets::StreamSessionView session((StreamSession_T*)streamSession);
 	return session.send(streamResponse);
 }
+
+NetsResult ClientSession::sendEncKey(string_view messageType, uint8 lengthSize) noexcept
+{
+	GARDEN_ASSERT(!messageType.empty());
+	nets::StreamSessionView session((StreamSession_T*)streamSession);
+	if (session.getSocket().getInstance() && !session.getSocket().getSslContext().getInstance())
+		return SUCCESS_NETS_RESULT; // Server connection is not secure.
+
+	vector<uint8> sendBuffer; auto messageSize = 16; // TODO: generate and write encryption key.
+	StreamResponse message(messageType, sendBuffer, messageSize, lengthSize);
+	return session.send(message);
+}
+
+NetsResult ClientSession::shutdownFull() noexcept
+{
+	nets::StreamSessionView session((StreamSession_T*)streamSession);
+	return session.shutdown(RECEIVE_SEND_SOCKET_SHUTDOWN);
+}
+NetsResult ClientSession::shutdownReceive() noexcept
+{
+	nets::StreamSessionView session((StreamSession_T*)streamSession);
+	return session.shutdown(RECEIVE_ONLY_SOCKET_SHUTDOWN);
+}
+NetsResult ClientSession::shutdownSend() noexcept
+{
+	nets::StreamSessionView session((StreamSession_T*)streamSession);
+	return session.shutdown(SEND_ONLY_SOCKET_SHUTDOWN);
+}

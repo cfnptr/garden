@@ -1433,7 +1433,7 @@ void PhysicsSystem::serialize(ISerializer& serializer, const View<Component> com
 	GARDEN_ASSERT_MSG(emplaceResult.second, "Detected several entities with the same UID");
 	#endif
 
-	encodeBase64(valueStringCache, &rigidbodyView->uid, sizeof(uint64));
+	encodeBase64URL(valueStringCache, &rigidbodyView->uid, sizeof(uint64));
 	valueStringCache.resize(valueStringCache.length() - 1);
 	serializer.write("uid", valueStringCache);
 	
@@ -1511,7 +1511,7 @@ void PhysicsSystem::serialize(ISerializer& serializer, const View<Component> com
 			}
 
 			auto constraintView = getComponent(constraint.otherBody);
-			encodeBase64(valueStringCache, &constraintView->uid, sizeof(uint64));
+			encodeBase64URL(valueStringCache, &constraintView->uid, sizeof(uint64));
 			valueStringCache.resize(valueStringCache.length() - 1);
 			serializer.write("uid", valueStringCache);
 
@@ -1569,7 +1569,7 @@ void PhysicsSystem::deserialize(IDeserializer& deserializer, View<Component> com
 	if (deserializer.read("uid", valueStringCache) &&
 		valueStringCache.size() + 1 == modp_b64_encode_data_len(sizeof(uint64)))
 	{
-		if (decodeBase64(&rigidbodyView->uid, valueStringCache, ModpDecodePolicy::kForgiving))
+		if (decodeBase64URL(&rigidbodyView->uid, valueStringCache, ModpDecodePolicy::kForgiving))
 		{
 			auto result = deserializedEntities.emplace(rigidbodyView->uid, rigidbodyView->entity);
 			if (!result.second)
@@ -1664,7 +1664,7 @@ void PhysicsSystem::deserialize(IDeserializer& deserializer, View<Component> com
 					deserializedConstraints.push_back(entityConstraint);
 				}
 				else if (valueStringCache.size() + 1 == modp_b64_encode_data_len(sizeof(uint64)) && 
-					decodeBase64(&entityConstraint.otherUID, valueStringCache, ModpDecodePolicy::kForgiving))
+					decodeBase64URL(&entityConstraint.otherUID, valueStringCache, ModpDecodePolicy::kForgiving))
 				{
 					if (rigidbodyView->uid == entityConstraint.otherUID)
 					{
@@ -1688,7 +1688,7 @@ void PhysicsSystem::postDeserialize(IDeserializer& deserializer)
 		auto otherConstraint = deserializedEntities.find(thisConstraint.otherUID);
 		if (otherConstraint == deserializedEntities.end())
 		{
-			encodeBase64(valueStringCache, &thisConstraint.otherUID, sizeof(uint64));
+			encodeBase64URL(valueStringCache, &thisConstraint.otherUID, sizeof(uint64));
 			valueStringCache.resize(valueStringCache.length() - 1);
 			GARDEN_LOG_ERROR("Deserialized entity constraint does not exist. ("
 				"constraintUID: " + valueStringCache + ")");

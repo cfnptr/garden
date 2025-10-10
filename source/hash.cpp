@@ -56,23 +56,23 @@ Hash128::Hash128(string_view base64)
 		throw GardenError("Invalid Hash128 base64 string");
 }
 	
-string Hash128::toBase64() const noexcept
+string Hash128::toBase64URL() const noexcept
 {
 	string base64;
-	encodeBase64(base64, this, sizeof(Hash128));
+	encodeBase64URL(base64, this, sizeof(Hash128));
 	base64.resize(base64.length() - 2);
 	return base64;
 }
-void Hash128::toBase64(string& base64) const noexcept
+void Hash128::toBase64URL(string& base64) const noexcept
 {
-	encodeBase64(base64, this, sizeof(Hash128));
+	encodeBase64URL(base64, this, sizeof(Hash128));
 	base64.resize(base64.length() - 2);
 }
-bool Hash128::fromBase64(string_view base64) noexcept
+bool Hash128::fromBase64URL(string_view base64) noexcept
 {
 	if (base64.size() + 2 != modp_b64_encode_data_len(sizeof(Hash128)))
 		return false;
-	return decodeBase64(this, base64, ModpDecodePolicy::kForgiving);
+	return decodeBase64URL(this, base64, ModpDecodePolicy::kForgiving);
 }
 
 Hash128 Hash128::generateRandom(uint64 seed) noexcept

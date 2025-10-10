@@ -509,7 +509,7 @@ void TransformSystem::serialize(ISerializer& serializer, const View<Component> c
 	GARDEN_ASSERT_MSG(emplaceResult.second, "Detected several entities with the same UID");
 	#endif
 
-	encodeBase64(uidStringCache, &transformView->uid, sizeof(uint64));
+	encodeBase64URL(uidStringCache, &transformView->uid, sizeof(uint64));
 	uidStringCache.resize(uidStringCache.length() - 1);
 	serializer.write("uid", uidStringCache);
 
@@ -532,7 +532,7 @@ void TransformSystem::serialize(ISerializer& serializer, const View<Component> c
 			parentView->uid = *(uint64*)(uid);
 			GARDEN_ASSERT_MSG(parentView->uid, "Detected random device anomaly");
 		}
-		encodeBase64(uidStringCache, &parentView->uid, sizeof(uint64));
+		encodeBase64URL(uidStringCache, &parentView->uid, sizeof(uint64));
 		uidStringCache.resize(uidStringCache.length() - 1);
 		serializer.write("parent", uidStringCache);
 	}
@@ -556,7 +556,7 @@ void TransformSystem::deserialize(IDeserializer& deserializer, View<Component> c
 	if (deserializer.read("uid", uidStringCache) &&
 		uidStringCache.size() + 1 == modp_b64_encode_data_len(sizeof(uint64)))
 	{
-		if (decodeBase64(&transformView->uid, uidStringCache, ModpDecodePolicy::kForgiving))
+		if (decodeBase64URL(&transformView->uid, uidStringCache, ModpDecodePolicy::kForgiving))
 		{
 			auto result = deserializedEntities.emplace(transformView->uid, transformView->entity);
 			if (!result.second)
@@ -578,7 +578,7 @@ void TransformSystem::deserialize(IDeserializer& deserializer, View<Component> c
 		uidStringCache.size() + 1 == modp_b64_encode_data_len(sizeof(uint64)))
 	{
 		uint64 parentUID = 0;
-		if (decodeBase64(&parentUID, uidStringCache, ModpDecodePolicy::kForgiving))
+		if (decodeBase64URL(&parentUID, uidStringCache, ModpDecodePolicy::kForgiving))
 		{
 			if (transformView->uid == parentUID)
 				GARDEN_LOG_ERROR("Deserialized entity with the same parent UID. (uid: " + uidStringCache + ")");
@@ -598,7 +598,7 @@ void TransformSystem::postDeserialize(IDeserializer& deserializer)
 		auto parent = deserializedEntities.find(pair.second);
 		if (parent == deserializedEntities.end())
 		{
-			encodeBase64(uidStringCache, &pair.second, sizeof(uint64));
+			encodeBase64URL(uidStringCache, &pair.second, sizeof(uint64));
 			uidStringCache.resize(uidStringCache.length() - 1);
 			GARDEN_LOG_ERROR("Deserialized entity parent does not exist. (parentUID: " + uidStringCache + ")");
 			continue;

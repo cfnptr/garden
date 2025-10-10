@@ -99,20 +99,20 @@ public:
 	explicit operator bool() const noexcept { return low64 | high64; }
 
 	/******************************************************************************************************************
-	 * @brief Returns hash Base64 encoded string.
+	 * @brief Returns hash Base64 URL encoded string.
 	 * @details See the https://en.wikipedia.org/wiki/Base64
 	 */
-	string toBase64() const noexcept;
+	string toBase64URL() const noexcept;
 	/**
-	 * @brief Returns hash Base64 encoded string.
+	 * @brief Returns hash Base64 URL encoded string.
 	 * @details See the https://en.wikipedia.org/wiki/Base64
 	 */
-	void toBase64(string& base64) const noexcept;
+	void toBase64URL(string& base64) const noexcept;
 	/**
-	 * @brief Decodes hash from the Base64 string if valid.
+	 * @brief Decodes hash from the Base64 URL string if valid.
 	 * @details See the https://en.wikipedia.org/wiki/Base64
 	 */
-	bool fromBase64(string_view base64) noexcept;
+	bool fromBase64URL(string_view base64) noexcept;
 
 	/**
 	 * @brief Generates a new random hash. (non-cryptographic)
