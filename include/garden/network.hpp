@@ -21,6 +21,7 @@
 #include "garden/defines.hpp"
 #include "nets/stream-message.hpp"
 #include "math/vector.hpp"
+#include <mutex>
 
 namespace garden
 {
@@ -218,13 +219,19 @@ public:
  */
 struct ClientSession
 {
-	inline static constexpr string_view encMessageType = "e"; /**< Datagram encryption key message type. */
-
+	vector<uint8> cryptBuffer;
+	mutex datagramLocker;
 	void* streamSession = nullptr;
 	uint8* messageBuffer = nullptr;
 	psize messageByteCount = 0;
+	uint64 clientDatagramIdx = 0;
+	uint64 serverDatagramIdx = 1;
+	uint8* encKey = nullptr;
+	uint8* decKey = nullptr;
+	void* encContext = nullptr;
+	void* decContext = nullptr;
 	uint32 datagramUID = 0;
-	uint32 datagramIndex = 0;
+	bool isDatagram = false;
 	bool isAuthorized = false;
 
 	/**
@@ -233,7 +240,7 @@ struct ClientSession
 	string getAddress() const;
 
 	/**
-	 * @brief Sends stream data to the client session.
+	 * @brief Sends stream data to the client session. (TCP)
 	 * @return The operation @ref NetsResult code.
 	 *
 	 * @param[in] data send data buffer
@@ -241,21 +248,16 @@ struct ClientSession
 	 */
 	NetsResult send(const void* data, size_t byteCount) noexcept;
 	/**
-	 * @brief Sends stream response to the client session.
+	 * @brief Sends stream message to the client session. (TCP)
 	 * @return The operation @ref NetsResult code.
-	 * @param[in] streamResponse stream response to send
+	 * @param[in] message stream message to send
 	 */
-	NetsResult send(const StreamResponse& streamResponse) noexcept;
+	NetsResult send(const StreamResponse& message) noexcept;
 
 	/**
-	 * @brief Sends stream client datagram encrypion key.
-	 * @return The operation @ref NetsResult code.
-	 *
-	 * @param messageType stream message type string
-	 * @param lengthSize message header length size in bytes
+	 * @brief Resets stream session timeout time.
 	 */
-	NetsResult sendEncKey(string_view messageType = 
-		ClientSession::encMessageType, uint8 lengthSize = sizeof(uint8)) noexcept;
+	void alive() noexcept;
 
 	/**
 	 * @brief Shutdowns full-duplex socket connection.
@@ -272,6 +274,26 @@ struct ClientSession
 	 * @return The operation @ref NetsResult code.
 	 */
 	NetsResult shutdownSend() noexcept;
+
+	/*******************************************************************************************************************
+	 * Encryption functions.
+	 */
+	static constexpr uint8 keySize = 32; /**< 256 bits */
+	static constexpr uint8 ivSize = 12;  /**< 4 bytes UID + 8 bytes counter */
+	static constexpr uint8 tagSize = 16; /**< 128 bits */
+
+	static void* createEncContext(uint8*& encKey, void*& cipher) noexcept;
+	static void* createDecContext(uint8*& decKey, void*& cipher) noexcept;
+	static bool updateEncDecKey(void* context, uint8* key) noexcept;
+	static void destroyEncDecContext(void* context, uint8* key) noexcept;
+	static void destroyCipher(void* cipher) noexcept;
+
+	static psize encryptDatagram(const void* plainData, psize size, void* encContext, 
+		vector<uint8>& cryptBuffer, uint32 datagramUID, uint64& datagramIdx) noexcept;
+	psize encryptDatagram(const void* data, psize size) noexcept;
+	static psize decryptDatagram(const uint8* encData, psize size, 
+		void* decContext, vector<uint8>& cryptBuffer) noexcept;
+	psize decryptDatagram(const uint8* data, psize size) noexcept;
 };
 
 /**

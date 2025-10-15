@@ -45,12 +45,23 @@ public:
 private:
 	tsl::robin_map<string, INetworkable*, SvHash, SvEqual> networkables;
 	tsl::robin_map<string, OnReceive, SvHash, SvEqual> listeners;
+	vector<uint8> cryptBuffer;
+	mutex datagramLocker;
+	void* cipher = nullptr;
+	uint8* encKey = nullptr;
+	uint8* decKey = nullptr;
+	void* encContext = nullptr;
+	void* decContext = nullptr;
 	uint8* messageBuffer = nullptr;
 	psize messageBufferSize = 0;
 	psize messageByteCount = 0;
-	uint32 datagramIndex = 0;
+	double pingMessageDelay = 0.0;
+	float serverPing = 0.0f;
+	uint32 datagramUID = 0;
+	uint64 clientDatagramIdx = 1;
+	uint64 serverDatagramIdx = 0;
 	uint8 messageLengthSize = 0;
-	bool isClientAuthorized = false;
+	bool isDatagram = false;
 
 	/**
 	 * @brief Creates a new network client system instance.
@@ -68,10 +79,12 @@ private:
 
 	void preInit();
 	void preDeinit();
+	void update();
 
 	void onConnectionResult(NetsResult result) final;
-	bool onStreamReceive(const uint8_t* receiveBuffer, size_t byteCount) final;
-	bool onDatagramReceive(const uint8_t* receiveBuffer, size_t byteCount) final;
+	void onDisconnect(int reason) final;
+	int onStreamReceive(const uint8_t* receiveBuffer, size_t byteCount) final;
+	int onDatagramReceive(const uint8_t* receiveBuffer, size_t byteCount) final;
 	static int onMessageReceive(::StreamMessage message, void* argument);
 
 	friend class ecsm::Manager;
@@ -98,21 +111,28 @@ public:
 	 */
 	uint8 getMessageLengthSize() const noexcept { return messageLengthSize; }
 	/**
-	 * @brief Returns true if client is authorization on the server.
+	 * @brief Returns game server ping time in seconds.
 	 */
-	bool isAuthorized() noexcept { return isClientAuthorized; }
+	float getPing() const noexcept { return serverPing; }
 
 	/**
-	 * @brief Stops stream client receive thread. (MT-Safe)
-	 * @param reason stream client stop reason.
-	 */
-	void stop(int reason) noexcept;
-	/**
-	 * @brief Processes client datagram encrypion key.
+	 * @brief Sends datagram to the server. (UDP)
 	 * @return The operation @ref NetsResult code.
-	 * @param message received stream message
+	 *
+	 * @param[in] data send data buffer
+	 * @param byteCount data byte count to send
 	 */
-	NetsResult processEncKey(StreamRequest message) noexcept;
+	NetsResult sendDatagram(const void* data, size_t byteCount) noexcept;
+	/**
+	 * @brief Sends datagram message to the server. (UDP)
+	 * @return The operation @ref NetsResult code.
+	 * @param[in] message datagram message to send
+	 */
+	NetsResult sendDatagram(const StreamResponse& message) noexcept
+	{
+		GARDEN_ASSERT(message.isComplete());
+		return sendDatagram(message.getBuffer(), message.getSize());
+	}
 };
 
 } // namespace garden

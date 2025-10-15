@@ -16,6 +16,7 @@
 #include "garden/system/thread.hpp"
 #include "garden/system/log.hpp"
 #include "garden/profiler.hpp"
+#include "openssl/rand.h"
 
 using namespace garden;
 
@@ -37,9 +38,41 @@ StreamServerHandle::StreamServerHandle(ServerNetworkSystem* serverSystem, Socket
 	GARDEN_ASSERT(this->messageBufferSize <= receiveBufferSize);
 }
 
-void StreamServerHandle::closeSession(ClientSession* clientSession, int reason)
+static NetsResult sendEncMessage(ClientSession* clientSession, uint8 messageLengthSize)
 {
-	nets::IStreamServer::closeSession((StreamSession_T*)clientSession->streamSession, reason);
+	constexpr uint8 messageSize = sizeof(uint32) + ClientSession::keySize, sendBufferSize = messageSize + 16;
+	uint8 sendBuffer[sendBufferSize]; StreamResponse message("enc", 
+		sendBuffer, sendBufferSize, messageSize, messageLengthSize);
+	message.write(clientSession->datagramUID);
+	message.write(clientSession->encKey, ClientSession::keySize);
+	auto result = clientSession->send(message);
+	OPENSSL_cleanse(sendBuffer, sendBufferSize * sizeof(uint8));
+	return result;
+}
+NetsResult StreamServerHandle::sendDatagram(ClientSession* clientSession, const void* data, size_t byteCount)
+{
+	clientSession->datagramLocker.lock();
+
+	if (clientSession->serverDatagramIdx % (uint64)UINT32_MAX == 0) // Note: rekeying
+	{
+		if (!RAND_bytes(clientSession->encKey, ClientSession::keySize) ||
+			!ClientSession::updateEncDecKey(clientSession->encContext, clientSession->encKey))
+		{
+			return FAILED_TO_CREATE_SSL_NETS_RESULT;
+		}
+		auto result = sendEncMessage(clientSession, messageLengthSize);
+		if (result != SUCCESS_NETS_RESULT)
+			return result;
+	}
+
+	auto encSize = clientSession->encryptDatagram(data, byteCount);
+	if (encSize == 0)
+		return FAILED_TO_CREATE_SSL_NETS_RESULT;
+
+	auto result = nets::IStreamServer::sendDatagram((StreamSession_T*)
+		clientSession->streamSession, clientSession->cryptBuffer.data(), encSize);
+	clientSession->datagramLocker.unlock();
+	return result;
 }
 
 bool StreamServerHandle::onSessionCreate(nets::StreamSessionView streamSession, void*& handle)
@@ -47,6 +80,17 @@ bool StreamServerHandle::onSessionCreate(nets::StreamSessionView streamSession, 
 	SET_CPU_ZONE_SCOPED("On Server Session Create");
 
 	streamSession.getSocket().setNoDelay(true);
+	uint8* encKey = nullptr; void* encContext = nullptr;
+
+	if (isSecure())
+	{
+		encContext = ClientSession::createEncContext(encKey, cipher);
+		if (!encContext)
+		{
+			GARDEN_LOG_ERROR("Failed to generate session encryption context.");
+			return false;
+		}
+	}
 
 	ClientSession* clientSession;
 	if (serverSystem->onSessionCreate)
@@ -55,6 +99,7 @@ bool StreamServerHandle::onSessionCreate(nets::StreamSessionView streamSession, 
 		auto result = serverSystem->onSessionCreate(streamSession, clientSession);
 		if (result != SUCCESS_NETS_RESULT)
 		{
+			ClientSession::destroyEncDecContext(encContext, encKey);
 			GARDEN_LOG_INFO("Rejected client session. (address: " + 
 				streamSession.getAddress() + ", reason: " + reasonToString(result) + ")");
 			return false;
@@ -63,19 +108,30 @@ bool StreamServerHandle::onSessionCreate(nets::StreamSessionView streamSession, 
 	else
 	{
 		clientSession = new ClientSession();
+		clientSession->isAuthorized = true;
 	}
 
 	clientSession->streamSession = streamSession.getInstance();
 	clientSession->messageBuffer = new uint8[messageBufferSize];
+	clientSession->encContext = encContext;
+	clientSession->encKey = encKey;
 
-	while (true) // TODO: maybe add time out?
+	while (isRunning()) // TODO: maybe add time out?
 	{
-		auto datagramUID = randomDevice();
+		uint32 datagramUID = 0;
+		if (!RAND_bytes((uint8*)&datagramUID, sizeof(uint32)))
+			continue;
 		auto result = datagramMap.emplace(datagramUID, clientSession);
 		if (!result.second)
 			continue;
 		clientSession->datagramUID = datagramUID;
 		break;
+	}
+
+	if (isSecure())
+	{
+		if (sendEncMessage(clientSession, messageLengthSize) != SUCCESS_NETS_RESULT)
+			streamSession.shutdown();
 	}
 
 	handle = clientSession;
@@ -87,11 +143,20 @@ void StreamServerHandle::onSessionDestroy(nets::StreamSessionView streamSession,
 	SET_CPU_ZONE_SCOPED("On Server Session Destroy");
 
 	auto clientSession = (ClientSession*)streamSession.getHandle();
-	delete[] clientSession->messageBuffer;
-	clientSession->messageBuffer = nullptr;
+	delete[] clientSession->messageBuffer; clientSession->messageBuffer = nullptr;
 
 	auto result = datagramMap.erase(clientSession->datagramUID);
 	GARDEN_ASSERT_MSG(result == 1, "Detected memory corruption");
+
+	if (isSecure())
+	{
+		clientSession->datagramLocker.lock();
+		ClientSession::destroyEncDecContext(clientSession->encContext, clientSession->encKey);
+		ClientSession::destroyEncDecContext(clientSession->decContext, clientSession->decKey);
+		clientSession->encContext = clientSession->decContext = nullptr;
+		clientSession->encKey = clientSession->decKey = nullptr; clientSession->datagramUID = 0;
+		clientSession->datagramLocker.unlock();
+	}
 
 	if (serverSystem->onSessionDestroy)
 		serverSystem->onSessionDestroy(clientSession, reason);
@@ -107,6 +172,8 @@ int StreamServerHandle::onStreamReceive(nets::StreamSessionView streamSession,
 	const uint8_t* receiveBuffer, size_t byteCount)
 {
 	auto clientSession = (ClientSession*)streamSession.getHandle();
+	clientSession->isDatagram = false;
+
 	std::pair<ServerNetworkSystem*, ClientSession*> pair = { serverSystem, clientSession };
 	return handleStreamMessage(receiveBuffer, byteCount, clientSession->messageBuffer, messageBufferSize, 
 		&clientSession->messageByteCount, messageLengthSize, onMessageReceive, &pair);
@@ -116,51 +183,73 @@ void StreamServerHandle::onDatagramReceive(nets::SocketAddressView remoteAddress
 {
 	SET_CPU_ZONE_SCOPED("On Datagram Receive");
 
-	if (byteCount < sizeof(uint32) * 2 + sizeof(uint8) * 3)
+	if (byteCount <= ClientSession::ivSize)
 		return;
 
-	auto datagramUID = leToHost32(*((const uint32*)receiveBuffer));
-	auto searchResult = datagramMap.find(datagramUID);
+	auto searchResult = datagramMap.find(*((const uint32*)receiveBuffer));
 	if (searchResult == datagramMap.end())
 		return;
+
+	auto clientSession = searchResult->second;
+	auto datagramIndex = leToHost64(*((const uint64*)(receiveBuffer + sizeof(uint32))));
+	if (datagramIndex <= clientSession->clientDatagramIdx)
+		return;
+
+	auto sessionAddress = nets::SocketAddressView(getStreamSessionRemoteAddress(
+		(StreamSession_T*)clientSession->streamSession));
+	if (sessionAddress.getIpSize() != remoteAddress.getIpSize() || memcmp(
+		sessionAddress.getIP(), remoteAddress.getIP(), sessionAddress.getIpSize()) != 0)
+	{
+		return;
+	}
 
 	::StreamMessage message;
 	if (isSecure())
 	{
-		abort(); // TODO: decrypt received datagram.
-
-		if (byteCount < sizeof(uint32) + sizeof(uint8) * 3)
+		clientSession->datagramLocker.lock();
+		if (!clientSession->decContext)
+		{
+			clientSession->datagramLocker.unlock();
 			return;
+		}
+
+		auto dataSize = clientSession->decryptDatagram(receiveBuffer, byteCount);
+		if (dataSize == 0 || dataSize >= byteCount)
+		{
+			clientSession->datagramLocker.unlock();
+			return;
+		}
+
+		memcpy((void*)receiveBuffer, clientSession->cryptBuffer.data(), dataSize);
+		clientSession->datagramLocker.unlock();
+
+		message.iter = (uint8*)receiveBuffer;
+		message.end = message.iter + dataSize;
 	}
 	else
 	{
-		message.iter = (uint8*)receiveBuffer + sizeof(uint32);
-		message.end = message.iter + (byteCount -  sizeof(uint32));
+		message.iter = (uint8*)receiveBuffer + ClientSession::ivSize;
+		message.end = message.iter + (byteCount - ClientSession::ivSize);
 	}
 
-	auto clientSession = searchResult->second;
-	if (!clientSession->isAuthorized)
-	{
-		closeSession(clientSession, BAD_DATA_NETS_RESULT);
-		return;
-	}
-
-	uint32 datagramIndex;
-	if (readStreamMessageUint32(&message, &datagramIndex))
-		return;
-
+	clientSession->isDatagram = true;
+	clientSession->clientDatagramIdx = datagramIndex;
 	std::pair<ServerNetworkSystem*, ClientSession*> pair = { serverSystem, clientSession };
-	if (datagramIndex <= pair.second->datagramIndex)
-		return; // TODO: handle uint32 overflow.
-	pair.second->datagramIndex = datagramIndex;
 
 	auto result = onMessageReceive(message, &pair);
 	if (result != SUCCESS_NETS_RESULT)
+	{
 		closeSession(clientSession, result);
+		return;
+	}
+	clientSession->alive();
 }
 int StreamServerHandle::onMessageReceive(::StreamMessage message, void* argument)
 {
 	SET_CPU_ZONE_SCOPED("On Message Receive");
+
+	if (getStreamMessageLeft(message) < sizeof(uint8) * 3)
+		return BAD_DATA_NETS_RESULT;
 
 	bool isSystem;
 	if (readStreamMessageBool(&message, &isSystem))
@@ -186,6 +275,50 @@ int StreamServerHandle::onMessageReceive(::StreamMessage message, void* argument
 			return searchResult->second(pair.second, message);
 	}
 	return BAD_DATA_NETS_RESULT;
+}
+
+int StreamServerHandle::onEncRequest(ClientSession* session, StreamRequest request)
+{
+	if (session->isDatagram || !isSecure())
+		return BAD_DATA_NETS_RESULT;
+
+	const void* newKey;
+	if (request.read(newKey, ClientSession::keySize))
+		return BAD_DATA_NETS_RESULT;
+
+	session->datagramLocker.lock();
+	memcpy(session->decKey, newKey, ClientSession::keySize * sizeof(uint8));
+
+	if (session->decContext)
+	{
+		if (!ClientSession::updateEncDecKey(session->decContext, session->decKey))
+		{
+			session->datagramLocker.unlock();
+			return FAILED_TO_CREATE_SSL_NETS_RESULT;
+		}
+	}
+	else
+	{
+		auto decContext = ClientSession::createDecContext(session->decKey, cipher);
+		if (!decContext)
+		{
+			session->datagramLocker.unlock();
+			return FAILED_TO_CREATE_SSL_NETS_RESULT;
+		}
+		session->decContext = decContext;
+	}
+
+	session->datagramLocker.unlock();
+	return SUCCESS_NETS_RESULT;
+}
+int StreamServerHandle::onPingRequest(ClientSession* session, StreamRequest request)
+{
+	if (!session->isAuthorized || !session->isDatagram)
+		return BAD_DATA_NETS_RESULT;
+
+	uint8 sendBuffer[8]; StreamResponse response("pong", sendBuffer, 8, 0, messageLengthSize);
+	auto result = sendDatagram(session, response);
+	return result;
 }
 
 //**********************************************************************************************************************
@@ -224,6 +357,15 @@ void ServerNetworkSystem::preInit()
 			GARDEN_ASSERT_MSG(result.second, "Already registered network message type");
 		}
 	}
+
+	addListener("enc", [this](ClientSession* session, StreamRequest request)
+	{
+		return streamServer->onEncRequest(session, request);
+	});
+	addListener("ping", [this](ClientSession* session, StreamRequest request)
+	{
+		return streamServer->onPingRequest(session, request);
+	});
 }
 
 //**********************************************************************************************************************
@@ -316,8 +458,8 @@ void ServerNetworkSystem::update()
 
 	if (!streamServer->isRunning())
 	{
-		stop();
 		Manager::Instance::get()->isRunning = false;
+		stop();
 		return;
 	}
 
@@ -355,6 +497,6 @@ void ServerNetworkSystem::stop()
 		GARDEN_LOG_WARN("Server is not running.");
 
 	streamServer->destroy();
-	delete streamServer;
-	streamServer = nullptr;
+	ClientSession::destroyCipher(streamServer->cipher);
+	delete streamServer; streamServer = nullptr;
 }
