@@ -14,6 +14,8 @@
 
 #include "garden/network.hpp"
 #include "nets/stream-server.hpp"
+#include "openssl/rand.h"
+#include "openssl/evp.h"
 
 using namespace garden;
 
@@ -34,16 +36,10 @@ NetsResult ClientSession::send(const StreamResponse& streamResponse) noexcept
 	return session.send(streamResponse);
 }
 
-NetsResult ClientSession::sendEncKey(string_view messageType, uint8 lengthSize) noexcept
+void ClientSession::alive() noexcept
 {
-	GARDEN_ASSERT(!messageType.empty());
 	nets::StreamSessionView session((StreamSession_T*)streamSession);
-	if (session.getSocket().getInstance() && !session.getSocket().getSslContext().getInstance())
-		return SUCCESS_NETS_RESULT; // Server connection is not secure.
-
-	vector<uint8> sendBuffer; auto messageSize = 16; // TODO: generate and write encryption key.
-	StreamResponse message(messageType, sendBuffer, messageSize, lengthSize);
-	return session.send(message);
+	session.alive();
 }
 
 NetsResult ClientSession::shutdownFull() noexcept
@@ -60,4 +56,183 @@ NetsResult ClientSession::shutdownSend() noexcept
 {
 	nets::StreamSessionView session((StreamSession_T*)streamSession);
 	return session.shutdown(SEND_ONLY_SOCKET_SHUTDOWN);
+}
+
+//******************************************************************************************************************
+void* ClientSession::createEncContext(uint8*& encKey, void*& cipher) noexcept
+{
+	if (!cipher)
+	{
+		cipher = EVP_CIPHER_fetch(NULL, "AES-256-GCM", NULL);
+		if (!cipher)
+			return NULL;
+	}
+
+	auto encContext = EVP_CIPHER_CTX_new();
+	if (!encContext)
+		return NULL;
+
+	encKey = new uint8[keySize];
+	if (!RAND_bytes(encKey, keySize))
+	{
+		EVP_CIPHER_CTX_free(encContext); free(encKey);
+		return NULL;
+	}
+
+	if (!EVP_EncryptInit_ex(encContext, (EVP_CIPHER*)cipher, NULL, encKey, NULL))
+	{
+		EVP_CIPHER_CTX_free(encContext); free(encKey);
+		return NULL;
+	}
+	if (!EVP_CIPHER_CTX_ctrl(encContext, EVP_CTRL_GCM_SET_IVLEN, ivSize, NULL))
+	{
+		EVP_CIPHER_CTX_free(encContext); free(encKey);
+		return NULL;
+	}
+	return encContext;
+}
+void* ClientSession::createDecContext(uint8*& decKey, void*& cipher) noexcept
+{
+	if (!cipher)
+	{
+		cipher = EVP_CIPHER_fetch(NULL, "AES-256-GCM", NULL);
+		if (!cipher)
+			return NULL;
+	}
+
+	auto encContext = EVP_CIPHER_CTX_new();
+	if (!encContext)
+		return NULL;
+
+	decKey = new uint8[keySize];
+
+	if (!EVP_DecryptInit_ex(encContext, (EVP_CIPHER*)cipher, NULL, decKey, NULL))
+	{
+		EVP_CIPHER_CTX_free(encContext); free(decKey);
+		return NULL;
+	}
+	if (!EVP_CIPHER_CTX_ctrl(encContext, EVP_CTRL_GCM_SET_IVLEN, ivSize, NULL))
+	{
+		EVP_CIPHER_CTX_free(encContext); free(decKey);
+		return NULL;
+	}
+	return encContext;
+}
+
+//******************************************************************************************************************
+bool ClientSession::updateEncDecKey(void* context, uint8* key) noexcept
+{
+	GARDEN_ASSERT(context);
+	GARDEN_ASSERT(key);
+	return EVP_DecryptInit_ex((EVP_CIPHER_CTX*)context, NULL, NULL, key, NULL);
+}
+void ClientSession::destroyEncDecContext(void* context, uint8* key) noexcept
+{
+	EVP_CIPHER_CTX_free((EVP_CIPHER_CTX*)context);
+
+	if (key)
+	{
+		OPENSSL_cleanse(key, keySize * sizeof(uint8));
+		delete[] key;
+	}
+}
+void ClientSession::destroyCipher(void* cipher) noexcept
+{
+	EVP_CIPHER_free((EVP_CIPHER*)cipher);
+}
+
+psize ClientSession::encryptDatagram(const void* plainData, psize size, void* encContext, 
+	vector<uint8>& cryptBuffer, uint32 datagramUID, uint64& datagramIdx) noexcept
+{
+	GARDEN_ASSERT(plainData);
+	GARDEN_ASSERT(size > 0);
+	GARDEN_ASSERT(encContext);
+
+	if (datagramIdx == UINT64_MAX)
+		return 0; // Overflow will spoil IV.
+
+	auto context = (EVP_CIPHER_CTX*)encContext;
+	auto maxSize = size + EVP_CIPHER_CTX_get_block_size(context) + (ivSize + tagSize);
+	if (cryptBuffer.size() < maxSize)
+		cryptBuffer.resize(maxSize);
+
+	auto outBuffer = cryptBuffer.data();
+	*((uint32*)outBuffer) = datagramUID;
+	*((uint64*)(outBuffer + sizeof(uint32))) = hostToLE64(datagramIdx++);
+
+	if (!EVP_EncryptInit_ex(context, NULL, NULL, NULL, outBuffer))
+		return 0;
+
+	int tmpSize;
+	if (!EVP_EncryptUpdate(context, NULL, &tmpSize, outBuffer, ivSize))
+		return 0;
+	GARDEN_ASSERT(tmpSize == ivSize);
+
+	auto ctrlSize = hostToLE64(size);
+	if (!EVP_EncryptUpdate(context, NULL, &tmpSize, (const uint8*)&ctrlSize, sizeof(uint64)))
+		return 0;
+	GARDEN_ASSERT(tmpSize == sizeof(uint64));
+
+	if (!EVP_EncryptUpdate(context, outBuffer + ivSize, &tmpSize, (const uint8*)plainData, size))
+		return 0;
+	GARDEN_ASSERT(tmpSize == size);
+
+	int totalSize = ivSize + size;
+	if (!EVP_EncryptFinal_ex(context, outBuffer + totalSize, &tmpSize))
+		return 0;
+	GARDEN_ASSERT(tmpSize == 0);
+
+	if (!EVP_CIPHER_CTX_ctrl(context, EVP_CTRL_GCM_GET_TAG, tagSize, outBuffer + totalSize))
+		return 0;
+	return totalSize + tagSize;
+}
+psize ClientSession::encryptDatagram(const void* data, psize size) noexcept
+{
+	return encryptDatagram(data, size, encContext, cryptBuffer, datagramUID, serverDatagramIdx);
+}
+
+//******************************************************************************************************************
+psize ClientSession::decryptDatagram(const uint8* encData, 
+	psize size, void* decContext, vector<uint8>& cryptBuffer) noexcept
+{
+	GARDEN_ASSERT(encData);
+	GARDEN_ASSERT(decContext);
+
+	if (size <= ivSize + tagSize)
+		return 0;
+
+	auto context = (EVP_CIPHER_CTX*)decContext;
+	if (!EVP_DecryptInit_ex(context, NULL, NULL, NULL, encData))
+		return 0;
+
+	int tmpSize;
+	if (!EVP_DecryptUpdate(context, NULL, &tmpSize, encData, ivSize) || tmpSize != ivSize)
+		return 0;
+
+	auto dataSize = size - (ivSize + tagSize), ctrlSize = hostToLE64(dataSize);
+	if (!EVP_DecryptUpdate(context, NULL, &tmpSize, (const uint8*)&ctrlSize, 
+		sizeof(uint64)) || tmpSize != sizeof(uint64))
+	{
+		return 0;
+	}
+
+	if (cryptBuffer.size() < dataSize)
+		cryptBuffer.resize(dataSize);
+	auto outBuffer = cryptBuffer.data();
+
+	if (!EVP_DecryptUpdate(context, outBuffer, &tmpSize, 
+		encData + ivSize, dataSize) || tmpSize != dataSize)
+	{
+		return 0;
+	}
+	
+	if (!EVP_CIPHER_CTX_ctrl(context, EVP_CTRL_GCM_SET_TAG, tagSize, (void*)(encData + (size + ivSize))))
+		return 0;
+	if (!EVP_DecryptFinal_ex(context, outBuffer + dataSize, &tmpSize) || tmpSize != 0)
+		return 0;
+	return dataSize;
+}
+psize ClientSession::decryptDatagram(const uint8* data, psize size) noexcept
+{
+	return decryptDatagram(data, size, decContext, cryptBuffer);
 }

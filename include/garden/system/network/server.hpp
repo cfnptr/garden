@@ -21,7 +21,6 @@
 #include "garden/network.hpp"
 #include "nets/stream-server.hpp"
 #include "ecsm.hpp"
-#include <random>
 
 namespace garden
 {
@@ -34,9 +33,9 @@ class ServerNetworkSystem;
  */
 class StreamServerHandle final : public nets::IStreamServer
 {
-	random_device randomDevice;
 	tsl::robin_map<uint32, ClientSession*> datagramMap;
 	ServerNetworkSystem* serverSystem = nullptr;
+	void* cipher = nullptr;
 	psize messageBufferSize = 0;
 	uint8 messageLengthSize = 0;
 public:
@@ -45,9 +44,19 @@ public:
 	StreamServerHandle(ServerNetworkSystem* serverSystem, SocketFamily socketFamily, const char* service, 
 		size_t sessionBufferSize, size_t connectionQueueSize, size_t receiveBufferSize, 
 		size_t messageBufferSize, double timeoutTime, nets::SslContextView sslContext);
-	void closeSession(ClientSession* clientSession, int reason);
+
+	void closeSession(ClientSession* clientSession, int reason)
+	{
+		nets::IStreamServer::closeSession((StreamSession_T*)clientSession->streamSession, reason);
+	}
+
+	NetsResult sendDatagram(ClientSession* clientSession, const void* data, size_t byteCount);
+	NetsResult sendDatagram(ClientSession* clientSession, const nets::OutStreamMessage& message)
+	{
+		GARDEN_ASSERT(message.isComplete());
+		return sendDatagram(clientSession, message.getBuffer(), message.getSize());
+	}
 private:
-	
 	bool onSessionCreate(nets::StreamSessionView streamSession, void*& handle) final;
 	void onSessionDestroy(nets::StreamSessionView streamSession, int reason) final;
 	int onStreamReceive(nets::StreamSessionView streamSession, 
@@ -55,6 +64,11 @@ private:
 	void onDatagramReceive(nets::SocketAddressView remoteAddress, 
 		const uint8_t* receiveBuffer, size_t byteCount) final;
 	static int onMessageReceive(::StreamMessage message, void* argument);
+
+	int onEncRequest(ClientSession* session, StreamRequest request);
+	int onPingRequest(ClientSession* session, StreamRequest request);
+
+	friend class garden::ServerNetworkSystem;
 };
 
 /***********************************************************************************************************************
