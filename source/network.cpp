@@ -30,10 +30,10 @@ NetsResult ClientSession::send(const void* data, size_t byteCount) noexcept
 	nets::StreamSessionView session((StreamSession_T*)streamSession);
 	return session.send(data, byteCount);
 }
-NetsResult ClientSession::send(const StreamResponse& streamResponse) noexcept
+NetsResult ClientSession::send(const StreamOutput& message) noexcept
 {
 	nets::StreamSessionView session((StreamSession_T*)streamSession);
-	return session.send(streamResponse);
+	return session.send(message);
 }
 
 void ClientSession::alive() noexcept
@@ -141,8 +141,24 @@ void ClientSession::destroyCipher(void* cipher) noexcept
 	EVP_CIPHER_free((EVP_CIPHER*)cipher);
 }
 
+psize ClientSession::packDatagram(const void* data, psize size, 
+	vector<uint8>& datagramBuffer, uint32 datagramUID, uint64& datagramIdx) noexcept
+{
+	GARDEN_ASSERT(data);
+	GARDEN_ASSERT(size > 0);
+
+	auto totalSize = size + ClientSession::ivSize;
+	if (datagramBuffer.size() < totalSize)
+		datagramBuffer.resize(totalSize);
+
+	auto outBuffer = datagramBuffer.data();
+	*((uint32*)outBuffer) = datagramUID;
+	*((uint64*)(outBuffer + sizeof(uint32))) = hostToLE64(datagramIdx++);
+	memcpy(outBuffer + ClientSession::ivSize, data, size);
+	return totalSize;
+}
 psize ClientSession::encryptDatagram(const void* plainData, psize size, void* encContext, 
-	vector<uint8>& cryptBuffer, uint32 datagramUID, uint64& datagramIdx) noexcept
+	vector<uint8>& datagramBuffer, uint32 datagramUID, uint64& datagramIdx) noexcept
 {
 	GARDEN_ASSERT(plainData);
 	GARDEN_ASSERT(size > 0);
@@ -153,10 +169,10 @@ psize ClientSession::encryptDatagram(const void* plainData, psize size, void* en
 
 	auto context = (EVP_CIPHER_CTX*)encContext;
 	auto maxSize = size + EVP_CIPHER_CTX_get_block_size(context) + (ivSize + tagSize);
-	if (cryptBuffer.size() < maxSize)
-		cryptBuffer.resize(maxSize);
+	if (datagramBuffer.size() < maxSize)
+		datagramBuffer.resize(maxSize);
 
-	auto outBuffer = cryptBuffer.data();
+	auto outBuffer = datagramBuffer.data();
 	*((uint32*)outBuffer) = datagramUID;
 	*((uint64*)(outBuffer + sizeof(uint32))) = hostToLE64(datagramIdx++);
 
@@ -188,12 +204,12 @@ psize ClientSession::encryptDatagram(const void* plainData, psize size, void* en
 }
 psize ClientSession::encryptDatagram(const void* data, psize size) noexcept
 {
-	return encryptDatagram(data, size, encContext, cryptBuffer, datagramUID, serverDatagramIdx);
+	return encryptDatagram(data, size, encContext, datagramBuffer, datagramUID, serverDatagramIdx);
 }
 
 //******************************************************************************************************************
 psize ClientSession::decryptDatagram(const uint8* encData, 
-	psize size, void* decContext, vector<uint8>& cryptBuffer) noexcept
+	psize size, void* decContext, vector<uint8>& datagramBuffer) noexcept
 {
 	GARDEN_ASSERT(encData);
 	GARDEN_ASSERT(decContext);
@@ -209,16 +225,16 @@ psize ClientSession::decryptDatagram(const uint8* encData,
 	if (!EVP_DecryptUpdate(context, NULL, &tmpSize, encData, ivSize) || tmpSize != ivSize)
 		return 0;
 
-	auto dataSize = size - (ivSize + tagSize), ctrlSize = hostToLE64(dataSize);
+	auto dataSize = size - (ivSize + tagSize); auto ctrlSize = hostToLE64(dataSize);
 	if (!EVP_DecryptUpdate(context, NULL, &tmpSize, (const uint8*)&ctrlSize, 
 		sizeof(uint64)) || tmpSize != sizeof(uint64))
 	{
 		return 0;
 	}
 
-	if (cryptBuffer.size() < dataSize)
-		cryptBuffer.resize(dataSize);
-	auto outBuffer = cryptBuffer.data();
+	if (datagramBuffer.size() < dataSize)
+		datagramBuffer.resize(dataSize);
+	auto outBuffer = datagramBuffer.data();
 
 	if (!EVP_DecryptUpdate(context, outBuffer, &tmpSize, 
 		encData + ivSize, dataSize) || tmpSize != dataSize)
@@ -234,5 +250,5 @@ psize ClientSession::decryptDatagram(const uint8* encData,
 }
 psize ClientSession::decryptDatagram(const uint8* data, psize size) noexcept
 {
-	return decryptDatagram(data, size, decContext, cryptBuffer);
+	return decryptDatagram(data, size, decContext, datagramBuffer);
 }

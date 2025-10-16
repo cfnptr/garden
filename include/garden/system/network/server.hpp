@@ -54,7 +54,8 @@ public:
 	NetsResult sendDatagram(ClientSession* clientSession, const nets::OutStreamMessage& message)
 	{
 		GARDEN_ASSERT(message.isComplete());
-		return sendDatagram(clientSession, message.getBuffer(), message.getSize());
+		return sendDatagram(clientSession, message.getBuffer() + 
+			messageLengthSize, message.getSize() - messageLengthSize);
 	}
 private:
 	bool onSessionCreate(nets::StreamSessionView streamSession, void*& handle) final;
@@ -65,8 +66,8 @@ private:
 		const uint8_t* receiveBuffer, size_t byteCount) final;
 	static int onMessageReceive(::StreamMessage message, void* argument);
 
-	int onEncRequest(ClientSession* session, StreamRequest request);
-	int onPingRequest(ClientSession* session, StreamRequest request);
+	int onEncRequest(ClientSession* session, StreamInput request);
+	int onPingRequest(ClientSession* session, StreamInput request);
 
 	friend class garden::ServerNetworkSystem;
 };
@@ -85,7 +86,7 @@ public:
 	 * @param[in] session client session instance
 	 * @param message received stream message
 	 */
-	using OnReceive = std::function<int(ClientSession*, StreamRequest)>;
+	using OnReceive = std::function<int(ClientSession*, StreamInput)>;
 private:
 	tsl::robin_map<string, INetworkable*, SvHash, SvEqual> networkables;
 	tsl::robin_map<string, OnReceive, SvHash, SvEqual> listeners;
@@ -150,7 +151,7 @@ public:
 	 * @throw Error with a @ref NetsResult string on failure.
 	 */
 	void start(SocketFamily socketFamily, const char* service, size_t sessionBufferSize = 512, 
-		size_t connectionQueueSize = 256, size_t receiveBufferSize = UINT16_MAX + 1, size_t messageBufferSize = UINT8_MAX, 
+		size_t connectionQueueSize = 256, size_t receiveBufferSize = UINT16_MAX + 2, size_t messageBufferSize = UINT8_MAX, 
 		double timeoutTime = 5.0f, nets::SslContextView sslContext = nets::SslContextView(nullptr));
 	/**
 	 * @brief Stops server listening and receiving.

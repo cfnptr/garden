@@ -22,7 +22,7 @@ using namespace garden;
 static NetsResult sendEncMessage(nets::IStreamClient* streamClient, uint8* encKey, uint8 messageLengthSize)
 {
 	constexpr uint8 sendBufferSize = ClientSession::keySize + 16;
-	uint8 sendBuffer[sendBufferSize]; StreamResponse message("enc", 
+	uint8 sendBuffer[sendBufferSize]; StreamOutput message("enc", 
 		sendBuffer, sendBufferSize, ClientSession::keySize, messageLengthSize);
 	message.write(encKey, ClientSession::keySize);
 	auto result = streamClient->send(message);
@@ -52,7 +52,7 @@ void ClientNetworkSystem::onConnectionResult(NetsResult result)
 		datagramLocker.unlock();
 
 		if (result == SUCCESS_NETS_RESULT)
-			sendEncMessage(this, encKey, messageLengthSize);
+			result = sendEncMessage(this, encKey, messageLengthSize);
 	}
 
 	if (result == SUCCESS_NETS_RESULT) GARDEN_LOG_INFO("Connected to the server.");
@@ -60,15 +60,19 @@ void ClientNetworkSystem::onConnectionResult(NetsResult result)
 
 	if (onConnection)
 		onConnection(result);
+	else isAuthorized = true;
 }
 void ClientNetworkSystem::onDisconnect(int reason)
 {
 	GARDEN_LOG_INFO("Disconnected from the server. (reason: " + reasonToString(reason) + ")");
 
 	datagramLocker.lock();
-	OPENSSL_cleanse(encKey, ClientSession::keySize * sizeof(uint8));
-	if (decKey)
-		OPENSSL_cleanse(decKey, ClientSession::keySize * sizeof(uint8));
+	if (isSecure())
+	{
+		OPENSSL_cleanse(encKey, ClientSession::keySize * sizeof(uint8));
+		if (decKey)
+			OPENSSL_cleanse(decKey, ClientSession::keySize * sizeof(uint8));
+	}
 	clientDatagramIdx = 1; serverDatagramIdx = 0; datagramUID = 0;
 	datagramLocker.unlock();
 
@@ -76,12 +80,12 @@ void ClientNetworkSystem::onDisconnect(int reason)
 	manager->lock();
 	pingMessageDelay = 0.0; 
 	manager->unlock();
+	isAuthorized = false;
 }
 
 //**********************************************************************************************************************
 int ClientNetworkSystem::onStreamReceive(const uint8_t* receiveBuffer, size_t byteCount)
 {
-	isDatagram = false;
 	return handleStreamMessage(receiveBuffer, byteCount, messageBuffer, 
 		messageBufferSize, &messageByteCount, messageLengthSize, onMessageReceive, this);
 }
@@ -106,14 +110,14 @@ int ClientNetworkSystem::onDatagramReceive(const uint8_t* receiveBuffer, size_t 
 			return BAD_DATA_NETS_RESULT;
 		}
 
-		auto dataSize = ClientSession::decryptDatagram(receiveBuffer, byteCount, decContext, cryptBuffer);
+		auto dataSize = ClientSession::decryptDatagram(receiveBuffer, byteCount, decContext, datagramBuffer);
 		if (dataSize == 0 || dataSize >= byteCount)
 		{
 			datagramLocker.unlock();
 			return BAD_DATA_NETS_RESULT;
 		}
 
-		memcpy((void*)receiveBuffer, cryptBuffer.data(), dataSize);
+		memcpy((void*)receiveBuffer, datagramBuffer.data(), dataSize);
 		datagramLocker.unlock();
 
 		message.iter = (uint8*)receiveBuffer;
@@ -125,8 +129,17 @@ int ClientNetworkSystem::onDatagramReceive(const uint8_t* receiveBuffer, size_t 
 		message.end = message.iter + (byteCount - ClientSession::ivSize);
 	}
 
-	isDatagram = true; serverDatagramIdx = datagramIndex;
-	return onMessageReceive(message, this);
+	serverDatagramIdx = datagramIndex;
+	isDatagram = true;
+
+	auto result = onMessageReceive(message, this);
+	isDatagram = false;
+
+	if (result != SUCCESS_NETS_RESULT)
+		return result;
+
+	alive();
+	return result;
 }
 int ClientNetworkSystem::onMessageReceive(::StreamMessage message, void* argument)
 {
@@ -159,6 +172,55 @@ int ClientNetworkSystem::onMessageReceive(::StreamMessage message, void* argumen
 			return searchResult->second(message);
 	}
 	return BAD_DATA_NETS_RESULT;
+}
+
+int ClientNetworkSystem::onEncResponse(StreamInput response)
+{
+	if (isDatagram)
+		return BAD_DATA_NETS_RESULT;
+
+	const void* datagramUID;
+	if (response.read(datagramUID, sizeof(uint32)))
+		return BAD_DATA_NETS_RESULT;
+
+	// Note: No endianness swap for random data.
+	this->datagramUID = *((const uint32*)datagramUID);
+
+	if (!isSecure())
+	{
+		if (!response.isComplete())
+			return BAD_DATA_NETS_RESULT;
+		return SUCCESS_NETS_RESULT;
+	}
+
+	const void* newKey;
+	if (response.read(newKey, ClientSession::keySize))
+		return BAD_DATA_NETS_RESULT;
+
+	datagramLocker.lock();
+	memcpy(decKey, newKey, ClientSession::keySize * sizeof(uint8));
+
+	if (decContext)
+	{
+		if (!ClientSession::updateEncDecKey(decContext, decKey))
+		{
+			datagramLocker.unlock();
+			return FAILED_TO_CREATE_SSL_NETS_RESULT;
+		}
+	}
+	else
+	{
+		auto decContext = ClientSession::createDecContext(decKey, cipher);
+		if (!decContext)
+		{
+			datagramLocker.unlock();
+			return FAILED_TO_CREATE_SSL_NETS_RESULT;
+		}
+		decContext = decContext;
+	}
+
+	datagramLocker.unlock();
+	return response.isComplete() ? SUCCESS_NETS_RESULT : BAD_DATA_NETS_RESULT;
 }
 
 //**********************************************************************************************************************
@@ -216,57 +278,30 @@ void ClientNetworkSystem::preInit()
 		}
 	}
 
-	addListener("ping", [this](StreamRequest request)
+	addListener("ping", [this](StreamInput request)
 	{
-		if (!isDatagram)
+		if (!isDatagram || !request.isComplete())
 			return (NetsResult)BAD_DATA_NETS_RESULT;
-		uint8 sendBuffer[8]; StreamResponse response("pong", sendBuffer, 8, 0, messageLengthSize);
-		return sendDatagram(response);
+		uint8 sendBuffer[8]; StreamOutput message("pong", sendBuffer, 8, 0, messageLengthSize);
+		return sendDatagram(message);
 	});
-	addListener("pong", [this](StreamRequest message)
+	addListener("pong", [this](StreamInput response)
 	{
-		if (!isDatagram)
+		if (!isDatagram || !response.isComplete())
 			return BAD_DATA_NETS_RESULT;
+
 		auto currentTime = mpio::OS::getCurrentClock();
 		auto manager = Manager::Instance::get();
 		manager->lock();
 		serverPing = currentTime - (pingMessageDelay - 1.0);
 		manager->unlock();
+
+		// GARDEN_LOG_DEBUG("Server ping: " + to_string(serverPing * 1000.0) + "ms.");
 		return SUCCESS_NETS_RESULT;
 	});
-	addListener("enc", [this](StreamRequest message)
+	addListener("enc", [this](StreamInput message)
 	{
-		if (isDatagram || !isSecure())
-			return BAD_DATA_NETS_RESULT;
-
-		const void* newKey;
-		if (message.read(newKey, ClientSession::keySize))
-			return BAD_DATA_NETS_RESULT;
-
-		datagramLocker.lock();
-		memcpy(decKey, newKey, ClientSession::keySize * sizeof(uint8));
-
-		if (decContext)
-		{
-			if (!ClientSession::updateEncDecKey(decContext, decKey))
-			{
-				datagramLocker.unlock();
-				return FAILED_TO_CREATE_SSL_NETS_RESULT;
-			}
-		}
-		else
-		{
-			auto decContext = ClientSession::createDecContext(decKey, cipher);
-			if (!decContext)
-			{
-				datagramLocker.unlock();
-				return FAILED_TO_CREATE_SSL_NETS_RESULT;
-			}
-			decContext = decContext;
-		}
-
-		datagramLocker.unlock();
-		return SUCCESS_NETS_RESULT;
+		return onEncResponse(message);
 	});
 }
 void ClientNetworkSystem::preDeinit()
@@ -280,14 +315,15 @@ void ClientNetworkSystem::update()
 	SET_CPU_ZONE_SCOPED("Client Update");
 	nets::IStreamClient::update();
 
-	if (isConnected())
+	if (isConnected() && isAuthorized)
 	{
 		auto currentTime = mpio::OS::getCurrentClock();
 		if (currentTime > pingMessageDelay)
 		{
-			uint8 sendBuffer[8]; StreamResponse message("ping", sendBuffer, 8, 0, messageLengthSize);
-			if (sendDatagram(message) != SUCCESS_NETS_RESULT)
-				disconnect();
+			uint8 sendBuffer[8]; StreamOutput message("ping", sendBuffer, 8, 0, messageLengthSize);
+			auto result = sendDatagram(message);
+			if (result != SUCCESS_NETS_RESULT)
+				disconnect(result);
 			pingMessageDelay = currentTime + 1.0;
 		}
 	}
@@ -299,21 +335,36 @@ NetsResult ClientNetworkSystem::sendDatagram(const void* data, size_t byteCount)
 	GARDEN_ASSERT(byteCount > 0);
 	datagramLocker.lock();
 
-	if (clientDatagramIdx % (uint64)UINT32_MAX == 0) // Note: rekeying
+	psize totalSize;
+	if (isSecure())
 	{
-		if (!RAND_bytes(encKey, ClientSession::keySize) || !ClientSession::updateEncDecKey(encContext, encKey))
+		if (clientDatagramIdx % (uint64)UINT32_MAX == 0 && isSecure()) // Note: rekeying
+		{
+			if (!RAND_bytes(encKey, ClientSession::keySize) || !ClientSession::updateEncDecKey(encContext, encKey))
+				return FAILED_TO_CREATE_SSL_NETS_RESULT;
+			auto result = sendEncMessage(this, encKey, messageLengthSize);
+			if (result != SUCCESS_NETS_RESULT)
+				return result;
+		}
+
+		totalSize = ClientSession::encryptDatagram(data, byteCount, 
+			encContext, datagramBuffer, datagramUID, clientDatagramIdx);
+		if (totalSize == 0)
 			return FAILED_TO_CREATE_SSL_NETS_RESULT;
-		auto result = sendEncMessage(this, encKey, messageLengthSize);
-		if (result != SUCCESS_NETS_RESULT)
-			return result;
 	}
-
-	auto encSize = ClientSession::encryptDatagram(data, byteCount, 
-		encContext, cryptBuffer, datagramUID, clientDatagramIdx);
-	if (encSize == 0)
-		return FAILED_TO_CREATE_SSL_NETS_RESULT;
-
-	auto result = nets::IStreamClient::sendDatagram(cryptBuffer.data(), encSize);
+	else
+	{
+		totalSize = ClientSession::packDatagram(data, byteCount, datagramBuffer, datagramUID, clientDatagramIdx);
+	}
+	
+	auto result = nets::IStreamClient::sendDatagram(datagramBuffer.data(), totalSize);
 	datagramLocker.unlock();
 	return result;
+}
+
+void ClientNetworkSystem::disconnect(int reason) noexcept
+{
+	if (isRunning())
+		GARDEN_LOG_INFO("Disconnected network client. (reason: " + reasonToString(reason) + ")");
+	nets::IStreamClient::disconnect();
 }

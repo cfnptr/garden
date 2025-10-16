@@ -121,8 +121,9 @@ static void destroyVkDescriptorSet(void* instance, ID<Pipeline> pipeline,
 		}
 		else
 		{
-			vulkanAPI->device.freeDescriptorSets(vulkanAPI->descriptorPool, setCount, 
+			auto result = vulkanAPI->device.freeDescriptorSets(vulkanAPI->descriptorPool, setCount, 
 				setCount > 1 ? (vk::DescriptorSet*)instance : (vk::DescriptorSet*)&instance);
+			vk::detail::resultCheck(result, "vk::Device::freeDescriptorSets");
 		}
 	}
 	else
@@ -195,8 +196,9 @@ static void recreateVkDescriptorSet(const DescriptorSet::Uniforms& oldUniforms,
 		// 		 But I'm not sure if it faster or better.
 		if (oldSetCount > 1)
 		{
-			vulkanAPI->device.freeDescriptorSets(descriptorPool ? descriptorPool : 
+			auto result = vulkanAPI->device.freeDescriptorSets(descriptorPool ? descriptorPool : 
 				vulkanAPI->descriptorPool, oldSetCount, (vk::DescriptorSet*)instance);
+			vk::detail::resultCheck(result, "vk::Device::freeDescriptorSets");
 			instance = realloc<vk::DescriptorSet>((vk::DescriptorSet*)instance, newSetCount);
 
 			vulkanAPI->descriptorSetLayouts.assign(newSetCount, descriptorSetLayout);
@@ -207,8 +209,9 @@ static void recreateVkDescriptorSet(const DescriptorSet::Uniforms& oldUniforms,
 		}
 		else
 		{
-			vulkanAPI->device.freeDescriptorSets(descriptorPool ?
+			auto result = vulkanAPI->device.freeDescriptorSets(descriptorPool ?
 				descriptorPool : vulkanAPI->descriptorPool, 1, (vk::DescriptorSet*)&instance);
+			vk::detail::resultCheck(result, "vk::Device::freeDescriptorSets");
 
 			allocateInfo.pSetLayouts = &descriptorSetLayout;
 			auto allocateResult = vulkanAPI->device.allocateDescriptorSets(
