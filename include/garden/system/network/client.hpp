@@ -41,11 +41,11 @@ public:
 	 * @param[in] session client session instance
 	 * @param message received stream message
 	 */
-	using OnReceive = std::function<int(StreamRequest)>;
+	using OnReceive = std::function<int(StreamInput)>;
 private:
 	tsl::robin_map<string, INetworkable*, SvHash, SvEqual> networkables;
 	tsl::robin_map<string, OnReceive, SvHash, SvEqual> listeners;
-	vector<uint8> cryptBuffer;
+	vector<uint8> datagramBuffer;
 	mutex datagramLocker;
 	void* cipher = nullptr;
 	uint8* encKey = nullptr;
@@ -62,6 +62,7 @@ private:
 	uint64 serverDatagramIdx = 0;
 	uint8 messageLengthSize = 0;
 	bool isDatagram = false;
+	uint16 _alignment = 0;
 
 	/**
 	 * @brief Creates a new network client system instance.
@@ -87,9 +88,11 @@ private:
 	int onDatagramReceive(const uint8_t* receiveBuffer, size_t byteCount) final;
 	static int onMessageReceive(::StreamMessage message, void* argument);
 
+	int onEncResponse(StreamInput response);
 	friend class ecsm::Manager;
 public:
 	std::function<void(NetsResult)> onConnection = nullptr;
+	volatile bool isAuthorized = false;
 
 	/**
 	 * @brief Adds network message listener to the map.
@@ -128,11 +131,18 @@ public:
 	 * @return The operation @ref NetsResult code.
 	 * @param[in] message datagram message to send
 	 */
-	NetsResult sendDatagram(const StreamResponse& message) noexcept
+	NetsResult sendDatagram(const StreamOutput& message) noexcept
 	{
 		GARDEN_ASSERT(message.isComplete());
-		return sendDatagram(message.getBuffer(), message.getSize());
+		return sendDatagram(message.getBuffer() + 
+			messageLengthSize, message.getSize() - messageLengthSize);
 	}
+
+	/**
+	 * @brief Disconnects networn client from the server.
+	 * @param reason client disconnection reason
+	 */
+	void disconnect(int reason) noexcept;
 };
 
 } // namespace garden

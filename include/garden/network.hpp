@@ -27,31 +27,31 @@ namespace garden
 {
 
 /**
- * @brief Network stream request data container.
+ * @brief Network stream input data container.
  */
-class StreamRequest : public nets::StreamMessage
+class StreamInput : public nets::StreamMessage
 {
 public:
 	using nets::StreamMessage::read;
 
 	/**
-	 * @brief Creates a new stream request.
+	 * @brief Creates a new stream input container.
 	 * @param streamMessage target stream message data
 	 */
-	StreamRequest(::StreamMessage streamMessage) noexcept
+	StreamInput(::StreamMessage streamMessage) noexcept
 	{
 		iter = streamMessage.iter;
 		end = streamMessage.end;
 	}
 	/**
-	 * @brief Creates a new stream request.
+	 * @brief Creates a new stream input container.
 	 * @param streamMessage target stream message data
 	 */
-	StreamRequest(nets::StreamMessage streamMessage) noexcept { *this = streamMessage; }
+	StreamInput(nets::StreamMessage streamMessage) noexcept { *this = streamMessage; }
 	/**
-	 * @brief Creates a new empty stream request.
+	 * @brief Creates a new empty stream input container.
 	 */
-	StreamRequest() noexcept = default;
+	StreamInput() noexcept = default;
 
 	/**
 	 * @brief Reads 32-bit uint 2 component vector from the stream message and advances offset.
@@ -110,9 +110,9 @@ public:
 };
 
 /***********************************************************************************************************************
- * @brief Network stream response data container.
+ * @brief Network stream output data container.
  */
-class StreamResponse : public nets::OutStreamMessage
+class StreamOutput : public nets::OutStreamMessage
 {
 	inline static psize fullSize(string_view type, psize messageSize) noexcept
 	{
@@ -130,7 +130,7 @@ public:
 	using nets::OutStreamMessage::write;
 
 	/**
-	 * @brief Creates a new stream response.
+	 * @brief Creates a new stream output container.
 	 *
 	 * @param type message type string
 	 * @param[in,out] buffer message data buffer
@@ -139,12 +139,12 @@ public:
 	 * @param lengthSize message header length size in bytes
 	 * @param isSystem is this system message
 	 */
-	StreamResponse(string_view type, uint8* buffer, psize bufferSize, 
+	StreamOutput(string_view type, uint8* buffer, psize bufferSize, 
 		psize messageSize, uint8 lengthSize, bool isSystem = false) noexcept :
 		nets::OutStreamMessage(buffer, bufferSize, fullSize(type, messageSize), lengthSize)
 	{ writeHeader(type, isSystem); }
 	/**
-	 * @brief Creates a new stream response.
+	 * @brief Creates a new stream output container.
 	 *
 	 * @param type message type string
 	 * @param[in,out] buffer message data buffer
@@ -152,14 +152,14 @@ public:
 	 * @param lengthSize message header length size in bytes
 	 * @param isSystem is this system message
 	 */
-	StreamResponse(string_view type, vector<uint8>& buffer,
+	StreamOutput(string_view type, vector<uint8>& buffer,
 		psize messageSize, uint8 lengthSize, bool isSystem = false) noexcept :
 		nets::OutStreamMessage(buffer, fullSize(type, messageSize), lengthSize)
 	{ writeHeader(type, isSystem); }
 	/**
-	 * @brief Creates a new empty stream response.
+	 * @brief Creates a new empty stream output container.
 	 */
-	StreamResponse() noexcept = default;
+	StreamOutput() noexcept = default;
 
 	/**
 	 * @brief Writes 32-bit uint 2 component vector to the stream message and advances offset.
@@ -219,7 +219,7 @@ public:
  */
 struct ClientSession
 {
-	vector<uint8> cryptBuffer;
+	vector<uint8> datagramBuffer;
 	mutex datagramLocker;
 	void* streamSession = nullptr;
 	uint8* messageBuffer = nullptr;
@@ -231,11 +231,11 @@ struct ClientSession
 	void* encContext = nullptr;
 	void* decContext = nullptr;
 	uint32 datagramUID = 0;
-	bool isDatagram = false;
+	void* datagramAddress = nullptr;
 	bool isAuthorized = false;
 
 	/**
-	 * @brief Returns client session IP address and port string.
+	 * @brief Returns client session stream IP address and port string.
 	 */
 	string getAddress() const;
 
@@ -252,7 +252,7 @@ struct ClientSession
 	 * @return The operation @ref NetsResult code.
 	 * @param[in] message stream message to send
 	 */
-	NetsResult send(const StreamResponse& message) noexcept;
+	NetsResult send(const StreamOutput& message) noexcept;
 
 	/**
 	 * @brief Resets stream session timeout time.
@@ -288,11 +288,13 @@ struct ClientSession
 	static void destroyEncDecContext(void* context, uint8* key) noexcept;
 	static void destroyCipher(void* cipher) noexcept;
 
+	static psize packDatagram(const void* data, psize size, 
+		vector<uint8>& datagramBuffer, uint32 datagramUID, uint64& datagramIdx) noexcept;
 	static psize encryptDatagram(const void* plainData, psize size, void* encContext, 
-		vector<uint8>& cryptBuffer, uint32 datagramUID, uint64& datagramIdx) noexcept;
+		vector<uint8>& datagramBuffer, uint32 datagramUID, uint64& datagramIdx) noexcept;
 	psize encryptDatagram(const void* data, psize size) noexcept;
 	static psize decryptDatagram(const uint8* encData, psize size, 
-		void* decContext, vector<uint8>& cryptBuffer) noexcept;
+		void* decContext, vector<uint8>& datagramBuffer) noexcept;
 	psize decryptDatagram(const uint8* data, psize size) noexcept;
 };
 
@@ -315,14 +317,14 @@ public:
 	 * @param[in] session client session instance
 	 * @param message received stream message
 	 */
-	virtual int onRequest(ClientSession* session, StreamRequest message) { return NOT_SUPPORTED_NETS_RESULT; }
+	virtual int onRequest(ClientSession* session, StreamInput message) { return NOT_SUPPORTED_NETS_RESULT; }
 	/**
 	 * @brief On message receive from the server.
 	 * @details Client closes connection on this function non zero return result.
 	 * @warning This function is called asynchronously from the receive thread!
 	 * @param message received stream message
 	 */
-	virtual int onResponse(StreamRequest message) { return NOT_SUPPORTED_NETS_RESULT; }
+	virtual int onResponse(StreamInput message) { return NOT_SUPPORTED_NETS_RESULT; }
 };
 
 } // namespace garden
