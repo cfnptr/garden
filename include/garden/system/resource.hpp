@@ -341,7 +341,7 @@ public:
 	ID<Buffer> getLoadedBuffer() const noexcept { return loadedBuffer; }
 
 	/*******************************************************************************************************************
-	 * @brief Create shared graphics descriptor set instance.
+	 * @brief Creates shared graphics descriptor set instance.
 	 * 
 	 * @param hash shared descriptor set hash
 	 * @param graphicsPipeline target graphics pipeline
@@ -352,7 +352,7 @@ public:
 		DescriptorSet::Uniforms&& uniforms, uint8 index = 0);
 
 	/**
-	 * @brief Create shared graphics descriptor set instance.
+	 * @brief Creates shared graphics descriptor set instance.
 	 *
 	 * @param hash shared descriptor set hash
 	 * @param graphicsPipeline target graphics pipeline

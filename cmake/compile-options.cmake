@@ -44,6 +44,7 @@ elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64" OR CMAKE_SYSTEM_PROCESSOR STREQU
 endif()
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang") # Note: Do not remove MATCHES!
+	add_compile_options(-ffp-model=precise) # Disabling fast-math, it breaks math.
 	if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 		add_compile_options(-fstandalone-debug)
 	endif()
