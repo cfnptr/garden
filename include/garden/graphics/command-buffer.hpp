@@ -432,7 +432,7 @@ protected:
 	void flushLockedResources(vector<LockResource>& lockedResources);
 public:
 	/*******************************************************************************************************************
-	 * @brief Create a new command buffer instance.
+	 * @brief Creates a new command buffer instance.
 	 */
 	CommandBuffer(CommandBufferType type);
 	/**

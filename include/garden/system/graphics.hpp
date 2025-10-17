@@ -886,7 +886,7 @@ public:
 	}
 
 	/*******************************************************************************************************************
-	 * @brief Create a new graphics descriptor set instance.
+	 * @brief Creates a new graphics descriptor set instance.
 	 * 
 	 * @param graphicsPipeline target graphics pipeline
 	 * @param[in] uniforms shader uniform array
@@ -896,7 +896,7 @@ public:
 	ID<DescriptorSet> createDescriptorSet(ID<GraphicsPipeline> graphicsPipeline,
 		DescriptorSet::Uniforms&& uniforms, DescriptorSet::Samplers&& samplers = {}, uint8 index = 0);
 	/**
-	 * @brief Create a new compute descriptor set instance.
+	 * @brief Creates a new compute descriptor set instance.
 	 * 
 	 * @param computePipeline target compute pipeline
 	 * @param[in] uniforms shader uniform array
@@ -906,7 +906,7 @@ public:
 	ID<DescriptorSet> createDescriptorSet(ID<ComputePipeline> computePipeline,
 		DescriptorSet::Uniforms&& uniforms, DescriptorSet::Samplers&& samplers = {}, uint8 index = 0);
 	/**
-	 * @brief Create a new ray tracing descriptor set instance.
+	 * @brief Creates a new ray tracing descriptor set instance.
 	 * 
 	 * @param rayTracingPipeline target ray tracing pipeline
 	 * @param[in] uniforms shader uniform array
@@ -955,7 +955,7 @@ public:
 	}
 
 	/*******************************************************************************************************************
-	 * @brief Create a new graphics bottom level acceleration structure instance. (BLAS)
+	 * @brief Creates a new graphics bottom level acceleration structure instance. (BLAS)
 	 * 
 	 * @param[in] geometryArray target triangle geometry array
 	 * @param geometryCount geometry array size
@@ -963,7 +963,7 @@ public:
 	 */
 	ID<Blas> createBlas(const Blas::TrianglesBuffer* geometryArray, uint32 geometryCount, BuildFlagsAS flags = {});
 	/**
-	 * @brief Create a new graphics bottom level acceleration structure instance. (BLAS)
+	 * @brief Creates a new graphics bottom level acceleration structure instance. (BLAS)
 	 * 
 	 * @param[in] geometryArray target AABB geometry array
 	 * @param geometryCount geometry array size
@@ -1007,7 +1007,7 @@ public:
 	View<Blas> get(const Ref<Blas>& blas) const { return get(ID<Blas>(blas)); }
 
 	/*******************************************************************************************************************
-	 * @brief Create a new graphics top level acceleration structure instance. (TLAS)
+	 * @brief Creates a new graphics top level acceleration structure instance. (TLAS)
 	 * 
 	 * @param instances TLAS instance array
 	 * @param instanceBuffer target TLAS instance buffer
