@@ -283,7 +283,7 @@ struct ClientSession
 	static constexpr uint8 tagSize = 16; /**< 128 bits */
 
 	static void* createEncContext(uint8*& encKey, void*& cipher) noexcept;
-	static void* createDecContext(uint8*& decKey, void*& cipher) noexcept;
+	static void* createDecContext(const uint8* decKey, void*& cipher) noexcept;
 	static bool updateEncDecKey(void* context, uint8* key) noexcept;
 	static void destroyEncDecContext(void* context, uint8* key) noexcept;
 	static void destroyCipher(void* cipher) noexcept;

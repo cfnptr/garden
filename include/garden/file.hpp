@@ -50,11 +50,57 @@ public:
 	 * @brief Stores binary data to the file.
 	 * 
 	 * @param[in] filePath target file path
+	 * @param[in] data binary data to write
+	 * @param size write data size in bytes
+	 * 
+	 * @throw GardenError if failed to store file data.
+	 */
+	static void storeBinary(const fs::path& filePath, const void* data, psize size);
+	/**
+	 * @brief Stores binary data to the file.
+	 * 
+	 * @param[in] filePath target file path
 	 * @param[in] data binary data buffer
 	 * 
 	 * @throw GardenError if failed to store file data.
 	 */
-	static void storeBinary(const fs::path& filePath, const vector<uint8>& data);
+	static void storeBinary(const fs::path& filePath, const vector<uint8>& data)
+	{
+		storeBinary(filePath, data.data(), data.size());
+	}
+
+	/**
+	 * @brief Creates a new temporary file name.
+	 */
+	static fs::path createTmpName();
+	/**
+	 * @brief Creates a new temporary file path.
+	 */
+	static fs::path createTmpPath() { return fs::temp_directory_path() / createTmpName(); }
+
+	/**
+	 * @brief Creates and writes a new temporary file.
+	 *
+	 * @param[in] data target binary data to write
+	 * @param size write data size in bytes
+	 *
+	 * @throw GardenError if failed to store file data.
+	 */
+	static fs::path writeTMP(const void* data, psize size)
+	{
+		GARDEN_ASSERT(data);
+		GARDEN_ASSERT(size > 0);
+		auto tmpPath = createTmpPath();
+		storeBinary(tmpPath, data, size);
+		return tmpPath;
+	}
+	/**
+	 * @brief Creates and writes a new temporary file.
+	 * @return Temprorary file path on success, otherwise empty.
+	 * @param[in] data target binary data buffer
+	 * @throw GardenError if failed to store file data.
+	 */
+	static fs::path writeTMP(const vector<uint8>& data) { return writeTMP(data.data(), data.size()); }
 
 	#if GARDEN_DEBUG
 	/******************************************************************************************************************

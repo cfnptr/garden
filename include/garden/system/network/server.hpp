@@ -58,7 +58,7 @@ public:
 			messageLengthSize, message.getSize() - messageLengthSize);
 	}
 private:
-	bool onSessionCreate(nets::StreamSessionView streamSession, void*& handle) final;
+	void* onSessionCreate(nets::StreamSessionView streamSession) final;
 	void onSessionDestroy(nets::StreamSessionView streamSession, int reason) final;
 	int onStreamReceive(nets::StreamSessionView streamSession, 
 		const uint8_t* receiveBuffer, size_t byteCount) final;

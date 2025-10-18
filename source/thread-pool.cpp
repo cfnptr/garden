@@ -18,7 +18,7 @@
 #include "mpmt/thread.hpp"
 #include <cmath>
 
-#if __linux__ || __APPLE__
+#if GARDEN_OS_LINUX || GARDEN_OS_MACOS
 #include <signal.h>
 #endif
 
@@ -39,7 +39,7 @@ void ThreadPool::threadFunction(uint32 index)
 	else
 		mpmt::Thread::setForegroundPriority();
 
-	#if __linux__ || __APPLE__
+	#if GARDEN_OS_LINUX || GARDEN_OS_MACOS
 	signal(SIGPIPE, SIG_IGN);
 	#endif
 

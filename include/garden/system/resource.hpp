@@ -447,6 +447,15 @@ public:
 	 */
 	void storeAnimation(const fs::path& path, ID<Animation> animation, const fs::path& directory = "");
 
+	/*******************************************************************************************************************
+	 * @brief Loads file data from the resource pack.
+	 * @note Loads from the resources directory in debug build.
+	 *
+	 * @param[in] path target file resource path
+	 * @param[out] data loaded data buffer
+	 */
+	bool loadData(const fs::path& path, vector<uint8>& data);
+
 	#if GARDEN_PACK_RESOURCES
 	/**
 	 * @brief Returns pack reader instance.

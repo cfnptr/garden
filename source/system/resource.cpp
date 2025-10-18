@@ -2191,7 +2191,6 @@ ID<Entity> ResourceSystem::loadScene(const fs::path& path, bool addRootEntity)
 		GARDEN_LOG_ERROR("Scene file does not exist. (path: " + path.generic_string() + ")");
 		return {};
 	}
-
 	packReader.readItemData(itemIndex, dataBuffer);
 
 	try
@@ -2505,7 +2504,6 @@ Ref<Animation> ResourceSystem::loadAnimation(const fs::path& path, bool loadShar
 		GARDEN_LOG_ERROR("Animation file does not exist. (path: " + path.generic_string() + ")");
 		return {};
 	}
-
 	packReader.readItemData(itemIndex, dataBuffer);
 
 	try
@@ -2715,4 +2713,29 @@ void ResourceSystem::storeAnimation(const fs::path& path, ID<Animation> animatio
 	serializer.endChild();
 
 	GARDEN_LOG_TRACE("Stored animation. (path: " + path.generic_string() + ")");
+}
+
+//**********************************************************************************************************************
+bool ResourceSystem::loadData(const fs::path& path, vector<uint8>& data)
+{
+	GARDEN_ASSERT(!path.empty());
+
+	#if GARDEN_PACK_RESOURCES
+	uint64 itemIndex = 0;
+	if (!packReader.getItemIndex(path, itemIndex))
+	{
+		GARDEN_LOG_ERROR("Resource file does not exist. (path: " + path.generic_string() + ")");
+		return false;
+	}
+	packReader.readItemData(itemIndex, data);
+	#else
+	fs::path resourcePath;
+	if (!File::tryGetResourcePath(appResourcesPath, path, resourcePath))
+	{
+		GARDEN_LOG_ERROR("Resource file does not exist or ambiguous. (path: " + path.generic_string() + ")");
+		return false;
+	}
+	File::loadBinary(resourcePath, data);
+	#endif
+	return true;
 }

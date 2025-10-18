@@ -107,7 +107,7 @@ int ClientNetworkSystem::onDatagramReceive(const uint8_t* receiveBuffer, size_t 
 		if (!decContext)
 		{
 			datagramLocker.unlock();
-			return BAD_DATA_NETS_RESULT;
+			return SUCCESS_NETS_RESULT;
 		}
 
 		auto dataSize = ClientSession::decryptDatagram(receiveBuffer, byteCount, decContext, datagramBuffer);
@@ -198,6 +198,9 @@ int ClientNetworkSystem::onEncResponse(StreamInput response)
 		return BAD_DATA_NETS_RESULT;
 
 	datagramLocker.lock();
+
+	if (!decKey)
+		decKey = new uint8[ClientSession::keySize];
 	memcpy(decKey, newKey, ClientSession::keySize * sizeof(uint8));
 
 	if (decContext)
