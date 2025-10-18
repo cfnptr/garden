@@ -89,8 +89,7 @@ LogSystem::LogSystem(LogLevel level, double rotationTime, bool setSingleton) : S
 	}
 	catch (exception& e)
 	{
-		auto tmpPath = fs::path(std::tmpnam(nullptr));
-		this->logger = logy::Logger(directoryPath / tmpPath.filename(), level, (bool)GARDEN_DEBUG, rotationTime);
+		this->logger = logy::Logger(directoryPath / File::createTmpName(), level, (bool)GARDEN_DEBUG, rotationTime);
 	}
 
 	info("Started logging system. (UTC+0)");

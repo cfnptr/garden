@@ -91,7 +91,7 @@ void* ClientSession::createEncContext(uint8*& encKey, void*& cipher) noexcept
 	}
 	return encContext;
 }
-void* ClientSession::createDecContext(uint8*& decKey, void*& cipher) noexcept
+void* ClientSession::createDecContext(const uint8* decKey, void*& cipher) noexcept
 {
 	if (!cipher)
 	{
@@ -104,16 +104,14 @@ void* ClientSession::createDecContext(uint8*& decKey, void*& cipher) noexcept
 	if (!encContext)
 		return NULL;
 
-	decKey = new uint8[keySize];
-
 	if (!EVP_DecryptInit_ex(encContext, (EVP_CIPHER*)cipher, NULL, decKey, NULL))
 	{
-		EVP_CIPHER_CTX_free(encContext); free(decKey);
+		EVP_CIPHER_CTX_free(encContext);
 		return NULL;
 	}
 	if (!EVP_CIPHER_CTX_ctrl(encContext, EVP_CTRL_GCM_SET_IVLEN, ivSize, NULL))
 	{
-		EVP_CIPHER_CTX_free(encContext); free(decKey);
+		EVP_CIPHER_CTX_free(encContext);
 		return NULL;
 	}
 	return encContext;
@@ -242,7 +240,7 @@ psize ClientSession::decryptDatagram(const uint8* encData,
 		return 0;
 	}
 	
-	if (!EVP_CIPHER_CTX_ctrl(context, EVP_CTRL_GCM_SET_TAG, tagSize, (void*)(encData + (size + ivSize))))
+	if (!EVP_CIPHER_CTX_ctrl(context, EVP_CTRL_GCM_SET_TAG, tagSize, (void*)(encData + (dataSize + ivSize))))
 		return 0;
 	if (!EVP_DecryptFinal_ex(context, outBuffer + dataSize, &tmpSize) || tmpSize != 0)
 		return 0;

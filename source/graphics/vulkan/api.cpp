@@ -1179,13 +1179,15 @@ void VulkanAPI::flushDestroyBuffer()
 		case GraphicsAPI::DestroyResourceType::DescriptorSet:
 			if (resource.count > 0)
 			{
-				device.freeDescriptorSets(descriptorPool,
+				auto result = device.freeDescriptorSets(descriptorPool,
 					resource.count, (vk::DescriptorSet*)resource.data0);
+				vk::detail::resultCheck(result, "vk::Device::freeDescriptorSets");
 				free(resource.data0);
 			}
 			else
 			{
-				device.freeDescriptorSets(descriptorPool, 1, (vk::DescriptorSet*)&resource.data0);
+				auto result = device.freeDescriptorSets(descriptorPool, 1, (vk::DescriptorSet*)&resource.data0);
+				vk::detail::resultCheck(result, "vk::Device::freeDescriptorSets");
 			}
 			break;
 		case GraphicsAPI::DestroyResourceType::Pipeline:

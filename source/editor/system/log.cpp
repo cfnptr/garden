@@ -152,9 +152,9 @@ void LogEditorSystem::log(LogLevel level, string_view message)
 	time_t rawTime;
 	time(&rawTime);
 
-	#if __linux__ || __APPLE__
+	#if GARDEN_OS_LINUX || GARDEN_OS_MACOS
 	struct tm timeInfo = *localtime(&rawTime);
-	#elif _WIN32
+	#elif GARDEN_OS_WINDOWS
 	struct tm timeInfo;
 	if (gmtime_s(&timeInfo, &rawTime) != 0) abort();
 	#else

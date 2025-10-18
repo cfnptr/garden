@@ -85,7 +85,7 @@ NetsResult StreamServerHandle::sendDatagram(ClientSession* clientSession, const 
 	return result;
 }
 
-bool StreamServerHandle::onSessionCreate(nets::StreamSessionView streamSession, void*& handle)
+void* StreamServerHandle::onSessionCreate(nets::StreamSessionView streamSession)
 {
 	SET_CPU_ZONE_SCOPED("On Server Session Create");
 
@@ -98,7 +98,7 @@ bool StreamServerHandle::onSessionCreate(nets::StreamSessionView streamSession, 
 		if (!encContext)
 		{
 			GARDEN_LOG_ERROR("Failed to generate session encryption context.");
-			return false;
+			return NULL;
 		}
 	}
 
@@ -112,7 +112,7 @@ bool StreamServerHandle::onSessionCreate(nets::StreamSessionView streamSession, 
 			ClientSession::destroyEncDecContext(encContext, encKey);
 			GARDEN_LOG_INFO("Rejected client session. (address: " + 
 				streamSession.getAddress() + ", reason: " + reasonToString(result) + ")");
-			return false;
+			return NULL;
 		}
 	}
 	else
@@ -157,9 +157,8 @@ bool StreamServerHandle::onSessionCreate(nets::StreamSessionView streamSession, 
 		}
 	}
 
-	handle = clientSession;
 	GARDEN_LOG_INFO("Created a new client session. (address: " + streamSession.getAddress() + ")");
-	return true;
+	return clientSession;
 }
 void StreamServerHandle::onSessionDestroy(nets::StreamSessionView streamSession, int reason)
 {
@@ -311,6 +310,9 @@ int StreamServerHandle::onEncRequest(ClientSession* session, StreamInput request
 		return BAD_DATA_NETS_RESULT;
 
 	session->datagramLocker.lock();
+
+	if (!session->decKey)
+		session->decKey = new uint8[ClientSession::keySize];
 	memcpy(session->decKey, newKey, ClientSession::keySize * sizeof(uint8));
 
 	if (session->decContext)

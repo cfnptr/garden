@@ -13,12 +13,16 @@
 // limitations under the License.
 
 #include "garden/file.hpp"
+#include "math/hex.hpp"
+
 #include <fstream>
+#include <random>
 
 using namespace garden;
 
 void File::loadBinary(const fs::path& filePath, vector<uint8>& data)
 {
+	GARDEN_ASSERT(!filePath.empty());
 	ifstream inputStream(filePath, ios::in | ios::binary | ios::ate);
 	// Note: No need to set stream exception bits.
 
@@ -36,6 +40,7 @@ void File::loadBinary(const fs::path& filePath, vector<uint8>& data)
 }
 bool File::tryLoadBinary(const fs::path& filePath, vector<uint8>& data)
 {
+	GARDEN_ASSERT(!filePath.empty());
 	ifstream inputStream(filePath, ios::in | ios::binary | ios::ate);
 	if (!inputStream.is_open())
 		return false;
@@ -53,20 +58,33 @@ bool File::tryLoadBinary(const fs::path& filePath, vector<uint8>& data)
 }
 
 //**********************************************************************************************************************
-void File::storeBinary(const fs::path& filePath, const vector<uint8>& data)
+void File::storeBinary(const fs::path& filePath, const void* data, psize size)
 {
+	GARDEN_ASSERT(!filePath.empty());
+	GARDEN_ASSERT(data);
+	GARDEN_ASSERT(size > 0);
+
 	ofstream outputStream(filePath, ios::out | ios::binary);
 	// Note: No need to set stream exception bits.
 
 	if (!outputStream.is_open())
 		throw GardenError("Failed to open output binary file. (path: " + filePath.generic_string() + ")");
-	if (!outputStream.write((char*)data.data(), data.size()))
+	if (!outputStream.write((char*)data, size))
 		throw GardenError("Failed to write binary file. (path: " + filePath.generic_string() + ")");
+}
+
+fs::path File::createTmpName()
+{
+	auto randomDevice = random_device(); uint32 uuid[4];
+	uuid[0] = randomDevice(); uuid[1] = randomDevice();
+	uuid[2] = randomDevice(); uuid[3] = randomDevice();
+	return toHex<uint32>(uuid, 4);
 }
 
 #if GARDEN_DEBUG
 bool File::tryGetResourcePath(const fs::path& appResourcesPath, const fs::path& resourcePath, fs::path& filePath)
 {
+	GARDEN_ASSERT(!resourcePath.empty());
 	auto enginePath = GARDEN_RESOURCES_PATH / resourcePath;
 	auto appPath = appResourcesPath / resourcePath;
 	auto hasEngineFile = fs::exists(enginePath);
