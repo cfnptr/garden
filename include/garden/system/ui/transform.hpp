@@ -14,7 +14,7 @@
 
 /***********************************************************************************************************************
  * @file
- * @brief Common user interface rendering functions. (UI, GUI)
+ * @brief User interface transform rendering functions. (UI, GUI)
  */
 
 #pragma once
@@ -37,7 +37,15 @@ enum class UiAnchor : uint8
 	LeftTop,     /**< Aligns interface element to the left top corner of the screen. */
 	RightBottom, /**< Aligns interface element to the right bottom corner of the screen. */
 	RightTop,    /**< Aligns interface element to the right top corner of the screen. */
+	Background,  /**< Aligns interface element to the full screen. */
 	Count        /**< User interface alignment anchor type count. */
+};
+/**
+ * @brief User interface element anchor names
+ */
+constexpr const char* uiAnchorNames[(psize)UiAnchor::Count] =
+{
+	"Center", "Left", "Right", "Bottom", "Top", "Left Bottom", "Left Top", "Right Bottom", "Right Top", "Background"
 };
 
 /**
@@ -98,6 +106,14 @@ class UiTransformSystem final : public CompAnimSystem<UiTransformComponent, UiTr
 	ID<AnimationFrame> deserializeAnimation(IDeserializer& deserializer) final;
 	void animateAsync(View<Component> component,
 		View<AnimationFrame> a, View<AnimationFrame> b, float t) final;
+	friend class ecsm::Manager;
+public:
+	float uiScale = 1.0f;  /**< User interface scaling factor. (UI) */
+
+	/**
+	 * @brief Calculates size in user interface coordinates.
+	 */
+	float2 calcUiSize() const;
 };
 
 } // namespace garden

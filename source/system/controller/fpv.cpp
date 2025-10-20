@@ -150,7 +150,7 @@ quat FpvControllerSystem::updateCameraRotation()
 	auto cursorDelta = InputSystem::Instance::get()->getCursorDelta();
 	rotation += cursorDelta * mouseSensitivity * radians(0.1f);
 	rotation.y = std::clamp(rotation.y, radians(-89.99f), radians(89.99f));
-	auto cameraRotation = quat(rotation.y, f32x4::left) * quat(rotation.x, f32x4::bottom);
+	auto cameraRotation = quat(rotation.y, f32x4::right) * quat(rotation.x, f32x4::bottom);
 	transformView->setRotation(cameraRotation);
 	return cameraRotation;
 }

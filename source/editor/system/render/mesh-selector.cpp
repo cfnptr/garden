@@ -90,8 +90,8 @@ void MeshSelectorEditorSystem::render()
 		auto windowSize = inputSystem->getWindowSize();
 		auto cursorPosition = inputSystem->getCursorPosition();
 		auto ndcPosition = ((cursorPosition + 0.5f) / windowSize) * 2.0f - 1.0f;
-		auto globalOrigin = commonConstants.invViewProj * f32x4(ndcPosition.x, ndcPosition.y, 1.0f, 1.0f);
-		auto globalDirection = commonConstants.invViewProj * f32x4(ndcPosition.x, ndcPosition.y, 0.0001f, 1.0f);
+		auto globalOrigin = commonConstants.invViewProj * f32x4(ndcPosition.x, -ndcPosition.y, 1.0f, 1.0f);
+		auto globalDirection = commonConstants.invViewProj * f32x4(ndcPosition.x, -ndcPosition.y, 0.0001f, 1.0f);
 		globalOrigin /= globalOrigin.getW(); globalDirection /= globalDirection.getW();
 		globalDirection -= globalOrigin;
 

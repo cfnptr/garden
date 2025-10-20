@@ -132,7 +132,6 @@ class GraphicsSystem final : public System, public Singleton<GraphicsSystem>
 
 	friend class ecsm::Manager;
 public:
-	float uiScale = 1.0f;             /**< User interface scaling factor. (UI) */
 	ID<Entity> camera = {};           /**< Current main render camera. */
 	ID<Entity> directionalLight = {}; /**< Current main directional light. (Sun) */
 	uint16 maxFrameRate = 60;         /**< Maximum frames per second count. (FPS) */
@@ -154,6 +153,10 @@ public:
 	void markTeleported() { wasTeleported = true; }
 
 	/**
+	 * @brief Returns true if frame size is scaled.
+	 */
+	bool isFrameSizeScaled() const noexcept { return scaledFrameSize != uint2::zero; }
+	/**
 	 * @brief Returns scaled frame size in texels.
 	 * @details Useful for scaling forward/deferred framebuffers.
 	 */
@@ -161,7 +164,7 @@ public:
 	/**
 	 * @brief Sets scaled frame size in texels.
 	 * @note It signals swapchain size change.
-	 * @param frameSize target scaled frame size
+	 * @param frameSize target scaled frame size or zero
 	 */
 	void setScaledFrameSize(uint2 frameSize);
 

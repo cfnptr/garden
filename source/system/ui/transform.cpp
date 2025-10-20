@@ -13,6 +13,10 @@
 // limitations under the License.
 
 #include "garden/system/ui/transform.hpp"
+#include "garden/system/transform.hpp"
+#include "garden/system/thread.hpp"
+#include "garden/system/input.hpp"
+#include "garden/profiler.hpp"
 
 using namespace garden;
 
@@ -38,9 +42,74 @@ UiTransformSystem::~UiTransformSystem()
 	unsetSingleton();
 }
 
+//**********************************************************************************************************************
+static void transformUiComponent(float2 uiHalfSize, UiTransformComponent& uiTransformComp)
+{
+	auto entity = uiTransformComp.getEntity();
+	if (!entity)
+		return;
+
+	auto transformView = TransformSystem::Instance::get()->tryGetComponent(entity);
+	if (!transformView || !transformView->isActive())
+		return;
+
+	auto position = (float2)uiTransformComp.position;
+	auto scale = (float2)uiTransformComp.scale;
+
+	switch (uiTransformComp.anchor)
+	{
+		case UiAnchor::Center: break;
+		case UiAnchor::Left: position.x -= uiHalfSize.x; break;
+		case UiAnchor::Right: position.x += uiHalfSize.x; break;
+		case UiAnchor::Bottom: position.y -= uiHalfSize.y; break;
+		case UiAnchor::Top: position.y += uiHalfSize.y; break;
+		case UiAnchor::LeftBottom: position -= uiHalfSize; break;
+		case UiAnchor::LeftTop: position += float2(-uiHalfSize.x, uiHalfSize.y); break;
+		case UiAnchor::RightBottom: position += float2(uiHalfSize.x, -uiHalfSize.y); break;
+		case UiAnchor::RightTop: position += uiHalfSize; break;
+		case UiAnchor::Background:
+			scale *= uiHalfSize.x / uiHalfSize.y > scale.x / scale.y ?
+				(uiHalfSize.x * 2.0f) / scale.x : (uiHalfSize.y * 2.0f) / scale.y;
+			break;
+		default: abort();
+	}
+
+	transformView->setPosition(float3(position, uiTransformComp.position.z));
+	transformView->setScale(float3(scale, uiTransformComp.scale.z));
+	transformView->setRotation(uiTransformComp.rotation);
+}
+
 void UiTransformSystem::update()
 {
-	// TODO: async transforms process.
+	SET_CPU_ZONE_SCOPED("UI Transform Update");
+
+	if (components.getCount() == 0)
+		return;
+
+	auto componentData = components.getData();
+	auto threadSystem = ThreadSystem::Instance::tryGet();
+	auto uiHalfSize = calcUiSize() * 0.5f;
+
+	if (threadSystem)
+	{
+		auto& threadPool = threadSystem->getForegroundPool();
+		threadPool.addItems([componentData, uiHalfSize](const ThreadPool::Task& task)
+		{
+			SET_CPU_ZONE_SCOPED("UI Transform Update");
+
+			auto itemCount = task.getItemCount();
+			for (uint32 i = task.getItemOffset(); i < itemCount; i++)
+				transformUiComponent(uiHalfSize, componentData[i]);
+		},
+		components.getOccupancy());
+		threadPool.wait();
+	}
+	else
+	{
+		auto componentOccupancy = components.getOccupancy();
+		for (uint32 i = 0; i < componentOccupancy; i++)
+			transformUiComponent(uiHalfSize, componentData[i]);
+	}
 }
 
 void UiTransformSystem::resetComponent(View<Component> component, bool full)
@@ -90,6 +159,7 @@ void UiTransformSystem::serialize(ISerializer& serializer, const View<Component>
 		case UiAnchor::LeftTop: serializer.write("anchor", string_view("LeftTop")); break;
 		case UiAnchor::RightBottom: serializer.write("anchor", string_view("RightBottom")); break;
 		case UiAnchor::RightTop: serializer.write("anchor", string_view("RightTop")); break;
+		case UiAnchor::Background: serializer.write("anchor", string_view("Background")); break;
 		default: abort();
 	}
 }
@@ -109,6 +179,7 @@ void UiTransformSystem::deserialize(IDeserializer& deserializer, View<Component>
 	else if (anchor == "LeftTop") uiTransformView->anchor = UiAnchor::LeftTop;
 	else if (anchor == "RightBottom") uiTransformView->anchor = UiAnchor::RightBottom;
 	else if (anchor == "RightTop") uiTransformView->anchor = UiAnchor::RightTop;
+	else if (anchor == "Background") uiTransformView->anchor = UiAnchor::Background;
 }
 
 //**********************************************************************************************************************
@@ -134,7 +205,6 @@ ID<AnimationFrame> UiTransformSystem::deserializeAnimation(IDeserializer& deseri
 	return {};
 }
 
-//**********************************************************************************************************************
 void UiTransformSystem::animateAsync(View<Component> component, View<AnimationFrame> a, View<AnimationFrame> b, float t)
 {
 	auto uiTransformView = View<UiTransformComponent>(component);
@@ -147,4 +217,10 @@ void UiTransformSystem::animateAsync(View<Component> component, View<AnimationFr
 		uiTransformView->scale = (float3)lerp(frameA->scale, frameB->scale, t);
 	if (frameA->animateRotation)
 		uiTransformView->rotation = slerp(frameA->rotation, frameB->rotation, t);
+}
+
+float2 UiTransformSystem::calcUiSize() const
+{
+	auto inputSystem = InputSystem::Instance::get();
+	return (float2)inputSystem->getWindowSize() * inputSystem->getContentScale() * uiScale;
 }

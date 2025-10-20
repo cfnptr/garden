@@ -183,8 +183,8 @@ void SpriteRenderEditorSystem::renderComponent(SpriteRenderComponent* componentV
 		auto flags = ImageLoadFlags::TypeArray | ImageLoadFlags::LoadShared;
 		if (componentView->isArray)
 			flags |= ImageLoadFlags::LoadArray;
-		componentView->colorMap = resourceSystem->loadImage(componentView->colorMapPath,
-			Image::Usage::Sampled | Image::Usage::TransferDst, 1, Image::Strategy::Default, flags);
+		componentView->colorMap = resourceSystem->loadImage(componentView->colorMapPath, Image::Usage::Sampled | 
+			Image::Usage::TransferDst | Image::Usage::TransferQ, 1, Image::Strategy::Default, flags);
 		componentView->descriptorSet = {};
 	} ImGui::SameLine();
 

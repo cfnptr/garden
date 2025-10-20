@@ -153,7 +153,7 @@ void Controller2DSystem::updateCameraControl()
 			cameraView->p.orthographic.height.y - cameraView->p.orthographic.height.x);
 		auto offset = cursorDelta / (windowSize / orthoSize);
 		offset = (float2x2)transformView->calcModel() * offset;
-		transformView->translate(f32x4(-offset.x, offset.y, 0.0f));
+		transformView->translate(-f32x4(offset.x, offset.y, 0.0f));
 	}
 
 	auto mouseScrollY = inputSystem->getMouseScroll().y;

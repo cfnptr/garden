@@ -473,9 +473,6 @@ void ImGuiRenderSystem::input()
 {
 	auto& io = ImGui::GetIO();
 	auto inputSystem = InputSystem::Instance::get();
-	auto cursorPos = inputSystem->getCursorPosition();
-	io.AddMousePosEvent(cursorPos.x, cursorPos.y);
-	lastValidMousePos = cursorPos;
 
 	if (inputSystem->isCursorEntered())
 	{
@@ -485,6 +482,13 @@ void ImGuiRenderSystem::input()
 	{
 		lastValidMousePos = float2(io.MousePos.x, io.MousePos.y);
 		io.AddMousePosEvent(-FLT_MAX, -FLT_MAX);
+	}
+	else if (inputSystem->isCursorInWindow())
+	{
+		auto cursorPos = inputSystem->getCursorPosition();
+		cursorPos.y = inputSystem->getWindowSize().y - cursorPos.y;
+		io.AddMousePosEvent(cursorPos.x, cursorPos.y);
+		lastValidMousePos = cursorPos;
 	}
 
 	if (inputSystem->isWindowFocused())
@@ -655,6 +659,7 @@ static void updateImGuiTextures(ImVector<ImTextureData*>& textures,
 
 			ID<Image> image; *image = (uint32)(psize)texture->BackendUserData;
 			graphicsSystem->destroy(image);
+			texture->SetTexID(0); texture->BackendUserData = nullptr;
 			texture->SetStatus(ImTextureStatus_Destroyed);
 		}
 		else if (texture->Status != ImTextureStatus_Destroyed) abort();
