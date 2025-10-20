@@ -39,7 +39,7 @@ using namespace math;
  * @param[in,out] currentItem selected item
  * @param[in] items all available item list
  */
-template<typename T = int>
+template<typename T>
 static bool Combo(const char* label, T& currentItem, const char* const items[], int itemsCount)
 {
 	auto item = (int)currentItem;

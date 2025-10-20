@@ -63,7 +63,8 @@ static void animateComponent(const AnimationSystem::Animations* animations, Anim
 	if (!entity || !animationComp.isPlaying || !animationComp.active.empty())
 		return;
 
-	auto transformView = Manager::Instance::get()->tryGet<TransformComponent>(entity);
+	auto manager = Manager::Instance::get();
+	auto transformView = manager->tryGet<TransformComponent>(entity);
 	if (transformView)
 	{
 		if (!transformView->isActive())
@@ -99,7 +100,6 @@ static void animateComponent(const AnimationSystem::Animations* animations, Anim
 	if (keyframeA != keyframes.begin())
 		keyframeA--;
 
-	auto manager = Manager::Instance::get();
 	const auto& animatablesA = keyframeA->second;
 	const auto& animatablesB = keyframeB->second;
 

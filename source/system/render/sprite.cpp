@@ -228,7 +228,8 @@ void SpriteRenderSystem::serialize(ISerializer& serializer, const View<Component
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	if (!spriteRenderView->colorMapPath.empty())
 		serializer.write("colorMapPath", spriteRenderView->colorMapPath.generic_string());
-	serializer.write("taskPriority", spriteRenderView->taskPriority);
+	if (spriteRenderView->taskPriority != 0.0f)
+		serializer.write("taskPriority", spriteRenderView->taskPriority);
 	#endif
 }
 void SpriteRenderSystem::deserialize(IDeserializer& deserializer, View<Component> component)
@@ -256,8 +257,8 @@ void SpriteRenderSystem::deserialize(IDeserializer& deserializer, View<Component
 	auto flags = ImageLoadFlags::TypeArray | ImageLoadFlags::LoadShared;
 	if (spriteRenderView->isArray)
 		flags |= ImageLoadFlags::LoadArray;
-	spriteRenderView->colorMap = ResourceSystem::Instance::get()->loadImage(colorMapPath,
-		Image::Usage::Sampled | Image::Usage::TransferDst, 1, Image::Strategy::Default, flags, taskPriority);
+	spriteRenderView->colorMap = ResourceSystem::Instance::get()->loadImage(colorMapPath, Image::Usage::Sampled | 
+		Image::Usage::TransferDst | Image::Usage::TransferQ, 1, Image::Strategy::Default, flags, taskPriority);
 }
 
 //**********************************************************************************************************************
@@ -280,10 +281,11 @@ void SpriteRenderSystem::serializeAnimation(ISerializer& serializer, View<Animat
 	{
 		if (!spriteFrameView->colorMapPath.empty())
 			serializer.write("colorMapPath", spriteFrameView->colorMapPath.generic_string());
+		if (spriteFrameView->taskPriority != 0.0f)
+			serializer.write("taskPriority", spriteFrameView->taskPriority);
 		if (spriteFrameView->isArray)
 			serializer.write("isArray", true);
 	}
-	serializer.write("taskPriority", spriteFrameView->taskPriority);
 	#endif
 }
 void SpriteRenderSystem::animateAsync(View<Component> component,

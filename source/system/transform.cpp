@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "garden/system/transform.hpp"
+#include "garden/system/ui/transform.hpp"
 #include "garden/system/log.hpp"
 #include "garden/base64.hpp"
 #include "math/matrix/transform.hpp"
@@ -513,12 +514,17 @@ void TransformSystem::serialize(ISerializer& serializer, const View<Component> c
 	uidStringCache.resize(uidStringCache.length() - 1);
 	serializer.write("uid", uidStringCache);
 
-	if (f32x4(transformView->posChildCount, 0.0f) != f32x4::zero)
-		serializer.write("position", (float3)transformView->posChildCount);
-	if (transformView->rotation != quat::identity)
-		serializer.write("rotation", transformView->rotation);
-	if (f32x4(transformView->scaleChildCap, 0.0f) != f32x4::one)
-		serializer.write("scale", (float3)transformView->scaleChildCap);
+	auto manager = Manager::Instance::get();
+	if (!manager->has<UiTransformComponent>(component->getEntity()))
+	{
+		if (f32x4(transformView->posChildCount, 0.0f) != f32x4::zero)
+			serializer.write("position", (float3)transformView->posChildCount);
+		if (transformView->rotation != quat::identity)
+			serializer.write("rotation", transformView->rotation);
+		if (f32x4(transformView->scaleChildCap, 0.0f) != f32x4::one)
+			serializer.write("scale", (float3)transformView->scaleChildCap);
+	}
+	
 	if (!transformView->selfActive)
 		serializer.write("selfActive", false);
 

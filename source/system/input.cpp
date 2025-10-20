@@ -138,7 +138,7 @@ void InputSystem::preInit()
 
 	double x = 0.0, y = 0.0;
 	glfwGetCursorPos(window, &x, &y);
-	newCursorPos = currCursorPos = float2((float)x, (float)y);
+	newCursorPos = currCursorPos = float2((float)x, height - (float)y);
 
 	newCursorMode = currCursorMode = (CursorMode)(glfwGetInputMode(window, GLFW_CURSOR) - 0x00034001);
 	newCursorInWindow = lastCursorInWindow = currCursorInWindow = glfwGetWindowAttrib(window, GLFW_HOVERED);
@@ -369,7 +369,7 @@ void InputSystem::startRenderThread()
 		inputSystem->newFramebufferSize = uint2((uint32)framebufferX, (uint32)framebufferY);
 		inputSystem->newWindowSize = uint2((uint32)windowX, (uint32)windowY);
 		inputSystem->newContentScale = float2(contentX, contentY);
-		inputSystem->newCursorPos = float2((float)cursorX, (float)cursorY);
+		inputSystem->newCursorPos = float2((float)cursorX, windowY - (float)cursorY);
 		inputSystem->newMouseScroll += inputSystem->accumMouseScroll;
 		inputSystem->accumMouseScroll = 0.0f;
 		inputSystem->newCursorInWindow = cursorInWindow;

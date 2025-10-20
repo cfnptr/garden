@@ -921,13 +921,18 @@ void RigidbodyComponent::destroyAllConstraints()
 		{
 			auto rigidbodyView = physicsSystem->getComponent(i->otherBody);
 			auto& otherConstraints = rigidbodyView->constraints;
-			for (int64 j = (int64)otherConstraints.size() - 1; j >= 0; j--) // TODO: suboptimal. Maybe optimize?
+			auto otherConstraintData = otherConstraints.data();
+			auto otherConstraintCount = otherConstraints.size();
+
+			for (psize j =  0; j < otherConstraintCount; j++)
 			{
-				if (otherConstraints[j].otherBody != entity)
+				if (otherConstraintData[j].otherBody != entity)
 					continue;
-				otherConstraints.erase(otherConstraints.begin() + j);
+				otherConstraintCount--;
+				otherConstraintData[j] = otherConstraintData[otherConstraintCount];
 				break;
 			}
+			otherConstraints.resize(otherConstraintCount);
 		}
 
 		auto instance = (JPH::Constraint*)i->instance;

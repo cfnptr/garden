@@ -23,6 +23,7 @@
 #include "garden/system/settings.hpp"
 #include "garden/system/app-info.hpp"
 #include "garden/system/transform.hpp"
+#include "garden/system/ui/transform.hpp"
 #include "garden/graphics/api.hpp"
 #include "garden/graphics/glfw.hpp" // Note: Do not move it.
 #include "garden/editor/system/render/gpu-resource.hpp"
@@ -292,16 +293,49 @@ void EditorRenderSystem::showOptionsWindow()
 				settingsSystem->setInt("render.maxFrameRate", frameRate);
 		}
 
-		ImGui::BeginDisabled(graphicsSystem->useUpscaling);
+		
 		auto scaledSize = graphicsSystem->getScaledFrameSize();
 		auto framebufferSize = graphicsSystem->getFramebufferSize();
-		if (ImGui::SliderInt("Scaled Size X", (int*)&scaledSize.x, 
-			GraphicsAPI::minFramebufferSize, framebufferSize.x))
+		auto isFrameSizeScaled = graphicsSystem->isFrameSizeScaled();
+
+		ImGui::BeginDisabled(graphicsSystem->useUpscaling || !isFrameSizeScaled);
+		if (ImGui::DragInt("Scaled Size X", (int*)&scaledSize.x, 1.0f,
+			GraphicsAPI::minFramebufferSize, framebufferSize.x * 2))
 		{
 			scaledSize.y = ((float)scaledSize.x / framebufferSize.x) * framebufferSize.y;
 			graphicsSystem->setScaledFrameSize(scaledSize);
 		}
+		if (graphicsSystem->useUpscaling)
+		{
+			if (ImGui::BeginItemTooltip())
+			{
+				ImGui::Text("Controlled by the upscaller! (DLSS, FSR, etc.)");
+				ImGui::EndTooltip();
+			}
+		}
 		ImGui::EndDisabled();
+
+		ImGui::SameLine();
+		ImGui::BeginDisabled(graphicsSystem->useUpscaling);
+		if (ImGui::Checkbox("##scale", &isFrameSizeScaled))
+		{
+			if (isFrameSizeScaled)
+				graphicsSystem->setScaledFrameSize(scaledSize);
+			else graphicsSystem->setScaledFrameSize(uint2::zero);
+		}
+		if (graphicsSystem->useUpscaling)
+		{
+			if (ImGui::BeginItemTooltip())
+			{
+				ImGui::Text("Controlled by the upscaller! (DLSS, FSR, etc.)");
+				ImGui::EndTooltip();
+			}
+		}
+		ImGui::EndDisabled();
+
+		auto uiTransformSystem = UiTransformSystem::Instance::tryGet();
+		if (uiTransformSystem)
+			ImGui::DragFloat("UI Scale", &uiTransformSystem->uiScale, 0.01f, 0.001f, FLT_MAX);
 		ImGui::Spacing();
 
 		auto appInfoSystem = AppInfoSystem::Instance::tryGet();

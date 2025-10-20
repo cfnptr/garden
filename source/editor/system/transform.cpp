@@ -15,6 +15,7 @@
 #include "garden/editor/system/transform.hpp"
 
 #if GARDEN_EDITOR
+#include "garden/system/ui/transform.hpp"
 #include "garden/system/transform.hpp"
 #include "math/matrix/transform.hpp"
 #include "math/angles.hpp"
@@ -75,9 +76,7 @@ void TransformEditorSystem::onEntityDestroy(ID<Entity> entity)
 //**********************************************************************************************************************
 void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 {
-	auto manager = Manager::Instance::get();
 	auto transformSystem = TransformSystem::Instance::get();
-
 	if (ImGui::BeginItemTooltip())
 	{
 		auto transformView = transformSystem->getComponent(entity);
@@ -119,6 +118,13 @@ void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 
 	if (!isOpened)
 		return;
+
+	auto manager = Manager::Instance::get();
+	if (manager->has<UiTransformComponent>(entity))
+	{
+		ImGui::Text("Controlled by the UiTransformComponent!");
+		return;
+	}
 
 	auto transformView = transformSystem->getComponent(entity);
 	auto isSelfActive = transformView->isSelfActive();
@@ -169,8 +175,7 @@ void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 
 	if (ImGui::DragFloat3("Rotation", &newEulerAngles, 0.3f, 0.0f, 0.0f, "%.3f°"))
 	{
-		auto difference = newEulerAngles - oldEulerAngles;
-		transformView->rotate(fromEulerAngles(radians(difference)));
+		transformView->rotate(fromEulerAngles(radians(newEulerAngles - oldEulerAngles)));
 		transformView->setRotation(normalize(transformView->getRotation()));
 		oldEulerAngles = newEulerAngles;
 	}
@@ -184,10 +189,10 @@ void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	{
 		if (isStatic)
 			ImGui::Text("Disabled due to StaticTransformComponent!");
-		auto rotation = radians(newEulerAngles);
 		auto global = degrees(extractQuat(extractRotation(transformView->calcModel())).extractEulerAngles());
+		auto rotation = radians(newEulerAngles);
 		ImGui::Text("Rotation in degrees.\nGlobal: %.1f, %.1f, %.1f\nRadians: %.3f, %.3f, %.3f",
-			rotation.getX(), rotation.getY(), rotation.getZ(), global.getX(), global.getY(), global.getZ());
+			global.getX(), global.getY(), global.getZ(), rotation.getX(), rotation.getY(), rotation.getZ());
 		ImGui::EndTooltip();
 	}
 

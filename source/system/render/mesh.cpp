@@ -15,6 +15,7 @@
 #include "garden/system/render/mesh.hpp"
 #include "garden/system/render/forward.hpp"
 #include "garden/system/render/deferred.hpp"
+#include "garden/system/ui/transform.hpp"
 #include "garden/system/transform.hpp"
 #include "garden/system/thread.hpp"
 #include "garden/profiler.hpp"
@@ -366,7 +367,7 @@ void MeshRenderSystem::sortMeshes() // TODO: We can use here async bitonic sorti
 }
 
 //**********************************************************************************************************************
-void MeshRenderSystem::prepareMeshes(const f32x4x4& viewProj, 
+void MeshRenderSystem::prepareMeshes(const f32x4x4& viewProj, const Plane* uiFrustumPlanes,
 	f32x4 cameraOffset, uint8 frustumPlaneCount, int8 shadowPass)
 {
 	SET_CPU_ZONE_SCOPED("Meshes Prepare");
@@ -401,9 +402,12 @@ void MeshRenderSystem::prepareMeshes(const f32x4x4& viewProj,
 		}
 		else if (renderType == MeshRenderType::UI)
 		{
-			const auto& componentPool = meshSystem->getMeshComponentPool();
-			uiMeshMaxCount += componentPool.getCount();
-			sortedBufferCount++;
+			if (shadowPass < 0)
+			{
+				const auto& componentPool = meshSystem->getMeshComponentPool();
+				uiMeshMaxCount += componentPool.getCount();
+				sortedBufferCount++;
+			}
 		}
 		else
 		{
@@ -452,6 +456,9 @@ void MeshRenderSystem::prepareMeshes(const f32x4x4& viewProj,
 		
 		if (renderType == MeshRenderType::Translucent || renderType == MeshRenderType::UI)
 		{
+			if (renderType == MeshRenderType::UI && shadowPass >= 0)
+				continue;
+
 			auto bufferIndex = sortedBufferIndex++;
 			auto sortedBuffer = sortedBuffers[bufferIndex];
 			sortedBuffer->meshSystem = meshSystem;
@@ -460,17 +467,20 @@ void MeshRenderSystem::prepareMeshes(const f32x4x4& viewProj,
 			if (componentCount == 0 || !meshSystem->isDrawReady(shadowPass))
 				continue;
 
-			SortedMesh* combinedSortedMeshes; atomic<uint32>* sortedDrawIndex; f32x4 sortedCameraPos;
+			SortedMesh* combinedSortedMeshes; atomic<uint32>* sortedDrawIndex;
+			const Plane* cullingPlanes; f32x4 sortedCameraPos; 
 			if (renderType == MeshRenderType::Translucent)
 			{
 				combinedSortedMeshes = transSortedMeshes.data();
 				sortedDrawIndex = &transDrawIndex;
+				cullingPlanes = frustumPlanes;
 				sortedCameraPos = cameraPosition;
 			}
 			else
 			{
 				combinedSortedMeshes = uiSortedMeshes.data();
 				sortedDrawIndex = &uiDrawIndex;
+				cullingPlanes = uiFrustumPlanes;
 				sortedCameraPos = f32x4::zero;
 			}
 
@@ -480,9 +490,11 @@ void MeshRenderSystem::prepareMeshes(const f32x4x4& viewProj,
 				if (sortedThreadMeshes.size() < threadPool.getThreadCount())
 					sortedThreadMeshes.resize(threadPool.getThreadCount());
 
-				threadPool.addItems([&](const ThreadPool::Task& task)
+				// Note: do not optimize args with [&], it captures stack address!!!
+				threadPool.addItems([this, cameraOffset, sortedCameraPos, cullingPlanes, sortedBuffer, 
+					combinedSortedMeshes, sortedDrawIndex, bufferIndex, shadowPass](const ThreadPool::Task& task)
 				{
-					prepareSortedMeshes(cameraOffset, sortedCameraPos, frustumPlanes, sortedBuffer, 
+					prepareSortedMeshes(cameraOffset, sortedCameraPos, cullingPlanes, sortedBuffer, 
 						combinedSortedMeshes, sortedThreadMeshes, sortedDrawIndex, bufferIndex, 
 						task.getItemOffset(), task.getItemCount(), task.getThreadIndex(), shadowPass, true);
 				},
@@ -490,7 +502,7 @@ void MeshRenderSystem::prepareMeshes(const f32x4x4& viewProj,
 			}
 			else
 			{
-				prepareSortedMeshes(cameraOffset, sortedCameraPos, frustumPlanes, sortedBuffer, 
+				prepareSortedMeshes(cameraOffset, sortedCameraPos, cullingPlanes, sortedBuffer, 
 					combinedSortedMeshes, sortedThreadMeshes, sortedDrawIndex, bufferIndex, 
 					0, componentPool.getOccupancy(), 0, shadowPass, false);
 			}
@@ -810,7 +822,7 @@ void MeshRenderSystem::renderShadows()
 			if (!shadowSystem->prepareShadowRender(i, viewProj, cameraOffset))
 				continue;
 
-			prepareMeshes(viewProj, cameraOffset, Plane::frustumCount, i);
+			prepareMeshes(viewProj, nullptr, cameraOffset, Plane::frustumCount, i);
 
 			graphicsSystem->startRecording(CommandBufferType::Frame);
 			if (shadowSystem->beginShadowRender(i, MeshRenderType::Opaque))
@@ -843,13 +855,11 @@ void MeshRenderSystem::renderShadows()
 }
 
 //**********************************************************************************************************************
-static float4x4 createUiProjView(GraphicsSystem* graphicsSystem) noexcept
+static f32x4x4 calcUiProjView() noexcept
 {
-	auto halfSize = (graphicsSystem->uiScale * 0.5f);
-	auto framebufferSize = graphicsSystem->getFramebufferSize();
-	auto aspectRatio = (float)framebufferSize.x / framebufferSize.y;
-	return calcOrthoProjRevZ(float2(-halfSize, halfSize) * aspectRatio, 
-		float2(-halfSize, halfSize), float2(0.0f, 1.0f));
+	auto halfSize = UiTransformSystem::Instance::get()->calcUiSize() * 0.5f;
+	return (f32x4x4)calcOrthoProjRevZ(float2(-halfSize.x, halfSize.x), 
+		float2(-halfSize.y, halfSize.y), float2(-1.0f, 1.0f));
 }
 
 void MeshRenderSystem::preForwardRender()
@@ -860,7 +870,8 @@ void MeshRenderSystem::preForwardRender()
 	renderShadows();
 
 	const auto& cc = GraphicsSystem::Instance::get()->getCommonConstants();
-	prepareMeshes(cc.viewProj, f32x4::zero, Plane::frustumCount - 2, -1);
+	Plane uiFrustumPlanes[Plane::frustumCount]; extractFrustumPlanes(calcUiProjView(), uiFrustumPlanes);
+	prepareMeshes(cc.viewProj, uiFrustumPlanes, f32x4::zero, Plane::frustumCount - 2, -1);
 }
 
 void MeshRenderSystem::forwardRender()
@@ -880,8 +891,7 @@ void MeshRenderSystem::forwardRender()
 		renderSorted(cc.viewProj, MeshRenderType::Translucent, -1);
 	}
 
-	auto uiProjView = (f32x4x4)createUiProjView(graphicsSystem);
-	renderSorted(uiProjView, MeshRenderType::UI, -1);
+	renderSorted(calcUiProjView(), MeshRenderType::UI, -1);
 }
 
 //**********************************************************************************************************************
@@ -893,7 +903,8 @@ void MeshRenderSystem::preDeferredRender()
 	renderShadows();
 
 	const auto& cc = GraphicsSystem::Instance::get()->getCommonConstants();
-	prepareMeshes(cc.viewProj, f32x4::zero, Plane::frustumCount - 2, -1);
+	Plane uiFrustumPlanes[Plane::frustumCount]; extractFrustumPlanes(calcUiProjView(), uiFrustumPlanes);
+	prepareMeshes(cc.viewProj, uiFrustumPlanes, f32x4::zero, Plane::frustumCount - 2, -1);
 }
 void MeshRenderSystem::deferredRender()
 {
@@ -978,6 +989,5 @@ void MeshRenderSystem::uiRender()
 	SET_CPU_ZONE_SCOPED("Mesh UI Render");
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto uiProjView = (f32x4x4)createUiProjView(graphicsSystem);
-	renderSorted(uiProjView, MeshRenderType::UI, -1);
+	renderSorted(calcUiProjView(), MeshRenderType::UI, -1);
 }

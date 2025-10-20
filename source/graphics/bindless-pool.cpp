@@ -74,16 +74,21 @@ uint32 BindlessPool::allocate(string_view name, ID<Resource> resource, uint64 fr
 	uint32 allocation = UINT32_MAX;
 	if (!allocData.freeAllocs.empty())
 	{
-		auto freeAllocs = allocData.freeAllocs.data();
-		for (int64 i = (int64)allocData.freeAllocs.size() - 1; i >= 0; i--)
+		auto& freeAllocs = allocData.freeAllocs;
+		auto freeAllocData = freeAllocs.data();
+		auto freeAllocCount = freeAllocs.size();
+
+		for (psize i = 0; i < freeAllocCount; i++)
 		{
-			const auto& freeAlloc = freeAllocs[i];
+			const auto& freeAlloc = freeAllocData[i];
 			if (frameIndex < freeAlloc.second)
 				continue;
 			allocation = freeAlloc.first;
-			allocData.freeAllocs.erase(allocData.freeAllocs.begin() + i);
+			freeAllocCount--;
+			freeAllocData[i] = freeAllocData[freeAllocCount];
 			break;
 		}
+		freeAllocs.resize(freeAllocCount);
 	}
 	if (allocation == UINT32_MAX)
 	{
