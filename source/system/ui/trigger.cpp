@@ -14,6 +14,7 @@
 
 #include "garden/system/ui/trigger.hpp"
 #include "garden/system/render/editor.hpp"
+#include "garden/system/ui/transform.hpp"
 #include "garden/system/transform.hpp"
 #include "garden/system/thread.hpp"
 #include "garden/system/input.hpp"
@@ -46,7 +47,7 @@ UiTriggerSystem::~UiTriggerSystem()
 }
 
 //**********************************************************************************************************************
-static void triggerUiComponent(ID<Entity>& newElement, float& newPosZ, UiTriggerComponent& uiTriggerComp)
+static void triggerUiComponent(ID<Entity>& newElement, float& newPosZ, UiTriggerComponent& uiTriggerComp, float uiScale)
 {
 	auto entity = uiTriggerComp.getEntity();
 	if (!entity)
@@ -56,10 +57,10 @@ static void triggerUiComponent(ID<Entity>& newElement, float& newPosZ, UiTrigger
 	if (!transformView || !transformView->isActive())
 		return;
 
-	auto inputSystem = InputSystem::Instance::get();
+	auto inputSystem = InputSystem::Instance::get(); 
 	auto model = transformView->calcModel(); auto modelPosZ = getTranslation(model).getZ();
 	auto invModel = inverse4x4(model * scale(f32x4(uiTriggerComp.scale.x, uiTriggerComp.scale.y, 1.0f)));
-	auto cursorPos = inputSystem->getCursorPosition() - (float2)inputSystem->getWindowSize() * 0.5f;
+	auto cursorPos = (inputSystem->getCursorPosition() - (float2)inputSystem->getWindowSize() * 0.5f) * uiScale;
 	auto modelCursorPos = float2(invModel * f32x4(cursorPos.x, cursorPos.y, 0.0f, 1.0f));
 
 	if (abs(modelCursorPos.x) > 0.5f || abs(modelCursorPos.y) > 0.5f || modelPosZ >= newPosZ)
@@ -96,15 +97,16 @@ void UiTriggerSystem::update()
 
 	auto componentData = components.getData();
 	auto threadSystem = ThreadSystem::Instance::tryGet();
+	auto uiScale = UiTransformSystem::Instance::get()->uiScale;
 	ID<Entity> newElement = {}; float newPosZ = FLT_MAX;
 
-	if (threadSystem)
+	if (threadSystem && components.getCount() > threadSystem->getForegroundPool().getThreadCount())
 	{
 		auto& threadPool = threadSystem->getForegroundPool();
 		newElements.assign(threadPool.getThreadCount(), make_pair(ID<Entity>(), FLT_MAX));
 		auto newElementData = newElements.data();
 
-		threadPool.addItems([componentData, newElementData](const ThreadPool::Task& task)
+		threadPool.addItems([componentData, newElementData, uiScale](const ThreadPool::Task& task)
 		{
 			SET_CPU_ZONE_SCOPED("UI Trigger Update");
 
@@ -113,7 +115,7 @@ void UiTriggerSystem::update()
 			auto& newElement = threadElement.first; auto& newPosZ = threadElement.second;
 
 			for (uint32 i = task.getItemOffset(); i < itemCount; i++)
-				triggerUiComponent(newElement, newPosZ, componentData[i]);
+				triggerUiComponent(newElement, newPosZ, componentData[i], uiScale);
 		},
 		components.getOccupancy());
 		threadPool.wait();
@@ -132,7 +134,7 @@ void UiTriggerSystem::update()
 	{
 		auto componentOccupancy = components.getOccupancy();
 		for (uint32 i = 0; i < componentOccupancy; i++)
-			triggerUiComponent(newElement, newPosZ, componentData[i]);
+			triggerUiComponent(newElement, newPosZ, componentData[i], uiScale);
 	}
 
 	if (newElement)
@@ -176,7 +178,11 @@ void UiTriggerSystem::destroyComponent(ID<Component> instance)
 {
 	auto component = components.get(ID<UiTriggerComponent>(instance));
 	if (currElement == component->getEntity())
+	{
+		if (!component->onExit.empty())
+			Manager::Instance::get()->tryRunEvent(component->onExit);
 		currElement = {};
+	}
 	resetComponent(View<Component>(component), false);
 	components.destroy(ID<UiTriggerComponent>(instance));
 }
@@ -184,11 +190,11 @@ void UiTriggerSystem::resetComponent(View<Component> component, bool full)
 {
 	if (full)
 	{
-		auto uiTransformView = View<UiTriggerComponent>(component);
-		uiTransformView->scale = float2::one;
-		uiTransformView->onEnter = "";
-		uiTransformView->onExit = "";
-		uiTransformView->onStay = "";
+		auto uiTriggerView = View<UiTriggerComponent>(component);
+		uiTriggerView->scale = float2::one;
+		uiTriggerView->onEnter = "";
+		uiTriggerView->onExit = "";
+		uiTriggerView->onStay = "";
 	}
 }
 void UiTriggerSystem::copyComponent(View<Component> source, View<Component> destination)
@@ -208,23 +214,23 @@ string_view UiTriggerSystem::getComponentName() const
 //**********************************************************************************************************************
 void UiTriggerSystem::serialize(ISerializer& serializer, const View<Component> component)
 {
-	const auto uiTransformView = View<UiTriggerComponent>(component);
-	if (uiTransformView->scale != float2::one)
-		serializer.write("scale", uiTransformView->scale);
-	if (!uiTransformView->onEnter.empty())
-		serializer.write("onEnter", uiTransformView->onEnter);
-	if (!uiTransformView->onExit.empty())
-		serializer.write("onExit", uiTransformView->onExit);
-	if (!uiTransformView->onStay.empty())
-		serializer.write("onStay", uiTransformView->onStay);
+	const auto uiTriggerView = View<UiTriggerComponent>(component);
+	if (uiTriggerView->scale != float2::one)
+		serializer.write("scale", uiTriggerView->scale);
+	if (!uiTriggerView->onEnter.empty())
+		serializer.write("onEnter", uiTriggerView->onEnter);
+	if (!uiTriggerView->onExit.empty())
+		serializer.write("onExit", uiTriggerView->onExit);
+	if (!uiTriggerView->onStay.empty())
+		serializer.write("onStay", uiTriggerView->onStay);
 }
 void UiTriggerSystem::deserialize(IDeserializer& deserializer, View<Component> component)
 {
-	auto uiTransformView = View<UiTriggerComponent>(component);
-	deserializer.read("scale", uiTransformView->scale);
-	deserializer.read("onEnter", uiTransformView->onEnter);
-	deserializer.read("onExit", uiTransformView->onExit);
-	deserializer.read("onStay", uiTransformView->onStay);
+	auto uiTriggerView = View<UiTriggerComponent>(component);
+	deserializer.read("scale", uiTriggerView->scale);
+	deserializer.read("onEnter", uiTriggerView->onEnter);
+	deserializer.read("onExit", uiTriggerView->onExit);
+	deserializer.read("onStay", uiTriggerView->onStay);
 }
 
 //**********************************************************************************************************************

@@ -104,6 +104,7 @@ void SpriteRenderSystem::resetComponent(View<Component> component, bool full)
 		#endif
 		spriteRenderView->colorMapLayer = 0.0f;
 		spriteRenderView->isArray = false;
+		spriteRenderView->useMipmap = false;
 	}
 }
 void SpriteRenderSystem::copyComponent(View<Component> source, View<Component> destination)
@@ -115,19 +116,20 @@ void SpriteRenderSystem::copyComponent(View<Component> source, View<Component> d
 	resourceSystem->destroyShared(destinationView->descriptorSet);
 	resourceSystem->destroyShared(destinationView->colorMap);
 
-	destinationView->aabb = sourceView->aabb;
 	destinationView->isEnabled = sourceView->isEnabled;
-	destinationView->isArray = sourceView->isArray;
+	destinationView->aabb = sourceView->aabb;
+	destinationView->color = sourceView->color;
 	destinationView->colorMap = sourceView->colorMap;
 	destinationView->descriptorSet = sourceView->descriptorSet;
-	destinationView->colorMapLayer = sourceView->colorMapLayer;
-	destinationView->color = sourceView->color;
 	destinationView->uvSize = sourceView->uvSize;
 	destinationView->uvOffset = sourceView->uvOffset;
-
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	destinationView->colorMapPath = sourceView->colorMapPath;
+	destinationView->taskPriority = sourceView->taskPriority;
 	#endif
+	destinationView->colorMapLayer = sourceView->colorMapLayer;
+	destinationView->isArray = sourceView->isArray;
+	destinationView->useMipmap = sourceView->useMipmap;
 }
 
 //**********************************************************************************************************************
@@ -161,7 +163,7 @@ void SpriteRenderSystem::setInstanceData(SpriteRenderComponent* spriteRenderView
 	const f32x4x4& viewProj, const f32x4x4& model, uint32 drawIndex, int32 taskIndex)
 {
 	instanceData->mvp = (float4x4)(viewProj * model);
-	instanceData->color = (float4)spriteRenderView->color;
+	instanceData->color = (float4)srgbToRgb(spriteRenderView->color);
 	instanceData->uvSize = spriteRenderView->uvSize;
 	instanceData->uvOffset = spriteRenderView->uvOffset;
 }
@@ -202,6 +204,7 @@ ID<GraphicsPipeline> SpriteRenderSystem::createBasePipeline()
 
 	ResourceSystem::GraphicsOptions options;
 	options.useAsyncRecording = true;
+	options.loadAsync = false; // We can't load async due to imageLoaded() usage.
 	options.pipelineStateOverrides = &pipelineStates;
 	return ResourceSystem::Instance::get()->loadGraphicsPipeline(pipelinePath, framebuffer, options);
 }
@@ -212,6 +215,8 @@ void SpriteRenderSystem::serialize(ISerializer& serializer, const View<Component
 	const auto spriteRenderView = View<SpriteRenderComponent>(component);
 	if (spriteRenderView->isArray)
 		serializer.write("isArray", true);
+	if (spriteRenderView->useMipmap)
+		serializer.write("useMipmap", true);
 	if (spriteRenderView->aabb != Aabb::one)
 		serializer.write("aabb", spriteRenderView->aabb);
 	if (!spriteRenderView->isEnabled)
@@ -236,6 +241,7 @@ void SpriteRenderSystem::deserialize(IDeserializer& deserializer, View<Component
 {
 	auto spriteRenderView = View<SpriteRenderComponent>(component);
 	deserializer.read("isArray", spriteRenderView->isArray);
+	deserializer.read("useMipmap", spriteRenderView->useMipmap);
 	deserializer.read("aabb", spriteRenderView->aabb);
 	deserializer.read("isEnabled", spriteRenderView->isEnabled);
 	deserializer.read("colorMapLayer", spriteRenderView->colorMapLayer);
@@ -254,11 +260,13 @@ void SpriteRenderSystem::deserialize(IDeserializer& deserializer, View<Component
 	float taskPriority = 0.0f;
 	deserializer.read("taskPriority", taskPriority);
 
+	auto maxMipCount = spriteRenderView->useMipmap ? 0 : 1;
 	auto flags = ImageLoadFlags::TypeArray | ImageLoadFlags::LoadShared;
-	if (spriteRenderView->isArray)
-		flags |= ImageLoadFlags::LoadArray;
-	spriteRenderView->colorMap = ResourceSystem::Instance::get()->loadImage(colorMapPath, Image::Usage::Sampled | 
-		Image::Usage::TransferDst | Image::Usage::TransferQ, 1, Image::Strategy::Default, flags, taskPriority);
+	if (spriteRenderView->isArray) flags |= ImageLoadFlags::LoadArray;
+	auto usage = Image::Usage::Sampled | Image::Usage::TransferDst | Image::Usage::TransferQ;
+	if (maxMipCount == 0) usage |= Image::Usage::TransferSrc;
+	spriteRenderView->colorMap = ResourceSystem::Instance::get()->loadImage(
+		colorMapPath, usage, maxMipCount, Image::Strategy::Default, flags, taskPriority);
 }
 
 //**********************************************************************************************************************
@@ -285,6 +293,8 @@ void SpriteRenderSystem::serializeAnimation(ISerializer& serializer, View<Animat
 			serializer.write("taskPriority", spriteFrameView->taskPriority);
 		if (spriteFrameView->isArray)
 			serializer.write("isArray", true);
+		if (spriteFrameView->useMipmap)
+			serializer.write("useMipmap", true);
 	}
 	#endif
 }
@@ -312,24 +322,26 @@ void SpriteRenderSystem::animateAsync(View<Component> component,
 		{
 			if (frameB->descriptorSet)
 			{
-				spriteRenderView->isArray = frameB->isArray;
 				spriteRenderView->colorMap = frameB->colorMap;
 				spriteRenderView->descriptorSet = frameB->descriptorSet;
 				#if GARDEN_DEBUG || GARDEN_EDITOR
 				spriteRenderView->colorMapPath = frameB->colorMapPath;
 				#endif
+				spriteRenderView->isArray = frameB->isArray;
+				spriteRenderView->useMipmap = frameB->useMipmap;
 			}
 		}
 		else
 		{
 			if (frameA->descriptorSet)
 			{
-				spriteRenderView->isArray = frameA->isArray;
 				spriteRenderView->colorMap = frameA->colorMap;
 				spriteRenderView->descriptorSet = frameA->descriptorSet;
 				#if GARDEN_DEBUG || GARDEN_EDITOR
 				spriteRenderView->colorMapPath = frameA->colorMapPath;
 				#endif
+				spriteRenderView->isArray = frameA->isArray;
+				spriteRenderView->useMipmap = frameA->useMipmap;
 			}
 		}
 	}
@@ -359,11 +371,13 @@ void SpriteRenderSystem::deserializeAnimation(IDeserializer& deserializer, Sprit
 	float taskPriority = 0.0f;
 	deserializer.read("taskPriority", taskPriority);
 
+	auto maxMipCount = frame.useMipmap ? 0 : 1;
 	auto flags = ImageLoadFlags::TypeArray | ImageLoadFlags::LoadShared;
-	if (frame.isArray)
-		flags |= ImageLoadFlags::LoadArray;
-	frame.colorMap = ResourceSystem::Instance::get()->loadImage(colorMapPath, Image::Usage::Sampled | 
-		Image::Usage::TransferDst, 1, Image::Strategy::Default, flags, taskPriority);
+	if (frame.isArray) flags |= ImageLoadFlags::LoadArray;
+	auto usage = Image::Usage::Sampled | Image::Usage::TransferDst | Image::Usage::TransferQ;
+	if (maxMipCount == 0) usage |= Image::Usage::TransferSrc;
+	frame.colorMap = ResourceSystem::Instance::get()->loadImage(colorMapPath, 
+		usage, maxMipCount, Image::Strategy::Default, flags, taskPriority);
 	frame.descriptorSet = {}; // Note: See the imageLoaded()
 }
 

@@ -16,8 +16,7 @@
 
 pipelineState
 {
-	depthTesting = on;
-	depthWriting = on;
+	blending0 = on;
 }
 
 in float2 fs.texCoords;
@@ -36,8 +35,8 @@ buffer readonly Instance
 
 uniform set1 sampler2DArray
 {
-	filter = linear;
 	addressMode = repeat;
+	filter = linear;
 } colorMap;
 
 void main()

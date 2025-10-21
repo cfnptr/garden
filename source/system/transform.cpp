@@ -521,12 +521,12 @@ void TransformSystem::serialize(ISerializer& serializer, const View<Component> c
 			serializer.write("position", (float3)transformView->posChildCount);
 		if (transformView->rotation != quat::identity)
 			serializer.write("rotation", transformView->rotation);
-		if (f32x4(transformView->scaleChildCap, 0.0f) != f32x4::one)
+		if (f32x4(transformView->scaleChildCap, 1.0f) != f32x4::one)
 			serializer.write("scale", (float3)transformView->scaleChildCap);
 	}
 	
 	if (!transformView->selfActive)
-		serializer.write("selfActive", false);
+		serializer.write("isActive", false);
 
 	if (transformView->parent)
 	{
@@ -578,7 +578,7 @@ void TransformSystem::deserialize(IDeserializer& deserializer, View<Component> c
 	f32x4Value = f32x4::one;
 	deserializer.read("scale", f32x4Value, 3);
 	transformView->setScale(f32x4Value);
-	deserializer.read("selfActive", transformView->selfActive);
+	deserializer.read("isActive", transformView->selfActive);
 
 	if (deserializer.read("parent", uidStringCache) &&
 		uidStringCache.size() + 1 == modp_b64_encode_data_len(sizeof(uint64)))

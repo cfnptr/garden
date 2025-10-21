@@ -86,6 +86,40 @@ void SteamApiSystem::update()
 	SteamAPI_RunCallbacks();
 }
 
+Language SteamApiSystem::getGameLanguage() const noexcept
+{
+	auto language = string_view(SteamApps()->GetCurrentGameLanguage());
+	if (language == "arabic") return Language::Arabic;
+	if (language == "bulgarian") return Language::Bulgarian;
+	if (language == "schinese" || language == "tchinese") return Language::Chinese;
+	if (language == "czech") return Language::Czech;
+	if (language == "danish") return Language::Danish;
+	if (language == "dutch") return Language::Dutch;
+	if (language == "finnish") return Language::Finnish;
+	if (language == "french") return Language::French;
+	if (language == "german") return Language::German;
+	if (language == "greek") return Language::Greek;
+	if (language == "hungarian") return Language::Hungarian;
+	if (language == "indonesian") return Language::Indonesian;
+	if (language == "italian") return Language::Italian;
+	if (language == "japanese") return Language::Japanese;
+	if (language == "german") return Language::German;
+	if (language == "koreana") return Language::Korean;
+	if (language == "norwegian") return Language::Norwegian;
+	if (language == "polish") return Language::Polish;
+	if (language == "portuguese") return Language::Portuguese;
+	if (language == "portuguese" || language == "brazilian") return Language::Portuguese;
+	if (language == "romanian") return Language::Romanian;
+	if (language == "russian") return Language::Russian;
+	if (language == "spanish" || language == "latam") return Language::Spanish;
+	if (language == "swedish") return Language::Swedish;
+	if (language == "thai") return Language::Thai;
+	if (language == "turkish") return Language::Turkish;
+	if (language == "ukrainian") return Language::Ukrainian;
+	if (language == "vietnamese") return Language::Vietnamese;
+	return Language::English;
+}
+
 bool SteamApiSystem::getAuthTicketWebAPI(const OnAuthTicket& onAuthTicket, const char* identity)
 {
 	this->onAuthTicket = onAuthTicket;

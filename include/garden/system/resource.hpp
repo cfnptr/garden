@@ -149,6 +149,7 @@ protected:
 		vector<fs::path> paths = {};
 		uint2 realSize = uint2::zero;
 		ID<Image> instance = {};
+		ImageLoadFlags flags = {};
 	};
 
 	struct LoadedBufferItem final

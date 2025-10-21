@@ -1076,8 +1076,9 @@ void EditorRenderSystem::drawFileSelector(const char* name, fs::path& path, ID<E
 }
 
 //**********************************************************************************************************************
-void EditorRenderSystem::drawImageSelector(const char* name, fs::path& path, Ref<Image>& image, 
-	Ref<DescriptorSet>& descriptorSet, ID<Entity> entity, type_index componentType, ImageLoadFlags loadFlags)
+void EditorRenderSystem::drawImageSelector(const char* name, fs::path& path, 
+	Ref<Image>& image, Ref<DescriptorSet>& descriptorSet, ID<Entity> entity, 
+	type_index componentType, uint8 maxMipCount, ImageLoadFlags loadFlags)
 {
 	GARDEN_ASSERT(name);
 	GARDEN_ASSERT(entity);
@@ -1090,8 +1091,8 @@ void EditorRenderSystem::drawImageSelector(const char* name, fs::path& path, Ref
 	{
 		if (ImGui::MenuItem("Select Image"))
 		{
-			openFileSelector([&path, &image, &descriptorSet, entity, 
-				componentType, loadFlags](const fs::path& selectedFile)
+			openFileSelector([&path, &image, &descriptorSet, entity, componentType, 
+				maxMipCount, loadFlags](const fs::path& selectedFile)
 			{
 				if (EditorRenderSystem::Instance::get()->selectedEntity != entity ||
 					!Manager::Instance::get()->has(entity, componentType))
@@ -1106,8 +1107,9 @@ void EditorRenderSystem::drawImageSelector(const char* name, fs::path& path, Ref
 				path = selectedFile;
 				path.replace_extension();
 
-				image = resourceSystem->loadImage(path, Image::Usage::Sampled | Image::Usage::TransferDst | 
-					Image::Usage::TransferQ, 1, Image::Strategy::Default, loadFlags);
+				auto usage = Image::Usage::Sampled | Image::Usage::TransferDst | Image::Usage::TransferQ;
+				if (maxMipCount == 0) usage |= Image::Usage::TransferSrc;
+				image = resourceSystem->loadImage(path, usage, maxMipCount, Image::Strategy::Default, loadFlags);
 				descriptorSet = {};
 			},
 			AppInfoSystem::Instance::get()->getResourcesPath() / "images", ResourceSystem::imageFileExts);

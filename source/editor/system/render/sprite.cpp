@@ -165,28 +165,39 @@ void SpriteRenderEditorSystem::renderComponent(SpriteRenderComponent* componentV
 {
 	GARDEN_ASSERT(componentView);
 	auto editorSystem = EditorRenderSystem::Instance::get();
+
+	auto maxMipCount = componentView->useMipmap ? 0 : 1;
 	auto flags = ImageLoadFlags::TypeArray | ImageLoadFlags::LoadShared;
-	if (componentView->isArray)
-		flags |= ImageLoadFlags::LoadArray;
+	if (componentView->isArray) flags |= ImageLoadFlags::LoadArray;
 	editorSystem->drawImageSelector("Color Map", componentView->colorMapPath, componentView->colorMap,
-		componentView->descriptorSet, componentView->getEntity(), componentType, flags);
+		componentView->descriptorSet, componentView->getEntity(), componentType, maxMipCount, flags);
 	editorSystem->drawResource(componentView->descriptorSet);
 
 	ImGui::Checkbox("Enabled", &componentView->isEnabled); ImGui::SameLine();
 
-	if (ImGui::Checkbox("Array", &componentView->isArray) && !componentView->colorMapPath.empty())
+	auto reloadImage = false;
+	if (ImGui::Checkbox("Array", &componentView->isArray))
+		reloadImage = true;
+	ImGui::SameLine();
+	if (ImGui::Checkbox("Mipmap", &componentView->useMipmap))
+		reloadImage = true;
+	ImGui::SameLine();
+
+	if (reloadImage && !componentView->colorMapPath.empty())
 	{
 		auto resourceSystem = ResourceSystem::Instance::get();
 		resourceSystem->destroyShared(componentView->colorMap);
 		resourceSystem->destroyShared(componentView->descriptorSet);
 
+		auto maxMipCount = componentView->useMipmap ? 0 : 1;
 		auto flags = ImageLoadFlags::TypeArray | ImageLoadFlags::LoadShared;
-		if (componentView->isArray)
-			flags |= ImageLoadFlags::LoadArray;
-		componentView->colorMap = resourceSystem->loadImage(componentView->colorMapPath, Image::Usage::Sampled | 
-			Image::Usage::TransferDst | Image::Usage::TransferQ, 1, Image::Strategy::Default, flags);
+		if (componentView->isArray) flags |= ImageLoadFlags::LoadArray;
+		auto usage = Image::Usage::Sampled | Image::Usage::TransferDst | Image::Usage::TransferQ;
+		if (maxMipCount == 0) usage |= Image::Usage::TransferSrc;
+		componentView->colorMap = resourceSystem->loadImage(componentView->colorMapPath, 
+			usage, maxMipCount, Image::Strategy::Default, flags);
 		componentView->descriptorSet = {};
-	} ImGui::SameLine();
+	}
 
 	ImGui::BeginDisabled();
 	auto isVisible = componentView->isVisible();
@@ -213,6 +224,8 @@ void SpriteRenderEditorSystem::renderComponent(SpriteRenderComponent* componentV
 		}
 	}
 	ImGui::EndDisabled();
+
+	ImGui::Spacing();
 
 	auto maxColorMapLayer = 0.0f;
 	if (componentView->colorMap)

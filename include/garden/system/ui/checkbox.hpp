@@ -28,8 +28,8 @@ namespace garden
  */
 struct UiCheckboxComponent : public Component
 {
-	bool isEnabled = true;  /**< Is checkbox UI element enabled. */
-	bool isChecked = false; /**< Is checkbox UI element checked (set). */
+	bool isEnabled = true;  /**< Is UI checkbox enabled. */
+	bool isChecked = false; /**< Is UI checkbox checked (set). */
 };
 
 /**

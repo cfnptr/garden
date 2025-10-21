@@ -422,8 +422,10 @@ void ResourceSystem::dequeueImages()
 
 		auto stagingBufferView = graphicsAPI->bufferPool.get(stagingBuffer);
 		BufferExt::moveInternalObjects(item.staging, **stagingBufferView);
-		graphicsSystem->startRecording(CommandBufferType::TransferOnly);
+		auto generateMipmap = image->getMipCount() > 1 && !hasAnyFlag(item.flags, ImageLoadFlags::LinearData);
+		graphicsSystem->startRecording(generateMipmap ? CommandBufferType::Graphics : CommandBufferType::TransferOnly);
 		Image::copy(stagingBuffer, item.instance);
+		if (generateMipmap) image->generateMips();
 		graphicsSystem->stopRecording();
 		graphicsAPI->bufferPool.destroy(stagingBuffer);
 
@@ -1278,7 +1280,7 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 				BufferExt::create(Buffer::Usage::TransferSrc, Buffer::CpuAccess::SequentialWrite, 
 					Buffer::Location::Auto, Buffer::Strategy::Speed, // Note: Staging does not need TransferQ flag.
 					formatBinarySize * realSize.x * realSize.y * paths.size(), 0),
-				std::move(paths), realSize, data->instance,
+				std::move(paths), realSize, data->instance, data->flags
 			};
 
 			copyLoadedImageData(pixelArrays, item.staging.getMap(),

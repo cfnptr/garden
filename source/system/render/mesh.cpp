@@ -156,9 +156,9 @@ void MeshRenderSystem::prepareSystems()
 }
 
 //**********************************************************************************************************************
-static void prepareUnsortedMeshes(f32x4 cameraOffset, f32x4 cameraPosition, 
-	const Plane* frustumPlanes, MeshRenderSystem::UnsortedBuffer* unsortedBuffer, uint32 itemOffset, 
-	uint32 itemCount, uint32 threadIndex, int8 shadowPass, bool useThreading)
+static void prepareUnsortedMeshes(f32x4 cameraOffset, f32x4 cameraPosition, const Plane* frustumPlanes, 
+	MeshRenderSystem::UnsortedBuffer* unsortedBuffer, uint32 itemOffset, uint32 itemCount, uint32 threadIndex, 
+	int8 shadowPass, bool useThreading)
 {
 	SET_CPU_ZONE_SCOPED("Unsorted Meshes Prepare");
 
@@ -231,7 +231,8 @@ static void prepareUnsortedMeshes(f32x4 cameraOffset, f32x4 cameraPosition,
 static void prepareSortedMeshes(f32x4 cameraOffset, f32x4 cameraPosition, const Plane* frustumPlanes, 
 	MeshRenderSystem::SortedBuffer* sortedBuffer, MeshRenderSystem::SortedMesh* combinedMeshes, 
 	vector<vector<MeshRenderSystem::SortedMesh>>& threadMeshes, atomic<uint32>* sortedDrawIndex, 
-	uint32 bufferIndex, uint32 itemOffset, uint32 itemCount, uint32 threadIndex, int8 shadowPass, bool useThreading)
+	uint32 bufferIndex, uint32 itemOffset, uint32 itemCount, uint32 threadIndex, int8 shadowPass, 
+	bool useThreading, bool distance2D)
 {
 	SET_CPU_ZONE_SCOPED("Sorted Meshes Prepare");
 
@@ -289,7 +290,8 @@ static void prepareSortedMeshes(f32x4 cameraOffset, f32x4 cameraPosition, const 
 		MeshRenderSystem::SortedMesh sortedMesh;
 		sortedMesh.renderView = meshRenderView;
 		sortedMesh.model = (float4x3)model;
-		sortedMesh.distanceSq = lengthSq3(getTranslation(model) + cameraOffset);
+		sortedMesh.distanceSq = distance2D ? getTranslation(model).getZ() + 1.0f : 
+			lengthSq3(getTranslation(model) + cameraOffset);
 		sortedMesh.bufferIndex = bufferIndex;
 		meshes[drawIndex++] = sortedMesh;
 	}
@@ -468,13 +470,14 @@ void MeshRenderSystem::prepareMeshes(const f32x4x4& viewProj, const Plane* uiFru
 				continue;
 
 			SortedMesh* combinedSortedMeshes; atomic<uint32>* sortedDrawIndex;
-			const Plane* cullingPlanes; f32x4 sortedCameraPos; 
+			const Plane* cullingPlanes; f32x4 sortedCameraPos; bool distance2D;
 			if (renderType == MeshRenderType::Translucent)
 			{
 				combinedSortedMeshes = transSortedMeshes.data();
 				sortedDrawIndex = &transDrawIndex;
 				cullingPlanes = frustumPlanes;
 				sortedCameraPos = cameraPosition;
+				distance2D = false;
 			}
 			else
 			{
@@ -482,6 +485,7 @@ void MeshRenderSystem::prepareMeshes(const f32x4x4& viewProj, const Plane* uiFru
 				sortedDrawIndex = &uiDrawIndex;
 				cullingPlanes = uiFrustumPlanes;
 				sortedCameraPos = f32x4::zero;
+				distance2D = true;
 			}
 
 			if (threadSystem)
@@ -491,12 +495,14 @@ void MeshRenderSystem::prepareMeshes(const f32x4x4& viewProj, const Plane* uiFru
 					sortedThreadMeshes.resize(threadPool.getThreadCount());
 
 				// Note: do not optimize args with [&], it captures stack address!!!
-				threadPool.addItems([this, cameraOffset, sortedCameraPos, cullingPlanes, sortedBuffer, 
-					combinedSortedMeshes, sortedDrawIndex, bufferIndex, shadowPass](const ThreadPool::Task& task)
+				threadPool.addItems([this, cameraOffset, sortedCameraPos, cullingPlanes, 
+					sortedBuffer, combinedSortedMeshes, sortedDrawIndex, bufferIndex, 
+					shadowPass, distance2D](const ThreadPool::Task& task)
 				{
 					prepareSortedMeshes(cameraOffset, sortedCameraPos, cullingPlanes, sortedBuffer, 
 						combinedSortedMeshes, sortedThreadMeshes, sortedDrawIndex, bufferIndex, 
-						task.getItemOffset(), task.getItemCount(), task.getThreadIndex(), shadowPass, true);
+						task.getItemOffset(), task.getItemCount(), task.getThreadIndex(), shadowPass, 
+						true, distance2D);
 				},
 				componentPool.getOccupancy());
 			}
@@ -504,7 +510,7 @@ void MeshRenderSystem::prepareMeshes(const f32x4x4& viewProj, const Plane* uiFru
 			{
 				prepareSortedMeshes(cameraOffset, sortedCameraPos, cullingPlanes, sortedBuffer, 
 					combinedSortedMeshes, sortedThreadMeshes, sortedDrawIndex, bufferIndex, 
-					0, componentPool.getOccupancy(), 0, shadowPass, false);
+					0, componentPool.getOccupancy(), 0, shadowPass, false, distance2D);
 			}
 
 			#if GARDEN_EDITOR

@@ -165,7 +165,21 @@ void NineSliceRenderEditorSystem::renderComponent(NineSliceRenderComponent* comp
 {
 	GARDEN_ASSERT(componentView);
 	SpriteRenderEditorSystem::renderComponent(componentView, componentType);
+
 	ImGui::DragFloat2("Texture Border", &componentView->textureBorder, 0.1f);
+	if (ImGui::BeginPopupContextItem("textureBorder"))
+	{
+		if (ImGui::MenuItem("Reset Default"))
+			componentView->textureBorder = float2::zero;
+		ImGui::EndPopup();
+	}
+
 	ImGui::DragFloat2("Window Border", &componentView->windowBorder, 0.1f);
+	if (ImGui::BeginPopupContextItem("windowBorder"))
+	{
+		if (ImGui::MenuItem("Reset Default"))
+			componentView->windowBorder = float2::zero;
+		ImGui::EndPopup();
+	}
 }
 #endif

@@ -40,7 +40,7 @@ enum class Language : uint8
 	Urdu, Count
 };
 /**
- * @brief Spoken languages ISO 639-1 code strings.
+ * @brief Spoken languages ISO 639 code strings.
  */
 constexpr const char* languageCodes[(psize)Language::Count] =
 {
@@ -48,8 +48,9 @@ constexpr const char* languageCodes[(psize)Language::Count] =
 	"sv", "ar", "ro", "el", "da", "fi", "he", "sk", "th", "bg", "hr", "no", "lt", "sr", "sl", "ca", "et", "lv", "bs",
 	"hi", "az", "ka", "is", "kk", "mk", "bn", "sq", "ms", "uz", "hy", "ur"
 };
+
 /**
- * @brief Returns languages ISO 639-1 code string.
+ * @brief Returns languages ISO 639 code string.
  * @param language target language
  */
 static string_view toCodeString(Language language) noexcept
@@ -57,13 +58,34 @@ static string_view toCodeString(Language language) noexcept
 	GARDEN_ASSERT(language < Language::Count);
 	return languageCodes[(psize)language];
 }
+/**
+ * @brief Tries to convert ISO 639 code string to language.
+ * 
+ * @param codeString target ISO 639 code string
+ * @param[out] language converted language
+ */
+static bool getCodeLanguage(string_view codeString, Language& language) noexcept
+{
+	for (uint8 i = 0; i < (uint8)Language::Count; i++)
+	{
+		if (languageCodes[i] != codeString)
+			continue;
+		language = (Language)i;
+		return true;
+	}
+	return false;
+}
 
 /***********************************************************************************************************************
  * @brief Handles string localization (translation) for different languages.
  */
 class LocaleSystem final : public System, public Singleton<LocaleSystem>
 {
-	tsl::robin_map<string, string, SvHash, SvEqual> localeStrings;
+public:
+	using StringMap = tsl::robin_map<string, string, SvHash, SvEqual>;
+private:
+	StringMap generalStrings;
+	tsl::robin_map<string, StringMap, SvHash, SvEqual> modules;
 	Language loadedLanguage = Language::English;
 
 	/**
@@ -96,11 +118,46 @@ public:
 	 */
 	string_view get(string_view name) const noexcept
 	{
-		auto result = localeStrings.find(name);
-		if (result == localeStrings.end())
+		GARDEN_ASSERT(!name.empty());
+		auto result = generalStrings.find(name);
+		if (result == generalStrings.end())
 			return name;
 		return result->second;
 	}
+	/**
+	 * @brief Returns module localized (translated) string.
+	 *
+	 * @param module localization module name
+	 * @param name target string name
+	 */
+	string_view get(string_view module, string_view name) const noexcept
+	{
+		GARDEN_ASSERT(!module.empty());
+		GARDEN_ASSERT(!name.empty());
+		auto moduleResult = modules.find(module);
+		if (moduleResult == modules.end())
+			return name;
+		auto stringResult = moduleResult->second.find(name);
+		if (stringResult == moduleResult->second.end())
+			return name;
+		return stringResult->second;
+	}
+
+	/**
+	 * @brief Returns true if localization module is loaded.
+	 * @param module target localization module name
+	 */
+	bool isModuleLoaded(string_view module) const noexcept { return modules.find(module) != modules.end(); }
+	/**
+	 * @brief Loads localization module strings.
+	 * @param module target localization module name
+	 */
+	bool loadModule(string_view module);
+	/**
+	 * @brief Unloads localization module strings.
+	 * @param module target localization module name
+	 */
+	bool unloadModule(string_view module);
 };
 
 } // namespace garden
