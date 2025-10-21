@@ -23,12 +23,28 @@
 namespace garden
 {
 
+class UiButtonSystem;
+
 /**
  * @brief User interface button element data container. (UI)
  */
 struct UiButtonComponent : public Component
 {
-	bool isEnabled = true; /**< Is button UI element enabled. */
+protected:
+	bool enabled = true; /**< Is UI button enabled. */
+	friend class garden::UiButtonSystem;
+public:
+	string onClick = {};   /**< On UI button click event. */
+
+	/**
+	 * @brief Returns true if button is enabled.
+	 */
+	bool isEnabled() const noexcept { return enabled; }
+	/**
+	 * @brief Sets button enabled state.
+	 * @param state target button state
+	 */
+	void setEnabled(bool state);
 };
 
 /**
@@ -48,6 +64,15 @@ struct UiButtonFrame : public AnimationFrame
 class UiButtonSystem final : public CompAnimSystem<UiButtonComponent, UiButtonFrame, false, false>,
 	public Singleton<UiButtonSystem>, public ISerializable
 {
+public:
+	static constexpr uint8 defaultChildIndex = 0;  /**< Default button state child entity index. */
+	static constexpr uint8 hoveredChildIndex = 1;  /**< Hovered button state child entity index. */
+	static constexpr uint8 activeChildIndex = 2;   /**< Active button state child entity index. */
+	static constexpr uint8 disabledChildIndex = 3; /**< Disabled button state child entity index. */
+	static constexpr uint8 focusedChildIndex = 4;  /**< Focused button state child entity index. */
+private:
+	ID<Entity> pressedButton = {};
+
 	/**
 	 * @brief Creates a new user interface button element system instance. (UI, GUI)
 	 * @param setSingleton set system singleton instance
@@ -57,6 +82,10 @@ class UiButtonSystem final : public CompAnimSystem<UiButtonComponent, UiButtonFr
 	 * @brief Destroys user interface button element system instance. (UI, GUI)
 	 */
 	~UiButtonSystem() final;
+
+	void uiButtonEnter();
+	void uiButtonExit();
+	void uiButtonStay();
 
 	void resetComponent(View<Component> component, bool full) final;
 	void copyComponent(View<Component> source, View<Component> destination) final;
@@ -70,6 +99,12 @@ class UiButtonSystem final : public CompAnimSystem<UiButtonComponent, UiButtonFr
 	void animateAsync(View<Component> component,
 		View<AnimationFrame> a, View<AnimationFrame> b, float t) final;
 	friend class ecsm::Manager;
+public:
+	/**
+	 * @brief Updates specified button state.
+	 * @param button target button to update
+	 */
+	void updateButtonState(ID<Entity> button);
 };
 
 } // namespace garden

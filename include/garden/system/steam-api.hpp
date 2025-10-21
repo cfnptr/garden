@@ -18,11 +18,9 @@
  */
 
 #pragma once
-#include "garden/defines.hpp"
+#include "garden/system/locale.hpp"
 
 #if GARDEN_STEAMWORKS_SDK
-#include "ecsm.hpp"
-
 namespace garden
 {
 
@@ -56,6 +54,11 @@ private:
 	friend class ecsm::Manager;
 	friend class garden::SteamEventHandler;
 public:
+	/**
+	 * @brief Returns current game language that the user has set.
+	 */
+	Language getGameLanguage() const noexcept;
+
 	/**
 	 * @brief Requests steam client web API authentication ticket.
 	 *

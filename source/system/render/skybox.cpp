@@ -26,6 +26,7 @@ static ID<GraphicsPipeline> createPipeline()
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	ResourceSystem::GraphicsOptions options;
 	options.useAsyncRecording = deferredSystem->getOptions().useAsyncRecording;
+	options.loadAsync = false; // We can't load async due to imageLoaded() usage.
 
 	return ResourceSystem::Instance::get()->loadGraphicsPipeline(
 		"skybox", deferredSystem->getDepthHdrFramebuffer(), options);

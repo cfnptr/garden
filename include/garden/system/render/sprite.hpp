@@ -29,19 +29,18 @@ namespace garden
  */
 struct SpriteRenderComponent : public MeshRenderComponent
 {
-	f32x4 color = f32x4::one;              /**< Texture color multiplier. */
+	f32x4 color = f32x4::one;              /**< Texture sRGB color multiplier. */
 	Ref<Image> colorMap = {};              /**< Color map texture instance. */
 	Ref<DescriptorSet> descriptorSet = {}; /**< Descriptor set instance. */
 	float2 uvSize = float2::one;           /**< Texture UV size. */
 	float2 uvOffset = float2::zero;        /**< Texture UV offset. */
-	
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	fs::path colorMapPath = "";            /**< Color map texture path. */
 	float taskPriority = 0.0f;             /**< Texture load task priority. */
 	#endif
-
 	float colorMapLayer = 0.0f;            /**< Color map texture layer index. */
 	bool isArray = false;                  /**< Is sprite texture type array. */
+	bool useMipmap = false;                /**< Use sprite texture mipmap. */
 };
 
 /**
@@ -49,17 +48,18 @@ struct SpriteRenderComponent : public MeshRenderComponent
  */
 struct SpriteAnimationFrame : public AnimationFrame
 {
-	uint8 isEnabled : 1;
-	uint8 animateIsEnabled : 1;
-	uint8 animateColor : 1;
-	uint8 animateUvSize : 1;
-	uint8 animateUvOffset : 1;
-	uint8 animateColorMapLayer : 1;
-	uint8 animateColorMap : 1;
-	uint8 isArray : 1;
 protected:
-	uint16 _alignment0 = 0;
+	uint8 _alignment0 = 0;
 public:
+	uint16 animateIsEnabled : 1;
+	uint16 animateColor : 1;
+	uint16 animateUvSize : 1;
+	uint16 animateUvOffset : 1;
+	uint16 animateColorMapLayer : 1;
+	uint16 animateColorMap : 1;
+	uint16 isEnabled : 1;
+	uint16 isArray : 1;
+	uint16 useMipmap : 1;
 	float2 uvSize = float2::one;
 	float2 uvOffset = float2::zero;
 	f32x4 color = f32x4::one;
@@ -72,8 +72,8 @@ public:
 	float taskPriority = 0.0f;
 	#endif
 
-	SpriteAnimationFrame() : isEnabled(true), animateIsEnabled(false), animateColor(false), animateUvSize(false),
-		animateUvOffset(false), animateColorMapLayer(false), animateColorMap(false), isArray(false) { }
+	SpriteAnimationFrame() : animateIsEnabled(false), animateColor(false), animateUvSize(false), animateUvOffset(false), 
+		animateColorMapLayer(false), animateColorMap(false), isEnabled(true), isArray(false), useMipmap(false) { }
 
 	bool hasAnimation() override
 	{

@@ -31,13 +31,13 @@ out float4 fb.color;
 
 uniform sampler3D
 {
-	filter = linear;
 	addressMode = repeat;
+	filter = linear;
 } noiseShape;
 uniform sampler3D
 {
-	filter = linear;
 	addressMode = repeat;
+	filter = linear;
 } noiseErosion;
 
 uniform pushConstants

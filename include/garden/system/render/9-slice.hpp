@@ -22,6 +22,7 @@
 
 #pragma once
 #include "garden/system/render/sprite.hpp"
+#include "garden/system/transform.hpp"
 
 namespace garden
 {

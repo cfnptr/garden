@@ -44,6 +44,9 @@ uint64 NineSliceRenderSystem::getBaseInstanceDataSize()
 void NineSliceRenderSystem::setInstanceData(SpriteRenderComponent* spriteRenderView, BaseInstanceData* instanceData,
 	const f32x4x4& viewProj, const f32x4x4& model, uint32 drawIndex, int32 threadIndex)
 {
+	SpriteRenderSystem::setInstanceData(spriteRenderView,
+		instanceData, viewProj, model, drawIndex, threadIndex);
+
 	auto nineSliceRenderView = (NineSliceRenderComponent*)spriteRenderView;
 	auto nineSliceInstanceData = (NineSliceInstanceData*)instanceData;
 
@@ -53,13 +56,10 @@ void NineSliceRenderSystem::setInstanceData(SpriteRenderComponent* spriteRenderV
 		auto imageView = GraphicsSystem::Instance::get()->get(nineSliceRenderView->colorMap);
 		imageSize = (float2)(uint2)imageView->getSize();
 	}
-	auto scale = extractScale2(model) * imageSize;
-
-	SpriteRenderSystem::setInstanceData(spriteRenderView,
-		instanceData, viewProj, model, drawIndex, threadIndex);
+	auto scale = imageSize / extractScale2(model);
 
 	nineSliceInstanceData->textureBorder = nineSliceRenderView->textureBorder / imageSize;
-	nineSliceInstanceData->windowBorder = nineSliceRenderView->windowBorder / scale;
+	nineSliceInstanceData->windowBorder = nineSliceRenderView->windowBorder / imageSize * scale;
 }
 
 //**********************************************************************************************************************

@@ -206,10 +206,20 @@ public:
 	 * @brief Returns this entity child.
 	 * @param index target child index in the array
 	 */
-	ID<Entity> getChild(uint32 index)
+	ID<Entity> getChild(uint32 index) const noexcept
 	{
-		GARDEN_ASSERT(index < childCount());
+		GARDEN_ASSERT(index < getChildCount());
 		return childs[index];
+	}
+	/**
+	 * @brief Returns this entity child if inside array bounds.
+	 * @param index target child index in the array
+	 */
+	ID<Entity> tryGetChild(uint32 index) const noexcept
+	{
+		if (index < getChildCount())
+			return childs[index];
+		return {};
 	}
 
 	/**

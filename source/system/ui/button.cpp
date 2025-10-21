@@ -13,15 +13,50 @@
 // limitations under the License.
 
 #include "garden/system/ui/button.hpp"
+#include "garden/system/ui/trigger.hpp"
+#include "garden/system/transform.hpp"
+#include "garden/system/input.hpp"
 
 using namespace garden;
 
-//**********************************************************************************************************************
+static void activateButtonState(ID<Entity> button, uint8 childIndex)
+{
+	auto transformSystem = TransformSystem::Instance::get();
+	auto transformView = transformSystem->getComponent(button);
+	auto childCount = transformView->getChildCount();
+	auto childs = transformView->getChilds();
+
+	for (uint32 i = 0; i < childCount; i++)
+	{
+		transformView = transformSystem->getComponent(childs[i]);
+		transformView->setActive(i == childIndex);
+	}
+}
+
+void UiButtonComponent::setEnabled(bool state)
+{
+	if (enabled == state)
+		return;
+
+	auto childIndex = state ? UiButtonSystem::defaultChildIndex : 
+		UiButtonSystem::disabledChildIndex;
+	activateButtonState(entity, childIndex);
+	enabled = state;
+}
+
 UiButtonSystem::UiButtonSystem(bool setSingleton) : Singleton(setSingleton)
 {
 	auto manager = Manager::Instance::get();
 	manager->addGroupSystem<ISerializable>(this);
 	manager->addGroupSystem<IAnimatable>(this);
+
+	manager->registerEvent("UiButtonEnter");
+	manager->registerEvent("UiButtonExit");
+	manager->registerEvent("UiButtonStay");
+
+	ECSM_SUBSCRIBE_TO_EVENT("UiButtonEnter", UiButtonSystem::uiButtonEnter);
+	ECSM_SUBSCRIBE_TO_EVENT("UiButtonExit", UiButtonSystem::uiButtonExit);
+	ECSM_SUBSCRIBE_TO_EVENT("UiButtonStay", UiButtonSystem::uiButtonStay);
 }
 UiButtonSystem::~UiButtonSystem()
 {
@@ -30,23 +65,79 @@ UiButtonSystem::~UiButtonSystem()
 		auto manager = Manager::Instance::get();
 		manager->removeGroupSystem<ISerializable>(this);
 		manager->removeGroupSystem<IAnimatable>(this);
+
+		manager->unregisterEvent("UiButtonEnter");
+		manager->unregisterEvent("UiButtonExit");
+		manager->unregisterEvent("UiButtonStay");
+
+		ECSM_UNSUBSCRIBE_FROM_EVENT("UiButtonEnter", UiButtonSystem::uiButtonEnter);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("UiButtonExit", UiButtonSystem::uiButtonExit);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("UiButtonStay", UiButtonSystem::uiButtonStay);
 	}
 	unsetSingleton();
 }
 
+//**********************************************************************************************************************
+void UiButtonSystem::uiButtonEnter()
+{
+	auto hoveredButton = UiTriggerSystem::Instance::get()->getHovered();
+	auto uiButtonView = tryGetComponent(hoveredButton);
+	if (!uiButtonView || !uiButtonView->enabled)
+		return;
+
+	auto mouseState = InputSystem::Instance::get()->getMouseState(MouseButton::Left);
+	auto childIndex = pressedButton == hoveredButton && mouseState ? activeChildIndex : hoveredChildIndex;
+	activateButtonState(hoveredButton, childIndex);
+}
+void UiButtonSystem::uiButtonExit()
+{
+	auto hoveredButton = UiTriggerSystem::Instance::get()->getHovered();
+	auto uiButtonView = tryGetComponent(hoveredButton);
+	if (!uiButtonView)
+		return;
+
+	auto childIndex = uiButtonView->enabled ? defaultChildIndex : disabledChildIndex;
+	activateButtonState(hoveredButton, childIndex);
+}
+void UiButtonSystem::uiButtonStay()
+{
+	auto hoveredButton = UiTriggerSystem::Instance::get()->getHovered();
+	auto uiButtonView = tryGetComponent(hoveredButton);
+	if (!uiButtonView)
+		return;
+
+	auto inputSystem = InputSystem::Instance::get();
+	if (inputSystem->isMousePressed(MouseButton::Left))
+	{
+		activateButtonState(hoveredButton, activeChildIndex);
+		pressedButton = hoveredButton;
+	}
+	else if (inputSystem->isMouseReleased(MouseButton::Left))
+	{
+		if (pressedButton == hoveredButton)
+		{
+			activateButtonState(hoveredButton, hoveredChildIndex);
+			if (!uiButtonView->onClick.empty())
+				Manager::Instance::get()->tryRunEvent(uiButtonView->onClick);
+		}
+		pressedButton = {};
+	}
+}
+
+//**********************************************************************************************************************
 void UiButtonSystem::resetComponent(View<Component> component, bool full)
 {
 	if (full)
 	{
 		auto uiButtonView = View<UiButtonComponent>(component);
-		uiButtonView->isEnabled = true;
+		uiButtonView->enabled = true;
 	}
 }
 void UiButtonSystem::copyComponent(View<Component> source, View<Component> destination)
 {
 	const auto sourceView = View<UiButtonComponent>(source);
 	auto destinationView = View<UiButtonComponent>(destination);
-	destinationView->isEnabled = sourceView->isEnabled;
+	destinationView->enabled = sourceView->enabled;
 }
 string_view UiButtonSystem::getComponentName() const
 {
@@ -57,13 +148,13 @@ string_view UiButtonSystem::getComponentName() const
 void UiButtonSystem::serialize(ISerializer& serializer, const View<Component> component)
 {
 	const auto uiButtonView = View<UiButtonComponent>(component);
-	if (uiButtonView->isEnabled != true)
-		serializer.write("isEnabled", uiButtonView->isEnabled);
+	if (uiButtonView->enabled != true)
+		serializer.write("isEnabled", uiButtonView->enabled);
 }
 void UiButtonSystem::deserialize(IDeserializer& deserializer, View<Component> component)
 {
 	auto uiButtonView = View<UiButtonComponent>(component);
-	deserializer.read("isEnabled", uiButtonView->isEnabled);
+	deserializer.read("isEnabled", uiButtonView->enabled);
 }
 
 //**********************************************************************************************************************
@@ -90,5 +181,5 @@ void UiButtonSystem::animateAsync(View<Component> component, View<AnimationFrame
 	const auto frameB = View<UiButtonFrame>(b);
 
 	if (frameA->animateIsEnabled)
-		uiButtonView->isEnabled = (bool)round(t);
+		uiButtonView->enabled = (bool)round(t);
 }

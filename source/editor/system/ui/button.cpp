@@ -58,6 +58,10 @@ void UiButtonEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 		return;
 
 	auto uiButtonView = UiButtonSystem::Instance::get()->getComponent(entity);
-	ImGui::Checkbox("Enabled", &uiButtonView->isEnabled);
+
+	auto isEnabled = uiButtonView->isEnabled();
+	if (ImGui::Checkbox("Enabled", &isEnabled))
+		uiButtonView->setEnabled(isEnabled);
+	ImGui::InputText("On Click", &uiButtonView->onClick);
 }
 #endif

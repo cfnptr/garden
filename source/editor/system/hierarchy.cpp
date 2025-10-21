@@ -104,7 +104,8 @@ static void updateHierarchyClick(ID<Entity> renderEntity)
 			{
 				auto duplicateTransformView = transformSystem->getComponent(duplicate);
 				duplicateTransformView->setParent(entityTransformView->getParent());
-				duplicateTransformView->debugName += " " + to_string(*duplicate);
+				if (!duplicateTransformView->debugName.empty())
+					duplicateTransformView->debugName += " " + to_string(*duplicate);
 			}
 			EditorRenderSystem::Instance::get()->selectedEntity = duplicate;
 		}

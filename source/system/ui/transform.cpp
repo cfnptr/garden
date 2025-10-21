@@ -90,7 +90,7 @@ void UiTransformSystem::update()
 	auto threadSystem = ThreadSystem::Instance::tryGet();
 	auto uiHalfSize = calcUiSize() * 0.5f;
 
-	if (threadSystem)
+	if (threadSystem && components.getCount() > threadSystem->getForegroundPool().getThreadCount())
 	{
 		auto& threadPool = threadSystem->getForegroundPool();
 		threadPool.addItems([componentData, uiHalfSize](const ThreadPool::Task& task)

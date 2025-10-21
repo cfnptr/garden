@@ -14,12 +14,6 @@
 
 #include "9-slice/common.gsl"
 
-pipelineState
-{
-	depthTesting = on;
-	depthWriting = on;
-}
-
 in float2 fs.texCoords;
 out float4 fb.color;
 
@@ -37,8 +31,8 @@ buffer readonly Instance
 
 uniform set1 sampler2DArray
 {
-	filter = linear;
 	addressMode = repeat;
+	filter = linear;
 } colorMap;
 
 void main()
