@@ -35,8 +35,7 @@ BindlessPool::BindlessPool(ID<Pipeline> pipeline, PipelineType pipelineType,
 		GARDEN_ASSERT_MSG(i->second.resourceSets.empty(), 
 			"No resource set for uniform [" + i->first + "]");
 		auto& resourceSets = i.value().resourceSets;
-		resourceSets.resize(1);
-		resourceSets[0].resize(maxBindlessCount);
+		resourceSets.resize(1); resourceSets[0].resize(maxBindlessCount);
 
 		UniformData allocData;
 		uniformData.emplace(i->first, std::move(allocData));

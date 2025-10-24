@@ -92,9 +92,9 @@ class AnimationSystem final : public ComponentSystem<AnimationComponent, false>,
 	public Singleton<AnimationSystem>, public ISerializable
 {
 public:
-	using Animations = LinearPool<Animation>;
+	using AnimationPool = LinearPool<Animation>;
 private:
-	Animations animations;
+	AnimationPool animations;
 	mt19937 randomGenerator;
 	bool animateAsync = false;
 
@@ -129,11 +129,11 @@ public:
 	/**
 	 * @brief Returns animation pool.
 	 */
-	const Animations& getAnimations() const noexcept { return animations; }
+	const AnimationPool& getAnimations() const noexcept { return animations; }
 
 	/**
 	 * @brief Creates a new animation instance.
-	 * @note Expected to use the resource system to load animations.
+	 * @note Expected to use the Resource system to load animations.
 	 */
 	ID<Animation> createAnimation() { return animations.create(); }
 

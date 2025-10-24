@@ -42,15 +42,13 @@ static void* createVkDescriptorSet(ID<Pipeline> pipeline, PipelineType pipelineT
 	vk::DescriptorSetLayout descriptorSetLayout = (VkDescriptorSetLayout)descriptorSetLayouts[index];
 	vk::DescriptorPool descriptorPool = (VkDescriptorPool)PipelineExt::getDescriptorPools(**pipelineView)[index];
 	setCount = (uint32)uniforms.begin()->second.resourceSets.size();
-
-	vk::DescriptorSetAllocateInfo allocateInfo(descriptorPool ?
-		descriptorPool : vulkanAPI->descriptorPool, setCount);
+	vk::DescriptorSetAllocateInfo allocateInfo(descriptorPool ? descriptorPool : vulkanAPI->descriptorPool, setCount);
 
 	void* instance = nullptr;
-	if (setCount > 1)
+	if (allocateInfo.descriptorSetCount > 1)
 	{
-		auto descriptorSets = malloc<vk::DescriptorSet>(setCount);
-		vulkanAPI->descriptorSetLayouts.assign(setCount, descriptorSetLayout);
+		auto descriptorSets = malloc<vk::DescriptorSet>(allocateInfo.descriptorSetCount);
+		vulkanAPI->descriptorSetLayouts.assign(allocateInfo.descriptorSetCount, descriptorSetLayout);
 		allocateInfo.pSetLayouts = vulkanAPI->descriptorSetLayouts.data();
 		auto allocateResult = vulkanAPI->device.allocateDescriptorSets(&allocateInfo, descriptorSets);
 		vk::detail::resultCheck(allocateResult, "vk::Device::allocateDescriptorSets");
@@ -74,27 +72,27 @@ static void* createVkDescriptorSet(ID<Pipeline> pipeline, PipelineType pipelineT
 		switch (descriptorType)
 		{
 		case vk::DescriptorType::eCombinedImageSampler:
-			DescriptorSet::combinedSamplerCount += setCount;
+			DescriptorSet::combinedSamplerCount += allocateInfo.descriptorSetCount;
 			GARDEN_ASSERT(DescriptorSet::combinedSamplerCount < GARDEN_DS_POOL_COMBINED_SAMPLER_COUNT);
 			break;
 		case vk::DescriptorType::eUniformBuffer:
-			DescriptorSet::uniformBufferCount += setCount;
+			DescriptorSet::uniformBufferCount += allocateInfo.descriptorSetCount;
 			GARDEN_ASSERT(DescriptorSet::uniformBufferCount < GARDEN_DS_POOL_UNIFORM_BUFFER_COUNT);
 			break;
 		case vk::DescriptorType::eStorageImage:
-			DescriptorSet::storageImageCount += setCount;
+			DescriptorSet::storageImageCount += allocateInfo.descriptorSetCount;
 			GARDEN_ASSERT(DescriptorSet::storageImageCount < GARDEN_DS_POOL_STORAGE_IMAGE_COUNT);
 			break;
 		case vk::DescriptorType::eStorageBuffer:
-			DescriptorSet::storageBufferCount += setCount;
+			DescriptorSet::storageBufferCount += allocateInfo.descriptorSetCount;
 			GARDEN_ASSERT(DescriptorSet::storageBufferCount < GARDEN_DS_POOL_STORAGE_BUFFER_COUNT);
 			break;
 		case vk::DescriptorType::eInputAttachment:
-			DescriptorSet::inputAttachmentCount += setCount;
+			DescriptorSet::inputAttachmentCount += allocateInfo.descriptorSetCount;
 			GARDEN_ASSERT(DescriptorSet::inputAttachmentCount < GARDEN_DS_POOL_INPUT_ATTACHMENT_COUNT);
 			break;
 		case vk::DescriptorType::eAccelerationStructureKHR:
-			DescriptorSet::accelStructureCount += setCount;
+			DescriptorSet::accelStructureCount += allocateInfo.descriptorSetCount;
 			GARDEN_ASSERT(DescriptorSet::accelStructureCount < GARDEN_DS_POOL_ACCEL_STRUCTURE_COUNT);
 			break;
 		default: abort();
@@ -252,10 +250,14 @@ static void recreateVkDescriptorSet(const DescriptorSet::Uniforms& oldUniforms,
 		else abort();
 	}
 
-	vulkanAPI->descriptorImageInfos.resize(imageInfoCount);
-	vulkanAPI->descriptorBufferInfos.resize(bufferInfoCount);
-	vulkanAPI->asDescriptorInfos.resize(asInfoCount);
-	vulkanAPI->asWriteDescriptorSets.resize(tlasCount);
+	if (vulkanAPI->descriptorImageInfos.size() < imageInfoCount)
+		vulkanAPI->descriptorImageInfos.resize(imageInfoCount);
+	if (vulkanAPI->descriptorBufferInfos.size() < bufferInfoCount)
+		vulkanAPI->descriptorBufferInfos.resize(bufferInfoCount);
+	if (vulkanAPI->asDescriptorInfos.size() < asInfoCount)
+		vulkanAPI->asDescriptorInfos.resize(asInfoCount);
+	if (vulkanAPI->asWriteDescriptorSets.size() < tlasCount)
+		vulkanAPI->asWriteDescriptorSets.resize(tlasCount);
 	imageInfoCount = 0, bufferInfoCount = 0, asInfoCount = 0, tlasCount = 0;
 
 	for	(const auto& pair : pipelineUniforms)
@@ -420,15 +422,18 @@ static void updateVkDescriptorSetResources(void* instance, const Pipeline::Unifo
 	if (isSamplerType(uniformType) || isImageType(uniformType) ||
 		uniformType == GslUniformType::SubpassInput)
 	{
-		vulkanAPI->descriptorImageInfos.resize(elementCount);
+		if (vulkanAPI->descriptorImageInfos.size() < elementCount)
+			vulkanAPI->descriptorImageInfos.resize(elementCount);
 	}
 	else if (isBufferType(uniformType))
 	{
-		vulkanAPI->descriptorBufferInfos.resize(elementCount);
+		if (vulkanAPI->descriptorBufferInfos.size() < elementCount)
+			vulkanAPI->descriptorBufferInfos.resize(elementCount);
 	}
 	else if (uniformType == GslUniformType::AccelerationStructure)
 	{
-		vulkanAPI->asDescriptorInfos.resize(elementCount);
+		if (vulkanAPI->asDescriptorInfos.size() < elementCount)
+			vulkanAPI->asDescriptorInfos.resize(elementCount);
 	}
 	else abort();
 

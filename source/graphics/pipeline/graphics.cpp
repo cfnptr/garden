@@ -196,9 +196,9 @@ void GraphicsPipeline::createVkInstance(GraphicsCreateData& createData)
 		const auto& colorFormats = createData.colorFormats;
 		if (!colorFormats.empty())
 		{
-			dynamicColorFormats.resize(colorFormats.size());
+			dynamicColorFormats.reserve(colorFormats.size());
 			for (uint32 i = 0; i < (uint32)colorFormats.size(); i++)
-				dynamicColorFormats[i] = toVkFormat(colorFormats[i]);
+				dynamicColorFormats.push_back(toVkFormat(colorFormats[i]));
 
 			dynamicRenderingInfo.colorAttachmentCount = (uint32)dynamicColorFormats.size();
 			dynamicRenderingInfo.pColorAttachmentFormats = dynamicColorFormats.data();

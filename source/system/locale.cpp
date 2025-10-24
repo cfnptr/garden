@@ -32,48 +32,40 @@ static bool loadLocaleStrings(LocaleSystem::StringMap& strings, string_view modu
 	if (!ResourceSystem::Instance::get()->loadData(localePath, localeData))
 		return false;
 
-	try
-	{
-		localeData.resize(localeData.size() + 1);
-		auto data = localeData.data(); data[localeData.size() - 1] = '\0';
-		istringstream stream((const char*)data); localeData = {};
+	istringstream stream(string((const char*)
+		localeData.data(), localeData.size()));
+	localeData = {};
 
-		string line;
-		while (std::getline(stream, line))
+	string line;
+	while (std::getline(stream, line))
+	{
+		auto offset = line.find(':');
+		if (offset == string::npos || offset == 0 || line.length() - offset < 3)
 		{
-			auto offset = line.find(':');
-			if (offset == string::npos || offset == 0 || line.length() - offset < 3)
-			{
-				GARDEN_LOG_DEBUG("Invalid locale string! (path: " + 
-					localePath.generic_string() + ", line: " + line + ")");
-				continue;
-			}
-
-			auto key = string(line.c_str(), offset);
-			offset++;
-			if (line[offset + 1] == ' ') offset++;
-
-			if (line.length() - offset == 0)
-			{
-				GARDEN_LOG_DEBUG("Invalid locale string! (path: " + 
-					localePath.generic_string() + ", line: " + line + ")");
-				continue;
-			}
-
-			auto value = string(line.c_str() + offset, line.length() - offset);
-			auto result = strings.emplace(std::move(key), std::move(value));
-
-			if (!result.second)
-			{
-				GARDEN_LOG_DEBUG("Duplicate locale string! (path: " + 
-					localePath.generic_string() + ", line: " + line + ")");
-			}
+			GARDEN_LOG_DEBUG("Invalid locale string! (path: " + 
+				localePath.generic_string() + ", line: " + line + ")");
+			continue;
 		}
-	}
-	catch (const exception& e)
-	{
-		GARDEN_LOG_ERROR("Failed to load localization strings. (error: " + string(e.what()) + ")");
-		return false;
+
+		auto key = string(line.c_str(), offset);
+		offset++;
+		if (line[offset + 1] == ' ') offset++;
+
+		if (line.length() - offset == 0)
+		{
+			GARDEN_LOG_DEBUG("Invalid locale string! (path: " + 
+				localePath.generic_string() + ", line: " + line + ")");
+			continue;
+		}
+
+		auto value = string(line.c_str() + offset, line.length() - offset);
+		auto result = strings.emplace(std::move(key), std::move(value));
+
+		if (!result.second)
+		{
+			GARDEN_LOG_DEBUG("Duplicate locale string! (path: " + 
+				localePath.generic_string() + ", line: " + line + ")");
+		}
 	}
 	return true;
 }

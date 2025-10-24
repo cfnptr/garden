@@ -24,7 +24,6 @@
 
 using namespace garden;
 
-//**********************************************************************************************************************
 UiTriggerSystem::UiTriggerSystem(bool setSingleton) : Singleton(setSingleton)
 {
 	auto manager = Manager::Instance::get();
@@ -174,6 +173,7 @@ void UiTriggerSystem::update()
 	}
 }
 
+//**********************************************************************************************************************
 void UiTriggerSystem::destroyComponent(ID<Component> instance)
 {
 	auto component = components.get(ID<UiTriggerComponent>(instance));

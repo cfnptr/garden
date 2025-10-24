@@ -18,6 +18,7 @@
 
 #pragma once
 #include "garden/hash.hpp"
+#include "garden/font.hpp"
 #include "garden/animate.hpp"
 #include "garden/resource/image.hpp"
 #include "garden/graphics/pipeline/compute.hpp"
@@ -167,6 +168,7 @@ protected:
 	tsl::robin_map<Hash128, Ref<Image>> sharedImages;
 	tsl::robin_map<Hash128, Ref<DescriptorSet>> sharedDescriptorSets;
 	tsl::robin_map<Hash128, Ref<Animation>> sharedAnimations;
+	tsl::robin_map<Hash128, Ref<Font>> sharedFonts;
 	queue<GraphicsQueueItem> loadedGraphicsQueue; // TODO: We can use here lock free concurrent queue.
 	queue<ComputeQueueItem> loadedComputeQueue;
 	queue<RayTracingQueueItem> loadedRayTracingQueue;
@@ -447,6 +449,21 @@ public:
 	 * @param[in] directory animation resource directory
 	 */
 	void storeAnimation(const fs::path& path, ID<Animation> animation, const fs::path& directory = "");
+
+	/*******************************************************************************************************************
+	 * @brief Loads font from the resource pack.
+	 * @note Loads from the fonts directory in debug build.
+	 *
+	 * @param[in] path target font resource path
+	 * @param faceIndex font face index to load
+	 */
+	Ref<Font> loadFont(const fs::path& path, int32 faceIndex = 0);
+
+	/**
+	 * @brief Destroys shared font if it's the last one.
+	 * @param[in] font target shared font reference
+	 */
+	void destroyShared(const Ref<Font>& font);
 
 	/*******************************************************************************************************************
 	 * @brief Loads file data from the resource pack.

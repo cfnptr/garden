@@ -68,6 +68,11 @@ public:
 	 */
 	double getCurrentTime() const noexcept { return currentTime; }
 	/**
+	 * @brief Returns current system time. (in seconds)
+	 * @note It is NOT affected by the timeMultiplier value.
+	 */
+	double getSystemTime() const noexcept { return systemTime; }
+	/**
 	 * @brief Returns time elapsed between two previous ticks. (in seconds)
 	 * @note It is affected by the timeMultiplier value.
 	 * 

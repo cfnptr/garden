@@ -149,10 +149,10 @@ static vk::Instance createVkInstance(const string& appName, Version appVersion,
 
 	uint32 glfwExtensionCount = 0;
 	auto glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
-	extensions.resize(glfwExtensionCount);
+	extensions.reserve(glfwExtensionCount);
 
 	for (uint32 i = 0; i < glfwExtensionCount; i++)
-		extensions[i] = glfwExtensions[i];
+		extensions.push_back(glfwExtensions[i]);
 
 	#if GARDEN_OS_MACOS
 	if (!hasExtension(extensions, VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME))
@@ -1154,6 +1154,7 @@ VulkanAPI::~VulkanAPI()
 	#endif
 
 	instance.destroy();
+	volkFinalize();
 
 	GARDEN_ASSERT_MSG(vulkanInstance, "Graphics API is not initialized");
 	vulkanInstance = nullptr;

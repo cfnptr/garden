@@ -36,7 +36,7 @@ public:
 	 */
 	// static void loadModel(GraphicsData& data);
 
-	#if !GARDEN_PACK_RESOURCES || defined(GARDEN_MODEL_CONVERTER)
+	#if GARDEN_DEBUG || defined(GARDEN_MODEL_CONVERTER)
 	/**
 	 * @brief Converts specified 3D model to the Garden model format.
 	 * 

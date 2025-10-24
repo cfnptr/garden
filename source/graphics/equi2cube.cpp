@@ -138,8 +138,8 @@ bool Equi2Cube::convertImage(const fs::path& filePath, const fs::path& inputPath
 	}
 
 	equiSize = uint2((uint32)sizeX, (uint32)sizeY);
-	equiData.resize(sizeof(float4) * equiSize.x * equiSize.y);
-	memcpy(equiData.data(), pixels, equiData.size());
+	equiData.assign((const uint8*)pixels, (const uint8*)pixels + 
+		sizeof(float4) * equiSize.x * equiSize.y);
 	free(pixels);
 
 	auto cubemapSize = equiSize.x / 4;

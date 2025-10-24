@@ -103,9 +103,14 @@ static void terminateDlss(NVSDK_NGX_Parameter* ngxParameters)
 	if (!ngxParameters)
 		return;
 
-	NVSDK_NGX_VULKAN_DestroyParameters(ngxParameters);
+	auto result = NVSDK_NGX_VULKAN_DestroyParameters(ngxParameters);
+	GARDEN_ASSERT_MSG(result == NVSDK_NGX_Result_Success, "Failed to destroy Nvidia DLSS parameters");
+
 	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
-		NVSDK_NGX_VULKAN_Shutdown1(VulkanAPI::get()->device);
+	{
+		result = NVSDK_NGX_VULKAN_Shutdown1(VulkanAPI::get()->device);
+		GARDEN_ASSERT_MSG(result == NVSDK_NGX_Result_Success, "Failed to shutdown Nvidia DLSS");
+	}
 	else abort();
 }
 static NVSDK_NGX_Parameter* initializeDlss(const wstring& nvidiaDlssPath)
@@ -241,7 +246,10 @@ static void destroyDlssFeature(NVSDK_NGX_Handle* ngxFeature)
 		return;
 	
 	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
-		NVSDK_NGX_VULKAN_ReleaseFeature(ngxFeature);
+	{
+		auto result = NVSDK_NGX_VULKAN_ReleaseFeature(ngxFeature);
+		GARDEN_ASSERT_MSG(result == NVSDK_NGX_Result_Success, "Failed to release Nvidia DLSS feature");
+	}
 	else abort();
 }
 

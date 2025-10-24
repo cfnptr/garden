@@ -639,7 +639,7 @@ class PhysicsSystem final : public ComponentSystem<RigidbodyComponent, false>,
 	public Singleton<PhysicsSystem>, public ISerializable
 {
 public:
-	using Shapes = LinearPool<Shape>;
+	using ShapePool = LinearPool<Shape>;
 	using SharedShapes = tsl::robin_map<Hash128, ID<Shape>>;
 
 	/**
@@ -679,7 +679,7 @@ private:
 	};
 
 	Properties properties;
-	Shapes shapes;
+	ShapePool shapes;
 	SharedShapes sharedEmptyShapes;
 	SharedShapes sharedBoxShapes;
 	SharedShapes sharedSphereShapes;
@@ -768,7 +768,7 @@ public:
 	/**
 	 * @brief Returns physics shape pool.
 	 */
-	const Shapes& getShapes() const noexcept { return shapes; }
+	const ShapePool& getShapes() const noexcept { return shapes; }
 	/**
 	 * @brief Returns shared empty shape pool.
 	 */

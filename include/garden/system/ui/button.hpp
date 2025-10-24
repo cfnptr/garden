@@ -31,10 +31,10 @@ class UiButtonSystem;
 struct UiButtonComponent : public Component
 {
 protected:
-	bool enabled = true; /**< Is UI button enabled. */
+	bool enabled = true;
 	friend class garden::UiButtonSystem;
 public:
-	string onClick = {};   /**< On UI button click event. */
+	string onClick = ""; /**< On UI button click event. */
 
 	/**
 	 * @brief Returns true if button is enabled.

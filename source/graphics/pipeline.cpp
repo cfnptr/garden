@@ -62,18 +62,19 @@ static vector<void*> createVkPipelineSamplers(const Pipeline::Uniforms& uniforms
 //**********************************************************************************************************************
 static void createVkDescriptorSetLayouts(vector<void*>& descriptorSetLayouts, vector<void*>& descriptorPools,
 	const Pipeline::Uniforms& uniforms, const tsl::robin_map<string, vk::Sampler>& immutableSamplers,
-	const fs::path& pipelinePath, uint32 maxBindlessCount)
+	const fs::path& pipelinePath, uint32 maxBindlessCount, uint8 descriptorSetCount)
 {
 	auto vulkanAPI = VulkanAPI::get();
 	vector<vk::DescriptorSetLayoutBinding> descriptorSetBindings;
 	vector<vk::DescriptorBindingFlags> descriptorBindingFlags;
 	vector<vector<vk::Sampler>> samplerArrays;
-	
-	for (uint8 dsIndex = 0; dsIndex < (uint8)descriptorSetLayouts.size(); dsIndex++)
-	{
-		vector<vk::DescriptorPoolSize> descriptorPoolSizes;
-		uint32 bindingIndex = 0; auto isBindless = false;
+	vector<vk::DescriptorPoolSize> descriptorPoolSizes;
+	descriptorSetLayouts.reserve(descriptorSetCount);
+	descriptorPools.reserve(descriptorSetCount);
 
+	for (uint8 dsIndex = 0; dsIndex < descriptorSetCount; dsIndex++)
+	{
+		uint32 bindingIndex = 0; auto isBindless = false;
 		if (descriptorSetBindings.size() < uniforms.size())
 			descriptorSetBindings.resize(uniforms.size());
 
@@ -183,7 +184,8 @@ static void createVkDescriptorSetLayouts(vector<void*>& descriptorSetLayouts, ve
 
 			vk::DescriptorPoolCreateInfo descriptorPoolInfo(vk::DescriptorPoolCreateFlagBits::eUpdateAfterBind, 
 				maxSetCount, (uint32)descriptorPoolSizes.size(), descriptorPoolSizes.data());
-			descriptorPools[dsIndex] = vulkanAPI->device.createDescriptorPool(descriptorPoolInfo);
+			descriptorPools.push_back(vulkanAPI->device.createDescriptorPool(descriptorPoolInfo));
+			descriptorPoolSizes.clear();
 
 			#if GARDEN_DEBUG // Note: No GARDEN_EDITOR
 			if (vulkanAPI->features.hasDebugUtils)
@@ -195,8 +197,9 @@ static void createVkDescriptorSetLayouts(vector<void*>& descriptorSetLayouts, ve
 			}
 			#endif
 		}
+		else descriptorPools.push_back(nullptr);
 
-		descriptorSetLayouts[dsIndex] = vulkanAPI->device.createDescriptorSetLayout(descriptorSetLayoutInfo);
+		descriptorSetLayouts.push_back(vulkanAPI->device.createDescriptorSetLayout(descriptorSetLayoutInfo));
 		samplerArrays.clear();
 
 		#if GARDEN_DEBUG // Note: No GARDEN_EDITOR
@@ -355,14 +358,7 @@ Pipeline::Pipeline(CreateData& createData, bool asyncRecording)
 	this->pushConstantsSize = createData.pushConstantsSize;
 	this->variantCount = createData.variantCount;
 
-	if (createData.descriptorSetCount > 0)
-	{
-		descriptorSetLayouts.resize(createData.descriptorSetCount);
-		descriptorPools.resize(createData.descriptorSetCount);
-	}
-
 	auto graphicsAPI = GraphicsAPI::get();
-
 	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
 		if (createData.maxBindlessCount > 0 && !VulkanAPI::get()->features.descriptorIndexing)
@@ -377,8 +373,12 @@ Pipeline::Pipeline(CreateData& createData, bool asyncRecording)
 		this->samplers = createVkPipelineSamplers(uniforms, createData.samplerStates,
 			immutableSamplers, createData.shaderPath, createData.samplerStateOverrides);
 
-		createVkDescriptorSetLayouts(descriptorSetLayouts, descriptorPools, uniforms,
-			immutableSamplers, createData.shaderPath, createData.maxBindlessCount);
+		if (createData.descriptorSetCount > 0)
+		{
+			createVkDescriptorSetLayouts(descriptorSetLayouts, descriptorPools, uniforms, immutableSamplers, 
+				createData.shaderPath, createData.maxBindlessCount, createData.descriptorSetCount);
+		}
+		
 		this->pipelineLayout = createVkPipelineLayout(pushConstantsSize,
 			createData.pushConstantsStages, descriptorSetLayouts, createData.shaderPath);
 	}

@@ -228,8 +228,9 @@ include(cmake/gather-git-info.cmake)
 set(GARDEN_INCLUDE_DIRS ${PROJECT_BINARY_DIR}/include ${PROJECT_SOURCE_DIR}/include resources/shaders 
 	libraries/ecsm/include libraries/voxy/include libraries/vma/include libraries/stb 
 	libraries/tinyexr libraries/png ${PROJECT_BINARY_DIR}/libraries/png)
-set(GARDEN_LINK_LIBS Vulkan::Vulkan volk nlohmann_json::nlohmann_json xxHash::xxhash assimp::assimp ecsm-static 
-	math-static conf-static pack-static logy-static nets-static voxy glfw webp png_static tinyexr FastNoise Jolt)
+set(GARDEN_LINK_LIBS Vulkan::Vulkan volk nlohmann_json::nlohmann_json xxHash::xxhash 
+	assimp::assimp ecsm-static math-static conf-static pack-static logy-static nets-static 
+	voxy glfw webp png_static tinyexr freetype FastNoise Jolt)
 set(GARDEN_LINK_DIRS)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
@@ -316,6 +317,9 @@ add_subdirectory(libraries/tinyexr)
 
 set(FASTNOISE2_NOISETOOL OFF CACHE BOOL "" FORCE)
 add_subdirectory(libraries/fastnoise2)
+
+set(FT_ENABLE_ERROR_STRINGS ON CACHE BOOL "" FORCE)
+add_subdirectory(libraries/freetype)
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 	set(TRACK_BROADPHASE_STATS ON CACHE BOOL "" FORCE)

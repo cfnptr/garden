@@ -161,7 +161,7 @@ RayTracingPipeline::SBT RayTracingPipeline::createSBT(Buffer::Usage flags)
 	GARDEN_ASSERT_MSG(instance, "Ray tracing pipeline [" + debugName + "] is not ready");
 
 	SBT sbt;
-	sbt.groupRegions.resize(variantCount);
+	sbt.groupRegions.reserve(variantCount);
 	auto groupCount = rayGenGroupCount + missGroupCount + callGroupCount + hitGroupCount;	
 
 	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
@@ -199,7 +199,7 @@ RayTracingPipeline::SBT RayTracingPipeline::createSBT(Buffer::Usage flags)
 	
 		for (uint8 i = 0; i < variantCount; i++)
 		{
-			auto& sbtGroupRegion = sbt.groupRegions[i];
+			SbtGroupRegions sbtGroupRegion;
 			sbtGroupRegion.rayGenRegion.deviceAddress = sbtAddress;
 			sbtGroupRegion.rayGenRegion.stride = rayGenRegionSize;
 			sbtGroupRegion.rayGenRegion.size = rayGenRegionSize; // Note: Must be equal to its stride member.
@@ -222,6 +222,8 @@ RayTracingPipeline::SBT RayTracingPipeline::createSBT(Buffer::Usage flags)
 			sbtGroupRegion.hitRegion.stride = handleSizeAligned;
 			sbtGroupRegion.hitRegion.size = hitRegionSize;
 			sbtAddress += hitRegionSize;
+
+			sbt.groupRegions.push_back(sbtGroupRegion);
 
 			vk::Pipeline pipeline = variantCount > 1 ? ((VkPipeline*)instance)[i] : (VkPipeline)instance;
 			auto result = vulkanAPI->device.getRayTracingShaderGroupHandlesKHR(
