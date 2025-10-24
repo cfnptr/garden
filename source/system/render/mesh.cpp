@@ -863,7 +863,10 @@ void MeshRenderSystem::renderShadows()
 //**********************************************************************************************************************
 static f32x4x4 calcUiProjView() noexcept
 {
-	auto halfSize = UiTransformSystem::Instance::get()->calcUiSize() * 0.5f;
+	auto halfSize = float2(0.5f);
+	auto uiTransformSystem = UiTransformSystem::Instance::tryGet();
+	if (uiTransformSystem)
+		halfSize *= uiTransformSystem->calcUiSize();
 	return (f32x4x4)calcOrthoProjRevZ(float2(-halfSize.x, halfSize.x), 
 		float2(-halfSize.y, halfSize.y), float2(-1.0f, 1.0f));
 }

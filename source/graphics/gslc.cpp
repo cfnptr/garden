@@ -2209,8 +2209,7 @@ static void readGslHeaderArray(const uint8* data, uint32 dataSize,
 		dataOffset += sizeof(uint8);
 		if (dataOffset + nameLength + sizeof(T) > dataSize)
 			throw GardenError("Invalid GSL header data size.");
-		string name(nameLength, ' ');
-		memcpy(name.data(), data + dataOffset, nameLength);
+		string name((const char*)(data + dataOffset), nameLength);
 		dataOffset += nameLength;
 		const auto& value = *(const T*)(data + dataOffset);
 		dataOffset += sizeof(T);
@@ -2255,16 +2254,14 @@ void GslCompiler::loadGraphicsShaders(GraphicsData& data)
 
 	if (values.vertexAttributeCount > 0)
 	{
-		data.vertexAttributes.resize(values.vertexAttributeCount);
-		memcpy(data.vertexAttributes.data(), headerData + dataOffset,
-			values.vertexAttributeCount * sizeof(GraphicsPipeline::VertexAttribute));
+		auto vertAttribData = (const GraphicsPipeline::VertexAttribute*)(headerData + dataOffset);
+		data.vertexAttributes.assign(vertAttribData, vertAttribData + values.vertexAttributeCount);
 		dataOffset += values.vertexAttributeCount * sizeof(GraphicsPipeline::VertexAttribute);
 	}
 	if (values.blendStateCount > 0)
 	{
-		data.blendStates.resize(values.blendStateCount);
-		memcpy(data.blendStates.data(), headerData + dataOffset,
-			values.blendStateCount * sizeof(GraphicsPipeline::BlendState));
+		auto blendStateData = (const GraphicsPipeline::BlendState*)(headerData + dataOffset);
+		data.blendStates.assign(blendStateData, blendStateData + values.blendStateCount);
 		dataOffset += values.blendStateCount * sizeof(GraphicsPipeline::BlendState);
 	}
 
@@ -2587,6 +2584,10 @@ int main(int argc, char *argv[])
 				if (!compileResult)
 					return;
 
+				auto shaderPath = fs::path(arg);
+				if (shaderPath.filename().generic_string().find('.') != string::npos)
+					return;
+
 				// Note: Sending one batched message due to multithreading.
 				cout << string("Compiling ") + arg + "\n" << flush;
 				auto result = false;
@@ -2594,7 +2595,7 @@ int main(int argc, char *argv[])
 				try
 				{
 					GslCompiler::GraphicsData graphicsData;
-					graphicsData.shaderPath = arg;
+					graphicsData.shaderPath = shaderPath;
 					result = GslCompiler::compileGraphicsShaders(inputPath, outputPath, includePaths, graphicsData);
 				}
 				catch (const exception& e)

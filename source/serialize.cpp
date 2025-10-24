@@ -17,7 +17,6 @@
 
 using namespace garden;
 
-//**********************************************************************************************************************
 DoNotSerializeSystem::DoNotSerializeSystem(bool setSingleton) : Singleton(setSingleton) { }
 DoNotSerializeSystem::~DoNotSerializeSystem() { unsetSingleton(); }
 
@@ -26,7 +25,6 @@ string_view DoNotSerializeSystem::getComponentName() const
 	return "Do Not Serialize";
 }
 
-//**********************************************************************************************************************
 bool DoNotSerializeSystem::hasOrAncestors(ID<Entity> entity) const
 {
 	if (hasComponent(entity))

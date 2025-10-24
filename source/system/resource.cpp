@@ -18,6 +18,7 @@
 #include "garden/system/graphics.hpp"
 #include "garden/system/app-info.hpp"
 #include "garden/system/thread.hpp"
+#include "garden/system/text.hpp"
 #include "garden/system/log.hpp"
 #include "garden/graphics/equi2cube.hpp"
 #include "garden/graphics/gslc.hpp"
@@ -28,13 +29,16 @@
 #include "garden/profiler.hpp"
 #include "garden/file.hpp"
 #include "math/tone-mapping.hpp"
-
 #include "math/types.hpp"
+
 #include "webp/decode.h"
 #include "webp/encode.h"
 #include "png.h"
 #include "stb_image.h"
 #include "stb_image_write.h"
+
+#include "ft2build.h"
+#include FT_FREETYPE_H
 
 #include <fstream>
 #include <cstdint>
@@ -1011,9 +1015,9 @@ void ResourceSystem::loadImageData(const uint8* data, psize dataSize, ImageFileT
 			(int)dataSize, &sizeX, &sizeY, nullptr, 4);
 		if (!pixelData)
 			throw GardenError("Invalid JPG image data.");
+
 		imageSize = uint2(sizeX, sizeY);
-		pixels.resize(sizeof(Color) * imageSize.x * imageSize.y);
-		memcpy(pixels.data(), pixelData, pixels.size());
+		pixels.assign(pixelData, pixelData + sizeof(Color) * imageSize.x * imageSize.y);
 		stbi_image_free(pixelData);
 	}
 	else if (fileType == ImageFileType::Exr)
@@ -1031,8 +1035,8 @@ void ResourceSystem::loadImageData(const uint8* data, psize dataSize, ImageFileT
 		}
 
 		imageSize = uint2(sizeX, sizeY);
-		pixels.resize(sizeof(float4) * imageSize.x * imageSize.y);
-		memcpy(pixels.data(), pixelData, pixels.size());
+		pixels.assign((const uint8*)pixelData, (const uint8*)pixelData +
+			sizeof(float4) * imageSize.x * imageSize.y);
 		free(pixelData);
 	}
 	else if (fileType == ImageFileType::Hdr)
@@ -1042,9 +1046,10 @@ void ResourceSystem::loadImageData(const uint8* data, psize dataSize, ImageFileT
 			(int)dataSize, &sizeX, &sizeY, nullptr, 4);
 		if (!pixelData)
 			throw GardenError("Invalid HDR image data.");
+
 		imageSize = uint2(sizeX, sizeY);
-		pixels.resize(sizeof(float4) * imageSize.x * imageSize.y);
-		memcpy(pixels.data(), pixelData, pixels.size());
+		pixels.assign((const uint8*)pixelData, (const uint8*)pixelData +
+			sizeof(float4) * imageSize.x * imageSize.y);
 		stbi_image_free(pixelData);
 	}
 	else abort();
@@ -1629,17 +1634,17 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 	if (subpasses.empty())
 	{
 		const auto& colorAttachments = framebufferView->getColorAttachments();
-		colorFormats.resize(colorAttachments.size());
+		colorFormats.reserve(colorAttachments.size());
 		for (uint32 i = 0; i < (uint32)colorAttachments.size(); i++)
 		{
 			if (!colorAttachments[i].imageView)
 			{
-				colorFormats[i] = Image::Format::Undefined;
+				colorFormats.push_back(Image::Format::Undefined);
 				continue;
 			}
 			
 			auto attachment = graphicsAPI->imageViewPool.get(colorAttachments[i].imageView);
-			colorFormats[i] = attachment->getFormat();
+			colorFormats.push_back(attachment->getFormat());
 		}
 	}
 	else
@@ -2715,6 +2720,93 @@ void ResourceSystem::storeAnimation(const fs::path& path, ID<Animation> animatio
 	serializer.endChild();
 
 	GARDEN_LOG_TRACE("Stored animation. (path: " + path.generic_string() + ")");
+}
+
+//**********************************************************************************************************************
+Ref<Font> ResourceSystem::loadFont(const fs::path& path, int32 faceIndex)
+{
+	GARDEN_ASSERT(!path.empty());
+	
+	auto pathString = path.generic_string();
+	auto hashState = Hash128::getState();
+	Hash128::resetState(hashState);
+	Hash128::updateState(hashState, pathString.c_str(), pathString.length());
+	auto hash = Hash128::digestState(hashState);
+
+	auto result = sharedFonts.find(hash);
+	if (result != sharedFonts.end())
+		return result->second;
+
+	auto textSystem = TextSystem::Instance::get();
+	fs::path filePath = "fonts" / path; filePath += ".ttf";
+
+	#if GARDEN_PACK_RESOURCES
+	uint64 itemIndex = 0; vector<uint8> dataBuffer;
+	if (!packReader.getItemIndex(filePath, itemIndex))
+	{
+		GARDEN_LOG_ERROR("Font file does not exist. (path: " + path.generic_string() + ")");
+		return {};
+	}
+	packReader.readItemData(itemIndex, dataBuffer);
+
+	FT_Face face = nullptr;
+	auto error = FT_New_Memory_Face((FT_Library)textSystem->ftLibrary, 
+		dataBuffer.data(), dataBuffer.size(), faceIndex, &face);
+	if (error)
+	{
+		GARDEN_LOG_ERROR("Failed to load font. (path: " + path.generic_string() + 
+			", error: " + string(FT_Error_String(error)) + ")");
+		return {};
+	}
+	#else
+	fs::path fontPath;
+	if (!File::tryGetResourcePath(appResourcesPath, filePath, fontPath))
+	{
+		GARDEN_LOG_ERROR("Font file does not exist or ambiguous. (path: " + path.generic_string() + ")");
+		return {};
+	}
+
+	FT_Face face = nullptr;
+	auto error = FT_New_Face((FT_Library)textSystem->ftLibrary, 
+		fontPath.generic_string().c_str(), faceIndex, &face);
+	if (error)
+	{
+		GARDEN_LOG_ERROR("Failed to load font file. (path: " + path.generic_string() + 
+			", error: " + string(FT_Error_String(error)) + ")");
+		return {};
+	}
+	#endif
+
+	auto font = Ref<Font>(textSystem->fonts.create());
+	auto emplaceResult = sharedFonts.emplace(hash, font);
+	GARDEN_ASSERT_MSG(emplaceResult.second, "Detected memory corruption");
+
+	auto fontView = textSystem->fonts.get(font);
+	fontView->face = face;
+
+	#if GARDEN_PACK_RESOURCES
+	auto faceData = new uint8[dataBuffer.size()];
+	memcpy(faceData, dataBuffer.data(), dataBuffer.size());
+	fontView->data = faceData;
+	#endif
+
+	GARDEN_LOG_TRACE("Loaded font. (path: " + path.generic_string() + ")");
+	return font;
+}
+void ResourceSystem::destroyShared(const Ref<Font>& font)
+{
+	if (!font || font.getRefCount() > 2)
+		return;
+
+	for (auto i = sharedFonts.begin(); i != sharedFonts.end(); i++)
+	{
+		if (i->second != font)
+			continue;
+		sharedFonts.erase(i);
+		break;
+	}
+
+	TextSystem::Instance::get()->fonts.destroy(ID<Font>(font));
 }
 
 //**********************************************************************************************************************

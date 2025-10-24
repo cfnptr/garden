@@ -18,6 +18,7 @@
 
 #include "nlohmann/json.hpp"
 
+#include <stack>
 #include <atomic>
 #include <fstream>
 #include <iostream>
@@ -37,6 +38,27 @@ bool Json2Bson::convertFile(const fs::path& filePath, const fs::path& inputPath,
 	json textData;
 	inputStream >> textData;
 	inputStream.close();
+
+	std::stack<json*> jsonStack;
+	jsonStack.push(&textData);
+
+	while (!jsonStack.empty())
+	{
+		auto& json = *jsonStack.top();
+		jsonStack.pop();
+
+		if (json.is_object())
+		{
+			json.erase("debugName");
+			for (auto& pair : json.items()) 
+				jsonStack.push(&pair.value());
+		}
+		else if (json.is_array())
+		{
+			for (auto& item : json) 
+				jsonStack.push(&item);
+		}
+	}
 
 	auto binaryData = json::to_bson(textData);
 

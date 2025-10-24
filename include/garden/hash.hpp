@@ -184,6 +184,7 @@ public:
 	/**
 	 * @brief Returns singleton hash state instance.
 	 * @details Creates a new one on first call.
+	 * @warning This is not a thread safe function!
 	 */
 	static State getState();
 };

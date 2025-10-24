@@ -97,7 +97,8 @@ Hash128::State Hash128::createState()
 void Hash128::destroyState(Hash128::State state) noexcept
 {
 	GARDEN_ASSERT(state);
-	XXH3_freeState((XXH3_state_t*)state);
+	auto result = XXH3_freeState((XXH3_state_t*)state);
+	GARDEN_ASSERT_MSG(result == XXH_OK, "Failed to free xxHash state");
 }
 
 void Hash128::resetState(State state)

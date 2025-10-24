@@ -138,7 +138,9 @@ protected:
 	void QueueJobs(Job** inJobs, JPH::uint inNumJobs) final
 	{
 		static thread_local vector<ThreadPool::Task::Function> functions;
-		functions.resize(inNumJobs);
+		if (functions.size() < inNumJobs)
+			functions.resize(inNumJobs);
+		auto functionData = functions.data();
 
 		for (JPH::uint i = 0; i < inNumJobs; i++)
 		{
@@ -147,7 +149,7 @@ protected:
 			// Add reference to job because we're adding the job to the queue
 			job->AddRef();
 
-			functions[i] = [job](const ThreadPool::Task& task)
+			functionData[i] = [job](const ThreadPool::Task& task)
 			{
 				job->Execute();
 				job->Release();
@@ -2066,12 +2068,12 @@ bool PhysicsSystem::castRay(const Ray& ray, vector<RayCastHit>& hits, float maxD
 		collector.Sort();
 	
 	auto& lockInterface = *((const JPH::BodyLockInterface*)this->lockInterface);
-	auto& collectorHits = collector.mHits;
-	hits.resize(collectorHits.size());
+	const auto& collectorHits = collector.mHits;
+	hits.resize(collectorHits.size()); auto hitData = hits.data();
 
-	for (psize i = 0; i < hits.size(); i++)
+	for (psize i = 0; i < collectorHits.size(); i++)
 	{
-		auto hit = hits[i];
+		RayCastHit hit;
 		auto collectorHit = collectorHits[i];
 		hit.subShapeID = collectorHit.mSubShapeID2.GetValue();
 		hit.surfacePoint = toF32x4(rayCast.GetPointOnRay(collectorHit.mFraction));
@@ -2084,6 +2086,8 @@ bool PhysicsSystem::castRay(const Ray& ray, vector<RayCastHit>& hits, float maxD
 				collectorHit.mSubShapeID2, rayCast.GetPointOnRay(collectorHit.mFraction)));
 			*hit.entity = (uint32)body.GetUserData();
 		}
+
+		hitData[i] = hit;
 	}
 	return true;
 }

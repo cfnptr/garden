@@ -249,9 +249,9 @@ VulkanSwapchain::VulkanSwapchain(VulkanAPI* vulkanAPI, uint2 framebufferSize, bo
 	instance = createVkSwapchain(vulkanAPI, framebufferSize, useVsync, useTripleBuffering, nullptr, format);
 	images = createVkSwapchainImages(vulkanAPI, instance, framebufferSize, format);
 
-	renderFinishedSemaphores.resize(images.size());
+	renderFinishedSemaphores.reserve(images.size());
 	for (uint32 i = 0; i < (uint32)images.size(); i++)
-		renderFinishedSemaphores[i] = vulkanAPI->device.createSemaphore(semaphoreInfo);
+		renderFinishedSemaphores.push_back(vulkanAPI->device.createSemaphore(semaphoreInfo));
 
 	this->framebufferSize = framebufferSize;
 }
@@ -291,12 +291,10 @@ void VulkanSwapchain::recreate(uint2 framebufferSize, bool useVsync, bool useTri
 
 	if (renderFinishedSemaphores.size() < images.size())
 	{
-		auto offset = (uint32)renderFinishedSemaphores.size();
-		renderFinishedSemaphores.resize(images.size());
+		auto count = (uint32)(images.size() - renderFinishedSemaphores.size());
 		vk::SemaphoreCreateInfo semaphoreInfo;
-
-		for (uint32 i = offset; i < (uint32)images.size(); i++)
-			renderFinishedSemaphores[i] = vulkanAPI->device.createSemaphore(semaphoreInfo);
+		for (uint32 i = 0; i < count; i++)
+			renderFinishedSemaphores.push_back(vulkanAPI->device.createSemaphore(semaphoreInfo));
 	}
 
 	this->framebufferSize = framebufferSize;
@@ -404,9 +402,6 @@ void VulkanSwapchain::beginSecondaryCommandBuffers(vk::Framebuffer framebuffer, 
 	else
 	{
 		const auto& secondaryCommandPools = inFlightFrame->secondaryCommandPools;
-		inFlightFrame->secondaryCommandBuffers.resize(inFlightFrame->secondaryCommandBufferIndex + threadCount);
-		auto secondaryCommandBuffers = 
-			inFlightFrame->secondaryCommandBuffers.data() + inFlightFrame->secondaryCommandBufferIndex;
 		vk::CommandBufferAllocateInfo allocateInfo({}, vk::CommandBufferLevel::eSecondary, 1);
 		
 		for (int32 i = 0; i < threadCount; i++)
@@ -415,7 +410,7 @@ void VulkanSwapchain::beginSecondaryCommandBuffers(vk::Framebuffer framebuffer, 
 			vk::CommandBuffer commandBuffer;
 			auto allocateResult = vulkanAPI->device.allocateCommandBuffers(&allocateInfo, &commandBuffer);
 			vk::detail::resultCheck(allocateResult, "vk::Device::allocateCommandBuffers");
-			secondaryCommandBuffers[i] = commandBuffer;
+			inFlightFrame->secondaryCommandBuffers.push_back(commandBuffer);
 			vulkanAPI->secondaryCommandBuffers[i] = commandBuffer;
 
 			#if GARDEN_DEBUG // Note: No GARDEN_EDITOR

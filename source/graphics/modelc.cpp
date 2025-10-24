@@ -24,7 +24,7 @@
 using namespace garden;
 using namespace garden::graphics;
 
-#if GARDEN_DEBUG || defined(EQUI2CUBE)
+#if GARDEN_DEBUG || defined(GARDEN_MODEL_CONVERTER)
 //******************************************************************************************************************
 bool ModelConverter::convertModel(const fs::path& filePath, const fs::path& inputPath, const fs::path& outputPath)
 {

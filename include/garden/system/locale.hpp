@@ -83,9 +83,10 @@ class LocaleSystem final : public System, public Singleton<LocaleSystem>
 {
 public:
 	using StringMap = tsl::robin_map<string, string, SvHash, SvEqual>;
+	using ModuleMap = tsl::robin_map<string, StringMap, SvHash, SvEqual>;
 private:
 	StringMap generalStrings;
-	tsl::robin_map<string, StringMap, SvHash, SvEqual> modules;
+	ModuleMap modules;
 	Language loadedLanguage = Language::English;
 
 	/**
@@ -102,6 +103,15 @@ private:
 
 	friend class ecsm::Manager;
 public:
+	/**
+	 * @brief Returns general localization string map.
+	 */
+	const StringMap& getGeneralStrings() const noexcept { return generalStrings; }
+	/**
+	 * @brief Returns localization module map.
+	 */
+	const ModuleMap& getModules() const noexcept { return modules; }
+
 	/**
 	 * @brief Returns loaded localizaion strings language.
 	 */

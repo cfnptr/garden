@@ -195,9 +195,9 @@ class CompAnimSystem : public ComponentSystem<C, DestroyComponents>, public IAni
 {
 public:
 	typedef A AnimationFrameType; /**< Type of the system animation frame. */
-	using AnimationFrames = LinearPool<A, DestroyAnimationFrames>; /**< System animation frame pool type. */
+	using AnimFramePool = LinearPool<A, DestroyAnimationFrames>; /**< System animation frame pool type. */
 protected:
-	AnimationFrames animationFrames; /**< System animation frame pool. */
+	AnimFramePool animationFrames; /**< System animation frame pool. */
 
 	/**
 	 * @brief Destroys system animation frame instance.
@@ -222,6 +222,11 @@ protected:
 		}
 	}
 public:
+	/**
+	 * @brief Returns system animation frame pool.
+	 */
+	const AnimFramePool& getAnimationFrames() const noexcept { return animationFrames; }
+
 	/**
 	 * @brief Returns system animation frame view.
 	 * @param instance target system animation frame instance

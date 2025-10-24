@@ -50,8 +50,8 @@ macro(collectPackShaders PACK_CACHE_DIR PACK_RESOURCES_DIR
 		list(APPEND ${PACK_RESOURCES} "${${PACK_CACHE_DIR}}/${SHADER_PART}.spv")
 		list(APPEND ${PACK_RESOURCES} "${SHADER_PART}.spv")
 
-		# Preventing double .vert and .frag shader name addition.
-		if(NOT ${SHADER_PATH} IN_LIST ${PACK_SHADERS}) 
+		# Preventing double .vert and .frag shader name and ray tracing shader variants addition.
+		if((NOT ${SHADER_PATH} IN_LIST ${PACK_SHADERS}) AND (NOT "${SHADER_PATH}" MATCHES "\\."))
 			list(APPEND ${PACK_SHADERS} "${SHADER_PATH}")
 			list(APPEND ${PACK_RESOURCES} "${${PACK_CACHE_DIR}}/${SHADER_PATH}.gslh")
 			list(APPEND ${PACK_RESOURCES} "${SHADER_PATH}.gslh")

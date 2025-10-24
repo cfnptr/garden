@@ -144,7 +144,6 @@ string_view UiButtonSystem::getComponentName() const
 	return "Button UI";
 }
 
-//**********************************************************************************************************************
 void UiButtonSystem::serialize(ISerializer& serializer, const View<Component> component)
 {
 	const auto uiButtonView = View<UiButtonComponent>(component);
