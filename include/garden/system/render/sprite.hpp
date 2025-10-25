@@ -46,7 +46,7 @@ struct SpriteRenderComponent : public MeshRenderComponent
 /**
  * @brief Sprite animation frame container.
  */
-struct SpriteAnimationFrame : public AnimationFrame
+struct SpriteAnimFrame : public AnimationFrame
 {
 protected:
 	uint8 _alignment0 = 0;
@@ -72,7 +72,7 @@ public:
 	float taskPriority = 0.0f;
 	#endif
 
-	SpriteAnimationFrame() : animateIsEnabled(false), animateColor(false), animateUvSize(false), animateUvOffset(false), 
+	SpriteAnimFrame() : animateIsEnabled(false), animateColor(false), animateUvSize(false), animateUvOffset(false), 
 		animateColorMapLayer(false), animateColorMap(false), isEnabled(true), isArray(false), useMipmap(false) { }
 
 	bool hasAnimation() override
@@ -100,6 +100,8 @@ public:
 		uint32 instanceIndex;
 		float colorMapLayer;
 	};
+
+	using SpriteFramePool = LinearPool<SpriteAnimFrame>;
 protected:
 	fs::path pipelinePath = "";
 	ID<ImageView> defaultImageView = {};
@@ -134,13 +136,13 @@ protected:
 	void serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame) override;
 	void animateAsync(View<Component> component,
 		View<AnimationFrame> a, View<AnimationFrame> b, float t) override;
-	static void deserializeAnimation(IDeserializer& deserializer, SpriteAnimationFrame& frame);
+	static void deserializeAnimation(IDeserializer& deserializer, SpriteAnimFrame& frame);
 	void resetAnimation(View<AnimationFrame> frame, bool full) override;
 public:
 	/**
 	 * @brief Returns sprite animation frame pool.
 	 */
-	virtual LinearPool<SpriteAnimationFrame>& getAnimationFramePool() = 0;
+	virtual SpriteFramePool& getAnimationFramePool() = 0;
 	/**
 	 * @brief Returns sprite animation frame size in bytes.
 	 */
@@ -191,15 +193,15 @@ protected:
 		animationFrames.dispose();
 	}
 
-	LinearPool<MeshRenderComponent>& getMeshComponentPool() override
+	MeshRenderPool& getMeshComponentPool() override
 	{
-		return *((LinearPool<MeshRenderComponent>*)&components);
+		return *((MeshRenderPool*)&components);
 	}
 	psize getMeshComponentSize() const override { return sizeof(C); }
 
-	LinearPool<SpriteAnimationFrame>& getAnimationFramePool() override
+	SpriteFramePool& getAnimationFramePool() override
 	{
-		return *((LinearPool<SpriteAnimationFrame>*)&animationFrames);
+		return *((SpriteFramePool*)&animationFrames);
 	}
 	psize getAnimationFrameSize() const override { return sizeof(A); }
 

@@ -2741,19 +2741,22 @@ Ref<Font> ResourceSystem::loadFont(const fs::path& path, int32 faceIndex)
 	fs::path filePath = "fonts" / path; filePath += ".ttf";
 
 	#if GARDEN_PACK_RESOURCES
-	uint64 itemIndex = 0; vector<uint8> dataBuffer;
+	uint64 itemIndex = 0;
 	if (!packReader.getItemIndex(filePath, itemIndex))
 	{
 		GARDEN_LOG_ERROR("Font file does not exist. (path: " + path.generic_string() + ")");
 		return {};
 	}
-	packReader.readItemData(itemIndex, dataBuffer);
+
+	auto dataSize = packReader.getItemDataSize(itemIndex);
+	auto data = new uint8[dataSize];
+	packReader.readItemData(itemIndex, data);
 
 	FT_Face face = nullptr;
-	auto error = FT_New_Memory_Face((FT_Library)textSystem->ftLibrary, 
-		dataBuffer.data(), dataBuffer.size(), faceIndex, &face);
+	auto error = FT_New_Memory_Face((FT_Library)textSystem->ftLibrary, data, dataSize, faceIndex, &face);
 	if (error)
 	{
+		delete[] data;
 		GARDEN_LOG_ERROR("Failed to load font. (path: " + path.generic_string() + 
 			", error: " + string(FT_Error_String(error)) + ")");
 		return {};
@@ -2783,11 +2786,8 @@ Ref<Font> ResourceSystem::loadFont(const fs::path& path, int32 faceIndex)
 
 	auto fontView = textSystem->fonts.get(font);
 	fontView->face = face;
-
 	#if GARDEN_PACK_RESOURCES
-	auto faceData = new uint8[dataBuffer.size()];
-	memcpy(faceData, dataBuffer.data(), dataBuffer.size());
-	fontView->data = faceData;
+	fontView->data = data;
 	#endif
 
 	GARDEN_LOG_TRACE("Loaded font. (path: " + path.generic_string() + ")");

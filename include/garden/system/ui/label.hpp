@@ -18,6 +18,7 @@
  */
 
 #pragma once
+#include "garden/system/text.hpp"
 #include "garden/animate.hpp"
 
 namespace garden
@@ -28,17 +29,31 @@ class UiLabelSystem;
 /**
  * @brief User interface label element data container. (UI)
  */
-struct UiLabelComponent : public Component
+struct UiLabelComponent final : public Component
 {
-	string value;
+private:
+	string value = "";
+	ID<Text> text = {};
+
+	friend class garden::UiLabelSystem;
 public:
+	#if GARDEN_DEBUG || GARDEN_EDITOR
+	fs::path fontPath = "";    /**< Text font path. */
+	float taskPriority = 0.0f; /**< Font load task priority. */
+	#endif
+
 	/**
-	 * @brief Returns label text string value.
+	 * @brief Returns UI label text instance.
+	 */
+	ID<Text> getText() const noexcept { return text; }
+
+	/**
+	 * @brief Returns UI label text string value.
 	 */
 	const string& getValue() const noexcept { return value; }
 	/**
-	 * @brief Sets label text string value.
-	 * @param state target label text string
+	 * @brief Sets UI label text string value.
+	 * @param value target label text string
 	 */
 	void setValue(string_view value);
 };
@@ -46,10 +61,16 @@ public:
 /**
  * @brief User interface label element animation frame container. (UI)
  */
-struct UiLabelFrame : public AnimationFrame
+struct UiLabelFrame final : public AnimationFrame
 {
 	bool animateValue = false;
-	string value;
+	string value = "";
+	ID<Text> text = {};
+
+	#if GARDEN_DEBUG || GARDEN_EDITOR
+	fs::path fontPath = "";
+	float taskPriority = 0.0f;
+	#endif
 
 	bool hasAnimation() final { return animateValue; }
 };
@@ -81,6 +102,7 @@ class UiLabelSystem final : public CompAnimSystem<UiLabelComponent, UiLabelFrame
 	ID<AnimationFrame> deserializeAnimation(IDeserializer& deserializer) final;
 	void animateAsync(View<Component> component,
 		View<AnimationFrame> a, View<AnimationFrame> b, float t) final;
+	void resetAnimation(View<AnimationFrame> frame, bool full) override;
 	friend class ecsm::Manager;
 };
 

@@ -30,7 +30,7 @@ struct UiSpriteComponent final : public SpriteRenderComponent { };
 /**
  * @brief User interface sprite animation frame container. (UI)
  */
-struct UiSpriteFrame final : public SpriteAnimationFrame { };
+struct UiSpriteFrame final : public SpriteAnimFrame { };
 
 /**
  * @brief User interface sprite rendering system. (UI)

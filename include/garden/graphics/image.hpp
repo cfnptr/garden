@@ -339,7 +339,7 @@ public:
 	 * @param layerCount image array layer count
 	 */
 	static bool isSupported(Type type, Format format, Usage usage, 
-		uint3 size, uint8 mipCount = 1, uint32 layerCount = 1);
+		uint3 size, uint8 mipCount = 1, uint32 layerCount = 1) noexcept;
 
 	//******************************************************************************************************************
 	// Render commands

@@ -66,6 +66,8 @@ public:
  */
 class IMeshRenderSystem
 {
+public:
+	using MeshRenderPool = LinearPool<MeshRenderComponent>;
 protected:
 	/**
 	 * @brief Is mesh system ready for rendering. (All resources loaded, etc.)
@@ -130,7 +132,7 @@ public:
 	/**
 	 * @brief Returns system mesh component pool.
 	 */
-	virtual LinearPool<MeshRenderComponent>& getMeshComponentPool() = 0;
+	virtual MeshRenderPool& getMeshComponentPool() = 0;
 	/**
 	 * @brief Returns system mesh component size in bytes.
 	 */

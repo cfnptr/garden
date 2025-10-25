@@ -26,7 +26,7 @@ namespace garden
 /**
  * @brief User interface element trigger data container. (UI)
  */
-struct UiTriggerComponent : public Component
+struct UiTriggerComponent final : public Component
 {
 	float2 scale = float2::one; /**< UI trigger zone scale. */
 	string onEnter = "";        /**< On UI trigger cursor enter event. */
@@ -37,7 +37,7 @@ struct UiTriggerComponent : public Component
 /**
  * @brief User interface element trigger animation frame container. (UI)
  */
-struct UiTriggerFrame : public AnimationFrame
+struct UiTriggerFrame final : public AnimationFrame
 {
 	bool animateScale = false;
 	float2 scale = float2::one;

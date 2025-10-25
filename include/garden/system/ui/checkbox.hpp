@@ -26,7 +26,7 @@ namespace garden
 /**
  * @brief User interface checkbox element data container. (UI)
  */
-struct UiCheckboxComponent : public Component
+struct UiCheckboxComponent final : public Component
 {
 	bool isEnabled = true;  /**< Is UI checkbox enabled. */
 	bool isChecked = false; /**< Is UI checkbox checked (set). */
@@ -35,7 +35,7 @@ struct UiCheckboxComponent : public Component
 /**
  * @brief User interface checkbox element animation frame container. (UI)
  */
-struct UiCheckboxFrame : public AnimationFrame
+struct UiCheckboxFrame final : public AnimationFrame
 {
 	bool animateIsEnabled = false;
 	bool animateIsChecked = false;

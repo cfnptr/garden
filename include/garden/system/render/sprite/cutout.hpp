@@ -33,14 +33,14 @@ struct CutoutSpriteComponent final : public SpriteRenderComponent
 /**
  * @brief Cutout sprite animation frame container.
  */
-struct CutoutSpriteFrame final : public SpriteAnimationFrame
+struct CutoutSpriteFrame final : public SpriteAnimFrame
 {
 	float alphaCutoff = 0.5f;
 	bool animateAlphaCutoff = false;
 
 	bool hasAnimation() final
 	{
-		return SpriteAnimationFrame::hasAnimation() || animateAlphaCutoff;
+		return SpriteAnimFrame::hasAnimation() || animateAlphaCutoff;
 	}
 };
 

@@ -28,7 +28,7 @@ class UiButtonSystem;
 /**
  * @brief User interface button element data container. (UI)
  */
-struct UiButtonComponent : public Component
+struct UiButtonComponent final : public Component
 {
 protected:
 	bool enabled = true;
@@ -37,11 +37,11 @@ public:
 	string onClick = ""; /**< On UI button click event. */
 
 	/**
-	 * @brief Returns true if button is enabled.
+	 * @brief Returns true if UI button is enabled.
 	 */
 	bool isEnabled() const noexcept { return enabled; }
 	/**
-	 * @brief Sets button enabled state.
+	 * @brief Sets UI button enabled state.
 	 * @param state target button state
 	 */
 	void setEnabled(bool state);
@@ -50,7 +50,7 @@ public:
 /**
  * @brief User interface button element animation frame container. (UI)
  */
-struct UiButtonFrame : public AnimationFrame
+struct UiButtonFrame final : public AnimationFrame
 {
 	bool animateIsEnabled = false;
 	bool isEnabled = true;

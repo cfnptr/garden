@@ -23,16 +23,16 @@ void NineSliceRenderSystem::resetComponent(View<Component> component, bool full)
 	SpriteRenderSystem::resetComponent(component, full);
 	if (full)
 	{
-		auto nineSliceRenderView = View<NineSliceRenderComponent>(component);
-		nineSliceRenderView->textureBorder = float2::zero;
-		nineSliceRenderView->windowBorder = float2::zero;
+		auto nineSliceView = View<NineSliceComponent>(component);
+		nineSliceView->textureBorder = float2::zero;
+		nineSliceView->windowBorder = float2::zero;
 	}
 }
 void NineSliceRenderSystem::copyComponent(View<Component> source, View<Component> destination)
 {
 	SpriteRenderSystem::copyComponent(source, destination);
-	auto destinationView = View<NineSliceRenderComponent>(destination);
-	const auto sourceView = View<NineSliceRenderComponent>(source);
+	auto destinationView = View<NineSliceComponent>(destination);
+	const auto sourceView = View<NineSliceComponent>(source);
 	destinationView->textureBorder = sourceView->textureBorder;
 	destinationView->windowBorder = sourceView->windowBorder;
 }
@@ -47,26 +47,26 @@ void NineSliceRenderSystem::setInstanceData(SpriteRenderComponent* spriteRenderV
 	SpriteRenderSystem::setInstanceData(spriteRenderView,
 		instanceData, viewProj, model, drawIndex, threadIndex);
 
-	auto nineSliceRenderView = (NineSliceRenderComponent*)spriteRenderView;
+	auto nineSliceView = (NineSliceComponent*)spriteRenderView;
 	auto nineSliceInstanceData = (NineSliceInstanceData*)instanceData;
 
 	auto imageSize = float2::one; // Note: White texture size.
-	if (nineSliceRenderView->colorMap)
+	if (nineSliceView->colorMap)
 	{
-		auto imageView = GraphicsSystem::Instance::get()->get(nineSliceRenderView->colorMap);
+		auto imageView = GraphicsSystem::Instance::get()->get(nineSliceView->colorMap);
 		imageSize = (float2)(uint2)imageView->getSize();
 	}
 	auto scale = imageSize / extractScale2(model);
 
-	nineSliceInstanceData->textureBorder = nineSliceRenderView->textureBorder / imageSize;
-	nineSliceInstanceData->windowBorder = nineSliceRenderView->windowBorder / imageSize * scale;
+	nineSliceInstanceData->textureBorder = nineSliceView->textureBorder / imageSize;
+	nineSliceInstanceData->windowBorder = nineSliceView->windowBorder / imageSize * scale;
 }
 
 //**********************************************************************************************************************
 void NineSliceRenderSystem::serialize(ISerializer& serializer, const View<Component> component)
 {
 	SpriteRenderSystem::serialize(serializer, component);
-	const auto nineSliceView = View<NineSliceRenderComponent>(component);
+	const auto nineSliceView = View<NineSliceComponent>(component);
 	if (nineSliceView->textureBorder != float2::zero)
 		serializer.write("textureBorder", nineSliceView->textureBorder);
 	if (nineSliceView->windowBorder != float2::zero)
@@ -75,7 +75,7 @@ void NineSliceRenderSystem::serialize(ISerializer& serializer, const View<Compon
 void NineSliceRenderSystem::deserialize(IDeserializer& deserializer, View<Component> component)
 {
 	SpriteRenderSystem::deserialize(deserializer, component);
-	auto nineSliceView = View<NineSliceRenderComponent>(component);
+	auto nineSliceView = View<NineSliceComponent>(component);
 	deserializer.read("textureBorder", nineSliceView->textureBorder);
 	deserializer.read("windowBorder", nineSliceView->windowBorder);
 }
@@ -84,7 +84,7 @@ void NineSliceRenderSystem::deserialize(IDeserializer& deserializer, View<Compon
 void NineSliceRenderSystem::serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame)
 {
 	SpriteRenderSystem::serializeAnimation(serializer, frame);
-	const auto frameView = View<NineSliceAnimationFrame>(frame);
+	const auto frameView = View<NineSliceFrame>(frame);
 	if (frameView->animateTextureBorder)
 		serializer.write("textureBorder", frameView->textureBorder);
 	if (frameView->animateWindowBorder)
@@ -94,15 +94,15 @@ void NineSliceRenderSystem::animateAsync(View<Component> component,
 	View<AnimationFrame> a, View<AnimationFrame> b, float t)
 {
 	SpriteRenderSystem::animateAsync(component, a, b, t);
-	auto nineSliceView = View<NineSliceRenderComponent>(component);
-	const auto frameA = View<NineSliceAnimationFrame>(a);
-	const auto frameB = View<NineSliceAnimationFrame>(b);
+	auto nineSliceView = View<NineSliceComponent>(component);
+	const auto frameA = View<NineSliceFrame>(a);
+	const auto frameB = View<NineSliceFrame>(b);
 	if (frameA->animateTextureBorder)
 		nineSliceView->textureBorder = lerp(frameA->textureBorder, frameB->textureBorder, t);
 	if (frameA->animateWindowBorder)
 		nineSliceView->windowBorder = lerp(frameA->windowBorder, frameB->windowBorder, t);
 }
-void NineSliceRenderSystem::deserializeAnimation(IDeserializer& deserializer, NineSliceAnimationFrame& frame)
+void NineSliceRenderSystem::deserializeAnimation(IDeserializer& deserializer, NineSliceFrame& frame)
 {
 	frame.animateTextureBorder = deserializer.read("textureBorder", frame.textureBorder);
 	frame.animateWindowBorder = deserializer.read("windowBorder", frame.windowBorder);

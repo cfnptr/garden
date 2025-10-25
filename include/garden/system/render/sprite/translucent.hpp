@@ -30,7 +30,7 @@ struct TransSpriteComponent final : public SpriteRenderComponent { };
 /**
  * @brief Translucent sprite animation frame container.
  */
-struct TransSpriteFrame final : public SpriteAnimationFrame { };
+struct TransSpriteFrame final : public SpriteAnimFrame { };
 
 /**
  * @brief Translucent sprite rendering system.
