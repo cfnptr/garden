@@ -24,21 +24,21 @@
 using namespace garden;
 
 //**********************************************************************************************************************
-NineSliceRenderEditorSystem::NineSliceRenderEditorSystem()
+NineSliceEditorSystem::NineSliceEditorSystem()
 {
-	ECSM_SUBSCRIBE_TO_EVENT("Init", NineSliceRenderEditorSystem::init);
-	ECSM_SUBSCRIBE_TO_EVENT("Deinit", NineSliceRenderEditorSystem::deinit);
+	ECSM_SUBSCRIBE_TO_EVENT("Init", NineSliceEditorSystem::init);
+	ECSM_SUBSCRIBE_TO_EVENT("Deinit", NineSliceEditorSystem::deinit);
 }
-NineSliceRenderEditorSystem::~NineSliceRenderEditorSystem()
+NineSliceEditorSystem::~NineSliceEditorSystem()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", NineSliceRenderEditorSystem::init);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", NineSliceRenderEditorSystem::deinit);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", NineSliceEditorSystem::init);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", NineSliceEditorSystem::deinit);
 	}
 }
 
-void NineSliceRenderEditorSystem::init()
+void NineSliceEditorSystem::init()
 {
 	auto editorSystem = EditorRenderSystem::Instance::get();
 	if (Opaque9SliceSystem::Instance::has())
@@ -74,7 +74,7 @@ void NineSliceRenderEditorSystem::init()
 		});
 	}
 }
-void NineSliceRenderEditorSystem::deinit()
+void NineSliceEditorSystem::deinit()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
@@ -87,7 +87,7 @@ void NineSliceRenderEditorSystem::deinit()
 }
 
 //**********************************************************************************************************************
-void NineSliceRenderEditorSystem::onOpaqueEntityInspector(ID<Entity> entity, bool isOpened)
+void NineSliceEditorSystem::onOpaqueEntityInspector(ID<Entity> entity, bool isOpened)
 {
 	if (ImGui::BeginItemTooltip())
 	{
@@ -103,7 +103,7 @@ void NineSliceRenderEditorSystem::onOpaqueEntityInspector(ID<Entity> entity, boo
 		renderComponent(*opaque9SliceView, typeid(Opaque9SliceComponent));
 	}
 }
-void NineSliceRenderEditorSystem::onCutoutEntityInspector(ID<Entity> entity, bool isOpened)
+void NineSliceEditorSystem::onCutoutEntityInspector(ID<Entity> entity, bool isOpened)
 {
 	if (ImGui::BeginItemTooltip())
 	{
@@ -127,7 +127,7 @@ void NineSliceRenderEditorSystem::onCutoutEntityInspector(ID<Entity> entity, boo
 		}
 	}
 }
-void NineSliceRenderEditorSystem::onTransEntityInspector(ID<Entity> entity, bool isOpened)
+void NineSliceEditorSystem::onTransEntityInspector(ID<Entity> entity, bool isOpened)
 {
 	if (ImGui::BeginItemTooltip())
 	{
@@ -143,7 +143,7 @@ void NineSliceRenderEditorSystem::onTransEntityInspector(ID<Entity> entity, bool
 		renderComponent(*trans9SliceView, typeid(Trans9SliceComponent));
 	}
 }
-void NineSliceRenderEditorSystem::onUiEntityInspector(ID<Entity> entity, bool isOpened)
+void NineSliceEditorSystem::onUiEntityInspector(ID<Entity> entity, bool isOpened)
 {
 	if (ImGui::BeginItemTooltip())
 	{
@@ -161,7 +161,7 @@ void NineSliceRenderEditorSystem::onUiEntityInspector(ID<Entity> entity, bool is
 }
 
 //**********************************************************************************************************************
-void NineSliceRenderEditorSystem::renderComponent(NineSliceRenderComponent* componentView, type_index componentType)
+void NineSliceEditorSystem::renderComponent(NineSliceComponent* componentView, type_index componentType)
 {
 	GARDEN_ASSERT(componentView);
 	SpriteRenderEditorSystem::renderComponent(componentView, componentType);

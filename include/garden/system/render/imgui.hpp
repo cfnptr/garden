@@ -34,6 +34,8 @@ public:
 		float2 scale;
 		float2 translate;
 	};
+
+	static constexpr string_view defaultFontPath = "fonts/dejavu-sans-mono/regular.ttf";
 private:
 	fs::path fontPath;
 	vector<ID<Buffer>> vertexBuffers;
@@ -52,7 +54,7 @@ private:
 	 * @param setSingleton set system singleton instance
 	 * @param[in] fontPath path to the font file
 	 */
-	ImGuiRenderSystem(bool setSingleton = true, const fs::path& fontPath = "fonts/dejavu-regular.ttf");
+	ImGuiRenderSystem(bool setSingleton = true, const fs::path& fontPath = defaultFontPath);
 	/**
 	 * @brief Destroys immediate mode GUI rendering system instance. (ImGui)
 	 */

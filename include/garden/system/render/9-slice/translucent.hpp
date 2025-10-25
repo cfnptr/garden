@@ -26,11 +26,11 @@ namespace garden
 /**
  * @brief Translucent 9-slice sprite rendering data container.
  */
-struct Trans9SliceComponent final : public NineSliceRenderComponent { };
+struct Trans9SliceComponent final : public NineSliceComponent { };
 /**
  * @brief Translucent 9-slice sprite animation frame container.
  */
-struct Trans9SliceFrame final : public NineSliceAnimationFrame { };
+struct Trans9SliceFrame final : public NineSliceFrame { };
 
 /**
  * @brief Translucent 9-slice sprite rendering system.

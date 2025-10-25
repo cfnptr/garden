@@ -28,21 +28,21 @@ using namespace garden::graphics;
 /**
  * @brief Cutout 9-slice sprite rendering data container.
  */
-struct Cutout9SliceComponent final : public NineSliceRenderComponent
+struct Cutout9SliceComponent final : public NineSliceComponent
 {
 	float alphaCutoff = 0.5f;
 };
 /**
  * @brief Cutout 9-slice sprite animation frame container.
  */
-struct Cutout9SliceFrame final : public NineSliceAnimationFrame
+struct Cutout9SliceFrame final : public NineSliceFrame
 {
 	float alphaCutoff = 0.5f;
 	bool animateAlphaCutoff = false;
 
 	bool hasAnimation() final
 	{
-		return NineSliceAnimationFrame::hasAnimation() || animateAlphaCutoff;
+		return NineSliceFrame::hasAnimation() || animateAlphaCutoff;
 	}
 };
 

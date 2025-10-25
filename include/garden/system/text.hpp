@@ -18,6 +18,7 @@
  */
 
 #pragma once
+#include "garden/utf.hpp"
 #include "garden/font.hpp"
 #include "garden/graphics/descriptor-set.hpp"
 #include "ecsm.hpp"
@@ -35,22 +36,23 @@ class ResourceSystem;
  */
 struct Glyph final
 {
-	f32x4 position;
-	f32x4 texCoords;
-	float advance;
-	uint32 value;
-	bool isVisible;
+	float4 position;
+	float4 texCoords;
+	float advance = 0.0f;
+	uint32 value = 0;
 };
 
 /**
  * @brief Font texture atlas container.
  */
-struct FontAtlas
+struct FontAtlas final
 {
-	vector<vector<Font>> fonts;
-	tsl::robin_map<uint32, Glyph> glyphs;
+	using FontArray = vector<ID<Font>>;
+	using GlyphMap = tsl::robin_map<uint32, Glyph>;
+
+	vector<FontArray> fonts;
+	vector<GlyphMap> glyphs;
 	ID<Image> image = {};
-	ID<DescriptorSet> descriptorSet = {};
 	uint32_t fontSize = 0;
 	float newLineAdvance = 0.0f;
 	bool isGenerated = false;
@@ -61,16 +63,15 @@ struct FontAtlas
  */
 struct Text final
 {
-	u32string string;
+	u32string string = {};
 	float2 size = float2::zero;
-	ID<FontAtlas> fontAtlas = {};
+	Ref<FontAtlas> fontAtlas = {};
+	ID<DescriptorSet> descritproSet = {};
 	Color color = Color::white;
 	bool isBold = false;
 	bool isItalic = false;
 	bool useTags = false;
 	bool isConstant = false;
-
-	bool destroy();
 };
 
 /***********************************************************************************************************************
@@ -80,9 +81,11 @@ class TextSystem final : public System, public Singleton<TextSystem>
 {
 public:
 	using FontPool = LinearPool<Font>;
-	using TextPool = LinearPool<Text>;
+	using FontAtlasPool = LinearPool<FontAtlas, false>;
+	using TextPool = LinearPool<Text, false>;
 private:
 	FontPool fonts;
+	FontAtlasPool fontAtlases;
 	TextPool texts;
 	void* ftLibrary = nullptr;
 
@@ -106,11 +109,62 @@ public:
 	 */
 	const FontPool& getFonts() const noexcept { return fonts; }
 	/**
+	 * @brief Returns font atlas pool.
+	 */
+	const FontAtlasPool& getFontAtlases() const noexcept { return fontAtlases; }
+	/**
 	 * @brief Returns text pool.
 	 */
 	const TextPool& getTexts() const noexcept { return texts; }
 
 	/**
+	 * @brief Creates a new font texture atlas instance.
+	 * @return Font atlas instance on success, otherwise null.
+	 * 
+	 * @param chars atlas chars to bake
+	 * @param fontSize font size in pixels
+	 * @param[in] fonts font array size[variant[]]
+	 */
+	ID<FontAtlas> createFontAtlas(u32string_view chars, uint32 fontSize, vector<vector<ID<Font>>>&& fonts);
+	/**
+	 * @brief Creates a new ASCII font texture atlas instance.
+	 * @return Font atlas instance on success, otherwise null.
+	 * 
+	 * @param fontSize font size in pixels
+	 * @param[in] fonts font array size[variant[]]
+	 */
+	ID<FontAtlas> createAsciiFontAtlas(uint32 fontSize, vector<vector<ID<Font>>>&& fonts)
+	{
+		return createFontAtlas(printableAscii32, fontSize, std::move(fonts));
+	}
+
+	/**
+	 * @brief Returns font texture atlas view.
+	 * @param fontAtlas target font atlas instance
+	 */
+	View<FontAtlas> get(ID<FontAtlas> fontAtlas) { return fontAtlases.get(fontAtlas); }
+	/**
+	 * @brief Returns font texture atlas view.
+	 * @param fontAtlas target font atlas instance
+	 */
+	View<FontAtlas> get(const Ref<FontAtlas>& fontAtlas) { return fontAtlases.get(fontAtlas); }
+
+	/**
+	 * @brief Destroys font texture atlas instance.
+	 * @param fontAtlas target font atlas instance or null
+	 */
+	void destroy(ID<FontAtlas> fontAtlas);
+	/**
+	 * @brief Destroys shared font texture atlas instance.
+	 * @param fontAtlas target font atlas reference or null
+	 */
+	void destroy(const Ref<FontAtlas>& fontAtlas)
+	{
+		if (fontAtlas.isLastRef())
+			destroy(ID<FontAtlas>(fontAtlas));
+	}
+	
+	/*******************************************************************************************************************
 	 * @brief Creates a new text instance.
 	 */
 	ID<Text> createText();

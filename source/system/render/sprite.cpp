@@ -22,7 +22,9 @@ using namespace garden;
 // TODO: add bindless support
 // TODO: Add automatic tightly packed sprite arrays (add support of this to the resource system or texture atlases).
 
-//**********************************************************************************************************************
+static constexpr auto imageFlags = ImageLoadFlags::TypeArray | ImageLoadFlags::LoadShared;
+static constexpr auto imageUsage = Image::Usage::Sampled | Image::Usage::TransferDst | Image::Usage::TransferQ;
+
 SpriteRenderSystem::SpriteRenderSystem(const fs::path& pipelinePath) : pipelinePath(pipelinePath) { }
 
 void SpriteRenderSystem::init()
@@ -74,12 +76,12 @@ void SpriteRenderSystem::imageLoaded()
 
 	for (uint32 i = 0; i < componentOccupancy; i++)
 	{
-		auto spriteRenderFrame = (SpriteAnimationFrame*)(componentData + i * componentSize);
-		if (spriteRenderFrame->colorMap != image || spriteRenderFrame->descriptorSet)
+		auto spriteFrame = (SpriteAnimFrame*)(componentData + i * componentSize);
+		if (spriteFrame->colorMap != image || spriteFrame->descriptorSet)
 			continue;
 		if (!descriptorSet)
 			descriptorSet = createSharedDS(imagePath.generic_string(), image);
-		spriteRenderFrame->descriptorSet = descriptorSet;
+		spriteFrame->descriptorSet = descriptorSet;
 	}
 }
 
@@ -261,10 +263,8 @@ void SpriteRenderSystem::deserialize(IDeserializer& deserializer, View<Component
 	deserializer.read("taskPriority", taskPriority);
 
 	auto maxMipCount = spriteRenderView->useMipmap ? 0 : 1;
-	auto flags = ImageLoadFlags::TypeArray | ImageLoadFlags::LoadShared;
-	if (spriteRenderView->isArray) flags |= ImageLoadFlags::LoadArray;
-	auto usage = Image::Usage::Sampled | Image::Usage::TransferDst | Image::Usage::TransferQ;
-	if (maxMipCount == 0) usage |= Image::Usage::TransferSrc;
+	auto flags = imageFlags; if (spriteRenderView->isArray) flags |= ImageLoadFlags::LoadArray;
+	auto usage = imageUsage; if (maxMipCount == 0) usage |= Image::Usage::TransferSrc;
 	spriteRenderView->colorMap = ResourceSystem::Instance::get()->loadImage(
 		colorMapPath, usage, maxMipCount, Image::Strategy::Default, flags, taskPriority);
 }
@@ -272,7 +272,7 @@ void SpriteRenderSystem::deserialize(IDeserializer& deserializer, View<Component
 //**********************************************************************************************************************
 void SpriteRenderSystem::serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame)
 {
-	const auto spriteFrameView = View<SpriteAnimationFrame>(frame);
+	const auto spriteFrameView = View<SpriteAnimFrame>(frame);
 	if (spriteFrameView->animateIsEnabled)
 		serializer.write("isEnabled", (bool)spriteFrameView->isEnabled);
 	if (spriteFrameView->animateColor)
@@ -302,8 +302,8 @@ void SpriteRenderSystem::animateAsync(View<Component> component,
 	View<AnimationFrame> a, View<AnimationFrame> b, float t)
 {
 	auto spriteRenderView = View<SpriteRenderComponent>(component);
-	const auto frameA = View<SpriteAnimationFrame>(a);
-	const auto frameB = View<SpriteAnimationFrame>(b);
+	const auto frameA = View<SpriteAnimFrame>(a);
+	const auto frameB = View<SpriteAnimFrame>(b);
 
 	if (frameA->animateIsEnabled)
 		spriteRenderView->isEnabled = (bool)round(t);
@@ -346,7 +346,7 @@ void SpriteRenderSystem::animateAsync(View<Component> component,
 		}
 	}
 }
-void SpriteRenderSystem::deserializeAnimation(IDeserializer& deserializer, SpriteAnimationFrame& frame)
+void SpriteRenderSystem::deserializeAnimation(IDeserializer& deserializer, SpriteAnimFrame& frame)
 {
 	auto boolValue = true;
 	frame.animateIsEnabled = deserializer.read("isEnabled", boolValue);
@@ -372,10 +372,8 @@ void SpriteRenderSystem::deserializeAnimation(IDeserializer& deserializer, Sprit
 	deserializer.read("taskPriority", taskPriority);
 
 	auto maxMipCount = frame.useMipmap ? 0 : 1;
-	auto flags = ImageLoadFlags::TypeArray | ImageLoadFlags::LoadShared;
-	if (frame.isArray) flags |= ImageLoadFlags::LoadArray;
-	auto usage = Image::Usage::Sampled | Image::Usage::TransferDst | Image::Usage::TransferQ;
-	if (maxMipCount == 0) usage |= Image::Usage::TransferSrc;
+	auto flags = imageFlags; if (frame.isArray) flags |= ImageLoadFlags::LoadArray;
+	auto usage = imageUsage; if (maxMipCount == 0) usage |= Image::Usage::TransferSrc;
 	frame.colorMap = ResourceSystem::Instance::get()->loadImage(colorMapPath, 
 		usage, maxMipCount, Image::Strategy::Default, flags, taskPriority);
 	frame.descriptorSet = {}; // Note: See the imageLoaded()
@@ -384,7 +382,7 @@ void SpriteRenderSystem::deserializeAnimation(IDeserializer& deserializer, Sprit
 void SpriteRenderSystem::resetAnimation(View<AnimationFrame> frame, bool full)
 {
 	auto resourceSystem = ResourceSystem::Instance::get();
-	auto spriteFrameView = View<SpriteAnimationFrame>(frame);
+	auto spriteFrameView = View<SpriteAnimFrame>(frame);
 	resourceSystem->destroyShared(spriteFrameView->colorMap);
 	resourceSystem->destroyShared(spriteFrameView->descriptorSet);
 	spriteFrameView->colorMap = {}; spriteFrameView->descriptorSet = {};

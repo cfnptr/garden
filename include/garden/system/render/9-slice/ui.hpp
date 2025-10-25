@@ -26,11 +26,11 @@ namespace garden
 /**
  * @brief User interface 9-slice sprite rendering data container. (UI)
  */
-struct Ui9SliceComponent final : public NineSliceRenderComponent { };
+struct Ui9SliceComponent final : public NineSliceComponent { };
 /**
  * @brief User interface 9-slice sprite animation frame container. (UI)
  */
-struct Ui9SliceFrame final : public NineSliceAnimationFrame { };
+struct Ui9SliceFrame final : public NineSliceFrame { };
 
 /**
  * @brief User interface 9-slice sprite rendering system. (UI)

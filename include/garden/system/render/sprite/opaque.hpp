@@ -30,7 +30,7 @@ struct OpaqueSpriteComponent final : public SpriteRenderComponent { };
 /**
  * @brief Opaque sprite animation frame container.
  */
-struct OpaqueSpriteFrame final : public SpriteAnimationFrame { };
+struct OpaqueSpriteFrame final : public SpriteAnimFrame { };
 
 /**
  * @brief Opaque sprite rendering system.

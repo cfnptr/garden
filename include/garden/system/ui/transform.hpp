@@ -51,7 +51,7 @@ constexpr const char* uiAnchorNames[(psize)UiAnchor::Count] =
 /**
  * @brief User interface element transformation data container. (UI)
  */
-struct UiTransformComponent : public Component
+struct UiTransformComponent final : public Component
 {
 	float3 position = float3::zero;
 	float3 scale = float3::one;
@@ -62,7 +62,7 @@ struct UiTransformComponent : public Component
 /**
  * @brief User interface element transform animation frame container. (UI)
  */
-struct UiTransformFrame : public AnimationFrame
+struct UiTransformFrame final : public AnimationFrame
 {
 	bool animatePosition = false;
 	bool animateScale = false;

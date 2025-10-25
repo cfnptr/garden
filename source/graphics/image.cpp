@@ -282,7 +282,7 @@ ID<ImageView> Image::getDefaultView()
 	return defaultView;
 }
 
-bool Image::isSupported(Type type, Format format, Usage usage, uint3 size, uint8 mipCount, uint32 layerCount)
+bool Image::isSupported(Type type, Format format, Usage usage, uint3 size, uint8 mipCount, uint32 layerCount) noexcept
 {
 	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
@@ -294,7 +294,13 @@ bool Image::isSupported(Type type, Format format, Usage usage, uint3 size, uint8
 		if (type == Type::Cubemap)
 			imageFormatInfo.flags |= vk::ImageCreateFlagBits::eCubeCompatible;
 
-		auto imageFormatProperties = VulkanAPI::get()->physicalDevice.getImageFormatProperties2(imageFormatInfo);
+		vk::ImageFormatProperties2 imageFormatProperties;
+		if (VulkanAPI::get()->physicalDevice.getImageFormatProperties2(
+			&imageFormatInfo, &imageFormatProperties) != vk::Result::eSuccess)
+		{
+			return false;
+		}
+
 		return size.x <= imageFormatProperties.imageFormatProperties.maxExtent.width &&
 			size.y <= imageFormatProperties.imageFormatProperties.maxExtent.height &&
 			size.z <= imageFormatProperties.imageFormatProperties.maxExtent.depth &&

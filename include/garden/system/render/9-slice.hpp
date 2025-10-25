@@ -30,7 +30,7 @@ namespace garden
 /**
  * @brief 9-slice sprite rendering data container.
  */
-struct NineSliceRenderComponent : public SpriteRenderComponent
+struct NineSliceComponent : public SpriteRenderComponent
 {
 	float2 textureBorder = float2::zero;
 	float2 windowBorder = float2::zero;
@@ -39,7 +39,7 @@ struct NineSliceRenderComponent : public SpriteRenderComponent
 /**
  * @brief 9-slice sprite animation frame container.
  */
-struct NineSliceAnimationFrame : public SpriteAnimationFrame
+struct NineSliceFrame : public SpriteAnimFrame
 {
 	float2 textureBorder = float2::zero;
 	float2 windowBorder = float2::zero;
@@ -48,8 +48,7 @@ struct NineSliceAnimationFrame : public SpriteAnimationFrame
 
 	bool hasAnimation() override
 	{
-		return SpriteAnimationFrame::hasAnimation() || 
-			animateTextureBorder || animateWindowBorder;
+		return SpriteAnimFrame::hasAnimation() || animateTextureBorder || animateWindowBorder;
 	}
 };
 
@@ -84,7 +83,7 @@ protected:
 	void serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame) override;
 	void animateAsync(View<Component> component,
 		View<AnimationFrame> a, View<AnimationFrame> b, float t) override;
-	static void deserializeAnimation(IDeserializer& deserializer, NineSliceAnimationFrame& frame);
+	static void deserializeAnimation(IDeserializer& deserializer, NineSliceFrame& frame);
 };
 
 /***********************************************************************************************************************
@@ -123,15 +122,15 @@ protected:
 		animationFrames.dispose();
 	}
 
-	LinearPool<MeshRenderComponent>& getMeshComponentPool() override
+	MeshRenderPool& getMeshComponentPool() override
 	{
-		return *((LinearPool<MeshRenderComponent>*)&components);
+		return *((MeshRenderPool*)&components);
 	}
 	psize getMeshComponentSize() const override { return sizeof(C); }
 
-	LinearPool<SpriteAnimationFrame>& getAnimationFramePool() override
+	SpriteFramePool& getAnimationFramePool() override
 	{
-		return *((LinearPool<SpriteAnimationFrame>*)&animationFrames);
+		return *((SpriteFramePool*)&animationFrames);
 	}
 	psize getAnimationFrameSize() const override { return sizeof(A); }
 

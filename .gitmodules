@@ -64,3 +64,6 @@
 [submodule "libraries/volk"]
 	path = libraries/volk
 	url = https://github.com/zeux/volk
+[submodule "resources"]
+	path = resources
+	url = https://github.com/cfnptr/garden-resources

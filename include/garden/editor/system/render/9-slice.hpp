@@ -21,10 +21,10 @@
 namespace garden
 {
 
-class NineSliceRenderEditorSystem final : public System
+class NineSliceEditorSystem final : public System
 {
-	NineSliceRenderEditorSystem();
-	~NineSliceRenderEditorSystem() final;
+	NineSliceEditorSystem();
+	~NineSliceEditorSystem() final;
 
 	void init();
 	void deinit();
@@ -36,7 +36,7 @@ class NineSliceRenderEditorSystem final : public System
 
 	friend class ecsm::Manager;
 public:
-	static void renderComponent(NineSliceRenderComponent* componentView, type_index componentType);
+	static void renderComponent(NineSliceComponent* componentView, type_index componentType);
 };
 
 } // namespace garden
