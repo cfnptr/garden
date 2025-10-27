@@ -340,8 +340,8 @@ public:
 	 * @param[out] iblWeightBuffer sample weight per mip level
 	 * @param[out] iblCountBuffer sample count per mip level
 	 */
-	ID<Buffer> createSpecularCache(uint32 cubemapSize, 
-		vector<float>& iblWeightBuffer, vector<uint32>& iblCountBuffer);
+	ID<Buffer> createSpecularCache(uint32 cubemapSize, vector<float>& iblWeightBuffer, 
+		vector<uint32>& iblCountBuffer, Buffer::Usage usage = Buffer::Usage::Storage | Buffer::Usage::TransferDst);
 	/**
 	 * @brief Creates IBL specular image views. (Image Based Lighting)
 	 * 

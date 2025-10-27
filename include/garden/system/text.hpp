@@ -21,7 +21,6 @@
 #include "garden/utf.hpp"
 #include "garden/font.hpp"
 #include "garden/graphics/descriptor-set.hpp"
-#include "ecsm.hpp"
 
 namespace garden
 {
@@ -29,6 +28,7 @@ namespace garden
 using namespace ecsm;
 using namespace garden::graphics;
 
+class TextSystem;
 class ResourceSystem;
 
 /**
@@ -47,15 +47,36 @@ struct Glyph final
  */
 struct FontAtlas final
 {
-	using FontArray = vector<ID<Font>>;
 	using GlyphMap = tsl::robin_map<uint32, Glyph>;
-
-	vector<FontArray> fonts;
+private:
+	FontArray fonts;
 	vector<GlyphMap> glyphs;
 	ID<Image> image = {};
-	uint32_t fontSize = 0;
+	uint32 fontSize = 0;
 	float newLineAdvance = 0.0f;
-	bool isGenerated = false;
+
+	friend class garden::TextSystem;
+public:
+	/**
+	 * @brief Returns font texture atlas font array.
+	 */
+	const FontArray& getFonts() const noexcept { return fonts; }
+	/**
+	 * @brief Returns font texture atlas glyph map.
+	 */
+	const vector<GlyphMap>& getGlyphs() const noexcept { return glyphs; }
+	/**
+	 * @brief Returns font texture atlas image.
+	 */
+	const ID<Image>& getImage() const noexcept { return image; }
+	/**
+	 * @brief Returns font texture atlas font size in pixels.
+	 */
+	uint32 getFontSize() const noexcept { return fontSize; }
+	/**
+	 * @brief Returns font texture atlas new line advance
+	 */
+	float getNewLineAdvance() const noexcept { return newLineAdvance; }
 };
 
 /**
@@ -63,15 +84,74 @@ struct FontAtlas final
  */
 struct Text final
 {
-	u32string string = {};
-	float2 size = float2::zero;
+public:
+	/**
+	 * @brief Text formating properties container.
+	 */
+	struct Properties final
+	{
+		Color color;              /**< Text sRGB color. */
+		bool isBold = false;      /**< Is text bold. (Increased weight)  */
+		bool isItalic = false;    /**< Is text italic. (Oblique, tilted) */
+		bool useHtmlTags = false; /**< Process HTML tags when generating text. */
+		Properties() : color(Color::white) { }
+	};
+private:
+	u32string value = {};
 	Ref<FontAtlas> fontAtlas = {};
-	ID<DescriptorSet> descritproSet = {};
-	Color color = Color::white;
-	bool isBold = false;
-	bool isItalic = false;
-	bool useTags = false;
-	bool isConstant = false;
+	float2 size = float2::zero;
+	Properties properties = {};
+	bool dynamic = false;
+
+	friend class garden::TextSystem;
+public:
+	/**
+	 * @brief Return text string value.
+	 */
+	const u32string& getValue() const noexcept { return value; }
+	/**
+	 * @brief Return text font texture atlas.
+	 */
+	const Ref<FontAtlas>& getFontAtlas() const noexcept { return fontAtlas; }
+	/**
+	 * @brief Returns text size.
+	 */
+	float2 getSize() const noexcept { return size; }
+	/**
+	 * @brief Returns text sproperties.
+	 */
+	Properties getProperties() const noexcept { return properties; }
+	/**
+	 * @brief Does text can be updated.
+	 */
+	bool isDynamic() const noexcept { return dynamic; }
+
+	/**
+	 * @brief Regenerates text data.
+	 * @return True on success, otherwise false.
+	 *
+	 * @param value target text string value
+	 * @param[in] fonts new font array or null
+	 * @param properties text formating properties
+	 * @param shrink reduce internal memory usage
+	 */
+	bool update(u32string_view value, const FontArray& fonts = {}, Properties properties = {}, bool shrink = false);
+	/**
+	 * @brief Regenerates text data.
+	 * @return True on success, otherwise false.
+	 *
+	 * @param value target text string value
+	 * @param[in] fonts new font array or null
+	 * @param properties text formating properties
+	 * @param shrink reduce internal memory usage
+	 */
+	bool update(string_view value, const FontArray& fonts = {}, Properties properties = {}, bool shrink = false)
+	{
+		u32string utf32;
+		if (UTF::utf8toUtf32(value, utf32) != 0)
+			return {};
+		return update(utf32, fonts, properties, shrink);
+	}
 };
 
 /***********************************************************************************************************************
@@ -121,21 +201,25 @@ public:
 	 * @brief Creates a new font texture atlas instance.
 	 * @return Font atlas instance on success, otherwise null.
 	 * 
-	 * @param chars atlas chars to bake
+	 * @param chars font atlas chars to bake
 	 * @param fontSize font size in pixels
-	 * @param[in] fonts font array size[variant[]]
+	 * @param[in] fonts font array type[variant[font]]
+	 * @param imageUsage atlas texture usage flags
 	 */
-	ID<FontAtlas> createFontAtlas(u32string_view chars, uint32 fontSize, vector<vector<ID<Font>>>&& fonts);
+	ID<FontAtlas> createFontAtlas(u32string_view chars, uint32 fontSize, FontArray&& fonts,
+		Image::Usage imageUsage = Image::Usage::TransferDst | Image::Usage::TransferQ | Image::Usage::Sampled);
 	/**
 	 * @brief Creates a new ASCII font texture atlas instance.
 	 * @return Font atlas instance on success, otherwise null.
 	 * 
 	 * @param fontSize font size in pixels
 	 * @param[in] fonts font array size[variant[]]
+	 * @param imageUsage atlas texture usage flags
 	 */
-	ID<FontAtlas> createAsciiFontAtlas(uint32 fontSize, vector<vector<ID<Font>>>&& fonts)
+	ID<FontAtlas> createAsciiFontAtlas(uint32 fontSize, FontArray&& fonts, Image::Usage imageUsage = 
+		Image::Usage::TransferDst | Image::Usage::TransferQ | Image::Usage::Sampled)
 	{
-		return createFontAtlas(printableAscii32, fontSize, std::move(fonts));
+		return createFontAtlas(UTF::printableAscii32, fontSize, std::move(fonts), imageUsage);
 	}
 
 	/**
@@ -166,8 +250,61 @@ public:
 	
 	/*******************************************************************************************************************
 	 * @brief Creates a new text instance.
+	 * @return Text instance on succes, otherwise null.
+	 *
+	 * @param value target text string value
+	 * @param[in] fontAtlas font texture atlas
+	 * @param properties text formating properties
 	 */
-	ID<Text> createText();
+	ID<Text> createText(u32string_view value, const Ref<FontAtlas>& fontAtlas, Text::Properties properties = {});
+	/**
+	 * @brief Creates a new text instance.
+	 * @return Text instance on succes, otherwise null.
+	 *
+	 * @param value target text string value
+	 * @param[in] fontAtlas font texture atlas
+	 * @param properties text formating properties
+	 */
+	ID<Text> createText(string_view value, const Ref<FontAtlas>& fontAtlas, Text::Properties properties = {})
+	{
+		u32string utf32;
+		if (UTF::utf8toUtf32(value, utf32) != 0)
+			return {};
+		return createText(utf32, fontAtlas, properties);
+	}
+
+	/**
+	 * @brief Creates a new text instance.
+	 * @return Text instance on succes, otherwise null.
+	 *
+	 * @param value target text string value
+	 * @param[in] fonts text font array
+	 * @param fontSize font size in pixels
+	 * @param properties text formating properties
+	 */
+	ID<Text> createText(u32string_view value, FontArray&& fonts, uint32 fontSize, Text::Properties properties = {})
+	{
+		auto fontAtlas = Ref<FontAtlas>(createFontAtlas(value, fontSize, std::move(fonts)));
+		if (!fontAtlas)
+			return {};
+		return createText(value, fontAtlas, properties);
+	}
+	/**
+	 * @brief Creates a new text instance.
+	 * @return Text instance on succes, otherwise null.
+	 *
+	 * @param value target text string value
+	 * @param[in] fonts text font array
+	 * @param fontSize font size in pixels
+	 * @param properties text formating properties
+	 */
+	ID<Text> createText(string_view value, FontArray&& fonts, uint32 fontSize, Text::Properties properties = {})
+	{
+		u32string utf32;
+		if (UTF::utf8toUtf32(value, utf32) != 0)
+			return {};
+		return createText(utf32, std::move(fonts), fontSize, properties);
+	}
 
 	/**
 	 * @brief Returns text view.

@@ -43,9 +43,6 @@ BindlessPool::BindlessPool(ID<Pipeline> pipeline, PipelineType pipelineType,
 
 	descriptorSet = graphicsAPI->descriptorSetPool.create(pipeline, 
 		pipelineType, std::move(uniforms), std::move(samplers), index);
-
-	auto test = graphicsAPI->descriptorSetPool.get(descriptorSet);
-	test->getIndex();
 }
 void BindlessPool::destroy()
 {

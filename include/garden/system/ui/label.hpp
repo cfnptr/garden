@@ -32,30 +32,33 @@ class UiLabelSystem;
 struct UiLabelComponent final : public Component
 {
 private:
-	string value = "";
 	ID<Text> text = {};
-
 	friend class garden::UiLabelSystem;
 public:
 	#if GARDEN_DEBUG || GARDEN_EDITOR
-	fs::path fontPath = "";    /**< Text font path. */
-	float taskPriority = 0.0f; /**< Font load task priority. */
+	vector<fs::path> fontPaths; /**< Text font paths. */
 	#endif
 
+	string value = "";                 /**> UI label text string. */
+	Text::Properties propterties = {}; /**< UI label text properties. */
+	bool isDynamic = false;            /**< Is UI label text dynamic. */
+	uint32 fontSize = 0;               /**< Text font size in pixels.*/
+
+	#if GARDEN_DEBUG || GARDEN_EDITOR
+	bool loadNoto = true; /**< Also load supporting noto fonts. */
+	#endif
+	
 	/**
 	 * @brief Returns UI label text instance.
 	 */
 	ID<Text> getText() const noexcept { return text; }
 
 	/**
-	 * @brief Returns UI label text string value.
+	 * @brief Regenerates text internal data.
+	 * @return True on success, otherwise false.
+	 * @param shrink reduce internal memory usage
 	 */
-	const string& getValue() const noexcept { return value; }
-	/**
-	 * @brief Sets UI label text string value.
-	 * @param value target label text string
-	 */
-	void setValue(string_view value);
+	bool updateText(bool shrink = false);
 };
 
 /**
@@ -64,13 +67,14 @@ public:
 struct UiLabelFrame final : public AnimationFrame
 {
 	bool animateValue = false;
-	string value = "";
-	ID<Text> text = {};
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
-	fs::path fontPath = "";
-	float taskPriority = 0.0f;
+	bool loadNoto = true;
+	vector<fs::path> fontPaths;
 	#endif
+
+	string value = "";
+	ID<Text> text = {};
 
 	bool hasAnimation() final { return animateValue; }
 };

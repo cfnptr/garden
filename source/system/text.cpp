@@ -20,8 +20,16 @@
 
 #include "ft2build.h"
 #include FT_FREETYPE_H
+#include "freetype/ftmm.h"
 
 using namespace garden;
+
+bool Text::update(u32string_view value, const FontArray& fonts, Properties properties, bool shrink)
+{
+	GARDEN_ASSERT(!value.empty());
+
+	return false;
+}
 
 TextSystem::TextSystem(bool setSingleton) : Singleton(setSingleton)
 {
@@ -60,28 +68,81 @@ static void prepareGlyphs(u32string_view chars, FontAtlas::GlyphMap& glyphs)
 		glyphs.emplace(value, glyph);
 	}
 }
+
+static constexpr float fixedToFloat(FT_Fixed fixed) noexcept { return (float)fixed / 65536.0f; }
+static constexpr FT_Fixed floatToFixed(float f) { return (FT_Fixed)(f * 65536.0f + 0.5f); }
+
 static bool fillFontAtlas(const LinearPool<Font>& fontPool, 
-	const vector<ID<Font>>& fonts, FontAtlas::GlyphMap& glyphs, uint8_t* pixels, 
-	uint32 fontSize, uint32 glyphLength, uint32 pixelLength)
+	FT_Library ftLibrary, const vector<Ref<Font>>& fonts, FontAtlas::GlyphMap& glyphs, 
+	uint8_t* pixels, uint32 fontSize, uint32 glyphLength, uint32 pixelLength, uint8 fontIndex)
 {
-	for (auto font : fonts)
+	for (const auto& font : fonts)
 	{
-		auto fontView = fontPool.get(font);
-		auto result = FT_Set_Pixel_Sizes((FT_Face)fontView->face, 0, (FT_UInt)fontSize);
+		auto fontFace = (FT_Face)fontPool.get(font)->face;
+		auto result = FT_Set_Pixel_Sizes(fontFace, 0, (FT_UInt)fontSize);
 		if (result != 0)
 		{
-			GARDEN_LOG_DEBUG("Failed to set FreeType pixel sizes. (error: " + string(FT_Error_String(result)) + ")");
+			GARDEN_LOG_DEBUG("Failed to set FreeType font pixel sizes. ("
+				"error: " + string(FT_Error_String(result)) + ")");
 			return false;
+		}
+
+		if (FT_HAS_MULTIPLE_MASTERS(fontFace))
+		{
+			FT_MM_Var* master = NULL;
+			result = FT_Get_MM_Var(fontFace, &master);
+			if (result != 0)
+			{
+				GARDEN_LOG_DEBUG("Failed to get FreeType font variation. ("
+					"error: " + string(FT_Error_String(result)) + ")");
+				return false;
+			}
+
+			auto axes = master->axis;
+			vector<FT_Fixed> coords(master->num_axis);
+			auto isItalic = fontIndex == 2 || fontIndex == 3;
+			auto weight = fontIndex == 1 || fontIndex == 3 ? 700.0f : 400.0f;
+			// TODO: allow to pass regular and bold weights. Also to pass italic angle.
+
+			for (FT_UInt i = 0; i < master->num_axis; i++)
+			{
+				auto tag = axes[i].tag;
+				if (tag == (FT_ULong)('w' << 24 | 'g' << 16 | 'h' << 8 | 't'))
+				{
+					weight = max(weight, fixedToFloat(axes[i].minimum));
+					weight = min(weight, fixedToFloat(axes[i].maximum));
+					coords[i] = floatToFixed(weight);
+				}
+				else if (tag == (FT_ULong)('i' << 24 | 't' << 16 | 'a' << 8 | 'l') ||
+					tag == (FT_ULong)('s' << 24 | 'l' << 16 | 'n' << 8 | 't'))
+				{
+					coords[i] = isItalic ? axes[i].maximum : axes[i].def;
+				}
+				else
+				{
+					coords[i] = axes[i].def;
+				}
+			}
+
+			result = FT_Set_Var_Design_Coordinates(fontFace, master->num_axis, coords.data());
+			FT_Done_MM_Var(ftLibrary, master);
+			if (result != 0)
+			{
+				GARDEN_LOG_DEBUG("Failed to set FreeType font design coordinates. ("
+					"error: " + string(FT_Error_String(result)) + ")");
+				return false;
+			}
 		}
 	}
 
+	pixels += fontIndex;
 	auto mainFace = (FT_Face)fontPool.get(fonts[0])->face;
 	uint32 index = 0;
 
 	for (auto i = glyphs.begin(); i != glyphs.end(); i++)
 	{
 		Glyph glyph; glyph.value = i->second.value;
-		auto charIndex = FT_Get_Char_Index(mainFace, glyph.value);
+		auto charIndex = FT_Get_Char_Index(mainFace, (FT_ULong)glyph.value);
 
 		auto charFace = mainFace;
 		if (charIndex == 0 && glyph.value != '\0')
@@ -89,7 +150,7 @@ static bool fillFontAtlas(const LinearPool<Font>& fontPool,
 			for (auto i = fonts.begin() + 1; i != fonts.end(); i++)
 			{
 				auto face = (FT_Face)fontPool.get(*i)->face;
-				charIndex = FT_Get_Char_Index(face, glyph.value);
+				charIndex = FT_Get_Char_Index(face, (FT_ULong)glyph.value);
 				if (charIndex == 0)
 					continue;
 				charFace = face;
@@ -140,39 +201,49 @@ static bool fillFontAtlas(const LinearPool<Font>& fontPool,
 }
 
 //**********************************************************************************************************************
-ID<FontAtlas> TextSystem::createFontAtlas(u32string_view chars, uint32 fontSize, vector<vector<ID<Font>>>&& fonts)
+ID<FontAtlas> TextSystem::createFontAtlas(u32string_view chars, 
+	uint32 fontSize, FontArray&& fonts, Image::Usage imageUsage)
 {
+	GARDEN_ASSERT(!chars.empty());
 	GARDEN_ASSERT(fontSize > 0);
-	GARDEN_ASSERT(fonts.size() == 1 || fonts.size() == 4);
-	GARDEN_ASSERT(!fonts[0].empty());
+	GARDEN_ASSERT(fonts.size() == 4);
 
-	auto isFontVariable = fonts.size() == 1;
-	auto defaultFontView = this->fonts.get(fonts[0][0]);
-	auto defaultFace = (FT_Face)defaultFontView->face;
+	SET_CPU_ZONE_SCOPED("Font Atlas Create");
 
-	if (isFontVariable && !FT_HAS_MULTIPLE_MASTERS(defaultFace))
+	for (const auto& variants : fonts)
 	{
-		GARDEN_LOG_DEBUG("Failed to create font atlas, provided font is not variable.");
+		if (!variants.empty())
+			continue;
+		GARDEN_LOG_DEBUG("Failed to create font atlas, missing fonts.");
 		return {};
 	}
+
+	auto defaultFontView = this->fonts.get(fonts[0][0]);
+	auto defaultFace = (FT_Face)defaultFontView->face;
 
 	auto result = FT_Set_Pixel_Sizes(defaultFace, 0, (FT_UInt)fontSize);
 	if (result != 0)
 	{
-		GARDEN_LOG_DEBUG("Failed to set FreeType pixel sizes. (error: " + string(FT_Error_String(result)) + ")");
+		GARDEN_LOG_DEBUG("Failed to set FreeType font pixel sizes. ("
+			"error: " + string(FT_Error_String(result)) + ")");
 		return {};
 	}
 	auto newLineAdvance = ((float)defaultFace->size->metrics.height * (1.0f / 64.0f)) / fontSize;
 
 	FontAtlas::GlyphMap regularGlyphs; prepareGlyphs(chars, regularGlyphs);
 	if (regularGlyphs.empty())
+	{
+		GARDEN_LOG_DEBUG("Failed to create font atlas, no visible glyphs.");
 		return {};
+	}
 	
-	const auto format = Image::Format::UnormR8G8B8A8;
-	const auto usage = Image::Usage::TransferDst | Image::Usage::Sampled; 
+	constexpr auto format = Image::Format::UnormR8G8B8A8;
 	auto glyphLength = (uint32)ceil(sqrt((double)regularGlyphs.size())), pixelLength = glyphLength * fontSize;
-	if (!Image::isSupported(Image::Type::Texture2D, format, usage, uint3(glyphLength, glyphLength, 1)))
+	if (!Image::isSupported(Image::Type::Texture2D, format, imageUsage, uint3(glyphLength, glyphLength, 1)))
+	{
+		GARDEN_LOG_DEBUG("Failed to create font atlas, resulting image is not supported.");
 		return {};
+	}
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto binarySize = (size_t)pixelLength * pixelLength * 4;
@@ -181,28 +252,34 @@ ID<FontAtlas> TextSystem::createFontAtlas(u32string_view chars, uint32 fontSize,
 	SET_RESOURCE_DEBUG_NAME(stagingBuffer, "buffer.staging.fontAtlas");
 
 	auto stagingView = graphicsSystem->get(stagingBuffer);
+	#if GARDEN_DEBUG // Hack: skips queue ownership asserts.
+	BufferExt::getUsage(**stagingView) |= Buffer::Usage::TransferQ | Buffer::Usage::ComputeQ;
+	#endif
+
+	auto ft = (FT_Library)ftLibrary;
 	auto pixels = (uint8*)stagingView->getMap(); memset(pixels, 0, binarySize);
 	auto boldGlyphs = regularGlyphs, italicGlyphs = regularGlyphs, boldItalicGlyphs = regularGlyphs;
 
-	vector<ID<Font>>* regularFonts, *boldFonts, *italicFonts, *boldItalicFonts;
-	if (isFontVariable)
-	{
-		regularFonts = boldFonts = italicFonts = boldItalicFonts = &fonts[0];
-	}
-
-	if (!fillFontAtlas(this->fonts, *regularFonts, regularGlyphs, pixels, fontSize, glyphLength, pixelLength) ||
-		!fillFontAtlas(this->fonts, *boldFonts, boldGlyphs, pixels + 1, fontSize, glyphLength, pixelLength) ||
-		!fillFontAtlas(this->fonts, *italicFonts, italicGlyphs, pixels + 2, fontSize, glyphLength, pixelLength) ||
-		!fillFontAtlas(this->fonts, *boldItalicFonts, boldItalicGlyphs, pixels + 3, fontSize, glyphLength, pixelLength))
+	if (!fillFontAtlas(this->fonts, ft, fonts[0], regularGlyphs, pixels, fontSize, glyphLength, pixelLength, 0) || 
+		!fillFontAtlas(this->fonts, ft, fonts[1], boldGlyphs, pixels, fontSize, glyphLength, pixelLength, 1) || 
+		!fillFontAtlas(this->fonts, ft, fonts[2], italicGlyphs, pixels, fontSize, glyphLength, pixelLength, 2) || 
+		!fillFontAtlas(this->fonts, ft, fonts[3], boldItalicGlyphs, pixels, fontSize, glyphLength, pixelLength, 3))
 	{
 		graphicsSystem->destroy(stagingBuffer);
 		return {};
 	}
+	stagingView->flush();
 
-	auto image = graphicsSystem->createImage(format, usage, { { nullptr } }, uint2(pixelLength), Image::Strategy::Size);
+	auto image = graphicsSystem->createImage(format, imageUsage, 
+		{ { nullptr } }, uint2(pixelLength), Image::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(image, "image.fontAtlas" + to_string(*image));
 
-	// TODO: record commands.
+	auto stopRecording = graphicsSystem->tryStartRecording(CommandBufferType::TransferOnly);
+	Image::copy(stagingBuffer, image);
+	
+	if (stopRecording)
+		graphicsSystem->stopRecording();
+	graphicsSystem->destroy(stagingBuffer);
 
 	auto fontAtlas = fontAtlases.create();
 	auto fontAtlasView = fontAtlases.get(fontAtlas);
@@ -224,10 +301,17 @@ void TextSystem::destroy(ID<FontAtlas> fontAtlas)
 
 	auto fontAtlasView = fontAtlases.get(fontAtlas);
 	GraphicsSystem::Instance::get()->destroy(fontAtlasView->image);
+	ResourceSystem::Instance::get()->destroyShared(fontAtlasView->fonts);
 	fontAtlases.destroy(fontAtlas);
 }
 
-ID<Text> TextSystem::createText()
+//**********************************************************************************************************************
+ID<Text> TextSystem::createText(u32string_view value, const Ref<FontAtlas>& fontAtlas, Text::Properties properties)
 {
+	GARDEN_ASSERT(!value.empty());
+	GARDEN_ASSERT(fontAtlas);
+
+
+	
 	return {}; // TODO:
 }

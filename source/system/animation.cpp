@@ -238,10 +238,11 @@ void AnimationSystem::disposeComponents()
 void AnimationSystem::serialize(ISerializer& serializer, const View<Component> component)
 {
 	const auto animationView = View<AnimationComponent>(component);
-	const auto& animations = animationView->animations;
-
-	if (!animations.empty())
+	
+	if (!animationView->animations.empty())
 	{
+		const auto& animations = animationView->animations;
+
 		serializer.beginChild("animations");
 		for (const auto& pair : animations)
 		{

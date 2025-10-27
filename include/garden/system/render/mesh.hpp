@@ -248,8 +248,7 @@ private:
 
 	void prepareSystems();
 	void sortMeshes();
-	void prepareMeshes(const f32x4x4& viewProj, const Plane* uiViewProj, 
-		f32x4 cameraOffset, uint8 frustumPlaneCount, int8 shadowPass);
+	void prepareMeshes(const f32x4x4& viewProj, const Plane* uiViewProj, f32x4 cameraOffset, int8 shadowPass);
 	void renderUnsorted(const f32x4x4& viewProj, MeshRenderType renderType, int8 shadowPass);
 	void renderSorted(const f32x4x4& viewProj, MeshRenderType renderType, int8 shadowPass);
 	void cleanupMeshes();

@@ -1399,7 +1399,7 @@ static void calcIblSpecular(SpecularData* specularMap, float* weightBufferData, 
 
 //**********************************************************************************************************************
 ID<Buffer> PbrLightingSystem::createSpecularCache(uint32 cubemapSize, 
-	vector<float>& iblWeightBuffer, vector<uint32>& iblCountBuffer)
+	vector<float>& iblWeightBuffer, vector<uint32>& iblCountBuffer, Buffer::Usage usage)
 {
 	GARDEN_ASSERT(cubemapSize > 0);
 	auto skyboxMipCount = calcMipCount(cubemapSize);
@@ -1422,6 +1422,10 @@ ID<Buffer> PbrLightingSystem::createSpecularCache(uint32 cubemapSize,
 	iblCountBuffer.resize(specularMipCount - 1);
 	auto weightBufferData = iblWeightBuffer.data();
 	auto countBufferData = iblCountBuffer.data();
+
+	#if GARDEN_DEBUG // Hack: skips queue ownership asserts.
+	BufferExt::getUsage(**stagingView) |= Buffer::Usage::TransferQ | Buffer::Usage::ComputeQ;
+	#endif
 
 	auto threadSystem = ThreadSystem::Instance::tryGet();
 	if (threadSystem)
@@ -1452,33 +1456,28 @@ ID<Buffer> PbrLightingSystem::createSpecularCache(uint32 cubemapSize,
 	for (uint8 i = 0; i < (uint8)iblCountBuffer.size(); i++)
 		gpuCacheSize += iblCountBuffer[i] * sizeof(SpecularData);
 
-	auto specularCache = graphicsSystem->createBuffer(Buffer::Usage::Storage | Buffer::Usage::TransferDst, 
-		Buffer::CpuAccess::None, gpuCacheSize, Buffer::Location::PreferGPU, Buffer::Strategy::Speed);
+	auto specularCache = graphicsSystem->createBuffer(usage, Buffer::CpuAccess::None, 
+		gpuCacheSize, Buffer::Location::PreferGPU, Buffer::Strategy::Speed);
 	SET_RESOURCE_DEBUG_NAME(specularCache, "buffer.storage.specularCache" + to_string(*specularCache));
 
-	auto stopRecording = false;
-	if (!graphicsSystem->isRecording())
+	auto stopRecording = graphicsSystem->tryStartRecording(CommandBufferType::TransferOnly);
 	{
-		graphicsSystem->startRecording(CommandBufferType::TransferOnly);
-		stopRecording = true;
+		SET_GPU_DEBUG_LABEL("Generate Specular Cache");
+		specularCacheSize = gpuCacheSize = 0;
+		Buffer::CopyRegion bufferCopyRegion;
+
+		for (uint8 i = 0; i < (uint8)iblCountBuffer.size(); i++)
+		{
+			bufferCopyRegion.size = iblCountBuffer[i] * sizeof(SpecularData);
+			bufferCopyRegion.srcOffset = specularCacheSize;
+			bufferCopyRegion.dstOffset = gpuCacheSize;
+			Buffer::copy(stagingBuffer, specularCache, bufferCopyRegion);
+
+			specularCacheSize += (uint64)calcIblSampleCount(
+				i + 1, sampleCount) * sizeof(SpecularData);
+			gpuCacheSize += bufferCopyRegion.size;
+		}
 	}
-
-	specularCacheSize = gpuCacheSize = 0;
-	Buffer::CopyRegion bufferCopyRegion;
-
-	BEGIN_GPU_DEBUG_LABEL("Generate Specular Cache");
-	for (uint8 i = 0; i < (uint8)iblCountBuffer.size(); i++)
-	{
-		bufferCopyRegion.size = iblCountBuffer[i] * sizeof(SpecularData);
-		bufferCopyRegion.srcOffset = specularCacheSize;
-		bufferCopyRegion.dstOffset = gpuCacheSize;
-		Buffer::copy(stagingBuffer, specularCache, bufferCopyRegion);
-
-		specularCacheSize += (uint64)calcIblSampleCount(
-			i + 1, sampleCount) * sizeof(SpecularData);
-		gpuCacheSize += bufferCopyRegion.size;
-	}
-	END_GPU_DEBUG_LABEL();
 
 	if (stopRecording)
 		graphicsSystem->stopRecording();

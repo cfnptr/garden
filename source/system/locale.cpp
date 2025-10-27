@@ -27,7 +27,7 @@ static bool loadLocaleStrings(LocaleSystem::StringMap& strings, string_view modu
 
 	vector<uint8> localeData; auto localePath = fs::path("locales");
 	if (!module.empty()) localePath /= module;
-	localePath /= toCodeString(language); localePath.replace_extension(".txt");
+	localePath /= toString(language); localePath.replace_extension(".txt");
 
 	if (!ResourceSystem::Instance::get()->loadData(localePath, localeData))
 		return false;
@@ -118,7 +118,7 @@ void LocaleSystem::setLanguage(Language language)
 		loadLocaleStrings(i.value(), i->first, language);
 
 	loadedLanguage = language;
-	GARDEN_LOG_INFO("Loaded localization strings: " + string(toCodeString(language)));
+	GARDEN_LOG_INFO("Loaded localization strings: " + string(toString(language)));
 }
 
 bool LocaleSystem::loadModule(string_view module)

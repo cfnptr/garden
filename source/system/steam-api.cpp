@@ -91,7 +91,8 @@ Language SteamApiSystem::getGameLanguage() const noexcept
 	auto language = string_view(SteamApps()->GetCurrentGameLanguage());
 	if (language == "arabic") return Language::Arabic;
 	if (language == "bulgarian") return Language::Bulgarian;
-	if (language == "schinese" || language == "tchinese") return Language::Chinese;
+	if (language == "schinese") return Language::ChineseSimpl;
+	if (language == "tchinese") return Language::ChineseTrad;
 	if (language == "czech") return Language::Czech;
 	if (language == "danish") return Language::Danish;
 	if (language == "dutch") return Language::Dutch;
@@ -107,7 +108,6 @@ Language SteamApiSystem::getGameLanguage() const noexcept
 	if (language == "koreana") return Language::Korean;
 	if (language == "norwegian") return Language::Norwegian;
 	if (language == "polish") return Language::Polish;
-	if (language == "portuguese") return Language::Portuguese;
 	if (language == "portuguese" || language == "brazilian") return Language::Portuguese;
 	if (language == "romanian") return Language::Romanian;
 	if (language == "russian") return Language::Russian;

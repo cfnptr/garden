@@ -351,8 +351,8 @@ void ResourceSystem::dequeueBuffers()
 			Buffer::CpuAccess::SequentialWrite, Buffer::Location::Auto, Buffer::Strategy::Speed, 0);
 		SET_RESOURCE_DEBUG_NAME(stagingBuffer, "buffer.staging.loaded" + to_string(*stagingBuffer));
 
-		auto stagingBufferView = graphicsAPI->bufferPool.get(stagingBuffer);
-		BufferExt::moveInternalObjects(item.staging, **stagingBufferView);
+		auto stagingView = graphicsAPI->bufferPool.get(stagingBuffer);
+		BufferExt::moveInternalObjects(item.staging, **stagingView);
 		graphicsSystem->startRecording(CommandBufferType::TransferOnly);
 		Buffer::copy(stagingBuffer, item.bufferInstance);
 		graphicsSystem->stopRecording();
@@ -419,13 +419,12 @@ void ResourceSystem::dequeueImages()
 		image->setDebugName(image->getDebugName());
 		#endif
 
-		auto stagingBuffer = graphicsAPI->bufferPool.create(Buffer::Usage::TransferSrc | 
-			Buffer::Usage::TransferQ, Buffer::CpuAccess::SequentialWrite, 
-			Buffer::Location::Auto, Buffer::Strategy::Speed, 0);
+		auto stagingBuffer = graphicsAPI->bufferPool.create(Buffer::Usage::TransferSrc | Buffer::Usage::TransferQ, 
+			Buffer::CpuAccess::SequentialWrite, Buffer::Location::Auto, Buffer::Strategy::Speed, 0);
 		SET_RESOURCE_DEBUG_NAME(stagingBuffer, "buffer.staging.loadedImage" + to_string(*stagingBuffer));
 
-		auto stagingBufferView = graphicsAPI->bufferPool.get(stagingBuffer);
-		BufferExt::moveInternalObjects(item.staging, **stagingBufferView);
+		auto stagingView = graphicsAPI->bufferPool.get(stagingBuffer);
+		BufferExt::moveInternalObjects(item.staging, **stagingView);
 		auto generateMipmap = image->getMipCount() > 1 && !hasAnyFlag(item.flags, ImageLoadFlags::LinearData);
 		graphicsSystem->startRecording(generateMipmap ? CommandBufferType::Graphics : CommandBufferType::TransferOnly);
 		Image::copy(stagingBuffer, item.instance);
@@ -1322,18 +1321,23 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 		ImageExt::moveInternalObjects(imageInstance, **imageView);
 
 		auto graphicsSystem = GraphicsSystem::Instance::get();
-		auto stagingBuffer = graphicsAPI->bufferPool.create(Buffer::Usage::TransferSrc, 
-			Buffer::CpuAccess::SequentialWrite, Buffer::Location::Auto, 
-			Buffer::Strategy::Speed, formatBinarySize * realSize.x * realSize.y, 0);
+		auto stagingBuffer = graphicsAPI->bufferPool.create(Buffer::Usage::TransferSrc, Buffer::CpuAccess::SequentialWrite, 
+			Buffer::Location::Auto, Buffer::Strategy::Speed, formatBinarySize * realSize.x * realSize.y, 0);
 		SET_RESOURCE_DEBUG_NAME(stagingBuffer, "buffer.staging.loadedImage" + to_string(*stagingBuffer));
-		auto stagingBufferView = graphicsAPI->bufferPool.get(stagingBuffer);
+		auto stagingView = graphicsAPI->bufferPool.get(stagingBuffer);
 
-		copyLoadedImageData(pixelArrays, stagingBufferView->getMap(),
+		#if GARDEN_DEBUG // Hack: skips queue ownership asserts.
+		BufferExt::getUsage(**stagingView) |= Buffer::Usage::TransferQ;
+		#endif
+
+		copyLoadedImageData(pixelArrays, stagingView->getMap(),
 			realSize, imageSize, formatBinarySize, flags);
-		stagingBufferView->flush();
+		stagingView->flush();
 
-		graphicsSystem->startRecording(CommandBufferType::TransferOnly);
+		auto generateMipmap = imageView->getMipCount() > 1 && !hasAnyFlag(flags, ImageLoadFlags::LinearData);
+		graphicsSystem->startRecording(generateMipmap ? CommandBufferType::Graphics : CommandBufferType::TransferOnly);
 		Image::copy(stagingBuffer, image);
+		if (generateMipmap) imageView->generateMips();
 		graphicsSystem->stopRecording();
 		graphicsAPI->bufferPool.destroy(stagingBuffer);
 
@@ -2723,7 +2727,7 @@ void ResourceSystem::storeAnimation(const fs::path& path, ID<Animation> animatio
 }
 
 //**********************************************************************************************************************
-Ref<Font> ResourceSystem::loadFont(const fs::path& path, int32 faceIndex)
+Ref<Font> ResourceSystem::loadFont(const fs::path& path, int32 faceIndex, bool logMissing)
 {
 	GARDEN_ASSERT(!path.empty());
 	
@@ -2744,9 +2748,9 @@ Ref<Font> ResourceSystem::loadFont(const fs::path& path, int32 faceIndex)
 	uint64 itemIndex = 0;
 	if (!packReader.getItemIndex(filePath, itemIndex))
 	{
-		GARDEN_LOG_ERROR("Font file does not exist. (path: " + path.generic_string() + ")");
+		if (logMissing)
+			GARDEN_LOG_ERROR("Font does not exist. (path: " + path.generic_string() + ")");
 		return {};
-	}
 
 	auto dataSize = packReader.getItemDataSize(itemIndex);
 	auto data = new uint8[dataSize];
@@ -2765,7 +2769,8 @@ Ref<Font> ResourceSystem::loadFont(const fs::path& path, int32 faceIndex)
 	fs::path fontPath;
 	if (!File::tryGetResourcePath(appResourcesPath, filePath, fontPath))
 	{
-		GARDEN_LOG_ERROR("Font file does not exist or ambiguous. (path: " + path.generic_string() + ")");
+		if (logMissing)
+			GARDEN_LOG_ERROR("Font file does not exist or ambiguous. (path: " + path.generic_string() + ")");
 		return {};
 	}
 
@@ -2793,6 +2798,63 @@ Ref<Font> ResourceSystem::loadFont(const fs::path& path, int32 faceIndex)
 	GARDEN_LOG_TRACE("Loaded font. (path: " + path.generic_string() + ")");
 	return font;
 }
+
+//**********************************************************************************************************************
+FontArray ResourceSystem::loadFonts(const vector<fs::path>& paths, int32 faceIndex, bool loadNoto)
+{
+	vector<fs::path> fontPaths = paths;
+	if (loadNoto)
+	{
+		fontPaths.push_back("noto-sans/base");
+		fontPaths.push_back("noto-sans/japanese");
+		fontPaths.push_back("noto-sans/tchinese");
+		fontPaths.push_back("noto-sans/schinese");
+		fontPaths.push_back("noto-sans/korean");
+		fontPaths.push_back("noto-sans/arabic");
+		fontPaths.push_back("noto-sans/devanagari");
+		fontPaths.push_back("noto-sans/hebrew");
+		fontPaths.push_back("noto-sans/thai");
+		fontPaths.push_back("noto-sans/bengali");
+		fontPaths.push_back("noto-sans/urdu");
+	}
+	GARDEN_ASSERT(!fontPaths.empty());
+
+	FontArray fonts(4);
+	for (const auto& path : fontPaths)
+	{
+		auto font = loadFont(path, faceIndex, false);
+		if (font)
+		{
+			fonts[0].push_back(font); fonts[1].push_back(font);
+			fonts[2].push_back(font); fonts[3].push_back(font);
+			continue;
+		}
+
+		auto fontPath = path; fontPath /= "regular";
+		font = loadFont(fontPath, faceIndex);
+		if (font) fonts[0].push_back(font);
+
+		fontPath = path; fontPath /= "bold";
+		font = loadFont(fontPath, faceIndex);
+		if (font) fonts[1].push_back(font);
+
+		fontPath = path; fontPath /= "italic";
+		font = loadFont(fontPath, faceIndex);
+		if (font) fonts[2].push_back(font);
+
+		fontPath = path; fontPath /= "bold-italic";
+		font = loadFont(fontPath, faceIndex);
+		if (font) fonts[3].push_back(font);
+	}
+
+	if (fonts[0].empty() || fonts[1].empty() || fonts[2].empty() || fonts[3].empty())
+	{
+		destroyShared(fonts);
+		return {};
+	}
+	return fonts;
+}
+
 void ResourceSystem::destroyShared(const Ref<Font>& font)
 {
 	if (!font || font.getRefCount() > 2)
@@ -2807,6 +2869,14 @@ void ResourceSystem::destroyShared(const Ref<Font>& font)
 	}
 
 	TextSystem::Instance::get()->fonts.destroy(ID<Font>(font));
+}
+void ResourceSystem::destroyShared(const FontArray& fonts)
+{
+	for (const auto& variants : fonts)
+	{
+		for (const auto& font : variants)
+			destroyShared(font);
+	}
 }
 
 //**********************************************************************************************************************

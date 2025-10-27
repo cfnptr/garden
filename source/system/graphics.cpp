@@ -655,11 +655,11 @@ ID<Buffer> GraphicsSystem::createBuffer(Buffer::Usage usage, Buffer::CpuAccess c
 			auto stagingBuffer = graphicsAPI->bufferPool.create(Buffer::Usage::TransferSrc, 
 				Buffer::CpuAccess::SequentialWrite, Buffer::Location::Auto, Buffer::Strategy::Speed, size, 0);
 			SET_RESOURCE_DEBUG_NAME(stagingBuffer, "buffer.staging" + to_string(*stagingBuffer));
-			auto stagingBufferView = graphicsAPI->bufferPool.get(stagingBuffer);
-			stagingBufferView->writeData(data, size);
+			auto stagingView = graphicsAPI->bufferPool.get(stagingBuffer);
+			stagingView->writeData(data, size);
 
 			#if GARDEN_DEBUG // Hack: skips queue ownership asserts.
-			BufferExt::getUsage(**stagingBufferView) |= Buffer::Usage::TransferQ | Buffer::Usage::ComputeQ;
+			BufferExt::getUsage(**stagingView) |= Buffer::Usage::TransferQ | Buffer::Usage::ComputeQ;
 			#endif
 
 			if (!isRecording())
@@ -790,8 +790,8 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 			#endif
 		}
 
-		auto stagingBufferView = graphicsAPI->bufferPool.get(stagingBuffer);
-		auto stagingMap = stagingBufferView->getMap();
+		auto stagingView = graphicsAPI->bufferPool.get(stagingBuffer);
+		auto stagingMap = stagingView->getMap();
 		vector<Image::CopyBufferRegion> regions(stagingCount);
 		uint64 stagingOffset = 0; uint32 copyIndex = 0;
 		mipSize = (uint3)size;
@@ -834,10 +834,10 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 		GARDEN_ASSERT(stagingCount == copyIndex);
 		GARDEN_ASSERT(stagingSize == stagingOffset);
 
-		stagingBufferView->flush();
+		stagingView->flush();
 
 		#if GARDEN_DEBUG // Hack: skips queue ownership asserts.
-		BufferExt::getUsage(**stagingBufferView) |= Buffer::Usage::TransferQ | Buffer::Usage::ComputeQ;
+		BufferExt::getUsage(**stagingView) |= Buffer::Usage::TransferQ | Buffer::Usage::ComputeQ;
 		#endif
 
 		if (format != dataFormat)
@@ -1254,14 +1254,10 @@ bool GraphicsSystem::isRecording() const noexcept
 {
 	return GraphicsAPI::get()->currentCommandBuffer;
 }
-void GraphicsSystem::startRecording(CommandBufferType commandBufferType)
+void GraphicsSystem::startRecording(CommandBufferType commandBufferType) noexcept
 {
 	auto graphicsAPI = GraphicsAPI::get();
-
-	#if GARDEN_DEBUG
-	if (graphicsAPI->currentCommandBuffer)
-		throw GardenError("Already recording.");
-	#endif
+	GARDEN_ASSERT_MSG(!graphicsAPI->currentCommandBuffer, "Already recording");
 	
 	switch (commandBufferType)
 	{
@@ -1276,13 +1272,18 @@ void GraphicsSystem::startRecording(CommandBufferType commandBufferType)
 	default: abort();
 	}
 }
-void GraphicsSystem::stopRecording()
+bool GraphicsSystem::tryStartRecording(CommandBufferType commandBufferType) noexcept
 {
-	#if GARDEN_DEBUG
-	if (!GraphicsAPI::get()->currentCommandBuffer)
-		throw GardenError("Not recording.");
-	#endif
-	GraphicsAPI::get()->currentCommandBuffer = nullptr;
+	if (GraphicsAPI::get()->currentCommandBuffer)
+		return false;
+	startRecording(commandBufferType);
+	return true;
+}
+void GraphicsSystem::stopRecording() noexcept
+{
+	auto graphicsAPI = GraphicsAPI::get();
+	GARDEN_ASSERT_MSG(graphicsAPI->currentCommandBuffer, "Not recording");
+	graphicsAPI->currentCommandBuffer = nullptr;
 }
 bool GraphicsSystem::isBusy(CommandBufferType commandBufferType)
 {
@@ -1294,6 +1295,27 @@ bool GraphicsSystem::isBusy(CommandBufferType commandBufferType)
 		case CommandBufferType::Compute: return GraphicsAPI::get()->computeCommandBuffer->isBusy();
 		default: abort();
 	}
+}
+
+Buffer::Usage GraphicsSystem::getBufferQ() const noexcept
+{
+	auto graphicsAPI = GraphicsAPI::get();
+	GARDEN_ASSERT_MSG(graphicsAPI->currentCommandBuffer, "Not recording");
+	if (graphicsAPI->currentCommandBuffer == graphicsAPI->transferCommandBuffer)
+		return Buffer::Usage::TransferQ;
+	if (graphicsAPI->currentCommandBuffer == graphicsAPI->computeCommandBuffer)
+		return Buffer::Usage::ComputeQ;
+	return Buffer::Usage::None;
+}
+Image::Usage GraphicsSystem::getImageQ() const noexcept
+{
+	auto graphicsAPI = GraphicsAPI::get();
+	GARDEN_ASSERT_MSG(graphicsAPI->currentCommandBuffer, "Not recording");
+	if (graphicsAPI->currentCommandBuffer == graphicsAPI->transferCommandBuffer)
+		return Image::Usage::TransferQ;
+	if (graphicsAPI->currentCommandBuffer == graphicsAPI->computeCommandBuffer)
+		return Image::Usage::ComputeQ;
+	return Image::Usage::None;
 }
 
 void GraphicsSystem::customCommand(void(*onCommand)(void*, void*), void* argument)

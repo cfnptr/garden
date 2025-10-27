@@ -33,42 +33,45 @@ using namespace ecsm;
  */
 enum class Language : uint8
 {
-	English, Spanish, German, Japanese, French, Portuguese, Russian, Italian, Dutch, Polish, Turkish, Chinese, Persian,
-	Vietnamese, Indonesian, Czech, Korean, Ukrainian, Hungarian, Swedish, Arabic, Romanian, Greek, Danish, Finnish,
-	Hebrew, Slovak, Thai, Bulgarian, Croatian, Norwegian, Lithuanian, Serbian, Slovenian, Catalan, Estonian, Latvian,
-	Bosnian, Hindi, Azerbaijani, Georgian, Icelandic, Kazakh, Macedonian, Bengali, Albanian, Malay, Uzbek, Armenian, 
-	Urdu, Count
+	English, Spanish, German, Japanese, French, Portuguese, Russian, Italian, Dutch, Polish, Turkish, ChineseTrad,
+	ChineseSimpl, Persian, Vietnamese, Indonesian, Czech, Korean, Ukrainian, Hungarian, Swedish, Arabic, Romanian, 
+	Greek, Danish, Finnish, Hebrew, Slovak, Thai, Bulgarian, Croatian, Norwegian, Lithuanian, Serbian, Slovenian, 
+	Catalan, Estonian, Latvian, Bosnian, Hindi, Azerbaijani, Georgian, Icelandic, Kazakh, Macedonian, Bengali, 
+	Albanian, Malay, Uzbek, Armenian, Urdu, Count
 };
 /**
- * @brief Spoken languages ISO 639 code strings.
+ * @brief Spoken language name strings.
  */
-constexpr const char* languageCodes[(psize)Language::Count] =
+constexpr const char* languageNames[(psize)Language::Count] =
 {
-	"en", "es", "de", "ja", "fr", "pt", "ru", "it", "nl", "pl", "tr", "zh", "fa", "vi", "id", "cs", "ko", "uk", "hu",
-	"sv", "ar", "ro", "el", "da", "fi", "he", "sk", "th", "bg", "hr", "no", "lt", "sr", "sl", "ca", "et", "lv", "bs",
-	"hi", "az", "ka", "is", "kk", "mk", "bn", "sq", "ms", "uz", "hy", "ur"
+	"english", "spanish", "german", "japanese", "french", "portuguese", "russian", "italian", "dutch", "polish", 
+	"turkish", "tchinese", "schinese", "persian", "vietnamese", "indonesian", "czech", "korean", "ukrainian", 
+	"hungarian", "swedish", "arabic", "romanian", "greek", "danish", "finnish", "hebrew", "slovak", "thai", 
+	"bulgarian", "croatian", "norwegian", "lithuanian", "serbian", "slovenian", "catalan", "estonian", "latvian", 
+	"bosnian", "hindi", "azerbaijani", "georgian", "icelandic", "kazakh", "macedonian", "bengali", "albanian", 
+	"malay", "uzbek", "armenian", "urdu"
 };
 
 /**
- * @brief Returns languages ISO 639 code string.
+ * @brief Returns languages name string.
  * @param language target language
  */
-static string_view toCodeString(Language language) noexcept
+static string_view toString(Language language) noexcept
 {
 	GARDEN_ASSERT(language < Language::Count);
-	return languageCodes[(psize)language];
+	return languageNames[(psize)language];
 }
 /**
- * @brief Tries to convert ISO 639 code string to language.
+ * @brief Tries to convert name string to language.
  * 
- * @param codeString target ISO 639 code string
+ * @param name target language name string
  * @param[out] language converted language
  */
-static bool getCodeLanguage(string_view codeString, Language& language) noexcept
+static bool getCodeLanguage(string_view name, Language& language) noexcept
 {
 	for (uint8 i = 0; i < (uint8)Language::Count; i++)
 	{
-		if (languageCodes[i] != codeString)
+		if (languageNames[i] != name)
 			continue;
 		language = (Language)i;
 		return true;

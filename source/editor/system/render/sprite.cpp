@@ -195,7 +195,7 @@ void SpriteRenderEditorSystem::renderComponent(SpriteRenderComponent* componentV
 		auto usage = Image::Usage::Sampled | Image::Usage::TransferDst | Image::Usage::TransferQ;
 		if (maxMipCount == 0) usage |= Image::Usage::TransferSrc;
 		componentView->colorMap = resourceSystem->loadImage(componentView->colorMapPath, 
-			usage, maxMipCount, Image::Strategy::Default, flags);
+			usage, maxMipCount, Image::Strategy::Default, flags, componentView->taskPriority);
 		componentView->descriptorSet = {};
 	}
 
@@ -203,28 +203,6 @@ void SpriteRenderEditorSystem::renderComponent(SpriteRenderComponent* componentV
 	auto isVisible = componentView->isVisible();
 	ImGui::Checkbox("Visible", &isVisible);
 	ImGui::EndDisabled();
-
-	auto transformSystem = TransformSystem::Instance::get();
-	ImGui::BeginDisabled(!componentView->colorMap && transformSystem->hasComponent(componentView->getEntity()));
-	if (ImGui::Button("Auto Scale", ImVec2(-FLT_MIN, 0.0f)))
-	{
-		auto transformView = transformSystem->getComponent(componentView->getEntity());
-		auto colorMapView = GraphicsSystem::Instance::get()->get(componentView->colorMap);
-		auto imageSize = colorMapView->getSize();
-
-		if (imageSize.getX() > imageSize.getY())
-		{
-			transformView->scale(f32x4(componentView->uvSize.x * transformView->getScale().getY() * 
-				((float)imageSize.getX() / imageSize.getY()), 1.0f, 1.0f));
-		}
-		else
-		{
-			transformView->scale(f32x4(1.0f, componentView->uvSize.y * transformView->getScale().getX() * 
-				((float)imageSize.getY() / imageSize.getX()), 1.0f));
-		}
-	}
-	ImGui::EndDisabled();
-
 	ImGui::Spacing();
 
 	auto maxColorMapLayer = 0.0f;
@@ -284,5 +262,29 @@ void SpriteRenderEditorSystem::renderComponent(SpriteRenderComponent* componentV
 			componentView->color = f32x4::one;
 		ImGui::EndPopup();
 	}
+
+	ImGui::Spacing();
+	ImGui::DragFloat("Task Priority", &componentView->taskPriority, 0.1f);
+
+	auto transformSystem = TransformSystem::Instance::get();
+	ImGui::BeginDisabled(!componentView->colorMap && transformSystem->hasComponent(componentView->getEntity()));
+	if (ImGui::Button("Auto Scale", ImVec2(-FLT_MIN, 0.0f)))
+	{
+		auto transformView = transformSystem->getComponent(componentView->getEntity());
+		auto colorMapView = GraphicsSystem::Instance::get()->get(componentView->colorMap);
+		auto imageSize = colorMapView->getSize();
+
+		if (imageSize.getX() > imageSize.getY())
+		{
+			transformView->scale(f32x4(componentView->uvSize.x * transformView->getScale().getY() * 
+				((float)imageSize.getX() / imageSize.getY()), 1.0f, 1.0f));
+		}
+		else
+		{
+			transformView->scale(f32x4(1.0f, componentView->uvSize.y * transformView->getScale().getX() * 
+				((float)imageSize.getY() / imageSize.getX()), 1.0f));
+		}
+	}
+	ImGui::EndDisabled();
 }
 #endif

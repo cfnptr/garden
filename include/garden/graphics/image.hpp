@@ -1125,6 +1125,8 @@ static Image::Type toImageType(GslUniformType uniformType)
  */
 static string_view toString(Image::Usage imageUsage) noexcept
 {
+	if (hasOneFlag(imageUsage, Image::Usage::TransferQ)) return "TransferSrc";
+	if (hasOneFlag(imageUsage, Image::Usage::ComputeQ)) return "ComputeQ";
 	if (hasOneFlag(imageUsage, Image::Usage::TransferSrc)) return "TransferSrc";
 	if (hasOneFlag(imageUsage, Image::Usage::TransferDst)) return "TransferDst";
 	if (hasOneFlag(imageUsage, Image::Usage::Sampled)) return "Sampled";
@@ -1142,7 +1144,8 @@ static string_view toString(Image::Usage imageUsage) noexcept
 static string toStringList(Image::Usage imageUsage) noexcept
 {
 	string list;
-	if (hasAnyFlag(imageUsage, Image::Usage::None)) list += "None | ";
+	if (hasAnyFlag(imageUsage, Image::Usage::TransferQ)) list += "TransferQ | ";
+	if (hasAnyFlag(imageUsage, Image::Usage::ComputeQ)) list += "ComputeQ | ";
 	if (hasAnyFlag(imageUsage, Image::Usage::TransferSrc)) list += "TransferSrc | ";
 	if (hasAnyFlag(imageUsage, Image::Usage::TransferDst)) list += "TransferDst | ";
 	if (hasAnyFlag(imageUsage, Image::Usage::Sampled)) list += "Sampled | ";
@@ -1152,6 +1155,7 @@ static string toStringList(Image::Usage imageUsage) noexcept
 	if (hasAnyFlag(imageUsage, Image::Usage::InputAttachment)) list += "InputAttachment | ";
 	if (hasAnyFlag(imageUsage, Image::Usage::Fullscreen)) list += "Fullscreen | ";
 	if (list.length() >= 3) list.resize(list.length() - 3);
+	else return "None";
 	return list;
 }
 

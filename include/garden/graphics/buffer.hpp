@@ -327,6 +327,8 @@ DECLARE_ENUM_CLASS_FLAG_OPERATORS(Buffer::Usage)
  */
 static string_view toString(Buffer::Usage bufferUsage)
 {
+	if (hasOneFlag(bufferUsage, Buffer::Usage::TransferQ)) return "TransferQ";
+	if (hasOneFlag(bufferUsage, Buffer::Usage::ComputeQ)) return "ComputeQ";
 	if (hasOneFlag(bufferUsage, Buffer::Usage::TransferSrc)) return "TransferSrc";
 	if (hasOneFlag(bufferUsage, Buffer::Usage::TransferDst)) return "TransferDst";
 	if (hasOneFlag(bufferUsage, Buffer::Usage::Vertex)) return "Vertex";
@@ -347,7 +349,8 @@ static string_view toString(Buffer::Usage bufferUsage)
 static string toStringList(Buffer::Usage bufferUsage)
 {
 	string list;
-	if (hasAnyFlag(bufferUsage, Buffer::Usage::None)) list += "None | ";
+	if (hasAnyFlag(bufferUsage, Buffer::Usage::TransferQ)) list += "TransferQ | ";
+	if (hasAnyFlag(bufferUsage, Buffer::Usage::ComputeQ)) list += "ComputeQ | ";
 	if (hasAnyFlag(bufferUsage, Buffer::Usage::TransferSrc)) list += "TransferSrc | ";
 	if (hasAnyFlag(bufferUsage, Buffer::Usage::TransferDst)) list += "TransferDst | " ;
 	if (hasAnyFlag(bufferUsage, Buffer::Usage::Vertex)) list += "Vertex | ";
@@ -360,6 +363,7 @@ static string toStringList(Buffer::Usage bufferUsage)
 	if (hasAnyFlag(bufferUsage, Buffer::Usage::BuildInputAS)) list += "BuildInputAS | ";
 	if (hasAnyFlag(bufferUsage, Buffer::Usage::SBT)) list += "SBT | ";
 	if (list.length() >= 3) list.resize(list.length() - 3);
+	else return "None";
 	return list;
 }
 

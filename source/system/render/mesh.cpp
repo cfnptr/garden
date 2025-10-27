@@ -369,8 +369,8 @@ void MeshRenderSystem::sortMeshes() // TODO: We can use here async bitonic sorti
 }
 
 //**********************************************************************************************************************
-void MeshRenderSystem::prepareMeshes(const f32x4x4& viewProj, const Plane* uiFrustumPlanes,
-	f32x4 cameraOffset, uint8 frustumPlaneCount, int8 shadowPass)
+void MeshRenderSystem::prepareMeshes(const f32x4x4& viewProj, 
+	const Plane* uiFrustumPlanes, f32x4 cameraOffset, int8 shadowPass)
 {
 	SET_CPU_ZONE_SCOPED("Meshes Prepare");
 
@@ -828,7 +828,7 @@ void MeshRenderSystem::renderShadows()
 			if (!shadowSystem->prepareShadowRender(i, viewProj, cameraOffset))
 				continue;
 
-			prepareMeshes(viewProj, nullptr, cameraOffset, Plane::frustumCount, i);
+			prepareMeshes(viewProj, nullptr, cameraOffset, i);
 
 			graphicsSystem->startRecording(CommandBufferType::Frame);
 			if (shadowSystem->beginShadowRender(i, MeshRenderType::Opaque))
@@ -880,7 +880,7 @@ void MeshRenderSystem::preForwardRender()
 
 	const auto& cc = GraphicsSystem::Instance::get()->getCommonConstants();
 	Plane uiFrustumPlanes[Plane::frustumCount]; extractFrustumPlanes(calcUiProjView(), uiFrustumPlanes);
-	prepareMeshes(cc.viewProj, uiFrustumPlanes, f32x4::zero, Plane::frustumCount - 2, -1);
+	prepareMeshes(cc.viewProj, uiFrustumPlanes, f32x4::zero, -1);
 }
 
 void MeshRenderSystem::forwardRender()
@@ -913,7 +913,7 @@ void MeshRenderSystem::preDeferredRender()
 
 	const auto& cc = GraphicsSystem::Instance::get()->getCommonConstants();
 	Plane uiFrustumPlanes[Plane::frustumCount]; extractFrustumPlanes(calcUiProjView(), uiFrustumPlanes);
-	prepareMeshes(cc.viewProj, uiFrustumPlanes, f32x4::zero, Plane::frustumCount - 2, -1);
+	prepareMeshes(cc.viewProj, uiFrustumPlanes, f32x4::zero, -1);
 }
 void MeshRenderSystem::deferredRender()
 {
