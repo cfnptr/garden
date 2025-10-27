@@ -1066,18 +1066,32 @@ public:
 	 * @brief Starts command buffer commands recording. (Supports multithreading)
 	 * @param commandBufferType target command buffer type
 	 */
-	void startRecording(CommandBufferType commandBufferType);
+	void startRecording(CommandBufferType commandBufferType) noexcept;
+	/**
+	 * @brief Tries to starts command buffer commands recording. (Supports multithreading)
+	 * @param commandBufferType target command buffer type
+	 */
+	bool tryStartRecording(CommandBufferType commandBufferType) noexcept;
 	/**
 	 * @brief Stops command buffer commands recording.
 	 * @note You can still append more rendering command to the stopped command buffer.
 	 */
-	void stopRecording();
+	void stopRecording() noexcept;
 	/**
 	 * @brief Returns true if target command is busy right now.
 	 * @warning This is expensive operation, call only couple of times per frame!
 	 * @param commandBufferType target command buffer type
 	 */
 	bool isBusy(CommandBufferType commandBufferType);
+
+	/**
+	 * @brief Return current command buffer queue usage flag.
+	 */
+	Buffer::Usage getBufferQ() const noexcept;
+	/**
+	 * @brief Return current command buffer queue usage flag.
+	 */
+	Image::Usage getImageQ() const noexcept;
 
 	/**
 	 * @brief Records custom rendering command.

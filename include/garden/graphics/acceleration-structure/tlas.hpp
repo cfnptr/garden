@@ -137,12 +137,12 @@ static string_view toString(Tlas::InstanceFlags tlasInstanceFlag)
 static string toStringList(Tlas::InstanceFlags tlasInstanceFlags)
 {
 	string list;
-	if (hasAnyFlag(tlasInstanceFlags, Tlas::InstanceFlags::None)) list += "None | ";
 	if (hasAnyFlag(tlasInstanceFlags, Tlas::InstanceFlags::DisableCulling)) list += "DisableCulling | ";
 	if (hasAnyFlag(tlasInstanceFlags, Tlas::InstanceFlags::FlipFacing)) list += "FlipFacing | ";
 	if (hasAnyFlag(tlasInstanceFlags, Tlas::InstanceFlags::ForceOpaque)) list += "ForceOpaque | ";
 	if (hasAnyFlag(tlasInstanceFlags, Tlas::InstanceFlags::ForceNoOpaque)) list += "ForceNoOpaque | ";
 	if (list.length() >= 3) list.resize(list.length() - 3);
+	else return "None";
 	return list;
 }
 

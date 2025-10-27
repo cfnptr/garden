@@ -167,18 +167,17 @@ static void createVkDescriptorSetLayouts(vector<void*>& descriptorSetLayouts, ve
 			descriptorSetLayoutInfo.pNext = &descriptorSetFlagsInfo;
 	
 			uint32 maxSetCount = 0; 
-			for (auto i = descriptorPoolSizes.begin(); i != descriptorPoolSizes.end();)
+			for (auto i = descriptorPoolSizes.begin(); i != descriptorPoolSizes.end(); i++)
 			{
-				// TODO: reverse delete or back-swap would be faster.
 				if (i->descriptorCount > 0)
 				{
 					maxSetCount += i->descriptorCount;
-					i++;
+					continue;
 				}
-				else
-				{
-					i = descriptorPoolSizes.erase(i);
-				}
+
+				auto size = descriptorPoolSizes.size();
+				if (size > 0) i = descriptorPoolSizes.end() - 1;
+				descriptorPoolSizes.resize(size - 1);
 			}
 			GARDEN_ASSERT(maxSetCount > 0);
 

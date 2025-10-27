@@ -900,13 +900,19 @@ void RigidbodyComponent::destroyConstraint(uint32 index)
 		{
 			if (i->otherBody != entity)
 				continue;
-			otherConstraints.erase(i);
+
+			auto size = otherConstraints.size();
+			if (size > 0) i = otherConstraints.end() - 1;
+			otherConstraints.resize(size - 1);
 			break;
 		}
 	}
 
 	auto instance = (JPH::Constraint*)constraint.instance;
-	constraints.erase(constraints.begin() + index);
+	auto newSize = constraints.size() - 1;
+	constraints[index] = constraints[newSize];
+	constraints.resize(newSize);
+
 	auto physicsInstance = (JPH::PhysicsSystem*)PhysicsSystem::Instance::get()->physicsInstance;
 	physicsInstance->RemoveConstraint(instance);
 	instance->Release();
@@ -1501,8 +1507,8 @@ void PhysicsSystem::serialize(ISerializer& serializer, const View<Component> com
 
 	if (!rigidbodyView->constraints.empty())
 	{
-		serializer.beginChild("constraints");
 		const auto& constraints = rigidbodyView->constraints;
+		serializer.beginChild("constraints");
 		for (auto& constraint : constraints)
 		{
 			auto searchResult = serializedConstraints.find(constraint.otherBody);

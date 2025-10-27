@@ -259,7 +259,7 @@ void SpriteRenderSystem::deserialize(IDeserializer& deserializer, View<Component
 	spriteRenderView->colorMapPath = colorMapPath;
 	#endif
 
-	float taskPriority = 0.0f;
+	auto taskPriority = 0.0f;
 	deserializer.read("taskPriority", taskPriority);
 
 	auto maxMipCount = spriteRenderView->useMipmap ? 0 : 1;
@@ -368,7 +368,7 @@ void SpriteRenderSystem::deserializeAnimation(IDeserializer& deserializer, Sprit
 	deserializer.read("isArray", boolValue);
 	frame.isArray = boolValue;
 
-	float taskPriority = 0.0f;
+	auto taskPriority = 0.0f;
 	deserializer.read("taskPriority", taskPriority);
 
 	auto maxMipCount = frame.useMipmap ? 0 : 1;

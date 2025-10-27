@@ -181,13 +181,13 @@ static string_view toString(BuildFlagsAS asBuildFlags)
 static string toStringList(BuildFlagsAS asBuildFlags)
 {
 	string list;
-	if (hasAnyFlag(asBuildFlags, BuildFlagsAS::None)) list += "None | ";
 	if (hasAnyFlag(asBuildFlags, BuildFlagsAS::AllowUpdate)) list += "AllowUpdate | ";
 	if (hasAnyFlag(asBuildFlags, BuildFlagsAS::AllowCompaction)) list += "AllowCompaction | ";
 	if (hasAnyFlag(asBuildFlags, BuildFlagsAS::PreferFastTrace)) list += "PreferFastTrace | ";
 	if (hasAnyFlag(asBuildFlags, BuildFlagsAS::PreferFastBuild)) list += "PreferFastBuild | ";
 	if (hasAnyFlag(asBuildFlags, BuildFlagsAS::PreferLowMemory)) list += "PreferLowMemory | ";
 	if (list.length() >= 3) list.resize(list.length() - 3);
+	else return "None";
 	return list;
 }
 

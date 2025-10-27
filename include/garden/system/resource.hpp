@@ -456,14 +456,29 @@ public:
 	 *
 	 * @param[in] path target font resource path
 	 * @param faceIndex font face index to load
+	 * @param logMissing log error when font does not exist
 	 */
-	Ref<Font> loadFont(const fs::path& path, int32 faceIndex = 0);
+	Ref<Font> loadFont(const fs::path& path, int32 faceIndex = 0, bool logMissing = true);
+	/**
+	 * @brief Loads fonts from the resource pack.
+	 * @note Loads from the fonts directory in debug build.
+	 *
+	 * @param[in] paths target font resource paths or null
+	 * @param faceIndex font face index to load
+	 * @param loadNoto also load sans noto supporting fonts
+	 */
+	FontArray loadFonts(const vector<fs::path>& paths = {}, int32 faceIndex = 0, bool loadNoto = true);
 
 	/**
 	 * @brief Destroys shared font if it's the last one.
 	 * @param[in] font target shared font reference
 	 */
 	void destroyShared(const Ref<Font>& font);
+	/**
+	 * @brief Destroys shared fonts if it's the last one.
+	 * @param[in] fonts target shared fonts array
+	 */
+	void destroyShared(const FontArray& fonts);
 
 	/*******************************************************************************************************************
 	 * @brief Loads file data from the resource pack.

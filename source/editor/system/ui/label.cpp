@@ -59,8 +59,38 @@ void UiLabelEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 
 	auto uiLabelView = UiLabelSystem::Instance::get()->getComponent(entity);
 
-	auto value = uiLabelView->getValue();
-	if (ImGui::InputText("Value", &value))
-		uiLabelView->setValue(value);
+	if (ImGui::InputText("Value", &uiLabelView->value))
+		uiLabelView->updateText(true);
+	ImGui::Checkbox("Load Noto", &uiLabelView->loadNoto);
+	ImGui::Spacing();
+	
+	if (ImGui::CollapsingHeader("Fonts"))
+	{
+		auto& fontPaths = uiLabelView->fontPaths;
+		for (auto i = fontPaths.begin(); i != fontPaths.end(); i++)
+		{
+			auto index = to_string(fontPaths.end() - i);
+			auto pathString = i->generic_string();
+
+			ImGui::PushID(index.c_str());
+			if (ImGui::InputText(index.c_str(), &pathString))
+				*i = pathString;
+			ImGui::SameLine();
+
+			if (ImGui::SmallButton(" - "))
+				i = fontPaths.erase(i);
+			ImGui::PopID();
+		}
+
+		ImGui::BeginDisabled(fontPaths.empty());
+		if (ImGui::SmallButton(" - ") && fontPaths.size() > 0)
+			fontPaths.resize(fontPaths.size() - 1);
+		ImGui::EndDisabled();
+
+		ImGui::SameLine();
+		if (ImGui::SmallButton(" + "))
+			fontPaths.push_back("");
+		ImGui::Spacing();
+	}
 }
 #endif

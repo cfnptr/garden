@@ -19,9 +19,12 @@
 
 #pragma once
 #include "garden/defines.hpp"
+#include "ecsm.hpp"
 
 namespace garden
 {
+
+using namespace ecsm;
 
 /**
  * @brief Font data container.
@@ -33,4 +36,11 @@ struct Font final
 
 	bool destroy();
 };
+
+/**
+ * @brief Array of the font variants. type[variant[font]]
+ * @details type - regular, bold, italic, boldItalic.
+ */
+using FontArray = vector<vector<Ref<Font>>>;
+
 } // namespace garden

@@ -176,7 +176,6 @@ static string_view toString(ShaderStage shaderStage) noexcept
 static string toStringList(ShaderStage shaderStage) noexcept
 {
 	string list;
-	if (hasAnyFlag(shaderStage, ShaderStage::None)) list += "None | ";
 	if (hasAnyFlag(shaderStage, ShaderStage::Vertex)) list += "Vertex | ";
 	if (hasAnyFlag(shaderStage, ShaderStage::Fragment)) list += "Fragment | ";
 	if (hasAnyFlag(shaderStage, ShaderStage::Compute)) list += "Compute | ";
@@ -189,6 +188,7 @@ static string toStringList(ShaderStage shaderStage) noexcept
 	if (hasAnyFlag(shaderStage, ShaderStage::Mesh)) list += "Mesh | ";
 	if (hasAnyFlag(shaderStage, ShaderStage::Task)) list += "Task | ";
 	if (list.length() >= 3) list.resize(list.length() - 3);
+	else return "None";
 	return list;
 }
 
