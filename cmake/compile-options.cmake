@@ -56,7 +56,8 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang") # Note: Do not remove MATCHES!
 	if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Darwin")
 		# This warning is emmited due to Brew iclude directories.
 		add_compile_options(-Wno-poison-system-directories)
-		# Strip symbols for a release build, it speed ups linking.
-		set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -s")
+		if(CMAKE_BUILD_TYPE STREQUAL "Release")
+			add_link_options(-s) # Strip symbols for a release build, it speed ups linking.
+		endif()
 	endif()
 endif()
