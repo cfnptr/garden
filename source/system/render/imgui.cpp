@@ -629,16 +629,15 @@ static void updateImGuiTextures(ImVector<ImTextureData*>& textures,
 		else if (texture->Status == ImTextureStatus_WantUpdates)
 		{
 			auto updateRect = texture->UpdateRect;
-			auto uploadPitch = (uint64)updateRect.w * texture->BytesPerPixel;
-			auto binarySize = updateRect.h * uploadPitch;
-			auto stagingBuffer = graphicsSystem->createBuffer(Buffer::Usage::TransferSrc, 
-				Buffer::CpuAccess::SequentialWrite, binarySize, Buffer::Location::Auto, Buffer::Strategy::Speed);
+			auto uploadPitch = (psize)updateRect.w * texture->BytesPerPixel;
+			auto binarySize = (uint64)updateRect.h * uploadPitch;
+			auto stagingBuffer = graphicsSystem->createStagingBuffer(Buffer::CpuAccess::SequentialWrite, binarySize);
 			SET_RESOURCE_DEBUG_NAME(stagingBuffer, "buffer.staging.imgui.image" + to_string(*stagingBuffer));
 
 			auto stagingView = graphicsSystem->get(stagingBuffer);
 			auto map = stagingView->getMap();
 			for (int y = 0; y < updateRect.h; y++)
-                memcpy(map + uploadPitch * y, texture->GetPixelsAt(updateRect.x, updateRect.y + y), (size_t)uploadPitch);
+                memcpy(map + uploadPitch * y, texture->GetPixelsAt(updateRect.x, updateRect.y + y), uploadPitch);
 			stagingView->flush();
 
 			ID<Image> image; *image = (uint32)(psize)texture->BackendUserData;

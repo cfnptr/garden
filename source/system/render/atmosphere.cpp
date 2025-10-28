@@ -98,9 +98,7 @@ static void createShStagings(GraphicsSystem* graphicsSystem, DescriptorSet::Buff
 
 	for (uint32 i = 0; i < inFlightCount; i++)
 	{
-		auto shStaging = graphicsSystem->createBuffer(
-			Buffer::Usage::TransferSrc, Buffer::CpuAccess::SequentialWrite, 
-			ibl::shBinarySize, Buffer::Location::Auto, Buffer::Strategy::Size);
+		auto shStaging = graphicsSystem->createStagingBuffer(Buffer::CpuAccess::SequentialWrite, ibl::shBinarySize);
 		SET_RESOURCE_DEBUG_NAME(shStaging, "buffer.staging.atmosphere.sh" + to_string(i));
 		shStagings[i].push_back(shStaging);
 	}

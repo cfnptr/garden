@@ -27,9 +27,8 @@ bool UiLabelComponent::updateText(bool shrink)
 	if (text)
 	{
 		auto textView = textSystem->get(text);
-		if (textView->isDynamic())
-			return textView->update(value, std::move(fonts), propterties, shrink);
-		textSystem->destroy(text);
+		return textView->update(value, propterties, std::move(fonts), fontSize, 
+			FontAtlas::defaultImageFlags, Text::defaultBufferFlags, shrink);
 	}
 
 	text = textSystem->createText(value, std::move(fonts), fontSize, propterties);

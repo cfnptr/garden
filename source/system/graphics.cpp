@@ -652,15 +652,9 @@ ID<Buffer> GraphicsSystem::createBuffer(Buffer::Usage usage, Buffer::CpuAccess c
 		else
 		{
 			GARDEN_ASSERT(hasAnyFlag(usage, Buffer::Usage::TransferDst));
-			auto stagingBuffer = graphicsAPI->bufferPool.create(Buffer::Usage::TransferSrc, 
-				Buffer::CpuAccess::SequentialWrite, Buffer::Location::Auto, Buffer::Strategy::Speed, size, 0);
-			SET_RESOURCE_DEBUG_NAME(stagingBuffer, "buffer.staging" + to_string(*stagingBuffer));
+			auto stagingBuffer = createStagingBuffer(Buffer::CpuAccess::SequentialWrite, size);
 			auto stagingView = graphicsAPI->bufferPool.get(stagingBuffer);
 			stagingView->writeData(data, size);
-
-			#if GARDEN_DEBUG // Hack: skips queue ownership asserts.
-			BufferExt::getUsage(**stagingView) |= Buffer::Usage::TransferQ | Buffer::Usage::ComputeQ;
-			#endif
 
 			if (!isRecording())
 			{
@@ -679,6 +673,22 @@ ID<Buffer> GraphicsSystem::createBuffer(Buffer::Usage usage, Buffer::CpuAccess c
 
 	return buffer;
 }
+ID<Buffer> GraphicsSystem::createStagingBuffer(Buffer::CpuAccess cpuAccess, uint64 size)
+{
+	GARDEN_ASSERT(size > 0);
+
+	auto graphicsAPI = GraphicsAPI::get();
+	auto stagingBuffer = graphicsAPI->bufferPool.create(Buffer::Usage::TransferSrc, 
+		cpuAccess, Buffer::Location::Auto, Buffer::Strategy::Speed, size, 0);
+	SET_RESOURCE_DEBUG_NAME(stagingBuffer, "buffer.staging" + to_string(*stagingBuffer));
+
+	#if GARDEN_DEBUG // Hack: skips queue ownership asserts.
+	auto stagingView = graphicsAPI->bufferPool.get(stagingBuffer);
+	BufferExt::getUsage(**stagingView) |= Buffer::Usage::TransferQ | Buffer::Usage::ComputeQ;
+	#endif
+	return stagingBuffer;
+}
+
 void GraphicsSystem::destroy(ID<Buffer> buffer)
 {
 	GraphicsAPI::get()->bufferPool.destroy(buffer);
@@ -769,8 +779,7 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 	if (stagingCount > 0)
 	{
 		GARDEN_ASSERT(hasAnyFlag(usage, Image::Usage::TransferDst));
-		auto stagingBuffer = graphicsAPI->bufferPool.create(Buffer::Usage::TransferSrc, 
-			Buffer::CpuAccess::SequentialWrite, Buffer::Location::Auto, Buffer::Strategy::Speed, stagingSize, 0);
+		auto stagingBuffer = createStagingBuffer(Buffer::CpuAccess::SequentialWrite, stagingSize);
 		SET_RESOURCE_DEBUG_NAME(stagingBuffer, "buffer.imageStaging" + to_string(*stagingBuffer));
 		
 		ID<Image> targetImage; 
@@ -835,10 +844,6 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 		GARDEN_ASSERT(stagingSize == stagingOffset);
 
 		stagingView->flush();
-
-		#if GARDEN_DEBUG // Hack: skips queue ownership asserts.
-		BufferExt::getUsage(**stagingView) |= Buffer::Usage::TransferQ | Buffer::Usage::ComputeQ;
-		#endif
 
 		if (format != dataFormat)
 		{

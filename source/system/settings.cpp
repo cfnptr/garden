@@ -157,8 +157,7 @@ void SettingsSystem::getString(const string& name, string& value)
 		if (confReader)
 		{
 			string_view stringView;
-			auto result = ((conf::Reader*)confReader)->get(name, stringView);
-			if (result)
+			if (((conf::Reader*)confReader)->get(name, stringView))
 				value = string(stringView);
 			else if (value.empty())
 				return;

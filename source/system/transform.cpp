@@ -433,16 +433,15 @@ TransformSystem::TransformSystem(bool setSingleton) : Singleton(setSingleton)
 
 TransformSystem::~TransformSystem()
 {
-	if (Manager::Instance::get()->isRunning)
+	auto manager = Manager::Instance::get();
+	components.clear(manager->isRunning);
+
+	if (manager->isRunning)
 	{
-		auto manager = Manager::Instance::get();
 		manager->removeGroupSystem<ISerializable>(this);
 		manager->removeGroupSystem<IAnimatable>(this);
 	}
-	else
-	{
-		components.clear(false);
-	}
+
 	unsetSingleton();
 }
 
