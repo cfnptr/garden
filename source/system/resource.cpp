@@ -1321,15 +1321,11 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 		ImageExt::moveInternalObjects(imageInstance, **imageView);
 
 		auto graphicsSystem = GraphicsSystem::Instance::get();
-		auto stagingBuffer = graphicsAPI->bufferPool.create(Buffer::Usage::TransferSrc, Buffer::CpuAccess::SequentialWrite, 
-			Buffer::Location::Auto, Buffer::Strategy::Speed, formatBinarySize * realSize.x * realSize.y, 0);
+		auto stagingBuffer =  graphicsSystem->createStagingBuffer(
+			Buffer::CpuAccess::SequentialWrite, formatBinarySize * realSize.x * realSize.y);
 		SET_RESOURCE_DEBUG_NAME(stagingBuffer, "buffer.staging.loadedImage" + to_string(*stagingBuffer));
+
 		auto stagingView = graphicsAPI->bufferPool.get(stagingBuffer);
-
-		#if GARDEN_DEBUG // Hack: skips queue ownership asserts.
-		BufferExt::getUsage(**stagingView) |= Buffer::Usage::TransferQ;
-		#endif
-
 		copyLoadedImageData(pixelArrays, stagingView->getMap(),
 			realSize, imageSize, formatBinarySize, flags);
 		stagingView->flush();
@@ -2751,20 +2747,11 @@ Ref<Font> ResourceSystem::loadFont(const fs::path& path, int32 faceIndex, bool l
 		if (logMissing)
 			GARDEN_LOG_ERROR("Font does not exist. (path: " + path.generic_string() + ")");
 		return {};
+	}
 
 	auto dataSize = packReader.getItemDataSize(itemIndex);
 	auto data = new uint8[dataSize];
 	packReader.readItemData(itemIndex, data);
-
-	FT_Face face = nullptr;
-	auto error = FT_New_Memory_Face((FT_Library)textSystem->ftLibrary, data, dataSize, faceIndex, &face);
-	if (error)
-	{
-		delete[] data;
-		GARDEN_LOG_ERROR("Failed to load font. (path: " + path.generic_string() + 
-			", error: " + string(FT_Error_String(error)) + ")");
-		return {};
-	}
 	#else
 	fs::path fontPath;
 	if (!File::tryGetResourcePath(appResourcesPath, filePath, fontPath))
@@ -2774,26 +2761,41 @@ Ref<Font> ResourceSystem::loadFont(const fs::path& path, int32 faceIndex, bool l
 		return {};
 	}
 
-	FT_Face face = nullptr;
-	auto error = FT_New_Face((FT_Library)textSystem->ftLibrary, 
-		fontPath.generic_string().c_str(), faceIndex, &face);
-	if (error)
-	{
-		GARDEN_LOG_ERROR("Failed to load font file. (path: " + path.generic_string() + 
-			", error: " + string(FT_Error_String(error)) + ")");
-		return {};
-	}
+	vector<uint8> fileData; File::loadBinary(fontPath, fileData);
+	auto dataSize = fileData.size(); auto data = new uint8[dataSize];
+	memcpy(data, fileData.data(), dataSize); fileData = {};
 	#endif
+
+	auto ftLibrary = (FT_Library)textSystem->ftLibrary;
+	auto threadSystem = ThreadSystem::Instance::tryGet();
+	vector<void*> faces(threadSystem ? threadSystem->getForegroundPool().getThreadCount() : 1);
+
+	for (auto& face : faces)
+	{
+		FT_Face ftFace = nullptr;
+		auto result = FT_New_Memory_Face(ftLibrary, data, dataSize, faceIndex, &ftFace);
+		if (result != 0)
+		{
+			GARDEN_LOG_ERROR("Failed to load font. (path: " + path.generic_string() + 
+				", error: " + string(FT_Error_String(result)) + ")");
+			for (auto _face : faces)
+			{
+				result = FT_Done_Face((FT_Face)_face);
+				GARDEN_ASSERT_MSG(!result, "Failed to destroy FreeType font");
+			}
+			delete[] data;
+			return {};
+		}
+		face = ftFace;
+	}
 
 	auto font = Ref<Font>(textSystem->fonts.create());
 	auto emplaceResult = sharedFonts.emplace(hash, font);
 	GARDEN_ASSERT_MSG(emplaceResult.second, "Detected memory corruption");
 
 	auto fontView = textSystem->fonts.get(font);
-	fontView->face = face;
-	#if GARDEN_PACK_RESOURCES
+	fontView->faces = std::move(faces);
 	fontView->data = data;
-	#endif
 
 	GARDEN_LOG_TRACE("Loaded font. (path: " + path.generic_string() + ")");
 	return font;
@@ -2802,21 +2804,9 @@ Ref<Font> ResourceSystem::loadFont(const fs::path& path, int32 faceIndex, bool l
 //**********************************************************************************************************************
 FontArray ResourceSystem::loadFonts(const vector<fs::path>& paths, int32 faceIndex, bool loadNoto)
 {
-	vector<fs::path> fontPaths = paths;
+	auto fontPaths = paths.empty() ? defaultFontPaths : paths;
 	if (loadNoto)
-	{
-		fontPaths.push_back("noto-sans/base");
-		fontPaths.push_back("noto-sans/japanese");
-		fontPaths.push_back("noto-sans/tchinese");
-		fontPaths.push_back("noto-sans/schinese");
-		fontPaths.push_back("noto-sans/korean");
-		fontPaths.push_back("noto-sans/arabic");
-		fontPaths.push_back("noto-sans/devanagari");
-		fontPaths.push_back("noto-sans/hebrew");
-		fontPaths.push_back("noto-sans/thai");
-		fontPaths.push_back("noto-sans/bengali");
-		fontPaths.push_back("noto-sans/urdu");
-	}
+		fontPaths.insert(fontPaths.end(), notoFontPaths.begin(), notoFontPaths.end());
 	GARDEN_ASSERT(!fontPaths.empty());
 
 	FontArray fonts(4);

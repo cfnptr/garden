@@ -212,6 +212,20 @@ protected:
 	friend class ecsm::Manager;
 public:
 	/*******************************************************************************************************************
+	 * @brief Default font path array.
+	 */
+	vector<fs::path> defaultFontPaths = { "dejavu-sans-mono" };
+	/**
+	 * @brief Supporting noto font paths.
+	 */
+	vector<fs::path> notoFontPaths =
+	{
+		"noto-sans/base", "noto-sans/japanese", "noto-sans/tchinese", "noto-sans/schinese", 
+		"noto-sans/korean", "noto-sans/arabic", "noto-sans/devanagari", "noto-sans/hebrew", 
+		"noto-sans/thai", "noto-sans/bengali", "noto-sans/urdu"
+	};
+
+	/**
 	 * @brief Loads image data (pixels) from the resource pack.
 	 * @note Loads from the images directory in debug build.
 	 * 

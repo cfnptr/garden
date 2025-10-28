@@ -1412,8 +1412,7 @@ ID<Buffer> PbrLightingSystem::createSpecularCache(uint32 cubemapSize,
 	specularCacheSize *= sizeof(SpecularData);
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto stagingBuffer = graphicsSystem->createBuffer(Buffer::Usage::TransferSrc, 
-		Buffer::CpuAccess::RandomReadWrite, specularCacheSize, Buffer::Location::Auto, Buffer::Strategy::Speed);
+	auto stagingBuffer = graphicsSystem->createStagingBuffer(Buffer::CpuAccess::RandomReadWrite, specularCacheSize);
 	SET_RESOURCE_DEBUG_NAME(stagingBuffer, "buffer.staging.specularCache" + to_string(*stagingBuffer));
 
 	auto stagingView = graphicsSystem->get(stagingBuffer);
@@ -1422,10 +1421,6 @@ ID<Buffer> PbrLightingSystem::createSpecularCache(uint32 cubemapSize,
 	iblCountBuffer.resize(specularMipCount - 1);
 	auto weightBufferData = iblWeightBuffer.data();
 	auto countBufferData = iblCountBuffer.data();
-
-	#if GARDEN_DEBUG // Hack: skips queue ownership asserts.
-	BufferExt::getUsage(**stagingView) |= Buffer::Usage::TransferQ | Buffer::Usage::ComputeQ;
-	#endif
 
 	auto threadSystem = ThreadSystem::Instance::tryGet();
 	if (threadSystem)
@@ -1449,7 +1444,6 @@ ID<Buffer> PbrLightingSystem::createSpecularCache(uint32 cubemapSize,
 				cubemapSize, sampleCount, skyboxMipCount, specularMipCount, i);
 		}
 	}
-
 	stagingView->flush();
 
 	uint64 gpuCacheSize = 0;

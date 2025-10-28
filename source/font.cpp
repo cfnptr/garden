@@ -21,11 +21,15 @@ using namespace garden;
 
 bool Font::destroy()
 {
-	if (!face)
+	if (faces.empty())
 		return true;
 
-	auto result = FT_Done_Face((FT_Face)face);
-	GARDEN_ASSERT_MSG(!result, "Failed to destroy FreeType font");
+	for (auto face : faces)
+	{
+		auto result = FT_Done_Face((FT_Face)face);
+		GARDEN_ASSERT_MSG(!result, "Failed to destroy FreeType font");
+	}
+	
 	delete[] data;
 	return true;
 }

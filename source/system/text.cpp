@@ -15,6 +15,7 @@
 #include "garden/system/text.hpp"
 #include "garden/system/graphics.hpp"
 #include "garden/system/resource.hpp"
+#include "garden/system/thread.hpp"
 #include "garden/system/log.hpp"
 #include "garden/profiler.hpp"
 
@@ -24,42 +25,11 @@
 
 using namespace garden;
 
-bool Text::update(u32string_view value, const FontArray& fonts, Properties properties, bool shrink)
-{
-	GARDEN_ASSERT(!value.empty());
-
-	return false;
-}
-
-TextSystem::TextSystem(bool setSingleton) : Singleton(setSingleton)
-{
-	FT_Library ftLibrary = nullptr;
-	auto result = FT_Init_FreeType(&ftLibrary);
-	if (result != 0)
-		throw GardenError("Failed to initialize FreeType. (error: " + string(FT_Error_String(result)) + ")");
-	this->ftLibrary = ftLibrary;
-}
-TextSystem::~TextSystem()
-{
-	auto result = FT_Done_FreeType((FT_Library)ftLibrary);
-	GARDEN_ASSERT_MSG(!result, "Failed to deinitialize FreeType");
-
-	unsetSingleton();
-}
-
-//**********************************************************************************************************************
-void TextSystem::update()
-{
-	SET_CPU_ZONE_SCOPED("Texts Update");
-
-	texts.dispose();
-	fontAtlases.dispose();
-	fonts.dispose();
-}
-
 static void prepareGlyphs(u32string_view chars, FontAtlas::GlyphMap& glyphs)
 {
-	Glyph glyph;
+	Glyph glyph; glyph.value = '\0';
+	glyphs.emplace('\0', glyph); // Note: tofu symbol.
+
 	for (auto value : chars)
 	{
 		if (value == '\n') continue;
@@ -70,15 +40,17 @@ static void prepareGlyphs(u32string_view chars, FontAtlas::GlyphMap& glyphs)
 }
 
 static constexpr float fixedToFloat(FT_Fixed fixed) noexcept { return (float)fixed / 65536.0f; }
-static constexpr FT_Fixed floatToFixed(float f) { return (FT_Fixed)(f * 65536.0f + 0.5f); }
+static constexpr FT_Fixed floatToFixed(float f) noexcept { return (FT_Fixed)(f * 65536.0f + 0.5f); }
+static uint32 calcGlyphLength(psize glyphCount) noexcept { return (uint32)ceil(sqrt((double)glyphCount)); }
 
-static bool fillFontAtlas(const LinearPool<Font>& fontPool, 
-	FT_Library ftLibrary, const vector<Ref<Font>>& fonts, FontAtlas::GlyphMap& glyphs, 
-	uint8_t* pixels, uint32 fontSize, uint32 glyphLength, uint32 pixelLength, uint8 fontIndex)
+//**********************************************************************************************************************
+static bool fillFontAtlas(const LinearPool<Font>& fontPool, FT_Library ftLibrary, const vector<Ref<Font>>& fonts, 
+	FontAtlas::GlyphMap& glyphs, uint8_t* pixels, uint32 fontSize, uint32 glyphLength, uint32 pixelLength, 
+	uint8 fontIndex, uint32 itemOffset, uint32 itemCount, uint32 threadIndex)
 {
 	for (const auto& font : fonts)
 	{
-		auto fontFace = (FT_Face)fontPool.get(font)->face;
+		auto fontFace = (FT_Face)fontPool.get(font)->faces.at(threadIndex);
 		auto result = FT_Set_Pixel_Sizes(fontFace, 0, (FT_UInt)fontSize);
 		if (result != 0)
 		{
@@ -135,21 +107,24 @@ static bool fillFontAtlas(const LinearPool<Font>& fontPool,
 		}
 	}
 
-	pixels += fontIndex;
-	auto mainFace = (FT_Face)fontPool.get(fonts[0])->face;
-	uint32 index = 0;
+	auto mainFace = (FT_Face)fontPool.get(fonts[0])->faces.at(threadIndex);
+	auto i = glyphs.begin(); pixels += fontIndex;
 
-	for (auto i = glyphs.begin(); i != glyphs.end(); i++)
+	for (uint32 j = 0; j < itemOffset; j++)
+		i++; // TODO: solve this somehow, suboptimal!
+
+	for (uint32 index = itemOffset; index < itemCount; index++, i++)
 	{
+		GARDEN_ASSERT_MSG(i != glyphs.end(), "Detected memory corruption");
 		Glyph glyph; glyph.value = i->second.value;
 		auto charIndex = FT_Get_Char_Index(mainFace, (FT_ULong)glyph.value);
 
 		auto charFace = mainFace;
 		if (charIndex == 0 && glyph.value != '\0')
 		{
-			for (auto i = fonts.begin() + 1; i != fonts.end(); i++)
+			for (auto j = fonts.begin() + 1; j != fonts.end(); j++)
 			{
-				auto face = (FT_Face)fontPool.get(*i)->face;
+				auto face = (FT_Face)fontPool.get(*j)->faces.at(threadIndex);
 				charIndex = FT_Get_Char_Index(face, (FT_ULong)glyph.value);
 				if (charIndex == 0)
 					continue;
@@ -171,7 +146,7 @@ static bool fillFontAtlas(const LinearPool<Font>& fontPool,
 
 		if (glyphWidth * glyphHeight == 0)
 		{
-			glyph.value = UINT32_MAX;
+			glyph.value = Glyph::invisible;
 		}
 		else
 		{
@@ -194,21 +169,448 @@ static bool fillFontAtlas(const LinearPool<Font>& fontPool,
 			}
 		}
 
-		i.value() = glyph; index++;
+		i.value() = glyph;
 	}
 
 	return true;
 }
+static bool fillFontAtlas(const LinearPool<Font>& fontPool, FT_Library ftLibrary, const FontArray& fonts, 
+	vector<FontAtlas::GlyphMap>& glyphs, uint8_t* pixels, uint32 fontSize, uint32 glyphLength, uint32 pixelLength)
+{
+	auto threadSystem = ThreadSystem::Instance::tryGet();
+	if (threadSystem)
+	{
+		auto& threadPool = threadSystem->getForegroundPool();
+		atomic_int64_t result = 0;
+
+		for (uint8 i = 0; i < 4; i++)
+		{
+			const auto& fontArray = fonts[i]; auto& glyphMap = glyphs[i];
+			threadPool.addItems([&fontPool, ftLibrary, &fontArray, &glyphMap, pixels, fontSize, 
+				glyphLength, pixelLength, i, &result](const ThreadPool::Task& task)
+			{
+				if (fillFontAtlas(fontPool, ftLibrary, fontArray, glyphMap, pixels, fontSize, glyphLength, 
+					pixelLength, i, task.getItemOffset(), task.getItemCount(), task.getThreadIndex()))
+				{
+					result += task.getItemCount() - task.getItemOffset();
+				}
+			},
+			glyphMap.size());
+		}
+
+		threadPool.wait();
+		return result == glyphs[0].size() * 4;
+	}
+
+	auto glyphCount = glyphs[0].size();
+	for (uint8 i = 0; i < 4; i++)
+	{
+		if (!fillFontAtlas(fontPool, ftLibrary, fonts[i], glyphs[i], pixels, 
+			fontSize, glyphLength, pixelLength, i, 0, glyphCount, 0))
+		{
+			return false;
+		}
+	}
+	return true;
+}
 
 //**********************************************************************************************************************
-ID<FontAtlas> TextSystem::createFontAtlas(u32string_view chars, 
-	uint32 fontSize, FontArray&& fonts, Image::Usage imageUsage)
+bool FontAtlas::update(u32string_view chars, uint32 fontSize, Image::Usage imageUsage, bool shrink)
 {
 	GARDEN_ASSERT(!chars.empty());
 	GARDEN_ASSERT(fontSize > 0);
-	GARDEN_ASSERT(fonts.size() == 4);
 
-	SET_CPU_ZONE_SCOPED("Font Atlas Create");
+	SET_CPU_ZONE_SCOPED("Font Atlas Update");
+
+	auto textSystem = TextSystem::Instance::get();
+	auto defaultFace = (FT_Face)textSystem->fonts.get(fonts[0][0])->faces[0];
+
+	auto result = FT_Set_Pixel_Sizes(defaultFace, 0, (FT_UInt)fontSize);
+	if (result != 0)
+	{
+		GARDEN_LOG_DEBUG("Failed to set FreeType font pixel sizes. ("
+			"error: " + string(FT_Error_String(result)) + ")");
+		return false;
+	}
+	auto newLineAdvance = ((float)defaultFace->size->metrics.height * (1.0f / 64.0f)) / fontSize;
+
+	vector<GlyphMap> newGlyphs(4); prepareGlyphs(chars, newGlyphs[0]);
+	if (newGlyphs[0].empty())
+	{
+		GARDEN_LOG_DEBUG("Failed to create font atlas, no visible glyphs.");
+		return false;
+	}
+	
+	constexpr auto imageFormat = Image::Format::UnormR8G8B8A8;
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto glyphLength = calcGlyphLength(newGlyphs[0].size());
+	auto newPixelSize = uint2(glyphLength * fontSize, (uint32)
+		ceil((double)newGlyphs[0].size() / glyphLength) * fontSize); 
+	auto currPixelSize = uint2::zero;
+
+	if (image && !shrink)
+	{
+		auto imageView = graphicsSystem->get(image);
+		currPixelSize = (uint2)imageView->getSize();
+	}
+
+	if (areAnyTrue(newPixelSize > currPixelSize) && !Image::isSupported(
+		Image::Type::Texture2D, imageFormat, imageUsage, uint3(newPixelSize, 1)))
+	{
+		GARDEN_LOG_DEBUG("Failed to create font atlas, resulting image is not supported.");
+		return false;
+	}
+	
+	auto pixelLength = max(currPixelSize.x, newPixelSize.x);
+	auto binarySize = (uint64)pixelLength * newPixelSize.y * 4;
+	auto stagingBuffer = graphicsSystem->createStagingBuffer(Buffer::CpuAccess::RandomReadWrite, binarySize);
+	SET_RESOURCE_DEBUG_NAME(stagingBuffer, "buffer.staging.fontAtlas" + to_string(*stagingBuffer));
+
+	auto stagingView = graphicsSystem->get(stagingBuffer);
+	auto pixels = (uint8*)stagingView->getMap(); memset(pixels, 0, binarySize);
+	newGlyphs[1] = newGlyphs[0]; newGlyphs[2] = newGlyphs[0]; newGlyphs[3] = newGlyphs[0];
+
+	if (!fillFontAtlas(textSystem->fonts, (FT_Library)textSystem->ftLibrary, 
+		fonts, newGlyphs, pixels, fontSize, glyphLength, pixelLength))
+	{
+		graphicsSystem->destroy(stagingBuffer);
+		return false;
+	}
+	stagingView->flush();
+
+	if (areAnyTrue(newPixelSize > currPixelSize))
+	{
+		graphicsSystem->destroy(image);
+		image = graphicsSystem->createImage(imageFormat, imageUsage, 
+			{ { nullptr } }, newPixelSize, Image::Strategy::Size);
+		SET_RESOURCE_DEBUG_NAME(image, "image.fontAtlas" + to_string(*image));
+	}
+
+	Image::CopyBufferRegion copyRegion;
+	copyRegion.imageExtent = uint3(pixelLength, newPixelSize.y, 1);
+	Image::copy(stagingBuffer, image, copyRegion);
+	graphicsSystem->destroy(stagingBuffer);
+
+	glyphs = std::move(newGlyphs);
+	fontSize = fontSize;
+	newLineAdvance = newLineAdvance;
+	return true;
+}
+
+//**********************************************************************************************************************
+static bool fillTextInstances(u32string_view value, Text::Properties properties, View<FontAtlas> fontAtlasView, 
+	uint32 fontSize, Text::Instance* instances, uint32& instanceCount, float2& textSize)
+{
+	auto chars = value.data();
+	const auto& glyphArray = fontAtlasView->getGlyphs();
+	auto newLineAdvance = fontAtlasView->getNewLineAdvance();
+	auto color = properties.color; auto isBold = properties.isBold, isItalic = properties.isItalic;
+	auto size = float2::zero, instanceOffset = float2(0.0f, newLineAdvance * 0.5f);
+	instanceOffset.y = -floorf(instanceOffset.y * fontSize) / fontSize;
+	uint32 instanceIndex = 0, lastNewLineIndex = 0;
+
+	const FontAtlas::GlyphMap* glyphs; uint32 atlasIndex;
+	if (isBold && isItalic) { atlasIndex = 3; glyphs = &glyphArray[atlasIndex]; }
+	else if (isItalic) { atlasIndex = 2; glyphs = &glyphArray[atlasIndex]; }
+	else if (isBold) { atlasIndex = 1; glyphs = &glyphArray[atlasIndex]; }
+	else { atlasIndex = 0; glyphs = &glyphArray[atlasIndex]; }
+
+	for (psize i = 0; i < value.length(); i++)
+	{
+		auto c = chars[i];
+		if (c == '\n')
+		{
+			float offset;
+			switch (properties.alignment)
+			{
+			case Text::Alignment::Center:
+				offset = floorf(instanceOffset.x * -0.5f * fontSize) / fontSize;
+				for (uint32 j = lastNewLineIndex; j < instanceIndex; j++)
+					instances[j].position.x += offset;
+				break;
+			case Text::Alignment::Right:
+				offset = -instanceOffset.x;
+				for (uint32 j = lastNewLineIndex; j < instanceIndex; j++)
+					instances[j].position.x += offset;
+				break;
+			case Text::Alignment::Bottom:
+				offset = floorf(instanceOffset.x * -0.5f * fontSize) / fontSize;
+				for (uint32 j = lastNewLineIndex; j < instanceIndex; j++)
+					instances[j].position.x += offset;
+				break;
+			case Text::Alignment::Top:
+				offset = floorf(instanceOffset.x * -0.5f * fontSize) / fontSize;
+				for (uint32 j = lastNewLineIndex; j < instanceIndex; j++)
+					instances[j].position.x += offset;
+				break;
+			case Text::Alignment::RightBottom:
+				offset = -instanceOffset.x;
+				for (uint32 j = lastNewLineIndex; j < instanceIndex; j++)
+					instances[j].position.x += offset;
+				break;
+			case Text::Alignment::RightTop:
+				offset = -instanceOffset.x;
+				for (uint32_t j = lastNewLineIndex; j < instanceIndex; j++)
+					instances[j].position.x += offset;
+				break;
+			case Text::Alignment::Left:
+			case Text::Alignment::LeftBottom:
+			case Text::Alignment::LeftTop:
+				break;
+			default: abort();
+			}
+
+			lastNewLineIndex = instanceIndex;
+			size.x = max(size.x, instanceOffset.x);
+			instanceOffset.y -= newLineAdvance;
+			instanceOffset.x = 0.0f;
+			continue;
+		}
+		else if (c == '\t')
+		{
+			auto result = glyphs->find(U' ');
+			if (result == glyphs->end())
+				return false;
+			instanceOffset.x += result->second.advance * 4.0f; // TODO: allow to adjust tab spacing size.
+			continue;
+		}
+		else if (c == '<' && properties.useTags)
+		{
+			if (i + 2 < value.length() && chars[i + 2] == '>')
+			{
+				auto tag = chars[i + 1];
+				if (tag == 'b')
+				{
+					if (isItalic) { atlasIndex = 3; glyphs = &glyphArray[atlasIndex]; }
+					else { atlasIndex = 1; glyphs = &glyphArray[atlasIndex]; }
+					isBold = true; i += 2;
+					continue;
+				}
+				else if (tag == 'i')
+				{
+					if (isBold) { atlasIndex = 3; glyphs = &glyphArray[atlasIndex]; }
+					else { atlasIndex = 2; glyphs = &glyphArray[atlasIndex]; }
+					isItalic = true; i += 2;
+					continue;
+				}
+			}
+			else if (i + 3 < value.length() && chars[i + 1] == '/' && chars[i + 3] == '>')
+			{
+				auto tag = chars[i + 2];
+				if (tag == 'b')
+				{
+					if (isItalic) { atlasIndex = 2; glyphs = &glyphArray[atlasIndex]; }
+					else { atlasIndex = 0; glyphs = &glyphArray[atlasIndex]; }
+					isBold = false; i += 3;
+					continue;
+				}
+				else if (tag == 'i')
+				{
+					if (isBold) { atlasIndex = 1; glyphs = &glyphArray[atlasIndex]; }
+					else { atlasIndex = 0; glyphs = &glyphArray[atlasIndex]; }
+					isItalic = false; i += 3;
+					continue;
+				}
+				else if (tag == '#')
+				{
+					color = properties.color; i += 3;
+					continue;
+				}
+			}
+			else if (i + 8 < value.length() && chars[i + 1] == '#' && chars[i + 8] == '>')
+			{
+				color = Color(u32string_view(chars + i + 2, 6)); i+= 8;
+			}
+			else if (i + 10 < value.length() && chars[i + 1] == '#' && chars[i + 10] == '>')
+			{
+				color = Color(u32string_view(chars + i + 2, 8)); i += 10;
+			}
+			// TODO: more tags.
+		}
+
+		auto result = glyphs->find(c);
+		if (result == glyphs->end())
+		{
+			result = glyphs->find(U'\0');
+			if (result == glyphs->end())
+				return false;
+		}
+
+		if (result->second.value != Glyph::invisible)
+		{
+			Text::Instance instance;
+			instance.position = result->second.position + 
+				float4(instanceOffset, instanceOffset);
+			instance.texCoords = result->second.texCoords;
+			instance.atlasIndex = atlasIndex;
+			instance.color = color;
+			instances[instanceIndex++] = instance;
+		}
+		instanceOffset.x += result->second.advance;
+	}
+
+	size.x = max(size.x, instanceOffset.x);
+	size.y = -instanceOffset.y;
+
+	float offset;
+	switch (properties.alignment)
+	{
+	case Text::Alignment::Center:
+		offset = floorf(instanceOffset.x * -0.5f * fontSize) / fontSize;
+		for (uint32_t i = lastNewLineIndex; i < instanceIndex; i++)
+			instances[i].position.x += offset;
+		offset = floorf(size.y * 0.5f * fontSize) / fontSize;
+		for (uint32_t i = 0; i < instanceIndex; i++)
+			instances[i].position.y += offset;
+		break;
+	case Text::Alignment::Left:
+		offset = floorf(size.y * 0.5f * fontSize) / fontSize;
+		for (uint32_t i = 0; i < instanceIndex; i++)
+			instances[i].position.y += offset;
+		break;
+	case Text::Alignment::Right:
+		offset = -instanceOffset.x;
+		for (uint32_t i = lastNewLineIndex; i < instanceIndex; i++)
+			instances[i].position.x += offset;
+		offset = floorf(size.y * 0.5f * fontSize) / fontSize;
+		for (uint32_t i = 0; i < instanceIndex; i++)
+			instances[i].position.y += offset;
+		break;
+	case Text::Alignment::Bottom:
+		offset = floorf(instanceOffset.x * -0.5f * fontSize) / fontSize;
+		for (uint32_t i = lastNewLineIndex; i < instanceIndex; i++)
+			instances[i].position.x += offset;
+		offset = size.y;
+		for (uint32_t i = 0; i < instanceIndex; i++)
+			instances[i].position.y += offset;
+		break;
+	case Text::Alignment::Top:
+		offset = floorf(instanceOffset.x * -0.5f * fontSize) / fontSize;
+		for (uint32_t i = lastNewLineIndex; i < instanceIndex; i++)
+			instances[i].position.x += offset;
+		break;
+	case Text::Alignment::LeftBottom:
+		offset = size.y;
+		for (uint32_t i = 0; i < instanceIndex; i++)
+			instances[i].position.y += offset;
+		break;
+	case Text::Alignment::RightBottom:
+		offset = -instanceOffset.x;
+		for (uint32_t i = lastNewLineIndex; i < instanceIndex; i++)
+			instances[i].position.x += offset;
+		offset = size.y;
+		for (uint32_t i = 0; i < instanceIndex; i++)
+			instances[i].position.y += offset;
+		break;
+	case Text::Alignment::RightTop:
+		offset = -instanceOffset.x;
+		for (uint32_t i = lastNewLineIndex; i < instanceIndex; i++)
+			instances[i].position.x += offset;
+		break;
+	case Text::Alignment::LeftTop: break;
+	default: abort();
+	}
+
+	instanceCount = instanceIndex;
+	textSize = float2(size.x, size.y + newLineAdvance * 0.25f);
+	return true;
+}
+
+//**********************************************************************************************************************
+bool Text::update(u32string_view value, Properties properties, const FontArray& fonts, uint32 fontSize, 
+	Image::Usage atlasUsage, Buffer::Usage instanceUsage, bool shrink)
+{
+	GARDEN_ASSERT(!value.empty());
+
+	SET_CPU_ZONE_SCOPED("Text Update");
+	auto textSystem = TextSystem::Instance::get();
+
+	ID<FontAtlas> newFontAtlas = {};
+	if (atlasShared || shrink || !fontAtlas)
+	{
+		auto fontArray = fonts;
+		if (fontAtlas)
+		{
+			auto fontAtlasView = textSystem->get(fontAtlas);
+			if (fontSize == 0) fontSize = fontAtlasView->getFontSize();
+			if (fonts.empty()) fontArray = fontAtlasView->getFonts();
+		}
+
+		GARDEN_ASSERT(fontSize > 0);
+		GARDEN_ASSERT(!fontArray.empty());
+
+		newFontAtlas = textSystem->createFontAtlas(value, std::move(fontArray), fontSize, atlasUsage);
+		if (!newFontAtlas)
+			return false;
+	}
+
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto stagingBuffer = graphicsSystem->createStagingBuffer(
+		Buffer::CpuAccess::RandomReadWrite, value.size() * sizeof(Text::Instance));
+	SET_RESOURCE_DEBUG_NAME(stagingBuffer, "buffer.staging.textInstances" + to_string(*stagingBuffer));
+
+	auto stagingView = graphicsSystem->get(stagingBuffer);
+	auto instances = (Text::Instance*)stagingView->getMap();
+	auto fontAtlasView = newFontAtlas ? textSystem->get(newFontAtlas) : textSystem->get(fontAtlas);
+
+	uint32 instanceCount; float2 textSize;
+	if (!fillTextInstances(value, properties, fontAtlasView, fontSize, instances, instanceCount, textSize))
+	{
+		graphicsSystem->destroy(stagingBuffer);
+		textSystem->destroy(newFontAtlas);
+		return false;
+	}
+
+	ID<Buffer> newInstanceBuffer = {};
+	if (shrink || !instanceBuffer)
+	{
+		//newInstanceBuffer = graphicsSystem->createBuffer(instanceUsage,)
+	}
+	
+	return true;
+}
+
+//**********************************************************************************************************************
+TextSystem::TextSystem(bool setSingleton) : Singleton(setSingleton)
+{
+	FT_Library ftLibrary = nullptr;
+	auto result = FT_Init_FreeType(&ftLibrary);
+	if (result != 0)
+		throw GardenError("Failed to initialize FreeType. (error: " + string(FT_Error_String(result)) + ")");
+	this->ftLibrary = ftLibrary;
+}
+TextSystem::~TextSystem()
+{
+	auto manager = Manager::Instance::get();
+	texts.clear(manager->isRunning);
+	fontAtlases.clear(manager->isRunning);
+	fonts.clear(manager->isRunning);
+
+	if (manager->isRunning)
+	{
+		auto result = FT_Done_FreeType((FT_Library)ftLibrary);
+		GARDEN_ASSERT_MSG(!result, "Failed to deinitialize FreeType");
+	}
+
+	unsetSingleton();
+}
+
+void TextSystem::update()
+{
+	SET_CPU_ZONE_SCOPED("Texts Update");
+
+	texts.dispose();
+	fontAtlases.dispose();
+	fonts.dispose();
+}
+
+//**********************************************************************************************************************
+ID<FontAtlas> TextSystem::createFontAtlas(u32string_view chars, 
+	FontArray&& fonts, uint32 fontSize, Image::Usage imageUsage)
+{
+	GARDEN_ASSERT(!chars.empty());
+	GARDEN_ASSERT(fonts.size() == 4);
+	GARDEN_ASSERT(fontSize > 0);
 
 	for (const auto& variants : fonts)
 	{
@@ -218,80 +620,21 @@ ID<FontAtlas> TextSystem::createFontAtlas(u32string_view chars,
 		return {};
 	}
 
-	auto defaultFontView = this->fonts.get(fonts[0][0]);
-	auto defaultFace = (FT_Face)defaultFontView->face;
-
-	auto result = FT_Set_Pixel_Sizes(defaultFace, 0, (FT_UInt)fontSize);
-	if (result != 0)
-	{
-		GARDEN_LOG_DEBUG("Failed to set FreeType font pixel sizes. ("
-			"error: " + string(FT_Error_String(result)) + ")");
-		return {};
-	}
-	auto newLineAdvance = ((float)defaultFace->size->metrics.height * (1.0f / 64.0f)) / fontSize;
-
-	FontAtlas::GlyphMap regularGlyphs; prepareGlyphs(chars, regularGlyphs);
-	if (regularGlyphs.empty())
-	{
-		GARDEN_LOG_DEBUG("Failed to create font atlas, no visible glyphs.");
-		return {};
-	}
-	
-	constexpr auto format = Image::Format::UnormR8G8B8A8;
-	auto glyphLength = (uint32)ceil(sqrt((double)regularGlyphs.size())), pixelLength = glyphLength * fontSize;
-	if (!Image::isSupported(Image::Type::Texture2D, format, imageUsage, uint3(glyphLength, glyphLength, 1)))
-	{
-		GARDEN_LOG_DEBUG("Failed to create font atlas, resulting image is not supported.");
-		return {};
-	}
-
-	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto binarySize = (size_t)pixelLength * pixelLength * 4;
-	auto stagingBuffer = graphicsSystem->createBuffer(Buffer::Usage::TransferSrc, 
-		Buffer::CpuAccess::RandomReadWrite, binarySize, Buffer::Location::Auto, Buffer::Strategy::Speed);
-	SET_RESOURCE_DEBUG_NAME(stagingBuffer, "buffer.staging.fontAtlas");
-
-	auto stagingView = graphicsSystem->get(stagingBuffer);
-	#if GARDEN_DEBUG // Hack: skips queue ownership asserts.
-	BufferExt::getUsage(**stagingView) |= Buffer::Usage::TransferQ | Buffer::Usage::ComputeQ;
-	#endif
-
-	auto ft = (FT_Library)ftLibrary;
-	auto pixels = (uint8*)stagingView->getMap(); memset(pixels, 0, binarySize);
-	auto boldGlyphs = regularGlyphs, italicGlyphs = regularGlyphs, boldItalicGlyphs = regularGlyphs;
-
-	if (!fillFontAtlas(this->fonts, ft, fonts[0], regularGlyphs, pixels, fontSize, glyphLength, pixelLength, 0) || 
-		!fillFontAtlas(this->fonts, ft, fonts[1], boldGlyphs, pixels, fontSize, glyphLength, pixelLength, 1) || 
-		!fillFontAtlas(this->fonts, ft, fonts[2], italicGlyphs, pixels, fontSize, glyphLength, pixelLength, 2) || 
-		!fillFontAtlas(this->fonts, ft, fonts[3], boldItalicGlyphs, pixels, fontSize, glyphLength, pixelLength, 3))
-	{
-		graphicsSystem->destroy(stagingBuffer);
-		return {};
-	}
-	stagingView->flush();
-
-	auto image = graphicsSystem->createImage(format, imageUsage, 
-		{ { nullptr } }, uint2(pixelLength), Image::Strategy::Size);
-	SET_RESOURCE_DEBUG_NAME(image, "image.fontAtlas" + to_string(*image));
-
-	auto stopRecording = graphicsSystem->tryStartRecording(CommandBufferType::TransferOnly);
-	Image::copy(stagingBuffer, image);
-	
-	if (stopRecording)
-		graphicsSystem->stopRecording();
-	graphicsSystem->destroy(stagingBuffer);
-
 	auto fontAtlas = fontAtlases.create();
 	auto fontAtlasView = fontAtlases.get(fontAtlas);
 	fontAtlasView->fonts = std::move(fonts);
-	fontAtlasView->glyphs.resize(4);
-	fontAtlasView->glyphs[0] = std::move(regularGlyphs);
-	fontAtlasView->glyphs[1] = std::move(boldGlyphs);
-	fontAtlasView->glyphs[2] = std::move(italicGlyphs);
-	fontAtlasView->glyphs[3] = std::move(boldItalicGlyphs);
-	fontAtlasView->image = image;
-	fontAtlasView->fontSize = fontSize;
-	fontAtlasView->newLineAdvance = newLineAdvance;
+
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto stopRecording = graphicsSystem->tryStartRecording(CommandBufferType::TransferOnly);
+
+	if (!fontAtlasView->update(chars, fontSize))
+	{
+		fontAtlases.destroy(fontAtlas);
+		return {};
+	}
+	
+	if (stopRecording)
+		graphicsSystem->stopRecording();
 	return fontAtlas;
 }
 void TextSystem::destroy(ID<FontAtlas> fontAtlas)
@@ -306,12 +649,38 @@ void TextSystem::destroy(ID<FontAtlas> fontAtlas)
 }
 
 //**********************************************************************************************************************
-ID<Text> TextSystem::createText(u32string_view value, const Ref<FontAtlas>& fontAtlas, Text::Properties properties)
+ID<Text> TextSystem::createText(u32string_view value, const Ref<FontAtlas>& fontAtlas, 
+	Text::Properties properties, bool isAtlasShared)
 {
 	GARDEN_ASSERT(!value.empty());
 	GARDEN_ASSERT(fontAtlas);
 
+	auto text = texts.create();
+	auto textView = texts.get(text);
+	textView->value = value;
+	textView->fontAtlas = fontAtlas;
+	textView->atlasShared = isAtlasShared;
 
-	
-	return {}; // TODO:
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto stopRecording = graphicsSystem->tryStartRecording(CommandBufferType::TransferOnly);
+
+	if (!textView->update(value, properties))
+	{
+		texts.destroy(text);
+		return {};
+	}
+
+	if (stopRecording)
+		graphicsSystem->stopRecording();
+	return text;
+}
+void TextSystem::destroy(ID<Text> text)
+{
+	if (!text)
+		return;
+
+	auto textView = texts.get(text);
+	GraphicsSystem::Instance::get()->destroy(textView->instanceBuffer);
+	destroy(textView->fontAtlas);
+	texts.destroy(text);
 }

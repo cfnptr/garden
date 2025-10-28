@@ -31,7 +31,7 @@ using namespace ecsm;
  */
 struct Font final
 {
-	void* face = nullptr;
+	vector<void*> faces;
 	uint8* data = nullptr;
 
 	bool destroy();

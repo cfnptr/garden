@@ -36,6 +36,8 @@ class ResourceSystem;
  */
 struct Glyph final
 {
+	static constexpr uint32 invisible = UINT32_MAX;
+
 	float4 position;
 	float4 texCoords;
 	float advance = 0.0f;
@@ -47,7 +49,13 @@ struct Glyph final
  */
 struct FontAtlas final
 {
-	using GlyphMap = tsl::robin_map<uint32, Glyph>;
+	using GlyphMap = tsl::robin_map<uint32, Glyph>; /**< Font atlas glyph map. */
+
+	/**
+	 * @brief Default font atlas texture usage flags.
+	 */
+	static constexpr Image::Usage defaultImageFlags = 
+		Image::Usage::TransferDst | Image::Usage::TransferQ | Image::Usage::Sampled;
 private:
 	FontArray fonts;
 	vector<GlyphMap> glyphs;
@@ -77,6 +85,18 @@ public:
 	 * @brief Returns font texture atlas new line advance
 	 */
 	float getNewLineAdvance() const noexcept { return newLineAdvance; }
+
+	/**
+	 * @brief Regenerates font atlas texture.
+	 * @return True on success, otherwise false.
+	 * 
+	 * @param value target text string value
+	 * @param fontSize font size in pixels
+	 * @param imageUsage atlas texture usage flags
+	 * @param shrink reduce internal memory usage
+	 */
+	bool update(u32string_view chars, uint32 fontSize, 
+		Image::Usage imageUsage = defaultImageFlags, bool shrink = false);
 };
 
 /**
@@ -86,22 +106,56 @@ struct Text final
 {
 public:
 	/**
-	 * @brief Text formating properties container.
+	* @brief Text alignment (anchor) types.
+	*/
+	enum class Alignment : uint8
+	{
+		Center,      /**< Aligns text to the center. */
+		Left,        /**< Aligns text to the left side. */
+		Right,       /**< Aligns text to the right side. */
+		Bottom,      /**< Aligns text to the bottom side. */
+		Top,         /**< Aligns text to the top side. */
+		LeftBottom,  /**< Aligns text to the left bottom corner. */
+		LeftTop,     /**< Aligns text to the left top corner. */
+		RightBottom, /**< Aligns text to the right bottom corner. */
+		RightTop,    /**< Aligns text to the right top corner. */
+		Count        /**< Text alignment type count. */
+	};
+	/**
+	 * @brief Text formatting properties container.
 	 */
 	struct Properties final
 	{
 		Color color;              /**< Text sRGB color. */
+		Alignment alignment = {}; /**< Text alignment type. (Anchor) */
 		bool isBold = false;      /**< Is text bold. (Increased weight)  */
 		bool isItalic = false;    /**< Is text italic. (Oblique, tilted) */
-		bool useHtmlTags = false; /**< Process HTML tags when generating text. */
+		bool useTags = false;     /**< Process HTML-like tags when generating text. */
 		Properties() : color(Color::white) { }
 	};
+	/**
+	 * @brief Text glyph rendering instance data.
+	 */
+	struct Instance final
+	{
+		float4 position;
+		float4 texCoords;
+		uint32 atlasIndex = 0;
+		Color color;
+	};
+
+	/**
+	 * @brief Default text instance buffer usage flags.
+	 */
+	static constexpr Buffer::Usage defaultBufferFlags = 
+		Buffer::Usage::TransferDst | Buffer::Usage::TransferQ | Buffer::Usage::Storage;
 private:
 	u32string value = {};
 	Ref<FontAtlas> fontAtlas = {};
+	ID<Buffer> instanceBuffer = {};
 	float2 size = float2::zero;
 	Properties properties = {};
-	bool dynamic = false;
+	bool atlasShared = false;
 
 	friend class garden::TextSystem;
 public:
@@ -118,40 +172,51 @@ public:
 	 */
 	float2 getSize() const noexcept { return size; }
 	/**
-	 * @brief Returns text sproperties.
+	 * @brief Returns text formatting properties.
 	 */
 	Properties getProperties() const noexcept { return properties; }
 	/**
-	 * @brief Does text can be updated.
+	 * @brief Is font texture atlas shared between texts.
 	 */
-	bool isDynamic() const noexcept { return dynamic; }
+	bool isAtlasShared() const noexcept { return atlasShared; }
 
 	/**
 	 * @brief Regenerates text data.
 	 * @return True on success, otherwise false.
 	 *
 	 * @param value target text string value
+	 * @param properties text formatting properties
 	 * @param[in] fonts new font array or null
-	 * @param properties text formating properties
+	 * @param fontSize new font size in pixesl or zero
+	 * @param atlasUsage atlas texture usage flags
 	 * @param shrink reduce internal memory usage
 	 */
-	bool update(u32string_view value, const FontArray& fonts = {}, Properties properties = {}, bool shrink = false);
+	bool update(u32string_view value, Properties properties = {}, const FontArray& fonts = {}, 
+		uint32 fontSize = 0, Image::Usage atlasUsage = FontAtlas::defaultImageFlags, 
+		Buffer::Usage instanceUsage = defaultBufferFlags, bool shrink = false);
 	/**
 	 * @brief Regenerates text data.
 	 * @return True on success, otherwise false.
 	 *
 	 * @param value target text string value
+	 * @param properties text formatting properties
 	 * @param[in] fonts new font array or null
-	 * @param properties text formating properties
+	 * @param fontSize new font size in pixesl or zero
+	 * @param atlasUsage atlas texture usage flags
 	 * @param shrink reduce internal memory usage
 	 */
-	bool update(string_view value, const FontArray& fonts = {}, Properties properties = {}, bool shrink = false)
+	bool update(string_view value, Properties properties = {}, const FontArray& fonts = {}, 
+		uint32 fontSize = 0, Image::Usage atlasUsage = FontAtlas::defaultImageFlags, 
+		Buffer::Usage instanceUsage = defaultBufferFlags, bool shrink = false)
 	{
 		u32string utf32;
 		if (UTF::utf8toUtf32(value, utf32) != 0)
 			return {};
-		return update(utf32, fonts, properties, shrink);
+		return update(utf32, properties, fonts, fontSize, atlasUsage, instanceUsage, shrink);
 	}
+
+	// TODO: Add isDynamic mode, in which we can update font atlas and text instance buffer each frame.
+	//       In this mode there should be persistent mapped staging buffer for the atlas and instance buffer.
 };
 
 /***********************************************************************************************************************
@@ -168,6 +233,7 @@ private:
 	FontAtlasPool fontAtlases;
 	TextPool texts;
 	void* ftLibrary = nullptr;
+	Ref<FontAtlas> asciiFontAtlas = {};
 
 	/**
 	 * @brief Creates a new text system instance.
@@ -181,8 +247,9 @@ private:
 
 	void update();
 
-	friend class ecsm::Manager;
+	friend class garden::FontAtlas;
 	friend class garden::ResourceSystem;
+	friend class ecsm::Manager;
 public:
 	/**
 	 * @brief Returns font pool.
@@ -197,29 +264,47 @@ public:
 	 */
 	const TextPool& getTexts() const noexcept { return texts; }
 
+	/*******************************************************************************************************************
+	 * @brief Creates a new font texture atlas instance.
+	 * @return Font atlas instance on success, otherwise null.
+	 * 
+	 * @param chars font atlas chars to bake
+	 * @param[in] fonts font array type[variant[font]]
+	 * @param fontSize font size in pixels
+	 * @param imageUsage atlas texture usage flags
+	 */
+	ID<FontAtlas> createFontAtlas(u32string_view chars, FontArray&& fonts, 
+		uint32 fontSize, Image::Usage imageUsage = FontAtlas::defaultImageFlags);
 	/**
 	 * @brief Creates a new font texture atlas instance.
 	 * @return Font atlas instance on success, otherwise null.
 	 * 
 	 * @param chars font atlas chars to bake
-	 * @param fontSize font size in pixels
 	 * @param[in] fonts font array type[variant[font]]
+	 * @param fontSize font size in pixels
 	 * @param imageUsage atlas texture usage flags
 	 */
-	ID<FontAtlas> createFontAtlas(u32string_view chars, uint32 fontSize, FontArray&& fonts,
-		Image::Usage imageUsage = Image::Usage::TransferDst | Image::Usage::TransferQ | Image::Usage::Sampled);
+	ID<FontAtlas> createFontAtlas(string_view chars, FontArray&& fonts, 
+		uint32 fontSize, Image::Usage imageUsage = FontAtlas::defaultImageFlags)
+	{
+		u32string utf32;
+		if (UTF::utf8toUtf32(chars, utf32) != 0)
+			return {};
+		return createFontAtlas(utf32, std::move(fonts), fontSize, imageUsage);
+	}
+
 	/**
 	 * @brief Creates a new ASCII font texture atlas instance.
 	 * @return Font atlas instance on success, otherwise null.
 	 * 
-	 * @param fontSize font size in pixels
 	 * @param[in] fonts font array size[variant[]]
+	 * @param fontSize font size in pixels
 	 * @param imageUsage atlas texture usage flags
 	 */
-	ID<FontAtlas> createAsciiFontAtlas(uint32 fontSize, FontArray&& fonts, Image::Usage imageUsage = 
-		Image::Usage::TransferDst | Image::Usage::TransferQ | Image::Usage::Sampled)
+	ID<FontAtlas> createAsciiFontAtlas(FontArray&& fonts, uint32 fontSize, 
+		Image::Usage imageUsage = FontAtlas::defaultImageFlags)
 	{
-		return createFontAtlas(UTF::printableAscii32, fontSize, std::move(fonts), imageUsage);
+		return createFontAtlas(UTF::printableAscii32, std::move(fonts), fontSize, imageUsage);
 	}
 
 	/**
@@ -254,23 +339,27 @@ public:
 	 *
 	 * @param value target text string value
 	 * @param[in] fontAtlas font texture atlas
-	 * @param properties text formating properties
+	 * @param properties text formatting properties
+	 * @param isAtlasShared is font atlas shared between texts
 	 */
-	ID<Text> createText(u32string_view value, const Ref<FontAtlas>& fontAtlas, Text::Properties properties = {});
+	ID<Text> createText(u32string_view value, const Ref<FontAtlas>& fontAtlas, 
+		Text::Properties properties = {}, bool isAtlasShared = false);
 	/**
 	 * @brief Creates a new text instance.
 	 * @return Text instance on succes, otherwise null.
 	 *
 	 * @param value target text string value
 	 * @param[in] fontAtlas font texture atlas
-	 * @param properties text formating properties
+	 * @param properties text formatting properties
+	 * @param isAtlasShared is font atlas shared between texts
 	 */
-	ID<Text> createText(string_view value, const Ref<FontAtlas>& fontAtlas, Text::Properties properties = {})
+	ID<Text> createText(string_view value, const Ref<FontAtlas>& fontAtlas, 
+		Text::Properties properties = {}, bool isAtlasShared = false)
 	{
 		u32string utf32;
 		if (UTF::utf8toUtf32(value, utf32) != 0)
 			return {};
-		return createText(utf32, fontAtlas, properties);
+		return createText(utf32, fontAtlas, properties, isAtlasShared);
 	}
 
 	/**
@@ -280,11 +369,13 @@ public:
 	 * @param value target text string value
 	 * @param[in] fonts text font array
 	 * @param fontSize font size in pixels
-	 * @param properties text formating properties
+	 * @param properties text formatting properties
+	 * @param imageUsage atlas texture usage flags
 	 */
-	ID<Text> createText(u32string_view value, FontArray&& fonts, uint32 fontSize, Text::Properties properties = {})
+	ID<Text> createText(u32string_view value, FontArray&& fonts, uint32 fontSize, 
+		Text::Properties properties = {}, Image::Usage imageUsage = FontAtlas::defaultImageFlags)
 	{
-		auto fontAtlas = Ref<FontAtlas>(createFontAtlas(value, fontSize, std::move(fonts)));
+		auto fontAtlas = Ref<FontAtlas>(createFontAtlas(value, std::move(fonts), fontSize, imageUsage));
 		if (!fontAtlas)
 			return {};
 		return createText(value, fontAtlas, properties);
@@ -296,14 +387,16 @@ public:
 	 * @param value target text string value
 	 * @param[in] fonts text font array
 	 * @param fontSize font size in pixels
-	 * @param properties text formating properties
+	 * @param properties text formatting properties
+	 * @param imageUsage atlas texture usage flags
 	 */
-	ID<Text> createText(string_view value, FontArray&& fonts, uint32 fontSize, Text::Properties properties = {})
+	ID<Text> createText(string_view value, FontArray&& fonts, uint32 fontSize, 
+		Text::Properties properties = {}, Image::Usage imageUsage = FontAtlas::defaultImageFlags)
 	{
 		u32string utf32;
 		if (UTF::utf8toUtf32(value, utf32) != 0)
 			return {};
-		return createText(utf32, std::move(fonts), fontSize, properties);
+		return createText(utf32, std::move(fonts), fontSize, properties, imageUsage);
 	}
 
 	/**
@@ -321,7 +414,7 @@ public:
 	 * @brief Destroys text instance.
 	 * @param text target text instance or null
 	 */
-	void destroy(ID<Text> text) { texts.destroy(text); }
+	void destroy(ID<Text> text);
 	/**
 	 * @brief Destroys shared text instance.
 	 * @param text target text reference or null

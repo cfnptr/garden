@@ -448,6 +448,15 @@ public:
 			return createBuffer(usage, cpuAccess, data.data() + offset, count * sizeof(T), location, strategy);
 		}
 	}
+	/**
+	 * @brief Creates a new empty staging buffer instance. (Undefined initial data)
+	 * 
+	 * @param cpuAccess buffer CPU side access
+	 * @param size buffer size in bytes
+	 * 
+	 * @throw GardenError if failed to allocate buffer.
+	 */
+	ID<Buffer> createStagingBuffer(Buffer::CpuAccess cpuAccess, uint64 size);
 
 	/**
 	 * @brief Destroys buffer instance.

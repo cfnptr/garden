@@ -994,13 +994,15 @@ PhysicsSystem::PhysicsSystem(const Properties& properties, bool setSingleton) : 
 }
 PhysicsSystem::~PhysicsSystem()
 {
-	if (Manager::Instance::get()->isRunning)
+	auto manager = Manager::Instance::get();
+	shapes.clear(manager->isRunning);
+
+	if (manager->isRunning)
 	{
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PreInit", PhysicsSystem::preInit);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PostInit", PhysicsSystem::postInit);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Simulate", PhysicsSystem::simulate);
 
-		auto manager = Manager::Instance::get();
 		manager->unregisterEvent("Simulate");
 		manager->removeGroupSystem<ISerializable>(this);
 
@@ -1017,10 +1019,6 @@ PhysicsSystem::~PhysicsSystem()
 		delete (JPH::TempAllocatorImpl*)tempAllocator;
 		#endif	
 		delete JPH::Factory::sInstance;
-	}
-	else
-	{
-		shapes.clear(false);
 	}
 
 	JPH::UnregisterTypes();
