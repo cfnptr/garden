@@ -104,10 +104,20 @@ template<class C = Component, class F = AnimationFrame,
 class InstCompAnimSystem : public CompAnimSystem<C, F, 
 	DestroyComponents, DestroyAnimationFrames>, public InstanceRenderSystem
 {
+public:
 	/**
 	 * @brief Destroys mesh instance render system instance.
 	 */
 	~InstCompAnimSystem() override { }
+
+	/**
+	 * @brief Returns system mesh component pool.
+	 */
+	MeshRenderPool& getMeshComponentPool() override { return *((MeshRenderPool*)&this->components); }
+	/**
+	 * @brief Returns system mesh component size in bytes.
+	 */
+	psize getMeshComponentSize() const override { return sizeof(C); }
 };
 
 } // namespace garden

@@ -45,7 +45,9 @@ enum class MeshRenderType : uint8
 struct MeshRenderComponent : public Component
 {
 protected:
-	uint16 _alignment0 = 0;
+	uint32 unused0 = 0;
+	uint32 unused1 = 0;
+	uint16 unused2 = 0;
 	bool visible = false;
 public:
 	bool isEnabled = true; /**< Is mesh should be rendered. */

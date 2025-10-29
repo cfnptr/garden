@@ -20,15 +20,15 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
 	if(NOT GARDEN_DO_NOT_USE_AVX2)
 		add_compile_options(/arch:AVX2)
 	endif()
-	if(CMAKE_BUILD_TYPE STREQUAL "Release")
-		add_compile_options(/GL)
+	if(CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT DEFINED ENV{GITHUB_ACTIONS})
+		add_compile_options(/GL) # Use link time optimizations.
 	endif()
 elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64" OR CMAKE_SYSTEM_PROCESSOR STREQUAL "AMD64")
 	if(NOT GARDEN_DO_NOT_USE_AVX2)
 		add_compile_options(-march=haswell)
 	endif()
-	if(CMAKE_BUILD_TYPE STREQUAL "Release")
-		add_compile_options(-flto)
+	if(CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT DEFINED ENV{GITHUB_ACTIONS})
+		add_compile_options(-flto) # Use link time optimizations.
 	endif()
 
 	add_compile_options(-Wno-unused-function -Wno-unused-private-field 
@@ -56,8 +56,5 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang") # Note: Do not remove MATCHES!
 	if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Darwin")
 		# This warning is emmited due to Brew iclude directories.
 		add_compile_options(-Wno-poison-system-directories)
-		if(CMAKE_BUILD_TYPE STREQUAL "Release")
-			add_link_options(-s) # Strip symbols for a release build, it speed ups linking.
-		endif()
 	endif()
 endif()

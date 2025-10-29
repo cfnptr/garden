@@ -19,7 +19,7 @@
 
 #pragma once
 #include "garden/system/text.hpp"
-#include "garden/animate.hpp"
+#include "garden/system/render/instance.hpp"
 
 namespace garden
 {
@@ -29,12 +29,8 @@ class UiLabelSystem;
 /**
  * @brief User interface label element data container. (UI)
  */
-struct UiLabelComponent final : public Component
+struct UiLabelComponent final : public MeshRenderComponent
 {
-private:
-	ID<Text> text = {};
-	friend class garden::UiLabelSystem;
-public:
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	vector<fs::path> fontPaths; /**< Text font paths. */
 	#endif
@@ -42,7 +38,10 @@ public:
 	string value = "";                 /**> UI label text string. */
 	Text::Properties propterties = {}; /**< UI label text properties. */
 	uint32 fontSize = 16;              /**< Text font size in pixels.*/
-
+private:
+	ID<Text> text = {};
+	friend class garden::UiLabelSystem;
+public:
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	bool loadNoto = true; /**< Also load supporting noto fonts. */
 	#endif
@@ -81,7 +80,7 @@ struct UiLabelFrame final : public AnimationFrame
 /***********************************************************************************************************************
  * @brief User interface label element system. (UI, GUI)
  */
-class UiLabelSystem final : public CompAnimSystem<UiLabelComponent, UiLabelFrame, false, false>,
+class UiLabelSystem final : public InstCompAnimSystem<UiLabelComponent, UiLabelFrame, false, false>,
 	public Singleton<UiLabelSystem>, public ISerializable
 {
 	/**
@@ -97,6 +96,12 @@ class UiLabelSystem final : public CompAnimSystem<UiLabelComponent, UiLabelFrame
 	void resetComponent(View<Component> component, bool full) final;
 	void copyComponent(View<Component> source, View<Component> destination) final;
 	string_view getComponentName() const final;
+
+	MeshRenderType getMeshRenderType() const final;
+	void drawAsync(MeshRenderComponent* meshRenderView, const f32x4x4& viewProj,
+		const f32x4x4& model, uint32 drawIndex, int32 taskIndex) final;
+	ID<GraphicsPipeline> createBasePipeline() final;
+	uint64 getBaseInstanceDataSize() final;
 	
 	void serialize(ISerializer& serializer, const View<Component> component) final;
 	void deserialize(IDeserializer& deserializer, View<Component> component) final;
