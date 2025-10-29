@@ -83,6 +83,7 @@ public:
 	void write(string_view name, const float3x3& value) final;
 	void write(string_view name, const float4x4& value) final;
 	void write(string_view name, const Aabb& value) final;
+	void write(string_view name, Color value, bool rgb = false) final;
 
 	string toString() const;
 };
@@ -151,6 +152,7 @@ public:
 	bool read(string_view name, float3x3& value) final;
 	bool read(string_view name, float4x4& value) final;
 	bool read(string_view name, Aabb& value) final;
+	bool read(string_view name, Color& value) final;
 	bool read(string_view name, f32x4& value, uint8 components = 4) final;
 };
 

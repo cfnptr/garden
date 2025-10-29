@@ -1124,10 +1124,10 @@ void PhysicsSystem::prepareSimulate()
 
 		threadPool->addItems([componentData](const ThreadPool::Task& task)
 		{
+			auto manager = Manager::Instance::get();
+			auto transformSystem = TransformSystem::Instance::get();
 			auto physicsInstance = (JPH::PhysicsSystem*)PhysicsSystem::Instance::get()->physicsInstance;
 			auto& bodyInterface = physicsInstance->GetBodyInterface(); // This one is with lock.
-			auto transformSystem = TransformSystem::Instance::get();
-			auto characterSystem = CharacterSystem::Instance::tryGet();
 			auto itemCount = task.getItemCount();
 
 			for (uint32 i = task.getItemOffset(); i < itemCount; i++)
@@ -1135,7 +1135,7 @@ void PhysicsSystem::prepareSimulate()
 				auto rigidbodyView = &componentData[i];
 				if (!rigidbodyView->entity || !rigidbodyView->instance || !rigidbodyView->inSimulation ||
 					rigidbodyView->getMotionType() == MotionType::Static ||
-					(characterSystem && characterSystem->hasComponent(rigidbodyView->entity)))
+					manager->has<CharacterComponent>(rigidbodyView->entity))
 				{
 					continue;
 				}
@@ -1234,7 +1234,7 @@ void PhysicsSystem::interpolateResult(float t)
 
 		threadPool->addItems([componentData, t](const ThreadPool::Task& task)
 		{
-			auto characterSystem = CharacterSystem::Instance::tryGet();
+			auto manager = Manager::Instance::get();
 			auto transformSystem = TransformSystem::Instance::get();
 			auto itemCount = task.getItemCount();
 
@@ -1243,7 +1243,7 @@ void PhysicsSystem::interpolateResult(float t)
 				auto rigidbodyView = &componentData[i];
 				if (!rigidbodyView->instance || !rigidbodyView->inSimulation || 
 					rigidbodyView->getMotionType() == MotionType::Static ||
-					(characterSystem && characterSystem->hasComponent(rigidbodyView->entity)))
+					manager->has<CharacterComponent>(rigidbodyView->entity))
 				{
 					continue;
 				}
@@ -1339,18 +1339,12 @@ void PhysicsSystem::simulate()
 //**********************************************************************************************************************
 void PhysicsSystem::resetComponent(View<Component> component, bool full)
 {
-	auto rigidbodyView = View<RigidbodyComponent>(component);
-	rigidbodyView->setShape({});
-	rigidbodyView->destroyAllConstraints();
+	auto componentView = View<RigidbodyComponent>(component);
+	componentView->setShape({});
+	componentView->destroyAllConstraints();
 
 	if (full)
-	{
-		rigidbodyView->lastPosition = f32x4::zero;
-		rigidbodyView->lastRotation = quat::identity;
-		rigidbodyView->uid = 0;
-		rigidbodyView->inSimulation = true;
-		rigidbodyView->eventListener = "";
-	}
+		**componentView = {};
 }
 void PhysicsSystem::copyComponent(View<Component> source, View<Component> destination)
 {
@@ -1430,62 +1424,62 @@ void PhysicsSystem::serializeDecoratedShape(ISerializer& serializer, ID<Shape> s
 //**********************************************************************************************************************
 void PhysicsSystem::serialize(ISerializer& serializer, const View<Component> component)
 {
-	auto rigidbodyView = View<RigidbodyComponent>(component);
-	if (!rigidbodyView->uid)
+	auto componentView = View<RigidbodyComponent>(component);
+	if (!componentView->uid)
 	{
 		auto& randomDevice = serializer.randomDevice;
 		uint32 uid[2] { randomDevice(), randomDevice() };
-		rigidbodyView->uid = *(uint64*)(uid);
-		GARDEN_ASSERT_MSG(rigidbodyView->uid, "Detected random device anomaly");
+		componentView->uid = *(uint64*)(uid);
+		GARDEN_ASSERT_MSG(componentView->uid, "Detected random device anomaly");
 	}
 
 	#if GARDEN_DEBUG
-	auto emplaceResult = serializedEntities.emplace(rigidbodyView->uid);
+	auto emplaceResult = serializedEntities.emplace(componentView->uid);
 	GARDEN_ASSERT_MSG(emplaceResult.second, "Detected several entities with the same UID");
 	#endif
 
-	encodeBase64URL(valueStringCache, &rigidbodyView->uid, sizeof(uint64));
+	encodeBase64URL(valueStringCache, &componentView->uid, sizeof(uint64));
 	valueStringCache.resize(valueStringCache.length() - 1);
 	serializer.write("uid", valueStringCache);
 	
-	auto motionType = rigidbodyView->getMotionType();
+	auto motionType = componentView->getMotionType();
 	if (motionType == MotionType::Kinematic)
 		serializer.write("motionType", string_view("Kinematic"));
 	else if (motionType == MotionType::Dynamic)
 		serializer.write("motionType", string_view("Dynamic"));
 
-	if (!rigidbodyView->eventListener.empty())
-		serializer.write("eventListener", rigidbodyView->eventListener);
+	if (!componentView->eventListener.empty())
+		serializer.write("eventListener", componentView->eventListener);
 
-	if (rigidbodyView->shape)
+	if (componentView->shape)
 	{
-		if (rigidbodyView->isActive())
+		if (componentView->isActive())
 			serializer.write("isActive", true);
-		if (rigidbodyView->canBeKinematicOrDynamic())
+		if (componentView->canBeKinematicOrDynamic())
 			serializer.write("allowDynamicOrKinematic", true);
-		if (rigidbodyView->isSensor())
+		if (componentView->isSensor())
 			serializer.write("isSensor", true);
-		if (rigidbodyView->isKinematicVsStatic())
+		if (componentView->isKinematicVsStatic())
 			serializer.write("isKinematicVsStatic", true);
-		serializer.write("collisionLayer", rigidbodyView->getCollisionLayer());
+		serializer.write("collisionLayer", componentView->getCollisionLayer());
 
 		f32x4 position; quat rotation;
-		rigidbodyView->getPosAndRot(position, rotation);
+		componentView->getPosAndRot(position, rotation);
 		if (position != f32x4::zero)
 			serializer.write("position", (float3)position);
 		if (rotation != quat::identity)
 			serializer.write("rotation", rotation);
 
-		auto velocity = rigidbodyView->getLinearVelocity();
+		auto velocity = componentView->getLinearVelocity();
 		if (velocity != f32x4::zero)
 			serializer.write("linearVelocity", (float3)position);
-		velocity = rigidbodyView->getAngularVelocity();
+		velocity = componentView->getAngularVelocity();
 		if (velocity != f32x4::zero)
 			serializer.write("angularVelocity",(float3) position);
 
-		if (motionType != MotionType::Static && rigidbodyView->getAllowedDOF() != AllowedDOF::All)
+		if (motionType != MotionType::Static && componentView->getAllowedDOF() != AllowedDOF::All)
 		{
-			auto allowedDOF = rigidbodyView->getAllowedDOF();
+			auto allowedDOF = componentView->getAllowedDOF();
 			if (!hasAnyFlag(allowedDOF, AllowedDOF::TranslationX))
 				serializer.write("allowedDofTransX", false);
 			if (!hasAnyFlag(allowedDOF, AllowedDOF::TranslationY))
@@ -1500,12 +1494,12 @@ void PhysicsSystem::serialize(ISerializer& serializer, const View<Component> com
 				serializer.write("allowedDofRotZ", false);
 		}
 
-		serializeDecoratedShape(serializer, rigidbodyView->shape);
+		serializeDecoratedShape(serializer, componentView->shape);
 	}
 
-	if (!rigidbodyView->constraints.empty())
+	if (!componentView->constraints.empty())
 	{
-		const auto& constraints = rigidbodyView->constraints;
+		const auto& constraints = componentView->constraints;
 		serializer.beginChild("constraints");
 		for (auto& constraint : constraints)
 		{
@@ -1515,11 +1509,8 @@ void PhysicsSystem::serialize(ISerializer& serializer, const View<Component> com
 
 			serializer.beginArrayElement();
 
-			switch (constraint.type)
-			{
-				case ConstraintType::Point: serializer.write("type", string_view("Point")); break;
-				default: break;
-			}
+			if (constraint.type != ConstraintType::Fixed)
+				serializer.write("type", toString(constraint.type));
 
 			auto constraintView = getComponent(constraint.otherBody);
 			encodeBase64URL(valueStringCache, &constraintView->uid, sizeof(uint64));
@@ -1530,7 +1521,7 @@ void PhysicsSystem::serialize(ISerializer& serializer, const View<Component> com
 		}
 		serializer.endChild();
 
-		auto emplaceResult = serializedConstraints.emplace(rigidbodyView->entity);
+		auto emplaceResult = serializedConstraints.emplace(componentView->entity);
 		GARDEN_ASSERT_MSG(emplaceResult.second, "Detected memory corruption");
 	}
 }
@@ -1575,14 +1566,14 @@ ID<Shape> PhysicsSystem::deserializeDecoratedShape(IDeserializer& deserializer, 
 //**********************************************************************************************************************
 void PhysicsSystem::deserialize(IDeserializer& deserializer, View<Component> component)
 {
-	auto rigidbodyView = View<RigidbodyComponent>(component);
+	auto componentView = View<RigidbodyComponent>(component);
 
 	if (deserializer.read("uid", valueStringCache) &&
 		valueStringCache.size() + 1 == modp_b64_encode_data_len(sizeof(uint64)))
 	{
-		if (decodeBase64URL(&rigidbodyView->uid, valueStringCache, ModpDecodePolicy::kForgiving))
+		if (decodeBase64URL(&componentView->uid, valueStringCache, ModpDecodePolicy::kForgiving))
 		{
-			auto result = deserializedEntities.emplace(rigidbodyView->uid, rigidbodyView->entity);
+			auto result = deserializedEntities.emplace(componentView->uid, componentView->entity);
 			if (!result.second)
 				GARDEN_LOG_ERROR("Deserialized entity with already existing UID. (uid: " + valueStringCache + ")");
 		}
@@ -1597,7 +1588,7 @@ void PhysicsSystem::deserialize(IDeserializer& deserializer, View<Component> com
 			motionType = MotionType::Dynamic;
 	}
 
-	deserializer.read("eventListener", rigidbodyView->eventListener);
+	deserializer.read("eventListener", componentView->eventListener);
 
 	if (deserializer.read("shapeType", valueStringCache))
 	{
@@ -1626,29 +1617,29 @@ void PhysicsSystem::deserialize(IDeserializer& deserializer, View<Component> com
 			if (deserializer.read("allowedDofRotZ", allowedDofValue))
 			{ if (!allowedDofValue) allowedDOF &= ~AllowedDOF::RotationZ; }
 
-			rigidbodyView->setShape(shape, motionType, collisionLayer,
+			componentView->setShape(shape, motionType, collisionLayer,
 				isActive, allowDynamicOrKinematic, allowedDOF);
 
 			auto boolValue = false;
 			if (deserializer.read("isSensor", boolValue))
-				rigidbodyView->setSensor(boolValue);
+				componentView->setSensor(boolValue);
 			if (deserializer.read("isKinematicVsStatic", boolValue))
-				rigidbodyView->setKinematicVsStatic(boolValue);
+				componentView->setKinematicVsStatic(boolValue);
 
 			auto f32x4Value = f32x4::zero; auto rotation = quat::identity;
 			deserializer.read("position", f32x4Value, 3);
 			deserializer.read("rotation", rotation);
 			if (f32x4Value != f32x4::zero || rotation != quat::identity)
-				rigidbodyView->setPosAndRot(f32x4Value, rotation, isActive);
+				componentView->setPosAndRot(f32x4Value, rotation, isActive);
 
 			f32x4Value = f32x4::zero;
 			deserializer.read("linearVelocity", f32x4Value, 3);
 			if (f32x4Value != f32x4::zero)
-				rigidbodyView->setLinearVelocity(f32x4Value);
+				componentView->setLinearVelocity(f32x4Value);
 			f32x4Value = f32x4::zero;
 			deserializer.read("angularVelocity", f32x4Value, 3);
 			if (f32x4Value != f32x4::zero)
-				rigidbodyView->setAngularVelocity(f32x4Value);
+				componentView->setAngularVelocity(f32x4Value);
 		}
 	}
 
@@ -1662,13 +1653,10 @@ void PhysicsSystem::deserialize(IDeserializer& deserializer, View<Component> com
 			if (deserializer.read("uid", valueStringCache))
 			{
 				EntityConstraint entityConstraint = {};
-				entityConstraint.entity = rigidbodyView->entity;
+				entityConstraint.entity = componentView->entity;
 
 				if (deserializer.read("type", valueStringCache))
-				{
-					if (valueStringCache == "Point")
-						entityConstraint.type = ConstraintType::Point;
-				}
+					toConstraintType(valueStringCache, entityConstraint.type);
 
 				if (valueStringCache.empty())
 				{
@@ -1677,7 +1665,7 @@ void PhysicsSystem::deserialize(IDeserializer& deserializer, View<Component> com
 				else if (valueStringCache.size() + 1 == modp_b64_encode_data_len(sizeof(uint64)) && 
 					decodeBase64URL(&entityConstraint.otherUID, valueStringCache, ModpDecodePolicy::kForgiving))
 				{
-					if (rigidbodyView->uid == entityConstraint.otherUID)
+					if (componentView->uid == entityConstraint.otherUID)
 					{
 						GARDEN_LOG_ERROR("Deserialized entity with the same constraint UID. ("
 							"uid: " + valueStringCache + ")");

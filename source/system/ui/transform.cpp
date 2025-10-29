@@ -112,26 +112,6 @@ void UiTransformSystem::update()
 	}
 }
 
-void UiTransformSystem::resetComponent(View<Component> component, bool full)
-{
-	if (full)
-	{
-		auto uiTransformView = View<UiTransformComponent>(component);
-		uiTransformView->position = float3::zero;
-		uiTransformView->scale = float3::one;
-		uiTransformView->anchor = UiAnchor::Center;
-		uiTransformView->rotation = quat::identity;
-	}
-}
-void UiTransformSystem::copyComponent(View<Component> source, View<Component> destination)
-{
-	const auto sourceView = View<UiTransformComponent>(source);
-	auto destinationView = View<UiTransformComponent>(destination);
-	destinationView->position = sourceView->position;
-	destinationView->scale = sourceView->scale;
-	destinationView->anchor = sourceView->anchor;
-	destinationView->rotation = sourceView->rotation;
-}
 string_view UiTransformSystem::getComponentName() const
 {
 	return "Transform UI";
@@ -140,83 +120,67 @@ string_view UiTransformSystem::getComponentName() const
 //**********************************************************************************************************************
 void UiTransformSystem::serialize(ISerializer& serializer, const View<Component> component)
 {
-	const auto uiTransformView = View<UiTransformComponent>(component);
-	if (uiTransformView->position != float3::zero)
-		serializer.write("position", uiTransformView->position);
-	if (uiTransformView->scale != float3::one)
-		serializer.write("scale", uiTransformView->scale);
-	if (uiTransformView->rotation != quat::identity)
-		serializer.write("rotation", uiTransformView->rotation);
-
-	switch (uiTransformView->anchor)
-	{
-		case UiAnchor::Center: break;
-		case UiAnchor::Left: serializer.write("anchor", string_view("Left")); break;
-		case UiAnchor::Right: serializer.write("anchor", string_view("Right")); break;
-		case UiAnchor::Bottom: serializer.write("anchor", string_view("Bottom")); break;
-		case UiAnchor::Top: serializer.write("anchor", string_view("Top")); break;
-		case UiAnchor::LeftBottom: serializer.write("anchor", string_view("LeftBottom")); break;
-		case UiAnchor::LeftTop: serializer.write("anchor", string_view("LeftTop")); break;
-		case UiAnchor::RightBottom: serializer.write("anchor", string_view("RightBottom")); break;
-		case UiAnchor::RightTop: serializer.write("anchor", string_view("RightTop")); break;
-		case UiAnchor::Background: serializer.write("anchor", string_view("Background")); break;
-		default: abort();
-	}
+	const auto componentView = View<UiTransformComponent>(component);
+	if (componentView->position != float3::zero)
+		serializer.write("position", componentView->position);
+	if (componentView->scale != float3::one)
+		serializer.write("scale", componentView->scale);
+	if (componentView->rotation != quat::identity)
+		serializer.write("rotation", componentView->rotation);
+	if (componentView->anchor != UiAnchor::Center)
+		serializer.write("anchor", toString(componentView->anchor));
 }
 void UiTransformSystem::deserialize(IDeserializer& deserializer, View<Component> component)
 {
-	auto uiTransformView = View<UiTransformComponent>(component);
-	deserializer.read("position", uiTransformView->position);
-	deserializer.read("scale", uiTransformView->scale);
-	deserializer.read("rotation", uiTransformView->rotation);
+	auto componentView = View<UiTransformComponent>(component);
+	deserializer.read("position", componentView->position);
+	deserializer.read("scale", componentView->scale);
+	deserializer.read("rotation", componentView->rotation);
 
-	string anchor; deserializer.read("anchor", anchor);
-	if (anchor == "Left") uiTransformView->anchor = UiAnchor::Left;
-	else if (anchor == "Right") uiTransformView->anchor = UiAnchor::Right;
-	else if (anchor == "Bottom") uiTransformView->anchor = UiAnchor::Bottom;
-	else if (anchor == "Top") uiTransformView->anchor = UiAnchor::Top;
-	else if (anchor == "LeftBottom") uiTransformView->anchor = UiAnchor::LeftBottom;
-	else if (anchor == "LeftTop") uiTransformView->anchor = UiAnchor::LeftTop;
-	else if (anchor == "RightBottom") uiTransformView->anchor = UiAnchor::RightBottom;
-	else if (anchor == "RightTop") uiTransformView->anchor = UiAnchor::RightTop;
-	else if (anchor == "Background") uiTransformView->anchor = UiAnchor::Background;
+	string anchor;
+	if (deserializer.read("anchor", anchor))
+		toUiAnchor(anchor, componentView->anchor);
 }
 
 //**********************************************************************************************************************
 void UiTransformSystem::serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame)
 {
-	const auto uiTransformFrameView = View<UiTransformFrame>(frame);
-	if (uiTransformFrameView->animatePosition)
-		serializer.write("position", (float3)uiTransformFrameView->position);
-	if (uiTransformFrameView->animateScale)
-		serializer.write("scale", (float3)uiTransformFrameView->scale);
-	if (uiTransformFrameView->animateRotation)
-		serializer.write("rotation", uiTransformFrameView->rotation);
+	const auto frameView = View<UiTransformFrame>(frame);
+	if (frameView->animatePosition)
+		serializer.write("position", (float3)frameView->position);
+	if (frameView->animateScale)
+		serializer.write("scale", (float3)frameView->scale);
+	if (frameView->animateRotation)
+		serializer.write("rotation", frameView->rotation);
+	if (frameView->animateAnchor)
+		serializer.write("anchor", toString(frameView->anchor));
 }
-ID<AnimationFrame> UiTransformSystem::deserializeAnimation(IDeserializer& deserializer)
+void UiTransformSystem::deserializeAnimation(IDeserializer& deserializer, View<AnimationFrame> frame)
 {
-	UiTransformFrame frame;
-	frame.animatePosition = deserializer.read("position", frame.position, 3);
-	frame.animateScale = deserializer.read("scale", frame.scale, 3);
-	frame.animateRotation = deserializer.read("rotation", frame.rotation);
+	auto frameView = View<UiTransformFrame>(frame); string anchor;
+	frameView->animatePosition = deserializer.read("position", frameView->position, 3);
+	frameView->animateScale = deserializer.read("scale", frameView->scale, 3);
+	frameView->animateRotation = deserializer.read("rotation", frameView->rotation);
+	frameView->animateAnchor = deserializer.read("rotation", anchor);
 
-	if (frame.hasAnimation())
-		return ID<AnimationFrame>(animationFrames.create(frame));
-	return {};
+	if (frameView->animateAnchor)
+		toUiAnchor(anchor, frameView->anchor);
 }
 
 void UiTransformSystem::animateAsync(View<Component> component, View<AnimationFrame> a, View<AnimationFrame> b, float t)
 {
-	auto uiTransformView = View<UiTransformComponent>(component);
+	auto componentiew = View<UiTransformComponent>(component);
 	const auto frameA = View<UiTransformFrame>(a);
 	const auto frameB = View<UiTransformFrame>(b);
 
 	if (frameA->animatePosition)
-		uiTransformView->position = (float3)lerp(frameA->position, frameB->position, t);
+		componentiew->position = (float3)lerp(frameA->position, frameB->position, t);
 	if (frameA->animateScale)
-		uiTransformView->scale = (float3)lerp(frameA->scale, frameB->scale, t);
+		componentiew->scale = (float3)lerp(frameA->scale, frameB->scale, t);
 	if (frameA->animateRotation)
-		uiTransformView->rotation = slerp(frameA->rotation, frameB->rotation, t);
+		componentiew->rotation = slerp(frameA->rotation, frameB->rotation, t);
+	if (frameA->animateAnchor)
+		componentiew->anchor = (bool)round(t) ? frameB->anchor : frameA->anchor;
 }
 
 float2 UiTransformSystem::calcUiSize() const

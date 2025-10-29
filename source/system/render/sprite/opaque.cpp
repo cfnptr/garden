@@ -18,7 +18,7 @@ using namespace garden;
 
 //**********************************************************************************************************************
 OpaqueSpriteSystem::OpaqueSpriteSystem(bool setSingleton) : 
-	SpriteRenderCompSystem("sprite/opaque"), Singleton(setSingleton)
+	SpriteCompAnimSystem("sprite/opaque"), Singleton(setSingleton)
 {
 	Manager::Instance::get()->addGroupSystem<IMeshRenderSystem>(this);
 }

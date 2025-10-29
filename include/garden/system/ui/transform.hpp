@@ -40,15 +40,45 @@ enum class UiAnchor : uint8
 	Background,  /**< Aligns interface element to the full screen. */
 	Count        /**< User interface alignment anchor type count. */
 };
+
 /**
- * @brief User interface element anchor names
+ * @brief User interface element anchor names.
  */
 constexpr const char* uiAnchorNames[(psize)UiAnchor::Count] =
 {
-	"Center", "Left", "Right", "Bottom", "Top", "Left Bottom", "Left Top", "Right Bottom", "Right Top", "Background"
+	"Center", "Left", "Right", "Bottom", "Top", "LeftBottom", "LeftTop", "RightBottom", "RightTop", "Background"
 };
-
 /**
+ * @brief Returns UI element anchor name string.
+ * @param uiAnchor target UI anchor type
+ */
+static string_view toString(UiAnchor uiAnchor) noexcept
+{
+	GARDEN_ASSERT(uiAnchor < UiAnchor::Count);
+	return uiAnchorNames[(psize)uiAnchor];
+}
+/**
+ * @brief Returns UI element anchor from name string.
+ *
+ * @param name target UI anchor name string
+ * @param[out] uiAnchor UI anchor type
+ */
+static bool toUiAnchor(string_view name, UiAnchor& uiAnchor) noexcept
+{
+	if (name == "Center") { uiAnchor = UiAnchor::Center; return true; }
+	if (name == "Left") { uiAnchor = UiAnchor::Left; return true; }
+	if (name == "Right") { uiAnchor = UiAnchor::Right; return true; }
+	if (name == "Bottom") { uiAnchor = UiAnchor::Bottom; return true; }
+	if (name == "Top") { uiAnchor = UiAnchor::Top; return true; }
+	if (name == "LeftBottom") { uiAnchor = UiAnchor::LeftBottom; return true; }
+	if (name == "LeftTop") { uiAnchor = UiAnchor::LeftTop; return true; }
+	if (name == "RightBottom") { uiAnchor = UiAnchor::RightBottom; return true; }
+	if (name == "RightTop") { uiAnchor = UiAnchor::RightTop; return true; }
+	if (name == "Background") { uiAnchor = UiAnchor::Background; return true; }
+	return false;
+}
+
+/***********************************************************************************************************************
  * @brief User interface element transformation data container. (UI)
  */
 struct UiTransformComponent final : public Component
@@ -64,16 +94,21 @@ struct UiTransformComponent final : public Component
  */
 struct UiTransformFrame final : public AnimationFrame
 {
-	bool animatePosition = false;
-	bool animateScale = false;
-	bool animateRotation = false;
+	uint8 animatePosition : 1;
+	uint8 animateScale : 1;
+	uint8 animateRotation : 1;
+	uint8 animateAnchor : 1;
+	UiAnchor anchor = UiAnchor::Center;
 	f32x4 position = f32x4::zero;
 	f32x4 scale = f32x4::one;
 	quat rotation = quat::identity;
 
+	UiTransformFrame() : animatePosition(false), animateScale(false), 
+		animateRotation(false), animateAnchor(false) { }
+
 	bool hasAnimation() final
 	{
-		return animatePosition || animateScale || animateRotation;
+		return animatePosition || animateScale || animateRotation || animateAnchor;
 	}
 };
 
@@ -95,17 +130,14 @@ class UiTransformSystem final : public CompAnimSystem<UiTransformComponent, UiTr
 
 	void update();
 
-	void resetComponent(View<Component> component, bool full) final;
-	void copyComponent(View<Component> source, View<Component> destination) final;
 	string_view getComponentName() const final;
 	
 	void serialize(ISerializer& serializer, const View<Component> component) final;
 	void deserialize(IDeserializer& deserializer, View<Component> component) final;
 
 	void serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame) final;
-	ID<AnimationFrame> deserializeAnimation(IDeserializer& deserializer) final;
-	void animateAsync(View<Component> component,
-		View<AnimationFrame> a, View<AnimationFrame> b, float t) final;
+	void deserializeAnimation(IDeserializer& deserializer, View<AnimationFrame> frame) final;
+	void animateAsync(View<Component> component, View<AnimationFrame> a, View<AnimationFrame> b, float t) final;
 	friend class ecsm::Manager;
 public:
 	float uiScale = 1.0f;  /**< User interface scaling factor. (UI) */

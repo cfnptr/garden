@@ -56,10 +56,10 @@ SkyboxRenderSystem::~SkyboxRenderSystem()
 void SkyboxRenderSystem::resetComponent(View<Component> component, bool full)
 {
 	auto resourceSystem = ResourceSystem::Instance::get();
-	auto skyboxView = View<SkyboxRenderComponent>(component);
-	resourceSystem->destroyShared(skyboxView->cubemap);
-	resourceSystem->destroyShared(skyboxView->descriptorSet);
-	skyboxView->cubemap = {}; skyboxView->descriptorSet = {}; 
+	auto componentView = View<SkyboxRenderComponent>(component);
+	resourceSystem->destroyShared(componentView->cubemap);
+	resourceSystem->destroyShared(componentView->descriptorSet);
+	componentView->cubemap = {}; componentView->descriptorSet = {}; 
 }
 void SkyboxRenderSystem::copyComponent(View<Component> source, View<Component> destination)
 {

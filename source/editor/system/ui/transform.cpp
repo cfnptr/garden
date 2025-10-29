@@ -128,13 +128,10 @@ void UiTransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened
 			uiTransformView->position = float3::zero;
 		ImGui::EndPopup();
 	}
-	if (isStatic)
+	if (isStatic && ImGui::BeginItemTooltip())
 	{
-		if (ImGui::BeginItemTooltip())
-		{
-			ImGui::Text("Disabled due to StaticTransformComponent!");
-			ImGui::EndTooltip();
-		}
+		ImGui::Text("Disabled due to StaticTransformComponent!");
+		ImGui::EndTooltip();
 	}
 
 	ImGui::DragFloat3("Scale", &uiTransformView->scale, 1.0f, 0.0001f, FLT_MAX);
@@ -144,13 +141,10 @@ void UiTransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened
 			uiTransformView->scale = float3::one;
 		ImGui::EndPopup();
 	}
-	if (isStatic)
+	if (isStatic && ImGui::BeginItemTooltip())
 	{
-		if (ImGui::BeginItemTooltip())
-		{
-			ImGui::Text("Disabled due to StaticTransformComponent!");
-			ImGui::EndTooltip();
-		}
+		ImGui::Text("Disabled due to StaticTransformComponent!");
+		ImGui::EndTooltip();
 	}
 
 	if (ImGui::DragFloat3("Rotation", &newEulerAngles, 0.3f, 0.0f, 0.0f, "%.3f°"))

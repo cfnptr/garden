@@ -449,28 +449,20 @@ TransformSystem::~TransformSystem()
 void TransformSystem::destroyComponent(ID<Component> instance)
 {
 	#if GARDEN_EDITOR
-	auto transformView = components.get(ID<TransformComponent>(instance));
-	TransformEditorSystem::Instance::get()->onEntityDestroy(transformView->entity);
+	auto componentView = components.get(ID<TransformComponent>(instance));
+	TransformEditorSystem::Instance::get()->onEntityDestroy(componentView->entity);
 	#endif
 	components.destroy(ID<TransformComponent>(instance));
 }
 void TransformSystem::resetComponent(View<Component> component, bool full)
 {
-	auto transformView = View<TransformComponent>(component);
-	transformView->setParent({});
-	transformView->removeAllChilds();
+	auto componentView = View<TransformComponent>(component);
+	componentView->setParent({});
+	componentView->removeAllChilds();
+	componentView->shrinkChilds();
 
 	if (full)
-	{
-		transformView->setPosition(f32x4::zero);
-		transformView->setScale(f32x4::one);
-		transformView->setRotation(quat::identity);
-		transformView->uid = 0;
-		transformView->selfActive = true;
-		transformView->ancestorsActive = true;
-		transformView->modelWithAncestors = true;
-		transformView->shrinkChilds();
-	}
+		**componentView = {};
 }
 void TransformSystem::copyComponent(View<Component> source, View<Component> destination)
 {
@@ -495,41 +487,41 @@ string_view TransformSystem::getComponentName() const
 //**********************************************************************************************************************
 void TransformSystem::serialize(ISerializer& serializer, const View<Component> component)
 {
-	auto transformView = View<TransformComponent>(component);
-	if (!transformView->uid)
+	auto componentView = View<TransformComponent>(component);
+	if (!componentView->uid)
 	{
 		auto& randomDevice = serializer.randomDevice;
 		uint32 uid[2] { randomDevice(), randomDevice() };
-		transformView->uid = *(uint64*)(uid);
-		GARDEN_ASSERT_MSG(transformView->uid, "Detected random device anomaly");
+		componentView->uid = *(uint64*)(uid);
+		GARDEN_ASSERT_MSG(componentView->uid, "Detected random device anomaly");
 	}
 
 	#if GARDEN_DEBUG
-	auto emplaceResult = serializedEntities.emplace(transformView->uid);
+	auto emplaceResult = serializedEntities.emplace(componentView->uid);
 	GARDEN_ASSERT_MSG(emplaceResult.second, "Detected several entities with the same UID");
 	#endif
 
-	encodeBase64URL(uidStringCache, &transformView->uid, sizeof(uint64));
+	encodeBase64URL(uidStringCache, &componentView->uid, sizeof(uint64));
 	uidStringCache.resize(uidStringCache.length() - 1);
 	serializer.write("uid", uidStringCache);
 
 	auto manager = Manager::Instance::get();
 	if (!manager->has<UiTransformComponent>(component->getEntity()))
 	{
-		if (f32x4(transformView->posChildCount, 0.0f) != f32x4::zero)
-			serializer.write("position", (float3)transformView->posChildCount);
-		if (transformView->rotation != quat::identity)
-			serializer.write("rotation", transformView->rotation);
-		if (f32x4(transformView->scaleChildCap, 1.0f) != f32x4::one)
-			serializer.write("scale", (float3)transformView->scaleChildCap);
+		if (f32x4(componentView->posChildCount, 0.0f) != f32x4::zero)
+			serializer.write("position", (float3)componentView->posChildCount);
+		if (componentView->rotation != quat::identity)
+			serializer.write("rotation", componentView->rotation);
+		if (f32x4(componentView->scaleChildCap, 1.0f) != f32x4::one)
+			serializer.write("scale", (float3)componentView->scaleChildCap);
 	}
 	
-	if (!transformView->selfActive)
+	if (!componentView->selfActive)
 		serializer.write("isActive", false);
 
-	if (transformView->parent)
+	if (componentView->parent)
 	{
-		auto parentView = getComponent(transformView->parent);
+		auto parentView = getComponent(componentView->parent);
 		if (!parentView->uid)
 		{
 			auto& randomDevice = serializer.randomDevice;
@@ -543,8 +535,8 @@ void TransformSystem::serialize(ISerializer& serializer, const View<Component> c
 	}
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
-	if (!transformView->debugName.empty())
-		serializer.write("debugName", transformView->debugName);
+	if (!componentView->debugName.empty())
+		serializer.write("debugName", componentView->debugName);
 	#endif
 }
 void TransformSystem::postSerialize(ISerializer& serializer)
@@ -556,14 +548,14 @@ void TransformSystem::postSerialize(ISerializer& serializer)
 
 void TransformSystem::deserialize(IDeserializer& deserializer, View<Component> component)
 {
-	auto transformView = View<TransformComponent>(component);
+	auto componentView = View<TransformComponent>(component);
 
 	if (deserializer.read("uid", uidStringCache) &&
 		uidStringCache.size() + 1 == modp_b64_encode_data_len(sizeof(uint64)))
 	{
-		if (decodeBase64URL(&transformView->uid, uidStringCache, ModpDecodePolicy::kForgiving))
+		if (decodeBase64URL(&componentView->uid, uidStringCache, ModpDecodePolicy::kForgiving))
 		{
-			auto result = deserializedEntities.emplace(transformView->uid, transformView->entity);
+			auto result = deserializedEntities.emplace(componentView->uid, componentView->entity);
 			if (!result.second)
 				GARDEN_LOG_ERROR("Deserialized entity with already existing UID. (uid: " + uidStringCache + ")");
 		}
@@ -571,13 +563,13 @@ void TransformSystem::deserialize(IDeserializer& deserializer, View<Component> c
 
 	auto f32x4Value = f32x4::zero; auto rotation = quat::identity;
 	deserializer.read("position", f32x4Value, 3);
-	transformView->setPosition(f32x4Value);
+	componentView->setPosition(f32x4Value);
 	deserializer.read("rotation", rotation);
-	transformView->setRotation(rotation);
+	componentView->setRotation(rotation);
 	f32x4Value = f32x4::one;
 	deserializer.read("scale", f32x4Value, 3);
-	transformView->setScale(f32x4Value);
-	deserializer.read("isActive", transformView->selfActive);
+	componentView->setScale(f32x4Value);
+	deserializer.read("isActive", componentView->selfActive);
 
 	if (deserializer.read("parent", uidStringCache) &&
 		uidStringCache.size() + 1 == modp_b64_encode_data_len(sizeof(uint64)))
@@ -585,15 +577,15 @@ void TransformSystem::deserialize(IDeserializer& deserializer, View<Component> c
 		uint64 parentUID = 0;
 		if (decodeBase64URL(&parentUID, uidStringCache, ModpDecodePolicy::kForgiving))
 		{
-			if (transformView->uid == parentUID)
+			if (componentView->uid == parentUID)
 				GARDEN_LOG_ERROR("Deserialized entity with the same parent UID. (uid: " + uidStringCache + ")");
 			else
-				deserializedParents.emplace_back(make_pair(transformView->entity, parentUID));
+				deserializedParents.emplace_back(make_pair(componentView->entity, parentUID));
 		}
 	}
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
-	deserializer.read("debugName", transformView->debugName);
+	deserializer.read("debugName", componentView->debugName);
 	#endif
 }
 void TransformSystem::postDeserialize(IDeserializer& deserializer)
@@ -620,39 +612,35 @@ void TransformSystem::postDeserialize(IDeserializer& deserializer)
 //**********************************************************************************************************************
 void TransformSystem::serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame)
 {
-	const auto transformFrameView = View<TransformFrame>(frame);
-	if (transformFrameView->animatePosition)
-		serializer.write("position", (float3)transformFrameView->position);
-	if (transformFrameView->animateScale)
-		serializer.write("scale", (float3)transformFrameView->scale);
-	if (transformFrameView->animateRotation)
-		serializer.write("rotation", transformFrameView->rotation);
+	const auto frameView = View<TransformFrame>(frame);
+	if (frameView->animatePosition)
+		serializer.write("position", (float3)frameView->position);
+	if (frameView->animateScale)
+		serializer.write("scale", (float3)frameView->scale);
+	if (frameView->animateRotation)
+		serializer.write("rotation", frameView->rotation);
 }
-ID<AnimationFrame> TransformSystem::deserializeAnimation(IDeserializer& deserializer)
+void TransformSystem::deserializeAnimation(IDeserializer& deserializer, View<AnimationFrame> frame)
 {
-	TransformFrame frame;
-	frame.animatePosition = deserializer.read("position", frame.position, 3);
-	frame.animateScale = deserializer.read("scale", frame.scale, 3);
-	frame.animateRotation = deserializer.read("rotation", frame.rotation);
-	
-	if (frame.hasAnimation())
-		return ID<AnimationFrame>(animationFrames.create(frame));
-	return {};
+	auto frameView = View<TransformFrame>(frame);
+	frameView->animatePosition = deserializer.read("position", frameView->position, 3);
+	frameView->animateScale = deserializer.read("scale", frameView->scale, 3);
+	frameView->animateRotation = deserializer.read("rotation", frameView->rotation);
 }
 
 //**********************************************************************************************************************
 void TransformSystem::animateAsync(View<Component> component, View<AnimationFrame> a, View<AnimationFrame> b, float t)
 {
-	auto transformView = View<TransformComponent>(component);
+	auto componentView = View<TransformComponent>(component);
 	const auto frameA = View<TransformFrame>(a);
 	const auto frameB = View<TransformFrame>(b);
 
 	if (frameA->animatePosition)
-		transformView->setPosition(lerp(frameA->position, frameB->position, t));
+		componentView->setPosition(lerp(frameA->position, frameB->position, t));
 	if (frameA->animateScale)
-		transformView->setScale(lerp(frameA->scale, frameB->scale, t));
+		componentView->setScale(lerp(frameA->scale, frameB->scale, t));
 	if (frameA->animateRotation)
-		transformView->rotation = slerp(frameA->rotation, frameB->rotation, t);
+		componentView->rotation = slerp(frameA->rotation, frameB->rotation, t);
 }
 
 //**********************************************************************************************************************

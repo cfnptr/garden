@@ -18,7 +18,7 @@ using namespace garden;
 
 //**********************************************************************************************************************
 UiSpriteSystem::UiSpriteSystem(bool setSingleton) : 
-	SpriteRenderCompSystem("sprite/translucent"), Singleton(setSingleton)
+	SpriteCompAnimSystem("sprite/translucent"), Singleton(setSingleton)
 {
 	Manager::Instance::get()->addGroupSystem<IMeshRenderSystem>(this);
 }

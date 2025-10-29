@@ -71,9 +71,8 @@ class UiCheckboxSystem final : public CompAnimSystem<UiCheckboxComponent, UiChec
 	void deserialize(IDeserializer& deserializer, View<Component> component) final;
 
 	void serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame) final;
-	ID<AnimationFrame> deserializeAnimation(IDeserializer& deserializer) final;
-	void animateAsync(View<Component> component,
-		View<AnimationFrame> a, View<AnimationFrame> b, float t) final;
+	void deserializeAnimation(IDeserializer& deserializer, View<AnimationFrame> frame) final;
+	void animateAsync(View<Component> component, View<AnimationFrame> a, View<AnimationFrame> b, float t) final;
 	friend class ecsm::Manager;
 };
 

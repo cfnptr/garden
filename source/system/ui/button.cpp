@@ -125,20 +125,6 @@ void UiButtonSystem::uiButtonStay()
 }
 
 //**********************************************************************************************************************
-void UiButtonSystem::resetComponent(View<Component> component, bool full)
-{
-	if (full)
-	{
-		auto uiButtonView = View<UiButtonComponent>(component);
-		uiButtonView->enabled = true;
-	}
-}
-void UiButtonSystem::copyComponent(View<Component> source, View<Component> destination)
-{
-	const auto sourceView = View<UiButtonComponent>(source);
-	auto destinationView = View<UiButtonComponent>(destination);
-	destinationView->enabled = sourceView->enabled;
-}
 string_view UiButtonSystem::getComponentName() const
 {
 	return "Button UI";
@@ -146,39 +132,43 @@ string_view UiButtonSystem::getComponentName() const
 
 void UiButtonSystem::serialize(ISerializer& serializer, const View<Component> component)
 {
-	const auto uiButtonView = View<UiButtonComponent>(component);
-	if (uiButtonView->enabled != true)
-		serializer.write("isEnabled", uiButtonView->enabled);
+	const auto componentView = View<UiButtonComponent>(component);
+	if (componentView->enabled != true)
+		serializer.write("isEnabled", componentView->enabled);
+	if (!componentView->onClick.empty())
+		serializer.write("onClick", componentView->onClick);
 }
 void UiButtonSystem::deserialize(IDeserializer& deserializer, View<Component> component)
 {
-	auto uiButtonView = View<UiButtonComponent>(component);
-	deserializer.read("isEnabled", uiButtonView->enabled);
+	auto componentView = View<UiButtonComponent>(component);
+	deserializer.read("isEnabled", componentView->enabled);
+	deserializer.read("onClick", componentView->onClick);
 }
 
 //**********************************************************************************************************************
 void UiButtonSystem::serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame)
 {
-	const auto uiButtonFrameView = View<UiButtonFrame>(frame);
-	if (uiButtonFrameView->animateIsEnabled)
-		serializer.write("isEnabled", (float3)uiButtonFrameView->isEnabled);
+	const auto frameView = View<UiButtonFrame>(frame);
+	if (frameView->animateIsEnabled)
+		serializer.write("isEnabled", (float3)frameView->isEnabled);
+	if (frameView->animateOnClick)
+		serializer.write("onClick", frameView->onClick);
 }
-ID<AnimationFrame> UiButtonSystem::deserializeAnimation(IDeserializer& deserializer)
+void UiButtonSystem::deserializeAnimation(IDeserializer& deserializer, View<AnimationFrame> frame)
 {
-	UiButtonFrame frame;
-	frame.animateIsEnabled = deserializer.read("isEnabled", frame.isEnabled);
-
-	if (frame.hasAnimation())
-		return ID<AnimationFrame>(animationFrames.create(frame));
-	return {};
+	auto frameView = View<UiButtonFrame>(frame);
+	frameView->animateIsEnabled = deserializer.read("isEnabled", frameView->isEnabled);
+	frameView->animateOnClick = deserializer.read("onClick", frameView->onClick);
 }
 
 void UiButtonSystem::animateAsync(View<Component> component, View<AnimationFrame> a, View<AnimationFrame> b, float t)
 {
-	auto uiButtonView = View<UiButtonComponent>(component);
+	auto componentView = View<UiButtonComponent>(component);
 	const auto frameA = View<UiButtonFrame>(a);
 	const auto frameB = View<UiButtonFrame>(b);
 
 	if (frameA->animateIsEnabled)
-		uiButtonView->enabled = (bool)round(t);
+		componentView->enabled = (bool)round(t);
+	if (frameA->animateOnClick)
+		componentView->onClick = (bool)round(t) ? frameB->onClick : frameA->onClick;
 }

@@ -53,22 +53,6 @@ CameraSystem::~CameraSystem()
 	unsetSingleton();
 }
 
-void CameraSystem::resetComponent(View<Component> component, bool full)
-{
-	if (full)
-	{
-		auto cameraView = View<CameraComponent>(component);
-		cameraView->p = {};
-		cameraView->type = ProjectionType::Perspective;
-	}
-}
-void CameraSystem::copyComponent(View<Component> source, View<Component> destination)
-{
-	const auto sourceView = View<CameraComponent>(source);
-	auto destinationView = View<CameraComponent>(destination);
-	destinationView->p = sourceView->p;
-	destinationView->type = sourceView->type;
-}
 string_view CameraSystem::getComponentName() const
 {
 	return "Camera";
@@ -77,97 +61,96 @@ string_view CameraSystem::getComponentName() const
 //**********************************************************************************************************************
 void CameraSystem::serialize(ISerializer& serializer, const View<Component> component)
 {
-	const auto cameraView = View<CameraComponent>(component);
-	if (cameraView->type == ProjectionType::Perspective)
+	const auto componentView = View<CameraComponent>(component);
+	if (componentView->type == ProjectionType::Perspective)
 	{
 		serializer.write("projection", string_view("Perspective"));
-		serializer.write("fieldOfView", cameraView->p.perspective.fieldOfView);
-		serializer.write("aspectRatio", cameraView->p.perspective.aspectRatio);
-		serializer.write("nearPlane", cameraView->p.perspective.nearPlane);
+		serializer.write("fieldOfView", componentView->p.perspective.fieldOfView);
+		serializer.write("aspectRatio", componentView->p.perspective.aspectRatio);
+		serializer.write("nearPlane", componentView->p.perspective.nearPlane);
 	}
 	else
 	{
 		serializer.write("projection", string_view("Orthographic"));
-		serializer.write("width", cameraView->p.orthographic.width);
-		serializer.write("height", cameraView->p.orthographic.height);
-		serializer.write("depth", cameraView->p.orthographic.depth);
+		serializer.write("width", componentView->p.orthographic.width);
+		serializer.write("height", componentView->p.orthographic.height);
+		serializer.write("depth", componentView->p.orthographic.depth);
 	}
 }
 void CameraSystem::deserialize(IDeserializer& deserializer, View<Component> component)
 {
-	auto cameraView = View<CameraComponent>(component);
+	auto componentView = View<CameraComponent>(component);
 
 	string type; deserializer.read("projection", type);
 	if (type == "Perspective")
 	{
-		cameraView->type = ProjectionType::Perspective;
-		deserializer.read("fieldOfView", cameraView->p.perspective.fieldOfView);
-		deserializer.read("aspectRatio", cameraView->p.perspective.aspectRatio);
-		deserializer.read("nearPlane", cameraView->p.perspective.nearPlane);
+		componentView->type = ProjectionType::Perspective;
+		deserializer.read("fieldOfView", componentView->p.perspective.fieldOfView);
+		deserializer.read("aspectRatio", componentView->p.perspective.aspectRatio);
+		deserializer.read("nearPlane", componentView->p.perspective.nearPlane);
 	}
 	else if (type == "Orthographic")
 	{
-		cameraView->type = ProjectionType::Orthographic;
-		deserializer.read("width", cameraView->p.orthographic.width);
-		deserializer.read("height", cameraView->p.orthographic.height);
-		deserializer.read("depth", cameraView->p.orthographic.depth);
+		componentView->type = ProjectionType::Orthographic;
+		deserializer.read("width", componentView->p.orthographic.width);
+		deserializer.read("height", componentView->p.orthographic.height);
+		deserializer.read("depth", componentView->p.orthographic.depth);
 	}
 }
 
 //**********************************************************************************************************************
 void CameraSystem::serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame)
 {
-	const auto cameraFrameView = View<CameraFrame>(frame);
-	if (cameraFrameView->f.base.type == ProjectionType::Perspective)
+	const auto frameView = View<CameraFrame>(frame);
+	if (frameView->f.base.type == ProjectionType::Perspective)
 	{
 		serializer.write("projection", string_view("Perspective"));
-		if (cameraFrameView->f.perspective.animateFieldOfView)
-			serializer.write("fieldOfView", cameraFrameView->c.perspective.fieldOfView);
-		if (cameraFrameView->f.perspective.animateAspectRatio)
-			serializer.write("aspectRatio", cameraFrameView->c.perspective.aspectRatio);
-		if (cameraFrameView->f.perspective.animateNearPlane)
-			serializer.write("nearPlane", cameraFrameView->c.perspective.nearPlane);
+		if (frameView->f.perspective.animateFieldOfView)
+			serializer.write("fieldOfView", frameView->c.perspective.fieldOfView);
+		if (frameView->f.perspective.animateAspectRatio)
+			serializer.write("aspectRatio", frameView->c.perspective.aspectRatio);
+		if (frameView->f.perspective.animateNearPlane)
+			serializer.write("nearPlane", frameView->c.perspective.nearPlane);
 	}
 	else
 	{
 		serializer.write("projection", string_view("Orthographic"));
-		if (cameraFrameView->f.orthographic.animateWidth)
-			serializer.write("width", cameraFrameView->c.orthographic.width);
-		if (cameraFrameView->f.orthographic.animateHeight)
-			serializer.write("height", cameraFrameView->c.orthographic.height);
-		if (cameraFrameView->f.orthographic.animateDepth)
-			serializer.write("depth", cameraFrameView->c.orthographic.depth);
+		if (frameView->f.orthographic.animateWidth)
+			serializer.write("width", frameView->c.orthographic.width);
+		if (frameView->f.orthographic.animateHeight)
+			serializer.write("height", frameView->c.orthographic.height);
+		if (frameView->f.orthographic.animateDepth)
+			serializer.write("depth", frameView->c.orthographic.depth);
 	}
 }
-ID<AnimationFrame> CameraSystem::deserializeAnimation(IDeserializer& deserializer)
+void CameraSystem::deserializeAnimation(IDeserializer& deserializer, View<AnimationFrame> frame)
 {
+	auto frameView = View<CameraFrame>(frame);
 	string type; deserializer.read("projection", type);
 
-	CameraFrame frame;
 	if (type == "Perspective")
 	{
-		frame.f.perspective.type = ProjectionType::Perspective;
-		frame.f.perspective.animateFieldOfView = deserializer.read("fieldOfView", frame.c.perspective.fieldOfView);
-		frame.f.perspective.animateAspectRatio = deserializer.read("aspectRatio", frame.c.perspective.aspectRatio);
-		frame.f.perspective.animateNearPlane = deserializer.read("nearPlane", frame.c.perspective.nearPlane);
+		frameView->f.perspective.type = ProjectionType::Perspective;
+		frameView->f.perspective.animateFieldOfView = deserializer.read(
+			"fieldOfView", frameView->c.perspective.fieldOfView);
+		frameView->f.perspective.animateAspectRatio = deserializer.read(
+			"aspectRatio", frameView->c.perspective.aspectRatio);
+		frameView->f.perspective.animateNearPlane = deserializer.read(
+			"nearPlane", frameView->c.perspective.nearPlane);
 	}
 	else if (type == "Orthographic")
 	{
-		frame.f.orthographic.type = ProjectionType::Orthographic;
-		frame.f.orthographic.animateWidth = deserializer.read("width", frame.c.orthographic.width);
-		frame.f.orthographic.animateHeight = deserializer.read("height", frame.c.orthographic.height);
-		frame.f.orthographic.animateDepth = deserializer.read("depth", frame.c.orthographic.depth);
+		frameView->f.orthographic.type = ProjectionType::Orthographic;
+		frameView->f.orthographic.animateWidth = deserializer.read("width", frameView->c.orthographic.width);
+		frameView->f.orthographic.animateHeight = deserializer.read("height", frameView->c.orthographic.height);
+		frameView->f.orthographic.animateDepth = deserializer.read("depth", frameView->c.orthographic.depth);
 	}
-
-	if (frame.hasAnimation())
-		return ID<AnimationFrame>(animationFrames.create(frame));
-	return {};
 }
 
 //**********************************************************************************************************************
 void CameraSystem::animateAsync(View<Component> component, View<AnimationFrame> a, View<AnimationFrame> b, float t)
 {
-	auto cameraView = View<CameraComponent>(component);
+	auto componentView = View<CameraComponent>(component);
 	const auto frameA = View<CameraFrame>(a);
 	const auto frameB = View<CameraFrame>(b);
 
@@ -175,17 +158,17 @@ void CameraSystem::animateAsync(View<Component> component, View<AnimationFrame> 
 	{
 		if (frameA->f.perspective.animateFieldOfView)
 		{
-			cameraView->p.perspective.fieldOfView = lerp(
+			componentView->p.perspective.fieldOfView = lerp(
 				frameA->c.perspective.fieldOfView, frameB->c.perspective.fieldOfView, t);
 		}
 		if (frameA->f.perspective.animateAspectRatio)
 		{
-			cameraView->p.perspective.aspectRatio = lerp(
+			componentView->p.perspective.aspectRatio = lerp(
 				frameA->c.perspective.aspectRatio, frameB->c.perspective.aspectRatio, t);
 		}
 		if (frameA->f.perspective.animateNearPlane)
 		{
-			cameraView->p.perspective.nearPlane = lerp(
+			componentView->p.perspective.nearPlane = lerp(
 				frameA->c.perspective.nearPlane, frameB->c.perspective.nearPlane, t);
 		}
 	}
@@ -193,17 +176,17 @@ void CameraSystem::animateAsync(View<Component> component, View<AnimationFrame> 
 	{
 		if (frameA->f.orthographic.animateWidth)
 		{
-			cameraView->p.orthographic.width = lerp(
+			componentView->p.orthographic.width = lerp(
 				frameA->c.orthographic.width, frameB->c.orthographic.width, t);
 		}
 		if (frameA->f.orthographic.animateHeight)
 		{
-			cameraView->p.orthographic.height = lerp(
+			componentView->p.orthographic.height = lerp(
 				frameA->c.orthographic.height, frameB->c.orthographic.height, t);
 		}
 		if (frameA->f.orthographic.animateDepth)
 		{
-			cameraView->p.orthographic.depth = lerp(
+			componentView->p.orthographic.depth = lerp(
 				frameA->c.orthographic.depth, frameB->c.orthographic.depth, t);
 		}
 	}

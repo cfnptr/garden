@@ -545,8 +545,8 @@ bool Text::update(u32string_view value, Properties properties, const FontArray& 
 	}
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto stagingBuffer = graphicsSystem->createStagingBuffer(
-		Buffer::CpuAccess::RandomReadWrite, value.size() * sizeof(Text::Instance));
+	auto newBinarySize = (uint64)value.size() * sizeof(Text::Instance);
+	auto stagingBuffer = graphicsSystem->createStagingBuffer(Buffer::CpuAccess::RandomReadWrite, newBinarySize);
 	SET_RESOURCE_DEBUG_NAME(stagingBuffer, "buffer.staging.textInstances" + to_string(*stagingBuffer));
 
 	auto stagingView = graphicsSystem->get(stagingBuffer);
@@ -560,13 +560,25 @@ bool Text::update(u32string_view value, Properties properties, const FontArray& 
 		textSystem->destroy(newFontAtlas);
 		return false;
 	}
+	stagingView->flush();
 
-	ID<Buffer> newInstanceBuffer = {};
-	if (shrink || !instanceBuffer)
+	uint64 currBinarySize = 0;
+	if (instanceBuffer && !shrink)
 	{
-		//newInstanceBuffer = graphicsSystem->createBuffer(instanceUsage,)
+		auto bufferView = graphicsSystem->get(instanceBuffer);
+		currBinarySize = bufferView->getBinarySize();
+	}
+
+	if (newBinarySize > currBinarySize)
+	{
+		graphicsSystem->destroy(instanceBuffer);
+		instanceBuffer = graphicsSystem->createBuffer(instanceUsage, Buffer::CpuAccess::None, 
+			newBinarySize, Buffer::Location::Auto, Buffer::Strategy::Size);
+		SET_RESOURCE_DEBUG_NAME(instanceBuffer, "buffer.storage.text" + to_string(*instanceBuffer));
 	}
 	
+	Buffer::copy(stagingBuffer, instanceBuffer);
+	graphicsSystem->destroy(stagingBuffer);
 	return true;
 }
 

@@ -69,8 +69,8 @@ void SpriteRenderSystem::imageLoaded()
 		spriteRenderView->descriptorSet = descriptorSet;
 	}
 
-	auto& spriteFramePool = getAnimationFramePool();
-	componentSize = getAnimationFrameSize();
+	auto& spriteFramePool = getSpriteFramePool();
+	componentSize = getSpriteFrameSize();
 	componentData = (uint8*)spriteFramePool.getData();
 	componentOccupancy = spriteFramePool.getOccupancy();
 
@@ -85,53 +85,13 @@ void SpriteRenderSystem::imageLoaded()
 	}
 }
 
-void SpriteRenderSystem::resetComponent(View<Component> component, bool full)
+void SpriteRenderSystem::resetComponent(View<Component> component)
 {
 	auto resourceSystem = ResourceSystem::Instance::get();
-	auto spriteRenderView = View<SpriteRenderComponent>(component);
-	resourceSystem->destroyShared(spriteRenderView->colorMap);
-	resourceSystem->destroyShared(spriteRenderView->descriptorSet);
-	spriteRenderView->colorMap = {}; spriteRenderView->descriptorSet = {};
-
-	if (full)
-	{
-		spriteRenderView->isEnabled = true;
-		spriteRenderView->aabb = Aabb::one;
-		spriteRenderView->color = f32x4::one;
-		spriteRenderView->uvSize = float2::one;
-		spriteRenderView->uvOffset = float2::zero;
-		#if GARDEN_DEBUG || GARDEN_EDITOR
-		spriteRenderView->colorMapPath = "";
-		spriteRenderView->taskPriority = 0.0f;
-		#endif
-		spriteRenderView->colorMapLayer = 0.0f;
-		spriteRenderView->isArray = false;
-		spriteRenderView->useMipmap = false;
-	}
-}
-void SpriteRenderSystem::copyComponent(View<Component> source, View<Component> destination)
-{
-	auto destinationView = View<SpriteRenderComponent>(destination);
-	const auto sourceView = View<SpriteRenderComponent>(source);
-
-	auto resourceSystem = ResourceSystem::Instance::get();
-	resourceSystem->destroyShared(destinationView->descriptorSet);
-	resourceSystem->destroyShared(destinationView->colorMap);
-
-	destinationView->isEnabled = sourceView->isEnabled;
-	destinationView->aabb = sourceView->aabb;
-	destinationView->color = sourceView->color;
-	destinationView->colorMap = sourceView->colorMap;
-	destinationView->descriptorSet = sourceView->descriptorSet;
-	destinationView->uvSize = sourceView->uvSize;
-	destinationView->uvOffset = sourceView->uvOffset;
-	#if GARDEN_DEBUG || GARDEN_EDITOR
-	destinationView->colorMapPath = sourceView->colorMapPath;
-	destinationView->taskPriority = sourceView->taskPriority;
-	#endif
-	destinationView->colorMapLayer = sourceView->colorMapLayer;
-	destinationView->isArray = sourceView->isArray;
-	destinationView->useMipmap = sourceView->useMipmap;
+	auto componentView = View<SpriteRenderComponent>(component);
+	resourceSystem->destroyShared(componentView->colorMap);
+	resourceSystem->destroyShared(componentView->descriptorSet);
+	componentView->colorMap = {}; componentView->descriptorSet = {};
 }
 
 //**********************************************************************************************************************
@@ -214,178 +174,177 @@ ID<GraphicsPipeline> SpriteRenderSystem::createBasePipeline()
 //**********************************************************************************************************************
 void SpriteRenderSystem::serialize(ISerializer& serializer, const View<Component> component)
 {
-	const auto spriteRenderView = View<SpriteRenderComponent>(component);
-	if (spriteRenderView->isArray)
+	const auto componentView = View<SpriteRenderComponent>(component);
+	if (componentView->isArray)
 		serializer.write("isArray", true);
-	if (spriteRenderView->useMipmap)
+	if (componentView->useMipmap)
 		serializer.write("useMipmap", true);
-	if (spriteRenderView->aabb != Aabb::one)
-		serializer.write("aabb", spriteRenderView->aabb);
-	if (!spriteRenderView->isEnabled)
+	if (componentView->aabb != Aabb::one)
+		serializer.write("aabb", componentView->aabb);
+	if (!componentView->isEnabled)
 		serializer.write("isEnabled", false);
-	if (spriteRenderView->colorMapLayer != 0.0f)
-		serializer.write("colorMapLayer", spriteRenderView->colorMapLayer);
-	if (spriteRenderView->color != f32x4::one)
-		serializer.write("color", (float4)spriteRenderView->color);
-	if (spriteRenderView->uvSize != float2::one)
-		serializer.write("uvSize", spriteRenderView->uvSize);
-	if (spriteRenderView->uvOffset != float2::zero)
-		serializer.write("uvOffset", spriteRenderView->uvOffset);
+	if (componentView->colorMapLayer != 0.0f)
+		serializer.write("colorMapLayer", componentView->colorMapLayer);
+	if (componentView->color != f32x4::one)
+		serializer.write("color", (float4)componentView->color);
+	if (componentView->uvSize != float2::one)
+		serializer.write("uvSize", componentView->uvSize);
+	if (componentView->uvOffset != float2::zero)
+		serializer.write("uvOffset", componentView->uvOffset);
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
-	if (!spriteRenderView->colorMapPath.empty())
-		serializer.write("colorMapPath", spriteRenderView->colorMapPath.generic_string());
-	if (spriteRenderView->taskPriority != 0.0f)
-		serializer.write("taskPriority", spriteRenderView->taskPriority);
+	if (!componentView->colorMapPath.empty())
+		serializer.write("colorMapPath", componentView->colorMapPath.generic_string());
+	if (componentView->taskPriority != 0.0f)
+		serializer.write("taskPriority", componentView->taskPriority);
 	#endif
 }
 void SpriteRenderSystem::deserialize(IDeserializer& deserializer, View<Component> component)
 {
-	auto spriteRenderView = View<SpriteRenderComponent>(component);
-	deserializer.read("isArray", spriteRenderView->isArray);
-	deserializer.read("useMipmap", spriteRenderView->useMipmap);
-	deserializer.read("aabb", spriteRenderView->aabb);
-	deserializer.read("isEnabled", spriteRenderView->isEnabled);
-	deserializer.read("colorMapLayer", spriteRenderView->colorMapLayer);
-	deserializer.read("color", spriteRenderView->color);
-	deserializer.read("uvSize", spriteRenderView->uvSize);
-	deserializer.read("uvOffset", spriteRenderView->uvOffset);
+	auto componentView = View<SpriteRenderComponent>(component);
+	deserializer.read("isArray", componentView->isArray);
+	deserializer.read("useMipmap", componentView->useMipmap);
+	deserializer.read("aabb", componentView->aabb);
+	deserializer.read("isEnabled", componentView->isEnabled);
+	deserializer.read("colorMapLayer", componentView->colorMapLayer);
+	deserializer.read("color", componentView->color);
+	deserializer.read("uvSize", componentView->uvSize);
+	deserializer.read("uvOffset", componentView->uvOffset);
 
 	string colorMapPath;
 	deserializer.read("colorMapPath", colorMapPath);
 	if (colorMapPath.empty())
 		colorMapPath = "missing";
 	#if GARDEN_DEBUG || GARDEN_EDITOR
-	spriteRenderView->colorMapPath = colorMapPath;
+	componentView->colorMapPath = colorMapPath;
 	#endif
 
 	auto taskPriority = 0.0f;
 	deserializer.read("taskPriority", taskPriority);
 
-	auto maxMipCount = spriteRenderView->useMipmap ? 0 : 1;
-	auto flags = imageFlags; if (spriteRenderView->isArray) flags |= ImageLoadFlags::LoadArray;
+	auto maxMipCount = componentView->useMipmap ? 0 : 1;
+	auto flags = imageFlags; if (componentView->isArray) flags |= ImageLoadFlags::LoadArray;
 	auto usage = imageUsage; if (maxMipCount == 0) usage |= Image::Usage::TransferSrc;
-	spriteRenderView->colorMap = ResourceSystem::Instance::get()->loadImage(
+	componentView->colorMap = ResourceSystem::Instance::get()->loadImage(
 		colorMapPath, usage, maxMipCount, Image::Strategy::Default, flags, taskPriority);
 }
 
 //**********************************************************************************************************************
 void SpriteRenderSystem::serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame)
 {
-	const auto spriteFrameView = View<SpriteAnimFrame>(frame);
-	if (spriteFrameView->animateIsEnabled)
-		serializer.write("isEnabled", (bool)spriteFrameView->isEnabled);
-	if (spriteFrameView->animateColor)
-		serializer.write("color", (float4)spriteFrameView->color);
-	if (spriteFrameView->animateUvSize)
-		serializer.write("uvSize", spriteFrameView->uvSize);
-	if (spriteFrameView->animateUvOffset)
-		serializer.write("uvOffset", spriteFrameView->uvOffset);
-	if (spriteFrameView->animateColorMapLayer)
-		serializer.write("colorMapLayer", spriteFrameView->colorMapLayer);
+	const auto frameView = View<SpriteAnimFrame>(frame);
+	if (frameView->animateIsEnabled)
+		serializer.write("isEnabled", (bool)frameView->isEnabled);
+	if (frameView->animateColor)
+		serializer.write("color", (float4)frameView->color);
+	if (frameView->animateUvSize)
+		serializer.write("uvSize", frameView->uvSize);
+	if (frameView->animateUvOffset)
+		serializer.write("uvOffset", frameView->uvOffset);
+	if (frameView->animateColorMapLayer)
+		serializer.write("colorMapLayer", frameView->colorMapLayer);
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
-	if (spriteFrameView->animateColorMap)
+	if (frameView->animateColorMap)
 	{
-		if (!spriteFrameView->colorMapPath.empty())
-			serializer.write("colorMapPath", spriteFrameView->colorMapPath.generic_string());
-		if (spriteFrameView->taskPriority != 0.0f)
-			serializer.write("taskPriority", spriteFrameView->taskPriority);
-		if (spriteFrameView->isArray)
+		if (!frameView->colorMapPath.empty())
+			serializer.write("colorMapPath", frameView->colorMapPath.generic_string());
+		if (frameView->taskPriority != 0.0f)
+			serializer.write("taskPriority", frameView->taskPriority);
+		if (frameView->isArray)
 			serializer.write("isArray", true);
-		if (spriteFrameView->useMipmap)
+		if (frameView->useMipmap)
 			serializer.write("useMipmap", true);
 	}
 	#endif
 }
+void SpriteRenderSystem::deserializeAnimation(IDeserializer& deserializer, View<AnimationFrame> frame)
+{
+	auto frameView = View<SpriteAnimFrame>(frame); auto boolValue = true;
+	frameView->animateIsEnabled = deserializer.read("isEnabled", boolValue);
+	frameView->animateColor = deserializer.read("color", frameView->color);
+	frameView->animateUvSize = deserializer.read("uvSize", frameView->uvSize);
+	frameView->animateUvOffset = deserializer.read("uvOffset", frameView->uvOffset);
+	frameView->animateColorMapLayer = deserializer.read("colorMapLayer", frameView->colorMapLayer);
+	frameView->isEnabled = boolValue;
+
+	string colorMapPath;
+	frameView->animateColorMap = deserializer.read("colorMapPath", colorMapPath);
+	if (colorMapPath.empty())
+		colorMapPath = "missing";
+	#if GARDEN_DEBUG || GARDEN_EDITOR
+	frameView->colorMapPath = colorMapPath;
+	#endif
+
+	boolValue = false;
+	deserializer.read("isArray", boolValue);
+	frameView->isArray = boolValue;
+
+	auto taskPriority = 0.0f;
+	deserializer.read("taskPriority", taskPriority);
+
+	auto maxMipCount = frameView->useMipmap ? 0 : 1;
+	auto flags = imageFlags; if (frameView->isArray) flags |= ImageLoadFlags::LoadArray;
+	auto usage = imageUsage; if (maxMipCount == 0) usage |= Image::Usage::TransferSrc;
+	frameView->colorMap = ResourceSystem::Instance::get()->loadImage(colorMapPath, 
+		usage, maxMipCount, Image::Strategy::Default, flags, taskPriority);
+	frameView->descriptorSet = {}; // Note: See the imageLoaded()
+}
 void SpriteRenderSystem::animateAsync(View<Component> component,
 	View<AnimationFrame> a, View<AnimationFrame> b, float t)
 {
-	auto spriteRenderView = View<SpriteRenderComponent>(component);
+	auto componentView = View<SpriteRenderComponent>(component);
 	const auto frameA = View<SpriteAnimFrame>(a);
 	const auto frameB = View<SpriteAnimFrame>(b);
 
 	if (frameA->animateIsEnabled)
-		spriteRenderView->isEnabled = (bool)round(t);
+		componentView->isEnabled = (bool)round(t);
 	if (frameA->animateColor)
-		spriteRenderView->color = lerp(frameA->color, frameB->color, t);
+		componentView->color = lerp(frameA->color, frameB->color, t);
 	if (frameA->animateUvSize)
-		spriteRenderView->uvSize = lerp(frameA->uvSize, frameB->uvSize, t);
+		componentView->uvSize = lerp(frameA->uvSize, frameB->uvSize, t);
 	if (frameA->animateUvOffset)
-		spriteRenderView->uvOffset = lerp(frameA->uvOffset, frameB->uvOffset, t);
+		componentView->uvOffset = lerp(frameA->uvOffset, frameB->uvOffset, t);
 	if (frameA->animateColorMapLayer)
-		spriteRenderView->colorMapLayer = lerp(frameA->colorMapLayer, frameB->colorMapLayer, t);
+		componentView->colorMapLayer = lerp(frameA->colorMapLayer, frameB->colorMapLayer, t);
 
 	if (frameA->animateColorMap)
 	{
-		if (round(t) > 0.0f)
+		if ((bool)round(t))
 		{
 			if (frameB->descriptorSet)
 			{
-				spriteRenderView->colorMap = frameB->colorMap;
-				spriteRenderView->descriptorSet = frameB->descriptorSet;
+				componentView->colorMap = frameB->colorMap;
+				componentView->descriptorSet = frameB->descriptorSet;
 				#if GARDEN_DEBUG || GARDEN_EDITOR
-				spriteRenderView->colorMapPath = frameB->colorMapPath;
+				componentView->colorMapPath = frameB->colorMapPath;
 				#endif
-				spriteRenderView->isArray = frameB->isArray;
-				spriteRenderView->useMipmap = frameB->useMipmap;
+				componentView->isArray = frameB->isArray;
+				componentView->useMipmap = frameB->useMipmap;
 			}
 		}
 		else
 		{
 			if (frameA->descriptorSet)
 			{
-				spriteRenderView->colorMap = frameA->colorMap;
-				spriteRenderView->descriptorSet = frameA->descriptorSet;
+				componentView->colorMap = frameA->colorMap;
+				componentView->descriptorSet = frameA->descriptorSet;
 				#if GARDEN_DEBUG || GARDEN_EDITOR
-				spriteRenderView->colorMapPath = frameA->colorMapPath;
+				componentView->colorMapPath = frameA->colorMapPath;
 				#endif
-				spriteRenderView->isArray = frameA->isArray;
-				spriteRenderView->useMipmap = frameA->useMipmap;
+				componentView->isArray = frameA->isArray;
+				componentView->useMipmap = frameA->useMipmap;
 			}
 		}
 	}
 }
-void SpriteRenderSystem::deserializeAnimation(IDeserializer& deserializer, SpriteAnimFrame& frame)
-{
-	auto boolValue = true;
-	frame.animateIsEnabled = deserializer.read("isEnabled", boolValue);
-	frame.isEnabled = boolValue;
-	frame.animateColor = deserializer.read("color", frame.color);
-	frame.animateUvSize = deserializer.read("uvSize", frame.uvSize);
-	frame.animateUvOffset = deserializer.read("uvOffset", frame.uvOffset);
-	frame.animateColorMapLayer = deserializer.read("colorMapLayer", frame.colorMapLayer);
-
-	string colorMapPath;
-	frame.animateColorMap = deserializer.read("colorMapPath", colorMapPath);
-	if (colorMapPath.empty())
-		colorMapPath = "missing";
-	#if GARDEN_DEBUG || GARDEN_EDITOR
-	frame.colorMapPath = colorMapPath;
-	#endif
-
-	boolValue = false;
-	deserializer.read("isArray", boolValue);
-	frame.isArray = boolValue;
-
-	auto taskPriority = 0.0f;
-	deserializer.read("taskPriority", taskPriority);
-
-	auto maxMipCount = frame.useMipmap ? 0 : 1;
-	auto flags = imageFlags; if (frame.isArray) flags |= ImageLoadFlags::LoadArray;
-	auto usage = imageUsage; if (maxMipCount == 0) usage |= Image::Usage::TransferSrc;
-	frame.colorMap = ResourceSystem::Instance::get()->loadImage(colorMapPath, 
-		usage, maxMipCount, Image::Strategy::Default, flags, taskPriority);
-	frame.descriptorSet = {}; // Note: See the imageLoaded()
-}
-
-void SpriteRenderSystem::resetAnimation(View<AnimationFrame> frame, bool full)
+void SpriteRenderSystem::resetAnimation(View<AnimationFrame> frame)
 {
 	auto resourceSystem = ResourceSystem::Instance::get();
-	auto spriteFrameView = View<SpriteAnimFrame>(frame);
-	resourceSystem->destroyShared(spriteFrameView->colorMap);
-	resourceSystem->destroyShared(spriteFrameView->descriptorSet);
-	spriteFrameView->colorMap = {}; spriteFrameView->descriptorSet = {};
+	auto frameView = View<SpriteAnimFrame>(frame);
+	resourceSystem->destroyShared(frameView->colorMap);
+	resourceSystem->destroyShared(frameView->descriptorSet);
+	frameView->colorMap = {}; frameView->descriptorSet = {};
 }
 
 //**********************************************************************************************************************

@@ -1059,15 +1059,15 @@ void PbrLightingSystem::qualityChange()
 void PbrLightingSystem::resetComponent(View<Component> component, bool full)
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto pbrLightingView = View<PbrLightingComponent>(component);
-	graphicsSystem->destroy(pbrLightingView->skybox);
-	graphicsSystem->destroy(pbrLightingView->sh);
-	graphicsSystem->destroy(pbrLightingView->specular);
-	graphicsSystem->destroy(pbrLightingView->descriptorSet);
-	pbrLightingView->skybox = {};
-	pbrLightingView->sh = {};
-	pbrLightingView->specular = {};
-	pbrLightingView->descriptorSet = {};
+	auto componentView = View<PbrLightingComponent>(component);
+	graphicsSystem->destroy(componentView->skybox);
+	graphicsSystem->destroy(componentView->sh);
+	graphicsSystem->destroy(componentView->specular);
+	graphicsSystem->destroy(componentView->descriptorSet);
+	componentView->skybox = {};
+	componentView->sh = {};
+	componentView->specular = {};
+	componentView->descriptorSet = {};
 }
 void PbrLightingSystem::copyComponent(View<Component> source, View<Component> destination)
 {

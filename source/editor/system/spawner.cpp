@@ -62,6 +62,7 @@ void SpawnerEditorSystem::deinit()
 //**********************************************************************************************************************
 static void renderSpawners(const string& searchString, bool searchCaseSensitive)
 {
+	auto manager = Manager::Instance::get();
 	auto spawnerSystem = SpawnerSystem::Instance::get();
 	auto editorSystem = EditorRenderSystem::Instance::get();
 	auto transformSystem = TransformSystem::Instance::tryGet();
@@ -89,7 +90,7 @@ static void renderSpawners(const string& searchString, bool searchCaseSensitive)
 			flags |= ImGuiTreeNodeFlags_Selected;
 		
 		string name;
-		if (transformSystem && transformSystem->hasComponent(entity))
+		if (transformSystem && manager->has<TransformComponent>(entity))
 		{
 			auto transformView = transformSystem->getComponent(entity);
 			name = transformView->debugName.empty() ?

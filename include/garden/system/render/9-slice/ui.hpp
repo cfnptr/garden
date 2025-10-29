@@ -35,7 +35,7 @@ struct Ui9SliceFrame final : public NineSliceFrame { };
 /**
  * @brief User interface 9-slice sprite rendering system. (UI)
  */
-class Ui9SliceSystem final : public NineSliceRenderCompSystem<
+class Ui9SliceSystem final : public NineSliceCompAnimSystem<
 	Ui9SliceComponent, Ui9SliceFrame, false, false>, public Singleton<Ui9SliceSystem>
 {
 	/**

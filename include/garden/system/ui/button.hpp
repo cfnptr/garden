@@ -53,9 +53,11 @@ public:
 struct UiButtonFrame final : public AnimationFrame
 {
 	bool animateIsEnabled = false;
+	bool animateOnClick = false;
 	bool isEnabled = true;
+	string onClick = "";
 
-	bool hasAnimation() final { return animateIsEnabled; }
+	bool hasAnimation() final { return animateIsEnabled || animateOnClick; }
 };
 
 /***********************************************************************************************************************
@@ -87,17 +89,14 @@ private:
 	void uiButtonExit();
 	void uiButtonStay();
 
-	void resetComponent(View<Component> component, bool full) final;
-	void copyComponent(View<Component> source, View<Component> destination) final;
 	string_view getComponentName() const final;
 	
 	void serialize(ISerializer& serializer, const View<Component> component) final;
 	void deserialize(IDeserializer& deserializer, View<Component> component) final;
 
 	void serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame) final;
-	ID<AnimationFrame> deserializeAnimation(IDeserializer& deserializer) final;
-	void animateAsync(View<Component> component,
-		View<AnimationFrame> a, View<AnimationFrame> b, float t) final;
+	void deserializeAnimation(IDeserializer& deserializer, View<AnimationFrame> frame) final;
+	void animateAsync(View<Component> component, View<AnimationFrame> a, View<AnimationFrame> b, float t) final;
 	friend class ecsm::Manager;
 public:
 	/**

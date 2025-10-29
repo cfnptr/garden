@@ -36,17 +36,18 @@ NetworkSystem::~NetworkSystem()
 
 void NetworkSystem::resetComponent(View<Component> component, bool full)
 {
+	auto componentView = View<NetworkComponent>(component);
+	// TODO:
+
 	if (full)
-	{
-		auto networkView = View<NetworkComponent>(component);
-		networkView->isClientOwned = false;
-	}
+		**componentView = {};
 }
 void NetworkSystem::copyComponent(View<Component> source, View<Component> destination)
 {
 	const auto sourceView = View<NetworkComponent>(source);
 	auto destinationView = View<NetworkComponent>(destination);
 	destinationView->isClientOwned = sourceView->isClientOwned;
+	// TODO:
 }
 string_view NetworkSystem::getComponentName() const
 {
@@ -56,11 +57,11 @@ string_view NetworkSystem::getComponentName() const
 //**********************************************************************************************************************
 void NetworkSystem::serialize(ISerializer& serializer, const View<Component> component)
 {
-	const auto networkView = View<NetworkComponent>(component);
-	serializer.write("isClientOwned", networkView->isClientOwned);
+	const auto componentView = View<NetworkComponent>(component);
+	serializer.write("isClientOwned", componentView->isClientOwned);
 }
 void NetworkSystem::deserialize(IDeserializer& deserializer, View<Component> component)
 {
-	auto networkView = View<NetworkComponent>(component);
-	deserializer.read("isClientOwned", networkView->isClientOwned);
+	auto componentView = View<NetworkComponent>(component);
+	deserializer.read("isClientOwned", componentView->isClientOwned);
 }

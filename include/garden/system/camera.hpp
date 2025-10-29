@@ -102,13 +102,7 @@ struct CameraComponent final : public Component
 {
 	CameraProjection p = {};                           /**< Camera perspective/orthographic projection properties. */
 	ProjectionType type = ProjectionType::Perspective; /**< Camera projection type. */
-private:
-	uint8_t _alignment0 = 0;
-	uint16_t _alignment1 = 0;
 
-	friend class CameraSystem;
-	friend class LinearPool<CameraComponent, false>;
-public:
 	/**
 	 * @brief Calculates camera projection matrix.
 	 * @details See the @ref calcPerspProjInfRevZ().
@@ -121,6 +115,9 @@ public:
 	float getNearPlane() const noexcept;
 
 	// TODO: add perspective/ortho morphing.
+
+	friend class CameraSystem;
+	friend class LinearPool<CameraComponent, false>;
 };
 
 /***********************************************************************************************************************
@@ -186,17 +183,14 @@ class CameraSystem final : public CompAnimSystem<CameraComponent, CameraFrame, f
 	 */
 	~CameraSystem() final;
 
-	void resetComponent(View<Component> component, bool full) final;
-	void copyComponent(View<Component> source, View<Component> destination) final;
 	string_view getComponentName() const final;
 	
 	void serialize(ISerializer& serializer, const View<Component> component) final;
 	void deserialize(IDeserializer& deserializer, View<Component> component) final;
 
 	void serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame) final;
-	ID<AnimationFrame> deserializeAnimation(IDeserializer& deserializer) final;
-	void animateAsync(View<Component> component,
-		View<AnimationFrame> a, View<AnimationFrame> b, float t) final;
+	void deserializeAnimation(IDeserializer& deserializer, View<AnimationFrame> frame) final;
+	void animateAsync(View<Component> component, View<AnimationFrame> a, View<AnimationFrame> b, float t) final;
 
 	friend class ecsm::Manager;
 };

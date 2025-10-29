@@ -49,7 +49,7 @@ struct Cutout9SliceFrame final : public NineSliceFrame
 /**
  * @brief Cutout 9-slice sprite rendering system.
  */
-class Cutout9SliceSystem final : public NineSliceRenderCompSystem<
+class Cutout9SliceSystem final : public NineSliceCompAnimSystem<
 	Cutout9SliceComponent, Cutout9SliceFrame, false, false>, public Singleton<Cutout9SliceSystem>
 {
 public:
@@ -71,16 +71,14 @@ private:
 	void setPushConstants(SpriteRenderComponent* spriteRenderView, PushConstants* pushConstants,
 		const f32x4x4& viewProj, const f32x4x4& model, uint32 drawIndex, int32 threadIndex) final;
 
-	void copyComponent(View<Component> source, View<Component> destination) final;
 	string_view getComponentName() const final;
 	MeshRenderType getMeshRenderType() const final;
 	
 	void serialize(ISerializer& serializer, const View<Component> component) final;
 	void deserialize(IDeserializer& deserializer, View<Component> component) final;
 	void serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame) final;
-	ID<AnimationFrame> deserializeAnimation(IDeserializer& deserializer) final;
-	void animateAsync(View<Component> component,
-		View<AnimationFrame> a, View<AnimationFrame> b, float t) final;
+	void deserializeAnimation(IDeserializer& deserializer, View<AnimationFrame> frame) final;
+	void animateAsync(View<Component> component, View<AnimationFrame> a, View<AnimationFrame> b, float t) final;
 	
 	friend class ecsm::Manager;
 };

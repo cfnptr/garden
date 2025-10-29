@@ -20,7 +20,7 @@
 #pragma once
 #include "garden/utf.hpp"
 #include "garden/font.hpp"
-#include "garden/graphics/descriptor-set.hpp"
+#include "garden/graphics/image.hpp"
 
 namespace garden
 {
@@ -99,7 +99,7 @@ public:
 		Image::Usage imageUsage = defaultImageFlags, bool shrink = false);
 };
 
-/**
+/***********************************************************************************************************************
  * @brief Text data container.
  */
 struct Text final
@@ -218,6 +218,42 @@ public:
 	// TODO: Add isDynamic mode, in which we can update font atlas and text instance buffer each frame.
 	//       In this mode there should be persistent mapped staging buffer for the atlas and instance buffer.
 };
+
+/***********************************************************************************************************************
+ * @brief Text alignment type names.
+ */
+constexpr const char* textAlignmentNames[(psize)Text::Alignment::Count] =
+{
+	"Center", "Left", "Right", "Bottom", "Top", "LeftBottom", "LeftTop", "RightBottom", "RightTop"
+};
+/**
+ * @brief Returns text alignment type name string.
+ * @param textAlignment target text alignment type
+ */
+static string_view toString(Text::Alignment textAlignment) noexcept
+{
+	GARDEN_ASSERT(textAlignment < Text::Alignment::Count);
+	return textAlignmentNames[(psize)textAlignment];
+}
+/**
+ * @brief Returns text alignment type from name string.
+ *
+ * @param name target text alignment name string
+ * @param[out] textAlignment text alignment type
+ */
+static bool toTextAlignment(string_view name, Text::Alignment& textAlignment) noexcept
+{
+	if (name == "Center") { textAlignment = Text::Alignment::Center; return true; }
+	if (name == "Left") { textAlignment = Text::Alignment::Left; return true; }
+	if (name == "Right") { textAlignment = Text::Alignment::Right; return true; }
+	if (name == "Bottom") { textAlignment = Text::Alignment::Bottom; return true; }
+	if (name == "Top") { textAlignment = Text::Alignment::Top; return true; }
+	if (name == "LeftBottom") { textAlignment = Text::Alignment::LeftBottom; return true; }
+	if (name == "LeftTop") { textAlignment = Text::Alignment::LeftTop; return true; }
+	if (name == "RightBottom") { textAlignment = Text::Alignment::RightBottom; return true; }
+	if (name == "RightTop") { textAlignment = Text::Alignment::RightTop; return true; }
+	return false;
+}
 
 /***********************************************************************************************************************
  * @brief Handles text mesh generation, usage.
@@ -399,7 +435,7 @@ public:
 		return createText(utf32, std::move(fonts), fontSize, properties, imageUsage);
 	}
 
-	/**
+	/*******************************************************************************************************************
 	 * @brief Returns text view.
 	 * @param text target text instance
 	 */

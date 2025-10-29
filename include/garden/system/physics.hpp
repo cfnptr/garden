@@ -150,15 +150,41 @@ enum class ShapeSubType : uint8
 	Count
 };
 
-/**
+/***********************************************************************************************************************
  * @brief Rigid body constraint type. (Connection between two bodies)
  */
 enum class ConstraintType : uint8
 {
-	Fixed,
-	Point,
-	Count
+	Fixed, Point, Count
 };
+/**
+ * @brief Rigid body constraint type names.
+ */
+constexpr const char* constraintTypeNames[(uint8)ConstraintType::Count] =
+{
+	"Fixed", "Point"
+};
+/**
+ * @brief Returns constraint type name string.
+ * @param constraintType target constraint type
+ */
+static string_view toString(ConstraintType constraintType) noexcept
+{
+	GARDEN_ASSERT(constraintType < ConstraintType::Count);
+	return constraintTypeNames[(psize)constraintType];
+}
+/**
+ * @brief Returns constraint type from name string.
+ *
+ * @param name target constraint type name string
+ * @param[out] constraintType constraint type
+ */
+static bool toConstraintType(string_view name, ConstraintType& constraintType) noexcept
+{
+	if (name == "Fixed") { constraintType = ConstraintType::Fixed; return true; }
+	if (name == "Point") { constraintType = ConstraintType::Point; return true; }
+	return false;
+}
 
 /***********************************************************************************************************************
  * @brief Determines which other objects rigid body can collide with.

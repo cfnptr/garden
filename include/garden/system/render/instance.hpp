@@ -18,6 +18,7 @@
  */
 
 #pragma once
+#include "garden/animate.hpp"
 #include "garden/system/render/mesh.hpp"
 
 namespace garden
@@ -26,7 +27,7 @@ namespace garden
 /**
  * @brief General mesh instance rendering system.
  */
-class InstanceRenderSystem : public System, public IMeshRenderSystem
+class InstanceRenderSystem : public IMeshRenderSystem
 {
 protected:
 	DescriptorSet::Buffers baseInstanceBuffers = {};
@@ -48,7 +49,7 @@ protected:
 	/**
 	 * @brief Destroys mesh instance rendering system instance.
 	 */
-	~InstanceRenderSystem() override;
+	~InstanceRenderSystem();
 
 	virtual void init();
 	virtual void deinit();
@@ -86,6 +87,27 @@ public:
 	 * @brief Returns mesh shadow instance data size in bytes.
 	 */
 	virtual uint64 getShadowInstanceDataSize() { return 0; }
+};
+
+/**
+ * @brief General mesh instance rendering system with components and animation frames.
+ * @details See the @ref InstanceRenderSystem.
+ *
+ * @tparam C type of the system component
+ * @tparam F type of the system animation frame
+ *
+ * @tparam DestroyComponents system should call destroy() function of the components
+ * @tparam DestroyAnimationFrames system should call destroy() function of the animation frames
+ */
+template<class C = Component, class F = AnimationFrame, 
+	bool DestroyComponents = true, bool DestroyAnimationFrames = true>
+class InstCompAnimSystem : public CompAnimSystem<C, F, 
+	DestroyComponents, DestroyAnimationFrames>, public InstanceRenderSystem
+{
+	/**
+	 * @brief Destroys mesh instance render system instance.
+	 */
+	~InstCompAnimSystem() override { }
 };
 
 } // namespace garden

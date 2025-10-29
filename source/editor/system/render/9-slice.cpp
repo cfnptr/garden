@@ -23,7 +23,6 @@
 
 using namespace garden;
 
-//**********************************************************************************************************************
 NineSliceEditorSystem::NineSliceEditorSystem()
 {
 	ECSM_SUBSCRIBE_TO_EVENT("Init", NineSliceEditorSystem::init);
@@ -38,6 +37,7 @@ NineSliceEditorSystem::~NineSliceEditorSystem()
 	}
 }
 
+//**********************************************************************************************************************
 void NineSliceEditorSystem::init()
 {
 	auto editorSystem = EditorRenderSystem::Instance::get();
@@ -87,16 +87,20 @@ void NineSliceEditorSystem::deinit()
 }
 
 //**********************************************************************************************************************
-void NineSliceEditorSystem::onOpaqueEntityInspector(ID<Entity> entity, bool isOpened)
+template<class S>
+static void renderNineSliceTooltip(ID<Entity> entity)
 {
 	if (ImGui::BeginItemTooltip())
 	{
-		auto opaque9SliceView = Opaque9SliceSystem::Instance::get()->getComponent(entity);
-		ImGui::Text("Enabled: %s, Path: %s", opaque9SliceView->isEnabled ? "true" : "false",
-			opaque9SliceView->colorMapPath.empty() ? "<null>" : 
-			opaque9SliceView->colorMapPath.generic_string().c_str());
+		auto nineSliceView = S::Instance::get()->getComponent(entity);
+		ImGui::Text("Enabled: %s, Path: %s", nineSliceView->isEnabled ? "true" : "false",
+			nineSliceView->colorMapPath.empty() ? "<null>" : nineSliceView->colorMapPath.generic_string().c_str());
 		ImGui::EndTooltip();
 	}
+}
+void NineSliceEditorSystem::onOpaqueEntityInspector(ID<Entity> entity, bool isOpened)
+{
+	renderNineSliceTooltip<Opaque9SliceSystem>(entity);
 	if (isOpened)
 	{
 		auto opaque9SliceView = Opaque9SliceSystem::Instance::get()->getComponent(entity);
@@ -105,14 +109,7 @@ void NineSliceEditorSystem::onOpaqueEntityInspector(ID<Entity> entity, bool isOp
 }
 void NineSliceEditorSystem::onCutoutEntityInspector(ID<Entity> entity, bool isOpened)
 {
-	if (ImGui::BeginItemTooltip())
-	{
-		auto cutout9SliceView = Cutout9SliceSystem::Instance::get()->getComponent(entity);
-		ImGui::Text("Enabled: %s, Path: %s", cutout9SliceView->isEnabled ? "true" : "false",
-			cutout9SliceView->colorMapPath.empty() ? "<null>" : 
-			cutout9SliceView->colorMapPath.generic_string().c_str());
-		ImGui::EndTooltip();
-	}
+	renderNineSliceTooltip<Cutout9SliceSystem>(entity);
 	if (isOpened)
 	{
 		auto cutout9SliceView = Cutout9SliceSystem::Instance::get()->getComponent(entity);
@@ -129,14 +126,7 @@ void NineSliceEditorSystem::onCutoutEntityInspector(ID<Entity> entity, bool isOp
 }
 void NineSliceEditorSystem::onTransEntityInspector(ID<Entity> entity, bool isOpened)
 {
-	if (ImGui::BeginItemTooltip())
-	{
-		auto trans9SliceView = Trans9SliceSystem::Instance::get()->getComponent(entity);
-		ImGui::Text("Enabled: %s, Path: %s", trans9SliceView->isEnabled ? "true" : "false",
-			trans9SliceView->colorMapPath.empty() ? "<null>" : 
-			trans9SliceView->colorMapPath.generic_string().c_str());
-		ImGui::EndTooltip();
-	}
+	renderNineSliceTooltip<Trans9SliceSystem>(entity);
 	if (isOpened)
 	{
 		auto trans9SliceView = Trans9SliceSystem::Instance::get()->getComponent(entity);
@@ -145,14 +135,7 @@ void NineSliceEditorSystem::onTransEntityInspector(ID<Entity> entity, bool isOpe
 }
 void NineSliceEditorSystem::onUiEntityInspector(ID<Entity> entity, bool isOpened)
 {
-	if (ImGui::BeginItemTooltip())
-	{
-		auto ui9SliceView = Ui9SliceSystem::Instance::get()->getComponent(entity);
-		ImGui::Text("Enabled: %s, Path: %s", ui9SliceView->isEnabled ? "true" : "false",
-			ui9SliceView->colorMapPath.empty() ? "<null>" : 
-			ui9SliceView->colorMapPath.generic_string().c_str());
-		ImGui::EndTooltip();
-	}
+	renderNineSliceTooltip<Ui9SliceSystem>(entity);
 	if (isOpened)
 	{
 		auto ui9SliceView = Ui9SliceSystem::Instance::get()->getComponent(entity);
