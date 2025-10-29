@@ -126,7 +126,7 @@ protected:
 	virtual void setPushConstants(SpriteRenderComponent* spriteRenderView, PushConstants* pushConstants,
 		const f32x4x4& viewProj, const f32x4x4& model, uint32 drawIndex, int32 taskIndex);
 	virtual DescriptorSet::Uniforms getSpriteUniforms(ID<ImageView> colorMap);
-	ID<GraphicsPipeline> createBasePipeline() final;
+	ID<GraphicsPipeline> createBasePipeline() override;
 
 	void serialize(ISerializer& serializer, const View<Component> component) override;
 	void deserialize(IDeserializer& deserializer, View<Component> component) override;

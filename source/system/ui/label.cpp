@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "garden/system/ui/label.hpp"
+#include "garden/system/render/deferred.hpp"
 #include "garden/system/resource.hpp"
 
 using namespace garden;
@@ -39,7 +40,7 @@ bool UiLabelComponent::updateText(bool shrink)
 		return false;
 
 	auto textView = textSystem->get(text);
-	fonts = textSystem->get(textView->getFontAtlas())->getFonts();
+	auto fonts = textSystem->get(textView->getFontAtlas())->getFonts();
 	return textView->update(value, propterties, std::move(fonts), fontSize, 
 		FontAtlas::defaultImageFlags, Text::defaultBufferFlags, shrink);
 	#endif
@@ -50,6 +51,7 @@ UiLabelSystem::UiLabelSystem(bool setSingleton) : Singleton(setSingleton)
 	auto manager = Manager::Instance::get();
 	manager->addGroupSystem<ISerializable>(this);
 	manager->addGroupSystem<IAnimatable>(this);
+	manager->addGroupSystem<IMeshRenderSystem>(this);
 }
 UiLabelSystem::~UiLabelSystem()
 {
@@ -58,6 +60,7 @@ UiLabelSystem::~UiLabelSystem()
 		auto manager = Manager::Instance::get();
 		manager->removeGroupSystem<ISerializable>(this);
 		manager->removeGroupSystem<IAnimatable>(this);
+		manager->removeGroupSystem<IMeshRenderSystem>(this);
 	}
 	unsetSingleton();
 }
@@ -99,6 +102,36 @@ void UiLabelSystem::copyComponent(View<Component> source, View<Component> destin
 string_view UiLabelSystem::getComponentName() const
 {
 	return "Label UI";
+}
+
+//**********************************************************************************************************************
+MeshRenderType UiLabelSystem::getMeshRenderType() const
+{
+	return MeshRenderType::UI;
+}
+void UiLabelSystem::drawAsync(MeshRenderComponent* meshRenderView, 
+	const f32x4x4& viewProj, const f32x4x4& model, uint32 drawIndex, int32 taskIndex)
+{
+	auto uiLabelView = (UiLabelComponent*)meshRenderView;
+	if (!uiLabelView->text)
+		return;
+
+	// TODO:
+}
+ID<GraphicsPipeline> UiLabelSystem::createBasePipeline()
+{
+	auto deferredSystem = DeferredRenderSystem::Instance::get();
+
+	ResourceSystem::GraphicsOptions options;
+	options.useAsyncRecording = true;
+	options.loadAsync = false;
+
+	return ResourceSystem::Instance::get()->loadGraphicsPipeline(
+		"text/ui", deferredSystem->getUiFramebuffer(), options);
+}
+uint64 UiLabelSystem::getBaseInstanceDataSize()
+{
+	return sizeof(Text::Instance);
 }
 
 //**********************************************************************************************************************

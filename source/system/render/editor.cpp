@@ -744,15 +744,15 @@ void EditorRenderSystem::showExportScene()
 
 		auto manager = Manager::Instance::get();
 		ImGui::BeginDisabled(!selectedEntity || !manager->has<TransformComponent>(selectedEntity));
-		string exportSelectedTest = "Export selected .scene";
+		string exportSelectedText = "Export selected .scene";
 		if (selectedEntity)
 		{
 			auto transformView = manager->tryGet<TransformComponent>(selectedEntity);
 			auto debugName = transformView->debugName.empty() ?
 				"Entity " + to_string(*selectedEntity) : transformView->debugName;
-			exportSelectedTest += " (" + debugName + ")";
+			exportSelectedText += " (" + debugName + ")";
 		}
-		if (ImGui::Button(exportSelectedTest.c_str(), ImVec2(-FLT_MIN, 0.0f)))
+		if (ImGui::Button(exportSelectedText.c_str(), ImVec2(-FLT_MIN, 0.0f)))
 			ResourceSystem::Instance::get()->storeScene(exportsScenePath, selectedEntity);
 		ImGui::EndDisabled();
 	}
