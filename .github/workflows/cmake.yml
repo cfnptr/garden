@@ -71,16 +71,17 @@ jobs:
         echo "VULKAN_SDK=${{env.SDK_PATH}}/$vulkanVersion" >> $GITHUB_ENV
         echo "${{env.SDK_PATH}}/$vulkanVersion/Bin" >> $GITHUB_PATH
 
-    - name: Set Ubuntu swap space
-      if: matrix.os == 'ubuntu-latest'
-      uses: pierotofy/set-swap-space@master
-      with:
-        swap-size-gb: 15
-
     - name: Create build environment
       run: cmake -E make_directory ${{runner.workspace}}/build
 
+    - name: Configure Ubuntu CMake
+      if: matrix.os == 'ubuntu-latest'
+      working-directory: ${{runner.workspace}}/build
+      shell: bash
+      run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE -D GARDEN_USE_CLANG=TRUE
+
     - name: Configure CMake
+      if: matrix.os != 'ubuntu-latest'
       working-directory: ${{runner.workspace}}/build
       shell: bash
       run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE
@@ -94,17 +95,3 @@ jobs:
       working-directory: ${{runner.workspace}}/build
       shell: bash
       run: ctest -C $BUILD_TYPE
-
-    - name: Archive artifacts
-      if: startsWith(github.ref, 'refs/tags/')
-      working-directory: ${{runner.workspace}}
-      shell: bash
-      run: 7z a -mx9 ${{github.event.repository.name}}-${{github.ref_name}}-${{runner.os}}-${{runner.arch}}.zip ./build/*
-
-    - name: Release artifacts
-      if: startsWith(github.ref, 'refs/tags/')
-      uses: softprops/action-gh-release@v2
-      with:
-          fail_on_unmatched_files: true
-          generate_release_notes: true
-          files: ${{runner.workspace}}/*.zip
