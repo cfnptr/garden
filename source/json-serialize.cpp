@@ -301,6 +301,12 @@ void JsonSerializer::write(string_view name, const Aabb& value)
 	write("max", (float3)value.getMax());
 	endChild();
 }
+void JsonSerializer::write(string_view name, Color value, bool rgb)
+{
+	GARDEN_ASSERT(!name.empty());
+	hierarchy.top()->operator[](name) = rgb ? 
+		std::move(value.toHex3()) : std::move(value.toHex4());
+}
 
 string JsonSerializer::toString() const
 {
@@ -830,6 +836,18 @@ bool JsonDeserializer::read(string_view name, Aabb& value)
 		return value.trySet((f32x4)min, (f32x4)max);
 	}
 	return false;
+}
+bool JsonDeserializer::read(string_view name, Color& value)
+{
+	GARDEN_ASSERT(!name.empty());
+	auto& object = hierarchy.top()->operator[](name);
+	if (!object.is_string())
+		return false;
+	const string& hex = object;
+	if (hex.length() != 6 && hex.length() != 8)
+		return false;
+	value = Color(hex);
+	return true;
 }
 bool JsonDeserializer::read(string_view name, f32x4& value, uint8 components)
 {

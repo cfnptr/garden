@@ -62,6 +62,27 @@ class IAnimatable
 {
 public:
 	/**
+	 * @brief Creates a new system animation frame instance.
+	 */
+	virtual ID<AnimationFrame> createAnimation() = 0;
+	/**
+	 * @brief Destroys system animation frame instance.
+	 * @param instance target system animation frame instance
+	 */
+	virtual void destroyAnimation(ID<AnimationFrame> instance) = 0;
+	/**
+	 * @brief Resets system animation frame data.
+	 * @param frame target system animation frame view
+	 * @param full reset all animation frame data
+	 */
+	virtual void resetAnimation(View<AnimationFrame> frame, bool full) = 0;
+	/**
+	 * @brief Returns system animation frame view.
+	 * @param instance target system animation frame instance
+	 */
+	virtual View<AnimationFrame> getAnimation(ID<AnimationFrame> instance) = 0;
+
+	/**
 	 * @brief Serializes system animation frame data.
 	 * 
 	 * @param[in,out] serializer target serializer instance
@@ -74,12 +95,8 @@ public:
 	 * @param[in,out] deserializer target deserializer instance
 	 * @param frame system animation frame view
 	 */
-	virtual ID<AnimationFrame> deserializeAnimation(IDeserializer& deserializer) = 0;
-	/**
-	 * @brief Returns system animation frame view.
-	 * @param instance target system animation frame instance
-	 */
-	virtual View<AnimationFrame> getAnimation(ID<AnimationFrame> instance) = 0;
+	virtual void deserializeAnimation(IDeserializer& deserializer, View<AnimationFrame> frame) = 0;
+
 	/**
 	 * @brief Asynchronously animates system component data. (From multiple threads)
 	 * @details Component data are interpolated between two frames.
@@ -90,17 +107,6 @@ public:
 	 * @param t time coefficient (from 0.0 to 1.0)
 	 */
 	virtual void animateAsync(View<Component> component, View<AnimationFrame> a, View<AnimationFrame> b, float t) = 0;
-	/**
-	 * @brief Destroys system animation frame instance.
-	 * @param instance target system animation frame instance
-	 */
-	virtual void destroyAnimation(ID<AnimationFrame> instance) = 0;
-	/**
-	 * @brief Resets system animation frame data.
-	 * @param frame target system animation frame view
-	 * @param full reset all animation frame data
-	 */
-	virtual void resetAnimation(View<AnimationFrame> frame, bool full) = 0;
 };
 
 /***********************************************************************************************************************
@@ -184,30 +190,37 @@ public:
  * @details See the @ref System.
  *
  * @tparam C type of the system component
- * @tparam A type of the system animation frame
+ * @tparam F type of the system animation frame
  *
  * @tparam DestroyComponents system should call destroy() function of the components
  * @tparam DestroyAnimationFrames system should call destroy() function of the animation frames
  */
-template<class C = Component, class A = AnimationFrame, 
+template<class C = Component, class F = AnimationFrame, 
 	bool DestroyComponents = true, bool DestroyAnimationFrames = true>
 class CompAnimSystem : public ComponentSystem<C, DestroyComponents>, public IAnimatable
 {
 public:
-	typedef A AnimationFrameType; /**< Type of the system animation frame. */
-	using AnimFramePool = LinearPool<A, DestroyAnimationFrames>; /**< System animation frame pool type. */
+	typedef F AnimationFrameType; /**< Type of the system animation frame. */
+	using AnimFramePool = LinearPool<F, DestroyAnimationFrames>; /**< System animation frame pool type. */
 protected:
 	AnimFramePool animationFrames; /**< System animation frame pool. */
 
+	/**
+	 * @brief Creates a new system animation frame instance.
+	 */
+	ID<AnimationFrame> createAnimation() override
+	{
+		return ID<AnimationFrame>(animationFrames.create());
+	}
 	/**
 	 * @brief Destroys system animation frame instance.
 	 * @details You should use @ref AnimationSystem to destroy animation frames.
 	 */
 	void destroyAnimation(ID<AnimationFrame> instance) override
 	{
-		auto frame = animationFrames.get(ID<A>(instance));
+		auto frame = animationFrames.get(ID<F>(instance));
 		resetAnimation(View<AnimationFrame>(frame), false);
-		animationFrames.destroy(ID<A>(instance));
+		animationFrames.destroy(ID<F>(instance));
 	}
 	/**
 	 * @brief Resets system animation frame data.
@@ -216,10 +229,7 @@ protected:
 	void resetAnimation(View<AnimationFrame> frame, bool full) override
 	{
 		if (full)
-		{
-			auto frameView = View<A>(frame);
-			**frameView = A();
-		}
+			**View<F>(frame) = F();
 	}
 public:
 	/**
@@ -233,7 +243,7 @@ public:
 	 */
 	View<AnimationFrame> getAnimation(ID<AnimationFrame> instance) override
 	{
-		return View<AnimationFrame>(animationFrames.get(ID<A>(instance)));
+		return View<AnimationFrame>(animationFrames.get(ID<F>(instance)));
 	}
 	/**
 	 * @brief Actually destroys system components and animation frames.

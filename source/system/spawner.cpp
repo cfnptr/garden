@@ -81,7 +81,6 @@ void SpawnerComponent::spawn(uint32 count)
 	auto transformSystem = TransformSystem::Instance::get();
 	auto physicsSystem = PhysicsSystem::Instance::tryGet();
 	auto characterSystem = CharacterSystem::Instance::tryGet();
-	auto doNotSerializeSystem = DoNotSerializeSystem::Instance::tryGet();
 
 	for (uint32 i = 0; i < count; i++)
 	{
@@ -94,7 +93,7 @@ void SpawnerComponent::spawn(uint32 count)
 		{
 			if (spawnAsChild)
 			{
-				if (transformSystem->hasComponent(entity))
+				if (manager->has<TransformComponent>(entity))
 				{
 					dupTransformView->setPosition(f32x4::zero);
 					dupTransformView->setScale(f32x4::one);
@@ -134,7 +133,7 @@ void SpawnerComponent::spawn(uint32 count)
 			dupLinkView = manager->add<LinkComponent>(duplicateEntity);
 		if (!dupLinkView->getUUID())
 			dupLinkView->regenerateUUID();
-		if (doNotSerializeSystem && !doNotSerializeSystem->hasComponent(duplicateEntity))
+		if (!manager->has<DoNotSerializeComponent>(duplicateEntity))
 			manager->add<DoNotSerializeComponent>(duplicateEntity);
 		spawnedEntities.push_back(dupLinkView->getUUID());
 	}
@@ -238,21 +237,11 @@ void SpawnerSystem::update()
 //**********************************************************************************************************************
 void SpawnerSystem::resetComponent(View<Component> component, bool full)
 {
-	auto spawnerView = View<SpawnerComponent>(component);
-	spawnerView->destroySpawned();
+	auto componentView = View<SpawnerComponent>(component);
+	componentView->destroySpawned();
 
 	if (full)
-	{
-		spawnerView->path = "";
-		spawnerView->prefab = {};
-		spawnerView->maxCount = 1;
-		spawnerView->delay = 0.0f;
-		spawnerView->mode = {};
-		spawnerView->isActive = true;
-		spawnerView->spawnAsChild = true;
-		spawnerView->delayTime = 0.0f;
-		spawnerView->spawnedEntities = {};
-	}
+		**componentView = {};
 }
 void SpawnerSystem::copyComponent(View<Component> source, View<Component> destination)
 {
@@ -274,54 +263,47 @@ string_view SpawnerSystem::getComponentName() const
 //**********************************************************************************************************************
 void SpawnerSystem::serialize(ISerializer& serializer, const View<Component> component)
 {
-	const auto spawnerView = View<SpawnerComponent>(component);
-	if (!spawnerView->isActive)
+	const auto componentView = View<SpawnerComponent>(component);
+	if (!componentView->isActive)
 		serializer.write("isActive", false);	
-	if (!spawnerView->path.empty())
-		serializer.write("path", spawnerView->path.generic_string());
+	if (!componentView->path.empty())
+		serializer.write("path", componentView->path.generic_string());
 
-	if (spawnerView->prefab)
+	if (componentView->prefab)
 	{
-		auto entity = LinkSystem::Instance::get()->findEntity(spawnerView->prefab);
+		auto entity = LinkSystem::Instance::get()->findEntity(componentView->prefab);
 		if (entity && !Manager::Instance::get()->has<DoNotSerializeComponent>(entity))
 		{
-			spawnerView->prefab.toBase64URL(valueStringCache);
+			componentView->prefab.toBase64URL(valueStringCache);
 			serializer.write("prefab", valueStringCache);
 		}
 	}
 
-	if (spawnerView->maxCount != 1)
-		serializer.write("maxCount", spawnerView->maxCount);
-	if (spawnerView->delay != 0.0f)
-		serializer.write("delay", spawnerView->delay);
-	if (!spawnerView->spawnAsChild)
+	if (componentView->maxCount != 1)
+		serializer.write("maxCount", componentView->maxCount);
+	if (componentView->delay != 0.0f)
+		serializer.write("delay", componentView->delay);
+	if (!componentView->spawnAsChild)
 		serializer.write("spawnAsChild", false);
-
-	switch (spawnerView->mode)
-	{
-		case SpawnMode::Manual: serializer.write("mode", string_view("Manual")); break;
-		default: break;
-	}
+	if (componentView->mode != SpawnMode::OneShot)
+		serializer.write("mode", toString(componentView->mode));
 }
 void SpawnerSystem::deserialize(IDeserializer& deserializer, View<Component> component)
 {
-	auto spawnerView = View<SpawnerComponent>(component);
-	deserializer.read("isActive", spawnerView->isActive);
+	auto componentView = View<SpawnerComponent>(component);
+	deserializer.read("isActive", componentView->isActive);
 
 	if (deserializer.read("path", valueStringCache))
-		spawnerView->path = valueStringCache;
+		componentView->path = valueStringCache;
 	if (deserializer.read("prefab", valueStringCache))
-		spawnerView->prefab.fromBase64URL(valueStringCache);
+		componentView->prefab.fromBase64URL(valueStringCache);
 
-	deserializer.read("maxCount", spawnerView->maxCount);
-	deserializer.read("delay", spawnerView->delay);
-	deserializer.read("spawnAsChild", spawnerView->spawnAsChild);
+	deserializer.read("maxCount", componentView->maxCount);
+	deserializer.read("delay", componentView->delay);
+	deserializer.read("spawnAsChild", componentView->spawnAsChild);
 
 	if (deserializer.read("mode", valueStringCache))
-	{
-		if (valueStringCache == "Manual")
-			spawnerView->mode = SpawnMode::Manual;
-	}
+		toSpawnMode(valueStringCache, componentView->mode);
 }
 
 //**********************************************************************************************************************

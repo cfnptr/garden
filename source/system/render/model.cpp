@@ -36,19 +36,19 @@ ModelRenderSystem::~ModelRenderSystem()
 void ModelRenderSystem::resetComponent(View<Component> component, bool full)
 {
 	auto resourceSystem = ResourceSystem::Instance::get();
-	auto modelView = View<ModelRenderComponent>(component);
+	auto componentView = View<ModelRenderComponent>(component);
 
-	if (!modelView->levels.empty())
+	if (!componentView->levels.empty())
 	{
-		for (auto& lod : modelView->levels)
+		for (auto& lod : componentView->levels)
 		{
 			resourceSystem->destroyShared(lod.vertexBuffer);
 			resourceSystem->destroyShared(lod.indexBuffer);
 		}
-
-		if (full) modelView->levels = {};
-		else modelView->levels.clear();
 	}
+
+	if (full)
+		**componentView = {};
 }
 void ModelRenderSystem::copyComponent(View<Component> source, View<Component> destination)
 {

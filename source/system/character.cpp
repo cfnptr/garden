@@ -414,11 +414,11 @@ void CharacterSystem::destroyComponent(ID<Component> instance)
 }
 void CharacterSystem::resetComponent(View<Component> component, bool full)
 {
-	auto characterView = View<CharacterComponent>(component);
-	characterView->setShape({});
+	auto componentView = View<CharacterComponent>(component);
+	componentView->setShape({});
 
 	if (full)
-		characterView->inSimulation = true;
+		**componentView = {};
 }
 void CharacterSystem::copyComponent(View<Component> source, View<Component> destination)
 {
@@ -440,31 +440,31 @@ string_view CharacterSystem::getComponentName() const
 //**********************************************************************************************************************
 void CharacterSystem::serialize(ISerializer& serializer, const View<Component> component)
 {
-	const auto characterView = View<CharacterComponent>(component);
-	if (characterView->shape)
+	const auto componentView = View<CharacterComponent>(component);
+	if (componentView->shape)
 	{
-		auto mass = characterView->getMass();
+		auto mass = componentView->getMass();
 		if (mass != 70.0f)
 			serializer.write("mass", mass);
 
 		f32x4 position; quat rotation;
-		characterView->getPosAndRot(position, rotation);
+		componentView->getPosAndRot(position, rotation);
 		if (position != f32x4::zero)
 			serializer.write("position", (float3)position);
 		if (rotation != quat::identity)
 			serializer.write("rotation", rotation);
 
-		auto velocity = characterView->getLinearVelocity();
+		auto velocity = componentView->getLinearVelocity();
 		if (velocity != f32x4::zero)
 			serializer.write("linearVelocity", (float3)position);
 
 		auto physicsSystem = PhysicsSystem::Instance::get();
-		physicsSystem->serializeDecoratedShape(serializer, characterView->shape);
+		physicsSystem->serializeDecoratedShape(serializer, componentView->shape);
 	}
 }
 void CharacterSystem::deserialize(IDeserializer& deserializer, View<Component> component)
 {
-	auto characterView = View<CharacterComponent>(component);
+	auto componentView = View<CharacterComponent>(component);
 	if (deserializer.read("shapeType", valueStringCache))
 	{
 		auto physicsSystem = PhysicsSystem::Instance::get();
@@ -473,18 +473,18 @@ void CharacterSystem::deserialize(IDeserializer& deserializer, View<Component> c
 		{
 			auto mass = 70.0f;
 			deserializer.read("mass", mass);
-			characterView->setShape(shape, mass);
+			componentView->setShape(shape, mass);
 
 			auto f32x4Value = f32x4::zero; auto rotation = quat::identity;
 			deserializer.read("position", f32x4Value, 3);
 			deserializer.read("rotation", rotation);
 			if (f32x4Value != f32x4::zero || rotation != quat::identity)
-				characterView->setPosAndRot(f32x4Value, rotation);
+				componentView->setPosAndRot(f32x4Value, rotation);
 
 			f32x4Value = f32x4::zero;
 			deserializer.read("linearVelocity", f32x4Value, 3);
 			if (f32x4Value != f32x4::zero)
-				characterView->setLinearVelocity(f32x4Value);
+				componentView->setLinearVelocity(f32x4Value);
 		}
 	}
 }

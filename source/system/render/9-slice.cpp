@@ -18,25 +18,6 @@
 using namespace garden;
 
 //**********************************************************************************************************************
-void NineSliceRenderSystem::resetComponent(View<Component> component, bool full)
-{
-	SpriteRenderSystem::resetComponent(component, full);
-	if (full)
-	{
-		auto nineSliceView = View<NineSliceComponent>(component);
-		nineSliceView->textureBorder = float2::zero;
-		nineSliceView->windowBorder = float2::zero;
-	}
-}
-void NineSliceRenderSystem::copyComponent(View<Component> source, View<Component> destination)
-{
-	SpriteRenderSystem::copyComponent(source, destination);
-	auto destinationView = View<NineSliceComponent>(destination);
-	const auto sourceView = View<NineSliceComponent>(source);
-	destinationView->textureBorder = sourceView->textureBorder;
-	destinationView->windowBorder = sourceView->windowBorder;
-}
-
 uint64 NineSliceRenderSystem::getBaseInstanceDataSize()
 {
 	return (uint64)sizeof(NineSliceInstanceData);
@@ -66,18 +47,18 @@ void NineSliceRenderSystem::setInstanceData(SpriteRenderComponent* spriteRenderV
 void NineSliceRenderSystem::serialize(ISerializer& serializer, const View<Component> component)
 {
 	SpriteRenderSystem::serialize(serializer, component);
-	const auto nineSliceView = View<NineSliceComponent>(component);
-	if (nineSliceView->textureBorder != float2::zero)
-		serializer.write("textureBorder", nineSliceView->textureBorder);
-	if (nineSliceView->windowBorder != float2::zero)
-		serializer.write("windowBorder", nineSliceView->windowBorder);
+	const auto componentView = View<NineSliceComponent>(component);
+	if (componentView->textureBorder != float2::zero)
+		serializer.write("textureBorder", componentView->textureBorder);
+	if (componentView->windowBorder != float2::zero)
+		serializer.write("windowBorder", componentView->windowBorder);
 }
 void NineSliceRenderSystem::deserialize(IDeserializer& deserializer, View<Component> component)
 {
 	SpriteRenderSystem::deserialize(deserializer, component);
-	auto nineSliceView = View<NineSliceComponent>(component);
-	deserializer.read("textureBorder", nineSliceView->textureBorder);
-	deserializer.read("windowBorder", nineSliceView->windowBorder);
+	auto componentView = View<NineSliceComponent>(component);
+	deserializer.read("textureBorder", componentView->textureBorder);
+	deserializer.read("windowBorder", componentView->windowBorder);
 }
 
 //**********************************************************************************************************************
@@ -90,20 +71,23 @@ void NineSliceRenderSystem::serializeAnimation(ISerializer& serializer, View<Ani
 	if (frameView->animateWindowBorder)
 		serializer.write("windowBorder", frameView->windowBorder);
 }
+void NineSliceRenderSystem::deserializeAnimation(IDeserializer& deserializer, View<AnimationFrame> frame)
+{
+	SpriteRenderSystem::deserializeAnimation(deserializer, frame);
+	auto frameView = View<NineSliceFrame>(frame);
+	frameView->animateTextureBorder = deserializer.read("textureBorder", frameView->textureBorder);
+	frameView->animateWindowBorder = deserializer.read("windowBorder", frameView->windowBorder);
+}
 void NineSliceRenderSystem::animateAsync(View<Component> component,
 	View<AnimationFrame> a, View<AnimationFrame> b, float t)
 {
 	SpriteRenderSystem::animateAsync(component, a, b, t);
-	auto nineSliceView = View<NineSliceComponent>(component);
+
+	auto componentView = View<NineSliceComponent>(component);
 	const auto frameA = View<NineSliceFrame>(a);
 	const auto frameB = View<NineSliceFrame>(b);
 	if (frameA->animateTextureBorder)
-		nineSliceView->textureBorder = lerp(frameA->textureBorder, frameB->textureBorder, t);
+		componentView->textureBorder = lerp(frameA->textureBorder, frameB->textureBorder, t);
 	if (frameA->animateWindowBorder)
-		nineSliceView->windowBorder = lerp(frameA->windowBorder, frameB->windowBorder, t);
-}
-void NineSliceRenderSystem::deserializeAnimation(IDeserializer& deserializer, NineSliceFrame& frame)
-{
-	frame.animateTextureBorder = deserializer.read("textureBorder", frame.textureBorder);
-	frame.animateWindowBorder = deserializer.read("windowBorder", frame.windowBorder);
+		componentView->windowBorder = lerp(frameA->windowBorder, frameB->windowBorder, t);
 }

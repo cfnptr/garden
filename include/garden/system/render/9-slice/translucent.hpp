@@ -35,7 +35,7 @@ struct Trans9SliceFrame final : public NineSliceFrame { };
 /**
  * @brief Translucent 9-slice sprite rendering system.
  */
-class Trans9SliceSystem final : public NineSliceRenderCompSystem<
+class Trans9SliceSystem final : public NineSliceCompAnimSystem<
 	Trans9SliceComponent, Trans9SliceFrame, false, false>, public Singleton<Trans9SliceSystem>
 {
 	/**

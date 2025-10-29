@@ -186,26 +186,6 @@ void UiTriggerSystem::destroyComponent(ID<Component> instance)
 	resetComponent(View<Component>(component), false);
 	components.destroy(ID<UiTriggerComponent>(instance));
 }
-void UiTriggerSystem::resetComponent(View<Component> component, bool full)
-{
-	if (full)
-	{
-		auto uiTriggerView = View<UiTriggerComponent>(component);
-		uiTriggerView->scale = float2::one;
-		uiTriggerView->onEnter = "";
-		uiTriggerView->onExit = "";
-		uiTriggerView->onStay = "";
-	}
-}
-void UiTriggerSystem::copyComponent(View<Component> source, View<Component> destination)
-{
-	const auto sourceView = View<UiTriggerComponent>(source);
-	auto destinationView = View<UiTriggerComponent>(destination);
-	destinationView->scale = sourceView->scale;
-	destinationView->onEnter = sourceView->onEnter;
-	destinationView->onExit = sourceView->onExit;
-	destinationView->onStay = sourceView->onStay;
-}
 string_view UiTriggerSystem::getComponentName() const
 {
 	return "Trigger UI";
@@ -214,48 +194,44 @@ string_view UiTriggerSystem::getComponentName() const
 //**********************************************************************************************************************
 void UiTriggerSystem::serialize(ISerializer& serializer, const View<Component> component)
 {
-	const auto uiTriggerView = View<UiTriggerComponent>(component);
-	if (uiTriggerView->scale != float2::one)
-		serializer.write("scale", uiTriggerView->scale);
-	if (!uiTriggerView->onEnter.empty())
-		serializer.write("onEnter", uiTriggerView->onEnter);
-	if (!uiTriggerView->onExit.empty())
-		serializer.write("onExit", uiTriggerView->onExit);
-	if (!uiTriggerView->onStay.empty())
-		serializer.write("onStay", uiTriggerView->onStay);
+	const auto componentView = View<UiTriggerComponent>(component);
+	if (componentView->scale != float2::one)
+		serializer.write("scale", componentView->scale);
+	if (!componentView->onEnter.empty())
+		serializer.write("onEnter", componentView->onEnter);
+	if (!componentView->onExit.empty())
+		serializer.write("onExit", componentView->onExit);
+	if (!componentView->onStay.empty())
+		serializer.write("onStay", componentView->onStay);
 }
 void UiTriggerSystem::deserialize(IDeserializer& deserializer, View<Component> component)
 {
-	auto uiTriggerView = View<UiTriggerComponent>(component);
-	deserializer.read("scale", uiTriggerView->scale);
-	deserializer.read("onEnter", uiTriggerView->onEnter);
-	deserializer.read("onExit", uiTriggerView->onExit);
-	deserializer.read("onStay", uiTriggerView->onStay);
+	auto componentView = View<UiTriggerComponent>(component);
+	deserializer.read("scale", componentView->scale);
+	deserializer.read("onEnter", componentView->onEnter);
+	deserializer.read("onExit", componentView->onExit);
+	deserializer.read("onStay", componentView->onStay);
 }
 
 //**********************************************************************************************************************
 void UiTriggerSystem::serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame)
 {
-	const auto uiTriggerFrameView = View<UiTriggerFrame>(frame);
-	if (uiTriggerFrameView->animateScale)
-		serializer.write("scale", uiTriggerFrameView->scale);
+	const auto frameView = View<UiTriggerFrame>(frame);
+	if (frameView->animateScale)
+		serializer.write("scale", frameView->scale);
 }
-ID<AnimationFrame> UiTriggerSystem::deserializeAnimation(IDeserializer& deserializer)
+void UiTriggerSystem::deserializeAnimation(IDeserializer& deserializer, View<AnimationFrame> frame)
 {
-	UiTriggerFrame frame;
-	frame.animateScale = deserializer.read("scale", frame.scale);
-
-	if (frame.hasAnimation())
-		return ID<AnimationFrame>(animationFrames.create(frame));
-	return {};
+	auto frameView = View<UiTriggerFrame>(frame);
+	frameView->animateScale = deserializer.read("scale", frameView->scale);
 }
 
 void UiTriggerSystem::animateAsync(View<Component> component, View<AnimationFrame> a, View<AnimationFrame> b, float t)
 {
-	auto uiTriggeriew = View<UiTriggerComponent>(component);
+	auto componentView = View<UiTriggerComponent>(component);
 	const auto frameA = View<UiTriggerFrame>(a);
 	const auto frameB = View<UiTriggerFrame>(b);
 
 	if (frameA->animateScale)
-		uiTriggeriew->scale = lerp(frameA->scale, frameB->scale, t);
+		componentView->scale = lerp(frameA->scale, frameB->scale, t);
 }

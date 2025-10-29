@@ -19,11 +19,12 @@ using namespace garden;
 
 bool UiLabelComponent::updateText(bool shrink)
 {
+	auto textSystem = TextSystem::Instance::get();
+	#if GARDEN_DEBUG || GARDEN_EDITOR
 	auto fonts = ResourceSystem::Instance::get()->loadFonts(fontPaths, loadNoto);
 	if (fonts.empty())
 		return false;
 
-	auto textSystem = TextSystem::Instance::get();
 	if (text)
 	{
 		auto textView = textSystem->get(text);
@@ -33,6 +34,15 @@ bool UiLabelComponent::updateText(bool shrink)
 
 	text = textSystem->createText(value, std::move(fonts), fontSize, propterties);
 	return (bool)text;
+	#else
+	if (!text)
+		return false;
+
+	auto textView = textSystem->get(text);
+	fonts = textSystem->get(textView->getFontAtlas())->getFonts();
+	return textView->update(value, propterties, std::move(fonts), fontSize, 
+		FontAtlas::defaultImageFlags, Text::defaultBufferFlags, shrink);
+	#endif
 }
 
 UiLabelSystem::UiLabelSystem(bool setSingleton) : Singleton(setSingleton)
@@ -55,35 +65,65 @@ UiLabelSystem::~UiLabelSystem()
 //**********************************************************************************************************************
 void UiLabelSystem::resetComponent(View<Component> component, bool full)
 {
-	auto uiLabelView = View<UiLabelComponent>(component);
-	TextSystem::Instance::get()->destroy(uiLabelView->text);
-	uiLabelView->text = {};
+	auto componentView = View<UiLabelComponent>(component);
+	TextSystem::Instance::get()->destroy(componentView->text);
 
 	if (full)
-		uiLabelView->value = "";
+		**componentView = {};
+	else
+		componentView->text = {};
 }
 void UiLabelSystem::copyComponent(View<Component> source, View<Component> destination)
 {
 	const auto sourceView = View<UiLabelComponent>(source);
 	auto destinationView = View<UiLabelComponent>(destination);
-	destinationView->value = sourceView->value;
-	abort(); // TODO: duplicate text object
+	**destinationView = **sourceView;
+
+	if (sourceView->text)
+	{
+		auto textSystem = TextSystem::Instance::get();
+		auto srcTextView = textSystem->get(sourceView->text);
+		if (srcTextView->isAtlasShared())
+		{
+			destinationView->text = textSystem->createText(srcTextView->getValue(), 
+				srcTextView->getFontAtlas(), srcTextView->getProperties(), true);
+		}
+		else
+		{
+			auto fonts = textSystem->get(srcTextView->getFontAtlas())->getFonts();
+			destinationView->text = textSystem->createText(srcTextView->getValue(), 
+				std::move(fonts), sourceView->fontSize, srcTextView->getProperties());
+		}
+	}
 }
 string_view UiLabelSystem::getComponentName() const
 {
 	return "Label UI";
 }
 
+//**********************************************************************************************************************
 void UiLabelSystem::serialize(ISerializer& serializer, const View<Component> component)
 {
-	const auto uiLabelView = View<UiLabelComponent>(component);
-	if (!uiLabelView->value.empty())
-		serializer.write("value", uiLabelView->value);
+	const auto componentView = View<UiLabelComponent>(component);
+	if (!componentView->value.empty())
+		serializer.write("value", componentView->value);
+	if (componentView->propterties.color != Color::white)
+		serializer.write("color", componentView->propterties.color);
+	if (componentView->propterties.alignment != Text::Alignment::Center)
+		serializer.write("alignment", toString(componentView->propterties.alignment));
+	if (componentView->propterties.isBold != false)
+		serializer.write("isBold", componentView->propterties.isBold);
+	if (componentView->propterties.isItalic != false)
+		serializer.write("isItalic", componentView->propterties.isItalic);
+	if (componentView->propterties.useTags != false)
+		serializer.write("useTags", componentView->propterties.useTags);
+	if (componentView->fontSize != 16)
+		serializer.write("fontSize", componentView->fontSize);
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
-	if (!uiLabelView->fontPaths.empty())
+	if (!componentView->fontPaths.empty())
 	{
-		const auto& fontPaths = uiLabelView->fontPaths;
+		const auto& fontPaths = componentView->fontPaths;
 		serializer.beginChild("fontPaths");
 		for (const auto& fontPath : fontPaths)
 		{
@@ -93,14 +133,23 @@ void UiLabelSystem::serialize(ISerializer& serializer, const View<Component> com
 		}
 		serializer.endChild();
 	}
-	if (uiLabelView->loadNoto != true)
-		serializer.write("loadNoto", uiLabelView->loadNoto);
+	if (componentView->loadNoto != true)
+		serializer.write("loadNoto", componentView->loadNoto);
 	#endif
 }
 void UiLabelSystem::deserialize(IDeserializer& deserializer, View<Component> component)
 {
-	auto uiLabelView = View<UiLabelComponent>(component);
-	deserializer.read("value", uiLabelView->value);
+	auto componentView = View<UiLabelComponent>(component);
+	deserializer.read("value", componentView->value);
+	deserializer.read("color", componentView->propterties.color);
+	deserializer.read("isBold", componentView->propterties.isBold);
+	deserializer.read("isItalic", componentView->propterties.isItalic);
+	deserializer.read("useTags", componentView->propterties.useTags);
+	deserializer.read("fontSize", componentView->fontSize);
+
+	string alignment;
+	if (deserializer.read("alignment", alignment))
+		toTextAlignment(alignment, componentView->propterties.alignment);
 
 	vector<fs::path> fontPaths;
 	if (deserializer.beginChild("fontPaths"))
@@ -125,45 +174,69 @@ void UiLabelSystem::deserialize(IDeserializer& deserializer, View<Component> com
 	auto loadNoto = true;
 	deserializer.read("loadNoto", loadNoto);
 
+	componentView->fontSize = max(componentView->fontSize, 1u);
 	if (!fontPaths.empty() || loadNoto)
-		abort(); // TODO: load fonts and text
+	{
+		auto fonts = ResourceSystem::Instance::get()->loadFonts(fontPaths, 0, loadNoto);
+		componentView->text = TextSystem::Instance::get()->createText(componentView->value, 
+			std::move(fonts), componentView->fontSize, componentView->propterties);
+	}
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
-	uiLabelView->fontPaths = std::move(fontPaths);
-	uiLabelView->loadNoto = loadNoto;
+	componentView->fontPaths = std::move(fontPaths);
+	componentView->loadNoto = loadNoto;
 	#endif
 }
 
 //**********************************************************************************************************************
 void UiLabelSystem::serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame)
 {
-	const auto uiLabelFrameView = View<UiLabelFrame>(frame);
-	if (uiLabelFrameView->animateValue)
-	{
-		serializer.write("value", uiLabelFrameView->value);
+	const auto frameView = View<UiLabelFrame>(frame);
+	if (!frameView->value.empty())
+		serializer.write("value", frameView->value);
+	if (frameView->propterties.color != Color::white)
+		serializer.write("color", frameView->propterties.color);
+	if (frameView->propterties.alignment != Text::Alignment::Center)
+		serializer.write("alignment", toString(frameView->propterties.alignment));
+	if (frameView->propterties.isBold != false)
+		serializer.write("isBold", frameView->propterties.isBold);
+	if (frameView->propterties.isItalic != false)
+		serializer.write("isItalic", frameView->propterties.isItalic);
+	if (frameView->propterties.useTags != false)
+		serializer.write("useTags", frameView->propterties.useTags);
+	if (frameView->fontSize != 16)
+		serializer.write("fontSize", frameView->fontSize);
 
-		#if GARDEN_DEBUG || GARDEN_EDITOR
-		if (!uiLabelFrameView->fontPaths.empty())
+	#if GARDEN_DEBUG || GARDEN_EDITOR
+	if (!frameView->fontPaths.empty())
+	{
+		const auto& fontPaths = frameView->fontPaths;
+		serializer.beginChild("fontPaths");
+		for (const auto& fontPath : fontPaths)
 		{
-			const auto& fontPaths = uiLabelFrameView->fontPaths;
-			serializer.beginChild("fontPaths");
-			for (const auto& fontPath : fontPaths)
-			{
-				serializer.beginArrayElement();
-				serializer.write(fontPath.generic_string());
-				serializer.endArrayElement();
-			}
-			serializer.endChild();
+			serializer.beginArrayElement();
+			serializer.write(fontPath.generic_string());
+			serializer.endArrayElement();
 		}
-		if (uiLabelFrameView->loadNoto != true)
-			serializer.write("loadNoto", uiLabelFrameView->loadNoto);
-		#endif
+		serializer.endChild();
 	}
+	if (frameView->loadNoto != true)
+		serializer.write("loadNoto", frameView->loadNoto);
+	#endif
 }
-ID<AnimationFrame> UiLabelSystem::deserializeAnimation(IDeserializer& deserializer)
+void UiLabelSystem::deserializeAnimation(IDeserializer& deserializer, View<AnimationFrame> frame)
 {
-	UiLabelFrame frame;
-	frame.animateValue = deserializer.read("value", frame.value);
+	auto frameView = View<UiLabelFrame>(frame);
+	deserializer.read("value", frameView->value);
+	deserializer.read("color", frameView->propterties.color);
+	deserializer.read("isBold", frameView->propterties.isBold);
+	deserializer.read("isItalic", frameView->propterties.isItalic);
+	deserializer.read("useTags", frameView->propterties.useTags);
+	deserializer.read("fontSize", frameView->fontSize);
+
+	string alignment;
+	if (deserializer.read("alignment", alignment))
+		toTextAlignment(alignment, frameView->propterties.alignment);
 
 	vector<fs::path> fontPaths;
 	if (deserializer.beginChild("fontPaths"))
@@ -189,56 +262,61 @@ ID<AnimationFrame> UiLabelSystem::deserializeAnimation(IDeserializer& deserializ
 	deserializer.read("loadNoto", loadNoto);
 
 	if (!fontPaths.empty() || loadNoto)
-		abort(); // TODO: load fonts and text
+	{
+		auto fonts = ResourceSystem::Instance::get()->loadFonts(fontPaths, 0, loadNoto);
+		frameView->text = TextSystem::Instance::get()->createText(frameView->value, 
+			std::move(fonts), frameView->fontSize, frameView->propterties);
+	}
 	
 	#if GARDEN_DEBUG || GARDEN_EDITOR
-	frame.fontPaths = std::move(fontPaths);
-	frame.loadNoto = loadNoto;
+	frameView->fontPaths = std::move(fontPaths);
+	frameView->loadNoto = loadNoto;
 	#endif
-
-	if (frame.hasAnimation())
-		return ID<AnimationFrame>(animationFrames.create(frame));
-	return {};
 }
 
 void UiLabelSystem::animateAsync(View<Component> component, View<AnimationFrame> a, View<AnimationFrame> b, float t)
 {
-	auto uiLabelView = View<UiLabelComponent>(component);
+	auto componentView = View<UiLabelComponent>(component);
 	const auto frameA = View<UiLabelFrame>(a);
 	const auto frameB = View<UiLabelFrame>(b);
 
-	if (frameA->animateValue)
+	if ((bool)round(t))
 	{
-		if (round(t) > 0.0f)
+		if (frameB->text)
 		{
-			if (frameB->text)
-			{
-				uiLabelView->value = frameB->value;
-				uiLabelView->text = frameB->text;
-				#if GARDEN_DEBUG || GARDEN_EDITOR
-				uiLabelView->fontPaths = frameB->fontPaths;
-				uiLabelView->loadNoto = frameB->loadNoto;
-				#endif
-			}
+			componentView->text = frameB->text;
+			componentView->value = frameB->value;
+			componentView->propterties = frameB->propterties;
+			componentView->fontSize = frameB->fontSize;
+			#if GARDEN_DEBUG || GARDEN_EDITOR
+			componentView->fontPaths = frameB->fontPaths;
+			componentView->loadNoto = frameB->loadNoto;
+			#endif
 		}
-		else
+	}
+	else
+	{
+		if (frameA->text)
 		{
-			if (frameA->text)
-			{
-				uiLabelView->value = frameA->value;
-				uiLabelView->text = frameA->text;
-				#if GARDEN_DEBUG || GARDEN_EDITOR
-				uiLabelView->fontPaths = frameA->fontPaths;
-				uiLabelView->loadNoto = frameA->loadNoto;
-				#endif
-			}
+			componentView->text = frameA->text;
+			componentView->value = frameA->value;
+			componentView->propterties = frameA->propterties;
+			componentView->fontSize = frameA->fontSize;
+			#if GARDEN_DEBUG || GARDEN_EDITOR
+			componentView->fontPaths = frameA->fontPaths;
+			componentView->loadNoto = frameA->loadNoto;
+			#endif
 		}
 	}
 }
 
 void UiLabelSystem::resetAnimation(View<AnimationFrame> frame, bool full)
 {
-	auto uiLabelFrameView = View<UiLabelFrame>(frame);
-	TextSystem::Instance::get()->destroy(uiLabelFrameView->text);
-	uiLabelFrameView->text = {};
+	auto frameView = View<UiLabelFrame>(frame);
+	TextSystem::Instance::get()->destroy(frameView->text);
+
+	if (full)
+		**frameView = {};
+	else
+		frameView->text = {};
 }

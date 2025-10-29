@@ -27,6 +27,7 @@
 #include "ecsm.hpp"
 
 #include "math/aabb.hpp"
+#include "math/color.hpp"
 #include "math/quaternion.hpp"
 #include <random>
 
@@ -89,6 +90,7 @@ public:
 	virtual void write(string_view name, const float3x3& value) = 0;
 	virtual void write(string_view name, const float4x4& value) = 0;
 	virtual void write(string_view name, const Aabb& value) = 0;
+	virtual void write(string_view name, Color value, bool rgb = false) = 0;
 	// TODO: write array of values.
 };
 
@@ -145,6 +147,7 @@ public:
 	virtual bool read(string_view name, float3x3& value) = 0;
 	virtual bool read(string_view name, float4x4& value) = 0;
 	virtual bool read(string_view name, Aabb& value) = 0;
+	virtual bool read(string_view name, Color& value) = 0;
 	virtual bool read(string_view name, f32x4& value, uint8 components = 4) = 0;
 	// TODO: read array of values.
 };

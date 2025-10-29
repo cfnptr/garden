@@ -97,17 +97,17 @@ LinkSystem::~LinkSystem()
 
 void LinkSystem::resetComponent(View<Component> component, bool full)
 {
-	auto linkView = View<LinkComponent>(component);
-	if (linkView->uuid)
+	auto componentView = View<LinkComponent>(component);
+	if (componentView->uuid)
 	{
-		auto result = uuidMap.erase(linkView->uuid);
+		auto result = uuidMap.erase(componentView->uuid);
 		GARDEN_ASSERT_MSG(result == 1, "Detected memory corruption");
-		linkView->uuid = {};
+		componentView->uuid = {};
 	}
-	if (!linkView->tag.empty())
+	if (!componentView->tag.empty())
 	{
-		eraseEntityTag(tagMap, linkView->entity, linkView->tag);
-		linkView->tag = {};
+		eraseEntityTag(tagMap, componentView->entity, componentView->tag);
+		componentView->tag = {};
 	}
 }
 void LinkSystem::copyComponent(View<Component> source, View<Component> destination)
@@ -132,39 +132,37 @@ string_view LinkSystem::getComponentName() const
 //**********************************************************************************************************************
 void LinkSystem::serialize(ISerializer& serializer, const View<Component> component)
 {
-	const auto linkView = View<LinkComponent>(component);
-
-	if (linkView->uuid)
+	const auto componentView = View<LinkComponent>(component);
+	if (componentView->uuid)
 	{
-		linkView->uuid.toBase64URL(uuidStringCache);
+		componentView->uuid.toBase64URL(uuidStringCache);
 		serializer.write("uuid", uuidStringCache);
 	}
 
-	if (!linkView->tag.empty())
-		serializer.write("tag", linkView->tag);
+	if (!componentView->tag.empty())
+		serializer.write("tag", componentView->tag);
 }
 void LinkSystem::deserialize(IDeserializer& deserializer, View<Component> component)
 {
-	auto linkView = View<LinkComponent>(component);
-
+	auto componentView = View<LinkComponent>(component);
 	if (deserializer.read("uuid", uuidStringCache))
 	{
-		if (!linkView->uuid.fromBase64URL(uuidStringCache))
+		if (!componentView->uuid.fromBase64URL(uuidStringCache))
 			GARDEN_LOG_ERROR("Deserialized entity with invalid link uuid. (uuid: " + uuidStringCache + ")");
 
-		auto result = uuidMap.emplace(linkView->uuid, linkView->entity);
+		auto result = uuidMap.emplace(componentView->uuid, componentView->entity);
 		if (!result.second)
 		{
 			GARDEN_LOG_ERROR("Deserialized entity with already existing link uuid. (uuid: " + uuidStringCache + ")");
-			linkView->uuid = {};
+			componentView->uuid = {};
 		}
 	}
 
 	string tag;
 	if (deserializer.read("tag", tag))
 	{
-		tagMap.emplace(tag, linkView->entity);
-		linkView->tag = std::move(tag);
+		tagMap.emplace(tag, componentView->entity);
+		componentView->tag = std::move(tag);
 	}
 }
 

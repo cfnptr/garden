@@ -18,7 +18,6 @@
  */
 
 #pragma once
-#include "garden/animate.hpp"
 #include "garden/system/render/instance.hpp"
 
 namespace garden
@@ -83,9 +82,9 @@ public:
 };
 
 /***********************************************************************************************************************
- * @brief Sprite rendering system.
+ * @brief General sprite mesh rendering system.
  */
-class SpriteRenderSystem : public InstanceRenderSystem, public ISerializable, public IAnimatable
+class SpriteRenderSystem : public InstanceRenderSystem, public ISerializable
 {
 public:
 	struct BaseInstanceData
@@ -107,7 +106,7 @@ protected:
 	ID<ImageView> defaultImageView = {};
 
 	/**
-	 * @brief Creates a new sprite render system instance.
+	 * @brief Creates a new sprite mesh render system instance.
 	 * @param[in] pipelinePath target rendering pipeline path
 	 */
 	SpriteRenderSystem(const fs::path& pipelinePath);
@@ -116,8 +115,7 @@ protected:
 	void deinit() override;
 	virtual void imageLoaded();
 
-	void resetComponent(View<Component> component, bool full) override;
-	void copyComponent(View<Component> source, View<Component> destination) override;
+	static void resetComponent(View<Component> component);
 
 	void drawAsync(MeshRenderComponent* meshRenderView, const f32x4x4& viewProj,
 		const f32x4x4& model, uint32 drawIndex, int32 taskIndex) override;
@@ -133,20 +131,19 @@ protected:
 	void serialize(ISerializer& serializer, const View<Component> component) override;
 	void deserialize(IDeserializer& deserializer, View<Component> component) override;
 
-	void serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame) override;
-	void animateAsync(View<Component> component,
-		View<AnimationFrame> a, View<AnimationFrame> b, float t) override;
-	static void deserializeAnimation(IDeserializer& deserializer, SpriteAnimFrame& frame);
-	void resetAnimation(View<AnimationFrame> frame, bool full) override;
+	static void serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame);
+	static void deserializeAnimation(IDeserializer& deserializer, View<AnimationFrame> frame);
+	static void animateAsync(View<Component> component, View<AnimationFrame> a, View<AnimationFrame> b, float t);
+	static void resetAnimation(View<AnimationFrame> frame);
 public:
 	/**
-	 * @brief Returns sprite animation frame pool.
+	 * @brief Returns sprite system animation frame pool.
 	 */
-	virtual SpriteFramePool& getAnimationFramePool() = 0;
+	virtual SpriteFramePool& getSpriteFramePool() = 0;
 	/**
-	 * @brief Returns sprite animation frame size in bytes.
+	 * @brief Returns sprite system animation frame size in bytes.
 	 */
-	virtual psize getAnimationFrameSize() const = 0;
+	virtual psize getSpriteFrameSize() const = 0;
 
 	/**
 	 * @brief Creates shared base sprite descriptor set.
@@ -158,110 +155,47 @@ public:
 };
 
 /***********************************************************************************************************************
- * @brief Sprite mesh rendering component system.
+ * @brief Base sprite mesh rendering system with components and animation frames.
+ * @details See the @ref SpriteRenderSystem.
+ *
+ * @tparam C type of the system component
+ * @tparam F type of the system animation frame
+ *
+ * @tparam DestroyComponents system should call destroy() function of the components
+ * @tparam DestroyAnimationFrames system should call destroy() function of the animation frames
  */
-template<class C, class A, bool DestroyComponents = true, bool DestroyAnimationFrames = true>
-class SpriteRenderCompSystem : public SpriteRenderSystem
+template<class C = Component, class F = AnimationFrame, 
+	bool DestroyComponents = true, bool DestroyAnimationFrames = true>
+class SpriteCompAnimSystem : public CompAnimSystem<C, F, 
+	DestroyComponents, DestroyAnimationFrames>, public SpriteRenderSystem
 {
 protected:
-	LinearPool<C, DestroyComponents> components;
-	LinearPool<A, DestroyAnimationFrames> animationFrames;
+	/**
+	 * @brief Creates a new sprite mesh render system instance.
+	 * @param[in] pipelinePath target rendering pipeline path
+	 */
+	SpriteCompAnimSystem(const fs::path& pipelinePath) : SpriteRenderSystem(pipelinePath) { }
+	/**
+	 * @brief Destroys sprite mesh render system instance.
+	 */
+	~SpriteCompAnimSystem() override { }
 
-	SpriteRenderCompSystem(const fs::path& pipelinePath) : SpriteRenderSystem(pipelinePath) { }
+	void resetComponent(View<Component> component, bool full) override
+	{ SpriteRenderSystem::resetComponent(component); if (full) **View<C>(component) = C(); }
 
-	ID<Component> createComponent(ID<Entity> entity) override { return ID<Component>(components.create()); }
-	void destroyComponent(ID<Component> instance) override
-	{
-		auto component = components.get(ID<C>(instance));
-		resetComponent(View<Component>(component), false);
-		components.destroy(ID<C>(instance));
-	}
+	void serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame) override
+	{ SpriteRenderSystem::serializeAnimation(serializer, frame); }
+	void deserializeAnimation(IDeserializer& deserializer, View<AnimationFrame> frame) override
+	{ SpriteRenderSystem::deserializeAnimation(deserializer, frame); }
+	void animateAsync(View<Component> component, View<AnimationFrame> a, View<AnimationFrame> b, float t) override
+	{ SpriteRenderSystem::animateAsync(component, a, b, t); }
+	void resetAnimation(View<AnimationFrame> frame, bool full) override
+	{ SpriteRenderSystem::resetAnimation(frame); if (full) **View<F>(frame) = F(); }
 
-	string_view getComponentName() const override
-	{
-		static const string name = typeToString(typeid(C));
-		return name;
-	}
-	type_index getComponentType() const override { return typeid(C); }
-	View<Component> getComponent(ID<Component> instance) override
-	{
-		return View<Component>(components.get(ID<C>(instance)));
-	}
-	void disposeComponents() override
-	{
-		components.dispose();
-		animationFrames.dispose();
-	}
-
-	MeshRenderPool& getMeshComponentPool() override
-	{
-		return *((MeshRenderPool*)&components);
-	}
+	MeshRenderPool& getMeshComponentPool() override { return *((MeshRenderPool*)&this->components); }
 	psize getMeshComponentSize() const override { return sizeof(C); }
-
-	SpriteFramePool& getAnimationFramePool() override
-	{
-		return *((SpriteFramePool*)&animationFrames);
-	}
-	psize getAnimationFrameSize() const override { return sizeof(A); }
-
-	ID<AnimationFrame> deserializeAnimation(IDeserializer& deserializer) override
-	{
-		A frame;
-		SpriteRenderSystem::deserializeAnimation(deserializer, frame);
-		if (frame.hasAnimation())
-			return ID<AnimationFrame>(animationFrames.create(frame));
-		return {};
-	}
-	View<AnimationFrame> getAnimation(ID<AnimationFrame> instance) override
-	{
-		return View<AnimationFrame>(animationFrames.get(ID<A>(instance)));
-	}
-	void destroyAnimation(ID<AnimationFrame> instance) override
-	{
-		auto frame = animationFrames.get(ID<A>(instance));
-		resetAnimation(View<AnimationFrame>(frame), false);
-		animationFrames.destroy(ID<A>(instance));
-	}
-public:
-	bool hasComponent(ID<Entity> entity) const
-	{
-		const auto entityView = Manager::Instance::get()->getEntities().get(entity);
-		return entityView->findComponent(typeid(C).hash_code());
-	}
-	View<C> getComponent(ID<Entity> entity) const
-	{
-		const auto entityView = Manager::Instance::get()->getEntities().get(entity);
-		auto componentData = entityView->findComponent(typeid(C).hash_code());
-		if (!componentData)
-		{
-			throw EcsmError("Component is not added. ("
-				"type: " + typeToString(typeid(C)) + ", "
-				"entity:" + std::to_string(*entity) + ")");
-		}
-		return components.get(ID<C>(componentData->instance));
-	}
-	View<C> tryGetComponent(ID<Entity> entity) const
-	{
-		const auto entityView = Manager::Instance::get()->getEntities().get(entity);
-		auto componentData = entityView->findComponent(typeid(C).hash_code());
-		if (!componentData)
-			return {};
-		return components.get(ID<C>(componentData->instance));
-	}
-	void resetComponentData(ID<Entity> entity, bool full = true)
-	{
-		const auto entityView = Manager::Instance::get()->getEntities().get(entity);
-		auto componentData = entityView->findComponent(typeid(C).hash_code());
-		if (!componentData)
-		{
-			throw EcsmError("Component is not added. ("
-				"type: " + typeToString(typeid(C)) + ", "
-				"entity:" + std::to_string(*entity) + ")");
-		}
-		auto component = components.get(ID<C>(componentData->instance));
-		resetComponent(View<Component>(component), full);
-	}
+	SpriteFramePool& getSpriteFramePool() override { return *((SpriteFramePool*)&this->animationFrames); }
+	psize getSpriteFrameSize() const override { return sizeof(F); }
 };
 
 } // namespace garden

@@ -202,16 +202,16 @@ static void randomizeStartFrame(mt19937& randomGenerator, View<AnimationComponen
 //**********************************************************************************************************************
 void AnimationSystem::resetComponent(View<Component> component, bool full)
 {
-	auto animationView = View<AnimationComponent>(component);
-	if (!animationView->animations.empty())
+	auto componentView = View<AnimationComponent>(component);
+	if (!componentView->animations.empty())
 	{
 		auto resourceSystem = ResourceSystem::Instance::get();
-		for (const auto& pair : animationView->animations)
+		for (const auto& pair : componentView->animations)
 			resourceSystem->destroyShared(pair.second);
-
-		if (full) animationView->animations = {};
-		else animationView->animations.clear();
 	}
+
+	if (full)
+		**componentView = {};
 }
 void AnimationSystem::copyComponent(View<Component> source, View<Component> destination)
 {
@@ -237,11 +237,10 @@ void AnimationSystem::disposeComponents()
 //**********************************************************************************************************************
 void AnimationSystem::serialize(ISerializer& serializer, const View<Component> component)
 {
-	const auto animationView = View<AnimationComponent>(component);
-	
-	if (!animationView->animations.empty())
+	const auto componentView = View<AnimationComponent>(component);
+	if (!componentView->animations.empty())
 	{
-		const auto& animations = animationView->animations;
+		const auto& animations = componentView->animations;
 
 		serializer.beginChild("animations");
 		for (const auto& pair : animations)
@@ -253,19 +252,19 @@ void AnimationSystem::serialize(ISerializer& serializer, const View<Component> c
 		serializer.endChild();
 	}
 	
-	if (!animationView->active.empty())
-		serializer.write("active", animationView->active);
-	if (animationView->frame != 0.0f)
-		serializer.write("frame", animationView->frame);
-	if (!animationView->isPlaying)
+	if (!componentView->active.empty())
+		serializer.write("active", componentView->active);
+	if (componentView->frame != 0.0f)
+		serializer.write("frame", componentView->frame);
+	if (!componentView->isPlaying)
 		serializer.write("isPlaying", false);
-	if (animationView->randomizeStart)
+	if (componentView->randomizeStart)
 		serializer.write("randomizeStart", true);
 }
 void AnimationSystem::deserialize(IDeserializer& deserializer, View<Component> component)
 {
-	auto animationView = View<AnimationComponent>(component);
-	auto& animations = animationView->animations;
+	auto componentView = View<AnimationComponent>(component);
+	auto& animations = componentView->animations;
 
 	if (deserializer.beginChild("animations"))
 	{
@@ -290,9 +289,9 @@ void AnimationSystem::deserialize(IDeserializer& deserializer, View<Component> c
 		deserializer.endChild();
 	}
 
-	deserializer.read("active", animationView->active);
-	deserializer.read("frame", animationView->frame);
-	deserializer.read("isPlaying", animationView->isPlaying);
-	deserializer.read("randomizeStart", animationView->randomizeStart);
-	randomizeStartFrame(randomGenerator, animationView);
+	deserializer.read("active", componentView->active);
+	deserializer.read("frame", componentView->frame);
+	deserializer.read("isPlaying", componentView->isPlaying);
+	deserializer.read("randomizeStart", componentView->randomizeStart);
+	randomizeStartFrame(randomGenerator, componentView);
 }

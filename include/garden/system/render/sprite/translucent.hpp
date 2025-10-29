@@ -35,7 +35,7 @@ struct TransSpriteFrame final : public SpriteAnimFrame { };
 /**
  * @brief Translucent sprite rendering system.
  */
-class TransSpriteSystem final : public SpriteRenderCompSystem<
+class TransSpriteSystem final : public SpriteCompAnimSystem<
 	TransSpriteComponent, TransSpriteFrame, false, false>, public Singleton<TransSpriteSystem>
 {
 	/**

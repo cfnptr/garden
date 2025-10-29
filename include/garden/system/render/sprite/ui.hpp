@@ -35,7 +35,7 @@ struct UiSpriteFrame final : public SpriteAnimFrame { };
 /**
  * @brief User interface sprite rendering system. (UI)
  */
-class UiSpriteSystem final : public SpriteRenderCompSystem<
+class UiSpriteSystem final : public SpriteCompAnimSystem<
 	UiSpriteComponent, UiSpriteFrame, false, false>, public Singleton<UiSpriteSystem>
 {
 	/**

@@ -300,7 +300,7 @@ public:
 	/**
 	 * @brief Copies all data from the source buffer to the destination.
 	 * @details See the @ref Buffer::copy().
-	 * @note Source and destination buffer sizes should be the same.
+	 * @note Source size should be <= destination size.
 	 * 
 	 * @param source source buffer
 	 * @param destination destination buffer

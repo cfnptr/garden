@@ -41,8 +41,7 @@ public:
 
 	string value = "";                 /**> UI label text string. */
 	Text::Properties propterties = {}; /**< UI label text properties. */
-	bool isDynamic = false;            /**< Is UI label text dynamic. */
-	uint32 fontSize = 0;               /**< Text font size in pixels.*/
+	uint32 fontSize = 16;              /**< Text font size in pixels.*/
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	bool loadNoto = true; /**< Also load supporting noto fonts. */
@@ -66,17 +65,17 @@ public:
  */
 struct UiLabelFrame final : public AnimationFrame
 {
-	bool animateValue = false;
-
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	bool loadNoto = true;
 	vector<fs::path> fontPaths;
 	#endif
 
 	string value = "";
+	Text::Properties propterties = {};
+	uint32 fontSize = 16;
 	ID<Text> text = {};
 
-	bool hasAnimation() final { return animateValue; }
+	bool hasAnimation() final { return true; }
 };
 
 /***********************************************************************************************************************
@@ -103,9 +102,8 @@ class UiLabelSystem final : public CompAnimSystem<UiLabelComponent, UiLabelFrame
 	void deserialize(IDeserializer& deserializer, View<Component> component) final;
 
 	void serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame) final;
-	ID<AnimationFrame> deserializeAnimation(IDeserializer& deserializer) final;
-	void animateAsync(View<Component> component,
-		View<AnimationFrame> a, View<AnimationFrame> b, float t) final;
+	void deserializeAnimation(IDeserializer& deserializer, View<AnimationFrame> frame) final;
+	void animateAsync(View<Component> component, View<AnimationFrame> a, View<AnimationFrame> b, float t) final;
 	void resetAnimation(View<AnimationFrame> frame, bool full) override;
 	friend class ecsm::Manager;
 };

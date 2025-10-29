@@ -18,7 +18,7 @@ using namespace garden;
 
 //**********************************************************************************************************************
 Ui9SliceSystem::Ui9SliceSystem(bool setSingleton) : 
-	NineSliceRenderCompSystem("9-slice/translucent"), Singleton(setSingleton)
+	NineSliceCompAnimSystem("9-slice/translucent"), Singleton(setSingleton)
 {
 	Manager::Instance::get()->addGroupSystem<IMeshRenderSystem>(this);
 }

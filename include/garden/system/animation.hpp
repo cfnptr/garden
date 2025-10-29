@@ -27,7 +27,7 @@ namespace garden
 
 class AnimationSystem;
 
-/***********************************************************************************************************************
+/**
  * @brief Entity animations container.
  */
 struct AnimationComponent final : public Component

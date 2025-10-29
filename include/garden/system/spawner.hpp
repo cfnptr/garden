@@ -34,15 +34,37 @@ enum class SpawnMode : uint8
 {
 	OneShot, Manual, Count // TODO: add instance pool mode.
 };
+
 /**
  * @brief Common entity spawn mode names.
  */
 constexpr const char* spawnModeNames[(uint8)SpawnMode::Count] =
 {
-	"One Shot", "Manual"
+	"OneShot", "Manual"
 };
-
 /**
+ * @brief Returns spawn mode name string.
+ * @param spawnMode target spawn mode 
+ */
+static string_view toString(SpawnMode spawnMode) noexcept
+{
+	GARDEN_ASSERT(spawnMode < SpawnMode::Count);
+	return spawnModeNames[(psize)spawnMode];
+}
+/**
+ * @brief Returns spawn mode from name string.
+ *
+ * @param name target spawn mode name string
+ * @param[out] spawnMode spawn mode
+ */
+static bool toSpawnMode(string_view name, SpawnMode& spawnMode) noexcept
+{
+	if (name == "OneShot") { spawnMode = SpawnMode::OneShot; return true; }
+	if (name == "Manual") { spawnMode = SpawnMode::Manual; return true; }
+	return false;
+}
+
+/***********************************************************************************************************************
  * @brief Contains information about entity spawn points and spawning mode.
  */
 struct SpawnerComponent final : public Component

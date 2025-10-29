@@ -35,7 +35,7 @@ struct OpaqueSpriteFrame final : public SpriteAnimFrame { };
 /**
  * @brief Opaque sprite rendering system.
  */
-class OpaqueSpriteSystem final : public SpriteRenderCompSystem<
+class OpaqueSpriteSystem final : public SpriteCompAnimSystem<
 	OpaqueSpriteComponent, OpaqueSpriteFrame, false, false>, public Singleton<OpaqueSpriteSystem>
 {
 	/**

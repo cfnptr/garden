@@ -39,24 +39,27 @@ bool Json2Bson::convertFile(const fs::path& filePath, const fs::path& inputPath,
 	inputStream >> textData;
 	inputStream.close();
 
-	std::stack<json*> jsonStack;
-	jsonStack.push(&textData);
-
-	while (!jsonStack.empty())
+	if (filePath.extension() == ".scene")
 	{
-		auto& json = *jsonStack.top();
-		jsonStack.pop();
+		std::stack<json*> jsonStack;
+		jsonStack.push(&textData);
 
-		if (json.is_object())
+		while (!jsonStack.empty())
 		{
-			json.erase("debugName");
-			for (auto& pair : json.items()) 
-				jsonStack.push(&pair.value());
-		}
-		else if (json.is_array())
-		{
-			for (auto& item : json) 
-				jsonStack.push(&item);
+			auto& json = *jsonStack.top();
+			jsonStack.pop();
+
+			if (json.is_object())
+			{
+				json.erase("debugName");
+				for (auto& pair : json.items()) 
+					jsonStack.push(&pair.value());
+			}
+			else if (json.is_array())
+			{
+				for (auto& item : json) 
+					jsonStack.push(&item);
+			}
 		}
 	}
 

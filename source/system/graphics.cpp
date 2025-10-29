@@ -676,6 +676,7 @@ ID<Buffer> GraphicsSystem::createBuffer(Buffer::Usage usage, Buffer::CpuAccess c
 ID<Buffer> GraphicsSystem::createStagingBuffer(Buffer::CpuAccess cpuAccess, uint64 size)
 {
 	GARDEN_ASSERT(size > 0);
+	GARDEN_ASSERT(cpuAccess != Buffer::CpuAccess::None);
 
 	auto graphicsAPI = GraphicsAPI::get();
 	auto stagingBuffer = graphicsAPI->bufferPool.create(Buffer::Usage::TransferSrc, 

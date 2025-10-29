@@ -35,7 +35,7 @@ struct Opaque9SliceFrame final : public NineSliceFrame { };
 /**
  * @brief Opaque 9-slice sprite rendering system.
  */
-class Opaque9SliceSystem final : public NineSliceRenderCompSystem<
+class Opaque9SliceSystem final : public NineSliceCompAnimSystem<
 	Opaque9SliceComponent, Opaque9SliceFrame, false, false>, public Singleton<Opaque9SliceSystem>
 {
 	/**

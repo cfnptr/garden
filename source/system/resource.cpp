@@ -2592,14 +2592,17 @@ Ref<Animation> ResourceSystem::loadAnimation(const fs::path& path, bool loadShar
 						continue;
 					}
 
-					auto animationFrame = animatableSystem->deserializeAnimation(deserializer);
-					if (!animationFrame)
+					auto animationFrame = animatableSystem->createAnimation();
+					auto animationFrameView = animatableSystem->getAnimation(animationFrame);
+					animatableSystem->deserializeAnimation(deserializer, animationFrameView);
+
+					if (!animationFrameView->hasAnimation())
 					{
+						animatableSystem->destroyAnimation(animationFrame);
 						deserializer.endArrayElement();
 						continue;
 					}
 
-					auto animationFrameView = animatableSystem->getAnimation(animationFrame);
 					deserializer.read(".coeff", animationFrameView->coeff);
 
 					string funcType;
