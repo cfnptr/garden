@@ -57,7 +57,7 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang") # Note: Do not remove MATCHES!
 		# This warning is emmited due to Brew iclude directories.
 		add_compile_options(-Wno-poison-system-directories)
 		if (DEFINED ENV{GITHUB_ACTIONS})
-			add_link_options(-fuse-ld=lld) # Faster linker than native.
+			add_compile_options(-O0) # Disable optimiziations for faster build.
 		endif()
 	endif()
 endif()
