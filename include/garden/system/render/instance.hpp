@@ -82,7 +82,7 @@ public:
 	/**
 	 * @brief Returns mesh base instance data size in bytes.
 	 */
-	virtual uint64 getBaseInstanceDataSize() = 0;
+	virtual uint64 getBaseInstanceDataSize() { return 0; }
 	/**
 	 * @brief Returns mesh shadow instance data size in bytes.
 	 */

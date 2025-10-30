@@ -240,7 +240,7 @@ void SpriteRenderEditorSystem::renderComponent(SpriteRenderComponent* componentV
 		ImGui::EndPopup();
 	}
 
-	ImGui::ColorEdit4("Color", (float*)&componentView->color, ImGuiColorEditFlags_Float);
+	ImGui::ColorEdit4("Color", &componentView->color, ImGuiColorEditFlags_Float);
 	if (ImGui::BeginPopupContextItem("colorFactor"))
 	{
 		if (ImGui::MenuItem("Reset Default"))

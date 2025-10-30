@@ -15,37 +15,109 @@
 #include "garden/system/ui/label.hpp"
 #include "garden/system/render/deferred.hpp"
 #include "garden/system/resource.hpp"
+#include "math/matrix/transform.hpp"
 
 using namespace garden;
 
+static ID<GraphicsPipeline> createPipeline()
+{
+	auto deferredSystem = DeferredRenderSystem::Instance::get();
+
+	ResourceSystem::GraphicsOptions options;
+	options.useAsyncRecording = true;
+	options.loadAsync = false; // Note: we need text immediately.
+
+	return ResourceSystem::Instance::get()->loadGraphicsPipeline(
+		"text/ui", deferredSystem->getUiFramebuffer(), options);
+}
+static DescriptorSet::Uniforms getUniforms(ID<Text> text)
+{
+	auto textSystem = TextSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto textView = TextSystem::Instance::get()->get(text);
+	auto fontAtlasView = textSystem->get(textView->getFontAtlas());
+	auto fontAtlas = graphicsSystem->get(fontAtlasView->getImage());
+
+	DescriptorSet::Uniforms uniforms =
+	{ 
+		{ "fontAtlas", DescriptorSet::Uniform(fontAtlas->getDefaultView()) },
+		{ "instance", DescriptorSet::Uniform(textView->getInstanceBuffer()) }
+	};
+	return uniforms;
+}
+
+//**********************************************************************************************************************
 bool UiLabelComponent::updateText(bool shrink)
 {
 	auto textSystem = TextSystem::Instance::get();
-	#if GARDEN_DEBUG || GARDEN_EDITOR
-	auto fonts = ResourceSystem::Instance::get()->loadFonts(fontPaths, loadNoto);
-	if (fonts.empty())
-		return false;
+	auto graphicsSystem = GraphicsSystem::Instance::get();
 
+	if (value.empty())
+	{
+		if (shrink)
+		{
+			graphicsSystem->destroy(descriptorSet);
+			textSystem->destroy(text);
+			text = {}; descriptorSet = {}; 
+		}
+
+		isEnabled = false;
+		return true;
+	}
+
+	ID<Image> currFontAtlas = {}; ID<Buffer> currInstanceBuffer = {};
 	if (text)
 	{
 		auto textView = textSystem->get(text);
-		return textView->update(value, propterties, std::move(fonts), fontSize, 
-			FontAtlas::defaultImageFlags, Text::defaultBufferFlags, shrink);
+		auto fontAtlasView = textSystem->get(textView->getFontAtlas());
+		auto fonts = fontAtlasView->getFonts();
+		currFontAtlas = fontAtlasView->getImage();
+		currInstanceBuffer = textView->getInstanceBuffer();
+
+		auto stopRecording = graphicsSystem->tryStartRecording(CommandBufferType::Frame);
+
+		if (!textView->update(value, fontSize, propterties, std::move(fonts), 
+			FontAtlas::defaultImageFlags, Text::defaultBufferFlags, shrink))
+		{
+			return false;
+		}
+
+		if (stopRecording)
+			graphicsSystem->stopRecording();
+	}
+	else
+	{
+		#if GARDEN_DEBUG || GARDEN_EDITOR
+		auto fonts = ResourceSystem::Instance::get()->loadFonts(fontPaths, 0, loadNoto);
+		if (fonts.empty())
+			return false;
+
+		text = textSystem->createText(value, std::move(fonts), fontSize, propterties);
+		if (!text)
+			return false;
+		#else
+		return false;
+		#endif
 	}
 
-	text = textSystem->createText(value, std::move(fonts), fontSize, propterties);
-	return (bool)text;
-	#else
-	if (!text)
-		return false;
-
 	auto textView = textSystem->get(text);
-	auto fonts = textSystem->get(textView->getFontAtlas())->getFonts();
-	return textView->update(value, propterties, std::move(fonts), fontSize, 
-		FontAtlas::defaultImageFlags, Text::defaultBufferFlags, shrink);
-	#endif
+	if (!descriptorSet || currInstanceBuffer != textView->getInstanceBuffer() ||
+		currFontAtlas != textSystem->get(textView->getFontAtlas())->getImage())
+	{
+		graphicsSystem->destroy(descriptorSet);
+
+		auto uniforms = getUniforms(text);
+		descriptorSet = graphicsSystem->createDescriptorSet(
+			UiLabelSystem::Instance::get()->getPipeline(), std::move(uniforms));
+		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.uiLabel" + to_string(*descriptorSet));
+	}
+
+	aabb.setSize(f32x4(float3(textView->getSize() * fontSize, 1.0f)));
+	isEnabled = true;
+	return true;
 }
 
+//**********************************************************************************************************************
 UiLabelSystem::UiLabelSystem(bool setSingleton) : Singleton(setSingleton)
 {
 	auto manager = Manager::Instance::get();
@@ -65,7 +137,6 @@ UiLabelSystem::~UiLabelSystem()
 	unsetSingleton();
 }
 
-//**********************************************************************************************************************
 void UiLabelSystem::resetComponent(View<Component> component, bool full)
 {
 	auto componentView = View<UiLabelComponent>(component);
@@ -109,6 +180,25 @@ MeshRenderType UiLabelSystem::getMeshRenderType() const
 {
 	return MeshRenderType::UI;
 }
+bool UiLabelSystem::isDrawReady(int8 shadowPass)
+{
+	if (shadowPass >= 0)
+		return false; // Note: no shadow pass for UI.
+	if (!pipeline)
+		pipeline = createPipeline();
+	return GraphicsSystem::Instance::get()->get(pipeline)->isReady();
+}
+void UiLabelSystem::prepareDraw(const f32x4x4& viewProj, uint32 drawCount, int8 shadowPass)
+{
+	graphicsSystem = GraphicsSystem::Instance::get();
+	textSystem = TextSystem::Instance::get();
+	pipelineView = graphicsSystem->get(pipeline);
+}
+void UiLabelSystem::beginDrawAsync(int32 taskIndex)
+{
+	pipelineView->bindAsync(0, taskIndex);
+	pipelineView->setViewportScissorAsync(float4::zero, taskIndex); // TODO: calc and set UI scissor.
+}
 void UiLabelSystem::drawAsync(MeshRenderComponent* meshRenderView, 
 	const f32x4x4& viewProj, const f32x4x4& model, uint32 drawIndex, int32 taskIndex)
 {
@@ -116,22 +206,20 @@ void UiLabelSystem::drawAsync(MeshRenderComponent* meshRenderView,
 	if (!uiLabelView->text)
 		return;
 
-	// TODO:
-}
-ID<GraphicsPipeline> UiLabelSystem::createBasePipeline()
-{
-	auto deferredSystem = DeferredRenderSystem::Instance::get();
+	auto textView = textSystem->get(uiLabelView->text);
+	if (!graphicsSystem->get(textView->getInstanceBuffer())->isReady())
+		return;
+	auto fontAtlasView = textSystem->get(textView->getFontAtlas());
+	if (!graphicsSystem->get(fontAtlasView->getImage())->isReady())
+		return;
 
-	ResourceSystem::GraphicsOptions options;
-	options.useAsyncRecording = true;
-	options.loadAsync = false;
+	PushConstants pc;
+	auto fontSize = fontAtlasView->getFontSize();
+	pc.mvp = (float4x4)(viewProj * model * scale(f32x4(fontSize, fontSize, 1.0f)));
 
-	return ResourceSystem::Instance::get()->loadGraphicsPipeline(
-		"text/ui", deferredSystem->getUiFramebuffer(), options);
-}
-uint64 UiLabelSystem::getBaseInstanceDataSize()
-{
-	return sizeof(Text::Instance);
+	pipelineView->bindDescriptorSetAsync(uiLabelView->descriptorSet, 0, taskIndex);
+	pipelineView->pushConstantsAsync(&pc, taskIndex);
+	pipelineView->drawAsync(taskIndex, {}, 6, textView->getInstanceCount());
 }
 
 //**********************************************************************************************************************
@@ -210,9 +298,20 @@ void UiLabelSystem::deserialize(IDeserializer& deserializer, View<Component> com
 	componentView->fontSize = max(componentView->fontSize, 1u);
 	if (!fontPaths.empty() || loadNoto)
 	{
+		auto textSystem = TextSystem::Instance::get();
 		auto fonts = ResourceSystem::Instance::get()->loadFonts(fontPaths, 0, loadNoto);
-		componentView->text = TextSystem::Instance::get()->createText(componentView->value, 
+		componentView->text = textSystem->createText(componentView->value, 
 			std::move(fonts), componentView->fontSize, componentView->propterties);
+		
+		auto uniforms = getUniforms(componentView->text);
+		auto descriptorSet = graphicsSystem->createDescriptorSet(
+			UiLabelSystem::Instance::get()->getPipeline(), std::move(uniforms));
+		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.uiLabel" + to_string(*descriptorSet));
+		componentView->descriptorSet = descriptorSet;
+
+		auto textView = textSystem->get(componentView->text);
+		componentView->aabb.setSize(f32x4(float3(textView->getSize() * componentView->fontSize, 1.0f)));
+		componentView->isEnabled = true;
 	}
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
@@ -299,6 +398,12 @@ void UiLabelSystem::deserializeAnimation(IDeserializer& deserializer, View<Anima
 		auto fonts = ResourceSystem::Instance::get()->loadFonts(fontPaths, 0, loadNoto);
 		frameView->text = TextSystem::Instance::get()->createText(frameView->value, 
 			std::move(fonts), frameView->fontSize, frameView->propterties);
+
+		auto uniforms = getUniforms(frameView->text);
+		auto descriptorSet = graphicsSystem->createDescriptorSet(
+			UiLabelSystem::Instance::get()->getPipeline(), std::move(uniforms));
+		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.uiLabel" + to_string(*descriptorSet));
+		frameView->descriptorSet = descriptorSet;
 	}
 	
 	#if GARDEN_DEBUG || GARDEN_EDITOR
@@ -307,6 +412,7 @@ void UiLabelSystem::deserializeAnimation(IDeserializer& deserializer, View<Anima
 	#endif
 }
 
+//**********************************************************************************************************************
 void UiLabelSystem::animateAsync(View<Component> component, View<AnimationFrame> a, View<AnimationFrame> b, float t)
 {
 	auto componentView = View<UiLabelComponent>(component);
@@ -318,6 +424,7 @@ void UiLabelSystem::animateAsync(View<Component> component, View<AnimationFrame>
 		if (frameB->text)
 		{
 			componentView->text = frameB->text;
+			componentView->descriptorSet = frameB->descriptorSet;
 			componentView->value = frameB->value;
 			componentView->propterties = frameB->propterties;
 			componentView->fontSize = frameB->fontSize;
@@ -332,6 +439,7 @@ void UiLabelSystem::animateAsync(View<Component> component, View<AnimationFrame>
 		if (frameA->text)
 		{
 			componentView->text = frameA->text;
+			componentView->descriptorSet = frameA->descriptorSet;
 			componentView->value = frameA->value;
 			componentView->propterties = frameA->propterties;
 			componentView->fontSize = frameA->fontSize;
@@ -340,6 +448,17 @@ void UiLabelSystem::animateAsync(View<Component> component, View<AnimationFrame>
 			componentView->loadNoto = frameA->loadNoto;
 			#endif
 		}
+	}
+
+	if (componentView->text)
+	{
+		auto textView = textSystem->get(componentView->text);
+		componentView->aabb.setSize(f32x4(float3(textView->getSize() * componentView->fontSize, 1.0f)));
+		componentView->isEnabled = true;
+	}
+	else
+	{
+		componentView->isEnabled = false;
 	}
 }
 
@@ -352,4 +471,12 @@ void UiLabelSystem::resetAnimation(View<AnimationFrame> frame, bool full)
 		**frameView = {};
 	else
 		frameView->text = {};
+}
+
+//**********************************************************************************************************************
+ID<GraphicsPipeline> UiLabelSystem::getPipeline()
+{
+	if (!pipeline)
+		pipeline = createPipeline();
+	return pipeline;
 }

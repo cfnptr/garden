@@ -2783,6 +2783,7 @@ Ref<Font> ResourceSystem::loadFont(const fs::path& path, int32 faceIndex, bool l
 				", error: " + string(FT_Error_String(result)) + ")");
 			for (auto _face : faces)
 			{
+				if (!_face) continue;
 				result = FT_Done_Face((FT_Face)_face);
 				GARDEN_ASSERT_MSG(!result, "Failed to destroy FreeType font");
 			}

@@ -95,12 +95,12 @@ bool InstanceRenderSystem::isDrawReady(int8 shadowPass)
 			basePipeline = createBasePipeline();
 		if (!basePipeline)
 			return false;
-
-		if (baseInstanceBuffers.empty())
-			createInstanceBuffers(getBaseInstanceDataSize() * 16, baseInstanceBuffers, false, this);
-
 		if (!graphicsSystem->get(basePipeline)->isReady())
 			return false;
+
+		auto baseInstanceSize = getBaseInstanceDataSize();
+		if (baseInstanceBuffers.empty() && baseInstanceSize > 0)
+			createInstanceBuffers(baseInstanceSize * 16, baseInstanceBuffers, false, this);
 
 		if (!baseDescriptorSet)
 		{
@@ -120,12 +120,12 @@ bool InstanceRenderSystem::isDrawReady(int8 shadowPass)
 			shadowPipeline = createShadowPipeline();
 		if (!shadowPipeline)
 			return false;
-
-		if (shadowInstanceBuffers.empty())
-			createInstanceBuffers(getShadowInstanceDataSize() * 16, shadowInstanceBuffers, true, this);
-
 		if (!graphicsSystem->get(shadowPipeline)->isReady())
 			return false;
+
+		auto shadowInstanceSize = getShadowInstanceDataSize();
+		if (shadowInstanceBuffers.empty() && shadowInstanceSize > 0)
+			createInstanceBuffers(shadowInstanceSize * 16, shadowInstanceBuffers, true, this);
 
 		if (!shadowDescriptorSet)
 		{
@@ -150,59 +150,71 @@ void InstanceRenderSystem::prepareDraw(const f32x4x4& viewProj, uint32 drawCount
 
 	if (shadowPass < 0)
 	{
-		auto dataBinarySize = drawCount * getBaseInstanceDataSize();
-		if (graphicsSystem->get(baseInstanceBuffers[0][0])->getBinarySize() < dataBinarySize)
+		auto baseInstanceSize = getBaseInstanceDataSize();
+		if (baseInstanceSize > 0)
 		{
-			graphicsSystem->destroy(baseInstanceBuffers);
-			createInstanceBuffers(dataBinarySize, baseInstanceBuffers, false, this);
-
-			if (baseDescriptorSet)
+			auto dataBinarySize = drawCount * baseInstanceSize;
+			if (baseInstanceBuffers.empty() || graphicsSystem->get(
+				baseInstanceBuffers[0][0])->getBinarySize() < dataBinarySize)
 			{
-				graphicsSystem->destroy(baseDescriptorSet);
-				baseDescriptorSet = {};
+				graphicsSystem->destroy(baseInstanceBuffers);
+				createInstanceBuffers(dataBinarySize, baseInstanceBuffers, false, this);
 
-				auto uniforms = getBaseUniforms();
-				if (!uniforms.empty())
+				if (baseDescriptorSet)
 				{
-					baseDescriptorSet = graphicsSystem->createDescriptorSet(basePipeline, std::move(uniforms));
-					#if GARDEN_DEBUG
-					SET_RESOURCE_DEBUG_NAME(baseDescriptorSet, "descriptorSet." + debugResourceName + ".base");
-					#endif
+					graphicsSystem->destroy(baseDescriptorSet);
+					baseDescriptorSet = {};
+
+					auto uniforms = getBaseUniforms();
+					if (!uniforms.empty())
+					{
+						baseDescriptorSet = graphicsSystem->createDescriptorSet(basePipeline, std::move(uniforms));
+						#if GARDEN_DEBUG
+						SET_RESOURCE_DEBUG_NAME(baseDescriptorSet, "descriptorSet." + debugResourceName + ".base");
+						#endif
+					}
 				}
 			}
-		}
 
-		auto bufferView = graphicsSystem->get(baseInstanceBuffers[inFlightIndex][0]);
-		instanceMap = bufferView->getMap();
+			auto bufferView = graphicsSystem->get(baseInstanceBuffers[inFlightIndex][0]);
+			instanceMap = bufferView->getMap();
+		}
+		
 		descriptorSet = baseDescriptorSet;
 		pipelineView = graphicsSystem->get(basePipeline);
 	}
 	else
 	{
-		auto dataBinarySize = (shadowDrawIndex + drawCount) * getShadowInstanceDataSize();
-		if (graphicsSystem->get(shadowInstanceBuffers[0][0])->getBinarySize() < dataBinarySize)
+		auto shadowInstanceSize = getBaseInstanceDataSize();
+		if (shadowInstanceSize > 0)
 		{
-			graphicsSystem->destroy(shadowInstanceBuffers);
-			createInstanceBuffers(dataBinarySize, shadowInstanceBuffers, true, this);
-
-			if (shadowDescriptorSet)
+			auto dataBinarySize = (shadowDrawIndex + drawCount) * shadowInstanceSize;
+			if (shadowInstanceBuffers.empty() || graphicsSystem->get(
+				shadowInstanceBuffers[0][0])->getBinarySize() < dataBinarySize)
 			{
-				graphicsSystem->destroy(shadowDescriptorSet);
-				shadowDescriptorSet = {};
+				graphicsSystem->destroy(shadowInstanceBuffers);
+				createInstanceBuffers(dataBinarySize, shadowInstanceBuffers, true, this);
 
-				auto uniforms = getShadowUniforms();
-				if (!uniforms.empty())
+				if (shadowDescriptorSet)
 				{
-					shadowDescriptorSet = graphicsSystem->createDescriptorSet(shadowPipeline, std::move(uniforms));
-					#if GARDEN_DEBUG
-					SET_RESOURCE_DEBUG_NAME(shadowDescriptorSet, "descriptorSet." + debugResourceName + ".shadow");
-					#endif
+					graphicsSystem->destroy(shadowDescriptorSet);
+					shadowDescriptorSet = {};
+
+					auto uniforms = getShadowUniforms();
+					if (!uniforms.empty())
+					{
+						shadowDescriptorSet = graphicsSystem->createDescriptorSet(shadowPipeline, std::move(uniforms));
+						#if GARDEN_DEBUG
+						SET_RESOURCE_DEBUG_NAME(shadowDescriptorSet, "descriptorSet." + debugResourceName + ".shadow");
+						#endif
+					}
 				}
 			}
-		}
 
-		auto bufferView = graphicsSystem->get(shadowInstanceBuffers[inFlightIndex][0]);
-		instanceMap = bufferView->getMap();
+			auto bufferView = graphicsSystem->get(shadowInstanceBuffers[inFlightIndex][0]);
+			instanceMap = bufferView->getMap();
+		}
+		
 		descriptorSet = shadowDescriptorSet;
 		pipelineView = graphicsSystem->get(shadowPipeline);
 		pipelineView->updateFramebuffer(graphicsSystem->getCurrentFramebuffer());
@@ -217,9 +229,12 @@ void InstanceRenderSystem::finalizeDraw(const f32x4x4& viewProj, uint32 drawCoun
 {
 	if (shadowPass < 0)
 	{
-		auto instanceBuffer = baseInstanceBuffers[inFlightIndex][0];
-		auto bufferView = GraphicsSystem::Instance::get()->get(instanceBuffer);
-		bufferView->flush(drawCount * getBaseInstanceDataSize());
+		if (!baseInstanceBuffers.empty())
+		{
+			auto instanceBuffer = baseInstanceBuffers[inFlightIndex][0];
+			auto bufferView = GraphicsSystem::Instance::get()->get(instanceBuffer);
+			bufferView->flush(drawCount * getBaseInstanceDataSize());
+		}
 	}
 	else
 	{
@@ -230,9 +245,12 @@ void InstanceRenderSystem::renderCleanup()
 {
 	if (shadowDrawIndex > 0)
 	{
-		auto instanceBuffer = shadowInstanceBuffers[inFlightIndex][0];
-		auto bufferView = GraphicsSystem::Instance::get()->get(instanceBuffer);
-		bufferView->flush(shadowDrawIndex * getShadowInstanceDataSize());
+		if (!shadowInstanceBuffers.empty())
+		{
+			auto instanceBuffer = shadowInstanceBuffers[inFlightIndex][0];
+			auto bufferView = GraphicsSystem::Instance::get()->get(instanceBuffer);
+			bufferView->flush(shadowDrawIndex * getShadowInstanceDataSize());
+		}
 		shadowDrawIndex = 0;
 	}
 }
