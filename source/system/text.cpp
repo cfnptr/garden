@@ -45,7 +45,7 @@ static uint32 calcGlyphLength(psize glyphCount) noexcept { return (uint32)ceil(s
 
 //**********************************************************************************************************************
 static bool fillFontAtlas(const LinearPool<Font>& fontPool, FT_Library ftLibrary, const vector<Ref<Font>>& fonts, 
-	FontAtlas::GlyphMap& glyphs, uint8_t* pixels, uint32 fontSize, uint32 glyphLength, uint32 pixelLength, 
+	FontAtlas::GlyphMap& glyphs, uint8_t* pixels, uint32 fontSize, uint32 glyphLength, uint2 pixelSize, 
 	uint8 fontIndex, uint32 itemOffset, uint32 itemCount, uint32 threadIndex)
 {
 	for (const auto& font : fonts)
@@ -85,10 +85,10 @@ static bool fillFontAtlas(const LinearPool<Font>& fontPool, FT_Library ftLibrary
 					weight = min(weight, fixedToFloat(axes[i].maximum));
 					coords[i] = floatToFixed(weight);
 				}
-				else if (tag == (FT_ULong)('i' << 24 | 't' << 16 | 'a' << 8 | 'l') ||
-					tag == (FT_ULong)('s' << 24 | 'l' << 16 | 'n' << 8 | 't'))
+				else if (isItalic && (tag == (FT_ULong)('i' << 24 | 't' << 16 | 'a' << 8 | 'l') ||
+					tag == (FT_ULong)('s' << 24 | 'l' << 16 | 'n' << 8 | 't')))
 				{
-					coords[i] = isItalic ? axes[i].maximum : axes[i].def;
+					coords[i] = axes[i].maximum;
 				}
 				else
 				{
@@ -107,6 +107,7 @@ static bool fillFontAtlas(const LinearPool<Font>& fontPool, FT_Library ftLibrary
 		}
 	}
 
+	auto invFontSize = 1.0f / fontSize; auto invPixelSize = float2::one / pixelSize;
 	auto mainFace = (FT_Face)fontPool.get(fonts[0])->faces.at(threadIndex);
 	auto i = glyphs.begin(); pixels += fontIndex;
 
@@ -142,7 +143,7 @@ static bool fillFontAtlas(const LinearPool<Font>& fontPool, FT_Library ftLibrary
 
 		const auto glyphSlot = charFace->glyph; auto baseWidth = glyphSlot->bitmap.width;
 		auto glyphWidth = min(baseWidth, fontSize), glyphHeight = min(glyphSlot->bitmap.rows, fontSize);
-		glyph.advance = ((float)glyphSlot->advance.x * (1.0f / 64.0f)) / fontSize;
+		glyph.advance = ((float)glyphSlot->advance.x * (1.0f / 64.0f)) * invFontSize;
 
 		if (glyphWidth * glyphHeight == 0)
 		{
@@ -152,20 +153,20 @@ static bool fillFontAtlas(const LinearPool<Font>& fontPool, FT_Library ftLibrary
 		{
 			auto glyphPosY = index / glyphLength, glyphPosX = (uint32)(index - (size_t)glyphPosY * glyphLength);
 			auto pixelPosX = glyphPosX * fontSize, pixelPosY = glyphPosY * fontSize;
-			glyph.position.x = (float)glyphSlot->bitmap_left / fontSize;
-			glyph.position.y = ((float)glyphSlot->bitmap_top - glyphHeight) / fontSize;
-			glyph.position.z = glyph.position.x + ((float)glyphWidth / fontSize);
-			glyph.position.w = glyph.position.y + ((float)glyphHeight / fontSize);
-			glyph.texCoords.x = (float)pixelPosX / pixelLength;
-			glyph.texCoords.y = (float)pixelPosY / pixelLength;
-			glyph.texCoords.z = glyph.texCoords.x + ((float)glyphWidth / pixelLength);
-			glyph.texCoords.w = glyph.texCoords.y + ((float)glyphHeight / pixelLength);
+			glyph.position.x = (float)glyphSlot->bitmap_left * invFontSize;
+			glyph.position.y = ((float)glyphSlot->bitmap_top - glyphHeight) * invFontSize;
+			glyph.position.z = glyph.position.x + ((float)glyphWidth * invFontSize);
+			glyph.position.w = glyph.position.y + ((float)glyphHeight * invFontSize);
+			glyph.texCoords.x = (float)pixelPosX * invPixelSize.x;
+			glyph.texCoords.y = (float)pixelPosY * invPixelSize.y;
+			glyph.texCoords.z = glyph.texCoords.x + ((float)glyphWidth * invPixelSize.x);
+			glyph.texCoords.w = glyph.texCoords.y + ((float)glyphHeight * invPixelSize.y);
 
 			const auto bitmap = glyphSlot->bitmap.buffer;
 			for (uint32 y = 0; y < glyphHeight; y++)
 			{
 				for (uint32 x = 0; x < glyphWidth; x++)
-					pixels[((y + pixelPosY) * pixelLength + x + pixelPosX) * 4] = bitmap[x + y * baseWidth];
+					pixels[((y + pixelPosY) * pixelSize.x + x + pixelPosX) * 4] = bitmap[x + y * baseWidth];
 			}
 		}
 
@@ -175,7 +176,7 @@ static bool fillFontAtlas(const LinearPool<Font>& fontPool, FT_Library ftLibrary
 	return true;
 }
 static bool fillFontAtlas(const LinearPool<Font>& fontPool, FT_Library ftLibrary, const FontArray& fonts, 
-	vector<FontAtlas::GlyphMap>& glyphs, uint8_t* pixels, uint32 fontSize, uint32 glyphLength, uint32 pixelLength)
+	vector<FontAtlas::GlyphMap>& glyphs, uint8_t* pixels, uint32 fontSize, uint32 glyphLength, uint2 pixelSize)
 {
 	auto threadSystem = ThreadSystem::Instance::tryGet();
 	if (threadSystem)
@@ -187,10 +188,10 @@ static bool fillFontAtlas(const LinearPool<Font>& fontPool, FT_Library ftLibrary
 		{
 			const auto& fontArray = fonts[i]; auto& glyphMap = glyphs[i];
 			threadPool.addItems([&fontPool, ftLibrary, &fontArray, &glyphMap, pixels, fontSize, 
-				glyphLength, pixelLength, i, &result](const ThreadPool::Task& task)
+				glyphLength, pixelSize, i, &result](const ThreadPool::Task& task)
 			{
 				if (fillFontAtlas(fontPool, ftLibrary, fontArray, glyphMap, pixels, fontSize, glyphLength, 
-					pixelLength, i, task.getItemOffset(), task.getItemCount(), task.getThreadIndex()))
+					pixelSize, i, task.getItemOffset(), task.getItemCount(), task.getThreadIndex()))
 				{
 					result += task.getItemCount() - task.getItemOffset();
 				}
@@ -206,7 +207,7 @@ static bool fillFontAtlas(const LinearPool<Font>& fontPool, FT_Library ftLibrary
 	for (uint8 i = 0; i < 4; i++)
 	{
 		if (!fillFontAtlas(fontPool, ftLibrary, fonts[i], glyphs[i], pixels, 
-			fontSize, glyphLength, pixelLength, i, 0, glyphCount, 0))
+			fontSize, glyphLength, pixelSize, i, 0, glyphCount, 0))
 		{
 			return false;
 		}
@@ -234,8 +235,8 @@ bool FontAtlas::update(u32string_view chars, uint32 fontSize, Image::Usage image
 	}
 	auto newLineAdvance = ((float)defaultFace->size->metrics.height * (1.0f / 64.0f)) / fontSize;
 
-	vector<GlyphMap> newGlyphs(4); prepareGlyphs(chars, newGlyphs[0]);
-	if (newGlyphs[0].empty())
+	vector<GlyphMap> glyphs(4); prepareGlyphs(chars, glyphs[0]);
+	if (glyphs[0].empty())
 	{
 		GARDEN_LOG_DEBUG("Failed to create font atlas, no visible glyphs.");
 		return false;
@@ -243,9 +244,9 @@ bool FontAtlas::update(u32string_view chars, uint32 fontSize, Image::Usage image
 	
 	constexpr auto imageFormat = Image::Format::UnormR8G8B8A8;
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto glyphLength = calcGlyphLength(newGlyphs[0].size());
+	auto glyphLength = calcGlyphLength(glyphs[0].size());
 	auto newPixelSize = uint2(glyphLength * fontSize, (uint32)
-		ceil((double)newGlyphs[0].size() / glyphLength) * fontSize); 
+		ceil((double)glyphs[0].size() / glyphLength) * fontSize); 
 	auto currPixelSize = uint2::zero;
 
 	if (image && !shrink)
@@ -261,17 +262,17 @@ bool FontAtlas::update(u32string_view chars, uint32 fontSize, Image::Usage image
 		return false;
 	}
 	
-	auto pixelLength = max(currPixelSize.x, newPixelSize.x);
-	auto binarySize = (uint64)pixelLength * newPixelSize.y * 4;
+	auto pixelSize = max(currPixelSize, newPixelSize);
+	auto binarySize = (uint64)pixelSize.x * newPixelSize.y * 4;
 	auto stagingBuffer = graphicsSystem->createStagingBuffer(Buffer::CpuAccess::RandomReadWrite, binarySize);
 	SET_RESOURCE_DEBUG_NAME(stagingBuffer, "buffer.staging.fontAtlas" + to_string(*stagingBuffer));
 
 	auto stagingView = graphicsSystem->get(stagingBuffer);
 	auto pixels = (uint8*)stagingView->getMap(); memset(pixels, 0, binarySize);
-	newGlyphs[1] = newGlyphs[0]; newGlyphs[2] = newGlyphs[0]; newGlyphs[3] = newGlyphs[0];
+	glyphs[1] = glyphs[0]; glyphs[2] = glyphs[0]; glyphs[3] = glyphs[0];
 
 	if (!fillFontAtlas(textSystem->fonts, (FT_Library)textSystem->ftLibrary, 
-		fonts, newGlyphs, pixels, fontSize, glyphLength, pixelLength))
+		fonts, glyphs, pixels, fontSize, glyphLength, pixelSize))
 	{
 		graphicsSystem->destroy(stagingBuffer);
 		return false;
@@ -287,23 +288,22 @@ bool FontAtlas::update(u32string_view chars, uint32 fontSize, Image::Usage image
 	}
 
 	Image::CopyBufferRegion copyRegion;
-	copyRegion.imageExtent = uint3(pixelLength, newPixelSize.y, 1);
+	copyRegion.imageExtent = uint3(pixelSize.x, newPixelSize.y, 1);
 	Image::copy(stagingBuffer, image, copyRegion);
 	graphicsSystem->destroy(stagingBuffer);
 
-	glyphs = std::move(newGlyphs);
-	fontSize = fontSize;
-	newLineAdvance = newLineAdvance;
+	this->glyphs = std::move(glyphs);
+	this->fontSize = fontSize;
+	this->newLineAdvance = newLineAdvance;
 	return true;
 }
 
 //**********************************************************************************************************************
-static bool fillTextInstances(u32string_view value, Text::Properties properties, View<FontAtlas> fontAtlasView, 
-	uint32 fontSize, Text::Instance* instances, uint32& instanceCount, float2& textSize)
+static bool fillTextInstances(u32string_view value, Text::Properties properties, 
+	View<FontAtlas> fontAtlasView, Text::Instance* instances, uint32& instanceCount, float2& textSize)
 {
-	auto chars = value.data();
-	const auto& glyphArray = fontAtlasView->getGlyphs();
-	auto newLineAdvance = fontAtlasView->getNewLineAdvance();
+	auto chars = value.data(); const auto& glyphArray = fontAtlasView->getGlyphs();
+	auto fontSize = fontAtlasView->getFontSize(); auto newLineAdvance = fontAtlasView->getNewLineAdvance();
 	auto color = properties.color; auto isBold = properties.isBold, isItalic = properties.isItalic;
 	auto size = float2::zero, instanceOffset = float2(0.0f, newLineAdvance * 0.5f);
 	instanceOffset.y = -floorf(instanceOffset.y * fontSize) / fontSize;
@@ -443,7 +443,7 @@ static bool fillTextInstances(u32string_view value, Text::Properties properties,
 				float4(instanceOffset, instanceOffset);
 			instance.texCoords = result->second.texCoords;
 			instance.atlasIndex = atlasIndex;
-			instance.color = color;
+			instance.color = encodeColor(color);
 			instances[instanceIndex++] = instance;
 		}
 		instanceOffset.x += result->second.advance;
@@ -458,54 +458,54 @@ static bool fillTextInstances(u32string_view value, Text::Properties properties,
 	case Text::Alignment::Center:
 		offset = floorf(instanceOffset.x * -0.5f * fontSize) / fontSize;
 		for (uint32_t i = lastNewLineIndex; i < instanceIndex; i++)
-			instances[i].position.x += offset;
+			instances[i].position += float4(offset, 0.0f, offset, 0.0f);
 		offset = floorf(size.y * 0.5f * fontSize) / fontSize;
 		for (uint32_t i = 0; i < instanceIndex; i++)
-			instances[i].position.y += offset;
+			instances[i].position += float4(0.0f, offset, 0.0f, offset);
 		break;
 	case Text::Alignment::Left:
 		offset = floorf(size.y * 0.5f * fontSize) / fontSize;
 		for (uint32_t i = 0; i < instanceIndex; i++)
-			instances[i].position.y += offset;
+			instances[i].position += float4(0.0f, offset, 0.0f, offset);
 		break;
 	case Text::Alignment::Right:
 		offset = -instanceOffset.x;
 		for (uint32_t i = lastNewLineIndex; i < instanceIndex; i++)
-			instances[i].position.x += offset;
+			instances[i].position += float4(offset, 0.0f, offset, 0.0f);
 		offset = floorf(size.y * 0.5f * fontSize) / fontSize;
 		for (uint32_t i = 0; i < instanceIndex; i++)
-			instances[i].position.y += offset;
+			instances[i].position += float4(0.0f, offset, 0.0f, offset);
 		break;
 	case Text::Alignment::Bottom:
 		offset = floorf(instanceOffset.x * -0.5f * fontSize) / fontSize;
 		for (uint32_t i = lastNewLineIndex; i < instanceIndex; i++)
-			instances[i].position.x += offset;
+			instances[i].position += float4(offset, 0.0f, offset, 0.0f);
 		offset = size.y;
 		for (uint32_t i = 0; i < instanceIndex; i++)
-			instances[i].position.y += offset;
+			instances[i].position += float4(0.0f, offset, 0.0f, offset);
 		break;
 	case Text::Alignment::Top:
 		offset = floorf(instanceOffset.x * -0.5f * fontSize) / fontSize;
 		for (uint32_t i = lastNewLineIndex; i < instanceIndex; i++)
-			instances[i].position.x += offset;
+			instances[i].position += float4(offset, 0.0f, offset, 0.0f);
 		break;
 	case Text::Alignment::LeftBottom:
 		offset = size.y;
 		for (uint32_t i = 0; i < instanceIndex; i++)
-			instances[i].position.y += offset;
+			instances[i].position += float4(0.0f, offset, 0.0f, offset);
 		break;
 	case Text::Alignment::RightBottom:
 		offset = -instanceOffset.x;
 		for (uint32_t i = lastNewLineIndex; i < instanceIndex; i++)
-			instances[i].position.x += offset;
+			instances[i].position += float4(offset, 0.0f, offset, 0.0f);
 		offset = size.y;
 		for (uint32_t i = 0; i < instanceIndex; i++)
-			instances[i].position.y += offset;
+			instances[i].position += float4(0.0f, offset, 0.0f, offset);
 		break;
 	case Text::Alignment::RightTop:
 		offset = -instanceOffset.x;
 		for (uint32_t i = lastNewLineIndex; i < instanceIndex; i++)
-			instances[i].position.x += offset;
+			instances[i].position += float4(offset, 0.0f, offset, 0.0f);
 		break;
 	case Text::Alignment::LeftTop: break;
 	default: abort();
@@ -517,31 +517,32 @@ static bool fillTextInstances(u32string_view value, Text::Properties properties,
 }
 
 //**********************************************************************************************************************
-bool Text::update(u32string_view value, Properties properties, const FontArray& fonts, uint32 fontSize, 
-	Image::Usage atlasUsage, Buffer::Usage instanceUsage, bool shrink)
+bool Text::update(u32string_view value, uint32 fontSize, Properties properties, 
+	const FontArray& fonts, Image::Usage atlasUsage, Buffer::Usage instanceUsage, bool shrink)
 {
 	GARDEN_ASSERT(!value.empty());
+	GARDEN_ASSERT(fontSize > 0);
 
 	SET_CPU_ZONE_SCOPED("Text Update");
 	auto textSystem = TextSystem::Instance::get();
 
-	ID<FontAtlas> newFontAtlas = {};
+	ID<FontAtlas> newFontAtlas = {}; View<FontAtlas> fontAtlasView = {};
 	if (atlasShared || shrink || !fontAtlas)
 	{
 		auto fontArray = fonts;
-		if (fontAtlas)
-		{
-			auto fontAtlasView = textSystem->get(fontAtlas);
-			if (fontSize == 0) fontSize = fontAtlasView->getFontSize();
-			if (fonts.empty()) fontArray = fontAtlasView->getFonts();
-		}
-
-		GARDEN_ASSERT(fontSize > 0);
-		GARDEN_ASSERT(!fontArray.empty());
-
 		newFontAtlas = textSystem->createFontAtlas(value, std::move(fontArray), fontSize, atlasUsage);
 		if (!newFontAtlas)
 			return false;
+		fontAtlasView = textSystem->get(newFontAtlas);
+	}
+	else
+	{
+		fontAtlasView = textSystem->get(fontAtlas);
+		if (!fontAtlasView->update(value, fontSize, atlasUsage, shrink))
+		{
+			textSystem->destroy(newFontAtlas);
+			return false;
+		}
 	}
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
@@ -551,16 +552,21 @@ bool Text::update(u32string_view value, Properties properties, const FontArray& 
 
 	auto stagingView = graphicsSystem->get(stagingBuffer);
 	auto instances = (Text::Instance*)stagingView->getMap();
-	auto fontAtlasView = newFontAtlas ? textSystem->get(newFontAtlas) : textSystem->get(fontAtlas);
 
 	uint32 instanceCount; float2 textSize;
-	if (!fillTextInstances(value, properties, fontAtlasView, fontSize, instances, instanceCount, textSize))
+	if (!fillTextInstances(value, properties, fontAtlasView, instances, instanceCount, textSize))
 	{
 		graphicsSystem->destroy(stagingBuffer);
 		textSystem->destroy(newFontAtlas);
 		return false;
 	}
 	stagingView->flush();
+
+	if (newFontAtlas)
+	{
+		textSystem->destroy(fontAtlas);
+		fontAtlas = Ref<FontAtlas>(newFontAtlas);
+	}
 
 	uint64 currBinarySize = 0;
 	if (instanceBuffer && !shrink)
@@ -579,6 +585,9 @@ bool Text::update(u32string_view value, Properties properties, const FontArray& 
 	
 	Buffer::copy(stagingBuffer, instanceBuffer);
 	graphicsSystem->destroy(stagingBuffer);
+
+	this->size = textSize;
+	this->instanceCount = instanceCount;
 	return true;
 }
 
@@ -676,7 +685,8 @@ ID<Text> TextSystem::createText(u32string_view value, const Ref<FontAtlas>& font
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto stopRecording = graphicsSystem->tryStartRecording(CommandBufferType::TransferOnly);
 
-	if (!textView->update(value, properties))
+	auto fontAtlasView = fontAtlases.get(fontAtlas);
+	if (!textView->update(value, fontAtlasView->getFontSize(), properties))
 	{
 		texts.destroy(text);
 		return {};

@@ -18,8 +18,9 @@
  */
 
 #pragma once
+#include "garden/animate.hpp"
 #include "garden/system/text.hpp"
-#include "garden/system/render/instance.hpp"
+#include "garden/system/render/mesh.hpp"
 
 namespace garden
 {
@@ -40,16 +41,27 @@ struct UiLabelComponent final : public MeshRenderComponent
 	uint32 fontSize = 16;              /**< Text font size in pixels.*/
 private:
 	ID<Text> text = {};
+	ID<DescriptorSet> descriptorSet = {};
+
 	friend class garden::UiLabelSystem;
 public:
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	bool loadNoto = true; /**< Also load supporting noto fonts. */
 	#endif
+
+	/**
+	 * @brief Creates a new empty UI label component.
+	 */
+	UiLabelComponent() { isEnabled = false; }
 	
 	/**
 	 * @brief Returns UI label text instance.
 	 */
 	ID<Text> getText() const noexcept { return text; }
+	/**
+	 * @brief Returns UI label descriptor set instance.
+	 */
+	ID<DescriptorSet> getDescriptorSet() const noexcept { return descriptorSet; }
 
 	/**
 	 * @brief Regenerates text internal data.
@@ -73,6 +85,7 @@ struct UiLabelFrame final : public AnimationFrame
 	Text::Properties propterties = {};
 	uint32 fontSize = 16;
 	ID<Text> text = {};
+	ID<DescriptorSet> descriptorSet = {};
 
 	bool hasAnimation() final { return true; }
 };
@@ -80,9 +93,20 @@ struct UiLabelFrame final : public AnimationFrame
 /***********************************************************************************************************************
  * @brief User interface label element system. (UI, GUI)
  */
-class UiLabelSystem final : public InstCompAnimSystem<UiLabelComponent, UiLabelFrame, false, false>,
-	public Singleton<UiLabelSystem>, public ISerializable
+class UiLabelSystem final : public CompAnimSystem<UiLabelComponent, UiLabelFrame, false, false>,
+	public Singleton<UiLabelSystem>, public ISerializable, public IMeshRenderSystem
 {
+public:
+	struct PushConstants final
+	{
+		float4x4 mvp;
+	};
+private:
+	ID<GraphicsPipeline> pipeline = {};
+	View<GraphicsPipeline> pipelineView = {};
+	GraphicsSystem* graphicsSystem = nullptr;
+	TextSystem* textSystem = nullptr;
+
 	/**
 	 * @brief Creates a new user interface label element system instance. (UI, GUI)
 	 * @param setSingleton set system singleton instance
@@ -96,12 +120,13 @@ class UiLabelSystem final : public InstCompAnimSystem<UiLabelComponent, UiLabelF
 	void resetComponent(View<Component> component, bool full) final;
 	void copyComponent(View<Component> source, View<Component> destination) final;
 	string_view getComponentName() const final;
-
 	MeshRenderType getMeshRenderType() const final;
+
+	bool isDrawReady(int8 shadowPass) final;
+	void prepareDraw(const f32x4x4& viewProj, uint32 drawCount, int8 shadowPass) final;
+	void beginDrawAsync(int32 taskIndex) final;
 	void drawAsync(MeshRenderComponent* meshRenderView, const f32x4x4& viewProj,
 		const f32x4x4& model, uint32 drawIndex, int32 taskIndex) final;
-	ID<GraphicsPipeline> createBasePipeline() final;
-	uint64 getBaseInstanceDataSize() final;
 	
 	void serialize(ISerializer& serializer, const View<Component> component) final;
 	void deserialize(IDeserializer& deserializer, View<Component> component) final;
@@ -109,8 +134,23 @@ class UiLabelSystem final : public InstCompAnimSystem<UiLabelComponent, UiLabelF
 	void serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame) final;
 	void deserializeAnimation(IDeserializer& deserializer, View<AnimationFrame> frame) final;
 	void animateAsync(View<Component> component, View<AnimationFrame> a, View<AnimationFrame> b, float t) final;
-	void resetAnimation(View<AnimationFrame> frame, bool full) override;
+	void resetAnimation(View<AnimationFrame> frame, bool full) final;
+
 	friend class ecsm::Manager;
+public:
+	/**
+	 * @brief Returns UI label mesh component pool.
+	 */
+	MeshRenderPool& getMeshComponentPool() override { return *((MeshRenderPool*)&this->components); }
+	/**
+	 * @brief Returns UI label mesh component size in bytes.
+	 */
+	psize getMeshComponentSize() const override { return sizeof(UiLabelComponent); }
+
+	/**
+	 * @brief Return UI label text graphics pipeline.
+	 */
+	ID<GraphicsPipeline> getPipeline();
 };
 
 } // namespace garden

@@ -134,18 +134,20 @@ public:
 		Properties() : color(Color::white) { }
 	};
 	/**
-	 * @brief Text glyph rendering instance data.
+	 * @brief Text quad rendering instance data.
 	 */
 	struct Instance final
 	{
 		float4 position;
 		float4 texCoords;
 		uint32 atlasIndex = 0;
-		Color color;
+		uint32 color = 0;
+		uint32 _alignment0 = 0;
+		uint32 _alignment1 = 0;
 	};
 
 	/**
-	 * @brief Default text instance buffer usage flags.
+	 * @brief Default text quad instance buffer usage flags.
 	 */
 	static constexpr Buffer::Usage defaultBufferFlags = 
 		Buffer::Usage::TransferDst | Buffer::Usage::TransferQ | Buffer::Usage::Storage;
@@ -153,6 +155,7 @@ private:
 	u32string value = {};
 	Ref<FontAtlas> fontAtlas = {};
 	ID<Buffer> instanceBuffer = {};
+	uint32 instanceCount = 0;
 	float2 size = float2::zero;
 	Properties properties = {};
 	bool atlasShared = false;
@@ -160,13 +163,21 @@ private:
 	friend class garden::TextSystem;
 public:
 	/**
-	 * @brief Return text string value.
+	 * @brief Returns text string value.
 	 */
 	const u32string& getValue() const noexcept { return value; }
 	/**
-	 * @brief Return text font texture atlas.
+	 * @brief Returns text font texture atlas.
 	 */
 	const Ref<FontAtlas>& getFontAtlas() const noexcept { return fontAtlas; }
+	/**
+	 * @brief Returns text quad instance buffer.
+	 */
+	ID<Buffer> getInstanceBuffer() const noexcept { return instanceBuffer; }
+	/**
+	 * @brief Returns text quad instance count.
+	 */
+	uint32 getInstanceCount() const noexcept { return instanceCount; }
 	/**
 	 * @brief Returns text size.
 	 */
@@ -185,34 +196,36 @@ public:
 	 * @return True on success, otherwise false.
 	 *
 	 * @param value target text string value
+	 * @param fontSize font size in pixels
 	 * @param properties text formatting properties
-	 * @param[in] fonts new font array or null
-	 * @param fontSize new font size in pixesl or zero
+	 * @param[in] fonts font array type[variant[font]]
 	 * @param atlasUsage atlas texture usage flags
+	 * @param instanceUsage instance buffer usage flags
 	 * @param shrink reduce internal memory usage
 	 */
-	bool update(u32string_view value, Properties properties = {}, const FontArray& fonts = {}, 
-		uint32 fontSize = 0, Image::Usage atlasUsage = FontAtlas::defaultImageFlags, 
+	bool update(u32string_view value, uint32 fontSize, Properties properties = {}, 
+		const FontArray& fonts = {}, Image::Usage atlasUsage = FontAtlas::defaultImageFlags, 
 		Buffer::Usage instanceUsage = defaultBufferFlags, bool shrink = false);
 	/**
 	 * @brief Regenerates text data.
 	 * @return True on success, otherwise false.
 	 *
 	 * @param value target text string value
+	 * @param fontSize font size in pixels
 	 * @param properties text formatting properties
-	 * @param[in] fonts new font array or null
-	 * @param fontSize new font size in pixesl or zero
+	 * @param[in] fonts font array type[variant[font]]
 	 * @param atlasUsage atlas texture usage flags
+	 * @param instanceUsage instance buffer usage flags
 	 * @param shrink reduce internal memory usage
 	 */
-	bool update(string_view value, Properties properties = {}, const FontArray& fonts = {}, 
-		uint32 fontSize = 0, Image::Usage atlasUsage = FontAtlas::defaultImageFlags, 
+	bool update(string_view value, uint32 fontSize, Properties properties = {}, 
+		const FontArray& fonts = {}, Image::Usage atlasUsage = FontAtlas::defaultImageFlags, 
 		Buffer::Usage instanceUsage = defaultBufferFlags, bool shrink = false)
 	{
 		u32string utf32;
 		if (UTF::utf8toUtf32(value, utf32) != 0)
 			return {};
-		return update(utf32, properties, fonts, fontSize, atlasUsage, instanceUsage, shrink);
+		return update(utf32, fontSize, properties, fonts, atlasUsage, instanceUsage, shrink);
 	}
 
 	// TODO: Add isDynamic mode, in which we can update font atlas and text instance buffer each frame.

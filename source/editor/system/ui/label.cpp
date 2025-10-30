@@ -60,8 +60,36 @@ void UiLabelEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	auto uiLabelView = UiLabelSystem::Instance::get()->getComponent(entity);
 
 	if (ImGui::InputText("Value", &uiLabelView->value))
-		uiLabelView->updateText(true);
-	ImGui::Checkbox("Load Noto", &uiLabelView->loadNoto);
+		uiLabelView->updateText();
+	ImGui::Checkbox("Enabled", &uiLabelView->isEnabled); ImGui::SameLine();
+	ImGui::Checkbox("Load Noto", &uiLabelView->loadNoto); 
+	ImGui::Spacing();
+
+	auto fontSize = (int)uiLabelView->fontSize;
+	if (ImGui::DragInt("Font Size", &fontSize, 1, 1, INT32_MAX))
+	{
+		uiLabelView->fontSize = fontSize;
+		uiLabelView->updateText();
+	}
+
+	auto color = (float4)uiLabelView->propterties.color;
+	if (ImGui::ColorEdit4("Color", &color))
+	{
+		uiLabelView->propterties.color = Color(color);
+		uiLabelView->updateText();
+	}
+
+	if (ImGui::Combo("Alignment", uiLabelView->propterties.alignment, textAlignmentNames, (int)Text::Alignment::Count))
+		uiLabelView->updateText();
+
+	if (ImGui::Checkbox("Bold", &uiLabelView->propterties.isBold))
+		uiLabelView->updateText();
+	ImGui::SameLine();
+	if (ImGui::Checkbox("Italic", &uiLabelView->propterties.isItalic))
+		uiLabelView->updateText();
+	ImGui::SameLine();
+	if (ImGui::Checkbox("Use Tags", &uiLabelView->propterties.useTags))
+		uiLabelView->updateText();
 	ImGui::Spacing();
 	
 	if (ImGui::CollapsingHeader("Fonts"))
