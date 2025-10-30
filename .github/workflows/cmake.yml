@@ -52,7 +52,7 @@ jobs:
         curl -O https://sdk.lunarg.com/sdk/download/latest/mac/vulkan_sdk.zip
         unzip vulkan_sdk.zip
         sudo ./vulkansdk-macOS-$vulkanVersion.app/Contents/MacOS/vulkansdk-macOS-$vulkanVersion --al --da -c install com.lunarg.vulkan.core com.lunarg.vulkan.usr
-        brew update && brew install zlib openssl curl assimp
+        brew update && brew lld install zlib openssl curl assimp
 
     - name: Install Windows packages
       if: ${{matrix.os == 'windows-latest' && steps.vcpkg-cache.outputs.cache-hit != 'true'}}

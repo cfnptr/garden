@@ -56,5 +56,8 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang") # Note: Do not remove MATCHES!
 	if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Darwin")
 		# This warning is emmited due to Brew iclude directories.
 		add_compile_options(-Wno-poison-system-directories)
+		if (DEFINED ENV{GITHUB_ACTIONS})
+			add_link_options(-fuse-ld=lld) # Faster linker than native.
+		endif()
 	endif()
 endif()
