@@ -694,7 +694,7 @@ void GraphicsSystem::destroy(ID<Buffer> buffer)
 {
 	GraphicsAPI::get()->bufferPool.destroy(buffer);
 }
-View<Buffer> GraphicsSystem::get(ID<Buffer> buffer) const
+View<Buffer> GraphicsSystem::get(ID<Buffer> buffer) const noexcept
 {
 	return GraphicsAPI::get()->bufferPool.get(buffer);
 }
@@ -910,7 +910,7 @@ void GraphicsSystem::destroy(ID<Image> image)
 	
 	graphicsAPI->imagePool.destroy(image);
 }
-View<Image> GraphicsSystem::get(ID<Image> image) const
+View<Image> GraphicsSystem::get(ID<Image> image) const noexcept
 {
 	return GraphicsAPI::get()->imagePool.get(image);
 }
@@ -951,7 +951,7 @@ void GraphicsSystem::destroy(ID<ImageView> imageView)
 	#endif
 	GraphicsAPI::get()->imageViewPool.destroy(imageView);
 }
-View<ImageView> GraphicsSystem::get(ID<ImageView> imageView) const
+View<ImageView> GraphicsSystem::get(ID<ImageView> imageView) const noexcept
 {
 	return GraphicsAPI::get()->imageViewPool.get(imageView);
 }
@@ -1080,7 +1080,7 @@ void GraphicsSystem::destroy(ID<Framebuffer> framebuffer)
 	#endif
 	GraphicsAPI::get()->framebufferPool.destroy(framebuffer);
 }
-View<Framebuffer> GraphicsSystem::get(ID<Framebuffer> framebuffer) const
+View<Framebuffer> GraphicsSystem::get(ID<Framebuffer> framebuffer) const noexcept
 {
 	return GraphicsAPI::get()->framebufferPool.get(framebuffer);
 }
@@ -1098,7 +1098,7 @@ void GraphicsSystem::destroy(ID<Sampler> sampler)
 	GraphicsAPI::get()->samplerPool.destroy(sampler);
 }
 
-View<Sampler> GraphicsSystem::get(ID<Sampler> sampler) const
+View<Sampler> GraphicsSystem::get(ID<Sampler> sampler) const noexcept
 {
 	return GraphicsAPI::get()->samplerPool.get(sampler);
 }
@@ -1107,7 +1107,7 @@ void GraphicsSystem::destroy(ID<GraphicsPipeline> graphicsPipeline)
 {
 	GraphicsAPI::get()->graphicsPipelinePool.destroy(graphicsPipeline);
 }
-View<GraphicsPipeline> GraphicsSystem::get(ID<GraphicsPipeline> graphicsPipeline) const
+View<GraphicsPipeline> GraphicsSystem::get(ID<GraphicsPipeline> graphicsPipeline) const noexcept
 {
 	return GraphicsAPI::get()->graphicsPipelinePool.get(graphicsPipeline);
 }
@@ -1116,7 +1116,7 @@ void GraphicsSystem::destroy(ID<ComputePipeline> computePipeline)
 {
 	GraphicsAPI::get()->computePipelinePool.destroy(computePipeline);
 }
-View<ComputePipeline> GraphicsSystem::get(ID<ComputePipeline> computePipeline) const
+View<ComputePipeline> GraphicsSystem::get(ID<ComputePipeline> computePipeline) const noexcept
 {
 	return GraphicsAPI::get()->computePipelinePool.get(computePipeline);
 }
@@ -1125,7 +1125,7 @@ void GraphicsSystem::destroy(ID<RayTracingPipeline> rayTracingPipeline)
 {
 	GraphicsAPI::get()->rayTracingPipelinePool.destroy(rayTracingPipeline);
 }
-View<RayTracingPipeline> GraphicsSystem::get(ID<RayTracingPipeline> rayTracingPipeline) const
+View<RayTracingPipeline> GraphicsSystem::get(ID<RayTracingPipeline> rayTracingPipeline) const noexcept
 {
 	return GraphicsAPI::get()->rayTracingPipelinePool.get(rayTracingPipeline);
 }
@@ -1198,7 +1198,7 @@ void GraphicsSystem::destroy(ID<DescriptorSet> descriptorSet)
 {
 	GraphicsAPI::get()->descriptorSetPool.destroy(descriptorSet);
 }
-View<DescriptorSet> GraphicsSystem::get(ID<DescriptorSet> descriptorSet) const
+View<DescriptorSet> GraphicsSystem::get(ID<DescriptorSet> descriptorSet) const noexcept
 {
 	return GraphicsAPI::get()->descriptorSetPool.get(descriptorSet);
 }
@@ -1230,7 +1230,7 @@ void GraphicsSystem::destroy(ID<Blas> blas)
 {
 	GraphicsAPI::get()->blasPool.destroy(blas);
 }
-View<Blas> GraphicsSystem::get(ID<Blas> blas) const
+View<Blas> GraphicsSystem::get(ID<Blas> blas) const noexcept
 {
 	return GraphicsAPI::get()->blasPool.get(blas);
 }
@@ -1250,7 +1250,7 @@ void GraphicsSystem::destroy(ID<Tlas> tlas)
 {
 	return GraphicsAPI::get()->tlasPool.destroy(tlas);
 }
-View<Tlas> GraphicsSystem::get(ID<Tlas> tlas) const
+View<Tlas> GraphicsSystem::get(ID<Tlas> tlas) const noexcept
 {
 	return GraphicsAPI::get()->tlasPool.get(tlas);
 }

@@ -72,6 +72,7 @@ public:
 	static constexpr uint8 activeChildIndex = 2;   /**< Active button state child entity index. */
 	static constexpr uint8 disabledChildIndex = 3; /**< Disabled button state child entity index. */
 	static constexpr uint8 focusedChildIndex = 4;  /**< Focused button state child entity index. */
+	static constexpr uint8 stateChildCount = 5;    /**< Button state child entity count. */
 private:
 	ID<Entity> pressedButton = {};
 
@@ -98,12 +99,6 @@ private:
 	void deserializeAnimation(IDeserializer& deserializer, View<AnimationFrame> frame) final;
 	void animateAsync(View<Component> component, View<AnimationFrame> a, View<AnimationFrame> b, float t) final;
 	friend class ecsm::Manager;
-public:
-	/**
-	 * @brief Updates specified button state.
-	 * @param button target button to update
-	 */
-	void updateButtonState(ID<Entity> button);
 };
 
 } // namespace garden

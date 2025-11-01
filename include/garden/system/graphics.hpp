@@ -498,12 +498,12 @@ public:
 	 * @brief Returns buffer data accessor.
 	 * @param buffer target buffer instance
 	 */
-	View<Buffer> get(ID<Buffer> buffer) const;
+	View<Buffer> get(ID<Buffer> buffer) const noexcept;
 	/**
 	 * @brief Returns buffer data accessor.
 	 * @param buffer target buffer instance
 	 */
-	View<Buffer> get(const Ref<Buffer>& buffer) const { return get(ID<Buffer>(buffer)); }
+	View<Buffer> get(const Ref<Buffer>& buffer) const noexcept { return get(ID<Buffer>(buffer)); }
 
 	/*******************************************************************************************************************
 	 * @brief Creates a new image (texture) instance.
@@ -635,12 +635,12 @@ public:
 	 * @brief Returns image data accessor.
 	 * @param image target image instance
 	 */
-	View<Image> get(ID<Image> image) const;
+	View<Image> get(ID<Image> image) const noexcept;
 	/**
 	 * @brief Returns image data accessor.
 	 * @param image target image instance
 	 */
-	View<Image> get(const Ref<Image>& image) const { return get(ID<Image>(image)); }
+	View<Image> get(const Ref<Image>& image) const noexcept { return get(ID<Image>(image)); }
 
 	/*******************************************************************************************************************
 	 * @brief Creates a new image (texture) view instance.
@@ -684,12 +684,12 @@ public:
 	 * @brief Returns image view data accessor.
 	 * @param imageView target image view instance
 	 */
-	View<ImageView> get(ID<ImageView> imageView) const;
+	View<ImageView> get(ID<ImageView> imageView) const noexcept;
 	/**
 	 * @brief Returns image view data accessor.
 	 * @param imageView target image view instance
 	 */
-	View<ImageView> get(const Ref<ImageView>& imageView) const { return get(ID<ImageView>(imageView)); }
+	View<ImageView> get(const Ref<ImageView>& imageView) const noexcept { return get(ID<ImageView>(imageView)); }
 
 	/*******************************************************************************************************************
 	 * @brief Creates a new framebuffer instance.
@@ -736,12 +736,15 @@ public:
 	 * @brief Returns framebuffer data accessor.
 	 * @param framebuffer target framebuffer instance
 	 */
-	View<Framebuffer> get(ID<Framebuffer> framebuffer) const;
+	View<Framebuffer> get(ID<Framebuffer> framebuffer) const noexcept;
 	/**
 	 * @brief Returns framebuffer data accessor.
 	 * @param framebuffer target framebuffer instance
 	 */
-	View<Framebuffer> get(const Ref<Framebuffer>& framebuffer) const { return get(ID<Framebuffer>(framebuffer)); }
+	View<Framebuffer> get(const Ref<Framebuffer>& framebuffer) const noexcept
+	{
+		return get(ID<Framebuffer>(framebuffer));
+	}
 
 	/*******************************************************************************************************************
 	 * @brief Creates a new sampler instance.
@@ -776,12 +779,12 @@ public:
 	 * @brief Returns sampler data accessor.
 	 * @param sampler target sampler instance
 	 */
-	View<Sampler> get(ID<Sampler> sampler) const;
+	View<Sampler> get(ID<Sampler> sampler) const noexcept;
 	 /**
 	  * @brief Returns sampler data accessor.
 	  * @param sampler target sampler instance
 	  */
-	View<Sampler> get(const Ref<Sampler>& sampler) const { return get(ID<Sampler>(sampler)); }
+	View<Sampler> get(const Ref<Sampler>& sampler) const noexcept { return get(ID<Sampler>(sampler)); }
 
 	/*******************************************************************************************************************
 	 * @brief Destroys graphics pipeline instance.
@@ -811,12 +814,12 @@ public:
 	 * @brief Returns graphics pipeline data accessor.
 	 * @param graphicsPipeline target graphics pipeline instance
 	 */
-	View<GraphicsPipeline> get(ID<GraphicsPipeline> graphicsPipeline) const;
+	View<GraphicsPipeline> get(ID<GraphicsPipeline> graphicsPipeline) const noexcept;
 	/**
 	 * @brief Returns graphics pipeline data accessor.
 	 * @param graphicsPipeline target graphics pipeline instance
 	 */
-	View<GraphicsPipeline> get(const Ref<GraphicsPipeline>& graphicsPipeline) const
+	View<GraphicsPipeline> get(const Ref<GraphicsPipeline>& graphicsPipeline) const noexcept
 	{
 		return get(ID<GraphicsPipeline>(graphicsPipeline));
 	}
@@ -849,12 +852,12 @@ public:
 	 * @brief Returns compute pipeline data accessor.
 	 * @param computePipeline target compute pipeline instance
 	 */
-	View<ComputePipeline> get(ID<ComputePipeline> computePipeline) const;
+	View<ComputePipeline> get(ID<ComputePipeline> computePipeline) const noexcept;
 	/**
 	 * @brief Returns compute pipeline data accessor.
 	 * @param computePipeline target compute pipeline instance
 	 */
-	View<ComputePipeline> get(const Ref<ComputePipeline>& computePipeline) const
+	View<ComputePipeline> get(const Ref<ComputePipeline>& computePipeline) const noexcept
 	{
 		return get(ID<ComputePipeline>(computePipeline));
 	}
@@ -887,12 +890,12 @@ public:
 	 * @brief Returns ray tracing pipeline data accessor.
 	 * @param rayTracingPipeline target tracing pipeline pipeline instance
 	 */
-	View<RayTracingPipeline> get(ID<RayTracingPipeline> rayTracingPipeline) const;
+	View<RayTracingPipeline> get(ID<RayTracingPipeline> rayTracingPipeline) const noexcept;
 	/**
 	 * @brief Returns ray tracing pipeline data accessor.
 	 * @param rayTracingPipeline target ray tracing pipeline instance
 	 */
-	View<RayTracingPipeline> get(const Ref<RayTracingPipeline>& rayTracingPipeline) const
+	View<RayTracingPipeline> get(const Ref<RayTracingPipeline>& rayTracingPipeline) const noexcept
 	{
 		return get(ID<RayTracingPipeline>(rayTracingPipeline));
 	}
@@ -956,12 +959,12 @@ public:
 	 * @brief Returns descriptor set data accessor.
 	 * @param descriptorSet target descriptor set instance
 	 */
-	View<DescriptorSet> get(ID<DescriptorSet> descriptorSet) const;
+	View<DescriptorSet> get(ID<DescriptorSet> descriptorSet) const noexcept;
 	/**
 	 * @brief Returns descriptor set data accessor.
 	 * @param descriptorSet target descriptor set instance
 	 */
-	View<DescriptorSet> get(const Ref<DescriptorSet>& descriptorSet) const
+	View<DescriptorSet> get(const Ref<DescriptorSet>& descriptorSet) const noexcept
 	{
 		return get(ID<DescriptorSet>(descriptorSet));
 	}
@@ -1011,12 +1014,12 @@ public:
 	 * @brief Returns bottom level acceleration structure data accessor. (BLAS)
 	 * @param blas target BLAS instance
 	 */
-	View<Blas> get(ID<Blas> blas) const;
+	View<Blas> get(ID<Blas> blas) const noexcept;
 	/**
 	 * @brief Returns bottom level acceleration structure data accessor. (BLAS)
 	 * @param blas target BLAS instance
 	 */
-	View<Blas> get(const Ref<Blas>& blas) const { return get(ID<Blas>(blas)); }
+	View<Blas> get(const Ref<Blas>& blas) const noexcept { return get(ID<Blas>(blas)); }
 
 	/*******************************************************************************************************************
 	 * @brief Creates a new graphics top level acceleration structure instance. (TLAS)
@@ -1055,12 +1058,12 @@ public:
 	 * @brief Returns top level acceleration structure data accessor. (TLAS)
 	 * @param tlas target TLAS instance
 	 */
-	View<Tlas> get(ID<Tlas> tlas) const;
+	View<Tlas> get(ID<Tlas> tlas) const noexcept;
 	/**
 	 * @brief Returns top level acceleration structure data accessor. (TLAS)
 	 * @param tlas target TLAS instance
 	 */
-	View<Tlas> get(const Ref<Tlas>& tlas) const { return get(ID<Tlas>(tlas)); }
+	View<Tlas> get(const Ref<Tlas>& tlas) const noexcept { return get(ID<Tlas>(tlas)); }
 	
 	//******************************************************************************************************************
 	// Render commands

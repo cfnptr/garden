@@ -52,13 +52,13 @@ bool UiLabelComponent::updateText(bool shrink)
 	auto textSystem = TextSystem::Instance::get();
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 
-	if (value.empty())
+	if (text.empty())
 	{
 		if (shrink)
 		{
 			graphicsSystem->destroy(descriptorSet);
-			textSystem->destroy(text);
-			text = {}; descriptorSet = {}; 
+			textSystem->destroy(textData);
+			textData = {}; descriptorSet = {}; 
 		}
 
 		isEnabled = false;
@@ -66,9 +66,9 @@ bool UiLabelComponent::updateText(bool shrink)
 	}
 
 	ID<Image> currFontAtlas = {}; ID<Buffer> currInstanceBuffer = {};
-	if (text)
+	if (textData)
 	{
-		auto textView = textSystem->get(text);
+		auto textView = textSystem->get(textData);
 		auto fontAtlasView = textSystem->get(textView->getFontAtlas());
 		auto fonts = fontAtlasView->getFonts();
 		currFontAtlas = fontAtlasView->getImage();
@@ -76,7 +76,7 @@ bool UiLabelComponent::updateText(bool shrink)
 
 		auto stopRecording = graphicsSystem->tryStartRecording(CommandBufferType::Frame);
 
-		if (!textView->update(value, fontSize, propterties, std::move(fonts), 
+		if (!textView->update(text, fontSize, propterties, std::move(fonts), 
 			FontAtlas::defaultImageFlags, Text::defaultBufferFlags, shrink))
 		{
 			return false;
@@ -92,21 +92,21 @@ bool UiLabelComponent::updateText(bool shrink)
 		if (fonts.empty())
 			return false;
 
-		text = textSystem->createText(value, std::move(fonts), fontSize, propterties);
-		if (!text)
+		textData = textSystem->createText(text, std::move(fonts), fontSize, propterties);
+		if (!textData)
 			return false;
 		#else
 		return false;
 		#endif
 	}
 
-	auto textView = textSystem->get(text);
+	auto textView = textSystem->get(textData);
 	if (!descriptorSet || currInstanceBuffer != textView->getInstanceBuffer() ||
 		currFontAtlas != textSystem->get(textView->getFontAtlas())->getImage())
 	{
 		graphicsSystem->destroy(descriptorSet);
 
-		auto uniforms = getUniforms(text);
+		auto uniforms = getUniforms(textData);
 		descriptorSet = graphicsSystem->createDescriptorSet(
 			UiLabelSystem::Instance::get()->getPipeline(), std::move(uniforms));
 		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.uiLabel" + to_string(*descriptorSet));
@@ -140,12 +140,17 @@ UiLabelSystem::~UiLabelSystem()
 void UiLabelSystem::resetComponent(View<Component> component, bool full)
 {
 	auto componentView = View<UiLabelComponent>(component);
-	TextSystem::Instance::get()->destroy(componentView->text);
+	GraphicsSystem::Instance::get()->destroy(componentView->descriptorSet);
+	TextSystem::Instance::get()->destroy(componentView->textData);
 
 	if (full)
+	{
 		**componentView = {};
+	}
 	else
-		componentView->text = {};
+	{
+		componentView->textData = {}; componentView->descriptorSet = {};
+	}
 }
 void UiLabelSystem::copyComponent(View<Component> source, View<Component> destination)
 {
@@ -153,21 +158,30 @@ void UiLabelSystem::copyComponent(View<Component> source, View<Component> destin
 	auto destinationView = View<UiLabelComponent>(destination);
 	**destinationView = **sourceView;
 
-	if (sourceView->text)
+	if (sourceView->textData)
 	{
 		auto textSystem = TextSystem::Instance::get();
-		auto srcTextView = textSystem->get(sourceView->text);
+		auto srcTextView = textSystem->get(sourceView->textData);
+
+		ID<Text> text;
 		if (srcTextView->isAtlasShared())
 		{
-			destinationView->text = textSystem->createText(srcTextView->getValue(), 
+			text = textSystem->createText(srcTextView->getValue(), 
 				srcTextView->getFontAtlas(), srcTextView->getProperties(), true);
 		}
 		else
 		{
 			auto fonts = textSystem->get(srcTextView->getFontAtlas())->getFonts();
-			destinationView->text = textSystem->createText(srcTextView->getValue(), 
-				std::move(fonts), sourceView->fontSize, srcTextView->getProperties());
+			text = textSystem->createText(srcTextView->getValue(), std::move(fonts), 
+				sourceView->fontSize, srcTextView->getProperties());
 		}
+		destinationView->textData = text;
+
+		auto uniforms = getUniforms(text);
+		auto descriptorSet = graphicsSystem->createDescriptorSet(
+			UiLabelSystem::Instance::get()->getPipeline(), std::move(uniforms));
+		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.uiLabel" + to_string(*descriptorSet));
+		destinationView->descriptorSet = descriptorSet;
 	}
 }
 string_view UiLabelSystem::getComponentName() const
@@ -190,7 +204,7 @@ bool UiLabelSystem::isDrawReady(int8 shadowPass)
 }
 void UiLabelSystem::prepareDraw(const f32x4x4& viewProj, uint32 drawCount, int8 shadowPass)
 {
-	graphicsSystem = GraphicsSystem::Instance::get();
+	transformSystem = TransformSystem::Instance::get();
 	textSystem = TextSystem::Instance::get();
 	pipelineView = graphicsSystem->get(pipeline);
 }
@@ -203,19 +217,20 @@ void UiLabelSystem::drawAsync(MeshRenderComponent* meshRenderView,
 	const f32x4x4& viewProj, const f32x4x4& model, uint32 drawIndex, int32 taskIndex)
 {
 	auto uiLabelView = (UiLabelComponent*)meshRenderView;
-	if (!uiLabelView->text)
+	if (!uiLabelView->textData)
 		return;
 
-	auto textView = textSystem->get(uiLabelView->text);
-	if (!graphicsSystem->get(textView->getInstanceBuffer())->isReady())
+	auto textView = textSystem->get(uiLabelView->textData);
+	if (!textView->isReady())
 		return;
-	auto fontAtlasView = textSystem->get(textView->getFontAtlas());
-	if (!graphicsSystem->get(fontAtlasView->getImage())->isReady())
-		return;
+
+	auto fontSize = uiLabelView->fontSize;
+	auto transformView = transformSystem->getComponent(uiLabelView->getEntity());
+	auto localScale = transformView->getScale() * f32x4(fontSize, fontSize, 1.0f);
+	auto localModel = scale(model, (1.0f / extractScale(model)) * localScale);
 
 	PushConstants pc;
-	auto fontSize = fontAtlasView->getFontSize();
-	pc.mvp = (float4x4)(viewProj * model * scale(f32x4(fontSize, fontSize, 1.0f)));
+	pc.mvp = (float4x4)(viewProj * localModel);
 
 	pipelineView->bindDescriptorSetAsync(uiLabelView->descriptorSet, 0, taskIndex);
 	pipelineView->pushConstantsAsync(&pc, taskIndex);
@@ -226,8 +241,8 @@ void UiLabelSystem::drawAsync(MeshRenderComponent* meshRenderView,
 void UiLabelSystem::serialize(ISerializer& serializer, const View<Component> component)
 {
 	const auto componentView = View<UiLabelComponent>(component);
-	if (!componentView->value.empty())
-		serializer.write("value", componentView->value);
+	if (!componentView->text.empty())
+		serializer.write("text", componentView->text);
 	if (componentView->propterties.color != Color::white)
 		serializer.write("color", componentView->propterties.color);
 	if (componentView->propterties.alignment != Text::Alignment::Center)
@@ -261,7 +276,7 @@ void UiLabelSystem::serialize(ISerializer& serializer, const View<Component> com
 void UiLabelSystem::deserialize(IDeserializer& deserializer, View<Component> component)
 {
 	auto componentView = View<UiLabelComponent>(component);
-	deserializer.read("value", componentView->value);
+	deserializer.read("text", componentView->text);
 	deserializer.read("color", componentView->propterties.color);
 	deserializer.read("isBold", componentView->propterties.isBold);
 	deserializer.read("isItalic", componentView->propterties.isItalic);
@@ -300,16 +315,17 @@ void UiLabelSystem::deserialize(IDeserializer& deserializer, View<Component> com
 	{
 		auto textSystem = TextSystem::Instance::get();
 		auto fonts = ResourceSystem::Instance::get()->loadFonts(fontPaths, 0, loadNoto);
-		componentView->text = textSystem->createText(componentView->value, 
+		auto text = textSystem->createText(componentView->text, 
 			std::move(fonts), componentView->fontSize, componentView->propterties);
+		componentView->textData = text;
 		
-		auto uniforms = getUniforms(componentView->text);
+		auto uniforms = getUniforms(text);
 		auto descriptorSet = graphicsSystem->createDescriptorSet(
 			UiLabelSystem::Instance::get()->getPipeline(), std::move(uniforms));
 		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.uiLabel" + to_string(*descriptorSet));
 		componentView->descriptorSet = descriptorSet;
 
-		auto textView = textSystem->get(componentView->text);
+		auto textView = textSystem->get(text);
 		componentView->aabb.setSize(f32x4(float3(textView->getSize() * componentView->fontSize, 1.0f)));
 		componentView->isEnabled = true;
 	}
@@ -324,8 +340,8 @@ void UiLabelSystem::deserialize(IDeserializer& deserializer, View<Component> com
 void UiLabelSystem::serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame)
 {
 	const auto frameView = View<UiLabelFrame>(frame);
-	if (!frameView->value.empty())
-		serializer.write("value", frameView->value);
+	if (!frameView->text.empty())
+		serializer.write("text", frameView->text);
 	if (frameView->propterties.color != Color::white)
 		serializer.write("color", frameView->propterties.color);
 	if (frameView->propterties.alignment != Text::Alignment::Center)
@@ -359,7 +375,7 @@ void UiLabelSystem::serializeAnimation(ISerializer& serializer, View<AnimationFr
 void UiLabelSystem::deserializeAnimation(IDeserializer& deserializer, View<AnimationFrame> frame)
 {
 	auto frameView = View<UiLabelFrame>(frame);
-	deserializer.read("value", frameView->value);
+	deserializer.read("text", frameView->text);
 	deserializer.read("color", frameView->propterties.color);
 	deserializer.read("isBold", frameView->propterties.isBold);
 	deserializer.read("isItalic", frameView->propterties.isItalic);
@@ -396,10 +412,11 @@ void UiLabelSystem::deserializeAnimation(IDeserializer& deserializer, View<Anima
 	if (!fontPaths.empty() || loadNoto)
 	{
 		auto fonts = ResourceSystem::Instance::get()->loadFonts(fontPaths, 0, loadNoto);
-		frameView->text = TextSystem::Instance::get()->createText(frameView->value, 
+		auto text = TextSystem::Instance::get()->createText(frameView->text, 
 			std::move(fonts), frameView->fontSize, frameView->propterties);
+		frameView->textData = text;
 
-		auto uniforms = getUniforms(frameView->text);
+		auto uniforms = getUniforms(text);
 		auto descriptorSet = graphicsSystem->createDescriptorSet(
 			UiLabelSystem::Instance::get()->getPipeline(), std::move(uniforms));
 		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.uiLabel" + to_string(*descriptorSet));
@@ -421,13 +438,13 @@ void UiLabelSystem::animateAsync(View<Component> component, View<AnimationFrame>
 
 	if ((bool)round(t))
 	{
-		if (frameB->text)
+		if (frameB->textData)
 		{
 			componentView->text = frameB->text;
-			componentView->descriptorSet = frameB->descriptorSet;
-			componentView->value = frameB->value;
 			componentView->propterties = frameB->propterties;
 			componentView->fontSize = frameB->fontSize;
+			componentView->textData = frameB->textData;
+			componentView->descriptorSet = frameB->descriptorSet;
 			#if GARDEN_DEBUG || GARDEN_EDITOR
 			componentView->fontPaths = frameB->fontPaths;
 			componentView->loadNoto = frameB->loadNoto;
@@ -436,13 +453,13 @@ void UiLabelSystem::animateAsync(View<Component> component, View<AnimationFrame>
 	}
 	else
 	{
-		if (frameA->text)
+		if (frameA->textData)
 		{
 			componentView->text = frameA->text;
-			componentView->descriptorSet = frameA->descriptorSet;
-			componentView->value = frameA->value;
 			componentView->propterties = frameA->propterties;
 			componentView->fontSize = frameA->fontSize;
+			componentView->textData = frameA->textData;
+			componentView->descriptorSet = frameA->descriptorSet;
 			#if GARDEN_DEBUG || GARDEN_EDITOR
 			componentView->fontPaths = frameA->fontPaths;
 			componentView->loadNoto = frameA->loadNoto;
@@ -450,9 +467,9 @@ void UiLabelSystem::animateAsync(View<Component> component, View<AnimationFrame>
 		}
 	}
 
-	if (componentView->text)
+	if (componentView->textData)
 	{
-		auto textView = textSystem->get(componentView->text);
+		auto textView = textSystem->get(componentView->textData);
 		componentView->aabb.setSize(f32x4(float3(textView->getSize() * componentView->fontSize, 1.0f)));
 		componentView->isEnabled = true;
 	}
@@ -465,12 +482,17 @@ void UiLabelSystem::animateAsync(View<Component> component, View<AnimationFrame>
 void UiLabelSystem::resetAnimation(View<AnimationFrame> frame, bool full)
 {
 	auto frameView = View<UiLabelFrame>(frame);
-	TextSystem::Instance::get()->destroy(frameView->text);
+	GraphicsSystem::Instance::get()->destroy(frameView->descriptorSet);
+	TextSystem::Instance::get()->destroy(frameView->textData);
 
 	if (full)
+	{
 		**frameView = {};
+	}
 	else
-		frameView->text = {};
+	{
+		frameView->textData = {}; frameView->descriptorSet = {};
+	}
 }
 
 //**********************************************************************************************************************
