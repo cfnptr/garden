@@ -23,10 +23,10 @@ static void activateButtonState(ID<Entity> button, uint8 childIndex)
 {
 	auto transformSystem = TransformSystem::Instance::get();
 	auto transformView = transformSystem->getComponent(button);
-	auto childCount = transformView->getChildCount();
+	auto childCount = min((uint8)transformView->getChildCount(), UiButtonSystem::stateChildCount);
 	auto childs = transformView->getChilds();
 
-	for (uint32 i = 0; i < childCount; i++)
+	for (uint8 i = 0; i < childCount; i++)
 	{
 		transformView = transformSystem->getComponent(childs[i]);
 		transformView->setActive(i == childIndex);
@@ -103,7 +103,7 @@ void UiButtonSystem::uiButtonStay()
 {
 	auto hoveredButton = UiTriggerSystem::Instance::get()->getHovered();
 	auto uiButtonView = tryGetComponent(hoveredButton);
-	if (!uiButtonView)
+	if (!uiButtonView || !uiButtonView->enabled)
 		return;
 
 	auto inputSystem = InputSystem::Instance::get();
@@ -150,7 +150,7 @@ void UiButtonSystem::serializeAnimation(ISerializer& serializer, View<AnimationF
 {
 	const auto frameView = View<UiButtonFrame>(frame);
 	if (frameView->animateIsEnabled)
-		serializer.write("isEnabled", (float3)frameView->isEnabled);
+		serializer.write("isEnabled", frameView->isEnabled);
 	if (frameView->animateOnClick)
 		serializer.write("onClick", frameView->onClick);
 }
@@ -168,7 +168,7 @@ void UiButtonSystem::animateAsync(View<Component> component, View<AnimationFrame
 	const auto frameB = View<UiButtonFrame>(b);
 
 	if (frameA->animateIsEnabled)
-		componentView->enabled = (bool)round(t);
+		componentView->enabled = (bool)round(t) ? frameB->isEnabled : frameA->isEnabled;
 	if (frameA->animateOnClick)
 		componentView->onClick = (bool)round(t) ? frameB->onClick : frameA->onClick;
 }

@@ -39,10 +39,18 @@ struct UiTriggerComponent final : public Component
  */
 struct UiTriggerFrame final : public AnimationFrame
 {
-	bool animateScale = false;
+	uint8 animateScale : 1;
+	uint8 animateOnEnter : 1;
+	uint8 animateOnExit : 1;
+	uint8 animateOnStay : 1;
+	uint16 _alignment = 0;
 	float2 scale = float2::one;
+	string onEnter = "";
+	string onExit = "";
+	string onStay = "";
 
-	bool hasAnimation() final { return animateScale; }
+	UiTriggerFrame() : animateScale(false), animateOnEnter(false), animateOnExit(false), animateOnStay(false) { }
+	bool hasAnimation() final { return animateScale || animateOnEnter || animateOnExit || animateOnStay; }
 };
 
 /***********************************************************************************************************************

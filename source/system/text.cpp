@@ -517,6 +517,21 @@ static bool fillTextInstances(u32string_view value, Text::Properties properties,
 }
 
 //**********************************************************************************************************************
+bool Text::isReady() const noexcept
+{
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto instanceBufferView = graphicsSystem->get(instanceBuffer);
+	if (!instanceBufferView->isReady())
+		return false;
+
+	auto fontAtlasView = TextSystem::Instance::get()->get(fontAtlas);
+	auto imageView = graphicsSystem->get(fontAtlasView->getImage());
+	if (!imageView->isReady())
+		return false;
+
+	return true;
+}
+
 bool Text::update(u32string_view value, uint32 fontSize, Properties properties, 
 	const FontArray& fonts, Image::Usage atlasUsage, Buffer::Usage instanceUsage, bool shrink)
 {

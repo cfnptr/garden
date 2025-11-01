@@ -298,7 +298,7 @@ void SpriteRenderSystem::animateAsync(View<Component> component,
 	const auto frameB = View<SpriteAnimFrame>(b);
 
 	if (frameA->animateIsEnabled)
-		componentView->isEnabled = (bool)round(t);
+		componentView->isEnabled = (bool)round(t) ? frameB->isEnabled : frameA->isEnabled;
 	if (frameA->animateColor)
 		componentView->color = lerp(frameA->color, frameB->color, t);
 	if (frameA->animateUvSize)

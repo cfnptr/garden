@@ -219,11 +219,20 @@ void UiTriggerSystem::serializeAnimation(ISerializer& serializer, View<Animation
 	const auto frameView = View<UiTriggerFrame>(frame);
 	if (frameView->animateScale)
 		serializer.write("scale", frameView->scale);
+	if (frameView->animateOnEnter)
+		serializer.write("onEnter", frameView->onEnter);
+	if (frameView->animateOnExit)
+		serializer.write("onExit", frameView->onExit);
+	if (frameView->animateOnStay)
+		serializer.write("onStay", frameView->onStay);
 }
 void UiTriggerSystem::deserializeAnimation(IDeserializer& deserializer, View<AnimationFrame> frame)
 {
 	auto frameView = View<UiTriggerFrame>(frame);
 	frameView->animateScale = deserializer.read("scale", frameView->scale);
+	frameView->animateOnEnter = deserializer.read("onEnter", frameView->onEnter);
+	frameView->animateOnExit = deserializer.read("onExit", frameView->onExit);
+	frameView->animateOnStay = deserializer.read("onEnter", frameView->onStay);
 }
 
 void UiTriggerSystem::animateAsync(View<Component> component, View<AnimationFrame> a, View<AnimationFrame> b, float t)
@@ -234,4 +243,10 @@ void UiTriggerSystem::animateAsync(View<Component> component, View<AnimationFram
 
 	if (frameA->animateScale)
 		componentView->scale = lerp(frameA->scale, frameB->scale, t);
+	if (frameA->animateOnEnter)
+		componentView->onEnter = (bool)round(t) ? frameB->onEnter : frameA->onEnter;
+	if (frameA->animateOnExit)
+		componentView->onExit = (bool)round(t) ? frameB->onExit : frameA->onExit;
+	if (frameA->animateOnStay)
+		componentView->onStay = (bool)round(t) ? frameB->onStay : frameA->onStay;
 }

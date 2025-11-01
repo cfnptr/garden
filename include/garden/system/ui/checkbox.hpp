@@ -18,18 +18,45 @@
  */
 
 #pragma once
-#include "garden/animate.hpp"
+#include "garden/system/ui/button.hpp"
 
 namespace garden
 {
+
+class UiCheckboxSystem;
 
 /**
  * @brief User interface checkbox element data container. (UI)
  */
 struct UiCheckboxComponent final : public Component
 {
-	bool isEnabled = true;  /**< Is UI checkbox enabled. */
-	bool isChecked = false; /**< Is UI checkbox checked (set). */
+protected:
+	bool enabled = true;
+	bool checked = false; /**< Is UI checkbox checked (set). */
+
+	friend class garden::UiCheckboxSystem;
+public:
+	string onChange = ""; /**< On UI checkbox state change event. */
+
+	/**
+	 * @brief Returns true if UI checkbox is enabled.
+	 */
+	bool isEnabled() const noexcept { return enabled; }
+	/**
+	 * @brief Sets UI checkbox enabled state.
+	 * @param state target checkbox state
+	 */
+	void setEnabled(bool state);
+
+	/**
+	 * @brief Returns true if UI checkbox is checked. (set)
+	 */
+	bool isChecked() const noexcept { return checked; }
+	/**
+	 * @brief Sets UI checkbox state.
+	 * @param state target checkbox state
+	 */
+	void setChecked(bool state);
 };
 
 /**
@@ -37,12 +64,17 @@ struct UiCheckboxComponent final : public Component
  */
 struct UiCheckboxFrame final : public AnimationFrame
 {
-	bool animateIsEnabled = false;
-	bool animateIsChecked = false;
-	bool isEnabled = true;
-	bool isChecked = false;
+	uint8 animateIsEnabled : 1;
+	uint8 animateIsChecked : 1;
+	uint8 animateOnChange : 1;
+	uint8 isEnabled : 1;
+	uint8 isChecked : 1;
+	uint16 _alignment = 0;
+	string onChange = "";
 
-	bool hasAnimation() final { return animateIsEnabled || animateIsChecked; }
+	UiCheckboxFrame() : animateIsEnabled(false), animateIsChecked(false), 
+		animateOnChange(false), isEnabled(true), isChecked(false) { }
+	bool hasAnimation() final { return animateIsEnabled || animateIsChecked || animateOnChange; }
 };
 
 /***********************************************************************************************************************
@@ -51,6 +83,16 @@ struct UiCheckboxFrame final : public AnimationFrame
 class UiCheckboxSystem final : public CompAnimSystem<UiCheckboxComponent, UiCheckboxFrame, false, false>,
 	public Singleton<UiCheckboxSystem>, public ISerializable
 {
+public:
+	/**
+	 * @brief Checkmark state child entity index.
+	 */
+	static constexpr uint8 checkmarkChildIndex = UiButtonSystem::stateChildCount;
+	/**
+	 * @brief Checkbox state child entity count.
+	 */
+	static constexpr uint8 stateChildCount = checkmarkChildIndex + 1;
+private:
 	/**
 	 * @brief Creates a new user interface checkbox element system instance. (UI, GUI)
 	 * @param setSingleton set system singleton instance
@@ -61,10 +103,8 @@ class UiCheckboxSystem final : public CompAnimSystem<UiCheckboxComponent, UiChec
 	 */
 	~UiCheckboxSystem() final;
 
-	void update();
+	void uiCheckboxClick();
 
-	void resetComponent(View<Component> component, bool full) final;
-	void copyComponent(View<Component> source, View<Component> destination) final;
 	string_view getComponentName() const final;
 	
 	void serialize(ISerializer& serializer, const View<Component> component) final;

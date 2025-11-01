@@ -20,6 +20,7 @@
 #pragma once
 #include "garden/animate.hpp"
 #include "garden/system/text.hpp"
+#include "garden/system/transform.hpp"
 #include "garden/system/render/mesh.hpp"
 
 namespace garden
@@ -36,11 +37,11 @@ struct UiLabelComponent final : public MeshRenderComponent
 	vector<fs::path> fontPaths; /**< Text font paths. */
 	#endif
 
-	string value = "";                 /**> UI label text string. */
+	string text = "";                  /**> UI label text string. */
 	Text::Properties propterties = {}; /**< UI label text properties. */
 	uint32 fontSize = 16;              /**< Text font size in pixels.*/
 private:
-	ID<Text> text = {};
+	ID<Text> textData = {};
 	ID<DescriptorSet> descriptorSet = {};
 
 	friend class garden::UiLabelSystem;
@@ -57,7 +58,7 @@ public:
 	/**
 	 * @brief Returns UI label text instance.
 	 */
-	ID<Text> getText() const noexcept { return text; }
+	ID<Text> getTextData() const noexcept { return textData; }
 	/**
 	 * @brief Returns UI label descriptor set instance.
 	 */
@@ -81,10 +82,10 @@ struct UiLabelFrame final : public AnimationFrame
 	vector<fs::path> fontPaths;
 	#endif
 
-	string value = "";
+	string text = "";
 	Text::Properties propterties = {};
 	uint32 fontSize = 16;
-	ID<Text> text = {};
+	ID<Text> textData = {};
 	ID<DescriptorSet> descriptorSet = {};
 
 	bool hasAnimation() final { return true; }
@@ -105,6 +106,7 @@ private:
 	ID<GraphicsPipeline> pipeline = {};
 	View<GraphicsPipeline> pipelineView = {};
 	GraphicsSystem* graphicsSystem = nullptr;
+	TransformSystem* transformSystem = nullptr;
 	TextSystem* textSystem = nullptr;
 
 	/**

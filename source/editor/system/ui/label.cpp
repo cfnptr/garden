@@ -59,7 +59,7 @@ void UiLabelEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 
 	auto uiLabelView = UiLabelSystem::Instance::get()->getComponent(entity);
 
-	if (ImGui::InputText("Value", &uiLabelView->value))
+	if (ImGui::InputText("Text", &uiLabelView->text))
 		uiLabelView->updateText();
 	ImGui::Checkbox("Enabled", &uiLabelView->isEnabled); ImGui::SameLine();
 	ImGui::Checkbox("Load Noto", &uiLabelView->loadNoto); 

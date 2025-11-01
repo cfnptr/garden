@@ -190,6 +190,11 @@ public:
 	 * @brief Is font texture atlas shared between texts.
 	 */
 	bool isAtlasShared() const noexcept { return atlasShared; }
+	/**
+	 * @brief Is text fully ready for graphics rendering.
+	 * @details Graphics resource is loaded and transferred.
+	 */
+	bool isReady() const noexcept;
 
 	/**
 	 * @brief Regenerates text data.
