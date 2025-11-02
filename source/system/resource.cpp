@@ -2406,30 +2406,57 @@ void ResourceSystem::storeScene(const fs::path& path, ID<Entity> rootEntity, con
 	
 	const auto& entities = manager->getEntities();
 	auto dnsSystem = DoNotSerializeSystem::Instance::tryGet();
+	stack<ID<Entity>> childEntities;
 
-	for (const auto& entityView : entities)
+	if (rootEntity)
 	{
-		if (!entityView.hasComponents())
-			continue;
+		childEntities.push(rootEntity);
+	}
+	else
+	{
+		for (const auto& entityView : entities)
+		{
+			if (!entityView.hasComponents())
+				continue;
 
-		auto instance = entities.getID(&entityView);
+			auto entity = entities.getID(&entityView);
+			auto transformView = manager->tryGet<TransformComponent>(entity);
+			if (transformView && transformView->getParent())
+				continue;
+
+			childEntities.push(entity);
+		}
+	}
+	
+	while (!childEntities.empty())
+	{
+		auto entity = childEntities.top(); childEntities.pop();
+		auto transformView = manager->tryGet<TransformComponent>(entity);
+
 		if (rootEntity)
 		{
-			auto transformView = manager->tryGet<TransformComponent>(instance);
-			if (!transformView || (instance != rootEntity && !transformView->hasAncestor(rootEntity)))
+			if (!transformView || (entity != rootEntity && !transformView->hasAncestor(rootEntity)))
 				continue;
 		}
 		else
 		{
-			if (dnsSystem && dnsSystem->hasOrAncestors(instance))
+			if (dnsSystem && dnsSystem->hasOrAncestors(entity))
 				continue;
+		}
+
+		if (transformView)
+		{
+			auto childs = transformView->getChilds();
+			for (int64 i = (int64)transformView->getChildCount() - 1; i >= 0; i--)
+				childEntities.push(childs[i]);
 		}
 
 		serializer.beginArrayElement();
 		serializer.beginChild("components");
 
-		auto components = entityView.getComponents();
-		auto componentCount = entityView.getComponentCount();
+		auto entityView = entities.get(entity);
+		auto components = entityView->getComponents();
+		auto componentCount = entityView->getComponentCount();
 
 		for (uint32 i = 0; i < componentCount; i++)
 		{
