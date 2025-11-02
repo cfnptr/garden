@@ -220,11 +220,11 @@ static f32x4x4 calcRelativeView(const TransformComponent* transform)
 {
 	auto view = calcView(transform);
 	auto nextParent = transform->getParent();
-	auto transformSystem = TransformSystem::Instance::get();
+	auto manager = Manager::Instance::get();
 
 	while (nextParent)
 	{
-		auto nextTransformView = transformSystem->getComponent(nextParent);
+		auto nextTransformView = manager->get<TransformComponent>(nextParent);
 		auto parentModel = calcModel(nextTransformView->getPosition(),
 			nextTransformView->getRotation(), nextTransformView->getScale());
 		view = parentModel * view;

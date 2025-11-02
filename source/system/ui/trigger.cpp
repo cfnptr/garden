@@ -46,13 +46,14 @@ UiTriggerSystem::~UiTriggerSystem()
 }
 
 //**********************************************************************************************************************
-static void triggerUiComponent(ID<Entity>& newElement, float& newPosZ, UiTriggerComponent& uiTriggerComp, float uiScale)
+static void triggerUiComponent(Manager* manager, ID<Entity>& newElement, 
+	float& newPosZ, UiTriggerComponent& uiTriggerComp, float uiScale)
 {
 	auto entity = uiTriggerComp.getEntity();
 	if (!entity)
 		return;
 
-	auto transformView = TransformSystem::Instance::get()->tryGetComponent(entity);
+	auto transformView = manager->tryGet<TransformComponent>(entity);
 	if (!transformView || !transformView->isActive())
 		return;
 
@@ -86,8 +87,8 @@ void UiTriggerSystem::update()
 	{
 		if (currElement)
 		{
-			auto uiTriggerView = getComponent(currElement);
-			if (!uiTriggerView->onExit.empty())
+			auto uiTriggerView = Manager::Instance::get()->tryGet<UiTriggerComponent>(currElement);
+			if (uiTriggerView && !uiTriggerView->onExit.empty())
 				Manager::Instance::get()->tryRunEvent(uiTriggerView->onExit);
 			currElement = {};
 		}
@@ -110,11 +111,12 @@ void UiTriggerSystem::update()
 			SET_CPU_ZONE_SCOPED("UI Trigger Update");
 
 			auto itemCount = task.getItemCount();
+			auto manager = Manager::Instance::get();
 			auto& threadElement = newElementData[task.getThreadIndex()];
 			auto& newElement = threadElement.first; auto& newPosZ = threadElement.second;
 
 			for (uint32 i = task.getItemOffset(); i < itemCount; i++)
-				triggerUiComponent(newElement, newPosZ, componentData[i], uiScale);
+				triggerUiComponent(manager, newElement, newPosZ, componentData[i], uiScale);
 		},
 		components.getOccupancy());
 		threadPool.wait();
@@ -132,8 +134,10 @@ void UiTriggerSystem::update()
 	else
 	{
 		auto componentOccupancy = components.getOccupancy();
+		auto manager = Manager::Instance::get();
+
 		for (uint32 i = 0; i < componentOccupancy; i++)
-			triggerUiComponent(newElement, newPosZ, componentData[i], uiScale);
+			triggerUiComponent(manager, newElement, newPosZ, componentData[i], uiScale);
 	}
 
 	if (newElement)
@@ -141,22 +145,22 @@ void UiTriggerSystem::update()
 		auto manager = Manager::Instance::get();
 		if (newElement == currElement)
 		{
-			auto uiTriggerView = getComponent(currElement);
-			if (!uiTriggerView->onStay.empty())
-				Manager::Instance::get()->tryRunEvent(uiTriggerView->onStay);
+			auto uiTriggerView = manager->tryGet<UiTriggerComponent>(currElement);
+			if (uiTriggerView && !uiTriggerView->onStay.empty())
+				manager->tryRunEvent(uiTriggerView->onStay);
 		}
 		else
 		{
 			auto manager = Manager::Instance::get();
 			if (currElement)
 			{
-				auto uiTriggerView = getComponent(currElement);
-				if (!uiTriggerView->onExit.empty())
+				auto uiTriggerView = manager->tryGet<UiTriggerComponent>(currElement);
+				if (uiTriggerView && !uiTriggerView->onExit.empty())
 					manager->tryRunEvent(uiTriggerView->onExit);
 			}
 			currElement = newElement;
 
-			auto uiTriggerView = getComponent(currElement);
+			auto uiTriggerView = manager->get<UiTriggerComponent>(currElement);
 			if (!uiTriggerView->onEnter.empty())
 				manager->tryRunEvent(uiTriggerView->onEnter);
 		}
@@ -165,9 +169,10 @@ void UiTriggerSystem::update()
 	{
 		if (currElement)
 		{
-			auto uiTriggerView = getComponent(currElement);
-			if (!uiTriggerView->onExit.empty())
-				Manager::Instance::get()->tryRunEvent(uiTriggerView->onExit);
+			auto manager = Manager::Instance::get();
+			auto uiTriggerView = manager->tryGet<UiTriggerComponent>(currElement);
+			if (uiTriggerView && !uiTriggerView->onExit.empty())
+				manager->tryRunEvent(uiTriggerView->onExit);
 			currElement = {};
 		}
 	}

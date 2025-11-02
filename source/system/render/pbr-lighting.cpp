@@ -847,7 +847,7 @@ void PbrLightingSystem::hdrRender()
 		return;
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto pbrLightingView = tryGetComponent(graphicsSystem->camera);
+	auto pbrLightingView = Manager::Instance::get()->tryGet<PbrLightingComponent>(graphicsSystem->camera);
 	if (!pbrLightingView)
 		return;
 
@@ -1698,7 +1698,7 @@ Ref<DescriptorSet> PbrLightingSystem::createDescriptorSet(ID<Entity> entity,
 {
 	GARDEN_ASSERT(entity);
 
-	auto pbrLightingView = tryGetComponent(entity);
+	auto pbrLightingView = Manager::Instance::get()->tryGet<PbrLightingComponent>(entity);
 	if (!lightingDS || !pbrLightingView || !pbrLightingView->sh || !pbrLightingView->specular)
 		return {};
 

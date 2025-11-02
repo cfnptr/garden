@@ -57,7 +57,7 @@ void UiLabelEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	if (!isOpened)
 		return;
 
-	auto uiLabelView = UiLabelSystem::Instance::get()->getComponent(entity);
+	auto uiLabelView = Manager::Instance::get()->get<UiLabelComponent>(entity);
 
 	if (ImGui::InputText("Text", &uiLabelView->text))
 		uiLabelView->updateText();

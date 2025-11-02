@@ -199,7 +199,7 @@ void LinkEditorSystem::editorBarTool()
 //**********************************************************************************************************************
 void LinkEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 {
-	auto linkView = LinkSystem::Instance::get()->getComponent(entity);
+	auto linkView = Manager::Instance::get()->get<LinkComponent>(entity);
 	if ((linkView->getUUID() || !linkView->getTag().empty()) && ImGui::BeginItemTooltip())
 	{
 		if (linkView->getUUID())

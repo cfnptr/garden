@@ -75,7 +75,6 @@ void MeshSelectorEditorSystem::render()
 		return;
 
 	auto inputSystem = InputSystem::Instance::get();
-	auto transformSystem = TransformSystem::Instance::get();
 	auto editorSystem = EditorRenderSystem::Instance::get();
 	const auto& commonConstants = graphicsSystem->getCommonConstants();
 	auto cameraPosition = commonConstants.cameraPos;
@@ -112,7 +111,7 @@ void MeshSelectorEditorSystem::render()
 				if (!meshRenderView->getEntity() || !meshRenderView->isEnabled)
 					continue;
 
-				auto transformView = transformSystem->tryGetComponent(meshRenderView->getEntity());
+				auto transformView = manager->tryGet<TransformComponent>(meshRenderView->getEntity());
 				if (!transformView->isActive())
 					continue;
 
@@ -163,7 +162,7 @@ void MeshSelectorEditorSystem::render()
 			}
 		}
 
-		auto transformView = transformSystem->tryGetComponent(selectedEntity);
+		auto transformView = manager->tryGet<TransformComponent>(selectedEntity);
 		if (transformView && selectedEntityAabb != Aabb::inf)
 		{
 			auto model = transformView->calcModel(cameraPosition);

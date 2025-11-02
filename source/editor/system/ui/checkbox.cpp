@@ -57,7 +57,7 @@ void UiCheckboxEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	if (!isOpened)
 		return;
 
-	auto uiCheckboxView = UiCheckboxSystem::Instance::get()->getComponent(entity);
+	auto uiCheckboxView = Manager::Instance::get()->get<UiCheckboxComponent>(entity);
 
 	auto isEnabled = uiCheckboxView->isEnabled();
 	if (ImGui::Checkbox("Enabled", &isEnabled))

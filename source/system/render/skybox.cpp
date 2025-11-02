@@ -116,7 +116,7 @@ void SkyboxRenderSystem::depthHdrRender()
 		return;
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto skyboxView = tryGetComponent(graphicsSystem->camera);
+	auto skyboxView = Manager::Instance::get()->tryGet<SkyboxRenderComponent>(graphicsSystem->camera);
 	if (!skyboxView || !skyboxView->cubemap)
 		return;
 

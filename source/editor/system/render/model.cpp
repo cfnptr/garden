@@ -54,7 +54,7 @@ void ModelRenderEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened
 	if (!isOpened)
 		return;
 
-	auto modelView = ModelRenderSystem::Instance::get()->getComponent(entity);
+	auto modelView = Manager::Instance::get()->get<ModelRenderComponent>(entity);
 	auto editorSystem = EditorRenderSystem::Instance::get();
 	auto& levels = modelView->levels;
 

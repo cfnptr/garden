@@ -88,12 +88,12 @@ void SpriteRenderEditorSystem::deinit()
 }
 
 //**********************************************************************************************************************
-template<class S>
+template<class C>
 static void renderSpriteTooltip(ID<Entity> entity)
 {
 	if (ImGui::BeginItemTooltip())
 	{
-		auto spriteView = S::Instance::get()->getComponent(entity);
+		auto spriteView = Manager::Instance::get()->get<C>(entity);
 		ImGui::Text("Enabled: %s, Path: %s", spriteView->isEnabled ? "true" : "false",
 			spriteView->colorMapPath.empty() ? "<null>" : spriteView->colorMapPath.generic_string().c_str());
 		ImGui::EndTooltip();
@@ -102,19 +102,19 @@ static void renderSpriteTooltip(ID<Entity> entity)
 
 void SpriteRenderEditorSystem::onOpaqueEntityInspector(ID<Entity> entity, bool isOpened)
 {
-	renderSpriteTooltip<OpaqueSpriteSystem>(entity);
+	renderSpriteTooltip<OpaqueSpriteComponent>(entity);
 	if (isOpened)
 	{
-		auto opaqueSpriteView = OpaqueSpriteSystem::Instance::get()->getComponent(entity);
+		auto opaqueSpriteView = Manager::Instance::get()->get<OpaqueSpriteComponent>(entity);
 		renderComponent(*opaqueSpriteView, typeid(OpaqueSpriteComponent));
 	}
 }
 void SpriteRenderEditorSystem::onCutoutEntityInspector(ID<Entity> entity, bool isOpened)
 {
-	renderSpriteTooltip<CutoutSpriteSystem>(entity);
+	renderSpriteTooltip<CutoutSpriteComponent>(entity);
 	if (isOpened)
 	{
-		auto cutoutSpriteView = CutoutSpriteSystem::Instance::get()->getComponent(entity);
+		auto cutoutSpriteView = Manager::Instance::get()->get<CutoutSpriteComponent>(entity);
 		renderComponent(*cutoutSpriteView, typeid(CutoutSpriteComponent));
 
 		ImGui::SliderFloat("Alpha Cutoff", &cutoutSpriteView->alphaCutoff, 0.0f, 1.0f);
@@ -128,19 +128,19 @@ void SpriteRenderEditorSystem::onCutoutEntityInspector(ID<Entity> entity, bool i
 }
 void SpriteRenderEditorSystem::onTransEntityInspector(ID<Entity> entity, bool isOpened)
 {
-	renderSpriteTooltip<TransSpriteSystem>(entity);
+	renderSpriteTooltip<TransSpriteComponent>(entity);
 	if (isOpened)
 	{
-		auto transSpriteView = TransSpriteSystem::Instance::get()->getComponent(entity);
+		auto transSpriteView = Manager::Instance::get()->get<TransSpriteComponent>(entity);
 		renderComponent(*transSpriteView, typeid(TransSpriteComponent));
 	}
 }
 void SpriteRenderEditorSystem::onUiEntityInspector(ID<Entity> entity, bool isOpened)
 {
-	renderSpriteTooltip<UiSpriteSystem>(entity);
+	renderSpriteTooltip<UiSpriteComponent>(entity);
 	if (isOpened)
 	{
-		auto uiSpriteView = UiSpriteSystem::Instance::get()->getComponent(entity);
+		auto uiSpriteView = Manager::Instance::get()->get<UiSpriteComponent>(entity);
 		renderComponent(*uiSpriteView, typeid(UiSpriteComponent));
 	}
 }
@@ -255,7 +255,7 @@ void SpriteRenderEditorSystem::renderComponent(SpriteRenderComponent* componentV
 	ImGui::BeginDisabled(!componentView->colorMap && manager->has<TransformComponent>(componentView->getEntity()));
 	if (ImGui::Button("Auto Scale", ImVec2(-FLT_MIN, 0.0f)))
 	{
-		auto transformView = TransformSystem::Instance::get()->getComponent(componentView->getEntity());
+		auto transformView = manager->get<TransformComponent>(componentView->getEntity());
 		auto colorMapView = GraphicsSystem::Instance::get()->get(componentView->colorMap);
 		auto imageSize = colorMapView->getSize();
 

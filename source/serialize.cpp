@@ -31,8 +31,7 @@ bool DoNotSerializeSystem::hasOrAncestors(ID<Entity> entity) const
 	if (manager->has<DoNotSerializeComponent>(entity))
 		return true;
 
-	auto transformSystem = TransformSystem::Instance::get();
-	auto transformView = transformSystem->tryGetComponent(entity);
+	auto transformView = manager->tryGet<TransformComponent>(entity);
 	if (!transformView)
 		return false;
 
@@ -41,8 +40,8 @@ bool DoNotSerializeSystem::hasOrAncestors(ID<Entity> entity) const
 	{
 		if (manager->has<DoNotSerializeComponent>(parent))
 			return true;
-		transformView = transformSystem->getComponent(parent);
-		parent = transformView->getParent();
+		auto parentView = manager->get<TransformComponent>(parent);
+		parent = parentView->getParent();
 	}
 	return false;
 }

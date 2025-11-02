@@ -87,12 +87,12 @@ void NineSliceEditorSystem::deinit()
 }
 
 //**********************************************************************************************************************
-template<class S>
+template<class C>
 static void renderNineSliceTooltip(ID<Entity> entity)
 {
 	if (ImGui::BeginItemTooltip())
 	{
-		auto nineSliceView = S::Instance::get()->getComponent(entity);
+		auto nineSliceView = Manager::Instance::get()->get<C>(entity);
 		ImGui::Text("Enabled: %s, Path: %s", nineSliceView->isEnabled ? "true" : "false",
 			nineSliceView->colorMapPath.empty() ? "<null>" : nineSliceView->colorMapPath.generic_string().c_str());
 		ImGui::EndTooltip();
@@ -100,19 +100,19 @@ static void renderNineSliceTooltip(ID<Entity> entity)
 }
 void NineSliceEditorSystem::onOpaqueEntityInspector(ID<Entity> entity, bool isOpened)
 {
-	renderNineSliceTooltip<Opaque9SliceSystem>(entity);
+	renderNineSliceTooltip<Opaque9SliceComponent>(entity);
 	if (isOpened)
 	{
-		auto opaque9SliceView = Opaque9SliceSystem::Instance::get()->getComponent(entity);
+		auto opaque9SliceView = Manager::Instance::get()->get<Opaque9SliceComponent>(entity);
 		renderComponent(*opaque9SliceView, typeid(Opaque9SliceComponent));
 	}
 }
 void NineSliceEditorSystem::onCutoutEntityInspector(ID<Entity> entity, bool isOpened)
 {
-	renderNineSliceTooltip<Cutout9SliceSystem>(entity);
+	renderNineSliceTooltip<Cutout9SliceComponent>(entity);
 	if (isOpened)
 	{
-		auto cutout9SliceView = Cutout9SliceSystem::Instance::get()->getComponent(entity);
+		auto cutout9SliceView = Manager::Instance::get()->get<Cutout9SliceComponent>(entity);
 		renderComponent(*cutout9SliceView, typeid(Cutout9SliceComponent));
 
 		ImGui::SliderFloat("Alpha Cutoff", &cutout9SliceView->alphaCutoff, 0.0f, 1.0f);
@@ -126,19 +126,19 @@ void NineSliceEditorSystem::onCutoutEntityInspector(ID<Entity> entity, bool isOp
 }
 void NineSliceEditorSystem::onTransEntityInspector(ID<Entity> entity, bool isOpened)
 {
-	renderNineSliceTooltip<Trans9SliceSystem>(entity);
+	renderNineSliceTooltip<Trans9SliceComponent>(entity);
 	if (isOpened)
 	{
-		auto trans9SliceView = Trans9SliceSystem::Instance::get()->getComponent(entity);
+		auto trans9SliceView = Manager::Instance::get()->get<Trans9SliceComponent>(entity);
 		renderComponent(*trans9SliceView, typeid(Trans9SliceComponent));
 	}
 }
 void NineSliceEditorSystem::onUiEntityInspector(ID<Entity> entity, bool isOpened)
 {
-	renderNineSliceTooltip<Ui9SliceSystem>(entity);
+	renderNineSliceTooltip<Ui9SliceComponent>(entity);
 	if (isOpened)
 	{
-		auto ui9SliceView = Ui9SliceSystem::Instance::get()->getComponent(entity);
+		auto ui9SliceView = Manager::Instance::get()->get<Ui9SliceComponent>(entity);
 		renderComponent(*ui9SliceView, typeid(Ui9SliceComponent));
 	}
 }

@@ -57,7 +57,7 @@ void UiTriggerEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	if (!isOpened)
 		return;
 
-	auto uiTriggerView = UiTriggerSystem::Instance::get()->getComponent(entity);
+	auto uiTriggerView = Manager::Instance::get()->get<UiTriggerComponent>(entity);
 
 	ImGui::DragFloat2("Scale", &uiTriggerView->scale, 1.0f, 0.0001f, FLT_MAX);
 	if (ImGui::BeginPopupContextItem("scale"))

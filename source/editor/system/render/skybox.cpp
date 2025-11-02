@@ -68,7 +68,7 @@ void SkyboxRenderEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpene
 	if (!isOpened)
 		return;
 
-	auto skyboxView = SkyboxRenderSystem::Instance::get()->getComponent(entity);
+	auto skyboxView = Manager::Instance::get()->get<SkyboxRenderComponent>(entity);
 	auto editorSystem = EditorRenderSystem::Instance::get();
 	editorSystem->drawResource(skyboxView->cubemap, "Cubemap");
 	editorSystem->drawResource(skyboxView->descriptorSet);

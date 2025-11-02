@@ -57,13 +57,13 @@ AnimationSystem::~AnimationSystem()
 }
 
 //**********************************************************************************************************************
-static void animateComponent(const AnimationSystem::AnimationPool* animations, AnimationComponent& animationComp)
+static void animateComponent(Manager* manager, const AnimationSystem::AnimationPool* animations, 
+	AnimationComponent& animationComp)
 {
 	auto entity = animationComp.getEntity();
 	if (!entity || !animationComp.isPlaying || !animationComp.active.empty())
 		return;
 
-	auto manager = Manager::Instance::get();
 	auto transformView = manager->tryGet<TransformComponent>(entity);
 	if (transformView)
 	{
@@ -111,7 +111,7 @@ static void animateComponent(const AnimationSystem::AnimationPool* animations, A
 			auto frameViewA = animatableSystem->getAnimation(pairA.second);
 			auto componentView = manager->tryGet(entity, pairA.first->getComponentType());
 			if (componentView)
-				animatableSystem->animateAsync(componentView, frameViewA, frameViewA, 1.0f);
+				animatableSystem->animateAsync(View<Component>(componentView), frameViewA, frameViewA, 1.0f);
 		}
 	}
 	else
@@ -135,7 +135,7 @@ static void animateComponent(const AnimationSystem::AnimationPool* animations, A
 
 			auto componentView = manager->tryGet(entity, pairA.first->getComponentType());
 			if (componentView)
-				animatableSystem->animateAsync(componentView, frameViewA, frameViewB, t);
+				animatableSystem->animateAsync(View<Component>(componentView), frameViewA, frameViewB, t);
 		}
 	}
 
@@ -166,8 +166,10 @@ void AnimationSystem::update()
 		threadPool.addItems([animations, componentData](const ThreadPool::Task& task)
 		{
 			auto itemCount = task.getItemCount();
+			auto manager = Manager::Instance::get();
+
 			for (uint32 i = task.getItemOffset(); i < itemCount; i++)
-				animateComponent(animations, componentData[i]);
+				animateComponent(manager, animations, componentData[i]);
 		},
 		components.getOccupancy());
 		threadPool.wait();
@@ -175,8 +177,10 @@ void AnimationSystem::update()
 	else
 	{
 		auto componentOccupancy = components.getOccupancy();
+		auto manager = Manager::Instance::get();
+
 		for (uint32 i = 0; i < componentOccupancy; i++)
-			animateComponent(animations, componentData[i]);
+			animateComponent(manager, animations, componentData[i]);
 	}
 }
 

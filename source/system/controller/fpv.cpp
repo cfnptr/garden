@@ -102,7 +102,7 @@ void FpvControllerSystem::swapchainRecreate()
 
 	if (swapchainChanges.framebufferSize)
 	{
-		auto cameraView = CameraSystem::Instance::get()->tryGetComponent(camera);
+		auto cameraView = Manager::Instance::get()->tryGet<CameraComponent>(camera);
 		if (cameraView)
 		{
 			auto framebufferSize = graphicsSystem->getFramebufferSize();
@@ -143,7 +143,7 @@ void FpvControllerSystem::updateMouseLock()
 //**********************************************************************************************************************
 quat FpvControllerSystem::updateCameraRotation()
 {
-	auto transformView = TransformSystem::Instance::get()->tryGetComponent(camera);
+	auto transformView = Manager::Instance::get()->tryGet<TransformComponent>(camera);
 	if (!isMouseLocked || !transformView || !transformView->isActive() )
 		return quat::identity;
 
@@ -164,7 +164,7 @@ void FpvControllerSystem::updateCameraControl(quat cameraRotation)
 		return;
 	#endif
 
-	auto transformView = TransformSystem::Instance::get()->tryGetComponent(camera);
+	auto transformView = Manager::Instance::get()->tryGet<TransformComponent>(camera);
 	if (!transformView || !transformView->isActive())
 		return;
 
@@ -217,9 +217,8 @@ void FpvControllerSystem::updateCharacterControl()
 	if (characterEntities.first == characterEntities.second)
 		return;
 
+	auto manager = Manager::Instance::get();
 	auto inputSystem = InputSystem::Instance::get();
-	auto transformSystem = TransformSystem::Instance::get();
-	auto characterSystem = CharacterSystem::Instance::get();
 	auto deltaTime = (float)inputSystem->getDeltaTime();
 	auto isJumping = inputSystem->getKeyboardState(KeyboardButton::Space);
 	const auto& gravity = PhysicsSystem::Instance::get()->getGravity();
@@ -252,11 +251,11 @@ void FpvControllerSystem::updateCharacterControl()
 
 	for (auto i = characterEntities.first; i != characterEntities.second; i++)
 	{
-		auto characterView = characterSystem->tryGetComponent(i->second);
+		auto characterView = manager->tryGet<CharacterComponent>(i->second);
 		if (!characterView || !characterView->getShape())
 			continue;
 
-		auto transformView = transformSystem->tryGetComponent(i->second);
+		auto transformView = manager->tryGet<TransformComponent>(i->second);
 		if (transformView && !transformView->isActive())
 			continue;
 

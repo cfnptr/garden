@@ -602,7 +602,7 @@ void GraphicsPipeline::drawAsync(int32 threadIndex, ID<Buffer> vertexBuffer,
 	GARDEN_ASSERT_MSG(instance, "Graphics pipeline [" + debugName + "] is not ready");
 	checkFramebufferSubpass(graphicsAPI, framebuffer, subpassIndex);
 
-	View<Buffer> vertexBufferView;
+	OptView<Buffer> vertexBufferView = {};
 	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
 		auto vulkanAPI = VulkanAPI::get();
@@ -613,7 +613,7 @@ void GraphicsPipeline::drawAsync(int32 threadIndex, ID<Buffer> vertexBuffer,
 			vk::Buffer instance;
 			if (vertexBuffer)
 			{
-				vertexBufferView = vulkanAPI->bufferPool.get(vertexBuffer);
+				vertexBufferView = OptView<Buffer>(vulkanAPI->bufferPool.get(vertexBuffer));
 				GARDEN_ASSERT_MSG(ResourceExt::getInstance(**vertexBufferView), "Vertex buffer [" + 
 					vertexBufferView->getDebugName() + "] is not ready");
 				instance = (VkBuffer)ResourceExt::getInstance(**vertexBufferView);

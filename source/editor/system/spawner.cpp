@@ -63,10 +63,8 @@ void SpawnerEditorSystem::deinit()
 static void renderSpawners(const string& searchString, bool searchCaseSensitive)
 {
 	auto manager = Manager::Instance::get();
-	auto spawnerSystem = SpawnerSystem::Instance::get();
 	auto editorSystem = EditorRenderSystem::Instance::get();
-	auto transformSystem = TransformSystem::Instance::tryGet();
-	const auto& components = spawnerSystem->getComponents();
+	const auto& components = SpawnerSystem::Instance::get()->getComponents();
 
 	ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyle().Colors[ImGuiCol_Button]);
 
@@ -88,11 +86,12 @@ static void renderSpawners(const string& searchString, bool searchCaseSensitive)
 		auto flags = (int)ImGuiTreeNodeFlags_Leaf;
 		if (editorSystem->selectedEntity == entity)
 			flags |= ImGuiTreeNodeFlags_Selected;
-		
+
+		auto transformView = manager->tryGet<TransformComponent>(entity);
+
 		string name;
-		if (transformSystem && manager->has<TransformComponent>(entity))
+		if (transformView)
 		{
-			auto transformView = transformSystem->getComponent(entity);
 			name = transformView->debugName.empty() ?
 				"Entity " + to_string(*entity) : transformView->debugName;
 		}
@@ -100,6 +99,7 @@ static void renderSpawners(const string& searchString, bool searchCaseSensitive)
 		{
 			name = "Entity " + to_string(*entity);
 		}
+
 		if (!spawner.path.empty() || spawner.prefab)
 		{
 			name += " (";
@@ -136,9 +136,8 @@ static void renderSpawners(const string& searchString, bool searchCaseSensitive)
 static void renderSharedPrefabs(const string& searchString, bool searchCaseSensitive)
 {
 	auto linkSystem = LinkSystem::Instance::get();
-	auto spawnerSystem = SpawnerSystem::Instance::get();
 	auto editorSystem = EditorRenderSystem::Instance::get();
-	const auto& sharedPrefabs = spawnerSystem->getSharedPrefabs();
+	const auto& sharedPrefabs = SpawnerSystem::Instance::get()->getSharedPrefabs();
 
 	ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyle().Colors[ImGuiCol_Button]);
 
@@ -256,7 +255,7 @@ void SpawnerEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 {
 	if (ImGui::BeginItemTooltip())
 	{
-		auto spawnerView = SpawnerSystem::Instance::get()->getComponent(entity);
+		auto spawnerView = Manager::Instance::get()->get<SpawnerComponent>(entity);
 		ImGui::Text("Active: %s, Path: %s, Prefab: %s",
 			spawnerView->isActive ? "true" : "false", spawnerView->path.generic_string().c_str(),
 			spawnerView->prefab ? spawnerView->prefab.toBase64URL().c_str() : "");
@@ -266,7 +265,7 @@ void SpawnerEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	if (!isOpened)
 		return;
 
-	auto spawnerView = SpawnerSystem::Instance::get()->getComponent(entity);
+	auto spawnerView = Manager::Instance::get()->get<SpawnerComponent>(entity);
 	ImGui::Checkbox("Active", &spawnerView->isActive); ImGui::SameLine();
 	ImGui::Checkbox("Spawn As Child", &spawnerView->spawnAsChild);
 	
@@ -294,7 +293,7 @@ void SpawnerEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 		{
 			GARDEN_ASSERT(payload->DataSize == sizeof(ID<Entity>));
 			auto entity = *((const ID<Entity>*)payload->Data);
-			auto linkView = LinkSystem::Instance::get()->tryGetComponent(entity);
+			auto linkView = Manager::Instance::get()->tryGet<LinkComponent>(entity);
 			if (linkView && linkView->getUUID())
 				spawnerView->prefab = linkView->getUUID();
 		}

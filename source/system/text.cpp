@@ -300,7 +300,7 @@ bool FontAtlas::update(u32string_view chars, uint32 fontSize, Image::Usage image
 
 //**********************************************************************************************************************
 static bool fillTextInstances(u32string_view value, Text::Properties properties, 
-	View<FontAtlas> fontAtlasView, Text::Instance* instances, uint32& instanceCount, float2& textSize)
+	OptView<FontAtlas> fontAtlasView, Text::Instance* instances, uint32& instanceCount, float2& textSize)
 {
 	auto chars = value.data(); const auto& glyphArray = fontAtlasView->getGlyphs();
 	auto fontSize = fontAtlasView->getFontSize(); auto newLineAdvance = fontAtlasView->getNewLineAdvance();
@@ -541,18 +541,18 @@ bool Text::update(u32string_view value, uint32 fontSize, Properties properties,
 	SET_CPU_ZONE_SCOPED("Text Update");
 	auto textSystem = TextSystem::Instance::get();
 
-	ID<FontAtlas> newFontAtlas = {}; View<FontAtlas> fontAtlasView = {};
+	ID<FontAtlas> newFontAtlas = {}; OptView<FontAtlas> fontAtlasView = {};
 	if (atlasShared || shrink || !fontAtlas)
 	{
 		auto fontArray = fonts;
 		newFontAtlas = textSystem->createFontAtlas(value, std::move(fontArray), fontSize, atlasUsage);
 		if (!newFontAtlas)
 			return false;
-		fontAtlasView = textSystem->get(newFontAtlas);
+		fontAtlasView = OptView<FontAtlas>(textSystem->get(newFontAtlas));
 	}
 	else
 	{
-		fontAtlasView = textSystem->get(fontAtlas);
+		fontAtlasView = OptView<FontAtlas>(textSystem->get(fontAtlas));
 		if (!fontAtlasView->update(value, fontSize, atlasUsage, shrink))
 		{
 			textSystem->destroy(newFontAtlas);

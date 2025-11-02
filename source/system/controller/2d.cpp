@@ -115,7 +115,7 @@ void Controller2DSystem::swapchainRecreate()
 
 	if (swapchainChanges.framebufferSize)
 	{
-		auto cameraView = CameraSystem::Instance::get()->tryGetComponent(camera);
+		auto cameraView = Manager::Instance::get()->tryGet<CameraComponent>(camera);
 		if (cameraView)
 		{
 			auto framebufferSize = graphicsSystem->getFramebufferSize();
@@ -135,8 +135,9 @@ void Controller2DSystem::updateCameraControl()
 		return;
 	#endif
 
-	auto transformView = TransformSystem::Instance::get()->tryGetComponent(camera);
-	auto cameraView = CameraSystem::Instance::get()->tryGetComponent(camera);
+	auto manager = Manager::Instance::get();
+	auto transformView = manager->tryGet<TransformComponent>(camera);
+	auto cameraView = manager->tryGet<CameraComponent>(camera);
 
 	if (!transformView || !transformView->isActive() || 
 		!cameraView || cameraView->type != ProjectionType::Orthographic)
@@ -183,8 +184,7 @@ void Controller2DSystem::updateCameraFollowing()
 	#endif
 
 	auto manager = Manager::Instance::get();
-	auto transformSystem = TransformSystem::Instance::get();
-	auto cameraTransformView = transformSystem->tryGetComponent(camera);
+	auto cameraTransformView = manager->tryGet<TransformComponent>(camera);
 	auto cameraView = manager->tryGet<CameraComponent>(camera);
 	auto characterEntities = LinkSystem::Instance::get()->findEntities(characterEntityTag);
 
@@ -194,16 +194,14 @@ void Controller2DSystem::updateCameraFollowing()
 		return;
 	}
 
-	auto characterSystem = CharacterSystem::Instance::get();
 	auto deltaTime = (float)InputSystem::Instance::get()->getDeltaTime();
-
 	for (auto i = characterEntities.first; i != characterEntities.second; i++)
 	{
-		auto charTransformView = transformSystem->tryGetComponent(i->second);
+		auto charTransformView = manager->tryGet<TransformComponent>(i->second);
 		if (!charTransformView || !charTransformView->isActive())
 			continue;
 
-		auto characterView = characterSystem->tryGetComponent(i->second);
+		auto characterView = manager->tryGet<CharacterComponent>(i->second);
 		if (!characterView)
 			continue;
 
@@ -232,9 +230,8 @@ void Controller2DSystem::updateCharacterControl()
 	if (characterEntities.first == characterEntities.second)
 		return;
 
+	auto manager = Manager::Instance::get();
 	auto inputSystem = InputSystem::Instance::get();
-	auto transformSystem = TransformSystem::Instance::get();
-	auto characterSystem = CharacterSystem::Instance::get();
 	auto deltaTime = (float)inputSystem->getDeltaTime();
 	auto isJumping = inputSystem->getKeyboardState(KeyboardButton::Space);
 	auto gravity = PhysicsSystem::Instance::get()->getGravity();
@@ -253,11 +250,11 @@ void Controller2DSystem::updateCharacterControl()
 
 	for (auto i = characterEntities.first; i != characterEntities.second; i++)
 	{
-		auto characterView = characterSystem->tryGetComponent(i->second);
+		auto characterView = manager->tryGet<CharacterComponent>(i->second);
 		if (!characterView || !characterView->getShape())
 			continue;
 
-		auto transformView = transformSystem->tryGetComponent(i->second);
+		auto transformView = manager->tryGet<TransformComponent>(i->second);
 		if (transformView && !transformView->isActive())
 			continue;
 

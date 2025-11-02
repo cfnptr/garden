@@ -2230,11 +2230,10 @@ ID<Entity> ResourceSystem::loadScene(const fs::path& path, bool addRootEntity)
 	}
 	#endif
 
-	TransformSystem* transformSystem = nullptr; ID<Entity> rootEntity = {};
+	ID<Entity> rootEntity = {};
 	if (addRootEntity)
 	{
-		transformSystem = TransformSystem::Instance::tryGet();
-		if (transformSystem)
+		if (TransformSystem::Instance::has())
 		{
 			rootEntity = manager->createEntity();
 			auto transformView = manager->add<TransformComponent>(rootEntity);
@@ -2315,7 +2314,7 @@ ID<Entity> ResourceSystem::loadScene(const fs::path& path, bool addRootEntity)
 				{
 					if (addRootEntity)
 					{
-						auto transformView = transformSystem->tryGetComponent(entity);
+						auto transformView = manager->tryGet<TransformComponent>(entity);
 						if (transformView)
 							transformView->setParent(rootEntity);
 					}
@@ -2350,7 +2349,6 @@ ID<Entity> ResourceSystem::loadScene(const fs::path& path, bool addRootEntity)
 void ResourceSystem::clearScene()
 {
 	auto manager = Manager::Instance::get();
-	auto transformSystem = TransformSystem::Instance::tryGet();
 	const auto& entities = manager->getEntities();
 
 	for (const auto& entity : entities)
@@ -2359,12 +2357,9 @@ void ResourceSystem::clearScene()
 		if (!entity.hasComponents() || manager->has<DoNotDestroyComponent>(entityID))
 			continue;
 
-		if (transformSystem)
-		{
-			auto transformView = transformSystem->tryGetComponent(entityID);
-			if (transformView)
-				transformView->setParent({});
-		}
+		auto transformView = manager->tryGet<TransformComponent>(entityID);
+		if (transformView)
+			transformView->setParent({});
 		manager->destroy(entityID);
 	}
 
@@ -2397,8 +2392,7 @@ void ResourceSystem::storeScene(const fs::path& path, ID<Entity> rootEntity, con
 	auto filePath = scenesPath / path; filePath += ".scene";
 	JsonSerializer serializer(filePath);
 
-	auto transformSystem = TransformSystem::Instance::tryGet();
-	if (rootEntity && (!transformSystem || !manager->has<TransformComponent>(rootEntity)))
+	if (rootEntity && !manager->has<TransformComponent>(rootEntity))
 		rootEntity = {};
 
 	for (auto system : *systemGroup)
@@ -2419,13 +2413,9 @@ void ResourceSystem::storeScene(const fs::path& path, ID<Entity> rootEntity, con
 			continue;
 
 		auto instance = entities.getID(&entityView);
-
-		View<TransformComponent> transformView = {};
-		if (transformSystem)
-			transformView = transformSystem->tryGetComponent(instance);
-
 		if (rootEntity)
 		{
+			auto transformView = manager->tryGet<TransformComponent>(instance);
 			if (!transformView || (instance != rootEntity && !transformView->hasAncestor(rootEntity)))
 				continue;
 		}
@@ -2674,8 +2664,10 @@ void ResourceSystem::storeAnimation(const fs::path& path, ID<Animation> animatio
 	JsonSerializer serializer(filePath);
 
 	const auto animationView = AnimationSystem::Instance::get()->get(animation);
-	serializer.write("frameRate", animationView->frameRate);
-	serializer.write("isLooped", animationView->isLooped);
+	if (animationView->frameRate != 30.0f)
+		serializer.write("frameRate", animationView->frameRate);
+	if (animationView->isLooped != true)
+		serializer.write("isLooped", animationView->isLooped);
 
 	const auto& keyframes = animationView->getKeyframes();
 	if (keyframes.empty())
@@ -2711,7 +2703,9 @@ void ResourceSystem::storeAnimation(const fs::path& path, ID<Animation> animatio
 				serializer.write(".funcType", string_view("Pow"));
 			else if (frameView->funcType == AnimationFunc::Gain)
 				serializer.write(".funcType", string_view("Gain"));
-			serializer.write(".coeff", frameView->coeff);
+
+			if (frameView->coeff != 1.0f)
+				serializer.write(".coeff", frameView->coeff);
 			
 			animatableSystem->serializeAnimation(serializer, frameView);
 			serializer.endArrayElement();

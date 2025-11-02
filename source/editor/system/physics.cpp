@@ -175,24 +175,27 @@ void PhysicsEditorSystem::editorBarTool()
 }
 
 //**********************************************************************************************************************
+static OptView<Shape> getShapeView(PhysicsSystem* physicsSystem, ID<Shape> shape)
+{
+	if (!shape)
+		return {};
+
+	auto shapeView = OptView<Shape>(physicsSystem->get(shape));
+	if (shapeView->getType() == ShapeType::Decorated)
+	{
+		auto innerShape = shapeView->getInnerShape();
+		shapeView = OptView<Shape>(physicsSystem->get(innerShape));
+	}
+	return shapeView;
+}
+
 static void renderEmptyShape(View<RigidbodyComponent> rigidbodyView, 
 	PhysicsEditorSystem::RigidbodyCache& cache, bool isChanged)
 {
 	auto physicsSystem = PhysicsSystem::Instance::get();
-	auto shape = rigidbodyView->getShape();
+	auto shapeView = getShapeView(physicsSystem, rigidbodyView->getShape());
 
-	View<Shape> shapeView = {};
-	if (shape)
-	{
-		shapeView = physicsSystem->get(shape);
-		if (shapeView->getType() == ShapeType::Decorated)
-		{
-			auto innerShape = shapeView->getInnerShape();
-			shapeView = physicsSystem->get(innerShape);
-		}
-	}
-
-	if (shape)
+	if (shapeView)
 		cache.centerOfMass = shapeView->getBoxConvexRadius();
 	isChanged |= ImGui::DragFloat3("Center Of Mass", &cache.centerOfMass, 0.01f);
 	if (ImGui::BeginPopupContextItem("centerOfMass"))
@@ -208,8 +211,9 @@ static void renderEmptyShape(View<RigidbodyComponent> rigidbodyView,
 	if (isChanged)
 	{
 		auto isKinematicVsStatic = rigidbodyView->isKinematicVsStatic();
+		physicsSystem->destroyShared(rigidbodyView->getShape());
 
-		physicsSystem->destroyShared(shape);
+		ID<Shape> shape;
 		if (cache.shapePosition != f32x4::zero)
 		{
 			auto innerShape = physicsSystem->createSharedEmptyShape(cache.centerOfMass);
@@ -232,20 +236,9 @@ static void renderBoxShape(View<RigidbodyComponent> rigidbodyView,
 	PhysicsEditorSystem::RigidbodyCache& cache, bool isChanged)
 {
 	auto physicsSystem = PhysicsSystem::Instance::get();
-	auto shape = rigidbodyView->getShape();
+	auto shapeView = getShapeView(physicsSystem, rigidbodyView->getShape());
 
-	View<Shape> shapeView = {};
-	if (shape)
-	{
-		shapeView = physicsSystem->get(shape);
-		if (shapeView->getType() == ShapeType::Decorated)
-		{
-			auto innerShape = shapeView->getInnerShape();
-			shapeView = physicsSystem->get(innerShape);
-		}
-	}
-
-	if (shape)
+	if (shapeView)
 		cache.halfExtent = shapeView->getBoxHalfExtent();
 	isChanged |= ImGui::DragFloat3("Half Extent", &cache.halfExtent, 0.01f);
 	if (ImGui::BeginPopupContextItem("halfExtent"))
@@ -258,7 +251,7 @@ static void renderBoxShape(View<RigidbodyComponent> rigidbodyView,
 		ImGui::EndPopup();
 	}
 
-	if (shape)
+	if (shapeView)
 		cache.convexRadius = shapeView->getBoxConvexRadius();
 	isChanged |= ImGui::DragFloat("Convex Radius", &cache.convexRadius, 0.01f);
 	if (ImGui::BeginPopupContextItem("convexRadius"))
@@ -271,7 +264,7 @@ static void renderBoxShape(View<RigidbodyComponent> rigidbodyView,
 		ImGui::EndPopup();
 	}
 
-	if (shape)
+	if (shapeView)
 		cache.density = shapeView->getDensity();
 	isChanged |= ImGui::DragFloat("Density", &cache.density, 1.0f, 0.0f, 0.0f, "%.3f kg/m^3");
 	if (ImGui::BeginPopupContextItem("density"))
@@ -290,8 +283,9 @@ static void renderBoxShape(View<RigidbodyComponent> rigidbodyView,
 		cache.halfExtent = max(cache.halfExtent, f32x4(cache.convexRadius));
 		cache.density = max(cache.density, 0.001f);
 		auto isKinematicVsStatic = rigidbodyView->isKinematicVsStatic();
+		physicsSystem->destroyShared(rigidbodyView->getShape());
 
-		physicsSystem->destroyShared(shape);
+		ID<Shape> shape;
 		if (cache.shapePosition != f32x4::zero)
 		{
 			auto innerShape = physicsSystem->createSharedBoxShape(cache.halfExtent, cache.convexRadius, cache.density);
@@ -314,20 +308,9 @@ static void renderSphereShape(View<RigidbodyComponent> rigidbodyView,
 	PhysicsEditorSystem::RigidbodyCache& cache, bool isChanged)
 {
 	auto physicsSystem = PhysicsSystem::Instance::get();
-	auto shape = rigidbodyView->getShape();
+	auto shapeView = getShapeView(physicsSystem, rigidbodyView->getShape());
 
-	View<Shape> shapeView = {};
-	if (shape)
-	{
-		shapeView = physicsSystem->get(shape);
-		if (shapeView->getType() == ShapeType::Decorated)
-		{
-			auto innerShape = shapeView->getInnerShape();
-			shapeView = physicsSystem->get(innerShape);
-		}
-	}
-
-	if (shape)
+	if (shapeView)
 		cache.shapeRadius = shapeView->getSphereRadius();
 	isChanged |= ImGui::DragFloat("Radius", &cache.shapeRadius, 0.01f);
 	if (ImGui::BeginPopupContextItem("shapeRadius"))
@@ -340,7 +323,7 @@ static void renderSphereShape(View<RigidbodyComponent> rigidbodyView,
 		ImGui::EndPopup();
 	}
 
-	if (shape)
+	if (shapeView)
 		cache.density = shapeView->getDensity();
 	isChanged |= ImGui::DragFloat("Density", &cache.density, 1.0f, 0.0f, 0.0f, "%.3f kg/m^3");
 	if (ImGui::BeginPopupContextItem("density"))
@@ -358,8 +341,9 @@ static void renderSphereShape(View<RigidbodyComponent> rigidbodyView,
 		cache.shapeRadius = max(cache.shapeRadius, 0.001f);
 		cache.density = max(cache.density, 0.001f);
 		auto isKinematicVsStatic = rigidbodyView->isKinematicVsStatic();
+		physicsSystem->destroyShared(rigidbodyView->getShape());
 
-		physicsSystem->destroyShared(shape);
+		ID<Shape> shape;
 		if (cache.shapePosition != f32x4::zero)
 		{
 			auto innerShape = physicsSystem->createSharedSphereShape(cache.shapeRadius, cache.density);
@@ -382,20 +366,9 @@ static void renderCapsuleShape(View<RigidbodyComponent> rigidbodyView,
 	PhysicsEditorSystem::RigidbodyCache& cache, bool isChanged)
 {
 	auto physicsSystem = PhysicsSystem::Instance::get();
-	auto shape = rigidbodyView->getShape();
+	auto shapeView = getShapeView(physicsSystem, rigidbodyView->getShape());
 
-	View<Shape> shapeView = {};
-	if (shape)
-	{
-		shapeView = physicsSystem->get(shape);
-		if (shapeView->getType() == ShapeType::Decorated)
-		{
-			auto innerShape = shapeView->getInnerShape();
-			shapeView = physicsSystem->get(innerShape);
-		}
-	}
-
-	if (shape)
+	if (shapeView)
 		cache.halfExtent = shapeView->getCapsuleHalfHeight();
 	isChanged |= ImGui::DragFloat("Half Height", &cache.halfHeight, 0.01f);
 	if (ImGui::BeginPopupContextItem("halfHeight"))
@@ -408,7 +381,7 @@ static void renderCapsuleShape(View<RigidbodyComponent> rigidbodyView,
 		ImGui::EndPopup();
 	}
 
-	if (shape)
+	if (shapeView)
 		cache.shapeRadius = shapeView->getCapsuleRadius();
 	isChanged |= ImGui::DragFloat("Radius", &cache.shapeRadius, 0.01f);
 	if (ImGui::BeginPopupContextItem("shapeRadius"))
@@ -421,7 +394,7 @@ static void renderCapsuleShape(View<RigidbodyComponent> rigidbodyView,
 		ImGui::EndPopup();
 	}
 
-	if (shape)
+	if (shapeView)
 		cache.density = shapeView->getDensity();
 	isChanged |= ImGui::DragFloat("Density", &cache.density, 1.0f, 0.0f, 0.0f, "%.3f kg/m^3");
 	if (ImGui::BeginPopupContextItem("density"))
@@ -440,8 +413,9 @@ static void renderCapsuleShape(View<RigidbodyComponent> rigidbodyView,
 		cache.shapeRadius = max(cache.shapeRadius, 0.001f);
 		cache.density = max(cache.density, 0.001f);
 		auto isKinematicVsStatic = rigidbodyView->isKinematicVsStatic();
+		physicsSystem->destroyShared(rigidbodyView->getShape());
 
-		physicsSystem->destroyShared(shape);
+		ID<Shape> shape;
 		if (cache.shapePosition != f32x4::zero)
 		{
 			auto innerShape = physicsSystem->createSharedCapsuleShape(cache.halfHeight, cache.shapeRadius, cache.density);
@@ -599,7 +573,7 @@ static void renderConstraints(View<RigidbodyComponent> rigidbodyView, PhysicsEdi
 	auto canCreate = !cache.constraintTarget;
 	if (cache.constraintTarget && cache.constraintTarget != rigidbodyView->getEntity())
 	{
-		auto otherView = PhysicsSystem::Instance::get()->tryGetComponent(cache.constraintTarget);
+		auto otherView = Manager::Instance::get()->tryGet<RigidbodyComponent>(cache.constraintTarget);
 		if (otherView && otherView->getShape())
 			canCreate = true;
 	}
@@ -792,22 +766,22 @@ static void renderAdvancedProperties(View<RigidbodyComponent> rigidbodyView, Phy
 	ImGui::SeparatorText("Shape Properties");
 	ImGui::BeginDisabled();
 	
-	View<Shape> shapeView;
+	OptView<Shape> shapeView = {};
 	if (shape)
-		shapeView = PhysicsSystem::Instance::get()->get(shape);
+		shapeView = OptView<Shape>(PhysicsSystem::Instance::get()->get(shape));
 
 	auto centerOfMass = f32x4::zero;
-	if (shape)
+	if (shapeView)
 		centerOfMass = shapeView->getCenterOfMass();
 	ImGui::DragFloat3("Center Of Mass", &centerOfMass);
 
 	auto volume = 0.0f;
-	if (shape)
+	if (shapeView)
 		volume = shapeView->getVolume();
 	ImGui::DragFloat("Volume", &volume, 1.0f, 0.0f, 0.0f, "%.3f m^3");
 
 	auto mass = 0.0f; auto inertia = f32x4x4::zero;
-	if (shape)
+	if (shapeView)
 		shapeView->getMassProperties(mass, inertia);
 	ImGui::DragFloat("Mass", &mass, 1.0f, 0.0f, 0.0f, "%.3f kg");
 	ImGui::TextWrapped("Inertia Tensor (kg/m^2):\n"
@@ -824,10 +798,10 @@ static void renderAdvancedProperties(View<RigidbodyComponent> rigidbodyView, Phy
 //**********************************************************************************************************************
 void PhysicsEditorSystem::onRigidbodyInspector(ID<Entity> entity, bool isOpened)
 {
-	auto physicsSystem = PhysicsSystem::Instance::get();
+	auto manager = Manager::Instance::get();
 	if (ImGui::BeginItemTooltip())
 	{
-		auto rigidbodyView = physicsSystem->getComponent(entity);
+		auto rigidbodyView = manager->get<RigidbodyComponent>(entity);
 		ImGui::Text("Has shape: %s, Active: %s", rigidbodyView->getShape() ? "true" : "false",
 			rigidbodyView->isActive() ? "true" : "false");
 		auto motionType = rigidbodyView->getMotionType();
@@ -845,7 +819,7 @@ void PhysicsEditorSystem::onRigidbodyInspector(ID<Entity> entity, bool isOpened)
 	{
 		if (entity)
 		{
-			auto rigidbodyView = physicsSystem->getComponent(entity);
+			auto rigidbodyView = manager->get<RigidbodyComponent>(entity);
 			if (rigidbodyView->getShape())
 			{
 				auto rotation = rigidbodyView->getRotation();
@@ -861,7 +835,7 @@ void PhysicsEditorSystem::onRigidbodyInspector(ID<Entity> entity, bool isOpened)
 	{
 		if (entity)
 		{
-			auto rigidbodyView = physicsSystem->getComponent(entity);
+			auto rigidbodyView = manager->get<RigidbodyComponent>(entity);
 			if (rigidbodyView->getShape())
 			{
 				auto rotation = rigidbodyView->getRotation();
@@ -877,7 +851,7 @@ void PhysicsEditorSystem::onRigidbodyInspector(ID<Entity> entity, bool isOpened)
 	if (!isOpened)
 		return;
 
-	auto rigidbodyView = physicsSystem->getComponent(entity);
+	auto rigidbodyView = manager->get<RigidbodyComponent>(entity);
 	auto shape = rigidbodyView->getShape();
 
 	ImGui::BeginDisabled(!shape || rigidbodyView->getMotionType() == MotionType::Static);
@@ -1184,10 +1158,10 @@ static void renderAdvancedProperties(View<CharacterComponent> characterView)
 //**********************************************************************************************************************
 void PhysicsEditorSystem::onCharacterInspector(ID<Entity> entity, bool isOpened)
 {
-	auto characterSystem = CharacterSystem::Instance::get();
+	auto manager = Manager::Instance::get();
 	if (ImGui::BeginItemTooltip())
 	{
-		auto characterView = characterSystem->getComponent(entity);
+		auto characterView = manager->get<CharacterComponent>(entity);
 		ImGui::Text("Has shape: %s", characterView->getShape() ? "true" : "false");
 		ImGui::EndTooltip();
 	}
@@ -1196,7 +1170,7 @@ void PhysicsEditorSystem::onCharacterInspector(ID<Entity> entity, bool isOpened)
 	{
 		if (entity)
 		{
-			auto characterView = characterSystem->getComponent(entity);
+			auto characterView = manager->get<CharacterComponent>(entity);
 			if (characterView->getShape())
 			{
 				auto rotation = characterView->getRotation();
@@ -1212,7 +1186,7 @@ void PhysicsEditorSystem::onCharacterInspector(ID<Entity> entity, bool isOpened)
 	{
 		if (entity)
 		{
-			auto characterView = characterSystem->getComponent(entity);
+			auto characterView = manager->get<CharacterComponent>(entity);
 			if (characterView->getShape())
 			{
 				auto rotation = characterView->getRotation();
@@ -1228,7 +1202,7 @@ void PhysicsEditorSystem::onCharacterInspector(ID<Entity> entity, bool isOpened)
 	if (!isOpened)
 		return;
 
-	auto characterView = characterSystem->getComponent(entity);
+	auto characterView = manager->get<CharacterComponent>(entity);
 	auto shape = characterView->getShape();
 
 	ImGui::BeginDisabled(!shape);

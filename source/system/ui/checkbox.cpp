@@ -24,13 +24,9 @@ void UiCheckboxComponent::setEnabled(bool state)
 	if (enabled == state)
 		return;
 
-	auto uiButtonSystem = UiButtonSystem::Instance::get();
-	if (uiButtonSystem)
-	{
-		auto uiButtonView = uiButtonSystem->tryGetComponent(entity);
-		if (uiButtonView)
-			uiButtonView->setEnabled(state);
-	}
+	auto uiButtonView = Manager::Instance::get()->tryGet<UiButtonComponent>(entity);
+	if (uiButtonView)
+		uiButtonView->setEnabled(state);
 	
 	enabled = state;
 }
@@ -39,12 +35,12 @@ void UiCheckboxComponent::setChecked(bool state)
 	if (checked == state)
 		return;
 
-	auto transformSystem = TransformSystem::Instance::get();
-	auto transformView = transformSystem->getComponent(entity);
+	auto manager = Manager::Instance::get();
+	auto transformView = manager->get<TransformComponent>(entity);
 	auto checkmark = transformView->tryGetChild(UiCheckboxSystem::checkmarkChildIndex);
 	if (checkmark)
 	{
-		transformView = transformSystem->getComponent(checkmark);
+		transformView = manager->get<TransformComponent>(checkmark);
 		transformView->setActive(state);
 	}
 
@@ -77,15 +73,16 @@ UiCheckboxSystem::~UiCheckboxSystem()
 //**********************************************************************************************************************
 void UiCheckboxSystem::uiCheckboxClick()
 {
+	auto manager = Manager::Instance::get();
 	auto hoveredButton = UiTriggerSystem::Instance::get()->getHovered();
-	auto uiCheckboxView = tryGetComponent(hoveredButton);
+	auto uiCheckboxView = manager->tryGet<UiCheckboxComponent>(hoveredButton);
 	if (!uiCheckboxView)
 		return;
 
 	uiCheckboxView->setChecked(!uiCheckboxView->checked);
 
 	if (!uiCheckboxView->onChange.empty())
-		Manager::Instance::get()->tryRunEvent(uiCheckboxView->onChange);
+		manager->tryRunEvent(uiCheckboxView->onChange);
 }
 
 //**********************************************************************************************************************

@@ -224,7 +224,7 @@ void MeshGizmosEditorSystem::render()
 		dragMode = 0;
 	
 	auto manager = Manager::Instance::get();
-	auto transformView = TransformSystem::Instance::get()->tryGetComponent(selectedEntity);
+	auto transformView = manager->tryGet<TransformComponent>(selectedEntity);
 	auto frontPipelineView = graphicsSystem->get(frontGizmosPipeline);
 	auto backPipelineView = graphicsSystem->get(backGizmosPipeline);
 	auto cubeVertexBuffer = graphicsSystem->getCubeVertexBuffer();

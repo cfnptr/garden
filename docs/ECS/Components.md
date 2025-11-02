@@ -116,26 +116,14 @@ For more **ComponentSystem** functions see the ECSM [documentation](https://cfnp
 ## Additionally
 
 You can also inherit your system from the **Singleton<>** class for faster 
-access to your system and the components added to an entity. (These functions 
-bypass system lookup inside the **Manager**, which improves performance)
+access to your system. (Singleton functions bypass system lookup 
+inside the **Manager**, which improves performance)
 
 ```cpp
 //...
 
 class MyCustomSystem : public ComponentSystem<MyCustomComponent, false>,
     public Singleton<MyCustomSystem>
-
-//...
-```
-
-Faster system and entity component access:
-
-```cpp
-//...
-
-auto myCustomSystem = MyCustomSystem::Instance::get();
-auto myCustomView = myCustomSystem->getComponent(someEntity);
-myCustomView->someValue = 789;
 
 //...
 ```
@@ -201,19 +189,7 @@ using namespace my::app;
 //...
 ```
 
-Now we can get a view of the desired entity component using 
-`AnotherSystem::Instance::get()` or the **Manager**.
-
-```cpp
-//...
-
-auto transformSystem = TransformSystem::Instance::get();
-auto transformView = transformSystem->getComponent(someEntity);
-
-//...
-```
-
-Or
+Now we can get a view of the desired entity component the **Manager**.
 
 ```cpp
 //...
@@ -223,6 +199,3 @@ auto transformView = manager->get<TransformComponent>(someEntity);
 
 //...
 ```
-
-**Note!** It's better to access a component using the system instance rather than 
-the **Manager**, as this bypasses the system lookup inside, improving performance.

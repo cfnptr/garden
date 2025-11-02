@@ -74,12 +74,12 @@ void UiTransformEditorSystem::onEntityDestroy(ID<Entity> entity)
 //**********************************************************************************************************************
 void UiTransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 {
-	auto uiTransformSystem = UiTransformSystem::Instance::get();
+	auto manager = Manager::Instance::get();
 	if (entity != selectedEntity)
 	{
 		if (entity)
 		{
-			auto uiTransformView = uiTransformSystem->getComponent(entity);
+			auto uiTransformView = manager->get<UiTransformComponent>(entity);
 			oldRotation = uiTransformView->rotation;
 			oldEulerAngles = newEulerAngles = degrees(oldRotation.extractEulerAngles());
 		}
@@ -90,7 +90,7 @@ void UiTransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened
 	{
 		if (entity)
 		{
-			auto uiTransformView = uiTransformSystem->getComponent(entity);
+			auto uiTransformView = manager->get<UiTransformComponent>(entity);
 			if (oldRotation != uiTransformView->rotation)
 			{
 				oldRotation = uiTransformView->rotation;
@@ -102,8 +102,8 @@ void UiTransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened
 	if (!isOpened)
 		return;
 
-	auto uiTransformView = uiTransformSystem->getComponent(entity);
-	auto transformView = TransformSystem::Instance::get()->tryGetComponent(entity);
+	auto uiTransformView = manager->get<UiTransformComponent>(entity);
+	auto transformView = manager->tryGet<TransformComponent>(entity);
 	if (transformView)
 	{
 		auto isSelfActive = transformView->isSelfActive();
@@ -111,7 +111,7 @@ void UiTransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened
 			transformView->setActive(isSelfActive);
 	}
 
-	auto isStatic = Manager::Instance::get()->has<StaticTransformComponent>(entity);
+	auto isStatic = manager->has<StaticTransformComponent>(entity);
 	ImGui::BeginDisabled(isStatic);
 
 	ImGui::Combo("Anchor", uiTransformView->anchor, uiAnchorNames, (int)UiAnchor::Count);

@@ -14,6 +14,7 @@
 
 #include "garden/system/ui/label.hpp"
 #include "garden/system/render/deferred.hpp"
+#include "garden/system/transform.hpp"
 #include "garden/system/resource.hpp"
 #include "math/matrix/transform.hpp"
 
@@ -178,7 +179,7 @@ void UiLabelSystem::copyComponent(View<Component> source, View<Component> destin
 		destinationView->textData = text;
 
 		auto uniforms = getUniforms(text);
-		auto descriptorSet = graphicsSystem->createDescriptorSet(
+		auto descriptorSet = GraphicsSystem::Instance::get()->createDescriptorSet(
 			UiLabelSystem::Instance::get()->getPipeline(), std::move(uniforms));
 		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.uiLabel" + to_string(*descriptorSet));
 		destinationView->descriptorSet = descriptorSet;
@@ -204,9 +205,8 @@ bool UiLabelSystem::isDrawReady(int8 shadowPass)
 }
 void UiLabelSystem::prepareDraw(const f32x4x4& viewProj, uint32 drawCount, int8 shadowPass)
 {
-	transformSystem = TransformSystem::Instance::get();
 	textSystem = TextSystem::Instance::get();
-	pipelineView = graphicsSystem->get(pipeline);
+	pipelineView = OptView<GraphicsPipeline>(GraphicsSystem::Instance::get()->get(pipeline));
 }
 void UiLabelSystem::beginDrawAsync(int32 taskIndex)
 {
@@ -225,7 +225,7 @@ void UiLabelSystem::drawAsync(MeshRenderComponent* meshRenderView,
 		return;
 
 	auto fontSize = uiLabelView->fontSize;
-	auto transformView = transformSystem->getComponent(uiLabelView->getEntity());
+	auto transformView = Manager::Instance::get()->get<TransformComponent>(uiLabelView->getEntity());
 	auto localScale = transformView->getScale() * f32x4(fontSize, fontSize, 1.0f);
 	auto localModel = scale(model, (1.0f / extractScale(model)) * localScale);
 
@@ -320,7 +320,7 @@ void UiLabelSystem::deserialize(IDeserializer& deserializer, View<Component> com
 		componentView->textData = text;
 		
 		auto uniforms = getUniforms(text);
-		auto descriptorSet = graphicsSystem->createDescriptorSet(
+		auto descriptorSet = GraphicsSystem::Instance::get()->createDescriptorSet(
 			UiLabelSystem::Instance::get()->getPipeline(), std::move(uniforms));
 		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.uiLabel" + to_string(*descriptorSet));
 		componentView->descriptorSet = descriptorSet;
@@ -417,7 +417,7 @@ void UiLabelSystem::deserializeAnimation(IDeserializer& deserializer, View<Anima
 		frameView->textData = text;
 
 		auto uniforms = getUniforms(text);
-		auto descriptorSet = graphicsSystem->createDescriptorSet(
+		auto descriptorSet = GraphicsSystem::Instance::get()->createDescriptorSet(
 			UiLabelSystem::Instance::get()->getPipeline(), std::move(uniforms));
 		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.uiLabel" + to_string(*descriptorSet));
 		frameView->descriptorSet = descriptorSet;
