@@ -83,6 +83,7 @@ class UiTriggerSystem final : public CompAnimSystem<UiTriggerComponent, UiTrigge
 	void serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame) final;
 	void deserializeAnimation(IDeserializer& deserializer, View<AnimationFrame> frame) final;
 	void animateAsync(View<Component> component, View<AnimationFrame> a, View<AnimationFrame> b, float t) final;
+
 	friend class ecsm::Manager;
 public:
 	/**

@@ -31,10 +31,13 @@ class UiButtonSystem;
 struct UiButtonComponent final : public Component
 {
 protected:
+	uint16 _alignment = 0;
 	bool enabled = true;
+
 	friend class garden::UiButtonSystem;
 public:
-	string onClick = ""; /**< On UI button click event. */
+	string onClick = "";       /**< On UI button click event. */
+	string animationPath = ""; /**< UI button state animation path. */
 
 	/**
 	 * @brief Returns true if UI button is enabled.
@@ -52,12 +55,16 @@ public:
  */
 struct UiButtonFrame final : public AnimationFrame
 {
-	bool animateIsEnabled = false;
-	bool animateOnClick = false;
-	bool isEnabled = true;
+	uint8 animateIsEnabled : 1;
+	uint8 animateOnClick : 1;
+	uint8 animateAnimationPath : 1;
+	uint8 isEnabled : 1;
+	uint16 _alignment = 0;
 	string onClick = "";
+	string animationPath = "";
 
-	bool hasAnimation() final { return animateIsEnabled || animateOnClick; }
+	UiButtonFrame() : animateIsEnabled(false), animateOnClick(false), animateAnimationPath(false), isEnabled(true) { }
+	bool hasAnimation() final { return animateIsEnabled || animateOnClick || animateAnimationPath; }
 };
 
 /***********************************************************************************************************************
@@ -66,14 +73,6 @@ struct UiButtonFrame final : public AnimationFrame
 class UiButtonSystem final : public CompAnimSystem<UiButtonComponent, UiButtonFrame, false, false>,
 	public Singleton<UiButtonSystem>, public ISerializable
 {
-public:
-	static constexpr uint8 defaultChildIndex = 0;  /**< Default button state child entity index. */
-	static constexpr uint8 hoveredChildIndex = 1;  /**< Hovered button state child entity index. */
-	static constexpr uint8 activeChildIndex = 2;   /**< Active button state child entity index. */
-	static constexpr uint8 disabledChildIndex = 3; /**< Disabled button state child entity index. */
-	static constexpr uint8 focusedChildIndex = 4;  /**< Focused button state child entity index. */
-	static constexpr uint8 stateChildCount = 5;    /**< Button state child entity count. */
-private:
 	ID<Entity> pressedButton = {};
 
 	/**
@@ -98,6 +97,7 @@ private:
 	void serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame) final;
 	void deserializeAnimation(IDeserializer& deserializer, View<AnimationFrame> frame) final;
 	void animateAsync(View<Component> component, View<AnimationFrame> a, View<AnimationFrame> b, float t) final;
+
 	friend class ecsm::Manager;
 };
 

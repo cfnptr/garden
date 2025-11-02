@@ -37,7 +37,7 @@ enum class AnimationFunc : uint8
  */
 struct AnimationFrame
 {
-	float coeff = 1.0f;          /**< Interpolation function coefficient. (Depends on function type) */
+	float funcCoeff = 1.0f;      /**< Interpolation function coefficient. (Depends on function type) */
 	AnimationFunc funcType = {}; /**< Animation frame interpolation function type. */
 
 	/**

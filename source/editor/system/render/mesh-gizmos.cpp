@@ -18,6 +18,7 @@
 #include "garden/editor/system/render/mesh-selector.hpp"
 #include "garden/system/render/deferred.hpp"
 #include "garden/system/render/forward.hpp"
+#include "garden/system/ui/trigger.hpp"
 #include "garden/system/transform.hpp"
 #include "garden/system/character.hpp"
 #include "garden/system/settings.hpp"
@@ -224,6 +225,7 @@ void MeshGizmosEditorSystem::render()
 		dragMode = 0;
 	
 	auto manager = Manager::Instance::get();
+	auto uiTranformSystem = UiTriggerSystem::Instance::tryGet();
 	auto transformView = manager->tryGet<TransformComponent>(selectedEntity);
 	auto frontPipelineView = graphicsSystem->get(frontGizmosPipeline);
 	auto backPipelineView = graphicsSystem->get(backGizmosPipeline);
@@ -271,7 +273,8 @@ void MeshGizmosEditorSystem::render()
 		handleColor, axisColorX, axisColorY, axisColorZ);
 	// TODO: scale and rotation gizmos.
 	
-	if (!ImGui::GetIO().WantCaptureMouse && inputSystem->getCursorMode() == CursorMode::Normal)
+	if (!ImGui::GetIO().WantCaptureMouse && inputSystem->getCursorMode() == CursorMode::Normal &&
+		(!uiTranformSystem || (uiTranformSystem && !uiTranformSystem->getHovered())))
 	{
 		auto ndcPosition = ((cursorPosition + 0.5f) / windowSize) * 2.0f - 1.0f;
 		auto globalOrigin = cc.invViewProj * f32x4(ndcPosition.x, -ndcPosition.y, 1.0f, 1.0f);

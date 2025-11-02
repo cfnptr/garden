@@ -14,6 +14,7 @@
 
 #include "garden/system/ui/label.hpp"
 #include "garden/system/render/deferred.hpp"
+#include "garden/system/ui/transform.hpp"
 #include "garden/system/transform.hpp"
 #include "garden/system/resource.hpp"
 #include "math/matrix/transform.hpp"
@@ -52,8 +53,9 @@ bool UiLabelComponent::updateText(bool shrink)
 {
 	auto textSystem = TextSystem::Instance::get();
 	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto uiScale = UiTransformSystem::Instance::get()->uiScale;
 
-	if (text.empty())
+	if (text.empty() || uiScale <= 0.0f)
 	{
 		if (shrink)
 		{
@@ -66,7 +68,9 @@ bool UiLabelComponent::updateText(bool shrink)
 		return true;
 	}
 
+	auto scaledFontSize = (uint32)ceil(fontSize / uiScale);
 	ID<Image> currFontAtlas = {}; ID<Buffer> currInstanceBuffer = {};
+
 	if (textData)
 	{
 		auto textView = textSystem->get(textData);
@@ -77,7 +81,7 @@ bool UiLabelComponent::updateText(bool shrink)
 
 		auto stopRecording = graphicsSystem->tryStartRecording(CommandBufferType::Frame);
 
-		if (!textView->update(text, fontSize, propterties, std::move(fonts), 
+		if (!textView->update(text, scaledFontSize, propterties, std::move(fonts), 
 			FontAtlas::defaultImageFlags, Text::defaultBufferFlags, shrink))
 		{
 			return false;
@@ -93,7 +97,7 @@ bool UiLabelComponent::updateText(bool shrink)
 		if (fonts.empty())
 			return false;
 
-		textData = textSystem->createText(text, std::move(fonts), fontSize, propterties);
+		textData = textSystem->createText(text, std::move(fonts), scaledFontSize, propterties);
 		if (!textData)
 			return false;
 		#else
@@ -125,6 +129,7 @@ UiLabelSystem::UiLabelSystem(bool setSingleton) : Singleton(setSingleton)
 	manager->addGroupSystem<ISerializable>(this);
 	manager->addGroupSystem<IAnimatable>(this);
 	manager->addGroupSystem<IMeshRenderSystem>(this);
+	ECSM_SUBSCRIBE_TO_EVENT("Update", UiLabelSystem::update);
 }
 UiLabelSystem::~UiLabelSystem()
 {
@@ -134,8 +139,24 @@ UiLabelSystem::~UiLabelSystem()
 		manager->removeGroupSystem<ISerializable>(this);
 		manager->removeGroupSystem<IAnimatable>(this);
 		manager->removeGroupSystem<IMeshRenderSystem>(this);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Update", UiLabelSystem::update);
 	}
 	unsetSingleton();
+}
+
+void UiLabelSystem::update()
+{
+	auto newUiScale = UiTransformSystem::Instance::get()->uiScale;
+	if (lastUiScale != newUiScale)
+	{
+		for (auto& component : components)
+		{
+			if (!component.textData || component.text.empty())
+				continue;
+			component.updateText();
+		}
+		lastUiScale = newUiScale;
+	}
 }
 
 void UiLabelSystem::resetComponent(View<Component> component, bool full)
@@ -310,7 +331,9 @@ void UiLabelSystem::deserialize(IDeserializer& deserializer, View<Component> com
 	auto loadNoto = true;
 	deserializer.read("loadNoto", loadNoto);
 
-	componentView->fontSize = max(componentView->fontSize, 1u);
+	auto uiScale = UiTransformSystem::Instance::get()->uiScale;
+	componentView->fontSize = max((uint32)ceil(componentView->fontSize / uiScale), 1u);
+
 	if (!fontPaths.empty() || loadNoto)
 	{
 		auto textSystem = TextSystem::Instance::get();
@@ -385,6 +408,9 @@ void UiLabelSystem::deserializeAnimation(IDeserializer& deserializer, View<Anima
 	string alignment;
 	if (deserializer.read("alignment", alignment))
 		toTextAlignment(alignment, frameView->propterties.alignment);
+
+	auto uiScale = UiTransformSystem::Instance::get()->uiScale;
+	frameView->fontSize = max((uint32)ceil(frameView->fontSize / uiScale), 1u);
 
 	vector<fs::path> fontPaths;
 	if (deserializer.beginChild("fontPaths"))

@@ -82,8 +82,7 @@ void UiTriggerSystem::update()
 	#endif
 
 	auto inputSystem = InputSystem::Instance::get();
-	if (wantCaptureMouse || !inputSystem->isCursorInWindow() || 
-		inputSystem->getCursorMode() != CursorMode::Normal)
+	if (wantCaptureMouse || !inputSystem->isCursorInWindow() || inputSystem->getCursorMode() != CursorMode::Normal)
 	{
 		if (currElement)
 		{

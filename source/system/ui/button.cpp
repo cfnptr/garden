@@ -15,22 +15,42 @@
 #include "garden/system/ui/button.hpp"
 #include "garden/system/ui/trigger.hpp"
 #include "garden/system/transform.hpp"
+#include "garden/system/animation.hpp"
 #include "garden/system/input.hpp"
 
 using namespace garden;
 
-static void activateButtonState(ID<Entity> button, uint8 childIndex)
+static void setUiButtonAnimation(ID<Entity> uiButton, string_view animationPath, string_view currState, string_view newState)
 {
-	auto manager = Manager::Instance::get();
-	auto transformView = manager->get<TransformComponent>(button);
-	auto childCount = min((uint8)transformView->getChildCount(), UiButtonSystem::stateChildCount);
-	auto childs = transformView->getChilds();
+	if (animationPath.empty())
+		return;
 
-	for (uint8 i = 0; i < childCount; i++)
+	auto manager = Manager::Instance::get();
+	auto transformView = manager->tryGet<TransformComponent>(uiButton);
+	if (!transformView)
+		return;
+
+	auto panel = transformView->tryGetChild(0);
+	if (!panel)
+		return;
+	auto animationView = manager->tryGet<AnimationComponent>(panel);
+	if (!animationView)
+		return;
+
+	auto transState = string(animationPath); transState += "/";
+	transState += currState; transState += "-";transState += newState;
+	if (animationView->hasAnimation(transState))
 	{
-		transformView = manager->get<TransformComponent>(childs[i]);
-		transformView->setActive(i == childIndex);
+		animationView->active = std::move(transState);
 	}
+	else
+	{
+		animationView->active = animationPath; animationView->active += "/";
+		animationView->active += newState;
+	}
+
+	animationView->frame = 0.0f;
+	animationView->isPlaying = true;
 }
 
 void UiButtonComponent::setEnabled(bool state)
@@ -38,9 +58,8 @@ void UiButtonComponent::setEnabled(bool state)
 	if (enabled == state)
 		return;
 
-	auto childIndex = state ? UiButtonSystem::defaultChildIndex : 
-		UiButtonSystem::disabledChildIndex;
-	activateButtonState(entity, childIndex);
+	setUiButtonAnimation(entity, animationPath, 
+		enabled ? "default" : "disabled", state ? "default" : "disabled");
 	enabled = state;
 }
 
@@ -86,18 +105,25 @@ void UiButtonSystem::uiButtonEnter()
 		return;
 
 	auto mouseState = InputSystem::Instance::get()->getMouseState(MouseButton::Left);
-	auto childIndex = pressedButton == hoveredButton && mouseState ? activeChildIndex : hoveredChildIndex;
-	activateButtonState(hoveredButton, childIndex);
+	auto newState = pressedButton == hoveredButton && mouseState ? "active" : "hovered";
+	setUiButtonAnimation(hoveredButton, uiButtonView->animationPath, "default", newState);
+
+	if (!mouseState)
+		pressedButton = {};
 }
 void UiButtonSystem::uiButtonExit()
 {
 	auto hoveredButton = UiTriggerSystem::Instance::get()->getHovered();
 	auto uiButtonView = Manager::Instance::get()->tryGet<UiButtonComponent>(hoveredButton);
-	if (!uiButtonView)
+	if (!uiButtonView || !uiButtonView->enabled)
 		return;
 
-	auto childIndex = uiButtonView->enabled ? defaultChildIndex : disabledChildIndex;
-	activateButtonState(hoveredButton, childIndex);
+	auto mouseState = InputSystem::Instance::get()->getMouseState(MouseButton::Left);
+	auto currState = pressedButton == hoveredButton && mouseState ? "active" : "hovered";
+	setUiButtonAnimation(hoveredButton, uiButtonView->animationPath, currState, "default");
+
+	if (!mouseState)
+		pressedButton = {};
 }
 void UiButtonSystem::uiButtonStay()
 {
@@ -109,14 +135,14 @@ void UiButtonSystem::uiButtonStay()
 	auto inputSystem = InputSystem::Instance::get();
 	if (inputSystem->isMousePressed(MouseButton::Left))
 	{
-		activateButtonState(hoveredButton, activeChildIndex);
+		setUiButtonAnimation(hoveredButton, uiButtonView->animationPath, "hovered", "active");
 		pressedButton = hoveredButton;
 	}
 	else if (inputSystem->isMouseReleased(MouseButton::Left))
 	{
 		if (pressedButton == hoveredButton)
 		{
-			activateButtonState(hoveredButton, hoveredChildIndex);
+			setUiButtonAnimation(hoveredButton, uiButtonView->animationPath, "active", "hovered");
 			if (!uiButtonView->onClick.empty())
 				Manager::Instance::get()->tryRunEvent(uiButtonView->onClick);
 		}
@@ -137,12 +163,15 @@ void UiButtonSystem::serialize(ISerializer& serializer, const View<Component> co
 		serializer.write("isEnabled", componentView->enabled);
 	if (!componentView->onClick.empty())
 		serializer.write("onClick", componentView->onClick);
+	if (!componentView->animationPath.empty())
+		serializer.write("animationPath", componentView->animationPath);
 }
 void UiButtonSystem::deserialize(IDeserializer& deserializer, View<Component> component)
 {
 	auto componentView = View<UiButtonComponent>(component);
 	deserializer.read("isEnabled", componentView->enabled);
 	deserializer.read("onClick", componentView->onClick);
+	deserializer.read("animationPath", componentView->animationPath);
 }
 
 //**********************************************************************************************************************
@@ -153,12 +182,16 @@ void UiButtonSystem::serializeAnimation(ISerializer& serializer, View<AnimationF
 		serializer.write("isEnabled", frameView->isEnabled);
 	if (frameView->animateOnClick)
 		serializer.write("onClick", frameView->onClick);
+	if (frameView->animateAnimationPath)
+		serializer.write("animationPath", frameView->animationPath);
 }
 void UiButtonSystem::deserializeAnimation(IDeserializer& deserializer, View<AnimationFrame> frame)
 {
-	auto frameView = View<UiButtonFrame>(frame);
-	frameView->animateIsEnabled = deserializer.read("isEnabled", frameView->isEnabled);
+	auto frameView = View<UiButtonFrame>(frame); auto isEnabled = true;
+	frameView->animateIsEnabled = deserializer.read("isEnabled", isEnabled);
 	frameView->animateOnClick = deserializer.read("onClick", frameView->onClick);
+	frameView->animateAnimationPath = deserializer.read("animationPath", frameView->animationPath);
+	frameView->isEnabled = isEnabled;
 }
 
 void UiButtonSystem::animateAsync(View<Component> component, View<AnimationFrame> a, View<AnimationFrame> b, float t)
@@ -171,4 +204,6 @@ void UiButtonSystem::animateAsync(View<Component> component, View<AnimationFrame
 		componentView->enabled = (bool)round(t) ? frameB->isEnabled : frameA->isEnabled;
 	if (frameA->animateOnClick)
 		componentView->onClick = (bool)round(t) ? frameB->onClick : frameA->onClick;
+	if (frameA->animateAnimationPath)
+		componentView->animationPath = (bool)round(t) ? frameB->animationPath : frameA->animationPath;
 }

@@ -61,7 +61,7 @@ static void animateComponent(Manager* manager, const AnimationSystem::AnimationP
 	AnimationComponent& animationComp)
 {
 	auto entity = animationComp.getEntity();
-	if (!entity || !animationComp.isPlaying || !animationComp.active.empty())
+	if (!entity || !animationComp.isPlaying || animationComp.active.empty())
 		return;
 
 	auto transformView = manager->tryGet<TransformComponent>(entity);
@@ -86,6 +86,17 @@ static void animateComponent(Manager* manager, const AnimationSystem::AnimationP
 	{
 		if (!animationView->isLooped && keyframes.size() > 1)
 		{
+			keyframeB--; const auto& animatables = keyframeB->second;
+			for (const auto& pair : animatables)
+			{
+				auto animatableSystem = dynamic_cast<IAnimatable*>(pair.first);
+				auto frameView = animatableSystem->getAnimation(pair.second);
+				auto componentView = manager->tryGet(entity, pair.first->getComponentType());
+				if (componentView)
+					animatableSystem->animateAsync(View<Component>(componentView), frameView, frameView, 1.0f);
+			}
+
+			animationComp.frame = 0.0f;
 			animationComp.isPlaying = false;
 			return;
 		}
@@ -105,13 +116,13 @@ static void animateComponent(Manager* manager, const AnimationSystem::AnimationP
 
 	if (keyframeA == keyframeB)
 	{
-		for (const auto& pairA : animatablesA)
+		for (const auto& pair : animatablesA)
 		{
-			auto animatableSystem = dynamic_cast<IAnimatable*>(pairA.first);
-			auto frameViewA = animatableSystem->getAnimation(pairA.second);
-			auto componentView = manager->tryGet(entity, pairA.first->getComponentType());
+			auto animatableSystem = dynamic_cast<IAnimatable*>(pair.first);
+			auto frameView = animatableSystem->getAnimation(pair.second);
+			auto componentView = manager->tryGet(entity, pair.first->getComponentType());
 			if (componentView)
-				animatableSystem->animateAsync(View<Component>(componentView), frameViewA, frameViewA, 1.0f);
+				animatableSystem->animateAsync(View<Component>(componentView), frameView, frameView, 1.0f);
 		}
 	}
 	else
@@ -129,9 +140,9 @@ static void animateComponent(Manager* manager, const AnimationSystem::AnimationP
 			auto frameViewB = animatableSystem->getAnimation(animationFrameB);
 
 			if (frameViewA->funcType == AnimationFunc::Pow)
-				t = std::pow(t, frameViewA->coeff);
+				t = std::pow(t, frameViewA->funcCoeff);
 			else if (frameViewA->funcType == AnimationFunc::Gain)
-				t = gain(t, frameViewA->coeff);
+				t = gain(t, frameViewA->funcCoeff);
 
 			auto componentView = manager->tryGet(entity, pairA.first->getComponentType());
 			if (componentView)
@@ -141,6 +152,7 @@ static void animateComponent(Manager* manager, const AnimationSystem::AnimationP
 
 	if (!animationView->isLooped && keyframes.size() == 1)
 	{
+		animationComp.frame = 0.0f;
 		animationComp.isPlaying = false;
 		return;
 	}
