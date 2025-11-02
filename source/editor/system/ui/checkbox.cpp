@@ -69,5 +69,6 @@ void UiCheckboxEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 		uiCheckboxView->setChecked(isChecked);
 
 	ImGui::InputText("On Change", &uiCheckboxView->onChange);
+	ImGui::InputText("Animation Path", &uiCheckboxView->animationPath);
 }
 #endif

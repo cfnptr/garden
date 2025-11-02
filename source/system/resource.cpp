@@ -2593,7 +2593,7 @@ Ref<Animation> ResourceSystem::loadAnimation(const fs::path& path, bool loadShar
 						continue;
 					}
 
-					deserializer.read(".coeff", animationFrameView->coeff);
+					deserializer.read(".funcCoeff", animationFrameView->funcCoeff);
 
 					string funcType;
 					if (deserializer.read(".funcType", funcType))
@@ -2704,8 +2704,8 @@ void ResourceSystem::storeAnimation(const fs::path& path, ID<Animation> animatio
 			else if (frameView->funcType == AnimationFunc::Gain)
 				serializer.write(".funcType", string_view("Gain"));
 
-			if (frameView->coeff != 1.0f)
-				serializer.write(".coeff", frameView->coeff);
+			if (frameView->funcCoeff != 1.0f)
+				serializer.write(".funcCoeff", frameView->funcCoeff);
 			
 			animatableSystem->serializeAnimation(serializer, frameView);
 			serializer.endArrayElement();

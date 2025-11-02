@@ -15,9 +15,32 @@
 #include "garden/system/ui/checkbox.hpp"
 #include "garden/system/ui/trigger.hpp"
 #include "garden/system/transform.hpp"
-#include "garden/system/input.hpp"
+#include "garden/system/animation.hpp"
 
 using namespace garden;
+
+static void setUiCheckboxAnimation(ID<Entity> uiCheckbox, string_view animationPath, bool state)
+{
+	if (animationPath.empty())
+		return;
+
+	auto manager = Manager::Instance::get();
+	auto transformView = manager->tryGet<TransformComponent>(uiCheckbox);
+	if (!transformView)
+		return;
+
+	auto checkmark = transformView->tryGetChild(1);
+	if (!checkmark)
+		return;
+	auto animationView = manager->tryGet<AnimationComponent>(checkmark);
+	if (!animationView)
+		return;
+
+	animationView->active = animationPath; animationView->active += "/";
+	animationView->active += state ? "set" : "unset";
+	animationView->frame = 0.0f;
+	animationView->isPlaying = true;
+}
 
 void UiCheckboxComponent::setEnabled(bool state)
 {
@@ -27,7 +50,6 @@ void UiCheckboxComponent::setEnabled(bool state)
 	auto uiButtonView = Manager::Instance::get()->tryGet<UiButtonComponent>(entity);
 	if (uiButtonView)
 		uiButtonView->setEnabled(state);
-	
 	enabled = state;
 }
 void UiCheckboxComponent::setChecked(bool state)
@@ -35,15 +57,7 @@ void UiCheckboxComponent::setChecked(bool state)
 	if (checked == state)
 		return;
 
-	auto manager = Manager::Instance::get();
-	auto transformView = manager->get<TransformComponent>(entity);
-	auto checkmark = transformView->tryGetChild(UiCheckboxSystem::checkmarkChildIndex);
-	if (checkmark)
-	{
-		transformView = manager->get<TransformComponent>(checkmark);
-		transformView->setActive(state);
-	}
-
+	setUiCheckboxAnimation(entity, animationPath, state);
 	checked = state;
 }
 
@@ -100,6 +114,8 @@ void UiCheckboxSystem::serialize(ISerializer& serializer, const View<Component> 
 		serializer.write("isChecked", componentView->checked);
 	if (!componentView->onChange.empty())
 		serializer.write("onChange", componentView->onChange);
+	if (!componentView->animationPath.empty())
+		serializer.write("animationPath", componentView->animationPath);
 }
 void UiCheckboxSystem::deserialize(IDeserializer& deserializer, View<Component> component)
 {
@@ -107,6 +123,7 @@ void UiCheckboxSystem::deserialize(IDeserializer& deserializer, View<Component> 
 	deserializer.read("isEnabled", componentView->enabled);
 	deserializer.read("isChecked", componentView->checked);
 	deserializer.read("onChange", componentView->onChange);
+	deserializer.read("animationPath", componentView->animationPath);
 }
 
 //**********************************************************************************************************************
@@ -119,6 +136,8 @@ void UiCheckboxSystem::serializeAnimation(ISerializer& serializer, View<Animatio
 		serializer.write("isChecked", frameView->isChecked);
 	if (frameView->animateOnChange)
 		serializer.write("onChange", frameView->onChange);
+	if (frameView->animateAnimationPath)
+		serializer.write("animationPath", frameView->animationPath);
 }
 void UiCheckboxSystem::deserializeAnimation(IDeserializer& deserializer, View<AnimationFrame> frame)
 {
@@ -131,6 +150,7 @@ void UiCheckboxSystem::deserializeAnimation(IDeserializer& deserializer, View<An
 	frameView->isChecked = boolValue;
 
 	frameView->animateOnChange = deserializer.read("onChange", frameView->onChange);
+	frameView->animateAnimationPath = deserializer.read("animationPath", frameView->animationPath);
 }
 
 void UiCheckboxSystem::animateAsync(View<Component> component, View<AnimationFrame> a, View<AnimationFrame> b, float t)
@@ -145,4 +165,6 @@ void UiCheckboxSystem::animateAsync(View<Component> component, View<AnimationFra
 		componentView->checked = (bool)round(t) ? frameB->isChecked : frameA->isChecked;
 	if (frameA->animateOnChange)
 		componentView->onChange = (bool)round(t) ? frameB->onChange : frameA->onChange;
+	if (frameA->animateAnimationPath)
+		componentView->animationPath = (bool)round(t) ? frameB->animationPath : frameA->animationPath;
 }

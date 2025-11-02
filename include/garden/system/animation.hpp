@@ -48,6 +48,11 @@ public:
 	 * @brief Returns animations map.
 	 */
 	const Animations& getAnimations() const noexcept { return animations; }
+	/**
+	 * @brief Returns true if specified animation exist.
+	 * @param path target animation path
+	 */
+	bool hasAnimation(string_view path) const noexcept { return animations.find(path) != animations.end(); }
 
 	/**
 	 * @brief Returns active animation loop state.

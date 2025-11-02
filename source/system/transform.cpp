@@ -162,17 +162,31 @@ void TransformComponent::setParent(ID<Entity> parent)
 	if (this->parent == parent)
 		return;
 
+	auto manager = Manager::Instance::get();
 	#if GARDEN_DEBUG
 	if (parent)
 	{
-		auto parentTransformView = Manager::Instance::get()->get<TransformComponent>(parent);
+		auto parentTransformView = manager->get<TransformComponent>(parent);
 		GARDEN_ASSERT(!parentTransformView->hasAncestor(entity));
+	}
+
+	stack<ID<Entity>> childEntities; childEntities.push(entity);
+	while (!childEntities.empty()) // Note: need this for prefabs reuse.
+	{
+		auto childEntity = childEntities.top(); childEntities.pop();
+		auto transformView = manager->get<TransformComponent>(childEntity);
+		transformView->uid = 0;
+
+		auto childCount = transformView->childCount();
+		auto childs = transformView->childs;
+		for (uint32 i = 0; i < childCount; i++)
+			childEntities.push(childs[i]);
 	}
 	#endif
 
 	if (this->parent)
 	{
-		auto parentTransformView = Manager::Instance::get()->get<TransformComponent>(this->parent);
+		auto parentTransformView = manager->get<TransformComponent>(this->parent);
 		auto parentChildCount = parentTransformView->childCount();
 		auto parentChilds = parentTransformView->childs;
 
@@ -193,7 +207,7 @@ REMOVED_FROM_PARENT:
 
 	if (parent)
 	{
-		auto parentTransformView = Manager::Instance::get()->get<TransformComponent>(parent);
+		auto parentTransformView = manager->get<TransformComponent>(parent);
 		if (parentTransformView->childCount() == parentTransformView->childCapacity())
 		{
 			if (parentTransformView->childs)

@@ -16,6 +16,7 @@
 #include "garden/system/render/deferred.hpp"
 
 #if GARDEN_EDITOR
+#include "garden/system/ui/trigger.hpp"
 #include "garden/system/settings.hpp"
 #include "garden/system/transform.hpp"
 #include "garden/system/render/mesh.hpp"
@@ -76,12 +77,14 @@ void MeshSelectorEditorSystem::render()
 
 	auto inputSystem = InputSystem::Instance::get();
 	auto editorSystem = EditorRenderSystem::Instance::get();
+	auto uiTranformSystem = UiTriggerSystem::Instance::tryGet();
 	const auto& commonConstants = graphicsSystem->getCommonConstants();
 	auto cameraPosition = commonConstants.cameraPos;
 	auto selectedEntity = editorSystem->selectedEntity;
 
-	auto updateSelector = !ImGui::GetIO().WantCaptureMouse && !lastDragging &&
-		inputSystem->getCursorMode() == CursorMode::Normal && inputSystem->isMouseReleased(MouseButton::Left);
+	auto updateSelector = !lastDragging && !ImGui::GetIO().WantCaptureMouse && 
+		inputSystem->getCursorMode() == CursorMode::Normal && inputSystem->isMouseReleased(MouseButton::Left) &&
+		(!uiTranformSystem || (uiTranformSystem && !uiTranformSystem->getHovered()));
 	lastDragging = ImGui::IsMouseDragging(ImGuiMouseButton_Left);
 
 	if (updateSelector && !isSkipped)

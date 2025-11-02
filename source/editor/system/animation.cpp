@@ -147,11 +147,22 @@ void AnimationEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 
 	if (ImGui::CollapsingHeader("Animations"))
 	{
+		auto resourceSystem = ResourceSystem::Instance::get();
+		auto& animations = animationView->getAnimations();
+
+		if (ImGui::BeginPopupContextItem("animations"))
+		{
+			if (ImGui::MenuItem("Remove All Animation"))
+			{
+				for (auto& pair : animations)
+					resourceSystem->destroyShared(pair.second);
+				animationView->clearAnimations();
+			}
+			ImGui::EndPopup();
+		}
+
 		ImGui::Indent();
 		ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyle().Colors[ImGuiCol_Button]);
-
-		auto resourceSystem = ResourceSystem::Instance::get();
-		const auto& animations = animationView->getAnimations();
 
 		for (auto i = animations.begin(); i != animations.end(); i++)
 		{
@@ -162,12 +173,14 @@ void AnimationEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 					ImGui::SetClipboardText(i->first.c_str());
 				if (ImGui::MenuItem("Remove Animation"))
 				{
-					auto animation = i->second;
+					resourceSystem->destroyShared(i->second);
 					i = animationView->eraseAnimation(i);
-					resourceSystem->destroyShared(animation);
 
 					if (i == animations.end())
+					{
+						ImGui::EndPopup();
 						break;
+					}
 				}
 				ImGui::EndPopup();
 			}

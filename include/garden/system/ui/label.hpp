@@ -105,6 +105,7 @@ private:
 	ID<GraphicsPipeline> pipeline = {};
 	OptView<GraphicsPipeline> pipelineView = {};
 	TextSystem* textSystem = nullptr;
+	float lastUiScale = 1.0f;
 
 	/**
 	 * @brief Creates a new user interface label element system instance. (UI, GUI)
@@ -115,6 +116,8 @@ private:
 	 * @brief Destroys user interface label element system instance. (UI, GUI)
 	 */
 	~UiLabelSystem() final;
+
+	void update();
 
 	void resetComponent(View<Component> component, bool full) final;
 	void copyComponent(View<Component> source, View<Component> destination) final;

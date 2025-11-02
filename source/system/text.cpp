@@ -452,60 +452,76 @@ static bool fillTextInstances(u32string_view value, Text::Properties properties,
 	size.x = max(size.x, instanceOffset.x);
 	size.y = -instanceOffset.y;
 
-	float offset;
+	float offset; float4 offset4;
 	switch (properties.alignment)
 	{
 	case Text::Alignment::Center:
 		offset = floorf(instanceOffset.x * -0.5f * fontSize) / fontSize;
+		offset4 = float4(offset, 0.0f, offset, 0.0f);
 		for (uint32_t i = lastNewLineIndex; i < instanceIndex; i++)
-			instances[i].position += float4(offset, 0.0f, offset, 0.0f);
+			instances[i].position += offset4;
+
 		offset = floorf(size.y * 0.5f * fontSize) / fontSize;
+		offset4 = float4(0.0f, offset, 0.0f, offset);
 		for (uint32_t i = 0; i < instanceIndex; i++)
-			instances[i].position += float4(0.0f, offset, 0.0f, offset);
+			instances[i].position += offset4;
 		break;
 	case Text::Alignment::Left:
 		offset = floorf(size.y * 0.5f * fontSize) / fontSize;
+		offset4 = float4(0.0f, offset, 0.0f, offset);
 		for (uint32_t i = 0; i < instanceIndex; i++)
-			instances[i].position += float4(0.0f, offset, 0.0f, offset);
+			instances[i].position += offset4;
 		break;
 	case Text::Alignment::Right:
 		offset = -instanceOffset.x;
+		offset4 = float4(offset, 0.0f, offset, 0.0f);
 		for (uint32_t i = lastNewLineIndex; i < instanceIndex; i++)
-			instances[i].position += float4(offset, 0.0f, offset, 0.0f);
+			instances[i].position += offset4;
+
 		offset = floorf(size.y * 0.5f * fontSize) / fontSize;
+		offset4 = float4(0.0f, offset, 0.0f, offset);
 		for (uint32_t i = 0; i < instanceIndex; i++)
-			instances[i].position += float4(0.0f, offset, 0.0f, offset);
+			instances[i].position += offset4;
 		break;
 	case Text::Alignment::Bottom:
 		offset = floorf(instanceOffset.x * -0.5f * fontSize) / fontSize;
+		offset4 = float4(offset, 0.0f, offset, 0.0f);
 		for (uint32_t i = lastNewLineIndex; i < instanceIndex; i++)
-			instances[i].position += float4(offset, 0.0f, offset, 0.0f);
+			instances[i].position += offset4;
+
 		offset = size.y;
+		offset4 = float4(0.0f, offset, 0.0f, offset);
 		for (uint32_t i = 0; i < instanceIndex; i++)
-			instances[i].position += float4(0.0f, offset, 0.0f, offset);
+			instances[i].position += offset4;
 		break;
 	case Text::Alignment::Top:
 		offset = floorf(instanceOffset.x * -0.5f * fontSize) / fontSize;
+		offset4 = float4(offset, 0.0f, offset, 0.0f);
 		for (uint32_t i = lastNewLineIndex; i < instanceIndex; i++)
-			instances[i].position += float4(offset, 0.0f, offset, 0.0f);
+			instances[i].position += offset4;
 		break;
 	case Text::Alignment::LeftBottom:
 		offset = size.y;
+		offset4 = float4(0.0f, offset, 0.0f, offset);
 		for (uint32_t i = 0; i < instanceIndex; i++)
-			instances[i].position += float4(0.0f, offset, 0.0f, offset);
+			instances[i].position += offset4;
 		break;
 	case Text::Alignment::RightBottom:
 		offset = -instanceOffset.x;
+		offset4 = float4(offset, 0.0f, offset, 0.0f);
 		for (uint32_t i = lastNewLineIndex; i < instanceIndex; i++)
-			instances[i].position += float4(offset, 0.0f, offset, 0.0f);
+			instances[i].position += offset4;
+
 		offset = size.y;
+		offset4 = float4(0.0f, offset, 0.0f, offset);
 		for (uint32_t i = 0; i < instanceIndex; i++)
-			instances[i].position += float4(0.0f, offset, 0.0f, offset);
+			instances[i].position += offset4;
 		break;
 	case Text::Alignment::RightTop:
 		offset = -instanceOffset.x;
+		offset4 = float4(offset, 0.0f, offset, 0.0f);
 		for (uint32_t i = lastNewLineIndex; i < instanceIndex; i++)
-			instances[i].position += float4(offset, 0.0f, offset, 0.0f);
+			instances[i].position += offset4;
 		break;
 	case Text::Alignment::LeftTop: break;
 	default: abort();

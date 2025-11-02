@@ -212,21 +212,23 @@ void SpriteRenderSystem::deserialize(IDeserializer& deserializer, View<Component
 	deserializer.read("uvOffset", componentView->uvOffset);
 
 	string colorMapPath;
-	deserializer.read("colorMapPath", colorMapPath);
-	if (colorMapPath.empty())
-		colorMapPath = "missing";
-	#if GARDEN_DEBUG || GARDEN_EDITOR
-	componentView->colorMapPath = colorMapPath;
-	#endif
+	if (deserializer.read("colorMapPath", colorMapPath))
+	{
+		if (colorMapPath.empty())
+			colorMapPath = "missing";
+		#if GARDEN_DEBUG || GARDEN_EDITOR
+		componentView->colorMapPath = colorMapPath;
+		#endif
 
-	auto taskPriority = 0.0f;
-	deserializer.read("taskPriority", taskPriority);
+		auto taskPriority = 0.0f;
+		deserializer.read("taskPriority", taskPriority);
 
-	auto maxMipCount = componentView->useMipmap ? 0 : 1;
-	auto flags = imageFlags; if (componentView->isArray) flags |= ImageLoadFlags::LoadArray;
-	auto usage = imageUsage; if (maxMipCount == 0) usage |= Image::Usage::TransferSrc;
-	componentView->colorMap = ResourceSystem::Instance::get()->loadImage(
-		colorMapPath, usage, maxMipCount, Image::Strategy::Default, flags, taskPriority);
+		auto maxMipCount = componentView->useMipmap ? 0 : 1;
+		auto flags = imageFlags; if (componentView->isArray) flags |= ImageLoadFlags::LoadArray;
+		auto usage = imageUsage; if (maxMipCount == 0) usage |= Image::Usage::TransferSrc;
+		componentView->colorMap = ResourceSystem::Instance::get()->loadImage(componentView->colorMapPath, 
+			usage, maxMipCount, Image::Strategy::Default, flags, taskPriority);
+	}
 }
 
 //**********************************************************************************************************************
@@ -269,26 +271,34 @@ void SpriteRenderSystem::deserializeAnimation(IDeserializer& deserializer, View<
 	frameView->isEnabled = boolValue;
 
 	string colorMapPath;
-	frameView->animateColorMap = deserializer.read("colorMapPath", colorMapPath);
-	if (colorMapPath.empty())
-		colorMapPath = "missing";
-	#if GARDEN_DEBUG || GARDEN_EDITOR
-	frameView->colorMapPath = colorMapPath;
-	#endif
+	if (deserializer.read("colorMapPath", colorMapPath))
+	{
+		if (colorMapPath.empty())
+			colorMapPath = "missing";
 
-	boolValue = false;
-	deserializer.read("isArray", boolValue);
-	frameView->isArray = boolValue;
+		#if GARDEN_DEBUG || GARDEN_EDITOR
+		frameView->colorMapPath = colorMapPath;
+		#endif
 
-	auto taskPriority = 0.0f;
-	deserializer.read("taskPriority", taskPriority);
+		boolValue = false;
+		deserializer.read("isArray", boolValue);
+		frameView->isArray = boolValue;
 
-	auto maxMipCount = frameView->useMipmap ? 0 : 1;
-	auto flags = imageFlags; if (frameView->isArray) flags |= ImageLoadFlags::LoadArray;
-	auto usage = imageUsage; if (maxMipCount == 0) usage |= Image::Usage::TransferSrc;
-	frameView->colorMap = ResourceSystem::Instance::get()->loadImage(colorMapPath, 
-		usage, maxMipCount, Image::Strategy::Default, flags, taskPriority);
-	frameView->descriptorSet = {}; // Note: See the imageLoaded()
+		boolValue = false;
+		deserializer.read("useMipmap", boolValue);
+		frameView->useMipmap = boolValue;
+
+		auto taskPriority = 0.0f;
+		deserializer.read("taskPriority", taskPriority);
+
+		auto maxMipCount = frameView->useMipmap ? 0 : 1;
+		auto flags = imageFlags; if (frameView->isArray) flags |= ImageLoadFlags::LoadArray;
+		auto usage = imageUsage; if (maxMipCount == 0) usage |= Image::Usage::TransferSrc;
+		frameView->colorMap = ResourceSystem::Instance::get()->loadImage(frameView->colorMapPath, 
+			usage, maxMipCount, Image::Strategy::Default, flags, taskPriority);
+		frameView->descriptorSet = {}; // Note: See the imageLoaded()
+		frameView->animateColorMap = true;
+	}
 }
 void SpriteRenderSystem::animateAsync(View<Component> component,
 	View<AnimationFrame> a, View<AnimationFrame> b, float t)

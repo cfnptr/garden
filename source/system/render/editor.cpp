@@ -936,9 +936,10 @@ void EditorRenderSystem::showFileSelector()
 						data->tm_mon + 1, data->tm_mday, data->tm_hour, data->tm_min);
 					foundAny = true;
 				}
-				ImGui::EndTable();
 			}
+
 			ImGui::PopStyleColor(2);
+			ImGui::EndTable();
 		}
 
 		if (!foundAny)

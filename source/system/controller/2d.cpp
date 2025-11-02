@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "garden/system/controller/2d.hpp"
+#include "garden/system/ui/trigger.hpp"
 #include "garden/system/transform.hpp"
 #include "garden/system/character.hpp"
 #include "garden/system/graphics.hpp"
@@ -129,11 +130,18 @@ void Controller2DSystem::swapchainRecreate()
 void Controller2DSystem::updateCameraControl()
 {
 	auto inputSystem = InputSystem::Instance::get();
+	auto uiTranformSystem = UiTriggerSystem::Instance::tryGet();
 
 	#if GARDEN_EDITOR
-	if (ImGui::GetIO().WantCaptureMouse || inputSystem->getCursorMode() != CursorMode::Normal)
-		return;
+	auto wantCaptureMouse = ImGui::GetIO().WantCaptureMouse;
+	#else
+	auto wantCaptureMouse = false;
 	#endif
+
+	wantCaptureMouse |= inputSystem->getCursorMode() != CursorMode::Normal || 
+		(uiTranformSystem && uiTranformSystem->getHovered());
+	if (wantCaptureMouse)
+		return;
 
 	auto manager = Manager::Instance::get();
 	auto transformView = manager->tryGet<TransformComponent>(camera);
