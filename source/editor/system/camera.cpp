@@ -54,7 +54,7 @@ void CameraEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 {
 	if (ImGui::BeginItemTooltip())
 	{
-		auto cameraView = CameraSystem::Instance::get()->getComponent(entity);
+		auto cameraView = Manager::Instance::get()->get<CameraComponent>(entity);
 		ImGui::Text("Projection: %s", cameraView->type ==
 			ProjectionType::Perspective ? "Perspective" : "Orthographic");
 		ImGui::EndTooltip();
@@ -63,7 +63,7 @@ void CameraEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	if (!isOpened)
 		return;
 
-	auto cameraView = CameraSystem::Instance::get()->getComponent(entity);
+	auto cameraView = Manager::Instance::get()->get<CameraComponent>(entity);
 	if (cameraView->type == ProjectionType::Perspective)
 	{
 		float fov = degrees(cameraView->p.perspective.fieldOfView);

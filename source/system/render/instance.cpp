@@ -181,7 +181,7 @@ void InstanceRenderSystem::prepareDraw(const f32x4x4& viewProj, uint32 drawCount
 		}
 		
 		descriptorSet = baseDescriptorSet;
-		pipelineView = graphicsSystem->get(basePipeline);
+		pipelineView = OptView<GraphicsPipeline>(graphicsSystem->get(basePipeline));
 	}
 	else
 	{
@@ -216,7 +216,7 @@ void InstanceRenderSystem::prepareDraw(const f32x4x4& viewProj, uint32 drawCount
 		}
 		
 		descriptorSet = shadowDescriptorSet;
-		pipelineView = graphicsSystem->get(shadowPipeline);
+		pipelineView = OptView<GraphicsPipeline>(graphicsSystem->get(shadowPipeline));
 		pipelineView->updateFramebuffer(graphicsSystem->getCurrentFramebuffer());
 	}
 }

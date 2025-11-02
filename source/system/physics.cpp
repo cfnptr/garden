@@ -167,13 +167,12 @@ protected:
 //**********************************************************************************************************************
 class GardenContactListener final : public JPH::ContactListener
 {
-	PhysicsSystem* physicsSystem = nullptr;
+	Manager* manager = nullptr;
 	vector<PhysicsSystem::Event>* bodyEvents = nullptr;
 	mutex* bodyEventLocker = nullptr;
 public:
-	GardenContactListener(PhysicsSystem* physicsSystem, 
-		vector<PhysicsSystem::Event>* bodyEvents, mutex* bodyEventLocker) :
-		physicsSystem(physicsSystem), bodyEvents(bodyEvents), bodyEventLocker(bodyEventLocker) { }
+	GardenContactListener(vector<PhysicsSystem::Event>* bodyEvents, mutex* bodyEventLocker) :
+		manager(Manager::Instance::get()), bodyEvents(bodyEvents), bodyEventLocker(bodyEventLocker) { }
 
 	JPH::ValidateResult OnContactValidate(const JPH::Body& inBody1, const JPH::Body& inBody2, 
 		JPH::RVec3Arg inBaseOffset, const JPH::CollideShapeResult& inCollisionResult) final
@@ -186,8 +185,8 @@ public:
 	{
 		ID<Entity> entity1, entity2;
 		*entity1 = userData1; *entity2 = userData2;
-		auto rigidbodyView1 = physicsSystem->getComponent(entity1);
-		auto rigidbodyView2 = physicsSystem->getComponent(entity2);
+		auto rigidbodyView1 = manager->get<RigidbodyComponent>(entity1);
+		auto rigidbodyView2 = manager->get<RigidbodyComponent>(entity2);
 
 		if (!rigidbodyView1->eventListener.empty() || !rigidbodyView2->eventListener.empty())
 		{
@@ -228,13 +227,12 @@ public:
 //**********************************************************************************************************************
 class GardenBodyActivationListener final : public JPH::BodyActivationListener
 {
-	PhysicsSystem* physicsSystem = nullptr;
+	Manager* manager = nullptr;
 	vector<PhysicsSystem::Event>* bodyEvents = nullptr;
 	mutex* bodyEventLocker = nullptr;
 public:
-	GardenBodyActivationListener(PhysicsSystem* _physicsSystem,
-		vector<PhysicsSystem::Event>* _bodyEvents, mutex* _bodyEventLocker) :
-		physicsSystem(_physicsSystem), bodyEvents(_bodyEvents), bodyEventLocker(_bodyEventLocker) { }
+	GardenBodyActivationListener(vector<PhysicsSystem::Event>* _bodyEvents, mutex* _bodyEventLocker) :
+		manager(Manager::Instance::get()), bodyEvents(_bodyEvents), bodyEventLocker(_bodyEventLocker) { }
 
 	void addEvent(uint32 inBodyUserData, BodyEvent eventType)
 	{
@@ -249,7 +247,7 @@ public:
 	void OnBodyActivated(const JPH::BodyID& inBodyID, JPH::uint64 inBodyUserData) final
 	{
 		ID<Entity> entity; *entity = inBodyUserData;
-		auto rigidbodyView = physicsSystem->tryGetComponent(entity);
+		auto rigidbodyView = manager->tryGet<RigidbodyComponent>(entity);
 
 		if (rigidbodyView && !rigidbodyView->eventListener.empty())
 			addEvent((uint32)inBodyUserData, BodyEvent::Activated);
@@ -260,7 +258,7 @@ public:
 		if (!entity)
 			return;
 
-		auto rigidbodyView = physicsSystem->getComponent(entity);
+		auto rigidbodyView = manager->get<RigidbodyComponent>(entity);
 		if (!rigidbodyView->eventListener.empty())
 			addEvent((uint32)inBodyUserData, BodyEvent::Deactivated);
 	}
@@ -798,7 +796,7 @@ void RigidbodyComponent::moveKinematic(f32x4 position, quat rotation, float delt
 void RigidbodyComponent::setWorldTransform(bool activate)
 {
 	GARDEN_ASSERT(shape);
-	auto transformView = TransformSystem::Instance::get()->getComponent(entity);
+	auto transformView = Manager::Instance::get()->get<TransformComponent>(entity);
 	auto model = transformView->calcModel();
 	setPosAndRot(getTranslation(model), extractQuat(extractRotation(model)), activate);
 }
@@ -818,12 +816,13 @@ void RigidbodyComponent::createConstraint(ID<Entity> otherBody,
 {
 	GARDEN_ASSERT(shape);
 	GARDEN_ASSERT(otherBody != entity);
-	View<RigidbodyComponent> otherRigidbodyView;
-	JPH::Body* targetBody;
 
+	OptView<RigidbodyComponent> otherRigidbodyView = {};
+	JPH::Body* targetBody;
 	if (otherBody)
 	{
-		otherRigidbodyView = PhysicsSystem::Instance::get()->getComponent(otherBody);
+		otherRigidbodyView = OptView<RigidbodyComponent>(
+			Manager::Instance::get()->get<RigidbodyComponent>(otherBody));
 		GARDEN_ASSERT(otherRigidbodyView->shape);
 		targetBody = (JPH::Body*)otherRigidbodyView->instance;
 	}
@@ -894,7 +893,7 @@ void RigidbodyComponent::destroyConstraint(uint32 index)
 
 	if (constraint.otherBody)
 	{
-		auto rigidbodyView = PhysicsSystem::Instance::get()->getComponent(constraint.otherBody);
+		auto rigidbodyView = Manager::Instance::get()->get<RigidbodyComponent>(constraint.otherBody);
 		auto& otherConstraints = rigidbodyView->constraints;
 		for (auto i = otherConstraints.begin(); i != otherConstraints.end(); i++)
 		{
@@ -919,15 +918,15 @@ void RigidbodyComponent::destroyConstraint(uint32 index)
 }
 void RigidbodyComponent::destroyAllConstraints()
 {
-	auto physicsSystem = PhysicsSystem::Instance::get();
-	auto physicsInstance = (JPH::PhysicsSystem*)physicsSystem->physicsInstance;
-	auto hasEntities = Manager::Instance::get()->getEntities().getCount() > 0; // Note: Detecting termination cleanup
+	auto manager = Manager::Instance::get();
+	auto physicsInstance = (JPH::PhysicsSystem*)PhysicsSystem::Instance::get()->physicsInstance;
+	auto hasEntities = manager->getEntities().getCount() > 0; // Note: Detecting termination cleanup
 
 	for (auto i = constraints.rbegin(); i != constraints.rend(); i++)
 	{
 		if (i->otherBody && hasEntities)
 		{
-			auto rigidbodyView = physicsSystem->getComponent(i->otherBody);
+			auto rigidbodyView = manager->get<RigidbodyComponent>(i->otherBody);
 			auto& otherConstraints = rigidbodyView->constraints;
 			auto otherConstraintData = otherConstraints.data();
 			auto otherConstraintCount = otherConstraints.size();
@@ -1087,13 +1086,13 @@ void PhysicsSystem::preInit()
 
 	// A body activation listener gets notified when bodies activate and go to sleep
 	// Note that this is called from a job so whatever you do here needs to be thread safe.
-	auto bodyListener = new GardenBodyActivationListener(this, &bodyEvents, &bodyEventLocker);
+	auto bodyListener = new GardenBodyActivationListener(&bodyEvents, &bodyEventLocker);
 	this->bodyListener = bodyListener;
 	physicsInstance->SetBodyActivationListener(bodyListener);
 
 	// A contact listener gets notified when bodies (are about to) collide, and when they separate again.
 	// Note that this is called from a job so whatever you do here needs to be thread safe.
-	auto contactListener = new GardenContactListener(this, &bodyEvents, &bodyEventLocker);
+	auto contactListener = new GardenContactListener(&bodyEvents, &bodyEventLocker);
 	this->contactListener = contactListener;
 	physicsInstance->SetContactListener(contactListener);
 
@@ -1125,7 +1124,6 @@ void PhysicsSystem::prepareSimulate()
 		threadPool->addItems([componentData](const ThreadPool::Task& task)
 		{
 			auto manager = Manager::Instance::get();
-			auto transformSystem = TransformSystem::Instance::get();
 			auto physicsInstance = (JPH::PhysicsSystem*)PhysicsSystem::Instance::get()->physicsInstance;
 			auto& bodyInterface = physicsInstance->GetBodyInterface(); // This one is with lock.
 			auto itemCount = task.getItemCount();
@@ -1140,7 +1138,7 @@ void PhysicsSystem::prepareSimulate()
 					continue;
 				}
 
-				auto transformView = transformSystem->tryGetComponent(rigidbodyView->entity);
+				auto transformView = manager->tryGet<TransformComponent>(rigidbodyView->entity);
 				if (!transformView || !transformView->isActive())
 					continue;
 
@@ -1203,14 +1201,14 @@ void PhysicsSystem::processSimulate()
 
 		if (entity1)
 		{
-			auto rigidbodyView = getComponent(entity1);
+			auto rigidbodyView = manager->get<RigidbodyComponent>(entity1);
 			toEventName(eventName, rigidbodyView->eventListener, bodyEvent.eventType);
 			thisBody = entity1; otherBody = entity2;
 			manager->tryRunEvent(eventName);
 		}
 		if (entity2)
 		{
-			auto rigidbodyView = getComponent(entity2);
+			auto rigidbodyView = manager->get<RigidbodyComponent>(entity2);
 			toEventName(eventName, rigidbodyView->eventListener, bodyEvent.eventType);
 			thisBody = entity2; otherBody = entity1;
 			manager->tryRunEvent(eventName);
@@ -1235,7 +1233,6 @@ void PhysicsSystem::interpolateResult(float t)
 		threadPool->addItems([componentData, t](const ThreadPool::Task& task)
 		{
 			auto manager = Manager::Instance::get();
-			auto transformSystem = TransformSystem::Instance::get();
 			auto itemCount = task.getItemCount();
 
 			for (uint32 i = task.getItemOffset(); i < itemCount; i++)
@@ -1248,7 +1245,7 @@ void PhysicsSystem::interpolateResult(float t)
 					continue;
 				}
 
-				auto transformView = transformSystem->tryGetComponent(rigidbodyView->entity);
+				auto transformView = manager->tryGet<TransformComponent>(rigidbodyView->entity);
 				if (!transformView)
 					continue;
 
@@ -1499,7 +1496,9 @@ void PhysicsSystem::serialize(ISerializer& serializer, const View<Component> com
 
 	if (!componentView->constraints.empty())
 	{
+		auto manager = Manager::Instance::get();
 		const auto& constraints = componentView->constraints;
+
 		serializer.beginChild("constraints");
 		for (auto& constraint : constraints)
 		{
@@ -1512,7 +1511,7 @@ void PhysicsSystem::serialize(ISerializer& serializer, const View<Component> com
 			if (constraint.type != ConstraintType::Fixed)
 				serializer.write("type", toString(constraint.type));
 
-			auto constraintView = getComponent(constraint.otherBody);
+			auto constraintView = manager->get<RigidbodyComponent>(constraint.otherBody);
 			encodeBase64URL(valueStringCache, &constraintView->uid, sizeof(uint64));
 			valueStringCache.resize(valueStringCache.length() - 1);
 			serializer.write("uid", valueStringCache);
@@ -1682,6 +1681,7 @@ void PhysicsSystem::deserialize(IDeserializer& deserializer, View<Component> com
 }
 void PhysicsSystem::postDeserialize(IDeserializer& deserializer)
 {
+	auto manager = Manager::Instance::get();
 	for (auto thisConstraint : deserializedConstraints)
 	{
 		auto otherConstraint = deserializedEntities.find(thisConstraint.otherUID);
@@ -1694,7 +1694,7 @@ void PhysicsSystem::postDeserialize(IDeserializer& deserializer)
 			continue;
 		}
 
-		auto rigidbodyView = getComponent(thisConstraint.entity);
+		auto rigidbodyView = manager->get<RigidbodyComponent>(thisConstraint.entity);
 		rigidbodyView->createConstraint(otherConstraint->second, thisConstraint.type);
 	}
 
@@ -2136,7 +2136,7 @@ void PhysicsSystem::activateRecursive(ID<Entity> entity)
 {
 	GARDEN_ASSERT(entity);
 
-	auto transformSystem = TransformSystem::Instance::get();
+	auto manager = Manager::Instance::get();
 	entityStack.push_back(entity);
 
 	while (!entityStack.empty())
@@ -2144,11 +2144,11 @@ void PhysicsSystem::activateRecursive(ID<Entity> entity)
 		auto entity = entityStack.back();
 		entityStack.pop_back();
 
-		auto rigidbodyView = tryGetComponent(entity);
+		auto rigidbodyView = manager->tryGet<RigidbodyComponent>(entity);
 		if (rigidbodyView)
 			rigidbodyView->activate();
 
-		auto transformView = transformSystem->tryGetComponent(entity);
+		auto transformView = manager->tryGet<TransformComponent>(entity);
 		if (!transformView)
 			continue;
 
@@ -2164,7 +2164,7 @@ void PhysicsSystem::setWorldTransformRecursive(ID<Entity> entity, bool activate)
 {
 	GARDEN_ASSERT(entity);
 
-	auto transformSystem = TransformSystem::Instance::get();
+	auto manager = Manager::Instance::get();
 	entityStack.push_back(entity);
 
 	while (!entityStack.empty())
@@ -2172,11 +2172,11 @@ void PhysicsSystem::setWorldTransformRecursive(ID<Entity> entity, bool activate)
 		auto entity = entityStack.back();
 		entityStack.pop_back();
 
-		auto rigidbodyView = tryGetComponent(entity);
+		auto rigidbodyView = manager->tryGet<RigidbodyComponent>(entity);
 		if (rigidbodyView && rigidbodyView->getShape())
 			rigidbodyView->setWorldTransform(activate);
 
-		auto transformView = transformSystem->tryGetComponent(entity);
+		auto transformView = manager->tryGet<TransformComponent>(entity);
 		if (!transformView)
 			continue;
 

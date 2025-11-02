@@ -21,7 +21,7 @@ healthView->value = 100.0f;
 
 //...
 
-auto transformView = TransformSystem::Instance::get()->getComponent(player);
+auto transformView = manager->get<TransformComponent>(player);
 if (transformView->getPosition().getY() < -1000.0f)
 {
     auto healthView = manager->get<HealthComponent>(player);

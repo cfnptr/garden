@@ -1496,13 +1496,13 @@ void VulkanCommandBuffer::processCommand(const BuildAccelerationStructureCommand
 	srcNewState.stage = dstNewState.stage = (uint32)vk::PipelineStageFlagBits::eAccelerationStructureBuildKHR;
 
 	vk::AccelerationStructureBuildGeometryInfoKHR info;
-	View<AccelerationStructure> srcAsView, dstAsView;
+	OptView<AccelerationStructure> srcAsView = {}, dstAsView = {};
 	if (command.srcAS)
 	{
 		if (command.typeAS == AccelerationStructure::Type::Blas)
-			srcAsView = View<AccelerationStructure>(vulkanAPI->blasPool.get(ID<Blas>(command.srcAS)));
+			srcAsView = OptView<AccelerationStructure>(vulkanAPI->blasPool.get(ID<Blas>(command.srcAS)));
 		else
-			srcAsView = View<AccelerationStructure>(vulkanAPI->tlasPool.get(ID<Tlas>(command.srcAS)));
+			srcAsView = OptView<AccelerationStructure>(vulkanAPI->tlasPool.get(ID<Tlas>(command.srcAS)));
 
 		srcNewState.access = (uint32)vk::AccessFlagBits::eAccelerationStructureReadKHR;
 		info.srcAccelerationStructure = (VkAccelerationStructureKHR)ResourceExt::getInstance(**srcAsView);
@@ -1510,12 +1510,12 @@ void VulkanCommandBuffer::processCommand(const BuildAccelerationStructureCommand
 	if (command.typeAS == AccelerationStructure::Type::Blas)
 	{
 		info.type = vk::AccelerationStructureTypeKHR::eBottomLevel;
-		dstAsView = View<AccelerationStructure>(vulkanAPI->blasPool.get(ID<Blas>(command.dstAS)));
+		dstAsView = OptView<AccelerationStructure>(vulkanAPI->blasPool.get(ID<Blas>(command.dstAS)));
 	}
 	else
 	{
 		info.type = vk::AccelerationStructureTypeKHR::eTopLevel;
-		dstAsView = View<AccelerationStructure>(vulkanAPI->tlasPool.get(ID<Tlas>(command.dstAS)));
+		dstAsView = OptView<AccelerationStructure>(vulkanAPI->tlasPool.get(ID<Tlas>(command.dstAS)));
 	}
 	dstNewState.access |= (uint32)vk::AccessFlagBits::eAccelerationStructureWriteKHR;
 
@@ -1644,20 +1644,20 @@ void VulkanCommandBuffer::processCommand(const CopyAccelerationStructureCommand&
 	vk::CopyAccelerationStructureInfoKHR copyInfo;
 	copyInfo.mode = command.isCompact ? vk::CopyAccelerationStructureModeKHR::eCompact :
 		vk::CopyAccelerationStructureModeKHR::eClone; // TODO: Serialization mode if needed.
-	View<AccelerationStructure> srcAsView, dstAsView;
+	OptView<AccelerationStructure> srcAsView = {}, dstAsView = {};
 
 	if (command.typeAS == AccelerationStructure::Type::Blas)
 	{
-		srcAsView = View<AccelerationStructure>(vulkanAPI->blasPool.get(ID<Blas>(command.srcAS)));
+		srcAsView = OptView<AccelerationStructure>(vulkanAPI->blasPool.get(ID<Blas>(command.srcAS)));
 		copyInfo.src = (VkAccelerationStructureKHR)ResourceExt::getInstance(**srcAsView);
-		dstAsView = View<AccelerationStructure>(vulkanAPI->blasPool.get(ID<Blas>(command.dstAS)));
+		dstAsView = OptView<AccelerationStructure>(vulkanAPI->blasPool.get(ID<Blas>(command.dstAS)));
 		copyInfo.dst = (VkAccelerationStructureKHR)ResourceExt::getInstance(**dstAsView);
 	}
 	else
 	{
-		srcAsView = View<AccelerationStructure>(vulkanAPI->tlasPool.get(ID<Tlas>(command.srcAS)));
+		srcAsView = OptView<AccelerationStructure>(vulkanAPI->tlasPool.get(ID<Tlas>(command.srcAS)));
 		copyInfo.src = (VkAccelerationStructureKHR)ResourceExt::getInstance(**srcAsView);
-		dstAsView = View<AccelerationStructure>(vulkanAPI->tlasPool.get(ID<Tlas>(command.dstAS)));
+		dstAsView = OptView<AccelerationStructure>(vulkanAPI->tlasPool.get(ID<Tlas>(command.dstAS)));
 		copyInfo.dst = (VkAccelerationStructureKHR)ResourceExt::getInstance(**dstAsView);
 	}
 

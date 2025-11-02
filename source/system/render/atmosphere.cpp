@@ -630,9 +630,10 @@ void AtmosphereRenderSystem::preDeferredRender()
 //**********************************************************************************************************************
 void AtmosphereRenderSystem::updateSkybox()
 {
+	auto manager = Manager::Instance::get();
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto pbrLightingSystem = PbrLightingSystem::Instance::get();
-	auto pbrLightingView = pbrLightingSystem->tryGetComponent(graphicsSystem->camera);
+	auto pbrLightingView = manager->tryGet<PbrLightingComponent>(graphicsSystem->camera);
 
 	if (pbrLightingView && pbrLightingView->skybox && pbrLightingView->specular)
 	{

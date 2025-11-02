@@ -47,7 +47,7 @@ void CharacterComponent::setShape(ID<Shape> shape, float mass, float maxPenetrat
 			auto objectLayerFilter = physicsInstance->GetDefaultLayerFilter(collisionLayer);
 			JPH::BodyID rigidbodyID = {};
 
-			auto rigidbodyView = physicsSystem->tryGetComponent(entity);
+			auto rigidbodyView = Manager::Instance::get()->tryGet<RigidbodyComponent>(entity);
 			if (rigidbodyView && rigidbodyView->getShape())
 			{
 				auto instance = (JPH::Body*)rigidbodyView->instance;
@@ -213,8 +213,9 @@ void CharacterComponent::update(float deltaTime, f32x4 gravity, const UpdateSett
 	SET_CPU_ZONE_SCOPED("Character Update");
 
 	GARDEN_ASSERT(shape);
+	auto manager = Manager::Instance::get();
 	auto instance = (JPH::CharacterVirtual*)this->instance;
-	auto transformView = Manager::Instance::get()->tryGet<TransformComponent>(entity);
+	auto transformView = manager->tryGet<TransformComponent>(entity);
 
 	if (transformView)
 	{
@@ -249,7 +250,7 @@ void CharacterComponent::update(float deltaTime, f32x4 gravity, const UpdateSett
 	auto objectLayerFilter = physicsInstance->GetDefaultLayerFilter(collisionLayer);
 	JPH::BodyID rigidbodyID = {};
 
-	auto rigidbodyView = physicsSystem->tryGetComponent(entity);
+	auto rigidbodyView = manager->tryGet<RigidbodyComponent>(entity);
 	if (rigidbodyView && rigidbodyView->instance)
 	{
 		auto instance = (JPH::Body*)rigidbodyView->instance;
@@ -284,7 +285,7 @@ void CharacterComponent::update(float deltaTime, f32x4 gravity, const UpdateSett
 
 		if (transformView->getParent())
 		{
-			auto parentView = TransformSystem::Instance::get()->getComponent(transformView->getParent());
+			auto parentView = manager->get<TransformComponent>(transformView->getParent());
 			auto model = parentView->calcModel();
 			position = inverse4x4(model) * f32x4(position, 1.0f);
 			rotation *= inverse(extractQuat(extractRotation(model)));
@@ -327,7 +328,7 @@ bool CharacterComponent::walkStairs(float deltaTime, f32x4 stepUp,
 	auto objectLayerFilter = physicsInstance->GetDefaultLayerFilter(collisionLayer);
 	JPH::BodyID rigidbodyID = {};
 
-	auto rigidbodyView = physicsSystem->tryGetComponent(entity);
+	auto rigidbodyView = Manager::Instance::get()->tryGet<RigidbodyComponent>(entity);
 	if (rigidbodyView && rigidbodyView->instance)
 	{
 		auto instance = (JPH::Body*)rigidbodyView->instance;
@@ -357,7 +358,7 @@ bool CharacterComponent::stickToFloor(f32x4 stepDown)
 	auto objectLayerFilter = physicsInstance->GetDefaultLayerFilter(collisionLayer);
 	JPH::BodyID rigidbodyID = {};
 
-	auto rigidbodyView = physicsSystem->tryGetComponent(entity);
+	auto rigidbodyView = Manager::Instance::get()->tryGet<RigidbodyComponent>(entity);
 	if (rigidbodyView && rigidbodyView->instance)
 	{
 		auto instance = (JPH::Body*)rigidbodyView->instance;
@@ -374,7 +375,7 @@ bool CharacterComponent::stickToFloor(f32x4 stepDown)
 void CharacterComponent::setWorldTransform()
 {
 	GARDEN_ASSERT(shape);
-	auto transformView = TransformSystem::Instance::get()->getComponent(entity);
+	auto transformView = Manager::Instance::get()->get<TransformComponent>(entity);
 	auto model = transformView->calcModel();
 	setPosAndRot(getTranslation(model), extractQuat(extractRotation(model)));
 }
@@ -494,7 +495,7 @@ void CharacterSystem::setWorldTransformRecursive(ID<Entity> entity)
 {
 	GARDEN_ASSERT(entity);
 
-	auto transformSystem = TransformSystem::Instance::get();
+	auto manager = Manager::Instance::get();
 	entityStack.push_back(entity);
 
 	while (!entityStack.empty())
@@ -502,11 +503,11 @@ void CharacterSystem::setWorldTransformRecursive(ID<Entity> entity)
 		auto entity = entityStack.back();
 		entityStack.pop_back();
 
-		auto characterView = tryGetComponent(entity);
+		auto characterView = manager->tryGet<CharacterComponent>(entity);
 		if (characterView && characterView->getShape())
 			characterView->setWorldTransform();
 
-		auto transformView = transformSystem->tryGetComponent(entity);
+		auto transformView = manager->tryGet<TransformComponent>(entity);
 		if (!transformView)
 			continue;
 

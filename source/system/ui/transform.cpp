@@ -43,13 +43,13 @@ UiTransformSystem::~UiTransformSystem()
 }
 
 //**********************************************************************************************************************
-static void transformUiComponent(float2 uiHalfSize, UiTransformComponent& uiTransformComp)
+static void transformUiComponent(Manager* manager, float2 uiHalfSize, UiTransformComponent& uiTransformComp)
 {
 	auto entity = uiTransformComp.getEntity();
 	if (!entity)
 		return;
 
-	auto transformView = TransformSystem::Instance::get()->tryGetComponent(entity);
+	auto transformView = manager->tryGet<TransformComponent>(entity);
 	if (!transformView || !transformView->isActive())
 		return;
 
@@ -98,8 +98,10 @@ void UiTransformSystem::update()
 			SET_CPU_ZONE_SCOPED("UI Transform Update");
 
 			auto itemCount = task.getItemCount();
+			auto manager = Manager::Instance::get();
+
 			for (uint32 i = task.getItemOffset(); i < itemCount; i++)
-				transformUiComponent(uiHalfSize, componentData[i]);
+				transformUiComponent(manager, uiHalfSize, componentData[i]);
 		},
 		components.getOccupancy());
 		threadPool.wait();
@@ -107,8 +109,10 @@ void UiTransformSystem::update()
 	else
 	{
 		auto componentOccupancy = components.getOccupancy();
+		auto manager = Manager::Instance::get();
+
 		for (uint32 i = 0; i < componentOccupancy; i++)
-			transformUiComponent(uiHalfSize, componentData[i]);
+			transformUiComponent(manager, uiHalfSize, componentData[i]);
 	}
 }
 

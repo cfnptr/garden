@@ -118,10 +118,7 @@ public:
 	using Keyframes = map<int32, Animatables>;
 private:
 	Keyframes keyframes;
-public:
-	float frameRate = 30.0f; /**< Animation frame rate per second. */
-	bool isLooped = true;    /**< Is animation played infinitely. */
-private:
+
 	/**
 	 * @brief Destroys animation keyframes.
 	 * @details It destroys all contained system animation frames.
@@ -130,6 +127,9 @@ private:
 
 	friend class LinearPool<Animation>;
 public:
+	float frameRate = 30.0f;        /**< Animation frame rate per second. */
+	bool isLooped = true;           /**< Is animation played infinitely. */
+
 	/**
 	 * @brief Returns animation keyframes map.
 	 */
@@ -172,6 +172,7 @@ public:
 	 * @param index target keyframe iterator
 	 */
 	auto eraseKeyframe(Keyframes::const_iterator i) { return keyframes.erase(i); }
+
 	/**
 	 * @brief Removes all keyframes from the animation.
 	 * @warning It does not destroys keyframe system frames!

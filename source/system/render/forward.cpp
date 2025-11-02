@@ -165,8 +165,9 @@ void ForwardRenderSystem::render()
 	if (!isEnabled || !graphicsSystem->canRender() || !graphicsSystem->camera)
 		return;
 
-	auto cameraView = CameraSystem::Instance::get()->tryGetComponent(graphicsSystem->camera);
-	auto transformView = TransformSystem::Instance::get()->tryGetComponent(graphicsSystem->camera);
+	auto manager = Manager::Instance::get();
+	auto cameraView = manager->tryGet<CameraComponent>(graphicsSystem->camera);
+	auto transformView = manager->tryGet<TransformComponent>(graphicsSystem->camera);
 	if (!cameraView || !transformView || !transformView->isActive())
 		return;
 
@@ -178,7 +179,6 @@ void ForwardRenderSystem::render()
 	}
 	#endif
 
-	auto manager = Manager::Instance::get();
 	auto event = &manager->getEvent("PreForwardRender");
 	if (event->hasSubscribers())
 	{

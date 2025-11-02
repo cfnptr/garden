@@ -84,7 +84,7 @@ static void renderAnimationSelector(ID<Entity> entity)
 	static const vector<string_view> extensions = { ".anim" };
 	EditorRenderSystem::Instance::get()->openFileSelector([entity](const fs::path& selectedFile)
 	{
-		auto animationView = AnimationSystem::Instance::get()->tryGetComponent(entity);
+		auto animationView = Manager::Instance::get()->tryGet<AnimationComponent>(entity);
 		if (!animationView || EditorRenderSystem::Instance::get()->selectedEntity != entity)
 			return;
 
@@ -101,7 +101,7 @@ void AnimationEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 {
 	if (ImGui::BeginItemTooltip())
 	{
-		auto animationView = AnimationSystem::Instance::get()->getComponent(entity);
+		auto animationView = Manager::Instance::get()->get<AnimationComponent>(entity);
 		ImGui::Text("Playing: %s, Frame: %f", animationView->isPlaying ?
 			animationView->active.c_str() : "none", animationView->frame);
 		ImGui::EndTooltip();
@@ -110,7 +110,7 @@ void AnimationEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	if (!isOpened)
 		return;
 
-	auto animationView = AnimationSystem::Instance::get()->getComponent(entity);
+	auto animationView = Manager::Instance::get()->get<AnimationComponent>(entity);
 	if (ImGui::Checkbox("Playing", &animationView->isPlaying))
 	{
 		bool isLooped;

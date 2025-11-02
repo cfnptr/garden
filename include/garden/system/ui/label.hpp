@@ -20,7 +20,6 @@
 #pragma once
 #include "garden/animate.hpp"
 #include "garden/system/text.hpp"
-#include "garden/system/transform.hpp"
 #include "garden/system/render/mesh.hpp"
 
 namespace garden
@@ -104,9 +103,7 @@ public:
 	};
 private:
 	ID<GraphicsPipeline> pipeline = {};
-	View<GraphicsPipeline> pipelineView = {};
-	GraphicsSystem* graphicsSystem = nullptr;
-	TransformSystem* transformSystem = nullptr;
+	OptView<GraphicsPipeline> pipelineView = {};
 	TextSystem* textSystem = nullptr;
 
 	/**

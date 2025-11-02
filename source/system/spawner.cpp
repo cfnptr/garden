@@ -50,7 +50,7 @@ ID<Entity> SpawnerComponent::loadPrefab()
 		auto manager = Manager::Instance::get();
 		manager->add<DoNotSerializeComponent>(entity);
 
-		auto transformView = TransformSystem::Instance::get()->getComponent(entity);
+		auto transformView = manager->get<TransformComponent>(entity);
 		transformView->setActive(false);
 
 		auto prefabs = LinkSystem::Instance::get()->findEntities("Prefabs");
@@ -77,7 +77,6 @@ void SpawnerComponent::spawn(uint32 count)
 		return;
 
 	auto manager = Manager::Instance::get();
-	auto linkSystem = LinkSystem::Instance::get();
 	auto transformSystem = TransformSystem::Instance::get();
 	auto physicsSystem = PhysicsSystem::Instance::tryGet();
 	auto characterSystem = CharacterSystem::Instance::tryGet();
@@ -88,7 +87,7 @@ void SpawnerComponent::spawn(uint32 count)
 
 		// if (physicsSystem)... TODO: Duplicate constraints recursive.
 
-		auto dupTransformView = transformSystem->tryGetComponent(duplicateEntity);
+		auto dupTransformView = manager->tryGet<TransformComponent>(duplicateEntity);
 		if (dupTransformView)
 		{
 			if (spawnAsChild)
@@ -107,7 +106,7 @@ void SpawnerComponent::spawn(uint32 count)
 			}
 			else
 			{
-				auto thisTransformView = transformSystem->tryGetComponent(entity);
+				auto thisTransformView = manager->tryGet<TransformComponent>(entity);
 				if (thisTransformView)
 				{
 					auto model = thisTransformView->calcModel();
@@ -128,9 +127,7 @@ void SpawnerComponent::spawn(uint32 count)
 		if (characterSystem)
 			characterSystem->setWorldTransformRecursive(duplicateEntity);
 
-		auto dupLinkView = linkSystem->tryGetComponent(duplicateEntity);
-		if (!dupLinkView)
-			dupLinkView = manager->add<LinkComponent>(duplicateEntity);
+		auto dupLinkView = manager->getOrAdd<LinkComponent>(duplicateEntity);
 		if (!dupLinkView->getUUID())
 			dupLinkView->regenerateUUID();
 		if (!manager->has<DoNotSerializeComponent>(duplicateEntity))
@@ -208,13 +205,13 @@ void SpawnerSystem::update()
 	if (inputSystem) currentTime = inputSystem->getCurrentTime();
 	else currentTime = LoopSystem::Instance::get()->getCurrentTime();
 
-	auto transformSystem = TransformSystem::Instance::get();
+	auto manager = Manager::Instance::get();
 	for (auto& spawner : components)
 	{
 		if (!spawner.getEntity() || !spawner.isActive || (spawner.path.empty() && !spawner.prefab))
 			continue;
 
-		auto transformView = transformSystem->tryGetComponent(spawner.getEntity());
+		auto transformView = manager->tryGet<TransformComponent>(spawner.getEntity());
 		if (transformView && !transformView->isActive())
 			continue;
 
@@ -339,17 +336,9 @@ bool SpawnerSystem::tryAddSharedPrefab(string_view path, ID<Entity> prefab)
 			return false;
 	}
 
-	auto linkView = linkSystem->tryGetComponent(prefab);
-	if (linkView)
-	{
-		if (!linkView->getUUID())
-			linkView->regenerateUUID();
-	}
-	else
-	{
-		linkView = Manager::Instance::get()->add<LinkComponent>(prefab);
+	auto linkView = Manager::Instance::get()->getOrAdd<LinkComponent>(prefab);
+	if (!linkView->getUUID())
 		linkView->regenerateUUID();
-	}
 	
 	if (searchResult == sharedPrefabs.end())
 	{

@@ -162,7 +162,7 @@ static void prepareUnsortedMeshes(f32x4 cameraOffset, f32x4 cameraPosition, cons
 {
 	SET_CPU_ZONE_SCOPED("Unsorted Meshes Prepare");
 
-	auto transformSystem = TransformSystem::Instance::get();
+	auto manager = Manager::Instance::get();
 	auto meshSystem = unsortedBuffer->meshSystem;
 	auto& componentPool = meshSystem->getMeshComponentPool();
 	auto componentSize = meshSystem->getMeshComponentSize();
@@ -190,7 +190,7 @@ static void prepareUnsortedMeshes(f32x4 cameraOffset, f32x4 cameraPosition, cons
 			continue;
 
 		f32x4x4 model;
-		const auto transformView = transformSystem->tryGetComponent(meshRenderView->getEntity());
+		auto transformView = manager->tryGet<TransformComponent>(meshRenderView->getEntity());
 		if (transformView)
 		{
 			if (!transformView->isActive())
@@ -236,7 +236,7 @@ static void prepareSortedMeshes(f32x4 cameraOffset, f32x4 cameraPosition, const 
 {
 	SET_CPU_ZONE_SCOPED("Sorted Meshes Prepare");
 
-	auto transformSystem = TransformSystem::Instance::get();
+	auto manager = Manager::Instance::get();
 	auto meshSystem = sortedBuffer->meshSystem;
 	auto& componentPool = meshSystem->getMeshComponentPool();
 	auto componentSize = meshSystem->getMeshComponentSize();
@@ -265,7 +265,7 @@ static void prepareSortedMeshes(f32x4 cameraOffset, f32x4 cameraPosition, const 
 			continue;
 
 		f32x4x4 model;
-		const auto transformView = transformSystem->tryGetComponent(meshRenderView->getEntity());
+		auto transformView = manager->tryGet<TransformComponent>(meshRenderView->getEntity());
 		if (transformView)
 		{
 			if (!transformView->isActive())

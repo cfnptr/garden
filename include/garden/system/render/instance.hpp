@@ -39,7 +39,7 @@ protected:
 	uint32 inFlightIndex = 0;
 	uint32 shadowDrawIndex = 0;
 	ID<DescriptorSet> descriptorSet = {};
-	View<GraphicsPipeline> pipelineView = {};
+	OptView<GraphicsPipeline> pipelineView = {};
 	uint8* instanceMap = nullptr;
 
 	/**

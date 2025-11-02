@@ -21,14 +21,14 @@ using namespace garden;
 
 static void activateButtonState(ID<Entity> button, uint8 childIndex)
 {
-	auto transformSystem = TransformSystem::Instance::get();
-	auto transformView = transformSystem->getComponent(button);
+	auto manager = Manager::Instance::get();
+	auto transformView = manager->get<TransformComponent>(button);
 	auto childCount = min((uint8)transformView->getChildCount(), UiButtonSystem::stateChildCount);
 	auto childs = transformView->getChilds();
 
 	for (uint8 i = 0; i < childCount; i++)
 	{
-		transformView = transformSystem->getComponent(childs[i]);
+		transformView = manager->get<TransformComponent>(childs[i]);
 		transformView->setActive(i == childIndex);
 	}
 }
@@ -81,7 +81,7 @@ UiButtonSystem::~UiButtonSystem()
 void UiButtonSystem::uiButtonEnter()
 {
 	auto hoveredButton = UiTriggerSystem::Instance::get()->getHovered();
-	auto uiButtonView = tryGetComponent(hoveredButton);
+	auto uiButtonView = Manager::Instance::get()->tryGet<UiButtonComponent>(hoveredButton);
 	if (!uiButtonView || !uiButtonView->enabled)
 		return;
 
@@ -92,7 +92,7 @@ void UiButtonSystem::uiButtonEnter()
 void UiButtonSystem::uiButtonExit()
 {
 	auto hoveredButton = UiTriggerSystem::Instance::get()->getHovered();
-	auto uiButtonView = tryGetComponent(hoveredButton);
+	auto uiButtonView = Manager::Instance::get()->tryGet<UiButtonComponent>(hoveredButton);
 	if (!uiButtonView)
 		return;
 
@@ -102,7 +102,7 @@ void UiButtonSystem::uiButtonExit()
 void UiButtonSystem::uiButtonStay()
 {
 	auto hoveredButton = UiTriggerSystem::Instance::get()->getHovered();
-	auto uiButtonView = tryGetComponent(hoveredButton);
+	auto uiButtonView = Manager::Instance::get()->tryGet<UiButtonComponent>(hoveredButton);
 	if (!uiButtonView || !uiButtonView->enabled)
 		return;
 

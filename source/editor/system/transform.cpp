@@ -76,14 +76,14 @@ void TransformEditorSystem::onEntityDestroy(ID<Entity> entity)
 //**********************************************************************************************************************
 void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 {
-	auto transformSystem = TransformSystem::Instance::get();
+	auto manager = Manager::Instance::get();
 	if (ImGui::BeginItemTooltip())
 	{
-		auto transformView = transformSystem->getComponent(entity);
+		auto transformView = manager->get<TransformComponent>(entity);
 		ImGui::Text("Active (all): %s", transformView->isActive() ? "true" : "false");
 		if (transformView->getParent())
 		{
-			auto parentView = transformSystem->getComponent(transformView->getParent());
+			auto parentView = manager->get<TransformComponent>(transformView->getParent());
 			ImGui::Text("Parent: %lu %s", (unsigned long)*transformView->getParent(),
 				parentView->debugName.empty() ? "" : ("(" + parentView->debugName + ")").c_str());
 		}
@@ -96,7 +96,7 @@ void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	{
 		if (entity)
 		{
-			auto transformView = transformSystem->getComponent(entity);
+			auto transformView = manager->get<TransformComponent>(entity);
 			oldRotation = transformView->getRotation();
 			oldEulerAngles = newEulerAngles = degrees(oldRotation.extractEulerAngles());
 		}
@@ -107,7 +107,7 @@ void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	{
 		if (entity)
 		{
-			auto transformView = transformSystem->getComponent(entity);
+			auto transformView = manager->get<TransformComponent>(entity);
 			if (oldRotation != transformView->getRotation())
 			{
 				oldRotation = transformView->getRotation();
@@ -119,14 +119,13 @@ void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	if (!isOpened)
 		return;
 
-	auto manager = Manager::Instance::get();
 	if (manager->has<UiTransformComponent>(entity))
 	{
 		ImGui::Text("Controlled by the UiTransformComponent!");
 		return;
 	}
 
-	auto transformView = transformSystem->getComponent(entity);
+	auto transformView = manager->get<TransformComponent>(entity);
 	auto isSelfActive = transformView->isSelfActive();
 	if (ImGui::Checkbox("Active", &isSelfActive))
 		transformView->setActive(isSelfActive);
