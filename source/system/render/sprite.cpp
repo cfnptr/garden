@@ -31,7 +31,6 @@ void SpriteRenderSystem::init()
 {
 	InstanceRenderSystem::init();
 	ECSM_SUBSCRIBE_TO_EVENT("ImageLoaded", SpriteRenderSystem::imageLoaded);
-	
 
 	#if GARDEN_DEBUG
 	debugResourceName = pipelinePath.generic_string();
@@ -216,12 +215,14 @@ void SpriteRenderSystem::deserialize(IDeserializer& deserializer, View<Component
 	{
 		if (colorMapPath.empty())
 			colorMapPath = "missing";
-		#if GARDEN_DEBUG || GARDEN_EDITOR
-		componentView->colorMapPath = colorMapPath;
-		#endif
 
 		auto taskPriority = 0.0f;
 		deserializer.read("taskPriority", taskPriority);
+
+		#if GARDEN_DEBUG || GARDEN_EDITOR
+		componentView->colorMapPath = colorMapPath;
+		componentView->taskPriority = taskPriority;
+		#endif
 
 		auto maxMipCount = componentView->useMipmap ? 0 : 1;
 		auto flags = imageFlags; if (componentView->isArray) flags |= ImageLoadFlags::LoadArray;
@@ -276,10 +277,6 @@ void SpriteRenderSystem::deserializeAnimation(IDeserializer& deserializer, View<
 		if (colorMapPath.empty())
 			colorMapPath = "missing";
 
-		#if GARDEN_DEBUG || GARDEN_EDITOR
-		frameView->colorMapPath = colorMapPath;
-		#endif
-
 		boolValue = false;
 		deserializer.read("isArray", boolValue);
 		frameView->isArray = boolValue;
@@ -290,6 +287,11 @@ void SpriteRenderSystem::deserializeAnimation(IDeserializer& deserializer, View<
 
 		auto taskPriority = 0.0f;
 		deserializer.read("taskPriority", taskPriority);
+
+		#if GARDEN_DEBUG || GARDEN_EDITOR
+		frameView->colorMapPath = colorMapPath;
+		frameView->taskPriority = taskPriority;
+		#endif
 
 		auto maxMipCount = frameView->useMipmap ? 0 : 1;
 		auto flags = imageFlags; if (frameView->isArray) flags |= ImageLoadFlags::LoadArray;

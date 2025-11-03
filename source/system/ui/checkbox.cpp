@@ -47,9 +47,9 @@ void UiCheckboxComponent::setEnabled(bool state)
 	if (enabled == state)
 		return;
 
-	auto uiButtonView = Manager::Instance::get()->tryGet<UiButtonComponent>(entity);
-	if (uiButtonView)
-		uiButtonView->setEnabled(state);
+	auto uiCheckboxView = Manager::Instance::get()->tryGet<UiButtonComponent>(entity);
+	if (uiCheckboxView)
+		uiCheckboxView->setEnabled(state);
 	enabled = state;
 }
 void UiCheckboxComponent::setChecked(bool state)
@@ -88,8 +88,8 @@ UiCheckboxSystem::~UiCheckboxSystem()
 void UiCheckboxSystem::uiCheckboxClick()
 {
 	auto manager = Manager::Instance::get();
-	auto hoveredButton = UiTriggerSystem::Instance::get()->getHovered();
-	auto uiCheckboxView = manager->tryGet<UiCheckboxComponent>(hoveredButton);
+	auto hoveredElement = UiTriggerSystem::Instance::get()->getHovered();
+	auto uiCheckboxView = manager->tryGet<UiCheckboxComponent>(hoveredElement);
 	if (!uiCheckboxView)
 		return;
 
@@ -99,7 +99,6 @@ void UiCheckboxSystem::uiCheckboxClick()
 		manager->tryRunEvent(uiCheckboxView->onChange);
 }
 
-//**********************************************************************************************************************
 string_view UiCheckboxSystem::getComponentName() const
 {
 	return "Checkbox UI";

@@ -59,7 +59,9 @@ static void triggerUiComponent(Manager* manager, ID<Entity>& newElement,
 
 	auto inputSystem = InputSystem::Instance::get(); 
 	auto model = transformView->calcModel(); auto modelPosZ = getTranslation(model).getZ();
-	auto invModel = inverse4x4(model * scale(f32x4(uiTriggerComp.scale.x, uiTriggerComp.scale.y, 1.0f)));
+	auto invModel = inverse4x4(model * scale(translate(
+		f32x4(uiTriggerComp.offset.x, uiTriggerComp.offset.y, 1.0f)), 
+		f32x4(uiTriggerComp.scale.x, uiTriggerComp.scale.y, 1.0f)));
 	auto cursorPos = (inputSystem->getCursorPosition() - (float2)inputSystem->getWindowSize() * 0.5f) * uiScale;
 	auto modelCursorPos = float2(invModel * f32x4(cursorPos.x, cursorPos.y, 0.0f, 1.0f));
 
@@ -195,10 +197,11 @@ string_view UiTriggerSystem::getComponentName() const
 	return "Trigger UI";
 }
 
-//**********************************************************************************************************************
 void UiTriggerSystem::serialize(ISerializer& serializer, const View<Component> component)
 {
 	const auto componentView = View<UiTriggerComponent>(component);
+	if (componentView->offset != float2::zero)
+		serializer.write("offset", componentView->offset);
 	if (componentView->scale != float2::one)
 		serializer.write("scale", componentView->scale);
 	if (!componentView->onEnter.empty())
@@ -211,6 +214,7 @@ void UiTriggerSystem::serialize(ISerializer& serializer, const View<Component> c
 void UiTriggerSystem::deserialize(IDeserializer& deserializer, View<Component> component)
 {
 	auto componentView = View<UiTriggerComponent>(component);
+	deserializer.read("offset", componentView->offset);
 	deserializer.read("scale", componentView->scale);
 	deserializer.read("onEnter", componentView->onEnter);
 	deserializer.read("onExit", componentView->onExit);
@@ -221,6 +225,8 @@ void UiTriggerSystem::deserialize(IDeserializer& deserializer, View<Component> c
 void UiTriggerSystem::serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame)
 {
 	const auto frameView = View<UiTriggerFrame>(frame);
+	if (frameView->animateOffset)
+		serializer.write("offset", frameView->offset);
 	if (frameView->animateScale)
 		serializer.write("scale", frameView->scale);
 	if (frameView->animateOnEnter)
@@ -233,6 +239,7 @@ void UiTriggerSystem::serializeAnimation(ISerializer& serializer, View<Animation
 void UiTriggerSystem::deserializeAnimation(IDeserializer& deserializer, View<AnimationFrame> frame)
 {
 	auto frameView = View<UiTriggerFrame>(frame);
+	frameView->animateOffset = deserializer.read("offset", frameView->offset);
 	frameView->animateScale = deserializer.read("scale", frameView->scale);
 	frameView->animateOnEnter = deserializer.read("onEnter", frameView->onEnter);
 	frameView->animateOnExit = deserializer.read("onExit", frameView->onExit);
@@ -245,6 +252,8 @@ void UiTriggerSystem::animateAsync(View<Component> component, View<AnimationFram
 	const auto frameA = View<UiTriggerFrame>(a);
 	const auto frameB = View<UiTriggerFrame>(b);
 
+	if (frameA->animateOffset)
+		componentView->offset = lerp(frameA->offset, frameB->offset, t);
 	if (frameA->animateScale)
 		componentView->scale = lerp(frameA->scale, frameB->scale, t);
 	if (frameA->animateOnEnter)

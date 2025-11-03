@@ -567,23 +567,27 @@ void ImGuiRenderSystem::update()
 		}
 		else
 		{
-			CursorType cursorType;
+			CursorType newCursorType;
 			switch (imguiCursor)
 			{
-				case ImGuiMouseCursor_Arrow: cursorType = CursorType::Arrow; break;
-				case ImGuiMouseCursor_TextInput: cursorType = CursorType::Ibeam; break;
-				case ImGuiMouseCursor_ResizeAll: cursorType = CursorType::ResizeAll; break;
-				case ImGuiMouseCursor_ResizeNS: cursorType = CursorType::ResizeNS; break;
-				case ImGuiMouseCursor_ResizeEW: cursorType = CursorType::ResizeEW; break;
-				case ImGuiMouseCursor_ResizeNESW: cursorType = CursorType::ResizeNESW; break;
-				case ImGuiMouseCursor_ResizeNWSE: cursorType = CursorType::ResizeNWSE; break;
-				case ImGuiMouseCursor_Hand: cursorType = CursorType::PointingHand; break;
-				case ImGuiMouseCursor_NotAllowed: cursorType = CursorType::NotAllowed; break;
-				default: cursorType = CursorType::Default; break;
+				case ImGuiMouseCursor_Arrow: newCursorType = CursorType::Arrow; break;
+				case ImGuiMouseCursor_TextInput: newCursorType = CursorType::Ibeam; break;
+				case ImGuiMouseCursor_ResizeAll: newCursorType = CursorType::ResizeAll; break;
+				case ImGuiMouseCursor_ResizeNS: newCursorType = CursorType::ResizeNS; break;
+				case ImGuiMouseCursor_ResizeEW: newCursorType = CursorType::ResizeEW; break;
+				case ImGuiMouseCursor_ResizeNESW: newCursorType = CursorType::ResizeNESW; break;
+				case ImGuiMouseCursor_ResizeNWSE: newCursorType = CursorType::ResizeNWSE; break;
+				case ImGuiMouseCursor_Hand: newCursorType = CursorType::PointingHand; break;
+				case ImGuiMouseCursor_NotAllowed: newCursorType = CursorType::NotAllowed; break;
+				default: newCursorType = CursorType::Default; break;
 			}
 
-			inputSystem->setCursorType(cursorType);
-			inputSystem->setCursorMode(CursorMode::Normal);
+			if (newCursorType != lastCursorType)
+			{
+				inputSystem->setCursorType(newCursorType);
+				inputSystem->setCursorMode(CursorMode::Normal);
+				lastCursorType = newCursorType;
+			}
 		}
 	}
 
