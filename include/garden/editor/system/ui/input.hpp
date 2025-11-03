@@ -19,10 +19,10 @@
 namespace garden
 {
 
-class UiInputFieldEditorSystem final : public System, public Singleton<UiInputFieldEditorSystem>
+class UiInputEditorSystem final : public System, public Singleton<UiInputEditorSystem>
 {
-	UiInputFieldEditorSystem(bool setSingleton = true);
-	~UiInputFieldEditorSystem() final;
+	UiInputEditorSystem(bool setSingleton = true);
+	~UiInputEditorSystem() final;
 	
 	void init();
 	void deinit();

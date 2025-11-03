@@ -45,6 +45,7 @@ private:
 	ID<GraphicsPipeline> pipeline = {};
 	ID<Sampler> linearSampler = {};
 	ID<Sampler> nearestSampler = {};
+	CursorType lastCursorType = CursorType::Default;
 	bool isInitialized = false;
 	bool isRendered = true;
 
