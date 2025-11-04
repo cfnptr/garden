@@ -195,6 +195,12 @@ void SpriteRenderEditorSystem::renderComponent(SpriteRenderComponent* componentV
 	{
 		auto colorMapView = GraphicsSystem::Instance::get()->get(componentView->colorMap);
 		maxColorMapLayer = colorMapView->getLayerCount() - 1;
+
+		if (colorMapView->getType() != Image::Type::Texture2DArray)
+		{
+			ResourceSystem::Instance::get()->destroyShared(componentView->colorMap);
+			componentView->colorMap = {}; componentView->colorMapPath = "";
+		}
 	}
 
 	auto aabbMin = componentView->aabb.getMin(), aabbMax = componentView->aabb.getMax();

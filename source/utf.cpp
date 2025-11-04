@@ -251,7 +251,7 @@ psize UTF::utf32toUtf8(u32string_view utf32, string& utf8)
 	for (psize i = 0; i < srcLength; i++)
 	{
 		auto c = (UChar32)src[i];
-		U8_APPEND(dst, i, dstCapacity, c, isError);
+		U8_APPEND(dst, dstLength, dstCapacity, c, isError);
 		if (isError) return i;
 	}
 

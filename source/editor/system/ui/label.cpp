@@ -59,8 +59,13 @@ void UiLabelEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 
 	auto uiLabelView = Manager::Instance::get()->get<UiLabelComponent>(entity);
 
-	if (ImGui::InputText("Text", &uiLabelView->text))
+	string text; UTF::utf32toUtf8(uiLabelView->text, text);
+	if (ImGui::InputText("Text", &text))
+	{
+		UTF::utf8toUtf32(text, uiLabelView->text);
 		uiLabelView->updateText();
+	}
+
 	ImGui::Checkbox("Enabled", &uiLabelView->isEnabled); ImGui::SameLine();
 	ImGui::Checkbox("Load Noto", &uiLabelView->loadNoto); 
 	ImGui::Spacing();

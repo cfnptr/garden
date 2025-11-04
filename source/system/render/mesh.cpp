@@ -202,7 +202,9 @@ static void prepareUnsortedMeshes(f32x4 cameraOffset, f32x4 cameraPosition, cons
 			model = f32x4x4::identity;
 		}
 
-		if (isBehindFrustum(frustumPlanes, Plane::frustumCount, meshRenderView->aabb, model))
+		auto aabbSize = meshRenderView->aabb.getSize(); aabbSize.fixW();
+		if (areAnyTrue(aabbSize <= f32x4::zero) || isBehindFrustum(
+			frustumPlanes, Plane::frustumCount, meshRenderView->aabb, model))
 		{
 			if (isNotShadowPass)
 				meshRenderView->setVisible(false);
@@ -277,7 +279,9 @@ static void prepareSortedMeshes(f32x4 cameraOffset, f32x4 cameraPosition, const 
 			model = f32x4x4::identity;
 		}
 
-		if (isBehindFrustum(frustumPlanes, Plane::frustumCount, meshRenderView->aabb, model))
+		auto aabbSize = meshRenderView->aabb.getSize(); aabbSize.fixW();
+		if (areAnyTrue(aabbSize <= f32x4::zero) || isBehindFrustum(
+			frustumPlanes, Plane::frustumCount, meshRenderView->aabb, model))
 		{
 			if (isNotShadowPass)
 				meshRenderView->setVisible(false);

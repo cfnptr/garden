@@ -118,6 +118,8 @@ struct UiTransformFrame final : public AnimationFrame
 class UiTransformSystem final : public CompAnimSystem<UiTransformComponent, UiTransformFrame, false, false>,
 	public Singleton<UiTransformSystem>, public ISerializable
 {
+	float2 cursorPosition = float2::zero;
+
 	/**
 	 * @brief Creates a new user interface element transformation system instance. (UI, GUI)
 	 * @param setSingleton set system singleton instance
@@ -143,6 +145,10 @@ class UiTransformSystem final : public CompAnimSystem<UiTransformComponent, UiTr
 public:
 	float uiScale = 1.0f;  /**< User interface scaling factor. (UI) */
 
+	/**
+	 * @brief Returns user interface cursor position.
+	 */
+	float2 getCursorPosition() const noexcept { return cursorPosition; }
 	/**
 	 * @brief Calculates size in user interface coordinates.
 	 */

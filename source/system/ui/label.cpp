@@ -54,6 +54,7 @@ bool UiLabelComponent::updateText(bool shrink)
 	auto textSystem = TextSystem::Instance::get();
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto uiScale = UiTransformSystem::Instance::get()->uiScale;
+	// TODO: take into account macOS differend window and framebuffer scale!
 
 	if (text.empty() || uiScale <= 0.0f)
 	{
@@ -242,13 +243,15 @@ void UiLabelSystem::drawAsync(MeshRenderComponent* meshRenderView,
 		return;
 
 	auto textView = textSystem->get(uiLabelView->textData);
-	if (!textView->isReady())
+	if (!textView->isReady() || textView->getInstanceCount() == 0)
 		return;
 
 	auto fontSize = uiLabelView->fontSize;
 	auto transformView = Manager::Instance::get()->get<TransformComponent>(uiLabelView->getEntity());
 	auto localScale = transformView->getScale() * f32x4(fontSize, fontSize, 1.0f);
 	auto localModel = scale(model, (1.0f / extractScale(model)) * localScale);
+	setTranslation(localModel, (f32x4)u32x4(getTranslation(localModel) / lastUiScale) * lastUiScale);
+	// TODO: take into account macOS differend window and framebuffer scale!
 
 	PushConstants pc;
 	pc.mvp = (float4x4)(viewProj * localModel);
@@ -268,12 +271,12 @@ void UiLabelSystem::serialize(ISerializer& serializer, const View<Component> com
 		serializer.write("color", componentView->propterties.color);
 	if (componentView->propterties.alignment != Text::Alignment::Center)
 		serializer.write("alignment", toString(componentView->propterties.alignment));
-	if (componentView->propterties.isBold != false)
-		serializer.write("isBold", componentView->propterties.isBold);
-	if (componentView->propterties.isItalic != false)
-		serializer.write("isItalic", componentView->propterties.isItalic);
-	if (componentView->propterties.useTags != false)
-		serializer.write("useTags", componentView->propterties.useTags);
+	if (componentView->propterties.isBold)
+		serializer.write("isBold", true);
+	if (componentView->propterties.isItalic)
+		serializer.write("isItalic", true);
+	if (componentView->propterties.useTags)
+		serializer.write("useTags", true);
 	if (componentView->fontSize != 16)
 		serializer.write("fontSize", componentView->fontSize);
 
@@ -332,6 +335,7 @@ void UiLabelSystem::deserialize(IDeserializer& deserializer, View<Component> com
 	deserializer.read("loadNoto", loadNoto);
 
 	auto uiScale = UiTransformSystem::Instance::get()->uiScale;
+	// TODO: take into account macOS differend window and framebuffer scale!
 	componentView->fontSize = max((uint32)ceil(componentView->fontSize / uiScale), 1u);
 
 	if (!fontPaths.empty() || loadNoto)
@@ -369,12 +373,12 @@ void UiLabelSystem::serializeAnimation(ISerializer& serializer, View<AnimationFr
 		serializer.write("color", frameView->propterties.color);
 	if (frameView->propterties.alignment != Text::Alignment::Center)
 		serializer.write("alignment", toString(frameView->propterties.alignment));
-	if (frameView->propterties.isBold != false)
-		serializer.write("isBold", frameView->propterties.isBold);
-	if (frameView->propterties.isItalic != false)
-		serializer.write("isItalic", frameView->propterties.isItalic);
-	if (frameView->propterties.useTags != false)
-		serializer.write("useTags", frameView->propterties.useTags);
+	if (frameView->propterties.isBold)
+		serializer.write("isBold", true);
+	if (frameView->propterties.isItalic)
+		serializer.write("isItalic", true);
+	if (frameView->propterties.useTags)
+		serializer.write("useTags", true);
 	if (frameView->fontSize != 16)
 		serializer.write("fontSize", frameView->fontSize);
 
@@ -410,6 +414,7 @@ void UiLabelSystem::deserializeAnimation(IDeserializer& deserializer, View<Anima
 		toTextAlignment(alignment, frameView->propterties.alignment);
 
 	auto uiScale = UiTransformSystem::Instance::get()->uiScale;
+	// TODO: take into account macOS differend window and framebuffer scale!
 	frameView->fontSize = max((uint32)ceil(frameView->fontSize / uiScale), 1u);
 
 	vector<fs::path> fontPaths;

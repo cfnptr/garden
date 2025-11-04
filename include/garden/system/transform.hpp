@@ -36,8 +36,8 @@ private:
 	f32x4 scaleChildCap = f32x4(1.0f, 1.0f, 1.0f, 0.0f);
 	quat rotation = quat::identity;
 	ID<Entity>* childs = nullptr;
-	bool selfActive = true;
-	bool ancestorsActive = true;
+	volatile bool selfActive = true;
+	volatile bool ancestorsActive = true;
 
 	/**
 	 * @brief Destroys childs array memory block, if allocated. 
@@ -283,16 +283,21 @@ public:
  */
 struct TransformFrame final : public AnimationFrame
 {
-	bool animatePosition = false;
-	bool animateScale = false;
-	bool animateRotation = false;
+	uint8 animatePosition : 1;
+	uint8 animateScale : 1;
+	uint8 animateRotation : 1;
+	uint8 animateIsActive : 1;
+	uint8 isActive : 1;
 	f32x4 position = f32x4::zero;
 	f32x4 scale = f32x4::one;
 	quat rotation = quat::identity;
 
+	TransformFrame() : animatePosition(false), animateScale(false), 
+		animateRotation(false), animateIsActive(false), isActive(true) { }
+
 	bool hasAnimation() final
 	{
-		return animatePosition || animateScale || animateRotation;
+		return animatePosition || animateScale || animateRotation || animateIsActive;
 	}
 };
 

@@ -103,6 +103,9 @@ void MeshSelectorEditorSystem::render()
 		for (auto system : *systemGroup)
 		{
 			auto meshSystem = dynamic_cast<IMeshRenderSystem*>(system);
+			if (meshSystem->getMeshRenderType() == MeshRenderType::UI)
+				continue;
+
 			const auto& componentPool = meshSystem->getMeshComponentPool();
 			auto componentSize = meshSystem->getMeshComponentSize();
 			auto componentData = (const uint8*)componentPool.getData();

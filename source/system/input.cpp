@@ -19,6 +19,7 @@
 #include "garden/graphics/vulkan/api.hpp"
 #include "garden/graphics/glfw.hpp" // Note: Do not move it.
 #include "garden/profiler.hpp"
+#include "garden/utf.hpp"
 #include "mpmt/thread.hpp"
 
 using namespace garden;
@@ -251,6 +252,10 @@ void InputSystem::input()
 	swap(newKeyboardChars, currKeyboardChars);
 	if (!newKeyboardChars.empty())
 		newKeyboardChars.clear();
+	if (!currKeyboardChars.empty())
+		UTF::utf32toUtf8(currKeyboardChars, currKeyboardChars8);
+	else currKeyboardChars8.clear();
+
 	swap(newFileDrops, currFileDrops);
 
 	if (currClipboard != newClipboard)

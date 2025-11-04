@@ -581,7 +581,9 @@ void TransformSystem::deserialize(IDeserializer& deserializer, View<Component> c
 	f32x4Value = f32x4::one;
 	deserializer.read("scale", f32x4Value, 3);
 	componentView->setScale(f32x4Value);
-	deserializer.read("isActive", componentView->selfActive);
+	auto boolValue = true;
+	deserializer.read("isActive", boolValue);
+	componentView->selfActive = boolValue;
 
 	if (deserializer.read("parent", uidStringCache) &&
 		uidStringCache.size() + 1 == modp_b64_encode_data_len(sizeof(uint64)))
@@ -632,13 +634,17 @@ void TransformSystem::serializeAnimation(ISerializer& serializer, View<Animation
 		serializer.write("scale", (float3)frameView->scale);
 	if (frameView->animateRotation)
 		serializer.write("rotation", frameView->rotation);
+	if (frameView->animateIsActive)
+		serializer.write("isActive", (bool)frameView->isActive);
 }
 void TransformSystem::deserializeAnimation(IDeserializer& deserializer, View<AnimationFrame> frame)
 {
-	auto frameView = View<TransformFrame>(frame);
+	auto frameView = View<TransformFrame>(frame); auto isActive = true;
 	frameView->animatePosition = deserializer.read("position", frameView->position, 3);
 	frameView->animateScale = deserializer.read("scale", frameView->scale, 3);
 	frameView->animateRotation = deserializer.read("rotation", frameView->rotation);
+	frameView->animateIsActive = deserializer.read("isActive", isActive);
+	frameView->isActive = isActive;
 }
 
 //**********************************************************************************************************************
@@ -654,6 +660,8 @@ void TransformSystem::animateAsync(View<Component> component, View<AnimationFram
 		componentView->setScale(lerp(frameA->scale, frameB->scale, t));
 	if (frameA->animateRotation)
 		componentView->rotation = slerp(frameA->rotation, frameB->rotation, t);
+	if (frameA->animateIsActive)
+		componentView->setActive((bool)round(t) ? frameB->isActive : frameA->isActive);
 }
 
 //**********************************************************************************************************************
