@@ -16,6 +16,7 @@
 
 #if GARDEN_EDITOR
 #include "garden/system/ui/input.hpp"
+#include "garden/utf.hpp"
 
 using namespace garden;
 
@@ -62,8 +63,36 @@ void UiInputEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	auto isEnabled = uiInputView->isEnabled();
 	if (ImGui::Checkbox("Enabled", &isEnabled))
 		uiInputView->setEnabled(isEnabled);
+	ImGui::SameLine();
+
+	auto isTextBad = uiInputView->isTextBad();
+	if (ImGui::Checkbox("Text Bad", &isTextBad))
+		uiInputView->setTextBad(isTextBad);
+
+	string text; UTF::utf32toUtf8(uiInputView->text, text);
+	if (ImGui::InputText("Text", &text))
+	{
+		UTF::utf8toUtf32(text, uiInputView->text);
+		uiInputView->updateText();
+	}
+
+	UTF::utf32toUtf8(uiInputView->placeholder, text);
+	if (ImGui::InputText("Placeholder", &text))
+	{
+		UTF::utf8toUtf32(text, uiInputView->placeholder);
+		uiInputView->updateText();
+	}
+
+	UTF::utf32toUtf8(uiInputView->prefix, text);
+	if (ImGui::InputText("Prefix", &text))
+	{
+		UTF::utf8toUtf32(text, uiInputView->prefix);
+		uiInputView->updateText();
+	}
 
 	ImGui::InputText("On Change", &uiInputView->onChange);
 	ImGui::InputText("Animation Path", &uiInputView->animationPath);
+	ImGui::ColorEdit4("Text Color", &uiInputView->textColor);
+	ImGui::ColorEdit4("Placeholder Color", &uiInputView->placeholderColor);
 }
 #endif

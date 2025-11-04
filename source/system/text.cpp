@@ -299,6 +299,54 @@ bool FontAtlas::update(u32string_view chars, uint32 fontSize, Image::Usage image
 }
 
 //**********************************************************************************************************************
+static void updateTextNewLine(Text::Instance* instances, uint32 fontSize, float newLineAdvance, float2& instanceOffset, 
+	uint32& instanceIndex, uint32& lastNewLineIndex, float2& textSize, Text::Alignment alignment) noexcept
+{
+	float offset;
+	switch (alignment)
+	{
+	case Text::Alignment::Center:
+		offset = floorf(instanceOffset.x * -0.5f * fontSize) / fontSize;
+		for (uint32 j = lastNewLineIndex; j < instanceIndex; j++)
+			instances[j].position.x += offset;
+		break;
+	case Text::Alignment::Right:
+		offset = -instanceOffset.x;
+		for (uint32 j = lastNewLineIndex; j < instanceIndex; j++)
+			instances[j].position.x += offset;
+		break;
+	case Text::Alignment::Bottom:
+		offset = floorf(instanceOffset.x * -0.5f * fontSize) / fontSize;
+		for (uint32 j = lastNewLineIndex; j < instanceIndex; j++)
+			instances[j].position.x += offset;
+		break;
+	case Text::Alignment::Top:
+		offset = floorf(instanceOffset.x * -0.5f * fontSize) / fontSize;
+		for (uint32 j = lastNewLineIndex; j < instanceIndex; j++)
+			instances[j].position.x += offset;
+		break;
+	case Text::Alignment::RightBottom:
+		offset = -instanceOffset.x;
+		for (uint32 j = lastNewLineIndex; j < instanceIndex; j++)
+			instances[j].position.x += offset;
+		break;
+	case Text::Alignment::RightTop:
+		offset = -instanceOffset.x;
+		for (uint32_t j = lastNewLineIndex; j < instanceIndex; j++)
+			instances[j].position.x += offset;
+		break;
+	case Text::Alignment::Left:
+	case Text::Alignment::LeftBottom:
+	case Text::Alignment::LeftTop:
+		break;
+	default: abort();
+	}
+
+	lastNewLineIndex = instanceIndex;
+	textSize.x = max(textSize.x, instanceOffset.x);
+	instanceOffset.y -= newLineAdvance;
+	instanceOffset.x = 0.0f;
+}
 static bool fillTextInstances(u32string_view value, Text::Properties properties, 
 	OptView<FontAtlas> fontAtlasView, Text::Instance* instances, uint32& instanceCount, float2& textSize)
 {
@@ -320,50 +368,8 @@ static bool fillTextInstances(u32string_view value, Text::Properties properties,
 		auto c = chars[i];
 		if (c == '\n')
 		{
-			float offset;
-			switch (properties.alignment)
-			{
-			case Text::Alignment::Center:
-				offset = floorf(instanceOffset.x * -0.5f * fontSize) / fontSize;
-				for (uint32 j = lastNewLineIndex; j < instanceIndex; j++)
-					instances[j].position.x += offset;
-				break;
-			case Text::Alignment::Right:
-				offset = -instanceOffset.x;
-				for (uint32 j = lastNewLineIndex; j < instanceIndex; j++)
-					instances[j].position.x += offset;
-				break;
-			case Text::Alignment::Bottom:
-				offset = floorf(instanceOffset.x * -0.5f * fontSize) / fontSize;
-				for (uint32 j = lastNewLineIndex; j < instanceIndex; j++)
-					instances[j].position.x += offset;
-				break;
-			case Text::Alignment::Top:
-				offset = floorf(instanceOffset.x * -0.5f * fontSize) / fontSize;
-				for (uint32 j = lastNewLineIndex; j < instanceIndex; j++)
-					instances[j].position.x += offset;
-				break;
-			case Text::Alignment::RightBottom:
-				offset = -instanceOffset.x;
-				for (uint32 j = lastNewLineIndex; j < instanceIndex; j++)
-					instances[j].position.x += offset;
-				break;
-			case Text::Alignment::RightTop:
-				offset = -instanceOffset.x;
-				for (uint32_t j = lastNewLineIndex; j < instanceIndex; j++)
-					instances[j].position.x += offset;
-				break;
-			case Text::Alignment::Left:
-			case Text::Alignment::LeftBottom:
-			case Text::Alignment::LeftTop:
-				break;
-			default: abort();
-			}
-
-			lastNewLineIndex = instanceIndex;
-			size.x = max(size.x, instanceOffset.x);
-			instanceOffset.y -= newLineAdvance;
-			instanceOffset.x = 0.0f;
+			updateTextNewLine(instances, fontSize, newLineAdvance, instanceOffset, 
+				instanceIndex, lastNewLineIndex, size, properties.alignment);
 			continue;
 		}
 		else if (c == '\t')
@@ -434,6 +440,12 @@ static bool fillTextInstances(u32string_view value, Text::Properties properties,
 			result = glyphs->find(U'\0');
 			if (result == glyphs->end())
 				return false;
+		}
+
+		if (instanceOffset.x + result->second.advance > properties.maxAdvanceX)
+		{
+			updateTextNewLine(instances, fontSize, newLineAdvance, instanceOffset, 
+				instanceIndex, lastNewLineIndex, size, properties.alignment);
 		}
 
 		if (result->second.value != Glyph::invisible)
@@ -617,9 +629,176 @@ bool Text::update(u32string_view value, uint32 fontSize, Properties properties,
 	Buffer::copy(stagingBuffer, instanceBuffer);
 	graphicsSystem->destroy(stagingBuffer);
 
-	this->size = textSize;
+	this->value = value;
 	this->instanceCount = instanceCount;
+	this->size = textSize;
+	this->properties = properties;
 	return true;
+}
+
+//**********************************************************************************************************************
+float2 Text::calcCaretAdvance(psize charIndex)
+{
+	GARDEN_ASSERT(charIndex < value.length());
+	auto fontAtlasView = TextSystem::Instance::get()->get(fontAtlas);
+	auto chars = value.data(); const auto& glyphArray = fontAtlasView->getGlyphs();
+	auto fontSize = fontAtlasView->getFontSize(); auto newLineAdvance = fontAtlasView->getNewLineAdvance();
+	auto isBold = properties.isBold, isItalic = properties.isItalic;
+	auto advance = float2::zero; auto lineSizeX = 0.0f;
+
+	const FontAtlas::GlyphMap* glyphs; uint32 atlasIndex;
+	if (isBold && isItalic) { atlasIndex = 3; glyphs = &glyphArray[atlasIndex]; }
+	else if (isItalic) { atlasIndex = 2; glyphs = &glyphArray[atlasIndex]; }
+	else if (isBold) { atlasIndex = 1; glyphs = &glyphArray[atlasIndex]; }
+	else { atlasIndex = 0; glyphs = &glyphArray[atlasIndex]; }
+
+	for (psize i = 0; i < value.length(); i++)
+	{
+		auto c = chars[i];
+		if (c == '\n')
+		{
+			if (i >= charIndex)
+				break;
+			advance.y -= newLineAdvance;
+			advance.x = lineSizeX = 0.0f;
+			continue;
+		}
+		else if (c == '\t')
+		{
+			auto result = glyphs->find(U' ');
+			if (result == glyphs->end())
+				throw GardenError("Failed to find glyph");
+			advance.x += result->second.advance * 4.0f; // TODO: allow to adjust tab spacing size.
+			continue;
+		}
+		else if (c == '<' && properties.useTags)
+		{
+			if (i + 2 < value.length() && chars[i + 2] == '>')
+			{
+				auto tag = chars[i + 1];
+				if (tag == 'b')
+				{
+					if (isItalic) { atlasIndex = 3; glyphs = &glyphArray[atlasIndex]; }
+					else { atlasIndex = 1; glyphs = &glyphArray[atlasIndex]; }
+					isBold = true; i += 2;
+					continue;
+				}
+				else if (tag == 'i')
+				{
+					if (isBold) { atlasIndex = 3; glyphs = &glyphArray[atlasIndex]; }
+					else { atlasIndex = 2; glyphs = &glyphArray[atlasIndex]; }
+					isItalic = true; i += 2;
+					continue;
+				}
+			}
+			else if (i + 3 < value.length() && chars[i + 1] == '/' && chars[i + 3] == '>')
+			{
+				auto tag = chars[i + 2];
+				if (tag == 'b')
+				{
+					if (isItalic) { atlasIndex = 2; glyphs = &glyphArray[atlasIndex]; }
+					else { atlasIndex = 0; glyphs = &glyphArray[atlasIndex]; }
+					isBold = false; i += 3;
+					continue;
+				}
+				else if (tag == 'i')
+				{
+					if (isBold) { atlasIndex = 1; glyphs = &glyphArray[atlasIndex]; }
+					else { atlasIndex = 0; glyphs = &glyphArray[atlasIndex]; }
+					isItalic = false; i += 3;
+					continue;
+				}
+				else if (tag == '#')
+				{
+					i += 3;
+					continue;
+				}
+			}
+			else if (i + 8 < value.length() && chars[i + 1] == '#' && chars[i + 8] == '>')
+			{
+				i += 8;
+				continue;
+			}
+			else if (i + 10 < value.length() && chars[i + 1] == '#' && chars[i + 10] == '>')
+			{
+				i += 10;
+				continue;
+			}
+		}
+
+		auto result = glyphs->find(c);
+		if (result == glyphs->end())
+		{
+			result = glyphs->find(U'\0');
+			if (result == glyphs->end())
+				throw GardenError("Failed to find glyph");
+		}
+
+		if (i < charIndex)
+			advance.x += result->second.advance;
+		lineSizeX += result->second.advance;
+	}
+
+	switch (properties.alignment)
+	{
+	default:
+		abort();
+	case Text::Alignment::Center:
+		advance.x += lineSizeX * -0.5f;
+		advance.y += (size.y - (newLineAdvance * 0.5f + newLineAdvance * 0.25f)) * 0.5f;
+		break;
+	case Text::Alignment::Left:
+		advance.y += (size.y - (newLineAdvance * 0.5f + newLineAdvance * 0.25f)) * 0.5f;
+		break;
+	case Text::Alignment::Right:
+		advance.x += -lineSizeX;
+		advance.y += (size.y - (newLineAdvance * 0.5f + newLineAdvance * 0.25f)) * 0.5f;
+		break;
+	case Text::Alignment::Bottom:
+		advance.x += lineSizeX * -0.5f;
+		advance.y += size.y - newLineAdvance * 0.5f;
+		break;
+	case Text::Alignment::Top:
+		advance.x += lineSizeX * -0.5f;
+		advance.y += newLineAdvance * -0.25f;
+		break;
+	case Text::Alignment::LeftBottom:
+		advance.y += size.y - newLineAdvance * 0.5f;
+		break;
+	case Text::Alignment::LeftTop:
+		advance.y += newLineAdvance * -0.25f;
+		break;
+	case Text::Alignment::RightBottom:
+		advance.x += -lineSizeX;
+		advance.y += size.y - newLineAdvance * 0.5f;
+		break;
+	case Text::Alignment::RightTop:
+		advance.x += -lineSizeX;
+		advance.y += newLineAdvance * -0.25f;
+		break;
+	}
+
+	return advance;
+}
+
+psize Text::calcCaretIndex(float2 caretAdvance)
+{
+	auto bestDistance = INFINITY;
+	psize index = 0;
+
+	// TODO: too heavy, use better solution!
+	for (psize i = 0; i < value.length(); i++)
+	{
+		auto checkAdvance = calcCaretAdvance(i);
+		auto distance = distanceSq(caretAdvance, checkAdvance);
+
+		if (distance < bestDistance)
+		{
+			bestDistance = distance; index = i;
+		}
+	}
+
+	return index;
 }
 
 //**********************************************************************************************************************
@@ -709,7 +888,6 @@ ID<Text> TextSystem::createText(u32string_view value, const Ref<FontAtlas>& font
 
 	auto text = texts.create();
 	auto textView = texts.get(text);
-	textView->value = value;
 	textView->fontAtlas = fontAtlas;
 	textView->atlasShared = isAtlasShared;
 

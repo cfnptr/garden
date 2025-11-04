@@ -47,7 +47,7 @@ UiTriggerSystem::~UiTriggerSystem()
 
 //**********************************************************************************************************************
 static void triggerUiComponent(Manager* manager, ID<Entity>& newElement, 
-	float& newPosZ, UiTriggerComponent& uiTriggerComp, float uiScale)
+	float& newPosZ, UiTriggerComponent& uiTriggerComp, float2 cursorPosition)
 {
 	auto entity = uiTriggerComp.getEntity();
 	if (!entity)
@@ -62,8 +62,7 @@ static void triggerUiComponent(Manager* manager, ID<Entity>& newElement,
 	auto invModel = inverse4x4(model * scale(translate(
 		f32x4(uiTriggerComp.offset.x, uiTriggerComp.offset.y, 1.0f)), 
 		f32x4(uiTriggerComp.scale.x, uiTriggerComp.scale.y, 1.0f)));
-	auto cursorPos = (inputSystem->getCursorPosition() - (float2)inputSystem->getWindowSize() * 0.5f) * uiScale;
-	auto modelCursorPos = float2(invModel * f32x4(cursorPos.x, cursorPos.y, 0.0f, 1.0f));
+	auto modelCursorPos = float2(invModel * f32x4(cursorPosition.x, cursorPosition.y, 0.0f, 1.0f));
 
 	if (abs(modelCursorPos.x) > 0.5f || abs(modelCursorPos.y) > 0.5f || modelPosZ >= newPosZ)
 		return;
@@ -98,7 +97,8 @@ void UiTriggerSystem::update()
 
 	auto componentData = components.getData();
 	auto threadSystem = ThreadSystem::Instance::tryGet();
-	auto uiScale = UiTransformSystem::Instance::get()->uiScale;
+	auto cursorPosition = UiTransformSystem::Instance::get()->getCursorPosition();
+	// TODO: take into account macOS differend window and framebuffer scale!
 	ID<Entity> newElement = {}; float newPosZ = FLT_MAX;
 
 	if (threadSystem && components.getCount() > threadSystem->getForegroundPool().getThreadCount())
@@ -107,7 +107,7 @@ void UiTriggerSystem::update()
 		newElements.assign(threadPool.getThreadCount(), make_pair(ID<Entity>(), FLT_MAX));
 		auto newElementData = newElements.data();
 
-		threadPool.addItems([componentData, newElementData, uiScale](const ThreadPool::Task& task)
+		threadPool.addItems([componentData, newElementData, cursorPosition](const ThreadPool::Task& task)
 		{
 			SET_CPU_ZONE_SCOPED("UI Trigger Update");
 
@@ -117,7 +117,7 @@ void UiTriggerSystem::update()
 			auto& newElement = threadElement.first; auto& newPosZ = threadElement.second;
 
 			for (uint32 i = task.getItemOffset(); i < itemCount; i++)
-				triggerUiComponent(manager, newElement, newPosZ, componentData[i], uiScale);
+				triggerUiComponent(manager, newElement, newPosZ, componentData[i], cursorPosition);
 		},
 		components.getOccupancy());
 		threadPool.wait();
@@ -138,7 +138,7 @@ void UiTriggerSystem::update()
 		auto manager = Manager::Instance::get();
 
 		for (uint32 i = 0; i < componentOccupancy; i++)
-			triggerUiComponent(manager, newElement, newPosZ, componentData[i], uiScale);
+			triggerUiComponent(manager, newElement, newPosZ, componentData[i], cursorPosition);
 	}
 
 	if (newElement)

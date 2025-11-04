@@ -69,6 +69,7 @@ public:
 	void write(string_view name, float value) final;
 	void write(string_view name, double value) final;
 	void write(string_view name, string_view value) final;
+	void write(string_view name, u32string_view value) final;
 	void write(string_view name, int2 value) final;
 	void write(string_view name, int3 value) final;
 	void write(string_view name, int4 value) final;
@@ -138,6 +139,7 @@ public:
 	bool read(string_view name, float& value) final;
 	bool read(string_view name, double& value) final;
 	bool read(string_view name, string& value) final;
+	bool read(string_view name, u32string& value) final;
 	bool read(string_view name, int2& value) final;
 	bool read(string_view name, int3& value) final;
 	bool read(string_view name, int4& value) final;

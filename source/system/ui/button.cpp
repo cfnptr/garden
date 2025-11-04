@@ -20,16 +20,15 @@
 
 using namespace garden;
 
-static void setUiButtonAnimation(ID<Entity> uiButton, string_view animationPath, string_view currState, string_view newState)
+static void setUiButtonAnimation(ID<Entity> element, string_view animationPath, string_view currState, string_view newState)
 {
 	if (animationPath.empty())
 		return;
 
 	auto manager = Manager::Instance::get();
-	auto transformView = manager->tryGet<TransformComponent>(uiButton);
+	auto transformView = manager->tryGet<TransformComponent>(element);
 	if (!transformView)
 		return;
-
 	auto panel = transformView->tryGetChild(0);
 	if (!panel)
 		return;
@@ -37,15 +36,15 @@ static void setUiButtonAnimation(ID<Entity> uiButton, string_view animationPath,
 	if (!animationView)
 		return;
 
-	auto transState = string(animationPath); transState += "/";
-	transState += currState; transState += "-"; transState += newState;
+	auto transState = string(animationPath); transState.push_back('/');
+	transState += currState; transState.push_back('-'); transState += newState;
 	if (animationView->hasAnimation(transState))
 	{
 		animationView->active = std::move(transState);
 	}
 	else
 	{
-		animationView->active = animationPath; animationView->active += "/";
+		animationView->active = animationPath; animationView->active.push_back('/');
 		animationView->active += newState;
 	}
 
@@ -159,8 +158,8 @@ string_view UiButtonSystem::getComponentName() const
 void UiButtonSystem::serialize(ISerializer& serializer, const View<Component> component)
 {
 	const auto componentView = View<UiButtonComponent>(component);
-	if (componentView->enabled != true)
-		serializer.write("isEnabled", componentView->enabled);
+	if (!componentView->enabled)
+		serializer.write("isEnabled", false);
 	if (!componentView->onClick.empty())
 		serializer.write("onClick", componentView->onClick);
 	if (!componentView->animationPath.empty())
@@ -179,7 +178,7 @@ void UiButtonSystem::serializeAnimation(ISerializer& serializer, View<AnimationF
 {
 	const auto frameView = View<UiButtonFrame>(frame);
 	if (frameView->animateIsEnabled)
-		serializer.write("isEnabled", frameView->isEnabled);
+		serializer.write("isEnabled", (bool)frameView->isEnabled);
 	if (frameView->animateOnClick)
 		serializer.write("onClick", frameView->onClick);
 	if (frameView->animateAnimationPath)

@@ -82,7 +82,7 @@ public:
 	 */
 	uint32 getFontSize() const noexcept { return fontSize; }
 	/**
-	 * @brief Returns font texture atlas new line advance
+	 * @brief Returns font texture atlas new line advance in glyph space.
 	 */
 	float getNewLineAdvance() const noexcept { return newLineAdvance; }
 
@@ -126,11 +126,12 @@ public:
 	 */
 	struct Properties final
 	{
-		Color color;              /**< Text sRGB color. */
-		Alignment alignment = {}; /**< Text alignment type. (Anchor) */
-		bool isBold = false;      /**< Is text bold. (Increased weight)  */
-		bool isItalic = false;    /**< Is text italic. (Oblique, tilted) */
-		bool useTags = false;     /**< Process HTML-like tags when generating text. */
+		Color color;                  /**< Text sRGB color. */
+		float maxAdvanceX = INFINITY; /**< Maximum text width in glyph space. */
+		Alignment alignment = {};     /**< Text alignment type. (Anchor) */
+		bool isBold = false;          /**< Is text bold. (Increased weight)  */
+		bool isItalic = false;        /**< Is text italic. (Oblique, tilted) */
+		bool useTags = false;         /**< Process HTML-like tags when generating text. */
 		Properties() : color(Color::white) { }
 	};
 	/**
@@ -179,7 +180,7 @@ public:
 	 */
 	uint32 getInstanceCount() const noexcept { return instanceCount; }
 	/**
-	 * @brief Returns text size.
+	 * @brief Returns text size in glyph space.
 	 */
 	float2 getSize() const noexcept { return size; }
 	/**
@@ -232,6 +233,17 @@ public:
 			return {};
 		return update(utf32, fontSize, properties, fonts, atlasUsage, instanceUsage, shrink);
 	}
+
+	/**
+	 * @brief Returns text caret (cursor) advance in glyph space.
+	 * @param charIndex target text char index
+	 */
+	float2 calcCaretAdvance(psize charIndex);
+	/**
+	 * @brief Returns text caret (cursor) index.
+	 * @param caretAdvance target text caret advance in glyph space
+	 */
+	psize calcCaretIndex(float2 caretAdvance);
 
 	// TODO: Add isDynamic mode, in which we can update font atlas and text instance buffer each frame.
 	//       In this mode there should be persistent mapped staging buffer for the atlas and instance buffer.

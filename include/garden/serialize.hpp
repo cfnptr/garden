@@ -76,6 +76,7 @@ public:
 	virtual void write(string_view name, float value) = 0;
 	virtual void write(string_view name, double value) = 0;
 	virtual void write(string_view name, string_view value) = 0;
+	virtual void write(string_view name, u32string_view value) = 0;
 	virtual void write(string_view name, int2 value) = 0;
 	virtual void write(string_view name, int3 value) = 0;
 	virtual void write(string_view name, int4 value) = 0;
@@ -133,6 +134,7 @@ public:
 	virtual bool read(string_view name, float& value) = 0;
 	virtual bool read(string_view name, double& value) = 0;
 	virtual bool read(string_view name, string& value) = 0;
+	virtual bool read(string_view name, u32string& value) = 0;
 	virtual bool read(string_view name, int2& value) = 0;
 	virtual bool read(string_view name, int3& value) = 0;
 	virtual bool read(string_view name, int4& value) = 0;

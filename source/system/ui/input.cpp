@@ -13,35 +13,55 @@
 // limitations under the License.
 
 #include "garden/system/ui/input.hpp"
+#include "garden/system/ui/transform.hpp"
 #include "garden/system/ui/trigger.hpp"
+#include "garden/system/ui/label.hpp"
 #include "garden/system/transform.hpp"
 #include "garden/system/animation.hpp"
 #include "garden/system/input.hpp"
 
+// TODO: implement input text selector.
+
 using namespace garden;
 
-static void setUiInputAnimation(ID<Entity> uiButton, string_view animationPath, string_view state)
+static void setUiInputAnimation(ID<Entity> element, string_view animationPath, u32string_view text, string_view state)
 {
 	if (animationPath.empty())
 		return;
 
 	auto manager = Manager::Instance::get();
-	auto transformView = manager->tryGet<TransformComponent>(uiButton);
+	auto transformView = manager->tryGet<TransformComponent>(element);
 	if (!transformView)
 		return;
 
 	auto panel = transformView->tryGetChild(0);
-	if (!panel)
-		return;
-	auto animationView = manager->tryGet<AnimationComponent>(panel);
-	if (!animationView)
-		return;
+	if (panel)
+	{
+		auto animationView = manager->tryGet<AnimationComponent>(panel);
+		if (animationView)
+		{
+			animationView->active = animationPath;
+			animationView->active.push_back('/');
+			animationView->active += state;
 
-	animationView->active = animationPath; animationView->active += "/";
-	animationView->active += state;
+			animationView->frame = 0.0f;
+			animationView->isPlaying = true;
+		}
+	}
 
-	animationView->frame = 0.0f;
-	animationView->isPlaying = true;
+	auto label = transformView->tryGetChild(1);
+	if (label)
+	{
+		auto animationView = manager->tryGet<AnimationComponent>(label);
+		if (animationView)
+		{
+			animationView->active = animationPath;
+			animationView->active.push_back('/');
+			animationView->active += text.empty() ? "text" : "placeholder";
+			animationView->frame = 0.0f;
+			animationView->isPlaying = true;
+		}
+	}
 }
 
 void UiInputComponent::setEnabled(bool state)
@@ -49,10 +69,128 @@ void UiInputComponent::setEnabled(bool state)
 	if (enabled == state)
 		return;
 
-	setUiInputAnimation(entity, animationPath, state ? "default" : "disabled");
+	setUiInputAnimation(entity, animationPath, text, 
+		state ? (textBad ? "bad" : "default") : "disabled");
 	enabled = state;
 }
+void UiInputComponent::setTextBad(bool state)
+{
+	if (textBad == state)
+		return;
 
+	setUiInputAnimation(entity, animationPath, text, 
+		state ? (textBad ? "bad" : "default") : "disabled");
+	textBad = state;
+}
+
+//**********************************************************************************************************************
+bool UiInputComponent::updateText(bool shrink)
+{
+	auto manager = Manager::Instance::get();
+	auto transformView = manager->tryGet<TransformComponent>(entity);
+	if (!transformView)
+		return false;
+	auto label = transformView->tryGetChild(1);
+	if (!label)
+		return false;
+	auto uiLabelView = manager->tryGet<UiLabelComponent>(label);
+	if (!uiLabelView)
+		return false;
+
+	uiLabelView->text = prefix;
+	uiLabelView->text += text.empty() ? placeholder : text;
+	uiLabelView->text.push_back(U' ');
+	uiLabelView->propterties.color = text.empty() ? placeholderColor : textColor;
+
+	if (!uiLabelView->updateText(shrink))
+		return false;
+
+	if (uiLabelView->getTextData())
+	{
+		auto textView = TextSystem::Instance::get()->get(uiLabelView->getTextData());
+		auto textLength = textView->getValue().length();
+	}
+	return true;
+}
+
+//**********************************************************************************************************************
+bool UiInputComponent::updateCaret(psize charIndex)
+{
+	auto manager = Manager::Instance::get();
+	auto transformView = manager->tryGet<TransformComponent>(entity);
+	if (!transformView)
+		return false;
+
+	auto label = transformView->tryGetChild(1);
+	auto caret = transformView->tryGetChild(2);
+	if (!label || !caret)
+		return false;
+
+	auto uiLabelView = manager->tryGet<UiLabelComponent>(label);
+	if (!uiLabelView || !uiLabelView->getTextData())
+		return false;
+
+	auto textSystem = TextSystem::Instance::get();
+	auto textView = textSystem->get(uiLabelView->getTextData());
+	auto fontAtlasView = textSystem->get(textView->getFontAtlas());
+	auto fontSize = fontAtlasView->getFontSize();
+	auto inputScale = (float2)transformView->getScale();
+	
+	if (text.empty())
+	{
+		charIndex = 0;
+	}
+	else
+	{
+		if (charIndex == SIZE_MAX)
+		{
+			auto cursorPos = UiTransformSystem::Instance::get()->getCursorPosition();
+			cursorPos = (float2)(inverse4x4(transformView->calcModel()) * 
+				f32x4(cursorPos.x, cursorPos.y, 0.0f, 1.0f));
+			cursorPos.x += 0.5f; cursorPos *= inputScale / fontSize;
+			charIndex = textView->calcCaretIndex(cursorPos) - prefix.length();
+		}
+		else charIndex = min(charIndex, text.length());
+	}
+	caretIndex = charIndex;
+
+	charIndex = min(charIndex + prefix.length(), textView->getValue().length() - 1);
+	auto caretAdvance = textView->calcCaretAdvance(charIndex) * fontSize;
+	caretAdvance.x += 1.0f;
+	
+	if (caretAdvance.x > inputScale.x)
+	{
+		// TODO: move text transform.
+	}
+	
+	caretAdvance /= inputScale; caretAdvance.x -= 0.5f;
+
+	auto caretTransformView = manager->get<TransformComponent>(caret);
+	caretTransformView->setPosition(float3(caretAdvance, -0.1f));
+	caretTransformView->setScale(float3(1.0f / inputScale.x, fontSize / inputScale.y, 1.0f));
+	caretTransformView->setActive(true);
+
+	auto animationView = manager->tryGet<AnimationComponent>(caret);
+	if (animationView)
+		animationView->frame = 0.0f;
+	return true;
+}
+bool UiInputComponent::hideCaret()
+{
+	auto manager = Manager::Instance::get();
+	auto transformView = manager->tryGet<TransformComponent>(entity);
+	if (!transformView)
+		return false;
+	auto caret = transformView->tryGetChild(2);
+	if (!caret)
+		return false;
+
+	auto caretTransformView = manager->get<TransformComponent>(caret);
+	caretTransformView->setActive(false);
+	return true;
+}
+
+//**********************************************************************************************************************
 UiInputSystem::UiInputSystem(bool setSingleton) : Singleton(setSingleton)
 {
 	auto manager = Manager::Instance::get();
@@ -97,7 +235,7 @@ void UiInputSystem::uiInputEnter()
 		return;
 
 	if (hoveredElement != activeInput)
-		setUiInputAnimation(hoveredElement, uiInputView->animationPath, "hovered");
+		setUiInputAnimation(hoveredElement, uiInputView->animationPath, uiInputView->text, "hovered");
 	InputSystem::Instance::get()->setCursorType(CursorType::Ibeam);
 }
 void UiInputSystem::uiInputExit()
@@ -108,7 +246,10 @@ void UiInputSystem::uiInputExit()
 		return;
 
 	if (hoveredElement != activeInput)
-		setUiInputAnimation(hoveredElement, uiInputView->animationPath, "default");
+	{
+		setUiInputAnimation(hoveredElement, uiInputView->animationPath, 
+			uiInputView->text, uiInputView->textBad ? "bad" : "default");
+	}
 	InputSystem::Instance::get()->setCursorType(CursorType::Default);
 }
 void UiInputSystem::uiInputStay()
@@ -120,36 +261,107 @@ void UiInputSystem::uiInputStay()
 
 	if (InputSystem::Instance::get()->isMousePressed(MouseButton::Left))
 	{
-		setUiInputAnimation(hoveredElement, uiInputView->animationPath, "active");
+		setUiInputAnimation(hoveredElement, uiInputView->animationPath, 
+			uiInputView->text, uiInputView->textBad ? "bad" : "active");
+		uiInputView->updateCaret();
 		activeInput = hoveredElement;
 	}
 }
 
+//**********************************************************************************************************************
+void UiInputSystem::updateActive()
+{
+	auto uiInputView = Manager::Instance::get()->tryGet<UiInputComponent>(activeInput);
+	if (!uiInputView)
+		return;
+
+	auto inputSystem = InputSystem::Instance::get();
+	auto& keyboardChars = inputSystem->getKeyboardChars32();
+	if (!keyboardChars.empty())
+	{
+		if (uiInputView->caretIndex < uiInputView->text.length())
+			uiInputView->text.insert(uiInputView->caretIndex, keyboardChars);
+		else uiInputView->text += keyboardChars;
+
+		uiInputView->updateText();
+		uiInputView->updateCaret(uiInputView->caretIndex + keyboardChars.size());
+	}
+
+	if (uiInputView->text.empty())
+		return;
+
+	auto isRepeated = false;
+	if (inputSystem->getKeyboardState(KeyboardButton::Left) ||
+		inputSystem->getKeyboardState(KeyboardButton::Right) ||
+		inputSystem->getKeyboardState(KeyboardButton::Backspace) ||
+		inputSystem->getKeyboardState(KeyboardButton::Delete))
+	{
+		if (repeatTime < inputSystem->getSystemTime())
+		{
+			repeatTime = inputSystem->getSystemTime() + repeatSpeed;
+			isRepeated = true;
+		}
+	}
+	else repeatTime = inputSystem->getSystemTime() + repeatDelay;
+
+	if (inputSystem->isMouseReleased(MouseButton::Left))
+	{
+		uiInputView->updateCaret();
+	}
+	else if (inputSystem->isKeyboardPressed(KeyboardButton::Right) ||
+		(isRepeated && inputSystem->getKeyboardState(KeyboardButton::Right)))
+	{
+		uiInputView->updateCaret(uiInputView->caretIndex + 1);
+	}
+	else if (inputSystem->isKeyboardPressed(KeyboardButton::Left) ||
+		(isRepeated && inputSystem->getKeyboardState(KeyboardButton::Left)))
+	{
+		if (uiInputView->caretIndex > 0)
+			uiInputView->updateCaret(uiInputView->caretIndex - 1);
+	}
+
+	if (inputSystem->isKeyboardPressed(KeyboardButton::Backspace) || 
+		(isRepeated && inputSystem->getKeyboardState(KeyboardButton::Backspace)))
+	{
+		if (uiInputView->caretIndex > 0 && uiInputView->caretIndex <= uiInputView->text.length())
+		{
+			uiInputView->text.erase(uiInputView->caretIndex - 1, 1);
+			uiInputView->updateText();
+			uiInputView->updateCaret(uiInputView->caretIndex - 1);
+		}
+	}
+	if (inputSystem->isKeyboardPressed(KeyboardButton::Delete) ||
+		(isRepeated && inputSystem->getKeyboardState(KeyboardButton::Delete)))
+	{
+		if (uiInputView->caretIndex > 0 && uiInputView->caretIndex < uiInputView->text.length())
+		{
+			uiInputView->text.erase(uiInputView->caretIndex, 1);
+			uiInputView->updateText();
+		}
+	}
+}
 void UiInputSystem::update()
 {
 	if (activeInput)
 	{
 		auto inputSystem = InputSystem::Instance::get();
-		auto deactivateInput = false;
+		auto hoveredElement = UiTriggerSystem::Instance::get()->getHovered();
 
-		if (inputSystem->getCursorMode() != CursorMode::Normal)
-			deactivateInput = true;
-		else if (inputSystem->isMousePressed(MouseButton::Left))
-		{
-			auto hoveredElement = UiTriggerSystem::Instance::get()->getHovered();
-			deactivateInput = activeInput != hoveredElement;
-		}
-
-		if (deactivateInput)
+		if (inputSystem->getCursorMode() != CursorMode::Normal || 
+			(inputSystem->isMousePressed(MouseButton::Left) && activeInput != hoveredElement))
 		{
 			auto uiInputView = Manager::Instance::get()->tryGet<UiInputComponent>(activeInput);
 			if (uiInputView)
-				setUiInputAnimation(activeInput, uiInputView->animationPath, "default");
+			{
+				setUiInputAnimation(activeInput, uiInputView->animationPath, 
+					uiInputView->text, uiInputView->textBad ? "bad" : "default");
+				uiInputView->hideCaret();
+			}
 			activeInput = {};
 		}
-		else
+		else 
 		{
-			// TODO: update input
+			updateActive();
 		}
 	}
 }
@@ -163,19 +375,37 @@ string_view UiInputSystem::getComponentName() const
 void UiInputSystem::serialize(ISerializer& serializer, const View<Component> component)
 {
 	const auto componentView = View<UiInputComponent>(component);
-	if (componentView->enabled != true)
-		serializer.write("isEnabled", componentView->enabled);
+	if (!componentView->enabled)
+		serializer.write("isEnabled", false);
+	if (componentView->textBad)
+		serializer.write("isTextBad", true);
+	if (!componentView->text.empty())
+		serializer.write("text", componentView->text);
+	if (!componentView->placeholder.empty())
+		serializer.write("placeholder", componentView->placeholder);
+	if (!componentView->prefix.empty())
+		serializer.write("prefix", componentView->prefix);
 	if (!componentView->onChange.empty())
 		serializer.write("onChange", componentView->onChange);
 	if (!componentView->animationPath.empty())
 		serializer.write("animationPath", componentView->animationPath);
+	if (componentView->textColor != Color::white)
+		serializer.write("textColor", componentView->textColor);
+	if (componentView->placeholderColor != Color(127, 127, 127, 255))
+		serializer.write("placeholderColor", componentView->placeholderColor);
 }
 void UiInputSystem::deserialize(IDeserializer& deserializer, View<Component> component)
 {
 	auto componentView = View<UiInputComponent>(component);
 	deserializer.read("isEnabled", componentView->enabled);
+	deserializer.read("isTextBad", componentView->textBad);
+	deserializer.read("text", componentView->text);
+	deserializer.read("placeholder", componentView->placeholder);
+	deserializer.read("prefix", componentView->prefix);
 	deserializer.read("onChange", componentView->onChange);
 	deserializer.read("animationPath", componentView->animationPath);
+	deserializer.read("textColor", componentView->textColor);
+	deserializer.read("placeholderColor", componentView->placeholderColor);
 }
 
 //**********************************************************************************************************************
@@ -183,19 +413,12 @@ void UiInputSystem::serializeAnimation(ISerializer& serializer, View<AnimationFr
 {
 	const auto frameView = View<UiInputFrame>(frame);
 	if (frameView->animateIsEnabled)
-		serializer.write("isEnabled", frameView->isEnabled);
-	if (frameView->animateOnChange)
-		serializer.write("onChange", frameView->onChange);
-	if (frameView->animateAnimationPath)
-		serializer.write("animationPath", frameView->animationPath);
+		serializer.write("isEnabled", (bool)frameView->isEnabled);
 }
 void UiInputSystem::deserializeAnimation(IDeserializer& deserializer, View<AnimationFrame> frame)
 {
-	auto frameView = View<UiInputFrame>(frame); auto isEnabled = true;
-	frameView->animateIsEnabled = deserializer.read("isEnabled", isEnabled);
-	frameView->animateOnChange = deserializer.read("onChange", frameView->onChange);
-	frameView->animateAnimationPath = deserializer.read("animationPath", frameView->animationPath);
-	frameView->isEnabled = isEnabled;
+	auto frameView = View<UiInputFrame>(frame);
+	frameView->animateIsEnabled = deserializer.read("isEnabled", frameView->isEnabled);
 }
 
 void UiInputSystem::animateAsync(View<Component> component, View<AnimationFrame> a, View<AnimationFrame> b, float t)
@@ -206,8 +429,4 @@ void UiInputSystem::animateAsync(View<Component> component, View<AnimationFrame>
 
 	if (frameA->animateIsEnabled)
 		componentView->enabled = (bool)round(t) ? frameB->isEnabled : frameA->isEnabled;
-	if (frameA->animateOnChange)
-		componentView->onChange = (bool)round(t) ? frameB->onChange : frameA->onChange;
-	if (frameA->animateAnimationPath)
-		componentView->animationPath = (bool)round(t) ? frameB->animationPath : frameA->animationPath;
 }

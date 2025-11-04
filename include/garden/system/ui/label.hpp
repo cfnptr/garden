@@ -36,7 +36,7 @@ struct UiLabelComponent final : public MeshRenderComponent
 	vector<fs::path> fontPaths; /**< Text font paths. */
 	#endif
 
-	string text = "";                  /**> UI label text string. */
+	u32string text = U"";              /**> UI label text string. */
 	Text::Properties propterties = {}; /**< UI label text properties. */
 	uint32 fontSize = 16;              /**< Text font size in pixels.*/
 private:
@@ -81,7 +81,7 @@ struct UiLabelFrame final : public AnimationFrame
 	vector<fs::path> fontPaths;
 	#endif
 
-	string text = "";
+	u32string text = U"";
 	Text::Properties propterties = {};
 	uint32 fontSize = 16;
 	ID<Text> textData = {};

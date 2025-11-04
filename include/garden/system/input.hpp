@@ -152,9 +152,10 @@ private:
 	vector<bool> newMouseStates;
 	vector<bool> lastMouseStates;
 	vector<bool> currMouseStates;
-	vector<uint32> accumKeyboardChars;
-	vector<uint32> newKeyboardChars;
-	vector<uint32> currKeyboardChars;
+	u32string accumKeyboardChars;
+	u32string newKeyboardChars;
+	u32string currKeyboardChars;
+	string currKeyboardChars8;
 	vector<fs::path> accumFileDrops;
 	vector<fs::path> newFileDrops;
 	vector<fs::path> currFileDrops;
@@ -417,11 +418,11 @@ public:
 	/**
 	 * @brief Returns current keyboard text input array. (UTF-32 encoded)
 	 */
-	const vector<uint32>& getKeyboardChars32() const noexcept { return currKeyboardChars; }
+	const u32string& getKeyboardChars32() const noexcept { return currKeyboardChars; }
 	/**
 	 * @brief Returns current keyboard text input array. (UTF-8 encoded)
 	 */
-	const string& getKeyboardChars() const noexcept { abort(); } // TODO: decode UTF-32 buffer
+	const string& getKeyboardChars() const noexcept { return currKeyboardChars8; }
 
 	/**
 	 * @brief Returns current dropped file path.

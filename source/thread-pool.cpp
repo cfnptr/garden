@@ -31,7 +31,7 @@ using namespace garden;
 void ThreadPool::threadFunction(uint32 index)
 {
 	auto threadName = name.empty() ? "" : name;
-	threadName += "#"; threadName += to_string(index);
+	threadName.push_back('#'); threadName += to_string(index);
 	mpmt::Thread::setName(threadName.c_str());
 
 	if (background)

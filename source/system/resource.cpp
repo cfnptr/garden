@@ -2224,8 +2224,8 @@ ID<Entity> ResourceSystem::loadScene(const fs::path& path, bool addRootEntity)
 	}
 	catch (exception& e)
 	{
-		GARDEN_LOG_ERROR("Failed to deserialize scene. ("
-			"path: " + path.generic_string() + ", error: " + string(e.what()) + ")");
+		GARDEN_LOG_ERROR("Failed to deserialize scene. (path: " + 
+			path.generic_string() + ", error: " + string(e.what()) + ")");
 		return {};
 	}
 	#endif
@@ -2270,6 +2270,8 @@ ID<Entity> ResourceSystem::loadScene(const fs::path& path, bool addRootEntity)
 				if (componentCount == 0)
 				{
 					deserializer.endChild();
+					GARDEN_LOG_ERROR("Missing scene entity components. (path: " + 
+						path.generic_string() + ", entity: " + to_string(i) + ")");
 					continue;
 				}
 
@@ -2283,6 +2285,8 @@ ID<Entity> ResourceSystem::loadScene(const fs::path& path, bool addRootEntity)
 					if (!deserializer.read(".type", type))
 					{
 						deserializer.endArrayElement();
+						GARDEN_LOG_ERROR("Missing scene component type. (path: " + path.generic_string() + 
+							", entity: " + to_string(i) + ", component: " + to_string(j) + ")");
 						continue;
 					}
 
@@ -2290,6 +2294,8 @@ ID<Entity> ResourceSystem::loadScene(const fs::path& path, bool addRootEntity)
 					if (result == componentNames.end())
 					{
 						deserializer.endArrayElement();
+						GARDEN_LOG_ERROR("Unknown scene component type. (path: " + path.generic_string() + 
+							", entity: " + to_string(i) + ", component: " + to_string(j) + ")");
 						continue;
 					}
 
@@ -2298,6 +2304,8 @@ ID<Entity> ResourceSystem::loadScene(const fs::path& path, bool addRootEntity)
 					if (!serializableSystem)
 					{
 						deserializer.endArrayElement();
+						GARDEN_LOG_ERROR("Not serializable scene system. (path: " + path.generic_string() + 
+							", entity: " + to_string(i) + ", component: " + to_string(j) + ")");
 						continue;
 					}
 
@@ -2308,6 +2316,8 @@ ID<Entity> ResourceSystem::loadScene(const fs::path& path, bool addRootEntity)
 
 				if (!manager->hasComponents(entity))
 				{
+					GARDEN_LOG_ERROR("Missing scene entity components. (path: " + 
+						path.generic_string() + ", entity: " + to_string(i) + ")");
 					manager->destroy(entity);
 				}
 				else
@@ -2554,8 +2564,8 @@ Ref<Animation> ResourceSystem::loadAnimation(const fs::path& path, bool loadShar
 	}
 	catch (exception& e)
 	{
-		GARDEN_LOG_ERROR("Failed to deserialize animation. ("
-			"path: " + path.generic_string() + ", error: " + string(e.what()) + ")");
+		GARDEN_LOG_ERROR("Failed to deserialize animation. (path: " + 
+			path.generic_string() + ", error: " + string(e.what()) + ")");
 		return {};
 	}
 	#endif
@@ -2591,6 +2601,8 @@ Ref<Animation> ResourceSystem::loadAnimation(const fs::path& path, bool loadShar
 					if (!deserializer.read(".type", type))
 					{
 						deserializer.endArrayElement();
+						GARDEN_LOG_ERROR("Missing animation component type. (path: " + path.generic_string() + 
+							", keyframe: " + to_string(i) + ", component: " + to_string(j) + ")");
 						continue;
 					}
 
@@ -2598,6 +2610,8 @@ Ref<Animation> ResourceSystem::loadAnimation(const fs::path& path, bool loadShar
 					if (result == componentNames.end())
 					{
 						deserializer.endArrayElement();
+						GARDEN_LOG_ERROR("Unknown animation component type. (path: " + path.generic_string() + 
+							", keyframe: " + to_string(i) + ", component: " + to_string(j) + ")");
 						continue;
 					}
 
@@ -2606,6 +2620,8 @@ Ref<Animation> ResourceSystem::loadAnimation(const fs::path& path, bool loadShar
 					if (!animatableSystem)
 					{
 						deserializer.endArrayElement();
+						GARDEN_LOG_ERROR("Not animatable system. (path: " + path.generic_string() + 
+							", keyframe: " + to_string(i) + ", component: " + to_string(j) + ")");
 						continue;
 					}
 
@@ -2617,6 +2633,8 @@ Ref<Animation> ResourceSystem::loadAnimation(const fs::path& path, bool loadShar
 					{
 						animatableSystem->destroyAnimation(animationFrame);
 						deserializer.endArrayElement();
+						GARDEN_LOG_ERROR("Missing keyframe animation. (path: " + path.generic_string() + 
+							", keyframe: " + to_string(i) + ", component: " + to_string(j) + ")");
 						continue;
 					}
 
@@ -2635,13 +2653,27 @@ Ref<Animation> ResourceSystem::loadAnimation(const fs::path& path, bool loadShar
 					deserializer.endArrayElement();
 				}
 
-				if (!animatables.empty())
+				if (animatables.empty())
+				{
+					GARDEN_LOG_ERROR("Missing keyframe animatables. (path: " + 
+						path.generic_string() + ", keyframe: " + to_string(i) + ")");
+				}
+				else
+				{
 					animationView->emplaceKeyframe(frame, std::move(animatables));
+				}
 				deserializer.endChild();
 			}
 			deserializer.endArrayElement();
 		}
 		deserializer.endChild();
+	}
+
+	if (animationView->getKeyframes().empty())
+	{
+		animationSystem->destroy(animation);
+		GARDEN_LOG_ERROR("Missing animation keyframes. (path: " + path.generic_string() + ")");
+		return {};
 	}
 
 	auto animationRef = Ref<Animation>(animation);
@@ -2693,8 +2725,8 @@ void ResourceSystem::storeAnimation(const fs::path& path, ID<Animation> animatio
 	const auto animationView = AnimationSystem::Instance::get()->get(animation);
 	if (animationView->frameRate != 30.0f)
 		serializer.write("frameRate", animationView->frameRate);
-	if (animationView->isLooped != true)
-		serializer.write("isLooped", animationView->isLooped);
+	if (!animationView->isLooped)
+		serializer.write("isLooped", false);
 
 	const auto& keyframes = animationView->getKeyframes();
 	if (keyframes.empty())

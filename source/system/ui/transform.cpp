@@ -83,6 +83,9 @@ void UiTransformSystem::update()
 {
 	SET_CPU_ZONE_SCOPED("UI Transform Update");
 
+	auto inputSystem = InputSystem::Instance::get();
+	cursorPosition = (inputSystem->getCursorPosition() - (float2)inputSystem->getWindowSize() * 0.5f) * uiScale;
+
 	if (components.getCount() == 0)
 		return;
 

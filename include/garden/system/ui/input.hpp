@@ -30,14 +30,20 @@ class UiInputSystem;
  */
 struct UiInputComponent final : public Component
 {
-protected:
-	uint16 _alignment = 0;
 	bool enabled = true;
+	bool textBad = false;
+	uint8 _alignment = 0;
+	psize caretIndex = 0;
 
 	friend class garden::UiInputSystem;
 public:
-	string onChange = "";      /**< On UI input change event. */
-	string animationPath = ""; /**< UI input state animation path. */
+	u32string text = U"";           /**< UI input text string. */
+	u32string placeholder = U"";    /**< UI input placeholder string. (Filler) */
+	u32string prefix = U"";        /**< UI input prefix string. [string = prefix + text] */
+	string onChange = "";           /**< On UI input change event. */
+	string animationPath = "";      /**< UI input state animation path. */
+	Color textColor = Color::white; /**< UI input text sRGB color. */
+	Color placeholderColor = Color(127, 127, 127, 255); /**< UI input placeholder sRGB color. */
 
 	/**
 	 * @brief Returns true if UI input is enabled.
@@ -48,6 +54,40 @@ public:
 	 * @param state target input state
 	 */
 	void setEnabled(bool state);
+
+	/**
+	 * @brief Returns true if UI input text is bad. (Invalid)
+	 */
+	bool isTextBad() const noexcept { return textBad; }
+	/**
+	 * @brief Sets UI input text bad state. (Invalid)
+	 * @param state target input text state
+	 */
+	void setTextBad(bool state);
+
+	/**
+	 * @brief Updates UI input field label text.
+	 * @return True on success, otherwise false.
+	 * @param shrink reduce internal memory usage
+	 */
+	bool updateText(bool shrink = false);
+
+	/**
+	 * @brief Updates UI input caret (cursor).
+	 * @return True on success, otherwise false.
+	 * @param charIndex target text char index or SIZE_MAX
+	 */
+	bool updateCaret(psize charIndex = SIZE_MAX);
+	/**
+	 * @brief Hides UI input caret (cursor).
+	 * @return True on success, otherwise false.
+	 */
+	bool hideCaret();
+
+	/**
+	 * @brief Returns UI input caret text char index.
+	 */
+	psize getCaretIndex() const noexcept { return caretIndex; }
 };
 
 /**
@@ -55,17 +95,10 @@ public:
  */
 struct UiInputFrame final : public AnimationFrame
 {
-	uint8 animateIsEnabled : 1;
-	uint8 animateOnChange : 1;
-	uint8 animateAnimationPath : 1;
-	uint8 isEnabled : 1;
-	uint16 _alignment = 0;
-	string onChange = "";
-	string animationPath = "";
+	bool animateIsEnabled = false;
+	bool isEnabled = true;
 
-	UiInputFrame() : animateIsEnabled(false), animateOnChange(false), 
-		animateAnimationPath(false), isEnabled(true) { }
-	bool hasAnimation() final { return animateIsEnabled || animateOnChange || animateAnimationPath; }
+	bool hasAnimation() final { return animateIsEnabled; }
 };
 
 /***********************************************************************************************************************
@@ -75,6 +108,7 @@ class UiInputSystem final : public CompAnimSystem<UiInputComponent, UiInputFrame
 	public Singleton<UiInputSystem>, public ISerializable
 {
 	ID<Entity> activeInput = {};
+	double repeatTime = 0.0;
 
 	/**
 	 * @brief Creates a new user interface input element system instance. (UI, GUI)
@@ -89,6 +123,8 @@ class UiInputSystem final : public CompAnimSystem<UiInputComponent, UiInputFrame
 	void uiInputEnter();
 	void uiInputExit();
 	void uiInputStay();
+
+	void updateActive();
 	void update();
 
 	string_view getComponentName() const final;
@@ -101,6 +137,9 @@ class UiInputSystem final : public CompAnimSystem<UiInputComponent, UiInputFrame
 	void animateAsync(View<Component> component, View<AnimationFrame> a, View<AnimationFrame> b, float t) final;
 
 	friend class ecsm::Manager;
+public:
+	float repeatDelay = 0.5f; /**< Time until starting to repeat pressed keys in seconds. */
+	float repeatSpeed = 0.05f; /**< Pressed keys repeat delay speed in seconds. */
 };
 
 } // namespace garden

@@ -19,16 +19,15 @@
 
 using namespace garden;
 
-static void setUiCheckboxAnimation(ID<Entity> uiCheckbox, string_view animationPath, bool state)
+static void setUiCheckboxAnimation(ID<Entity> element, string_view animationPath, bool state)
 {
 	if (animationPath.empty())
 		return;
 
 	auto manager = Manager::Instance::get();
-	auto transformView = manager->tryGet<TransformComponent>(uiCheckbox);
+	auto transformView = manager->tryGet<TransformComponent>(element);
 	if (!transformView)
 		return;
-
 	auto checkmark = transformView->tryGetChild(1);
 	if (!checkmark)
 		return;
@@ -36,7 +35,7 @@ static void setUiCheckboxAnimation(ID<Entity> uiCheckbox, string_view animationP
 	if (!animationView)
 		return;
 
-	animationView->active = animationPath; animationView->active += "/";
+	animationView->active = animationPath; animationView->active.push_back('/');
 	animationView->active += state ? "set" : "unset";
 	animationView->frame = 0.0f;
 	animationView->isPlaying = true;
@@ -107,10 +106,10 @@ string_view UiCheckboxSystem::getComponentName() const
 void UiCheckboxSystem::serialize(ISerializer& serializer, const View<Component> component)
 {
 	const auto componentView = View<UiCheckboxComponent>(component);
-	if (componentView->enabled != true)
-		serializer.write("isEnabled", componentView->enabled);
-	if (componentView->checked != false)
-		serializer.write("isChecked", componentView->checked);
+	if (!componentView->enabled)
+		serializer.write("isEnabled", false);
+	if (componentView->checked)
+		serializer.write("isChecked", true);
 	if (!componentView->onChange.empty())
 		serializer.write("onChange", componentView->onChange);
 	if (!componentView->animationPath.empty())
@@ -130,9 +129,9 @@ void UiCheckboxSystem::serializeAnimation(ISerializer& serializer, View<Animatio
 {
 	const auto frameView = View<UiCheckboxFrame>(frame);
 	if (frameView->animateIsEnabled)
-		serializer.write("isEnabled", frameView->isEnabled);
+		serializer.write("isEnabled", (bool)frameView->isEnabled);
 	if (frameView->animateIsChecked)
-		serializer.write("isChecked", frameView->isChecked);
+		serializer.write("isChecked", (bool)frameView->isChecked);
 	if (frameView->animateOnChange)
 		serializer.write("onChange", frameView->onChange);
 	if (frameView->animateAnimationPath)
