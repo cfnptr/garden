@@ -2276,6 +2276,7 @@ ID<Entity> ResourceSystem::loadScene(const fs::path& path, bool addRootEntity)
 				}
 
 				auto entity = manager->createEntity();
+				manager->reserveComponents(entity, componentCount);
 
 				for (uint32 j = 0; j < componentCount; j++)
 				{

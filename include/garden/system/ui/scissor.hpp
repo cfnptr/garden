@@ -30,7 +30,7 @@ struct UiScissorComponent final : public Component
 {
 	float2 offset = float2::zero; /**< UI scissor zone offset. */
 	float2 scale = float2::one;   /**< UI scissor zone scale. */
-	bool ignore = false;          /**< Ignore all scissors for this entity. */
+	bool useItsels = false;       /**< Use scissor on this entity itself. */
 };
 
 /**

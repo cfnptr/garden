@@ -34,25 +34,21 @@ static void setUiInputAnimation(ID<Entity> element, string_view animationPath, u
 	if (!transformView)
 		return;
 
-	auto panel = transformView->tryGetChild(0);
-	if (panel)
+	auto animationView = manager->tryGet<AnimationComponent>(element);
+	if (animationView)
 	{
-		auto animationView = manager->tryGet<AnimationComponent>(panel);
-		if (animationView)
-		{
-			animationView->active = animationPath;
-			animationView->active.push_back('/');
-			animationView->active += state;
+		animationView->active = animationPath;
+		animationView->active.push_back('/');
+		animationView->active += state;
 
-			animationView->frame = 0.0f;
-			animationView->isPlaying = true;
-		}
+		animationView->frame = 0.0f;
+		animationView->isPlaying = true;
 	}
 
-	auto label = transformView->tryGetChild(1);
+	auto label = transformView->tryGetChild(0);
 	if (label)
 	{
-		auto animationView = manager->tryGet<AnimationComponent>(label);
+		animationView = manager->tryGet<AnimationComponent>(label);
 		if (animationView)
 		{
 			animationView->active = animationPath;
@@ -91,7 +87,7 @@ bool UiInputComponent::updateText(bool shrink)
 	auto transformView = manager->tryGet<TransformComponent>(entity);
 	if (!transformView)
 		return false;
-	auto label = transformView->tryGetChild(1);
+	auto label = transformView->tryGetChild(0);
 	if (!label)
 		return false;
 	auto uiLabelView = manager->tryGet<UiLabelComponent>(label);
@@ -113,8 +109,8 @@ bool UiInputComponent::updateCaret(psize charIndex)
 	if (!transformView)
 		return false;
 
-	auto label = transformView->tryGetChild(1);
-	auto caret = transformView->tryGetChild(2);
+	auto label = transformView->tryGetChild(0);
+	auto caret = transformView->tryGetChild(1);
 	if (!label || !caret)
 		return false;
 
@@ -173,7 +169,7 @@ bool UiInputComponent::hideCaret()
 	auto transformView = manager->tryGet<TransformComponent>(entity);
 	if (!transformView)
 		return false;
-	auto caret = transformView->tryGetChild(2);
+	auto caret = transformView->tryGetChild(1);
 	if (!caret)
 		return false;
 

@@ -49,15 +49,15 @@ void UiScissorSystem::serialize(ISerializer& serializer, const View<Component> c
 		serializer.write("offset", componentView->offset);
 	if (componentView->scale != float2::one)
 		serializer.write("scale", componentView->scale);
-	if (componentView->ignore)
-		serializer.write("ignore", true);
+	if (componentView->useItsels)
+		serializer.write("useItsels", true);
 }
 void UiScissorSystem::deserialize(IDeserializer& deserializer, View<Component> component)
 {
 	auto componentView = View<UiScissorComponent>(component);
 	deserializer.read("offset", componentView->offset);
 	deserializer.read("scale", componentView->scale);
-	deserializer.read("ignore", componentView->ignore);
+	deserializer.read("useItsels", componentView->useItsels);
 }
 
 //**********************************************************************************************************************
@@ -109,17 +109,14 @@ int4 UiScissorSystem::calcScissor(ID<Entity> entity) const noexcept
 	if (!transformView)
 		return int4::zero;
 
-	auto uiScissorView = manager->tryGet<UiScissorComponent>(entity);
-	if (uiScissorView && uiScissorView->ignore)
-		return int4::zero;
-
 	auto inputSystem = InputSystem::Instance::get();
 	auto windowScale = inputSystem->getWindowScale();
 	auto framebufferSize = inputSystem->getFramebufferSize();
 	auto uiHalfSize = UiTransformSystem::Instance::get()->getUiSize() * 0.5f;
 	auto scissor = int4(int2::zero, framebufferSize);
 
-	if (uiScissorView)
+	auto uiScissorView = manager->tryGet<UiScissorComponent>(entity);
+	if (uiScissorView && uiScissorView->useItsels)
 	{
 		auto newScissor = calcUiScissor(*uiScissorView, *transformView, windowScale, uiHalfSize);
 		scissor = int4(max((int2)scissor, (int2)newScissor), min(

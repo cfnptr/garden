@@ -28,7 +28,7 @@ static void setUiCheckboxAnimation(ID<Entity> element, string_view animationPath
 	auto transformView = manager->tryGet<TransformComponent>(element);
 	if (!transformView)
 		return;
-	auto checkmark = transformView->tryGetChild(1);
+	auto checkmark = transformView->tryGetChild(0);
 	if (!checkmark)
 		return;
 	auto animationView = manager->tryGet<AnimationComponent>(checkmark);
