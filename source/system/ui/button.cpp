@@ -27,13 +27,8 @@ static void setUiButtonAnimation(ID<Entity> element, string_view animationPath, 
 
 	auto manager = Manager::Instance::get();
 	auto transformView = manager->tryGet<TransformComponent>(element);
-	if (!transformView)
-		return;
-	auto panel = transformView->tryGetChild(0);
-	if (!panel)
-		return;
-	auto animationView = manager->tryGet<AnimationComponent>(panel);
-	if (!animationView)
+	auto animationView = manager->tryGet<AnimationComponent>(element);
+	if (!transformView || !animationView)
 		return;
 
 	auto transState = string(animationPath); transState.push_back('/');

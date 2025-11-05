@@ -75,6 +75,6 @@ void UiScissorEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 		ImGui::EndPopup();
 	}
 
-	ImGui::Checkbox("Ignore", &uiLabelView->ignore);
+	ImGui::Checkbox("Use Itself", &uiLabelView->useItsels);
 }
 #endif
