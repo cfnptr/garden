@@ -126,13 +126,12 @@ public:
 	 */
 	struct Properties final
 	{
-		Color color;                  /**< Text sRGB color. */
-		float maxAdvanceX = INFINITY; /**< Maximum text width in glyph space. */
-		Alignment alignment = {};     /**< Text alignment type. (Anchor) */
-		bool isBold = false;          /**< Is text bold. (Increased weight)  */
-		bool isItalic = false;        /**< Is text italic. (Oblique, tilted) */
-		bool useTags = false;         /**< Process HTML-like tags when generating text. */
-		Properties() : color(Color::white) { }
+		float maxAdvanceX;        /**< Maximum text width in glyph space. */
+		Alignment alignment = {}; /**< Text alignment type. (Anchor) */
+		bool isBold = false;      /**< Is text bold. (Increased weight)  */
+		bool isItalic = false;    /**< Is text italic. (Oblique, tilted) */
+		bool useTags = false;     /**< Process HTML-like tags when generating text. */
+		Properties() : maxAdvanceX(INFINITY) { }
 	};
 	/**
 	 * @brief Text quad rendering instance data.
@@ -153,7 +152,6 @@ public:
 	static constexpr Buffer::Usage defaultBufferFlags = 
 		Buffer::Usage::TransferDst | Buffer::Usage::TransferQ | Buffer::Usage::Storage;
 private:
-	u32string value = {};
 	Ref<FontAtlas> fontAtlas = {};
 	ID<Buffer> instanceBuffer = {};
 	uint32 instanceCount = 0;
@@ -163,10 +161,6 @@ private:
 
 	friend class garden::TextSystem;
 public:
-	/**
-	 * @brief Returns text string value.
-	 */
-	const u32string& getValue() const noexcept { return value; }
 	/**
 	 * @brief Returns text font texture atlas.
 	 */
@@ -235,15 +229,21 @@ public:
 	}
 
 	/**
-	 * @brief Returns text caret (cursor) advance in glyph space.
+	 * @brief Calculates text caret (cursor) advance in glyph space.
+	 * @return Caret advance on success, otherwise float2::minusOne.
+	 *
+	 * @param value text string value
 	 * @param charIndex target text char index
 	 */
-	float2 calcCaretAdvance(psize charIndex);
+	float2 calcCaretAdvance(u32string_view value, psize charIndex);
 	/**
-	 * @brief Returns text caret (cursor) index.
+	 * @brief Calculates text caret (cursor) index.
+	 * @return Caret char index on success, otherwise SIZE_MAX.
+	 *
+	 * @param value text string value
 	 * @param caretAdvance target text caret advance in glyph space
 	 */
-	psize calcCaretIndex(float2 caretAdvance);
+	psize calcCaretIndex(u32string_view value, float2 caretAdvance);
 
 	// TODO: Add isDynamic mode, in which we can update font atlas and text instance buffer each frame.
 	//       In this mode there should be persistent mapped staging buffer for the atlas and instance buffer.

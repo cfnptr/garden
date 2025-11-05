@@ -157,6 +157,7 @@ struct SetViewportCommand final : public Command
 	uint8 _alignment0 = 0;
 	uint16 _alignment1 = 0;
 	float4 viewport = float4::zero;
+	int2 framebufferSize = int2::zero;
 	SetViewportCommand() noexcept : Command(Type::SetViewport) { }
 };
 struct SetScissorCommand final : public Command
@@ -164,6 +165,7 @@ struct SetScissorCommand final : public Command
 	uint8 _alignment0 = 0;
 	uint16 _alignment1 = 0;
 	int4 scissor = int4::zero;
+	int2 framebufferSize = int2::zero;
 	SetScissorCommand() noexcept : Command(Type::SetScissor) { }
 };
 struct SetViewportScissorCommand final : public Command
@@ -171,6 +173,7 @@ struct SetViewportScissorCommand final : public Command
 	uint8 _alignment0 = 0;
 	uint16 _alignment1 = 0;
 	float4 viewportScissor = float4::zero;
+	int2 framebufferSize = int2::zero;
 	SetViewportScissorCommand() noexcept : Command(Type::SetViewportScissor) { }
 };
 

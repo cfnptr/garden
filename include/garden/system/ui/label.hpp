@@ -20,6 +20,7 @@
 #pragma once
 #include "garden/animate.hpp"
 #include "garden/system/text.hpp"
+#include "garden/system/ui/scissor.hpp"
 #include "garden/system/render/mesh.hpp"
 
 namespace garden
@@ -36,8 +37,9 @@ struct UiLabelComponent final : public MeshRenderComponent
 	vector<fs::path> fontPaths; /**< Text font paths. */
 	#endif
 
-	u32string text = U"";              /**> UI label text string. */
+	u32string text = U"";              /**< UI label text string. */
 	Text::Properties propterties = {}; /**< UI label text properties. */
+	f32x4 color = f32x4::one;          /**< Text sRGB color multiplier. */
 	uint32 fontSize = 16;              /**< Text font size in pixels.*/
 private:
 	ID<Text> textData = {};
@@ -82,7 +84,8 @@ struct UiLabelFrame final : public AnimationFrame
 	#endif
 
 	u32string text = U"";
-	Text::Properties propterties = {};
+	Text::Properties propterties;
+	f32x4 color = f32x4::one;
 	uint32 fontSize = 16;
 	ID<Text> textData = {};
 	ID<DescriptorSet> descriptorSet = {};
@@ -100,11 +103,14 @@ public:
 	struct PushConstants final
 	{
 		float4x4 mvp;
+		float4 color;
 	};
 private:
 	ID<GraphicsPipeline> pipeline = {};
 	OptView<GraphicsPipeline> pipelineView = {};
+	Manager* manager = nullptr;
 	TextSystem* textSystem = nullptr;
+	UiScissorSystem* uiScissorSystem = nullptr;
 	float lastUiScale = 1.0f;
 
 	/**

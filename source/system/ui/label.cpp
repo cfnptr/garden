@@ -15,6 +15,7 @@
 #include "garden/system/ui/label.hpp"
 #include "garden/system/render/deferred.hpp"
 #include "garden/system/ui/transform.hpp"
+#include "garden/system/ui/scissor.hpp"
 #include "garden/system/transform.hpp"
 #include "garden/system/resource.hpp"
 #include "math/matrix/transform.hpp"
@@ -189,13 +190,13 @@ void UiLabelSystem::copyComponent(View<Component> source, View<Component> destin
 		ID<Text> text;
 		if (srcTextView->isAtlasShared())
 		{
-			text = textSystem->createText(srcTextView->getValue(), 
+			text = textSystem->createText(sourceView->text, 
 				srcTextView->getFontAtlas(), srcTextView->getProperties(), true);
 		}
 		else
 		{
 			auto fonts = textSystem->get(srcTextView->getFontAtlas())->getFonts();
-			text = textSystem->createText(srcTextView->getValue(), std::move(fonts), 
+			text = textSystem->createText(sourceView->text, std::move(fonts), 
 				sourceView->fontSize, srcTextView->getProperties());
 		}
 		destinationView->textData = text;
@@ -227,13 +228,18 @@ bool UiLabelSystem::isDrawReady(int8 shadowPass)
 }
 void UiLabelSystem::prepareDraw(const f32x4x4& viewProj, uint32 drawCount, int8 shadowPass)
 {
+	manager = Manager::Instance::get();
 	textSystem = TextSystem::Instance::get();
+	uiScissorSystem = UiScissorSystem::Instance::tryGet();
 	pipelineView = OptView<GraphicsPipeline>(GraphicsSystem::Instance::get()->get(pipeline));
 }
 void UiLabelSystem::beginDrawAsync(int32 taskIndex)
 {
 	pipelineView->bindAsync(0, taskIndex);
-	pipelineView->setViewportScissorAsync(float4::zero, taskIndex); // TODO: calc and set UI scissor.
+
+	if (uiScissorSystem)
+		pipelineView->setViewportAsync(float4::zero, taskIndex);
+	else pipelineView->setViewportScissorAsync(float4::zero, taskIndex);
 }
 void UiLabelSystem::drawAsync(MeshRenderComponent* meshRenderView, 
 	const f32x4x4& viewProj, const f32x4x4& model, uint32 drawIndex, int32 taskIndex)
@@ -246,8 +252,8 @@ void UiLabelSystem::drawAsync(MeshRenderComponent* meshRenderView,
 	if (!textView->isReady() || textView->getInstanceCount() == 0)
 		return;
 
-	auto fontSize = uiLabelView->fontSize;
-	auto transformView = Manager::Instance::get()->get<TransformComponent>(uiLabelView->getEntity());
+	auto entity = uiLabelView->getEntity(); auto fontSize = uiLabelView->fontSize;
+	auto transformView = manager->get<TransformComponent>(entity);
 	auto localScale = transformView->getScale() * f32x4(fontSize, fontSize, 1.0f);
 	auto localModel = scale(model, (1.0f / extractScale(model)) * localScale);
 	setTranslation(localModel, (f32x4)u32x4(getTranslation(localModel) / lastUiScale) * lastUiScale);
@@ -255,7 +261,10 @@ void UiLabelSystem::drawAsync(MeshRenderComponent* meshRenderView,
 
 	PushConstants pc;
 	pc.mvp = (float4x4)(viewProj * localModel);
+	pc.color = (float4)srgbToRgb(uiLabelView->color);
 
+	if (uiScissorSystem)
+		pipelineView->setScissorAsync(uiScissorSystem->calcScissor(entity), taskIndex);
 	pipelineView->bindDescriptorSetAsync(uiLabelView->descriptorSet, 0, taskIndex);
 	pipelineView->pushConstantsAsync(&pc, taskIndex);
 	pipelineView->drawAsync(taskIndex, {}, 6, textView->getInstanceCount());
@@ -267,8 +276,8 @@ void UiLabelSystem::serialize(ISerializer& serializer, const View<Component> com
 	const auto componentView = View<UiLabelComponent>(component);
 	if (!componentView->text.empty())
 		serializer.write("text", componentView->text);
-	if (componentView->propterties.color != Color::white)
-		serializer.write("color", componentView->propterties.color);
+	if (componentView->color != f32x4::one)
+		serializer.write("color", (float4)componentView->color);
 	if (componentView->propterties.alignment != Text::Alignment::Center)
 		serializer.write("alignment", toString(componentView->propterties.alignment));
 	if (componentView->propterties.isBold)
@@ -301,7 +310,7 @@ void UiLabelSystem::deserialize(IDeserializer& deserializer, View<Component> com
 {
 	auto componentView = View<UiLabelComponent>(component);
 	deserializer.read("text", componentView->text);
-	deserializer.read("color", componentView->propterties.color);
+	deserializer.read("color", componentView->color);
 	deserializer.read("isBold", componentView->propterties.isBold);
 	deserializer.read("isItalic", componentView->propterties.isItalic);
 	deserializer.read("useTags", componentView->propterties.useTags);
@@ -369,8 +378,8 @@ void UiLabelSystem::serializeAnimation(ISerializer& serializer, View<AnimationFr
 	const auto frameView = View<UiLabelFrame>(frame);
 	if (!frameView->text.empty())
 		serializer.write("text", frameView->text);
-	if (frameView->propterties.color != Color::white)
-		serializer.write("color", frameView->propterties.color);
+	if (frameView->color != f32x4::one)
+		serializer.write("color", (float4)frameView->color);
 	if (frameView->propterties.alignment != Text::Alignment::Center)
 		serializer.write("alignment", toString(frameView->propterties.alignment));
 	if (frameView->propterties.isBold)
@@ -403,7 +412,7 @@ void UiLabelSystem::deserializeAnimation(IDeserializer& deserializer, View<Anima
 {
 	auto frameView = View<UiLabelFrame>(frame);
 	deserializer.read("text", frameView->text);
-	deserializer.read("color", frameView->propterties.color);
+	deserializer.read("color", frameView->color);
 	deserializer.read("isBold", frameView->propterties.isBold);
 	deserializer.read("isItalic", frameView->propterties.isItalic);
 	deserializer.read("useTags", frameView->propterties.useTags);
@@ -497,6 +506,8 @@ void UiLabelSystem::animateAsync(View<Component> component, View<AnimationFrame>
 			#endif
 		}
 	}
+
+	componentView->color = lerp(frameA->color, frameB->color, t);
 
 	if (componentView->textData)
 	{

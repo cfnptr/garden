@@ -76,17 +76,18 @@ void UiLabelEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 		uiLabelView->fontSize = fontSize;
 		uiLabelView->updateText();
 	}
-
-	auto color = (float4)uiLabelView->propterties.color;
-	if (ImGui::ColorEdit4("Color", &color))
+	if (ImGui::BeginPopupContextItem("fontSize"))
 	{
-		uiLabelView->propterties.color = Color(color);
-		uiLabelView->updateText();
+		if (ImGui::MenuItem("Reset Default"))
+		{
+			uiLabelView->fontSize = 16;
+			uiLabelView->updateText();
+		}
+		ImGui::EndPopup();
 	}
 
 	if (ImGui::Combo("Alignment", uiLabelView->propterties.alignment, textAlignmentNames, (int)Text::Alignment::Count))
 		uiLabelView->updateText();
-
 	if (ImGui::Checkbox("Bold", &uiLabelView->propterties.isBold))
 		uiLabelView->updateText();
 	ImGui::SameLine();
@@ -96,6 +97,14 @@ void UiLabelEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	if (ImGui::Checkbox("Use Tags", &uiLabelView->propterties.useTags))
 		uiLabelView->updateText();
 	ImGui::Spacing();
+
+	ImGui::ColorEdit4("Color", &uiLabelView->color);
+	if (ImGui::BeginPopupContextItem("color"))
+	{
+		if (ImGui::MenuItem("Reset Default"))
+			uiLabelView->color = f32x4::one;
+		ImGui::EndPopup();
+	}
 	
 	if (ImGui::CollapsingHeader("Fonts"))
 	{

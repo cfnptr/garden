@@ -2416,7 +2416,7 @@ void ResourceSystem::storeScene(const fs::path& path, ID<Entity> rootEntity, con
 	
 	const auto& entities = manager->getEntities();
 	auto dnsSystem = DoNotSerializeSystem::Instance::tryGet();
-	stack<ID<Entity>> childEntities;
+	stack<ID<Entity>, vector<ID<Entity>>> childEntities;
 
 	if (rootEntity)
 	{

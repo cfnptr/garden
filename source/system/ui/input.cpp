@@ -78,8 +78,9 @@ void UiInputComponent::setTextBad(bool state)
 	if (textBad == state)
 		return;
 
-	setUiInputAnimation(entity, animationPath, text, 
-		state ? (textBad ? "bad" : "default") : "disabled");
+	auto uiInputSystem = UiInputSystem::Instance::get();
+	setUiInputAnimation(entity, animationPath, text, state ? (textBad ? "bad" : 
+		(entity == uiInputSystem->getActiveInput() ? "active" : "default")) : "disabled");
 	textBad = state;
 }
 
@@ -100,17 +101,8 @@ bool UiInputComponent::updateText(bool shrink)
 	uiLabelView->text = prefix;
 	uiLabelView->text += text.empty() ? placeholder : text;
 	uiLabelView->text.push_back(U' ');
-	uiLabelView->propterties.color = text.empty() ? placeholderColor : textColor;
-
-	if (!uiLabelView->updateText(shrink))
-		return false;
-
-	if (uiLabelView->getTextData())
-	{
-		auto textView = TextSystem::Instance::get()->get(uiLabelView->getTextData());
-		auto textLength = textView->getValue().length();
-	}
-	return true;
+	uiLabelView->color = text.empty() ? placeholderColor : textColor;
+	return uiLabelView->updateText(shrink);
 }
 
 //**********************************************************************************************************************
@@ -148,14 +140,14 @@ bool UiInputComponent::updateCaret(psize charIndex)
 			cursorPos = (float2)(inverse4x4(transformView->calcModel()) * 
 				f32x4(cursorPos.x, cursorPos.y, 0.0f, 1.0f));
 			cursorPos.x += 0.5f; cursorPos *= inputScale / fontSize;
-			charIndex = textView->calcCaretIndex(cursorPos) - prefix.length();
+			charIndex = textView->calcCaretIndex(uiLabelView->text, cursorPos) - prefix.length();
 		}
 		else charIndex = min(charIndex, text.length());
 	}
 	caretIndex = charIndex;
 
-	charIndex = min(charIndex + prefix.length(), textView->getValue().length() - 1);
-	auto caretAdvance = textView->calcCaretAdvance(charIndex) * fontSize;
+	charIndex = min(charIndex + prefix.length(), uiLabelView->text.length() - 1);
+	auto caretAdvance = textView->calcCaretAdvance(uiLabelView->text, charIndex) * fontSize;
 	caretAdvance.x += 1.0f;
 	
 	if (caretAdvance.x > inputScale.x)
@@ -389,10 +381,10 @@ void UiInputSystem::serialize(ISerializer& serializer, const View<Component> com
 		serializer.write("onChange", componentView->onChange);
 	if (!componentView->animationPath.empty())
 		serializer.write("animationPath", componentView->animationPath);
-	if (componentView->textColor != Color::white)
-		serializer.write("textColor", componentView->textColor);
-	if (componentView->placeholderColor != Color(127, 127, 127, 255))
-		serializer.write("placeholderColor", componentView->placeholderColor);
+	if (componentView->textColor != f32x4::one)
+		serializer.write("textColor", (float4)componentView->textColor);
+	if (componentView->placeholderColor != f32x4(0.5f, 0.5f, 0.5f, 1.0f))
+		serializer.write("placeholderColor", (float4)componentView->placeholderColor);
 }
 void UiInputSystem::deserialize(IDeserializer& deserializer, View<Component> component)
 {

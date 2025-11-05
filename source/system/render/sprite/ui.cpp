@@ -37,3 +37,24 @@ MeshRenderType UiSpriteSystem::getMeshRenderType() const
 {
 	return MeshRenderType::UI;
 }
+
+void UiSpriteSystem::beginDrawAsync(int32 taskIndex)
+{
+	pipelineView->bindAsync(0, taskIndex);
+
+	if (uiScissorSystem)
+		pipelineView->setViewportAsync(float4::zero, taskIndex);
+	else pipelineView->setViewportScissorAsync(float4::zero, taskIndex);
+}
+void UiSpriteSystem::prepareDraw(const f32x4x4& viewProj, uint32 drawCount, int8 shadowPass)
+{
+	SpriteRenderSystem::prepareDraw(viewProj, drawCount, shadowPass);
+	uiScissorSystem = UiScissorSystem::Instance::tryGet();
+}
+void UiSpriteSystem::drawAsync(MeshRenderComponent* meshRenderView, 
+	const f32x4x4& viewProj, const f32x4x4& model, uint32 drawIndex, int32 taskIndex)
+{
+	if (uiScissorSystem)
+		pipelineView->setScissorAsync(uiScissorSystem->calcScissor(meshRenderView->getEntity()), taskIndex);
+	SpriteRenderSystem::drawAsync(meshRenderView, viewProj, model, drawIndex, taskIndex);
+}

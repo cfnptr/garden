@@ -98,7 +98,6 @@ void UiTriggerSystem::update()
 	auto componentData = components.getData();
 	auto threadSystem = ThreadSystem::Instance::tryGet();
 	auto cursorPosition = UiTransformSystem::Instance::get()->getCursorPosition();
-	// TODO: take into account macOS differend window and framebuffer scale!
 	ID<Entity> newElement = {}; float newPosZ = FLT_MAX;
 
 	if (threadSystem && components.getCount() > threadSystem->getForegroundPool().getThreadCount())

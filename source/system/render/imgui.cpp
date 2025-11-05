@@ -234,9 +234,9 @@ void ImGuiRenderSystem::preInit()
 	auto inputSystem = InputSystem::Instance::get();
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto windowSize = inputSystem->getWindowSize();
-	auto pixelRatio = (float2)graphicsSystem->getFramebufferSize() / windowSize;
+	auto windowScale = inputSystem->getWindowScale();
 	io.DisplaySize = ImVec2(windowSize.x, windowSize.y);
-	io.DisplayFramebufferScale = ImVec2(pixelRatio.x, pixelRatio.y);
+	io.DisplayFramebufferScale = ImVec2(windowScale.x, windowScale.y);
 	// TODO: dynamically detect when system scale is changed or moved to another monitor and recreate fonts.
 
 	io.BackendPlatformName = "Garden ImGui";
@@ -553,9 +553,9 @@ void ImGuiRenderSystem::update()
 	auto& io = ImGui::GetIO();
 	auto inputSystem = InputSystem::Instance::get();
 	auto windowSize = inputSystem->getWindowSize();
-	auto pixelRatio = (float2)graphicsSystem->getFramebufferSize() / windowSize;
+	auto windowScale = inputSystem->getWindowScale();
 	io.DisplaySize = ImVec2(windowSize.x, windowSize.y);
-	io.DisplayFramebufferScale = ImVec2(pixelRatio.x, pixelRatio.y);
+	io.DisplayFramebufferScale = ImVec2(windowScale.x, windowScale.y);
 	io.DeltaTime = inputSystem->getDeltaTime();
 
 	if (!(io.ConfigFlags & ImGuiConfigFlags_NoMouseCursorChange) && inputSystem->getCursorMode() != CursorMode::Locked)
@@ -803,6 +803,8 @@ void ImGuiRenderSystem::uiRender()
 				continue;
 
 			auto scissor = int4(clipMin.x, clipMin.y, clipMax.x - clipMin.x, clipMax.y - clipMin.y);
+			scissor.y = framebufferSize.y - (scissor.y + scissor.w);
+
 			if (isCurrentRenderPassAsync)
 				pipelineView->setScissorAsync(scissor, threadIndex);
 			else

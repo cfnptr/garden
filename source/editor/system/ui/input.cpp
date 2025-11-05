@@ -75,12 +75,30 @@ void UiInputEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 		UTF::utf8toUtf32(text, uiInputView->text);
 		uiInputView->updateText();
 	}
+	if (ImGui::BeginPopupContextItem("text"))
+	{
+		if (ImGui::MenuItem("Reset Default"))
+		{
+			uiInputView->text = U"";
+			uiInputView->updateText();
+		}
+		ImGui::EndPopup();
+	}
 
 	UTF::utf32toUtf8(uiInputView->placeholder, text);
 	if (ImGui::InputText("Placeholder", &text))
 	{
 		UTF::utf8toUtf32(text, uiInputView->placeholder);
 		uiInputView->updateText();
+	}
+	if (ImGui::BeginPopupContextItem("placeholder"))
+	{
+		if (ImGui::MenuItem("Reset Default"))
+		{
+			uiInputView->placeholder = U"";
+			uiInputView->updateText();
+		}
+		ImGui::EndPopup();
 	}
 
 	UTF::utf32toUtf8(uiInputView->prefix, text);
@@ -89,10 +107,46 @@ void UiInputEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 		UTF::utf8toUtf32(text, uiInputView->prefix);
 		uiInputView->updateText();
 	}
+	if (ImGui::BeginPopupContextItem("prefix"))
+	{
+		if (ImGui::MenuItem("Reset Default"))
+		{
+			uiInputView->prefix = U"";
+			uiInputView->updateText();
+		}
+		ImGui::EndPopup();
+	}
 
 	ImGui::InputText("On Change", &uiInputView->onChange);
+	if (ImGui::BeginPopupContextItem("onChange"))
+	{
+		if (ImGui::MenuItem("Reset Default"))
+			uiInputView->onChange = "";
+		ImGui::EndPopup();
+	}
+
 	ImGui::InputText("Animation Path", &uiInputView->animationPath);
+	if (ImGui::BeginPopupContextItem("animationPath"))
+	{
+		if (ImGui::MenuItem("Reset Default"))
+			uiInputView->animationPath = "";
+		ImGui::EndPopup();
+	}
+
 	ImGui::ColorEdit4("Text Color", &uiInputView->textColor);
+	if (ImGui::BeginPopupContextItem("textColor"))
+	{
+		if (ImGui::MenuItem("Reset Default"))
+			uiInputView->textColor = f32x4::zero;
+		ImGui::EndPopup();
+	}
+
 	ImGui::ColorEdit4("Placeholder Color", &uiInputView->placeholderColor);
+	if (ImGui::BeginPopupContextItem("placeholderColor"))
+	{
+		if (ImGui::MenuItem("Reset Default"))
+			uiInputView->placeholderColor = f32x4(0.5f, 0.5f, 0.5f, 1.0f);
+		ImGui::EndPopup();
+	}
 }
 #endif

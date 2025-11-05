@@ -169,19 +169,6 @@ void TransformComponent::setParent(ID<Entity> parent)
 		auto parentTransformView = manager->get<TransformComponent>(parent);
 		GARDEN_ASSERT(!parentTransformView->hasAncestor(entity));
 	}
-
-	stack<ID<Entity>> childEntities; childEntities.push(entity);
-	while (!childEntities.empty()) // Note: need this for prefabs reuse.
-	{
-		auto childEntity = childEntities.top(); childEntities.pop();
-		auto transformView = manager->get<TransformComponent>(childEntity);
-		transformView->uid = 0;
-
-		auto childCount = transformView->childCount();
-		auto childs = transformView->childs;
-		for (uint32 i = 0; i < childCount; i++)
-			childEntities.push(childs[i]);
-	}
 	#endif
 
 	if (this->parent)
@@ -435,6 +422,26 @@ bool TransformComponent::hasStaticWithDescendants() const noexcept
 	return false;
 }
 
+#if GARDEN_DEBUG
+void TransformComponent::resetUIDs()
+{
+	auto manager = Manager::Instance::get();
+	stack<ID<Entity>, vector<ID<Entity>>> childEntities; childEntities.push(entity);
+
+	while (!childEntities.empty())
+	{
+		auto childEntity = childEntities.top(); childEntities.pop();
+		auto transformView = manager->get<TransformComponent>(childEntity);
+		transformView->uid = 0;
+
+		auto childCount = transformView->childCount();
+		auto childs = transformView->childs;
+		for (uint32 i = 0; i < childCount; i++)
+			childEntities.push(childs[i]);
+	}
+}
+#endif
+
 //**********************************************************************************************************************
 TransformSystem::TransformSystem(bool setSingleton) : Singleton(setSingleton)
 {
@@ -687,12 +694,12 @@ void TransformSystem::destroyRecursive(ID<Entity> entity)
 	transformView->selfActive = false;
 
 	for (uint32 i = 0; i < transformChildCount; i++)
-		entityStack.push_back(transformChilds[i]);
+		entityStack.push(transformChilds[i]);
 
 	while (!entityStack.empty())
 	{
-		auto entity = entityStack.back();
-		entityStack.pop_back();
+		auto entity = entityStack.top();
+		entityStack.pop();
 
 		if (manager->has<DoNotDestroyComponent>(entity))
 			continue;
@@ -702,7 +709,7 @@ void TransformSystem::destroyRecursive(ID<Entity> entity)
 		transformChilds = childTransformView->childs;
 
 		for (uint32 i = 0; i < transformChildCount; i++)
-			entityStack.push_back(transformChilds[i]);
+			entityStack.push(transformChilds[i]);
 
 		childTransformView->parent = {};
 		childTransformView->childCount() = 0;

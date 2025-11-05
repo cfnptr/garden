@@ -118,6 +118,7 @@ struct UiTransformFrame final : public AnimationFrame
 class UiTransformSystem final : public CompAnimSystem<UiTransformComponent, UiTransformFrame, false, false>,
 	public Singleton<UiTransformSystem>, public ISerializable
 {
+	float2 uiSize = float2::zero;
 	float2 cursorPosition = float2::zero;
 
 	/**
@@ -150,9 +151,9 @@ public:
 	 */
 	float2 getCursorPosition() const noexcept { return cursorPosition; }
 	/**
-	 * @brief Calculates size in user interface coordinates.
+	 * @brief Returns size in user interface coordinates.
 	 */
-	float2 calcUiSize() const;
+	float2 getUiSize() const noexcept { return uiSize; }
 };
 
 } // namespace garden

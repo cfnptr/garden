@@ -352,7 +352,7 @@ static bool fillTextInstances(u32string_view value, Text::Properties properties,
 {
 	auto chars = value.data(); const auto& glyphArray = fontAtlasView->getGlyphs();
 	auto fontSize = fontAtlasView->getFontSize(); auto newLineAdvance = fontAtlasView->getNewLineAdvance();
-	auto color = properties.color; auto isBold = properties.isBold, isItalic = properties.isItalic;
+	auto color = Color::white; auto isBold = properties.isBold, isItalic = properties.isItalic;
 	auto size = float2::zero, instanceOffset = float2(0.0f, newLineAdvance * 0.5f);
 	instanceOffset.y = -floorf(instanceOffset.y * fontSize) / fontSize;
 	uint32 instanceIndex = 0, lastNewLineIndex = 0;
@@ -419,7 +419,7 @@ static bool fillTextInstances(u32string_view value, Text::Properties properties,
 				}
 				else if (tag == '#')
 				{
-					color = properties.color; i += 3;
+					color = Color::white; i += 3;
 					continue;
 				}
 			}
@@ -629,7 +629,6 @@ bool Text::update(u32string_view value, uint32 fontSize, Properties properties,
 	Buffer::copy(stagingBuffer, instanceBuffer);
 	graphicsSystem->destroy(stagingBuffer);
 
-	this->value = value;
 	this->instanceCount = instanceCount;
 	this->size = textSize;
 	this->properties = properties;
@@ -637,8 +636,11 @@ bool Text::update(u32string_view value, uint32 fontSize, Properties properties,
 }
 
 //**********************************************************************************************************************
-float2 Text::calcCaretAdvance(psize charIndex)
+float2 Text::calcCaretAdvance(u32string_view value, psize charIndex)
 {
+	if (value.empty())
+		return float2::zero;
+
 	GARDEN_ASSERT(charIndex < value.length());
 	auto fontAtlasView = TextSystem::Instance::get()->get(fontAtlas);
 	auto chars = value.data(); const auto& glyphArray = fontAtlasView->getGlyphs();
@@ -667,7 +669,7 @@ float2 Text::calcCaretAdvance(psize charIndex)
 		{
 			auto result = glyphs->find(U' ');
 			if (result == glyphs->end())
-				throw GardenError("Failed to find glyph");
+				return float2::minusOne;
 			advance.x += result->second.advance * 4.0f; // TODO: allow to adjust tab spacing size.
 			continue;
 		}
@@ -731,7 +733,7 @@ float2 Text::calcCaretAdvance(psize charIndex)
 		{
 			result = glyphs->find(U'\0');
 			if (result == glyphs->end())
-				throw GardenError("Failed to find glyph");
+				return float2::minusOne;
 		}
 
 		if (i < charIndex)
@@ -781,7 +783,7 @@ float2 Text::calcCaretAdvance(psize charIndex)
 	return advance;
 }
 
-psize Text::calcCaretIndex(float2 caretAdvance)
+psize Text::calcCaretIndex(u32string_view value, float2 caretAdvance)
 {
 	auto bestDistance = INFINITY;
 	psize index = 0;
@@ -789,15 +791,16 @@ psize Text::calcCaretIndex(float2 caretAdvance)
 	// TODO: too heavy, use better solution!
 	for (psize i = 0; i < value.length(); i++)
 	{
-		auto checkAdvance = calcCaretAdvance(i);
-		auto distance = distanceSq(caretAdvance, checkAdvance);
+		auto checkAdvance = calcCaretAdvance(value, i);
+		if (checkAdvance == float2::minusOne)
+			return SIZE_MAX;
 
+		auto distance = distanceSq(caretAdvance, checkAdvance);
 		if (distance < bestDistance)
 		{
 			bestDistance = distance; index = i;
 		}
 	}
-
 	return index;
 }
 

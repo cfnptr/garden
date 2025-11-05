@@ -12,71 +12,69 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "garden/editor/system/ui/button.hpp"
+#include "garden/editor/system/ui/scissor.hpp"
 
 #if GARDEN_EDITOR
-#include "garden/system/ui/button.hpp"
+#include "garden/system/ui/scissor.hpp"
 
 using namespace garden;
 
 //**********************************************************************************************************************
-UiButtonEditorSystem::UiButtonEditorSystem(bool setSingleton) : Singleton(setSingleton)
+UiScissorEditorSystem::UiScissorEditorSystem(bool setSingleton) : Singleton(setSingleton)
 {
-	ECSM_SUBSCRIBE_TO_EVENT("Init", UiButtonEditorSystem::init);
-	ECSM_SUBSCRIBE_TO_EVENT("Deinit", UiButtonEditorSystem::deinit);
+	ECSM_SUBSCRIBE_TO_EVENT("Init", UiScissorEditorSystem::init);
+	ECSM_SUBSCRIBE_TO_EVENT("Deinit", UiScissorEditorSystem::deinit);
 }
-UiButtonEditorSystem::~UiButtonEditorSystem()
+UiScissorEditorSystem::~UiScissorEditorSystem()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", UiButtonEditorSystem::init);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", UiButtonEditorSystem::deinit);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", UiScissorEditorSystem::init);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", UiScissorEditorSystem::deinit);
 	}
 
 	unsetSingleton();
 }
 
-void UiButtonEditorSystem::init()
+void UiScissorEditorSystem::init()
 {
-	EditorRenderSystem::Instance::get()->registerEntityInspector<UiButtonComponent>(
+	EditorRenderSystem::Instance::get()->registerEntityInspector<UiScissorComponent>(
 	[this](ID<Entity> entity, bool isOpened)
 	{
 		onEntityInspector(entity, isOpened);
 	},
 	inspectorPriority);
 }
-void UiButtonEditorSystem::deinit()
+void UiScissorEditorSystem::deinit()
 {
 	if (Manager::Instance::get()->isRunning)
-		EditorRenderSystem::Instance::get()->unregisterEntityInspector<UiButtonComponent>();
+		EditorRenderSystem::Instance::get()->unregisterEntityInspector<UiScissorComponent>();
 }
 
 //**********************************************************************************************************************
-void UiButtonEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
+void UiScissorEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 {
 	if (!isOpened)
 		return;
 
-	auto uiButtonView = Manager::Instance::get()->get<UiButtonComponent>(entity);
+	auto uiLabelView = Manager::Instance::get()->get<UiScissorComponent>(entity);
 
-	auto isEnabled = uiButtonView->isEnabled();
-	if (ImGui::Checkbox("Enabled", &isEnabled))
-		uiButtonView->setEnabled(isEnabled);
-
-	ImGui::InputText("On Click", &uiButtonView->onClick);
-	if (ImGui::BeginPopupContextItem("onClick"))
+	ImGui::DragFloat2("Offset", &uiLabelView->offset, 1.0f);
+	if (ImGui::BeginPopupContextItem("offset"))
 	{
 		if (ImGui::MenuItem("Reset Default"))
-			uiButtonView->onClick = "";
+			uiLabelView->scale = float2::zero;
 		ImGui::EndPopup();
 	}
 
-	ImGui::InputText("Animation Path", &uiButtonView->animationPath);
-	if (ImGui::BeginPopupContextItem("animationPath"))
+	ImGui::DragFloat2("Scale", &uiLabelView->scale, 1.0f, 0.0001f, FLT_MAX);
+	if (ImGui::BeginPopupContextItem("scale"))
 	{
 		if (ImGui::MenuItem("Reset Default"))
-			uiButtonView->animationPath = "";
+			uiLabelView->scale = float2::one;
 		ImGui::EndPopup();
 	}
+
+	ImGui::Checkbox("Ignore", &uiLabelView->ignore);
 }
 #endif
