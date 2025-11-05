@@ -256,7 +256,7 @@ public:
 class CharacterSystem final : public ComponentSystem<CharacterComponent, false>, 
 	public Singleton<CharacterSystem>, public ISerializable
 {
-	vector<ID<Entity>> entityStack;
+	stack<ID<Entity>, vector<ID<Entity>>> entityStack;
 	void* charVsCharCollision = nullptr;
 	string valueStringCache;
 public:

@@ -276,6 +276,13 @@ public:
 	 * @brief Does this entity or its descendants have static transform.
 	 */
 	bool hasStaticWithDescendants() const noexcept;
+
+	#if GARDEN_DEBUG
+	/**
+	 * @brief Resets entity and it childs UIDs. (Editor only!)
+	 */
+	void resetUIDs();
+	#endif
 };
 
 /**
@@ -314,7 +321,7 @@ class TransformSystem final : public CompAnimSystem<TransformComponent, Transfor
 	using EntityParentPair = pair<ID<Entity>, uint64>;
 	using EntityDuplicatePair = pair<ID<Entity>, ID<Entity>>;
 
-	vector<ID<Entity>> entityStack;
+	stack<ID<Entity>, vector<ID<Entity>>> entityStack;
 	vector<EntityDuplicatePair> entityDuplicateStack;
 	tsl::robin_map<uint64, ID<Entity>> deserializedEntities;
 	vector<EntityParentPair> deserializedParents;

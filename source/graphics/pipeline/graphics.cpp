@@ -383,18 +383,16 @@ void GraphicsPipeline::setViewport(float4 viewport)
 	GARDEN_ASSERT_MSG(ID<Pipeline>(graphicsAPI->graphicsPipelinePool.getID(this)) == 
 		graphicsAPI->currentPipelines[0], "Assert " + debugName);
 	GARDEN_ASSERT_MSG(instance, "Graphics pipeline [" + debugName + "] is not ready");
+	auto framebufferView = graphicsAPI->framebufferPool.get(graphicsAPI->currentFramebuffer);
 
 	// TODO: support multiple viewport/scissor count. MacBook intel viewport max count is 16.
 	SetViewportCommand command;
+	command.framebufferSize = framebufferView->getSize();
+
 	if (viewport == float4::zero)
-	{
-		auto framebufferView = graphicsAPI->framebufferPool.get(graphicsAPI->currentFramebuffer);
-		command.viewport = float4(float2::zero, framebufferView->getSize());
-	}
+		command.viewport = float4(float2::zero, command.framebufferSize);
 	else
-	{
 		command.viewport = viewport;
-	}
 	graphicsAPI->currentCommandBuffer->addCommand(command);
 }
 void GraphicsPipeline::setViewportAsync(float4 viewport, int32 threadIndex)
@@ -413,14 +411,18 @@ void GraphicsPipeline::setViewportAsync(float4 viewport, int32 threadIndex)
 	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
 		auto vulkanAPI = VulkanAPI::get();
-		vk::Viewport vkViewport(viewport.x, viewport.y, viewport.z, viewport.w, 0.0f, 1.0f); // TODO: support custom depth range.
+		auto framebufferView = vulkanAPI->framebufferPool.get(vulkanAPI->currentFramebuffer);
+		auto framebufferSize = framebufferView->getSize();
 
+		vk::Viewport vkViewport(viewport.x, viewport.y, viewport.z, viewport.w, 0.0f, 1.0f); // TODO: support custom depth range.
 		if (viewport == float4::zero)
 		{
-			auto framebufferView = vulkanAPI->framebufferPool.get(vulkanAPI->currentFramebuffer);
-			auto framebufferSize = framebufferView->getSize();
 			vkViewport.width = framebufferSize.x;
 			vkViewport.height = framebufferSize.y;
+		}
+		else
+		{
+			vkViewport.y = framebufferSize.y - (vkViewport.y + vkViewport.height);
 		}
 
 		while (threadIndex < autoThreadCount)
@@ -439,17 +441,15 @@ void GraphicsPipeline::setScissor(int4 scissor)
 	GARDEN_ASSERT_MSG(ID<Pipeline>(graphicsAPI->graphicsPipelinePool.getID(this)) == 
 		graphicsAPI->currentPipelines[0], "Assert " + debugName);
 	GARDEN_ASSERT_MSG(instance, "Graphics pipeline [" + debugName + "] is not ready");
+	auto framebufferView = graphicsAPI->framebufferPool.get(graphicsAPI->currentFramebuffer);
 
 	SetScissorCommand command;
+	command.framebufferSize = framebufferView->getSize();
+	
 	if (scissor == int4::zero)
-	{
-		auto framebufferView = graphicsAPI->framebufferPool.get(graphicsAPI->currentFramebuffer);
-		command.scissor = int4(int2::zero, framebufferView->getSize());
-	}
+		command.scissor = int4(int2::zero, command.framebufferSize);
 	else
-	{
 		command.scissor = scissor;
-	}
 	graphicsAPI->currentCommandBuffer->addCommand(command);
 }
 void GraphicsPipeline::setScissorAsync(int4 scissor, int32 threadIndex)
@@ -468,14 +468,18 @@ void GraphicsPipeline::setScissorAsync(int4 scissor, int32 threadIndex)
 	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
 		auto vulkanAPI = VulkanAPI::get();
-		vk::Rect2D vkScissor({ scissor.x, scissor.y }, { (uint32)scissor.z, (uint32)scissor.w });
+		auto framebufferView = vulkanAPI->framebufferPool.get(vulkanAPI->currentFramebuffer);
+		auto framebufferSize = framebufferView->getSize();
 
+		vk::Rect2D vkScissor({ scissor.x, scissor.y }, { (uint32)scissor.z, (uint32)scissor.w });
 		if (scissor == int4::zero)
 		{
-			auto framebufferView = vulkanAPI->framebufferPool.get(vulkanAPI->currentFramebuffer);
-			auto framebufferSize = framebufferView->getSize();
 			vkScissor.extent.width = (uint32)framebufferSize.x;
 			vkScissor.extent.height = (uint32)framebufferSize.y;
+		}
+		else
+		{
+			vkScissor.offset.y = framebufferSize.y - (vkScissor.offset.y + vkScissor.extent.height);
 		}
 
 		while (threadIndex < autoThreadCount)
@@ -494,17 +498,15 @@ void GraphicsPipeline::setViewportScissor(float4 viewportScissor)
 	GARDEN_ASSERT_MSG(ID<Pipeline>(graphicsAPI->graphicsPipelinePool.getID(this)) == 
 		graphicsAPI->currentPipelines[0], "Assert " + debugName);
 	GARDEN_ASSERT_MSG(instance, "Graphics pipeline [" + debugName + "] is not ready");
+	auto framebufferView = graphicsAPI->framebufferPool.get(graphicsAPI->currentFramebuffer);
 
 	SetViewportScissorCommand command;
+	command.framebufferSize = framebufferView->getSize();
+
 	if (viewportScissor == float4::zero)
-	{
-		auto framebufferView = graphicsAPI->framebufferPool.get(graphicsAPI->currentFramebuffer);
-		command.viewportScissor = float4(float2::zero, framebufferView->getSize());
-	}
+		command.viewportScissor = float4(float2::zero, command.framebufferSize);
 	else
-	{
 		command.viewportScissor = viewportScissor;
-	}
 	graphicsAPI->currentCommandBuffer->addCommand(command);
 }
 void GraphicsPipeline::setViewportScissorAsync(float4 viewportScissor, int32 threadIndex)
@@ -523,19 +525,23 @@ void GraphicsPipeline::setViewportScissorAsync(float4 viewportScissor, int32 thr
 	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
 		auto vulkanAPI = VulkanAPI::get();
+		auto framebufferView = vulkanAPI->framebufferPool.get(vulkanAPI->currentFramebuffer);
+		auto framebufferSize = framebufferView->getSize();
+
 		vk::Viewport vkViewport(viewportScissor.x, viewportScissor.y,
 			viewportScissor.z, viewportScissor.w, 0.0f, 1.0f); // TODO: support custom depth range.
 		vk::Rect2D vkScissor({ (int32)viewportScissor.x, (int32)viewportScissor.y },
 			{ (uint32)viewportScissor.zero, (uint32)viewportScissor.w });
-
+	
 		if (viewportScissor == float4::zero)
 		{
-			auto framebufferView = vulkanAPI->framebufferPool.get(vulkanAPI->currentFramebuffer);
-			auto framebufferSize = framebufferView->getSize();
-			vkViewport.width = framebufferSize.x;
-			vkViewport.height = framebufferSize.y;
-			vkScissor.extent.width = (uint32)framebufferSize.x;
-			vkScissor.extent.height = (uint32)framebufferSize.y;
+			vkViewport.width = framebufferSize.x; vkViewport.height = framebufferSize.y;
+			vkScissor.extent.width = (uint32)framebufferSize.x; vkScissor.extent.height = (uint32)framebufferSize.y;
+		}
+		else
+		{
+			vkViewport.y = framebufferSize.y - (vkViewport.y + vkViewport.height);
+			vkScissor.offset.y = framebufferSize.y - (vkScissor.offset.y + vkScissor.extent.height);
 		}
 
 		while (threadIndex < autoThreadCount)

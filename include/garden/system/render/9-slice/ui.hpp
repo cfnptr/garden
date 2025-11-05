@@ -19,6 +19,7 @@
 
 #pragma once
 #include "garden/system/render/9-slice.hpp"
+#include "garden/system/ui/scissor.hpp"
 
 namespace garden
 {
@@ -38,6 +39,8 @@ struct Ui9SliceFrame final : public NineSliceFrame { };
 class Ui9SliceSystem final : public NineSliceCompAnimSystem<
 	Ui9SliceComponent, Ui9SliceFrame, false, false>, public Singleton<Ui9SliceSystem>
 {
+	UiScissorSystem* uiScissorSystem = nullptr;
+
 	/**
 	 * @brief Creates a new user interface 9-slice rendering system instance. (UI)
 	 * @param setSingleton set system singleton instance
@@ -50,6 +53,11 @@ class Ui9SliceSystem final : public NineSliceCompAnimSystem<
 
 	string_view getComponentName() const final;
 	MeshRenderType getMeshRenderType() const final;
+
+	void beginDrawAsync(int32 taskIndex) final;
+	void prepareDraw(const f32x4x4& viewProj, uint32 drawCount, int8 shadowPass) final;
+	void drawAsync(MeshRenderComponent* meshRenderView, const f32x4x4& viewProj,
+		const f32x4x4& model, uint32 drawIndex, int32 taskIndex) final;
 	
 	friend class ecsm::Manager;
 };

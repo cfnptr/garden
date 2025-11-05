@@ -84,14 +84,16 @@ void UiTransformSystem::update()
 	SET_CPU_ZONE_SCOPED("UI Transform Update");
 
 	auto inputSystem = InputSystem::Instance::get();
+	uiSize = (float2)inputSystem->getWindowSize() * inputSystem->getContentScale() * uiScale;
 	cursorPosition = (inputSystem->getCursorPosition() - (float2)inputSystem->getWindowSize() * 0.5f) * uiScale;
+	// TODO: take into account macOS differend window and framebuffer scale!
 
 	if (components.getCount() == 0)
 		return;
 
 	auto componentData = components.getData();
 	auto threadSystem = ThreadSystem::Instance::tryGet();
-	auto uiHalfSize = calcUiSize() * 0.5f;
+	auto uiHalfSize = uiSize * 0.5f;
 
 	if (threadSystem && components.getCount() > threadSystem->getForegroundPool().getThreadCount())
 	{
@@ -188,10 +190,4 @@ void UiTransformSystem::animateAsync(View<Component> component, View<AnimationFr
 		componentiew->rotation = slerp(frameA->rotation, frameB->rotation, t);
 	if (frameA->animateAnchor)
 		componentiew->anchor = (bool)round(t) ? frameB->anchor : frameA->anchor;
-}
-
-float2 UiTransformSystem::calcUiSize() const
-{
-	auto inputSystem = InputSystem::Instance::get();
-	return (float2)inputSystem->getWindowSize() * inputSystem->getContentScale() * uiScale;
 }

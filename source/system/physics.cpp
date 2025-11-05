@@ -2137,13 +2137,11 @@ void PhysicsSystem::activateRecursive(ID<Entity> entity)
 	GARDEN_ASSERT(entity);
 
 	auto manager = Manager::Instance::get();
-	entityStack.push_back(entity);
+	entityStack.push(entity);
 
 	while (!entityStack.empty())
 	{
-		auto entity = entityStack.back();
-		entityStack.pop_back();
-
+		auto entity = entityStack.top(); entityStack.pop();
 		auto rigidbodyView = manager->tryGet<RigidbodyComponent>(entity);
 		if (rigidbodyView)
 			rigidbodyView->activate();
@@ -2156,7 +2154,7 @@ void PhysicsSystem::activateRecursive(ID<Entity> entity)
 		auto childs = transformView->getChilds();
 
 		for (uint32 i = 0; i < childCount; i++)
-			entityStack.push_back(childs[i]);
+			entityStack.push(childs[i]);
 	}
 }
 
@@ -2165,13 +2163,11 @@ void PhysicsSystem::setWorldTransformRecursive(ID<Entity> entity, bool activate)
 	GARDEN_ASSERT(entity);
 
 	auto manager = Manager::Instance::get();
-	entityStack.push_back(entity);
+	entityStack.push(entity);
 
 	while (!entityStack.empty())
 	{
-		auto entity = entityStack.back();
-		entityStack.pop_back();
-
+		auto entity = entityStack.top(); entityStack.pop();
 		auto rigidbodyView = manager->tryGet<RigidbodyComponent>(entity);
 		if (rigidbodyView && rigidbodyView->getShape())
 			rigidbodyView->setWorldTransform(activate);
@@ -2184,7 +2180,7 @@ void PhysicsSystem::setWorldTransformRecursive(ID<Entity> entity, bool activate)
 		auto childs = transformView->getChilds();
 
 		for (uint32 i = 0; i < childCount; i++)
-			entityStack.push_back(childs[i]);
+			entityStack.push(childs[i]);
 	}
 }
 

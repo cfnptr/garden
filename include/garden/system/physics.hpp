@@ -713,7 +713,7 @@ private:
 	SharedShapes sharedRotTransShapes;
 	SharedShapes sharedCustomShapes;
 	vector<Event> bodyEvents;
-	vector<ID<Entity>> entityStack;
+	stack<ID<Entity>, vector<ID<Entity>>> entityStack;
 	set<ID<Entity>> serializedConstraints;
 	tsl::robin_map<uint64, ID<Entity>> deserializedEntities;
 	vector<EntityConstraint> deserializedConstraints;

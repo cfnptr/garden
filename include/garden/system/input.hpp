@@ -170,6 +170,7 @@ private:
 	uint2 currFramebufferSize = uint2::zero;
 	uint2 newWindowSize = uint2::zero;
 	uint2 currWindowSize = uint2::zero;
+	float2 currWindowScale = float2::zero;
 	float2 newContentScale = float2::zero;
 	float2 currContentScale = float2::zero;
 	float2 newCursorPos = float2::zero;
@@ -252,6 +253,11 @@ public:
 	 * @note It can differ from the framebuffer size! (eg. on macOS)
 	 */
 	uint2 getWindowSize() const noexcept { return currWindowSize; }
+	/**
+	 * @brief Returns current windows scale factor. (framebuffer / window size)
+	 * @note It can differ from the 1.0! (eg. on macOS)
+	 */
+	float2 getWindowScale() const noexcept { return currWindowScale; }
 	/**
 	 * @brief Returns current windows content scale factor.
 	 * @details It can change by the display settings.

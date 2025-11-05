@@ -22,6 +22,7 @@
 #include "garden/system/ui/input.hpp"
 #include "garden/system/ui/button.hpp"
 #include "garden/system/ui/trigger.hpp"
+#include "garden/system/ui/scissor.hpp"
 #include "garden/system/ui/checkbox.hpp"
 #include "garden/system/ui/transform.hpp"
 
@@ -30,6 +31,7 @@
 #include "garden/editor/system/ui/input.hpp"
 #include "garden/editor/system/ui/button.hpp"
 #include "garden/editor/system/ui/trigger.hpp"
+#include "garden/editor/system/ui/scissor.hpp"
 #include "garden/editor/system/ui/checkbox.hpp"
 #include "garden/editor/system/ui/transform.hpp"
 #endif

@@ -353,8 +353,7 @@ static void disposeGpuResources(GraphicsAPI* graphicsAPI)
 void GraphicsSystem::input()
 {
 	auto inputSystem = InputSystem::Instance::get();
-	auto windowSize = inputSystem->getWindowSize();
-	auto framebufferSize = inputSystem->getFramebufferSize();
+	auto windowSize = inputSystem->getWindowSize(); auto framebufferSize = inputSystem->getFramebufferSize();
 	isFramebufferSizeValid = windowSize.x > 0 && windowSize.y > 0 && framebufferSize.x > 0 && framebufferSize.y > 0;
 	beginSleepClock = mpio::OS::getCurrentClock();
 }

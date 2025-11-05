@@ -133,6 +133,7 @@ void InputSystem::preInit()
 
 	glfwGetWindowSize(window, &width, &height);
 	newWindowSize = currWindowSize = uint2((uint32)width, (uint32)height);
+	currWindowScale = (float2)currFramebufferSize / currWindowSize;
 
 	glfwGetWindowContentScale(window, &currContentScale.x, &currContentScale.y);
 	newContentScale = currContentScale;
@@ -234,6 +235,7 @@ void InputSystem::input()
 
 	currFramebufferSize = newFramebufferSize;
 	currWindowSize = newWindowSize;
+	currWindowScale = (float2)currFramebufferSize / currWindowSize;
 	currContentScale = newContentScale;
 	cursorDelta = newCursorPos - currCursorPos;
 	currCursorPos = newCursorPos;

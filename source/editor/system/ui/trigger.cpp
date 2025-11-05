@@ -59,6 +59,14 @@ void UiTriggerEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 
 	auto uiTriggerView = Manager::Instance::get()->get<UiTriggerComponent>(entity);
 
+	ImGui::DragFloat2("Offset", &uiTriggerView->offset, 1.0f);
+	if (ImGui::BeginPopupContextItem("offset"))
+	{
+		if (ImGui::MenuItem("Reset Default"))
+			uiTriggerView->offset = float2::zero;
+		ImGui::EndPopup();
+	}
+
 	ImGui::DragFloat2("Scale", &uiTriggerView->scale, 1.0f, 0.0001f, FLT_MAX);
 	if (ImGui::BeginPopupContextItem("scale"))
 	{

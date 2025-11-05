@@ -496,13 +496,11 @@ void CharacterSystem::setWorldTransformRecursive(ID<Entity> entity)
 	GARDEN_ASSERT(entity);
 
 	auto manager = Manager::Instance::get();
-	entityStack.push_back(entity);
+	entityStack.push(entity);
 
 	while (!entityStack.empty())
 	{
-		auto entity = entityStack.back();
-		entityStack.pop_back();
-
+		auto entity = entityStack.top(); entityStack.pop();
 		auto characterView = manager->tryGet<CharacterComponent>(entity);
 		if (characterView && characterView->getShape())
 			characterView->setWorldTransform();
@@ -515,6 +513,6 @@ void CharacterSystem::setWorldTransformRecursive(ID<Entity> entity)
 		auto childs = transformView->getChilds();
 
 		for (uint32 i = 0; i < childCount; i++)
-			entityStack.push_back(childs[i]);
+			entityStack.push(childs[i]);
 	}
 }

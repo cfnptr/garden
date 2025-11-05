@@ -146,7 +146,10 @@ static void updateHierarchyClick(ID<Entity> renderEntity)
 			{
 				auto renderTransformView = manager->tryGet<TransformComponent>(renderEntity);
 				if (renderTransformView && !renderTransformView->hasAncestor(entity))
+				{
 					entityTransformView->setParent(renderEntity);
+					entityTransformView->resetUIDs();
+				}
 			}
 		}
 		ImGui::EndDragDropTarget();
