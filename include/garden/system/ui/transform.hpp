@@ -83,9 +83,9 @@ static bool toUiAnchor(string_view name, UiAnchor& uiAnchor) noexcept
  */
 struct UiTransformComponent final : public Component
 {
-	float3 position = float3::zero;
-	float3 scale = float3::one;
 	UiAnchor anchor = UiAnchor::Center;
+	f32x4 position = f32x4::zero;
+	f32x4 scale = f32x4::one;
 	quat rotation = quat::identity;
 };
 

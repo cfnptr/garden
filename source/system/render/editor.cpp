@@ -585,22 +585,19 @@ static bool renderInspectorComponentPopup(ID<Entity>& selectedEntity,
 		if (ImGui::MenuItem("Paste Component Data", nullptr, false, serializableSystem))
 		{
 			auto manager = Manager::Instance::get();
-			auto stagingEntity = manager->createEntity(); // TODO: maybe add resetComponent function instead?
-			manager->add(stagingEntity, componentType);
+			manager->resetComponents(selectedEntity, true);
 			try
 			{
 				JsonDeserializer jsonDeserializer = JsonDeserializer(string_view(ImGui::GetClipboardText()));
 				serializableSystem->preDeserialize(jsonDeserializer);
-				auto componentView = manager->get(stagingEntity, componentType);
+				auto componentView = manager->get(selectedEntity, componentType);
 				serializableSystem->deserialize(jsonDeserializer, componentView);
 				serializableSystem->postDeserialize(jsonDeserializer);
-				manager->copy(stagingEntity, selectedEntity, componentType);
 			}
 			catch (exception& e)
 			{
 				GARDEN_LOG_ERROR("Failed to deserialize component data on paste. (error: " + string(e.what()) + ")");
 			}
-			manager->destroy(stagingEntity);
 		}
 
 		ImGui::EndPopup();

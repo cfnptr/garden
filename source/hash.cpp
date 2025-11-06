@@ -48,12 +48,15 @@ Hash128::Hash128(const void* data, psize size, Hash128::State state)
 }
 Hash128::Hash128(string_view base64)
 {
-	if (modp_b64_decode_len(base64.size()) != sizeof(Hash128))
-		throw GardenError("Invalid Hash128 base64 string length");
-	auto result = modp_b64_decode((char*)this, base64.data(), 
+	constexpr auto decodeSize = modp_b64_decode_len(modp_b64_encode_len(sizeof(Hash128)));
+	if (modp_b64_decode_len(base64.size()) > decodeSize)
+		throw GardenError("Too big Hash128 base64 string length");
+	char decodeBuffer[decodeSize];
+	auto result = modp_b64_decode(decodeBuffer, base64.data(), 
 		base64.size(), ModpDecodePolicy::kForgiving);
 	if (result == MODP_B64_ERROR)
 		throw GardenError("Invalid Hash128 base64 string");
+	memcpy(this, decodeBuffer, sizeof(Hash128));
 }
 	
 string Hash128::toBase64URL() const noexcept

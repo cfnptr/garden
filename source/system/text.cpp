@@ -45,7 +45,7 @@ static uint32 calcGlyphLength(psize glyphCount) noexcept { return (uint32)ceil(s
 
 //**********************************************************************************************************************
 static bool fillFontAtlas(const LinearPool<Font>& fontPool, FT_Library ftLibrary, const vector<Ref<Font>>& fonts, 
-	FontAtlas::GlyphMap& glyphs, uint8_t* pixels, uint32 fontSize, uint32 glyphLength, uint2 pixelSize, 
+	FontAtlas::GlyphMap& glyphs, uint8* pixels, uint32 fontSize, uint32 glyphLength, uint2 pixelSize, 
 	uint8 fontIndex, uint32 itemOffset, uint32 itemCount, uint32 threadIndex)
 {
 	for (const auto& font : fonts)
@@ -151,7 +151,7 @@ static bool fillFontAtlas(const LinearPool<Font>& fontPool, FT_Library ftLibrary
 		}
 		else
 		{
-			auto glyphPosY = index / glyphLength, glyphPosX = (uint32)(index - (size_t)glyphPosY * glyphLength);
+			auto glyphPosY = index / glyphLength, glyphPosX = (uint32)(index - (psize)glyphPosY * glyphLength);
 			auto pixelPosX = glyphPosX * fontSize, pixelPosY = glyphPosY * fontSize;
 			glyph.position.x = (float)glyphSlot->bitmap_left * invFontSize;
 			glyph.position.y = ((float)glyphSlot->bitmap_top - glyphHeight) * invFontSize;
@@ -176,7 +176,7 @@ static bool fillFontAtlas(const LinearPool<Font>& fontPool, FT_Library ftLibrary
 	return true;
 }
 static bool fillFontAtlas(const LinearPool<Font>& fontPool, FT_Library ftLibrary, const FontArray& fonts, 
-	vector<FontAtlas::GlyphMap>& glyphs, uint8_t* pixels, uint32 fontSize, uint32 glyphLength, uint2 pixelSize)
+	vector<FontAtlas::GlyphMap>& glyphs, uint8* pixels, uint32 fontSize, uint32 glyphLength, uint2 pixelSize)
 {
 	auto threadSystem = ThreadSystem::Instance::tryGet();
 	if (threadSystem)
@@ -285,6 +285,7 @@ bool FontAtlas::update(u32string_view chars, uint32 fontSize, Image::Usage image
 		image = graphicsSystem->createImage(imageFormat, imageUsage, 
 			{ { nullptr } }, newPixelSize, Image::Strategy::Size);
 		SET_RESOURCE_DEBUG_NAME(image, "image.fontAtlas" + to_string(*image));
+		pixelSize = newPixelSize; // Note: needed for Y size difference!
 	}
 
 	Image::CopyBufferRegion copyRegion;
@@ -300,46 +301,31 @@ bool FontAtlas::update(u32string_view chars, uint32 fontSize, Image::Usage image
 
 //**********************************************************************************************************************
 static void updateTextNewLine(Text::Instance* instances, uint32 fontSize, float newLineAdvance, float2& instanceOffset, 
-	uint32& instanceIndex, uint32& lastNewLineIndex, float2& textSize, Text::Alignment alignment) noexcept
+	uint32 instanceIndex, uint32& lastNewLineIndex, float2& textSize, Text::Alignment alignment) noexcept
 {
 	float offset;
 	switch (alignment)
 	{
-	case Text::Alignment::Center:
-		offset = floorf(instanceOffset.x * -0.5f * fontSize) / fontSize;
-		for (uint32 j = lastNewLineIndex; j < instanceIndex; j++)
-			instances[j].position.x += offset;
-		break;
-	case Text::Alignment::Right:
-		offset = -instanceOffset.x;
-		for (uint32 j = lastNewLineIndex; j < instanceIndex; j++)
-			instances[j].position.x += offset;
-		break;
-	case Text::Alignment::Bottom:
-		offset = floorf(instanceOffset.x * -0.5f * fontSize) / fontSize;
-		for (uint32 j = lastNewLineIndex; j < instanceIndex; j++)
-			instances[j].position.x += offset;
-		break;
-	case Text::Alignment::Top:
-		offset = floorf(instanceOffset.x * -0.5f * fontSize) / fontSize;
-		for (uint32 j = lastNewLineIndex; j < instanceIndex; j++)
-			instances[j].position.x += offset;
-		break;
-	case Text::Alignment::RightBottom:
-		offset = -instanceOffset.x;
-		for (uint32 j = lastNewLineIndex; j < instanceIndex; j++)
-			instances[j].position.x += offset;
-		break;
-	case Text::Alignment::RightTop:
-		offset = -instanceOffset.x;
-		for (uint32_t j = lastNewLineIndex; j < instanceIndex; j++)
-			instances[j].position.x += offset;
-		break;
+	case Text::Alignment::Center: offset = floorf(instanceOffset.x * -0.5f * fontSize) / fontSize; break;
+	case Text::Alignment::Right: offset = -instanceOffset.x; break;
+	case Text::Alignment::Bottom: offset = floorf(instanceOffset.x * -0.5f * fontSize) / fontSize; break;
+	case Text::Alignment::Top: offset = floorf(instanceOffset.x * -0.5f * fontSize) / fontSize; break;
+	case Text::Alignment::RightBottom: offset = -instanceOffset.x; break;
+	case Text::Alignment::RightTop: offset = -instanceOffset.x; break;
+
 	case Text::Alignment::Left:
 	case Text::Alignment::LeftBottom:
 	case Text::Alignment::LeftTop:
+		offset = 0.0f;
 		break;
 	default: abort();
+	}
+
+	if (offset != 0.0f)
+	{
+		auto offset4 = float4(offset, 0.0f, offset, 0.0f);
+		for (uint32 i = lastNewLineIndex; i < instanceIndex; i++)
+			instances[i].position += offset4;
 	}
 
 	lastNewLineIndex = instanceIndex;
@@ -470,69 +456,69 @@ static bool fillTextInstances(u32string_view value, Text::Properties properties,
 	case Text::Alignment::Center:
 		offset = floorf(instanceOffset.x * -0.5f * fontSize) / fontSize;
 		offset4 = float4(offset, 0.0f, offset, 0.0f);
-		for (uint32_t i = lastNewLineIndex; i < instanceIndex; i++)
+		for (uint32 i = lastNewLineIndex; i < instanceIndex; i++)
 			instances[i].position += offset4;
 
 		offset = floorf(size.y * 0.5f * fontSize) / fontSize;
 		offset4 = float4(0.0f, offset, 0.0f, offset);
-		for (uint32_t i = 0; i < instanceIndex; i++)
+		for (uint32 i = 0; i < instanceIndex; i++)
 			instances[i].position += offset4;
 		break;
 	case Text::Alignment::Left:
 		offset = floorf(size.y * 0.5f * fontSize) / fontSize;
 		offset4 = float4(0.0f, offset, 0.0f, offset);
-		for (uint32_t i = 0; i < instanceIndex; i++)
+		for (uint32 i = 0; i < instanceIndex; i++)
 			instances[i].position += offset4;
 		break;
 	case Text::Alignment::Right:
 		offset = -instanceOffset.x;
 		offset4 = float4(offset, 0.0f, offset, 0.0f);
-		for (uint32_t i = lastNewLineIndex; i < instanceIndex; i++)
+		for (uint32 i = lastNewLineIndex; i < instanceIndex; i++)
 			instances[i].position += offset4;
 
 		offset = floorf(size.y * 0.5f * fontSize) / fontSize;
 		offset4 = float4(0.0f, offset, 0.0f, offset);
-		for (uint32_t i = 0; i < instanceIndex; i++)
+		for (uint32 i = 0; i < instanceIndex; i++)
 			instances[i].position += offset4;
 		break;
 	case Text::Alignment::Bottom:
 		offset = floorf(instanceOffset.x * -0.5f * fontSize) / fontSize;
 		offset4 = float4(offset, 0.0f, offset, 0.0f);
-		for (uint32_t i = lastNewLineIndex; i < instanceIndex; i++)
+		for (uint32 i = lastNewLineIndex; i < instanceIndex; i++)
 			instances[i].position += offset4;
 
 		offset = size.y;
 		offset4 = float4(0.0f, offset, 0.0f, offset);
-		for (uint32_t i = 0; i < instanceIndex; i++)
+		for (uint32 i = 0; i < instanceIndex; i++)
 			instances[i].position += offset4;
 		break;
 	case Text::Alignment::Top:
 		offset = floorf(instanceOffset.x * -0.5f * fontSize) / fontSize;
 		offset4 = float4(offset, 0.0f, offset, 0.0f);
-		for (uint32_t i = lastNewLineIndex; i < instanceIndex; i++)
+		for (uint32 i = lastNewLineIndex; i < instanceIndex; i++)
 			instances[i].position += offset4;
 		break;
 	case Text::Alignment::LeftBottom:
 		offset = size.y;
 		offset4 = float4(0.0f, offset, 0.0f, offset);
-		for (uint32_t i = 0; i < instanceIndex; i++)
+		for (uint32 i = 0; i < instanceIndex; i++)
 			instances[i].position += offset4;
 		break;
 	case Text::Alignment::RightBottom:
 		offset = -instanceOffset.x;
 		offset4 = float4(offset, 0.0f, offset, 0.0f);
-		for (uint32_t i = lastNewLineIndex; i < instanceIndex; i++)
+		for (uint32 i = lastNewLineIndex; i < instanceIndex; i++)
 			instances[i].position += offset4;
 
 		offset = size.y;
 		offset4 = float4(0.0f, offset, 0.0f, offset);
-		for (uint32_t i = 0; i < instanceIndex; i++)
+		for (uint32 i = 0; i < instanceIndex; i++)
 			instances[i].position += offset4;
 		break;
 	case Text::Alignment::RightTop:
 		offset = -instanceOffset.x;
 		offset4 = float4(offset, 0.0f, offset, 0.0f);
-		for (uint32_t i = lastNewLineIndex; i < instanceIndex; i++)
+		for (uint32 i = lastNewLineIndex; i < instanceIndex; i++)
 			instances[i].position += offset4;
 		break;
 	case Text::Alignment::LeftTop: break;
@@ -582,10 +568,7 @@ bool Text::update(u32string_view value, uint32 fontSize, Properties properties,
 	{
 		fontAtlasView = OptView<FontAtlas>(textSystem->get(fontAtlas));
 		if (!fontAtlasView->update(value, fontSize, atlasUsage, shrink))
-		{
-			textSystem->destroy(newFontAtlas);
 			return false;
-		}
 	}
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();

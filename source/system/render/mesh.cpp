@@ -164,9 +164,8 @@ static void prepareUnsortedMeshes(f32x4 cameraOffset, f32x4 cameraPosition, cons
 
 	auto manager = Manager::Instance::get();
 	auto meshSystem = unsortedBuffer->meshSystem;
-	auto& componentPool = meshSystem->getMeshComponentPool();
 	auto componentSize = meshSystem->getMeshComponentSize();
-	auto componentData = (uint8*)componentPool.getData();
+	auto componentData = (uint8*)meshSystem->getMeshComponentPool().getData();
 	auto isNotShadowPass = shadowPass < 0;
 
 	MeshRenderSystem::UnsortedMesh* meshes = nullptr;
@@ -215,7 +214,7 @@ static void prepareUnsortedMeshes(f32x4 cameraOffset, f32x4 cameraPosition, cons
 			meshRenderView->setVisible(true);
 
 		MeshRenderSystem::UnsortedMesh unsortedMesh;
-		unsortedMesh.renderView = meshRenderView;
+		unsortedMesh.componentOffset = i * componentSize;
 		unsortedMesh.model = (float4x3)model;
 		unsortedMesh.distanceSq = lengthSq3(getTranslation(model) + cameraOffset);
 		meshes[drawIndex++] = unsortedMesh;
@@ -240,9 +239,8 @@ static void prepareSortedMeshes(f32x4 cameraOffset, f32x4 cameraPosition, const 
 
 	auto manager = Manager::Instance::get();
 	auto meshSystem = sortedBuffer->meshSystem;
-	auto& componentPool = meshSystem->getMeshComponentPool();
 	auto componentSize = meshSystem->getMeshComponentSize();
-	auto componentData = (uint8*)componentPool.getData();
+	auto componentData = (uint8*)meshSystem->getMeshComponentPool().getData();
 	auto& drawCount = sortedBuffer->drawCount;
 	auto isNotShadowPass = shadowPass < 0;
 
@@ -292,7 +290,7 @@ static void prepareSortedMeshes(f32x4 cameraOffset, f32x4 cameraPosition, const 
 			meshRenderView->setVisible(true);
 
 		MeshRenderSystem::SortedMesh sortedMesh;
-		sortedMesh.renderView = meshRenderView;
+		sortedMesh.componentOffset = i * componentSize;
 		sortedMesh.model = (float4x3)model;
 		sortedMesh.distanceSq = distance2D ? getTranslation(model).getZ() + 1.0f : 
 			lengthSq3(getTranslation(model) + cameraOffset);
@@ -402,16 +400,14 @@ void MeshRenderSystem::prepareMeshes(const f32x4x4& viewProj,
 
 		if (renderType == MeshRenderType::Translucent)
 		{
-			const auto& componentPool = meshSystem->getMeshComponentPool();
-			transMeshMaxCount += componentPool.getCount();
+			transMeshMaxCount += meshSystem->getMeshComponentPool().getCount();
 			sortedBufferCount++;
 		}
 		else if (renderType == MeshRenderType::UI)
 		{
 			if (shadowPass < 0)
 			{
-				const auto& componentPool = meshSystem->getMeshComponentPool();
-				uiMeshMaxCount += componentPool.getCount();
+				uiMeshMaxCount += meshSystem->getMeshComponentPool().getCount();
 				sortedBufferCount++;
 			}
 		}
@@ -626,16 +622,22 @@ void MeshRenderSystem::renderUnsorted(const f32x4x4& viewProj, MeshRenderType re
 
 				auto meshSystem = unsortedBuffer->meshSystem;
 				const auto meshes = unsortedBuffer->combinedMeshes.data();
-				auto itemCount = task.getItemCount();
-				auto taskIndex = task.getTaskIndex(); // Note: Using task index to preserve items order.
+				auto componentSize = meshSystem->getMeshComponentSize();
+				auto componentData = (uint8*)meshSystem->getMeshComponentPool().getData();
+				// Note: Using task index to preserve items order.
+				auto itemCount = task.getItemCount(); auto taskIndex = task.getTaskIndex();
 				auto taskCount = itemCount - task.getItemOffset();
 
 				meshSystem->beginDrawAsync(taskIndex);
 				for (uint32 j = task.getItemOffset(); j < itemCount; j++)
 				{
 					const auto& mesh = meshes[j];
+					auto meshRenderView = (MeshRenderComponent*)(componentData + mesh.componentOffset);
+					if (!meshRenderView->getEntity())
+						continue; // Note: entity may be destroyed before rendering.
+
 					auto model = f32x4x4(mesh.model, f32x4(0.0f, 0.0f, 0.0f, 1.0f));
-					meshSystem->drawAsync(mesh.renderView, viewProj, model, j, taskIndex);
+					meshSystem->drawAsync(meshRenderView, viewProj, model, j, taskIndex);
 				}
 				meshSystem->endDrawAsync(taskCount, taskIndex);
 			},
@@ -647,12 +649,19 @@ void MeshRenderSystem::renderUnsorted(const f32x4x4& viewProj, MeshRenderType re
 			SET_CPU_ZONE_SCOPED("Unsorted Mesh Draw");
 
 			const auto meshes = unsortedBuffer->combinedMeshes.data();
+			auto componentSize = meshSystem->getMeshComponentSize();
+			auto componentData = (uint8*)meshSystem->getMeshComponentPool().getData();
+
 			meshSystem->beginDrawAsync(-1);
 			for (uint32 j = 0; j < drawCount; j++)
 			{
 				const auto& mesh = meshes[j];
+				auto meshRenderView = (MeshRenderComponent*)(componentData + mesh.componentOffset);
+				if (!meshRenderView->getEntity())
+					continue; // Note: entity may be destroyed before rendering.
+
 				auto model = f32x4x4(mesh.model, f32x4(0.0f, 0.0f, 0.0f, 1.0f));
-				meshSystem->drawAsync(mesh.renderView, viewProj, model, j, -1);
+				meshSystem->drawAsync(meshRenderView, viewProj, model, j, -1);
 			}
 			meshSystem->endDrawAsync(drawCount, -1);
 		}
@@ -705,8 +714,10 @@ void MeshRenderSystem::renderSorted(const f32x4x4& viewProj, MeshRenderType rend
 			auto currentBufferIndex = combinedSortedMeshes[task.getItemOffset()].bufferIndex;
 			auto meshSystem = sortedBuffers[currentBufferIndex]->meshSystem;
 			auto bufferDrawCount = &sortedBuffers[currentBufferIndex]->drawCount;
-			auto itemCount = task.getItemCount();
-			auto taskIndex = task.getTaskIndex(); // Note: Using task index to preserve items order.
+			auto componentSize = meshSystem->getMeshComponentSize();
+			auto componentData = (uint8*)meshSystem->getMeshComponentPool().getData();
+			// Note: Using task index to preserve items order.
+			auto itemCount = task.getItemCount(); auto taskIndex = task.getTaskIndex();
 			meshSystem->beginDrawAsync(taskIndex);
 
 			uint32 currentDrawCount = 0;
@@ -721,14 +732,20 @@ void MeshRenderSystem::renderSorted(const f32x4x4& viewProj, MeshRenderType rend
 					currentBufferIndex = mesh.bufferIndex;
 					currentDrawCount = 0;
 
-					bufferDrawCount = &sortedBuffers[currentBufferIndex]->drawCount;
 					meshSystem = sortedBuffers[currentBufferIndex]->meshSystem;
+					bufferDrawCount = &sortedBuffers[currentBufferIndex]->drawCount;
+					componentSize = meshSystem->getMeshComponentSize();
+					componentData = (uint8*)meshSystem->getMeshComponentPool().getData();
 					meshSystem->beginDrawAsync(taskIndex);
 				}
 
+				auto meshRenderView = (MeshRenderComponent*)(componentData + mesh.componentOffset);
+				if (!meshRenderView->getEntity())
+					continue; // Note: entity may be destroyed before rendering.
+
 				auto drawIndex = bufferDrawCount->fetch_add(1);
 				auto model = f32x4x4(mesh.model, f32x4(0.0f, 0.0f, 0.0f, 1.0f));
-				meshSystem->drawAsync(mesh.renderView, viewProj, model, drawIndex, taskIndex);
+				meshSystem->drawAsync(meshRenderView, viewProj, model, drawIndex, taskIndex);
 				currentDrawCount++;
 			}
 
@@ -744,6 +761,8 @@ void MeshRenderSystem::renderSorted(const f32x4x4& viewProj, MeshRenderType rend
 		auto currentBufferIndex = combinedSortedMeshes[0].bufferIndex;
 		auto meshSystem = sortedBuffers[currentBufferIndex]->meshSystem;
 		auto bufferDrawCount = &sortedBuffers[currentBufferIndex]->drawCount;
+		auto componentSize = meshSystem->getMeshComponentSize();
+		auto componentData = (uint8*)meshSystem->getMeshComponentPool().getData();
 		meshSystem->beginDrawAsync(-1);
 
 		uint32 currentDrawCount = 0;
@@ -758,14 +777,20 @@ void MeshRenderSystem::renderSorted(const f32x4x4& viewProj, MeshRenderType rend
 				currentBufferIndex = mesh.bufferIndex;
 				currentDrawCount = 0;
 
-				bufferDrawCount = &sortedBuffers[currentBufferIndex]->drawCount;
 				meshSystem = sortedBuffers[currentBufferIndex]->meshSystem;
+				bufferDrawCount = &sortedBuffers[currentBufferIndex]->drawCount;
+				componentSize = meshSystem->getMeshComponentSize();
+				componentData = (uint8*)meshSystem->getMeshComponentPool().getData();
 				meshSystem->beginDrawAsync(-1);
 			}
 
+			auto meshRenderView = (MeshRenderComponent*)(componentData + mesh.componentOffset);
+			if (!meshRenderView->getEntity())
+				continue; // Note: entity may be destroyed before rendering.
+
 			auto drawIndex = bufferDrawCount->fetch_add(1);
 			auto model = f32x4x4(mesh.model, f32x4(0.0f, 0.0f, 0.0f, 1.0f));
-			meshSystem->drawAsync(mesh.renderView, viewProj, model, drawIndex, -1);
+			meshSystem->drawAsync(meshRenderView, viewProj, model, drawIndex, -1);
 			currentDrawCount++;
 		}
 

@@ -113,7 +113,7 @@ public:
 	/**
 	 * @brief Returns system mesh component pool.
 	 */
-	MeshRenderPool& getMeshComponentPool() override { return *((MeshRenderPool*)&this->components); }
+	MeshRenderPool& getMeshComponentPool() const override { return *((MeshRenderPool*)&this->components); }
 	/**
 	 * @brief Returns system mesh component size in bytes.
 	 */

@@ -169,8 +169,20 @@ void AnimationEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 			ImGui::TreeNodeEx(i->first.c_str(), ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
 			if (ImGui::BeginPopupContextItem(i->first.c_str()))
 			{
+				if (ImGui::MenuItem("Set As Active"))
+					animationView->active = i->first;
 				if (ImGui::MenuItem("Copy Animation Path"))
 					ImGui::SetClipboardText(i->first.c_str());
+
+				if (ImGui::MenuItem("Reload Animation"))
+				{
+					auto animationPath = i->first;
+					resourceSystem->destroyShared(i->second); animationView->eraseAnimation(i);
+					auto newAnimation = resourceSystem->loadAnimation(animationPath, true);
+					animationView->emplaceAnimation(std::move(animationPath), std::move(newAnimation));
+					ImGui::EndPopup();
+					break;
+				}
 				if (ImGui::MenuItem("Remove Animation"))
 				{
 					resourceSystem->destroyShared(i->second);

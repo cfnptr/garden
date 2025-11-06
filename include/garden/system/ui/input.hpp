@@ -37,13 +37,15 @@ struct UiInputComponent final : public Component
 
 	friend class garden::UiInputSystem;
 public:
-	u32string text = U"";           /**< UI input text string. */
-	u32string placeholder = U"";    /**< UI input placeholder string. (Filler) */
-	u32string prefix = U"";         /**< UI input prefix string. [string = prefix + text] */
-	string onChange = "";           /**< On UI input change event. */
-	string animationPath = "";      /**< UI input state animation path. */
-	f32x4 textColor = f32x4::one;   /**< UI input text sRGB color. */
+	u32string text = U"";         /**< UI input text string. */
+	u32string placeholder = U"";  /**< UI input placeholder string. (Filler) */
+	u32string prefix = U"";       /**< UI input prefix string. [string = prefix + text] */
+	string onChange = "";         /**< On UI input change event. */
+	string animationPath = "";    /**< UI input state animation path. */
+	f32x4 textColor = f32x4::one; /**< UI input text sRGB color. */
 	f32x4 placeholderColor = f32x4(0.5f, 0.5f, 0.5f, 1.0f); /**< UI input placeholder sRGB color. */
+	psize maxLength = SIZE_MAX;   /**< Maximal UI input field text length. */
+	uint32 replaceChar = 0;       /**< UTF-32 char to replace UI input text with. */
 
 	/**
 	 * @brief Returns true if UI input is enabled.

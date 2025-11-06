@@ -94,34 +94,46 @@ UiButtonSystem::~UiButtonSystem()
 void UiButtonSystem::uiButtonEnter()
 {
 	auto hoveredElement = UiTriggerSystem::Instance::get()->getHovered();
+	if (!hoveredElement)
+		return;
 	auto uiButtonView = Manager::Instance::get()->tryGet<UiButtonComponent>(hoveredElement);
 	if (!uiButtonView || !uiButtonView->enabled)
 		return;
 
-	auto mouseState = InputSystem::Instance::get()->getMouseState(MouseButton::Left);
+	auto inputSystem = InputSystem::Instance::get();
+	auto mouseState = inputSystem->getMouseState(MouseButton::Left);
 	auto newState = pressedButton == hoveredElement && mouseState ? "active" : "hovered";
 	setUiButtonAnimation(hoveredElement, uiButtonView->animationPath, "default", newState);
 
+	if (!uiButtonView->noCursorHand)
+		inputSystem->setCursorType(CursorType::PointingHand);
 	if (!mouseState)
 		pressedButton = {};
 }
 void UiButtonSystem::uiButtonExit()
 {
 	auto hoveredElement = UiTriggerSystem::Instance::get()->getHovered();
+	if (!hoveredElement)
+		return;
 	auto uiButtonView = Manager::Instance::get()->tryGet<UiButtonComponent>(hoveredElement);
 	if (!uiButtonView || !uiButtonView->enabled)
 		return;
 
-	auto mouseState = InputSystem::Instance::get()->getMouseState(MouseButton::Left);
+	auto inputSystem = InputSystem::Instance::get();
+	auto mouseState = inputSystem->getMouseState(MouseButton::Left);
 	auto currState = pressedButton == hoveredElement && mouseState ? "active" : "hovered";
 	setUiButtonAnimation(hoveredElement, uiButtonView->animationPath, currState, "default");
 
+	if (!uiButtonView->noCursorHand)
+		inputSystem->setCursorType(CursorType::Default);
 	if (!mouseState)
 		pressedButton = {};
 }
 void UiButtonSystem::uiButtonStay()
 {
 	auto hoveredElement = UiTriggerSystem::Instance::get()->getHovered();
+	if (!hoveredElement)
+		return;
 	auto uiButtonView = Manager::Instance::get()->tryGet<UiButtonComponent>(hoveredElement);
 	if (!uiButtonView || !uiButtonView->enabled)
 		return;
@@ -155,6 +167,8 @@ void UiButtonSystem::serialize(ISerializer& serializer, const View<Component> co
 	const auto componentView = View<UiButtonComponent>(component);
 	if (!componentView->enabled)
 		serializer.write("isEnabled", false);
+	if (componentView->noCursorHand)
+		serializer.write("noCursorHand", true);
 	if (!componentView->onClick.empty())
 		serializer.write("onClick", componentView->onClick);
 	if (!componentView->animationPath.empty())
@@ -164,6 +178,7 @@ void UiButtonSystem::deserialize(IDeserializer& deserializer, View<Component> co
 {
 	auto componentView = View<UiButtonComponent>(component);
 	deserializer.read("isEnabled", componentView->enabled);
+	deserializer.read("noCursorHand", componentView->noCursorHand);
 	deserializer.read("onClick", componentView->onClick);
 	deserializer.read("animationPath", componentView->animationPath);
 }
@@ -174,6 +189,8 @@ void UiButtonSystem::serializeAnimation(ISerializer& serializer, View<AnimationF
 	const auto frameView = View<UiButtonFrame>(frame);
 	if (frameView->animateIsEnabled)
 		serializer.write("isEnabled", (bool)frameView->isEnabled);
+	if (frameView->animateNoCursorHand)
+		serializer.write("noCursorHand", (bool)frameView->noCursorHand);
 	if (frameView->animateOnClick)
 		serializer.write("onClick", frameView->onClick);
 	if (frameView->animateAnimationPath)
@@ -181,11 +198,18 @@ void UiButtonSystem::serializeAnimation(ISerializer& serializer, View<AnimationF
 }
 void UiButtonSystem::deserializeAnimation(IDeserializer& deserializer, View<AnimationFrame> frame)
 {
-	auto frameView = View<UiButtonFrame>(frame); auto isEnabled = true;
-	frameView->animateIsEnabled = deserializer.read("isEnabled", isEnabled);
+	auto frameView = View<UiButtonFrame>(frame);
+	
+	auto boolValue = true;
+	frameView->animateIsEnabled = deserializer.read("isEnabled", boolValue);
+	frameView->isEnabled = boolValue;
+
+	boolValue = false;
+	frameView->animateNoCursorHand = deserializer.read("noCursorHand", boolValue);
+	frameView->noCursorHand = boolValue;
+
 	frameView->animateOnClick = deserializer.read("onClick", frameView->onClick);
 	frameView->animateAnimationPath = deserializer.read("animationPath", frameView->animationPath);
-	frameView->isEnabled = isEnabled;
 }
 
 void UiButtonSystem::animateAsync(View<Component> component, View<AnimationFrame> a, View<AnimationFrame> b, float t)
@@ -196,6 +220,8 @@ void UiButtonSystem::animateAsync(View<Component> component, View<AnimationFrame
 
 	if (frameA->animateIsEnabled)
 		componentView->enabled = (bool)round(t) ? frameB->isEnabled : frameA->isEnabled;
+	if (frameA->animateNoCursorHand)
+		componentView->noCursorHand = (bool)round(t) ? frameB->noCursorHand : frameA->noCursorHand;
 	if (frameA->animateOnClick)
 		componentView->onClick = (bool)round(t) ? frameB->onClick : frameA->onClick;
 	if (frameA->animateAnimationPath)

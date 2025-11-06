@@ -75,7 +75,7 @@ void UiInputComponent::setTextBad(bool state)
 		return;
 
 	auto uiInputSystem = UiInputSystem::Instance::get();
-	setUiInputAnimation(entity, animationPath, text, state ? (textBad ? "bad" : 
+	setUiInputAnimation(entity, animationPath, text, enabled ? (state ? "bad" : 
 		(entity == uiInputSystem->getActiveInput() ? "active" : "default")) : "disabled");
 	textBad = state;
 }
@@ -95,7 +95,8 @@ bool UiInputComponent::updateText(bool shrink)
 		return false;
 
 	uiLabelView->text = prefix;
-	uiLabelView->text += text.empty() ? placeholder : text;
+	uiLabelView->text += text.empty() ? placeholder : 
+		(replaceChar == 0 ? text : u32string(text.length(), (char32_t)replaceChar));
 	uiLabelView->text.push_back(U' ');
 	uiLabelView->color = text.empty() ? placeholderColor : textColor;
 	return uiLabelView->updateText(shrink);
@@ -218,6 +219,8 @@ UiInputSystem::~UiInputSystem()
 void UiInputSystem::uiInputEnter()
 {
 	auto hoveredElement = UiTriggerSystem::Instance::get()->getHovered();
+	if (!hoveredElement)
+		return;
 	auto uiInputView = Manager::Instance::get()->tryGet<UiInputComponent>(hoveredElement);
 	if (!uiInputView || !uiInputView->enabled)
 		return;
@@ -229,6 +232,8 @@ void UiInputSystem::uiInputEnter()
 void UiInputSystem::uiInputExit()
 {
 	auto hoveredElement = UiTriggerSystem::Instance::get()->getHovered();
+	if (!hoveredElement)
+		return;
 	auto uiInputView = Manager::Instance::get()->tryGet<UiInputComponent>(hoveredElement);
 	if (!uiInputView || !uiInputView->enabled)
 		return;
@@ -243,6 +248,8 @@ void UiInputSystem::uiInputExit()
 void UiInputSystem::uiInputStay()
 {
 	auto hoveredElement = UiTriggerSystem::Instance::get()->getHovered();
+	if (!hoveredElement)
+		return;
 	auto uiInputView = Manager::Instance::get()->tryGet<UiInputComponent>(hoveredElement);
 	if (!uiInputView || !uiInputView->enabled || hoveredElement == activeInput)
 		return;
@@ -267,12 +274,21 @@ void UiInputSystem::updateActive()
 	auto& keyboardChars = inputSystem->getKeyboardChars32();
 	if (!keyboardChars.empty())
 	{
-		if (uiInputView->caretIndex < uiInputView->text.length())
-			uiInputView->text.insert(uiInputView->caretIndex, keyboardChars);
-		else uiInputView->text += keyboardChars;
+		auto freeCharCount = uiInputView->maxLength > uiInputView->text.length() ?
+			uiInputView->maxLength - uiInputView->text.length() : 0;
+		if (freeCharCount > 0)
+		{
+			u32string_view appendChars(keyboardChars.data(), min(keyboardChars.length(), freeCharCount));
+			if (uiInputView->caretIndex < uiInputView->text.length())
+				uiInputView->text.insert(uiInputView->caretIndex, appendChars);
+			else uiInputView->text += appendChars;
 
-		uiInputView->updateText();
-		uiInputView->updateCaret(uiInputView->caretIndex + keyboardChars.size());
+			uiInputView->updateText();
+			uiInputView->updateCaret(uiInputView->caretIndex + keyboardChars.size());
+
+			if (!uiInputView->onChange.empty())
+				Manager::Instance::get()->tryRunEvent(uiInputView->onChange);
+		}
 	}
 
 	if (uiInputView->text.empty())
@@ -316,6 +332,9 @@ void UiInputSystem::updateActive()
 			uiInputView->text.erase(uiInputView->caretIndex - 1, 1);
 			uiInputView->updateText();
 			uiInputView->updateCaret(uiInputView->caretIndex - 1);
+
+			if (!uiInputView->onChange.empty())
+				Manager::Instance::get()->tryRunEvent(uiInputView->onChange);
 		}
 	}
 	if (inputSystem->isKeyboardPressed(KeyboardButton::Delete) ||
@@ -325,6 +344,9 @@ void UiInputSystem::updateActive()
 		{
 			uiInputView->text.erase(uiInputView->caretIndex, 1);
 			uiInputView->updateText();
+
+			if (!uiInputView->onChange.empty())
+				Manager::Instance::get()->tryRunEvent(uiInputView->onChange);
 		}
 	}
 }
@@ -381,6 +403,10 @@ void UiInputSystem::serialize(ISerializer& serializer, const View<Component> com
 		serializer.write("textColor", (float4)componentView->textColor);
 	if (componentView->placeholderColor != f32x4(0.5f, 0.5f, 0.5f, 1.0f))
 		serializer.write("placeholderColor", (float4)componentView->placeholderColor);
+	if (componentView->maxLength != SIZE_MAX)
+		serializer.write("maxLength", componentView->maxLength);
+	if (componentView->replaceChar != 0)
+		serializer.write("replaceChar", componentView->replaceChar);
 }
 void UiInputSystem::deserialize(IDeserializer& deserializer, View<Component> component)
 {
@@ -394,6 +420,8 @@ void UiInputSystem::deserialize(IDeserializer& deserializer, View<Component> com
 	deserializer.read("animationPath", componentView->animationPath);
 	deserializer.read("textColor", componentView->textColor);
 	deserializer.read("placeholderColor", componentView->placeholderColor);
+	deserializer.read("maxLength", componentView->maxLength);
+	deserializer.read("replaceChar", componentView->replaceChar);
 }
 
 //**********************************************************************************************************************

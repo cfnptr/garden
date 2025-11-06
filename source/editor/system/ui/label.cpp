@@ -60,7 +60,7 @@ void UiLabelEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	auto uiLabelView = Manager::Instance::get()->get<UiLabelComponent>(entity);
 
 	string text; UTF::utf32toUtf8(uiLabelView->text, text);
-	if (ImGui::InputText("Text", &text))
+	if (ImGui::InputTextMultiline("Text", &text))
 	{
 		UTF::utf8toUtf32(text, uiLabelView->text);
 		uiLabelView->updateText();
