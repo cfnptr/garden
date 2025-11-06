@@ -149,11 +149,11 @@ public:
 	/**
 	 * @brief Returns UI label mesh component pool.
 	 */
-	MeshRenderPool& getMeshComponentPool() override { return *((MeshRenderPool*)&this->components); }
+	MeshRenderPool& getMeshComponentPool() const final { return *((MeshRenderPool*)&components); }
 	/**
 	 * @brief Returns UI label mesh component size in bytes.
 	 */
-	psize getMeshComponentSize() const override { return sizeof(UiLabelComponent); }
+	psize getMeshComponentSize() const final { return sizeof(UiLabelComponent); }
 
 	/**
 	 * @brief Return UI label text graphics pipeline.

@@ -125,7 +125,7 @@ void UiTransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened
 	if (ImGui::BeginPopupContextItem("position"))
 	{
 		if (ImGui::MenuItem("Reset Default"))
-			uiTransformView->position = float3::zero;
+			uiTransformView->position = f32x4::zero;
 		ImGui::EndPopup();
 	}
 	if (isStatic && ImGui::BeginItemTooltip())
@@ -138,7 +138,7 @@ void UiTransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened
 	if (ImGui::BeginPopupContextItem("scale"))
 	{
 		if (ImGui::MenuItem("Reset Default"))
-			uiTransformView->scale = float3::one;
+			uiTransformView->scale = f32x4::one;
 		ImGui::EndPopup();
 	}
 	if (isStatic && ImGui::BeginItemTooltip())

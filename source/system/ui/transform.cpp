@@ -74,8 +74,8 @@ static void transformUiComponent(Manager* manager, float2 uiHalfSize, UiTransfor
 		default: abort();
 	}
 
-	transformView->setPosition(float3(position, uiTransformComp.position.z));
-	transformView->setScale(float3(scale, uiTransformComp.scale.z));
+	transformView->setPosition(float3(position, uiTransformComp.position.getZ()));
+	transformView->setScale(float3(scale, uiTransformComp.scale.getZ()));
 	transformView->setRotation(uiTransformComp.rotation);
 }
 
@@ -130,10 +130,10 @@ string_view UiTransformSystem::getComponentName() const
 void UiTransformSystem::serialize(ISerializer& serializer, const View<Component> component)
 {
 	const auto componentView = View<UiTransformComponent>(component);
-	if (componentView->position != float3::zero)
-		serializer.write("position", componentView->position);
-	if (componentView->scale != float3::one)
-		serializer.write("scale", componentView->scale);
+	if (componentView->position != f32x4::zero)
+		serializer.write("position", (float3)componentView->position);
+	if (componentView->scale != f32x4::one)
+		serializer.write("scale", (float3)componentView->scale);
 	if (componentView->rotation != quat::identity)
 		serializer.write("rotation", componentView->rotation);
 	if (componentView->anchor != UiAnchor::Center)
@@ -183,9 +183,9 @@ void UiTransformSystem::animateAsync(View<Component> component, View<AnimationFr
 	const auto frameB = View<UiTransformFrame>(b);
 
 	if (frameA->animatePosition)
-		componentiew->position = (float3)lerp(frameA->position, frameB->position, t);
+		componentiew->position = lerp(frameA->position, frameB->position, t);
 	if (frameA->animateScale)
-		componentiew->scale = (float3)lerp(frameA->scale, frameB->scale, t);
+		componentiew->scale = lerp(frameA->scale, frameB->scale, t);
 	if (frameA->animateRotation)
 		componentiew->rotation = slerp(frameA->rotation, frameB->rotation, t);
 	if (frameA->animateAnchor)

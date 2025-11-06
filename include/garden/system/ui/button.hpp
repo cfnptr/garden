@@ -31,11 +31,12 @@ class UiButtonSystem;
 struct UiButtonComponent final : public Component
 {
 protected:
-	uint16 _alignment = 0;
+	uint8 _alignment = 0;
 	bool enabled = true;
 
 	friend class garden::UiButtonSystem;
 public:
+	bool noCursorHand = false; /**< Disables cursor change on button hover. */
 	string onClick = "";       /**< On UI button click event. */
 	string animationPath = ""; /**< UI button state animation path. */
 
@@ -56,15 +57,22 @@ public:
 struct UiButtonFrame final : public AnimationFrame
 {
 	uint8 animateIsEnabled : 1;
+	uint8 animateNoCursorHand : 1;
 	uint8 animateOnClick : 1;
 	uint8 animateAnimationPath : 1;
 	uint8 isEnabled : 1;
+	uint8 noCursorHand : 1;
 	uint16 _alignment = 0;
 	string onClick = "";
 	string animationPath = "";
 
-	UiButtonFrame() : animateIsEnabled(false), animateOnClick(false), animateAnimationPath(false), isEnabled(true) { }
-	bool hasAnimation() final { return animateIsEnabled || animateOnClick || animateAnimationPath; }
+	UiButtonFrame() : animateIsEnabled(false), animateOnClick(false), animateAnimationPath(false), 
+		animateNoCursorHand(false), isEnabled(true), noCursorHand(false) { }
+	
+	bool hasAnimation() final
+	{
+		return animateIsEnabled || animateOnClick || animateAnimationPath || animateNoCursorHand;
+	}
 };
 
 /***********************************************************************************************************************

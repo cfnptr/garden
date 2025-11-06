@@ -52,8 +52,10 @@ void FpvControllerSystem::init()
 	camera = manager->createEntity();
 	manager->reserveComponents(camera, 8);
 
-	manager->add<DoNotDestroyComponent>(camera);
-	manager->add<DoNotSerializeComponent>(camera);
+	if (DoNotDestroySystem::Instance::has())
+		manager->add<DoNotDestroyComponent>(camera);
+	if (DoNotSerializeSystem::Instance::has())
+		manager->add<DoNotSerializeComponent>(camera);
 
 	auto transformView = manager->add<TransformComponent>(camera);
 	transformView->setPosition(f32x4(0.0f, 2.0f, -2.0f));
@@ -114,7 +116,15 @@ void FpvControllerSystem::swapchainRecreate()
 void FpvControllerSystem::updateMouseLock()
 {
 	auto inputSystem = InputSystem::Instance::get();
-	if (inputSystem->isKeyboardPressed(KeyboardButton::Tab)) // TODO: && get the exact button from the input system
+
+	#if GARDEN_EDITOR
+	auto wantCaptureMouse = ImGui::GetIO().WantCaptureMouse;
+	#else
+	auto wantCaptureMouse = false;
+	#endif
+
+	// TODO: && get the exact button from the input system
+	if (!wantCaptureMouse && inputSystem->isKeyboardPressed(KeyboardButton::Tab)) 
 		isMouseLocked = !isMouseLocked;
 
 	if (isMouseLocked)

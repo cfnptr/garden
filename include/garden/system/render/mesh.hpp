@@ -69,7 +69,7 @@ public:
 class IMeshRenderSystem
 {
 public:
-	using MeshRenderPool = LinearPool<MeshRenderComponent>;
+	using MeshRenderPool = LinearPool<MeshRenderComponent, false>;
 protected:
 	/**
 	 * @brief Is mesh system ready for rendering. (All resources loaded, etc.)
@@ -134,7 +134,7 @@ public:
 	/**
 	 * @brief Returns system mesh component pool.
 	 */
-	virtual MeshRenderPool& getMeshComponentPool() = 0;
+	virtual MeshRenderPool& getMeshComponentPool() const = 0;
 	/**
 	 * @brief Returns system mesh component size in bytes.
 	 */
@@ -185,21 +185,17 @@ class MeshRenderSystem final : public System, public Singleton<MeshRenderSystem>
 public:
 	struct alignas(64) UnsortedMesh final
 	{
-		MeshRenderComponent* renderView = nullptr;
+		psize componentOffset = 0;
 		float4x3 model = float4x3::zero;
 		float distanceSq = 0.0f;
-	private:
-		uint32 _alignment = 0;
-	public:
 		bool operator<(const UnsortedMesh& m) const noexcept { return distanceSq < m.distanceSq; }
 	};
 	struct alignas(64) SortedMesh final
 	{
-		MeshRenderComponent* renderView = nullptr;
+		psize componentOffset = 0;
 		float4x3 model = float4x3::zero;
 		float distanceSq = 0.0f;
 		uint32 bufferIndex = 0;
-
 		bool operator<(const SortedMesh& m) const noexcept { return distanceSq > m.distanceSq; }
 	};
 

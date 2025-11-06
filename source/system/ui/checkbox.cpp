@@ -88,6 +88,8 @@ void UiCheckboxSystem::uiCheckboxClick()
 {
 	auto manager = Manager::Instance::get();
 	auto hoveredElement = UiTriggerSystem::Instance::get()->getHovered();
+	if (!hoveredElement)
+		return;
 	auto uiCheckboxView = manager->tryGet<UiCheckboxComponent>(hoveredElement);
 	if (!uiCheckboxView)
 		return;

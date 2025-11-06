@@ -120,7 +120,7 @@ protected:
 	void resetAnimation(View<AnimationFrame> frame, bool full) override
 	{ NineSliceRenderSystem::resetAnimation(frame); if (full) **View<F>(frame) = F(); }
 
-	MeshRenderPool& getMeshComponentPool() override { return *((MeshRenderPool*)&this->components); }
+	MeshRenderPool& getMeshComponentPool() const override { return *((MeshRenderPool*)&this->components); }
 	psize getMeshComponentSize() const override { return sizeof(C); }
 	SpriteFramePool& getSpriteFramePool() override { return *((SpriteFramePool*)&this->animationFrames); }
 	psize getSpriteFrameSize() const override { return sizeof(F); }

@@ -54,8 +54,10 @@ void Controller2DSystem::init()
 	camera = manager->createEntity();
 	manager->reserveComponents(camera, 8);
 
-	manager->add<DoNotDestroyComponent>(camera);
-	manager->add<DoNotSerializeComponent>(camera);
+	if (DoNotDestroySystem::Instance::has())
+		manager->add<DoNotDestroyComponent>(camera);
+	if (DoNotSerializeSystem::Instance::has())
+		manager->add<DoNotSerializeComponent>(camera);
 
 	auto transformView = manager->add<TransformComponent>(camera);
 	transformView->setPosition(f32x4(0.0f, 0.0f, -0.5f));

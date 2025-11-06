@@ -117,6 +117,41 @@ void UiInputEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 		ImGui::EndPopup();
 	}
 
+	auto maxLength = uiInputView->maxLength == SIZE_MAX ? 
+		0 : (int)uiInputView->maxLength;
+	if (ImGui::DragInt("Max Length", &maxLength))
+	{
+		uiInputView->maxLength = maxLength <= 0 ? SIZE_MAX : maxLength;
+		uiInputView->updateText();
+	}
+	if (ImGui::BeginPopupContextItem("maxLength"))
+	{
+		if (ImGui::MenuItem("Reset Default"))
+		{
+			uiInputView->maxLength = SIZE_MAX;
+			uiInputView->updateText();
+		}
+		ImGui::EndPopup();
+	}
+
+	u32string_view replaceChar((char32_t*)&uiInputView->replaceChar, 1);
+	UTF::utf32toUtf8(replaceChar, text);
+	if (ImGui::InputText("Replace Char", &text))
+	{
+		u32string utf32; UTF::utf8toUtf32(text, utf32);
+		uiInputView->replaceChar = utf32.empty() ? 0 : (uint32)utf32[0];
+		uiInputView->updateText();
+	}
+	if (ImGui::BeginPopupContextItem("replaceChar"))
+	{
+		if (ImGui::MenuItem("Reset Default"))
+		{
+			uiInputView->replaceChar = 0;
+			uiInputView->updateText();
+		}
+		ImGui::EndPopup();
+	}
+
 	ImGui::InputText("On Change", &uiInputView->onChange);
 	if (ImGui::BeginPopupContextItem("onChange"))
 	{
