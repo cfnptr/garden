@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-#include "garden/defines.hpp"
+#include "garden/utf.hpp"
 #include "tsl/robin_map.h"
 #include "ecsm.hpp"
 
@@ -79,6 +79,22 @@ static bool getCodeLanguage(string_view name, Language& language) noexcept
 	return false;
 }
 
+/**
+ * @brief Returns true if specified language requires increased font size.
+ * @param language target spoken language
+ */
+static bool isBigFontSize(Language language) noexcept
+{
+	switch (language)
+	{
+	case Language::Japanese: case Language::ChineseTrad: case Language::ChineseSimpl: case Language::Korean:
+	case Language::Persian: case Language::Arabic: case Language::Hebrew: case Language::Thai:
+	case Language::Hindi: case Language::Bengali: case Language::Urdu:
+		return true;
+	default: return false;
+	}
+}
+
 /***********************************************************************************************************************
  * @brief Handles string localization (translation) for different languages.
  */
@@ -121,38 +137,63 @@ public:
 	Language getLanguage() const noexcept { return loadedLanguage; }
 	/**
 	 * @brief Loads specified language localization strings.
-	 * @param language target language to use
+	 * @param language target spoken language to use
 	 */
 	void setLanguage(Language language);
 
 	/**
 	 * @brief Returns localized (translated) string.
-	 * @param name target string name
+	 *
+	 * @param key target localized string key
+	 * @param andModules also search for a string in all modules
 	 */
-	string_view get(string_view name) const noexcept
+	string_view get(string_view key, bool andModules = true) const;
+	/**
+	 * @brief Returns localized (translated) string.
+	 * @note This function is more expensive than the UTF-8 one!
+	 *
+	 * @param key target localized string key
+	 * @param andModules also search for a string in all modules
+	 */
+	string_view get(u32string_view key, bool andModules = true) const
 	{
-		GARDEN_ASSERT(!name.empty());
-		auto result = generalStrings.find(name);
-		if (result == generalStrings.end())
-			return name;
-		return result->second;
+		GARDEN_ASSERT(!key.empty());
+		string key32; UTF::convert(key, key32);
+		return get(key32);
 	}
+	/**
+	 * @brief Returns localized (translated) string.
+	 * @note This function is more expensive than the UTF-8 one!
+	 *
+	 * @param key target localized string key
+	 * @param[out] value localized string value
+	 * @param andModules also search for a string in all modules
+	 */
+	void get(u32string_view key, u32string& value, bool andModules = true) const
+	{
+		GARDEN_ASSERT(!key.empty());
+		string key8; UTF::convert(key, key8);
+		auto value8 = get(key8);
+		if (key8 == value8) value = key;
+		else UTF::convert(value8, value);
+	}
+
 	/**
 	 * @brief Returns module localized (translated) string.
 	 *
 	 * @param module localization module name
-	 * @param name target string name
+	 * @param key target localized string key
 	 */
-	string_view get(string_view module, string_view name) const noexcept
+	string_view get(string_view module, string_view key) const
 	{
 		GARDEN_ASSERT(!module.empty());
-		GARDEN_ASSERT(!name.empty());
+		GARDEN_ASSERT(!key.empty());
 		auto moduleResult = modules.find(module);
 		if (moduleResult == modules.end())
-			return name;
-		auto stringResult = moduleResult->second.find(name);
+			return key;
+		auto stringResult = moduleResult->second.find(key);
 		if (stringResult == moduleResult->second.end())
-			return name;
+			return key;
 		return stringResult->second;
 	}
 
@@ -160,7 +201,7 @@ public:
 	 * @brief Returns true if localization module is loaded.
 	 * @param module target localization module name
 	 */
-	bool isModuleLoaded(string_view module) const noexcept { return modules.find(module) != modules.end(); }
+	bool isModuleLoaded(string_view module) const { return modules.find(module) != modules.end(); }
 	/**
 	 * @brief Loads localization module strings.
 	 * @param module target localization module name

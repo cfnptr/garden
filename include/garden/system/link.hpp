@@ -116,18 +116,43 @@ public:
 	 * @brief Returns entity by UUID if found, otherwise null.
 	 * @param[in] uuid target entity UUID
 	 */
-	ID<Entity> findEntity(const Hash128& uuid) const;
+	ID<Entity> findEntity(const Hash128& uuid) const
+	{
+		GARDEN_ASSERT(uuid);
+		auto searchResult = uuidMap.find(uuid);
+		if (searchResult == uuidMap.end())
+			return {};
+		return searchResult->second;
+	}
 
 	/**
 	 * @brief Returns entities iterator by tag if found.
-	 * @param tag target entities tag
+	 * @param tag target entities tag string
 	 */
 	auto findEntities(string_view tag) const { return tagMap.equal_range(tag); }
 	/**
 	 * @brief Returns entities array by tag if found.
-	 * @param tag target entities tag
+	 * @param tag target entities tag string
 	 */
-	void findEntities(string_view tag, vector<ID<Entity>>& entities) const;
+	void findEntities(string_view tag, vector<ID<Entity>>& entities) const
+	{
+		GARDEN_ASSERT(!tag.empty());
+		auto result = tagMap.equal_range(tag);
+		for (auto i = result.first; i != result.second; i++)
+			entities.emplace_back(i->second);
+	}
+
+	/**
+	 * @brief Returns first found entity by tag on success, otherwise null.
+	 * @param tag target entity tag string
+	 */
+	ID<Entity> findFirstEntity(string_view tag) const
+	{
+		auto result = tagMap.find(tag);
+		if (result == tagMap.end())
+			return {};
+		return result->second;
+	}
 };
 
 } // namespace garden

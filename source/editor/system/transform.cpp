@@ -153,7 +153,7 @@ void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	}
 
 	f32x4Value = transformView->getScale();
-	if (ImGui::DragFloat3("Scale", &f32x4Value, 0.01f, 0.0001f, FLT_MAX))
+	if (ImGui::DragFloat3("Scale", &f32x4Value, 0.01f, 0.0f, FLT_MAX))
 		transformView->setScale(max(f32x4Value, f32x4(0.0001f)));
 
 	if (ImGui::BeginPopupContextItem("scale"))

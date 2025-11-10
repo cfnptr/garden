@@ -67,7 +67,9 @@ static void transformUiComponent(Manager* manager, float2 uiHalfSize, UiTransfor
 		case UiAnchor::LeftTop: position += float2(-uiHalfSize.x, uiHalfSize.y); break;
 		case UiAnchor::RightBottom: position += float2(uiHalfSize.x, -uiHalfSize.y); break;
 		case UiAnchor::RightTop: position += uiHalfSize; break;
-		case UiAnchor::Background:
+		case UiAnchor::Horizontal: scale.x *= uiHalfSize.x * 2.0f; break;
+		case UiAnchor::Vertical: scale.y *= uiHalfSize.y * 2.0f; break;
+		case UiAnchor::Fullscreen:
 			scale *= uiHalfSize.x / uiHalfSize.y > scale.x / scale.y ?
 				(uiHalfSize.x * 2.0f) / scale.x : (uiHalfSize.y * 2.0f) / scale.y;
 			break;

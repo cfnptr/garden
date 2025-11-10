@@ -39,6 +39,9 @@ static bool loadLocaleStrings(LocaleSystem::StringMap& strings, string_view modu
 	string line;
 	while (std::getline(stream, line))
 	{
+		if (line.empty())
+			continue;
+
 		auto offset = line.find(':');
 		if (offset == string::npos || offset == 0 || line.length() - offset < 3)
 		{
@@ -49,7 +52,7 @@ static bool loadLocaleStrings(LocaleSystem::StringMap& strings, string_view modu
 
 		auto key = string(line.c_str(), offset);
 		offset++;
-		if (line[offset + 1] == ' ') offset++;
+		if (line[offset] == ' ') offset++;
 
 		if (line.length() - offset == 0)
 		{
@@ -73,12 +76,16 @@ static bool loadLocaleStrings(LocaleSystem::StringMap& strings, string_view modu
 //**********************************************************************************************************************
 LocaleSystem::LocaleSystem(bool setSingleton) : Singleton(setSingleton)
 {
+	Manager::Instance::get()->registerEvent("LocaleChange");
 	ECSM_SUBSCRIBE_TO_EVENT("PreInit", LocaleSystem::preInit);
 }
 LocaleSystem::~LocaleSystem()
 {
 	if (Manager::Instance::get()->isRunning)
+	{
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PreInit", LocaleSystem::preInit);
+		Manager::Instance::get()->unregisterEvent("LocaleChange");
+	}
 	unsetSingleton();
 }
 
@@ -105,7 +112,13 @@ void LocaleSystem::preInit()
 	}
 	#endif
 
-	loadLocaleStrings(generalStrings, "", loadedLanguage);
+	if (!loadLocaleStrings(generalStrings, "", loadedLanguage))
+	{
+		loadLocaleStrings(generalStrings, "", Language::English);
+		return;
+	}
+
+	GARDEN_LOG_INFO("Loaded localization language: " + string(toString(loadedLanguage)));
 }
 
 void LocaleSystem::setLanguage(Language language)
@@ -113,12 +126,40 @@ void LocaleSystem::setLanguage(Language language)
 	if (loadedLanguage == language)
 		return;
 
-	loadLocaleStrings(generalStrings, "", language);
+	if (!loadLocaleStrings(generalStrings, "", language))
+		loadLocaleStrings(generalStrings, "", Language::English);
+
 	for (auto i = modules.begin(); i != modules.end(); i++)
-		loadLocaleStrings(i.value(), i->first, language);
+	{
+		if (!loadLocaleStrings(i.value(), i->first, language))
+			loadLocaleStrings(i.value(), i->first, Language::English);
+	}
 
 	loadedLanguage = language;
-	GARDEN_LOG_INFO("Loaded localization strings: " + string(toString(language)));
+	GARDEN_LOG_INFO("Changed localization language: " + string(toString(language)));
+	Manager::Instance::get()->runEvent("LocaleChange");
+}
+
+string_view LocaleSystem::get(string_view key, bool andModules) const
+{
+	GARDEN_ASSERT(!key.empty());
+	auto result = generalStrings.find(key);
+	if (result != generalStrings.end())
+		return result->second;
+
+	if (andModules)
+	{
+		for (auto& module : modules)
+		{
+			result = module.second.find(key);
+			if (result != module.second.end())
+				return result->second;
+		}
+	}
+
+	GARDEN_LOG_ERROR("Missing string localization. (key: " + string(key) + 
+		", language: " + string(toString(loadedLanguage)) + ")");
+	return key;
 }
 
 bool LocaleSystem::loadModule(string_view module)
@@ -128,7 +169,10 @@ bool LocaleSystem::loadModule(string_view module)
 
 	StringMap moduleStrings;
 	if (!loadLocaleStrings(moduleStrings, module, loadedLanguage))
-		return false;
+	{
+		if (!loadLocaleStrings(moduleStrings, module, Language::English))
+			return false;
+	}
 
 	auto emplaceResult = modules.emplace(module, std::move(moduleStrings));
 	GARDEN_ASSERT_MSG(emplaceResult.second, "Detected memory corruption");
@@ -139,7 +183,6 @@ bool LocaleSystem::unloadModule(string_view module)
 	auto result = modules.find(module);
 	if (result == modules.end())
 		return false;
-
 	modules.erase(result);
 	return true;
 }

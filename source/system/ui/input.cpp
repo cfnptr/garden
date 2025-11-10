@@ -120,6 +120,7 @@ bool UiInputComponent::updateCaret(psize charIndex)
 		return false;
 
 	auto textSystem = TextSystem::Instance::get();
+	auto uiTransformSystem = UiTransformSystem::Instance::get();
 	auto textView = textSystem->get(uiLabelView->getTextData());
 	auto fontAtlasView = textSystem->get(textView->getFontAtlas());
 	auto fontSize = fontAtlasView->getFontSize();
@@ -133,7 +134,7 @@ bool UiInputComponent::updateCaret(psize charIndex)
 	{
 		if (charIndex == SIZE_MAX)
 		{
-			auto cursorPos = UiTransformSystem::Instance::get()->getCursorPosition();
+			auto cursorPos = uiTransformSystem->getCursorPosition();
 			cursorPos = (float2)(inverse4x4(transformView->calcModel()) * 
 				f32x4(cursorPos.x, cursorPos.y, 0.0f, 1.0f));
 			cursorPos.x += 0.5f; cursorPos *= inputScale / fontSize;
@@ -145,7 +146,7 @@ bool UiInputComponent::updateCaret(psize charIndex)
 
 	charIndex = min(charIndex + prefix.length(), uiLabelView->text.length() - 1);
 	auto caretAdvance = textView->calcCaretAdvance(uiLabelView->text, charIndex) * fontSize;
-	caretAdvance.x += 1.0f;
+	caretAdvance.x += 1.0f; caretAdvance.x *= uiTransformSystem->uiScale;
 	
 	if (caretAdvance.x > inputScale.x)
 	{
@@ -153,10 +154,11 @@ bool UiInputComponent::updateCaret(psize charIndex)
 	}
 	
 	caretAdvance /= inputScale; caretAdvance.x -= 0.5f;
+	inputScale /= uiTransformSystem->uiScale;
 
 	auto caretTransformView = manager->get<TransformComponent>(caret);
 	caretTransformView->setPosition(float3(caretAdvance, -0.1f));
-	caretTransformView->setScale(float3(1.0f / inputScale.x, fontSize / inputScale.y, 1.0f));
+	caretTransformView->setScale(float3(1.0f / inputScale.x, (fontSize * 1.25f) / inputScale.y, 1.0f));
 	caretTransformView->setActive(true);
 
 	auto animationView = manager->tryGet<AnimationComponent>(caret);

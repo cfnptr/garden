@@ -47,6 +47,8 @@ private:
 
 	friend class garden::UiLabelSystem;
 public:
+	bool useLocale = false; /**< Use text as localized label string key. */
+
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	bool loadNoto = true; /**< Also load supporting noto fonts. */
 	#endif
@@ -78,6 +80,7 @@ public:
  */
 struct UiLabelFrame final : public AnimationFrame
 {
+	bool useLocale = false;
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	bool loadNoto = true;
 	vector<fs::path> fontPaths;
@@ -124,6 +127,7 @@ private:
 	~UiLabelSystem() final;
 
 	void update();
+	void localeChange();
 
 	void resetComponent(View<Component> component, bool full) final;
 	void copyComponent(View<Component> source, View<Component> destination) final;

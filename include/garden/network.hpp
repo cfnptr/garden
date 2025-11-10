@@ -114,6 +114,8 @@ public:
  */
 class StreamOutput : public nets::OutStreamMessage
 {
+	// Note: Total size = messageSize + typeSize + lengthSize + 2.
+
 	inline static psize fullSize(string_view type, psize messageSize) noexcept
 	{
 		return messageSize + type.size() + sizeof(uint8) * 2;

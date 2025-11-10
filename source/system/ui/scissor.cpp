@@ -89,8 +89,8 @@ void UiScissorSystem::animateAsync(View<Component> component, View<AnimationFram
 }
 
 //**********************************************************************************************************************
-static int4 calcUiScissor(const UiScissorComponent* uiScissorView, 
-	const TransformComponent* transformView, float2 windowScale, float2 uiHalfSize) noexcept
+static int4 calcUiScissor(const UiScissorComponent* uiScissorView, const TransformComponent* transformView, 
+	float2 windowScale, float2 uiHalfSize, float invUiScale) noexcept
 {
 	auto thisPos = transformView->getPosition();
 	auto model = transformView->calcModel() * scale(translate(
@@ -99,8 +99,8 @@ static int4 calcUiScissor(const UiScissorComponent* uiScissorView,
 	auto min = float2(model * f32x4(-0.5f, -0.5f, 0.0f, 1.0f));
 	auto max = float2(model * f32x4( 0.5f,  0.5f, 0.0f, 1.0f));
 
-	return int4(int2(fma(min, windowScale, uiHalfSize)),
-		int2(fma(max, windowScale, uiHalfSize)));
+	return int4(int2(fma(min, windowScale, uiHalfSize) * invUiScale),
+		int2(fma(max, windowScale, uiHalfSize) * invUiScale));
 }
 int4 UiScissorSystem::calcScissor(ID<Entity> entity) const noexcept
 {
@@ -110,15 +110,17 @@ int4 UiScissorSystem::calcScissor(ID<Entity> entity) const noexcept
 		return int4::zero;
 
 	auto inputSystem = InputSystem::Instance::get();
+	auto uiTransformSystem = UiTransformSystem::Instance::get();
 	auto windowScale = inputSystem->getWindowScale();
 	auto framebufferSize = inputSystem->getFramebufferSize();
-	auto uiHalfSize = UiTransformSystem::Instance::get()->getUiSize() * 0.5f;
+	auto uiHalfSize = uiTransformSystem->getUiSize() * 0.5f;
+	auto uiScale = 1.0f / uiTransformSystem->uiScale;
 	auto scissor = int4(int2::zero, framebufferSize);
 
 	auto uiScissorView = manager->tryGet<UiScissorComponent>(entity);
 	if (uiScissorView && uiScissorView->useItsels)
 	{
-		auto newScissor = calcUiScissor(*uiScissorView, *transformView, windowScale, uiHalfSize);
+		auto newScissor = calcUiScissor(*uiScissorView, *transformView, windowScale, uiHalfSize, uiScale);
 		scissor = int4(max((int2)scissor, (int2)newScissor), min(
 			int2(scissor.z, scissor.w), int2(newScissor.z, newScissor.w)));
 	}
@@ -130,7 +132,7 @@ int4 UiScissorSystem::calcScissor(ID<Entity> entity) const noexcept
 		uiScissorView = manager->tryGet<UiScissorComponent>(parent);
 		if (uiScissorView)
 		{
-			auto newScissor = calcUiScissor(*uiScissorView, *transformView, windowScale, uiHalfSize);
+			auto newScissor = calcUiScissor(*uiScissorView, *transformView, windowScale, uiHalfSize, uiScale);
 			scissor = int4(max((int2)scissor, (int2)newScissor), min(
 				int2(scissor.z, scissor.w), int2(newScissor.z, newScissor.w)));
 		}

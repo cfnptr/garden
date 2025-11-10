@@ -481,6 +481,7 @@ void GraphicsPipeline::setScissorAsync(int4 scissor, int32 threadIndex)
 		{
 			vkScissor.offset.y = framebufferSize.y - (vkScissor.offset.y + vkScissor.extent.height);
 		}
+		vkScissor.offset.x = max(vkScissor.offset.x, 0); vkScissor.offset.y = max(vkScissor.offset.y, 0);
 
 		while (threadIndex < autoThreadCount)
 			vulkanAPI->secondaryCommandBuffers[threadIndex++].setScissor(0, 1, &vkScissor);
@@ -531,7 +532,7 @@ void GraphicsPipeline::setViewportScissorAsync(float4 viewportScissor, int32 thr
 		vk::Viewport vkViewport(viewportScissor.x, viewportScissor.y,
 			viewportScissor.z, viewportScissor.w, 0.0f, 1.0f); // TODO: support custom depth range.
 		vk::Rect2D vkScissor({ (int32)viewportScissor.x, (int32)viewportScissor.y },
-			{ (uint32)viewportScissor.zero, (uint32)viewportScissor.w });
+			{ (uint32)viewportScissor.z, (uint32)viewportScissor.w });
 	
 		if (viewportScissor == float4::zero)
 		{
@@ -543,6 +544,7 @@ void GraphicsPipeline::setViewportScissorAsync(float4 viewportScissor, int32 thr
 			vkViewport.y = framebufferSize.y - (vkViewport.y + vkViewport.height);
 			vkScissor.offset.y = framebufferSize.y - (vkScissor.offset.y + vkScissor.extent.height);
 		}
+		vkScissor.offset.x = max(vkScissor.offset.x, 0); vkScissor.offset.y = max(vkScissor.offset.y, 0);
 
 		while (threadIndex < autoThreadCount)
 		{
