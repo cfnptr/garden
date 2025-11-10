@@ -53,9 +53,8 @@ ID<Entity> SpawnerComponent::loadPrefab()
 		auto transformView = manager->get<TransformComponent>(entity);
 		transformView->setActive(false);
 
-		auto prefabs = LinkSystem::Instance::get()->findEntities("Prefabs");
-		if (prefabs.first != prefabs.second)
-			transformView->setParent(prefabs.first->second);
+		auto prefabs = LinkSystem::Instance::get()->findFirstEntity("Prefabs");
+		transformView->setParent(prefabs); // Note: sets null if not found.
 
 		auto linkView = manager->add<LinkComponent>(entity);
 		linkView->regenerateUUID();
@@ -189,10 +188,8 @@ void SpawnerSystem::preInit()
 	auto linkView = manager->add<LinkComponent>(prefabs);
 	linkView->setTag("Prefabs");
 
-	if (DoNotDestroySystem::Instance::has())
-		manager->add<DoNotDestroyComponent>(prefabs);
-	if (DoNotSerializeSystem::Instance::has())
-		manager->add<DoNotSerializeComponent>(prefabs);
+	manager->add<DoNotDestroyComponent>(prefabs);
+	manager->add<DoNotSerializeComponent>(prefabs);
 }
 
 //**********************************************************************************************************************

@@ -69,10 +69,10 @@ void UiInputEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	if (ImGui::Checkbox("Text Bad", &isTextBad))
 		uiInputView->setTextBad(isTextBad);
 
-	string text; UTF::utf32toUtf8(uiInputView->text, text);
+	string text; UTF::convert(uiInputView->text, text);
 	if (ImGui::InputText("Text", &text))
 	{
-		UTF::utf8toUtf32(text, uiInputView->text);
+		UTF::convert(text, uiInputView->text);
 		uiInputView->updateText();
 	}
 	if (ImGui::BeginPopupContextItem("text"))
@@ -85,10 +85,10 @@ void UiInputEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 		ImGui::EndPopup();
 	}
 
-	UTF::utf32toUtf8(uiInputView->placeholder, text);
+	UTF::convert(uiInputView->placeholder, text);
 	if (ImGui::InputText("Placeholder", &text))
 	{
-		UTF::utf8toUtf32(text, uiInputView->placeholder);
+		UTF::convert(text, uiInputView->placeholder);
 		uiInputView->updateText();
 	}
 	if (ImGui::BeginPopupContextItem("placeholder"))
@@ -101,10 +101,10 @@ void UiInputEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 		ImGui::EndPopup();
 	}
 
-	UTF::utf32toUtf8(uiInputView->prefix, text);
+	UTF::convert(uiInputView->prefix, text);
 	if (ImGui::InputText("Prefix", &text))
 	{
-		UTF::utf8toUtf32(text, uiInputView->prefix);
+		UTF::convert(text, uiInputView->prefix);
 		uiInputView->updateText();
 	}
 	if (ImGui::BeginPopupContextItem("prefix"))
@@ -135,10 +135,10 @@ void UiInputEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	}
 
 	u32string_view replaceChar((char32_t*)&uiInputView->replaceChar, 1);
-	UTF::utf32toUtf8(replaceChar, text);
+	UTF::convert(replaceChar, text);
 	if (ImGui::InputText("Replace Char", &text))
 	{
-		u32string utf32; UTF::utf8toUtf32(text, utf32);
+		u32string utf32; UTF::convert(text, utf32);
 		uiInputView->replaceChar = utf32.empty() ? 0 : (uint32)utf32[0];
 		uiInputView->updateText();
 	}

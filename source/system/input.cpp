@@ -255,7 +255,7 @@ void InputSystem::input()
 	if (!newKeyboardChars.empty())
 		newKeyboardChars.clear();
 	if (!currKeyboardChars.empty())
-		UTF::utf32toUtf8(currKeyboardChars, currKeyboardChars8);
+		UTF::convert(currKeyboardChars, currKeyboardChars8);
 	else currKeyboardChars8.clear();
 
 	swap(newFileDrops, currFileDrops);

@@ -19,6 +19,7 @@
 #include "garden/json-serialize.hpp"
 #include "garden/system/log.hpp"
 #include "garden/system/thread.hpp"
+#include "garden/system/locale.hpp"
 #include "garden/system/graphics.hpp"
 #include "garden/system/settings.hpp"
 #include "garden/system/app-info.hpp"
@@ -335,7 +336,22 @@ void EditorRenderSystem::showOptionsWindow()
 
 		auto uiTransformSystem = UiTransformSystem::Instance::tryGet();
 		if (uiTransformSystem)
-			ImGui::DragFloat("UI Scale", &uiTransformSystem->uiScale, 0.01f, 0.001f, FLT_MAX);
+		{
+			if (ImGui::DragFloat("UI Scale", &uiTransformSystem->uiScale, 0.01f, 0.001f, FLT_MAX))
+				uiTransformSystem->uiScale = max(uiTransformSystem->uiScale, 0.001f);
+		}
+
+		auto localeSystem = LocaleSystem::Instance::tryGet();
+		if (localeSystem)
+		{
+			auto language = localeSystem->getLanguage();
+			if (ImGui::Combo("Language", language, languageNames, (int)Language::Count))
+			{
+				localeSystem->setLanguage(language);
+				if (settingsSystem)
+					settingsSystem->setString("locale.language", toString(language));
+			}
+		}
 		ImGui::Spacing();
 
 		auto appInfoSystem = AppInfoSystem::Instance::tryGet();

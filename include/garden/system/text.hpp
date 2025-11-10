@@ -223,7 +223,7 @@ public:
 		Buffer::Usage instanceUsage = defaultBufferFlags, bool shrink = false)
 	{
 		u32string utf32;
-		if (UTF::utf8toUtf32(value, utf32) != 0)
+		if (UTF::convert(value, utf32) != 0)
 			return {};
 		return update(utf32, fontSize, properties, fonts, atlasUsage, instanceUsage, shrink);
 	}
@@ -354,7 +354,7 @@ public:
 		uint32 fontSize, Image::Usage imageUsage = FontAtlas::defaultImageFlags)
 	{
 		u32string utf32;
-		if (UTF::utf8toUtf32(chars, utf32) != 0)
+		if (UTF::convert(chars, utf32) != 0)
 			return {};
 		return createFontAtlas(utf32, std::move(fonts), fontSize, imageUsage);
 	}
@@ -423,7 +423,7 @@ public:
 		Text::Properties properties = {}, bool isAtlasShared = false)
 	{
 		u32string utf32;
-		if (UTF::utf8toUtf32(value, utf32) != 0)
+		if (UTF::convert(value, utf32) != 0)
 			return {};
 		return createText(utf32, fontAtlas, properties, isAtlasShared);
 	}
@@ -460,7 +460,7 @@ public:
 		Text::Properties properties = {}, Image::Usage imageUsage = FontAtlas::defaultImageFlags)
 	{
 		u32string utf32;
-		if (UTF::utf8toUtf32(value, utf32) != 0)
+		if (UTF::convert(value, utf32) != 0)
 			return {};
 		return createText(utf32, std::move(fonts), fontSize, properties, imageUsage);
 	}

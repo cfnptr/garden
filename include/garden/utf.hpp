@@ -44,13 +44,13 @@ public:
 	* @param utf32 source UTF-32 string
 	* @param[out] utf8 destination UTF-8 string 
 	*/
-	static psize utf32toUtf8(u32string_view utf32, string& utf8);
+	static psize convert(u32string_view utf32, string& utf8);
 	/**
 	* @brief Checks if specified UTF-8 encoded string is valid.
 	* @return Zero on success, otherwise bad char index.
 	* @param utf8 target UTF-8 string to validate
 	*/
-	static psize validateUTF8(string_view utf8);
+	static psize validate(string_view utf8);
 
 	/**
 	* @brief Converts UTF-8 string to the UTF-32.
@@ -59,13 +59,13 @@ public:
 	* @param utf8 source UTF-8 string
 	* @param[out] utf32 destination UTF-32 string 
 	*/
-	static psize utf8toUtf32(string_view utf8, u32string& utf32);
+	static psize convert(string_view utf8, u32string& utf32);
 	/**
 	* @brief Checks if specified UTF-32 encoded string is valid.
 	* @return Zero on success, otherwise bad char index.
 	* @param[in] utf32 target UTF-32 string to validate
 	*/
-	static psize validateUTF32(u32string_view utf32);
+	static psize validate(u32string_view utf32);
 };
 
 } // namespace garden

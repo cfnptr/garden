@@ -235,7 +235,7 @@ typedef int32 UChar32;
  * End of the unicode.org ICU copyrighted code.
  **********************************************************************************************************************/
 
-psize UTF::utf32toUtf8(u32string_view utf32, string& utf8)
+psize UTF::convert(u32string_view utf32, string& utf8)
 {
 	if (utf32.empty())
 	{
@@ -258,7 +258,7 @@ psize UTF::utf32toUtf8(u32string_view utf32, string& utf8)
 	utf8.resize(dstLength);
 	return 0;
 }
-psize UTF::validateUTF8(string_view utf8)
+psize UTF::validate(string_view utf8)
 {
 	auto length = utf8.length();
 	auto data = (const uint8*)utf8.data();
@@ -273,7 +273,7 @@ psize UTF::validateUTF8(string_view utf8)
 }
 
 //**********************************************************************************************************************
-psize UTF::utf8toUtf32(string_view utf8, u32string& utf32)
+psize UTF::convert(string_view utf8, u32string& utf32)
 {
 	if (utf8.empty())
 	{
@@ -295,7 +295,7 @@ psize UTF::utf8toUtf32(string_view utf8, u32string& utf32)
 	utf32.resize(dstLength);
 	return 0;
 }
-psize UTF::validateUTF32(u32string_view utf32)
+psize UTF::validate(u32string_view utf32)
 {
 	auto length = utf32.length(); auto data = utf32.data();
 	for (psize i = 0; i < length; i++)

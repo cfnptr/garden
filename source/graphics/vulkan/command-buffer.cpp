@@ -1048,6 +1048,7 @@ void VulkanCommandBuffer::processCommand(const SetScissorCommand& command)
 	vk::Rect2D scissor({ command.scissor.x, command.scissor.y }, 
 		{ (uint32)command.scissor.z, (uint32)command.scissor.w });
 	scissor.offset.x = command.framebufferSize.y - (scissor.offset.y + scissor.extent.height);
+	scissor.offset.x = max(scissor.offset.x, 0); scissor.offset.y = max(scissor.offset.y, 0);
 	instance.setScissor(0, 1, &scissor); // TODO: multiple scissors
 }
 
@@ -1062,6 +1063,7 @@ void VulkanCommandBuffer::processCommand(const SetViewportScissorCommand& comman
 		{ (uint32)command.viewportScissor.z, (uint32)command.viewportScissor.w });
 	viewport.x = command.framebufferSize.y - (viewport.y + viewport.height);
 	scissor.offset.x = command.framebufferSize.y - (scissor.offset.y + scissor.extent.height);
+	scissor.offset.x = max(scissor.offset.x, 0); scissor.offset.y = max(scissor.offset.y, 0);
 	instance.setViewport(0, 1, &viewport); instance.setScissor(0, 1, &scissor);
 	// TODO: multiple viewports
 }

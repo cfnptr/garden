@@ -375,15 +375,19 @@ static bool fillTextInstances(u32string_view value, Text::Properties properties,
 				{
 					if (isItalic) { atlasIndex = 3; glyphs = &glyphArray[atlasIndex]; }
 					else { atlasIndex = 1; glyphs = &glyphArray[atlasIndex]; }
-					isBold = true; i += 2;
-					continue;
+					isBold = true; i += 2; continue;
 				}
 				else if (tag == 'i')
 				{
 					if (isBold) { atlasIndex = 3; glyphs = &glyphArray[atlasIndex]; }
 					else { atlasIndex = 2; glyphs = &glyphArray[atlasIndex]; }
-					isItalic = true; i += 2;
-					continue;
+					isItalic = true; i += 2; continue;
+				}
+				else if (tag == 'n')
+				{
+					updateTextNewLine(instances, fontSize, newLineAdvance, instanceOffset, 
+						instanceIndex, lastNewLineIndex, size, properties.alignment);
+					i += 2; continue;
 				}
 			}
 			else if (i + 3 < value.length() && chars[i + 1] == '/' && chars[i + 3] == '>')
@@ -393,20 +397,18 @@ static bool fillTextInstances(u32string_view value, Text::Properties properties,
 				{
 					if (isItalic) { atlasIndex = 2; glyphs = &glyphArray[atlasIndex]; }
 					else { atlasIndex = 0; glyphs = &glyphArray[atlasIndex]; }
-					isBold = false; i += 3;
-					continue;
+					isBold = false; i += 3; continue;
 				}
 				else if (tag == 'i')
 				{
 					if (isBold) { atlasIndex = 1; glyphs = &glyphArray[atlasIndex]; }
 					else { atlasIndex = 0; glyphs = &glyphArray[atlasIndex]; }
-					isItalic = false; i += 3;
-					continue;
+					isItalic = false; i += 3; continue;
 				}
 				else if (tag == '#')
 				{
-					color = Color::white; i += 3;
-					continue;
+					color = Color::white;
+					i += 3; continue;
 				}
 			}
 			else if (i + 8 < value.length() && chars[i + 1] == '#' && chars[i + 8] == '>')
@@ -644,8 +646,7 @@ float2 Text::calcCaretAdvance(u32string_view value, psize charIndex)
 		{
 			if (i >= charIndex)
 				break;
-			advance.y -= newLineAdvance;
-			advance.x = lineSizeX = 0.0f;
+			advance.y -= newLineAdvance; advance.x = lineSizeX = 0.0f;
 			continue;
 		}
 		else if (c == '\t')
@@ -665,15 +666,13 @@ float2 Text::calcCaretAdvance(u32string_view value, psize charIndex)
 				{
 					if (isItalic) { atlasIndex = 3; glyphs = &glyphArray[atlasIndex]; }
 					else { atlasIndex = 1; glyphs = &glyphArray[atlasIndex]; }
-					isBold = true; i += 2;
-					continue;
+					isBold = true; i += 2; continue;
 				}
 				else if (tag == 'i')
 				{
 					if (isBold) { atlasIndex = 3; glyphs = &glyphArray[atlasIndex]; }
 					else { atlasIndex = 2; glyphs = &glyphArray[atlasIndex]; }
-					isItalic = true; i += 2;
-					continue;
+					isItalic = true; i += 2; continue;
 				}
 			}
 			else if (i + 3 < value.length() && chars[i + 1] == '/' && chars[i + 3] == '>')
@@ -683,31 +682,26 @@ float2 Text::calcCaretAdvance(u32string_view value, psize charIndex)
 				{
 					if (isItalic) { atlasIndex = 2; glyphs = &glyphArray[atlasIndex]; }
 					else { atlasIndex = 0; glyphs = &glyphArray[atlasIndex]; }
-					isBold = false; i += 3;
-					continue;
+					isBold = false; i += 3; continue;
 				}
 				else if (tag == 'i')
 				{
 					if (isBold) { atlasIndex = 1; glyphs = &glyphArray[atlasIndex]; }
 					else { atlasIndex = 0; glyphs = &glyphArray[atlasIndex]; }
-					isItalic = false; i += 3;
-					continue;
+					isItalic = false; i += 3; continue;
 				}
 				else if (tag == '#')
 				{
-					i += 3;
-					continue;
+					i += 3; continue;
 				}
 			}
 			else if (i + 8 < value.length() && chars[i + 1] == '#' && chars[i + 8] == '>')
 			{
-				i += 8;
-				continue;
+				i += 8; continue;
 			}
 			else if (i + 10 < value.length() && chars[i + 1] == '#' && chars[i + 10] == '>')
 			{
-				i += 10;
-				continue;
+				i += 10; continue;
 			}
 		}
 
@@ -846,6 +840,8 @@ ID<FontAtlas> TextSystem::createFontAtlas(u32string_view chars,
 
 	if (!fontAtlasView->update(chars, fontSize))
 	{
+		if (stopRecording)
+			graphicsSystem->stopRecording();
 		fontAtlases.destroy(fontAtlas);
 		return {};
 	}
@@ -883,6 +879,8 @@ ID<Text> TextSystem::createText(u32string_view value, const Ref<FontAtlas>& font
 	auto fontAtlasView = fontAtlases.get(fontAtlas);
 	if (!textView->update(value, fontAtlasView->getFontSize(), properties))
 	{
+		if (stopRecording)
+			graphicsSystem->stopRecording();
 		texts.destroy(text);
 		return {};
 	}

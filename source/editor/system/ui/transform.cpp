@@ -134,7 +134,7 @@ void UiTransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened
 		ImGui::EndTooltip();
 	}
 
-	ImGui::DragFloat3("Scale", &uiTransformView->scale, 1.0f, 0.0001f, FLT_MAX);
+	ImGui::DragFloat3("Scale", &uiTransformView->scale, 1.0f, 0.0f, FLT_MAX);
 	if (ImGui::BeginPopupContextItem("scale"))
 	{
 		if (ImGui::MenuItem("Reset Default"))

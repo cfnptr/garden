@@ -18,6 +18,8 @@
 #include "garden/system/ui/scissor.hpp"
 #include "garden/system/transform.hpp"
 #include "garden/system/resource.hpp"
+#include "garden/system/locale.hpp"
+#include "garden/system/log.hpp"
 #include "math/matrix/transform.hpp"
 
 using namespace garden;
@@ -57,18 +59,35 @@ bool UiLabelComponent::updateText(bool shrink)
 	auto uiScale = UiTransformSystem::Instance::get()->uiScale;
 	// TODO: take into account macOS differend window and framebuffer scale!
 
-	if (text.empty() || uiScale <= 0.0f)
+	if (shrink)
 	{
-		if (shrink)
-		{
-			graphicsSystem->destroy(descriptorSet);
-			textSystem->destroy(textData);
-			textData = {}; descriptorSet = {}; 
-		}
+		graphicsSystem->destroy(descriptorSet);
+		textSystem->destroy(textData);
+		textData = {}; descriptorSet = {}; 
+	}
 
+	if (text.empty() || fontSize == 0 || uiScale <= 0.0f
+		#if GARDEN_DEBUG || GARDEN_EDITOR
+		|| fontPaths.empty() && !loadNoto
+		#endif
+		)
+	{
 		isEnabled = false;
 		return true;
 	}
+
+	u32string_view textString; u32string utf32;
+	if (useLocale)
+	{
+		LocaleSystem::Instance::get()->get(text, utf32);
+		if (utf32.empty())
+		{
+			isEnabled = false;
+			return true;
+		}
+		textString = utf32;
+	}
+	else textString = text;
 
 	auto scaledFontSize = (uint32)ceil(fontSize / uiScale);
 	ID<Image> currFontAtlas = {}; ID<Buffer> currInstanceBuffer = {};
@@ -83,9 +102,11 @@ bool UiLabelComponent::updateText(bool shrink)
 
 		auto stopRecording = graphicsSystem->tryStartRecording(CommandBufferType::Frame);
 
-		if (!textView->update(text, scaledFontSize, propterties, std::move(fonts), 
+		if (!textView->update(textString, scaledFontSize, propterties, std::move(fonts), 
 			FontAtlas::defaultImageFlags, Text::defaultBufferFlags, shrink))
 		{
+			if (stopRecording)
+				graphicsSystem->stopRecording();
 			return false;
 		}
 
@@ -99,7 +120,7 @@ bool UiLabelComponent::updateText(bool shrink)
 		if (fonts.empty())
 			return false;
 
-		textData = textSystem->createText(text, std::move(fonts), scaledFontSize, propterties);
+		textData = textSystem->createText(textString, std::move(fonts), scaledFontSize, propterties);
 		if (!textData)
 			return false;
 		#else
@@ -131,7 +152,9 @@ UiLabelSystem::UiLabelSystem(bool setSingleton) : Singleton(setSingleton)
 	manager->addGroupSystem<ISerializable>(this);
 	manager->addGroupSystem<IAnimatable>(this);
 	manager->addGroupSystem<IMeshRenderSystem>(this);
+
 	ECSM_SUBSCRIBE_TO_EVENT("Update", UiLabelSystem::update);
+	ECSM_SUBSCRIBE_TO_EVENT("LocaleChange", UiLabelSystem::localeChange);
 }
 UiLabelSystem::~UiLabelSystem()
 {
@@ -141,7 +164,9 @@ UiLabelSystem::~UiLabelSystem()
 		manager->removeGroupSystem<ISerializable>(this);
 		manager->removeGroupSystem<IAnimatable>(this);
 		manager->removeGroupSystem<IMeshRenderSystem>(this);
+
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Update", UiLabelSystem::update);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("LocaleChange", UiLabelSystem::localeChange);
 	}
 	unsetSingleton();
 }
@@ -160,7 +185,17 @@ void UiLabelSystem::update()
 		lastUiScale = newUiScale;
 	}
 }
+void UiLabelSystem::localeChange()
+{
+	for (auto& component : components)
+	{
+		if (!component.textData || component.text.empty())
+			continue;
+		component.updateText();
+	}
+}
 
+//**********************************************************************************************************************
 void UiLabelSystem::resetComponent(View<Component> component, bool full)
 {
 	auto componentView = View<UiLabelComponent>(component);
@@ -288,6 +323,8 @@ void UiLabelSystem::serialize(ISerializer& serializer, const View<Component> com
 		serializer.write("useTags", true);
 	if (componentView->fontSize != 16)
 		serializer.write("fontSize", componentView->fontSize);
+	if (componentView->useLocale)
+		serializer.write("useLocale", true);
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	if (!componentView->fontPaths.empty())
@@ -302,8 +339,8 @@ void UiLabelSystem::serialize(ISerializer& serializer, const View<Component> com
 		}
 		serializer.endChild();
 	}
-	if (componentView->loadNoto != true)
-		serializer.write("loadNoto", componentView->loadNoto);
+	if (!componentView->loadNoto)
+		serializer.write("loadNoto", false);
 	#endif
 }
 void UiLabelSystem::deserialize(IDeserializer& deserializer, View<Component> component)
@@ -315,6 +352,7 @@ void UiLabelSystem::deserialize(IDeserializer& deserializer, View<Component> com
 	deserializer.read("isItalic", componentView->propterties.isItalic);
 	deserializer.read("useTags", componentView->propterties.useTags);
 	deserializer.read("fontSize", componentView->fontSize);
+	deserializer.read("useLocale", componentView->useLocale);
 
 	string alignment;
 	if (deserializer.read("alignment", alignment))
@@ -343,33 +381,12 @@ void UiLabelSystem::deserialize(IDeserializer& deserializer, View<Component> com
 	auto loadNoto = true;
 	deserializer.read("loadNoto", loadNoto);
 
-	auto uiScale = UiTransformSystem::Instance::get()->uiScale;
-	// TODO: take into account macOS differend window and framebuffer scale!
-	componentView->fontSize = max((uint32)ceil(componentView->fontSize / uiScale), 1u);
-
-	if (!fontPaths.empty() || loadNoto)
-	{
-		auto textSystem = TextSystem::Instance::get();
-		auto fonts = ResourceSystem::Instance::get()->loadFonts(fontPaths, 0, loadNoto);
-		auto text = textSystem->createText(componentView->text, 
-			std::move(fonts), componentView->fontSize, componentView->propterties);
-		componentView->textData = text;
-		
-		auto uniforms = getUniforms(text);
-		auto descriptorSet = GraphicsSystem::Instance::get()->createDescriptorSet(
-			UiLabelSystem::Instance::get()->getPipeline(), std::move(uniforms));
-		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.uiLabel" + to_string(*descriptorSet));
-		componentView->descriptorSet = descriptorSet;
-
-		auto textView = textSystem->get(text);
-		componentView->aabb.setSize(f32x4(float3(textView->getSize() * componentView->fontSize, 1.0f)));
-		componentView->isEnabled = true;
-	}
-
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	componentView->fontPaths = std::move(fontPaths);
 	componentView->loadNoto = loadNoto;
 	#endif
+
+	componentView->updateText();
 }
 
 //**********************************************************************************************************************
@@ -390,6 +407,8 @@ void UiLabelSystem::serializeAnimation(ISerializer& serializer, View<AnimationFr
 		serializer.write("useTags", true);
 	if (frameView->fontSize != 16)
 		serializer.write("fontSize", frameView->fontSize);
+	if (frameView->useLocale)
+		serializer.write("useLocale", true);
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	if (!frameView->fontPaths.empty())
@@ -404,8 +423,8 @@ void UiLabelSystem::serializeAnimation(ISerializer& serializer, View<AnimationFr
 		}
 		serializer.endChild();
 	}
-	if (frameView->loadNoto != true)
-		serializer.write("loadNoto", frameView->loadNoto);
+	if (!frameView->loadNoto)
+		serializer.write("loadNoto", false);
 	#endif
 }
 void UiLabelSystem::deserializeAnimation(IDeserializer& deserializer, View<AnimationFrame> frame)
@@ -417,6 +436,7 @@ void UiLabelSystem::deserializeAnimation(IDeserializer& deserializer, View<Anima
 	deserializer.read("isItalic", frameView->propterties.isItalic);
 	deserializer.read("useTags", frameView->propterties.useTags);
 	deserializer.read("fontSize", frameView->fontSize);
+	deserializer.read("useLocale", frameView->useLocale);
 
 	string alignment;
 	if (deserializer.read("alignment", alignment))
@@ -449,24 +469,40 @@ void UiLabelSystem::deserializeAnimation(IDeserializer& deserializer, View<Anima
 	auto loadNoto = true;
 	deserializer.read("loadNoto", loadNoto);
 
-	if (!fontPaths.empty() || loadNoto)
-	{
-		auto fonts = ResourceSystem::Instance::get()->loadFonts(fontPaths, 0, loadNoto);
-		auto text = TextSystem::Instance::get()->createText(frameView->text, 
-			std::move(fonts), frameView->fontSize, frameView->propterties);
-		frameView->textData = text;
-
-		auto uniforms = getUniforms(text);
-		auto descriptorSet = GraphicsSystem::Instance::get()->createDescriptorSet(
-			UiLabelSystem::Instance::get()->getPipeline(), std::move(uniforms));
-		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.uiLabel" + to_string(*descriptorSet));
-		frameView->descriptorSet = descriptorSet;
-	}
-	
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	frameView->fontPaths = std::move(fontPaths);
 	frameView->loadNoto = loadNoto;
 	#endif
+
+	if (frameView->text.empty() || frameView->fontSize == 0 || uiScale <= 0.0f
+		#if GARDEN_DEBUG || GARDEN_EDITOR
+		|| frameView->fontPaths.empty() && !frameView->loadNoto
+		#endif
+		)
+	{
+		return;
+	}
+
+	u32string_view textString; u32string utf32;
+	if (frameView->useLocale)
+	{
+		LocaleSystem::Instance::get()->get(frameView->text, utf32);
+		if (utf32.empty())
+			return;
+		textString = utf32;
+	}
+	else textString = frameView->text;
+
+	auto fonts = ResourceSystem::Instance::get()->loadFonts(fontPaths, 0, loadNoto);
+	auto text = TextSystem::Instance::get()->createText(textString, 
+		std::move(fonts), frameView->fontSize, frameView->propterties);
+	frameView->textData = text;
+
+	auto uniforms = getUniforms(text);
+	auto descriptorSet = GraphicsSystem::Instance::get()->createDescriptorSet(
+		UiLabelSystem::Instance::get()->getPipeline(), std::move(uniforms));
+	SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.uiLabel" + to_string(*descriptorSet));
+	frameView->descriptorSet = descriptorSet;
 }
 
 //**********************************************************************************************************************
@@ -485,6 +521,7 @@ void UiLabelSystem::animateAsync(View<Component> component, View<AnimationFrame>
 			componentView->fontSize = frameB->fontSize;
 			componentView->textData = frameB->textData;
 			componentView->descriptorSet = frameB->descriptorSet;
+			componentView->useLocale = frameB->useLocale;
 			#if GARDEN_DEBUG || GARDEN_EDITOR
 			componentView->fontPaths = frameB->fontPaths;
 			componentView->loadNoto = frameB->loadNoto;
@@ -500,6 +537,7 @@ void UiLabelSystem::animateAsync(View<Component> component, View<AnimationFrame>
 			componentView->fontSize = frameA->fontSize;
 			componentView->textData = frameA->textData;
 			componentView->descriptorSet = frameA->descriptorSet;
+			componentView->useLocale = frameA->useLocale;
 			#if GARDEN_DEBUG || GARDEN_EDITOR
 			componentView->fontPaths = frameA->fontPaths;
 			componentView->loadNoto = frameA->loadNoto;

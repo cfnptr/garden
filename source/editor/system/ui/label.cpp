@@ -59,15 +59,19 @@ void UiLabelEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 
 	auto uiLabelView = Manager::Instance::get()->get<UiLabelComponent>(entity);
 
-	string text; UTF::utf32toUtf8(uiLabelView->text, text);
+	string text; UTF::convert(uiLabelView->text, text);
 	if (ImGui::InputTextMultiline("Text", &text))
 	{
-		UTF::utf8toUtf32(text, uiLabelView->text);
+		UTF::convert(text, uiLabelView->text);
 		uiLabelView->updateText();
 	}
 
 	ImGui::Checkbox("Enabled", &uiLabelView->isEnabled); ImGui::SameLine();
-	ImGui::Checkbox("Load Noto", &uiLabelView->loadNoto); 
+	if (ImGui::Checkbox("Use Locale", &uiLabelView->useLocale))
+		uiLabelView->updateText();
+	ImGui::SameLine();
+	if (ImGui::Checkbox("Load Noto", &uiLabelView->loadNoto))
+		uiLabelView->updateText();
 	ImGui::Spacing();
 
 	auto fontSize = (int)uiLabelView->fontSize;

@@ -185,7 +185,7 @@ void JsonSerializer::write(string_view name, string_view value)
 void JsonSerializer::write(string_view name, u32string_view value)
 {
 	GARDEN_ASSERT(!name.empty());
-	string value8; UTF::utf32toUtf8(value, value8);
+	string value8; UTF::convert(value, value8);
 	hierarchy.top()->operator[](name) = std::move(value8);
 }
 
@@ -603,7 +603,7 @@ bool JsonDeserializer::read(string_view name, u32string& value)
 	if (!object.is_string())
 		return false;
 	string value8(object);
-	return UTF::utf8toUtf32(value8, value) == 0;
+	return UTF::convert(value8, value) == 0;
 }
 
 //**********************************************************************************************************************

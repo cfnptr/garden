@@ -37,7 +37,9 @@ enum class UiAnchor : uint8
 	LeftTop,     /**< Aligns interface element to the left top corner of the screen. */
 	RightBottom, /**< Aligns interface element to the right bottom corner of the screen. */
 	RightTop,    /**< Aligns interface element to the right top corner of the screen. */
-	Background,  /**< Aligns interface element to the full screen. */
+	Horizontal,  /**< Aligns interface element to the horizonatl screen line. */
+	Vertical,    /**< Aligns interface element to the vertical screen line. */
+	Fullscreen,  /**< Aligns interface element to the full screen. */
 	Count        /**< User interface alignment anchor type count. */
 };
 
@@ -46,7 +48,8 @@ enum class UiAnchor : uint8
  */
 constexpr const char* uiAnchorNames[(psize)UiAnchor::Count] =
 {
-	"Center", "Left", "Right", "Bottom", "Top", "LeftBottom", "LeftTop", "RightBottom", "RightTop", "Background"
+	"Center", "Left", "Right", "Bottom", "Top", "LeftBottom", "LeftTop", 
+	"RightBottom", "RightTop", "Horizontal", "Vertical", "Fullscreen"
 };
 /**
  * @brief Returns UI element anchor name string.
@@ -74,7 +77,9 @@ static bool toUiAnchor(string_view name, UiAnchor& uiAnchor) noexcept
 	if (name == "LeftTop") { uiAnchor = UiAnchor::LeftTop; return true; }
 	if (name == "RightBottom") { uiAnchor = UiAnchor::RightBottom; return true; }
 	if (name == "RightTop") { uiAnchor = UiAnchor::RightTop; return true; }
-	if (name == "Background") { uiAnchor = UiAnchor::Background; return true; }
+	if (name == "Vertical") { uiAnchor = UiAnchor::Vertical; return true; }
+	if (name == "Fullscreen") { uiAnchor = UiAnchor::Fullscreen; return true; }
+	if (name == "Horizontal") { uiAnchor = UiAnchor::Horizontal; return true; }
 	return false;
 }
 

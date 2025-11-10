@@ -165,20 +165,3 @@ void LinkSystem::deserialize(IDeserializer& deserializer, View<Component> compon
 		componentView->tag = std::move(tag);
 	}
 }
-
-//**********************************************************************************************************************
-ID<Entity> LinkSystem::findEntity(const Hash128& uuid) const
-{
-	GARDEN_ASSERT(uuid);
-	auto searchResult = uuidMap.find(uuid);
-	if (searchResult == uuidMap.end())
-		return {};
-	return searchResult->second;
-}
-void LinkSystem::findEntities(string_view tag, vector<ID<Entity>>& entities) const
-{
-	GARDEN_ASSERT(!tag.empty());
-	auto result = tagMap.equal_range(tag);
-	for (auto i = result.first; i != result.second; i++)
-		entities.emplace_back(i->second);
-}

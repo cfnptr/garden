@@ -2403,9 +2403,6 @@ void ResourceSystem::storeScene(const fs::path& path, ID<Entity> rootEntity, con
 	auto filePath = scenesPath / path; filePath += ".scene";
 	JsonSerializer serializer(filePath);
 
-	if (rootEntity && !manager->has<TransformComponent>(rootEntity))
-		rootEntity = {};
-
 	for (auto system : *systemGroup)
 	{
 		auto serializableSystem = dynamic_cast<ISerializable*>(system);
@@ -2419,8 +2416,17 @@ void ResourceSystem::storeScene(const fs::path& path, ID<Entity> rootEntity, con
 	auto dnsSystem = DoNotSerializeSystem::Instance::tryGet();
 	stack<ID<Entity>, vector<ID<Entity>>> childEntities;
 
+	ID<Entity> rootParent = {};
 	if (rootEntity)
 	{
+		auto transformView = manager->tryGet<TransformComponent>(rootEntity);
+		if (transformView)
+		{
+			rootParent = transformView->getParent();
+			transformView->setParent({});
+		}
+		else rootEntity = {};
+
 		childEntities.push(rootEntity);
 	}
 	else
@@ -2505,6 +2511,12 @@ void ResourceSystem::storeScene(const fs::path& path, ID<Entity> rootEntity, con
 	{
 		auto serializableSystem = dynamic_cast<ISerializable*>(system);
 		serializableSystem->postSerialize(serializer);
+	}
+
+	if (rootEntity)
+	{
+		auto transformView = manager->get<TransformComponent>(rootEntity);
+		transformView->setParent(rootParent);
 	}
 
 	GARDEN_LOG_TRACE("Stored scene. (path: " + path.generic_string() + ")");
