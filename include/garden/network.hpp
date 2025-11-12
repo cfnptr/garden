@@ -114,8 +114,9 @@ public:
  */
 class StreamOutput : public nets::OutStreamMessage
 {
-	// Note: Total size = messageSize + typeSize + lengthSize + 2.
-
+public:
+	using nets::OutStreamMessage::write;
+protected:
 	inline static psize fullSize(string_view type, psize messageSize) noexcept
 	{
 		return messageSize + type.size() + sizeof(uint8) * 2;
@@ -129,7 +130,7 @@ class StreamOutput : public nets::OutStreamMessage
 		GARDEN_ASSERT_MSG(!result, "Stream message buffer is too small");
 	}
 public:
-	using nets::OutStreamMessage::write;
+	static constexpr uint8 baseTotalSize = maxLengthSize + 3; /**< 3 = type + typeSize + isSystem */
 
 	/**
 	 * @brief Creates a new stream output container.
@@ -214,6 +215,28 @@ public:
 		iter += sizeof(uint4);
 		return false;
 	}
+};
+
+/**
+ * @brief Network stream output data container.
+ * @tparam S size of the stream output buffer in bytes
+ */
+template<psize S>
+class StreamOutputBuffer : public StreamOutput
+{
+public:
+	uint8 buffer[S];
+
+	/**
+	 * @brief Creates a new stream output buffer container.
+	 *
+	 * @param type message type string
+	 * @param messageSize message size in bytes
+	 * @param lengthSize message header length size in bytes
+	 * @param isSystem is this system message
+	 */
+	StreamOutputBuffer(string_view type, psize messageSize, uint8 lengthSize, bool isSystem = false) noexcept :
+		StreamOutput(type, buffer, S, messageSize, lengthSize, isSystem) { }
 };
 
 /***********************************************************************************************************************

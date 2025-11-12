@@ -39,15 +39,15 @@ class StreamServerHandle final : public nets::IStreamServer
 	psize messageBufferSize = 0;
 	uint8 messageLengthSize = 0;
 public:
-	using nets::IStreamServer::closeSession;
+	using nets::IStreamServer::destroySession;
 
 	StreamServerHandle(ServerNetworkSystem* serverSystem, SocketFamily socketFamily, const char* service, 
 		size_t sessionBufferSize, size_t connectionQueueSize, size_t receiveBufferSize, 
 		size_t messageBufferSize, double timeoutTime, nets::SslContextView sslContext);
 
-	void closeSession(ClientSession* clientSession, int reason)
+	void destroySession(ClientSession* clientSession, int reason)
 	{
-		nets::IStreamServer::closeSession((StreamSession_T*)clientSession->streamSession, reason);
+		nets::IStreamServer::destroySession((StreamSession_T*)clientSession->streamSession, reason);
 	}
 
 	NetsResult sendDatagram(ClientSession* clientSession, const void* data, size_t byteCount);
@@ -108,8 +108,20 @@ private:
 	friend class ecsm::Manager;
 	friend class garden::StreamServerHandle;
 public:
+	/**
+	 * @brief Stream session create function.
+	 * @warning This function is called asynchronously from the receive thread!
+	 */
 	std::function<int(nets::StreamSessionView, ClientSession*&)> onSessionCreate = nullptr;
+	/**
+	 * @brief Stream session destroy function.
+	 * @warning This function is called asynchronously from the receive thread!
+	 */
 	std::function<void(ClientSession*, int)> onSessionDestroy = nullptr;
+	/**
+	 * @brief Stream session update function.
+	 * @warning This function is called asynchronously from the thread pool!
+	 */
 	std::function<int(ClientSession*)> onSessionUpdate = nullptr;
 
 	/**

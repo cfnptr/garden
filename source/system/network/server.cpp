@@ -40,14 +40,12 @@ StreamServerHandle::StreamServerHandle(ServerNetworkSystem* serverSystem, Socket
 
 static NetsResult sendEncMessage(ClientSession* clientSession, uint8 messageLengthSize)
 {
-	constexpr uint8 messageSize = sizeof(uint32) + ClientSession::keySize, sendBufferSize = messageSize + 16;
-	uint8 sendBuffer[sendBufferSize]; StreamOutput message("enc", 
-		sendBuffer, sendBufferSize, messageSize, messageLengthSize);
-	// Note: No endianness swap for random data.
-	message.write((const void*)&clientSession->datagramUID, sizeof(uint32)); 
+	constexpr uint8 messageSize = sizeof(uint32) + ClientSession::keySize, bufferSize = messageSize + 16;
+	StreamOutputBuffer<bufferSize> message("enc", messageSize, messageLengthSize);
+	message.write((const void*)&clientSession->datagramUID, sizeof(uint32)); // Note: No endianness swap for random data.
 	message.write(clientSession->encKey, ClientSession::keySize);
 	auto result = clientSession->send(message);
-	OPENSSL_cleanse(sendBuffer, sendBufferSize * sizeof(uint8));
+	OPENSSL_cleanse(message.buffer, bufferSize * sizeof(uint8));
 	return result;
 }
 NetsResult StreamServerHandle::sendDatagram(ClientSession* clientSession, const void* data, size_t byteCount)
@@ -145,11 +143,8 @@ void* StreamServerHandle::onSessionCreate(nets::StreamSessionView streamSession)
 	}
 	else
 	{
-		constexpr uint8 sendBufferSize = sizeof(uint32) + 16;
-		uint8 sendBuffer[sendBufferSize]; StreamOutput message("enc", 
-			sendBuffer, sendBufferSize, sizeof(uint32), messageLengthSize);
-		// Note: No endianness swap for random data.
-		message.write((const void*)&clientSession->datagramUID, sizeof(uint32));
+		StreamOutputBuffer<16 + sizeof(uint32)> message("enc", sizeof(uint32), messageLengthSize);
+		message.write((const void*)&clientSession->datagramUID, sizeof(uint32)); // Note: No endianness swap for random data.
 		if (clientSession->send(message) != SUCCESS_NETS_RESULT)
 		{
 			streamSession.shutdown();
@@ -262,7 +257,7 @@ void StreamServerHandle::onDatagramReceive(nets::SocketAddressView remoteAddress
 
 	if (result != SUCCESS_NETS_RESULT)
 	{
-		closeSession(clientSession, result);
+		destroySession(clientSession, result);
 		return;
 	}
 	clientSession->alive();
@@ -341,7 +336,7 @@ int StreamServerHandle::onPingRequest(ClientSession* session, StreamInput reques
 {
 	if (!session->isAuthorized || !session->datagramAddress || !request.isComplete())
 		return BAD_DATA_NETS_RESULT;
-	uint8 sendBuffer[8]; StreamOutput response("pong", sendBuffer, 8, 0, messageLengthSize);
+	StreamOutputBuffer<16> response("pong", 0, messageLengthSize);
 	return sendDatagram(session, response);
 }
 
@@ -422,11 +417,9 @@ static void updateSessions(StreamServerHandle* streamServer, std::function<int(C
 			for (uint32 i = task.getItemOffset(); i < itemCount; i++)
 			{
 				auto streamSession = sessions[i];
-				if (!streamSession.getSocket().getInstance())
-					continue;
 				auto result = streamServer->updateSession(streamSession, currentTime);
 				if (result != SUCCESS_NETS_RESULT)
-					streamServer->closeSession(streamSession, result);
+					streamServer->destroySession(streamSession, result);
 			}
 			if (onSessionUpdate)
 			{
@@ -437,7 +430,7 @@ static void updateSessions(StreamServerHandle* streamServer, std::function<int(C
 						continue;
 					auto result = onSessionUpdate((ClientSession*)streamSession.getHandle());
 					if (result != SUCCESS_NETS_RESULT)
-						streamServer->closeSession(streamSession, result);
+						streamServer->destroySession(streamSession, result);
 				}
 			}
 		},
@@ -450,11 +443,9 @@ static void updateSessions(StreamServerHandle* streamServer, std::function<int(C
 		for (psize i = 0; i < sessionCount; i++)
 		{
 			auto streamSession = sessions[i];
-			if (!streamSession.getSocket().getInstance())
-				continue;
 			auto result = streamServer->updateSession(streamSession, currentTime);
 			if (result != SUCCESS_NETS_RESULT)
-				streamServer->closeSession(streamSession, result);
+				streamServer->destroySession(streamSession, result);
 		}
 		if (onSessionUpdate)
 		{
@@ -465,11 +456,12 @@ static void updateSessions(StreamServerHandle* streamServer, std::function<int(C
 					continue;
 				auto result = onSessionUpdate((ClientSession*)streamSession.getHandle());
 				if (result != SUCCESS_NETS_RESULT)
-					streamServer->closeSession(streamSession, result);
+					streamServer->destroySession(streamSession, result);
 			}
 		}
 	}
 
+	streamServer->flushSessions();
 	manager->lock();
 	streamServer->unlockSessions();
 }

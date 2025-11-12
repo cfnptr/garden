@@ -91,7 +91,14 @@ private:
 	int onEncResponse(StreamInput response);
 	friend class ecsm::Manager;
 public:
+	/**
+	 * @brief Stream client connection result function. (TCP)
+	 * @warning This function is called asynchronously from the receive thread!
+	 */
 	std::function<void(NetsResult)> onConnection = nullptr;
+	/**
+	 * @brief Is network client authorized on the server.
+	 */
 	volatile bool isAuthorized = false;
 
 	/**
