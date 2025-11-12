@@ -405,7 +405,7 @@ void UiInputSystem::serialize(ISerializer& serializer, const View<Component> com
 		serializer.write("textColor", (float4)componentView->textColor);
 	if (componentView->placeholderColor != f32x4(0.5f, 0.5f, 0.5f, 1.0f))
 		serializer.write("placeholderColor", (float4)componentView->placeholderColor);
-	if (componentView->maxLength != SIZE_MAX)
+	if (componentView->maxLength != UINT32_MAX)
 		serializer.write("maxLength", componentView->maxLength);
 	if (componentView->replaceChar != 0)
 		serializer.write("replaceChar", componentView->replaceChar);

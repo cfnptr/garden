@@ -396,7 +396,7 @@ void GraphicsSystem::update()
 		{
 			isFramebufferSizeValid = false;
 			outOfDateSwapchain = true;
-			GARDEN_LOG_DEBUG("Out of date swapchain. [Acquire]");
+			GARDEN_LOG_INFO("Out of date swapchain. [Acquire]");
 		}
 
 		updateCurrentFramebuffer(graphicsAPI, swapchainFramebuffer, swapchain->getFramebufferSize());
@@ -471,7 +471,7 @@ void GraphicsSystem::present()
 		{
 			isFramebufferSizeValid = false;
 			outOfDateSwapchain = true;
-			GARDEN_LOG_DEBUG("Out of date swapchain. [Present]");
+			GARDEN_LOG_INFO("Out of date swapchain. [Present]");
 		}
 
 		frameIndex++;

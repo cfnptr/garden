@@ -180,7 +180,7 @@ void UiLabelSystem::update()
 		{
 			if (!component.textData || component.text.empty())
 				continue;
-			component.updateText();
+			component.updateText(true);
 		}
 		lastUiScale = newUiScale;
 	}
@@ -191,7 +191,7 @@ void UiLabelSystem::localeChange()
 	{
 		if (!component.textData || component.text.empty())
 			continue;
-		component.updateText();
+		component.updateText(true);
 	}
 }
 
@@ -222,16 +222,29 @@ void UiLabelSystem::copyComponent(View<Component> source, View<Component> destin
 		auto textSystem = TextSystem::Instance::get();
 		auto srcTextView = textSystem->get(sourceView->textData);
 
+		u32string_view textString; u32string utf32;
+		if (destinationView->useLocale)
+		{
+			LocaleSystem::Instance::get()->get(destinationView->text, utf32);
+			if (utf32.empty())
+			{
+				destinationView->isEnabled = false;
+				return;
+			}
+			textString = utf32;
+		}
+		else textString = destinationView->text;
+
 		ID<Text> text;
 		if (srcTextView->isAtlasShared())
 		{
-			text = textSystem->createText(sourceView->text, 
-				srcTextView->getFontAtlas(), srcTextView->getProperties(), true);
+			text = textSystem->createText(textString, srcTextView->getFontAtlas(), 
+				srcTextView->getProperties(), true);
 		}
 		else
 		{
 			auto fonts = textSystem->get(srcTextView->getFontAtlas())->getFonts();
-			text = textSystem->createText(sourceView->text, std::move(fonts), 
+			text = textSystem->createText(textString, std::move(fonts), 
 				sourceView->fontSize, srcTextView->getProperties());
 		}
 		destinationView->textData = text;

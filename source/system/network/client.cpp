@@ -21,12 +21,11 @@ using namespace garden;
 
 static NetsResult sendEncMessage(nets::IStreamClient* streamClient, uint8* encKey, uint8 messageLengthSize)
 {
-	constexpr uint8 sendBufferSize = ClientSession::keySize + 16;
-	uint8 sendBuffer[sendBufferSize]; StreamOutput message("enc", 
-		sendBuffer, sendBufferSize, ClientSession::keySize, messageLengthSize);
+	constexpr uint8 bufferSize = ClientSession::keySize + 16;
+	StreamOutputBuffer<bufferSize> message("enc", ClientSession::keySize, messageLengthSize);
 	message.write(encKey, ClientSession::keySize);
 	auto result = streamClient->send(message);
-	OPENSSL_cleanse(sendBuffer, sendBufferSize * sizeof(uint8));
+	OPENSSL_cleanse(message.buffer, bufferSize * sizeof(uint8));
 	return result;
 }
 
@@ -222,7 +221,9 @@ int ClientNetworkSystem::onEncResponse(StreamInput response)
 		decContext = decContext;
 	}
 
+	GARDEN_LOG_INFO("Secured datagram connection.");
 	datagramLocker.unlock();
+
 	return response.isComplete() ? SUCCESS_NETS_RESULT : BAD_DATA_NETS_RESULT;
 }
 
@@ -285,7 +286,7 @@ void ClientNetworkSystem::preInit()
 	{
 		if (!isDatagram || !request.isComplete())
 			return (NetsResult)BAD_DATA_NETS_RESULT;
-		uint8 sendBuffer[8]; StreamOutput message("pong", sendBuffer, 8, 0, messageLengthSize);
+		StreamOutputBuffer<16> message("pong", 0, messageLengthSize);
 		return sendDatagram(message);
 	});
 	addListener("pong", [this](StreamInput response)
@@ -323,7 +324,7 @@ void ClientNetworkSystem::update()
 		auto currentTime = mpio::OS::getCurrentClock();
 		if (currentTime > pingMessageDelay)
 		{
-			uint8 sendBuffer[8]; StreamOutput message("ping", sendBuffer, 8, 0, messageLengthSize);
+			StreamOutputBuffer<16> message("ping", 0, messageLengthSize);
 			auto result = sendDatagram(message);
 			if (result != SUCCESS_NETS_RESULT)
 				disconnect(result);

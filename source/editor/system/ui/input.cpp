@@ -117,18 +117,18 @@ void UiInputEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 		ImGui::EndPopup();
 	}
 
-	auto maxLength = uiInputView->maxLength == SIZE_MAX ? 
+	auto maxLength = uiInputView->maxLength == UINT32_MAX ? 
 		0 : (int)uiInputView->maxLength;
 	if (ImGui::DragInt("Max Length", &maxLength))
 	{
-		uiInputView->maxLength = maxLength <= 0 ? SIZE_MAX : maxLength;
+		uiInputView->maxLength = maxLength <= 0 ? UINT32_MAX : maxLength;
 		uiInputView->updateText();
 	}
 	if (ImGui::BeginPopupContextItem("maxLength"))
 	{
 		if (ImGui::MenuItem("Reset Default"))
 		{
-			uiInputView->maxLength = SIZE_MAX;
+			uiInputView->maxLength = UINT32_MAX;
 			uiInputView->updateText();
 		}
 		ImGui::EndPopup();
