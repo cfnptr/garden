@@ -196,7 +196,7 @@ void Controller2DSystem::updateCameraFollowing()
 	auto manager = Manager::Instance::get();
 	auto cameraTransformView = manager->tryGet<TransformComponent>(camera);
 	auto cameraView = manager->tryGet<CameraComponent>(camera);
-	auto characterEntities = LinkSystem::Instance::get()->findEntities(characterEntityTag);
+	auto characterEntities = LinkSystem::Instance::get()->tryGet(characterEntityTag);
 
 	if (!cameraTransformView || !cameraTransformView->isActive() ||
 		!cameraView || cameraView->type != ProjectionType::Orthographic)
@@ -236,7 +236,7 @@ void Controller2DSystem::updateCharacterControl()
 		return;
 	#endif
 
-	auto characterEntities = LinkSystem::Instance::get()->findEntities(characterEntityTag);
+	auto characterEntities = LinkSystem::Instance::get()->tryGet(characterEntityTag);
 	if (characterEntities.first == characterEntities.second)
 		return;
 

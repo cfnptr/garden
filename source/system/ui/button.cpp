@@ -52,8 +52,16 @@ void UiButtonComponent::setEnabled(bool state)
 	if (enabled == state)
 		return;
 
-	setUiButtonAnimation(entity, animationPath, 
-		enabled ? "default" : "disabled", state ? "default" : "disabled");
+	auto hoveredElement = UiTriggerSystem::Instance::get()->getHovered();
+	auto currState = hoveredElement == entity ? "hovered" : "default";
+	setUiButtonAnimation(entity, animationPath, enabled ? 
+		currState : "disabled", state ? currState : "disabled");
+
+	if (!noCursorHand && hoveredElement == entity)
+	{
+		InputSystem::Instance::get()->setCursorType(
+			state ? CursorType::PointingHand : CursorType::Default);
+	}
 	enabled = state;
 }
 

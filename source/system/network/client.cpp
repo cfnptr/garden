@@ -77,7 +77,8 @@ void ClientNetworkSystem::onDisconnect(int reason)
 
 	auto manager = Manager::Instance::get();
 	manager->lock();
-	pingMessageDelay = 0.0; 
+	pingMessageDelay = 0.0; serverPing = 0.0f;
+	lastDisconnectReason = reason;
 	manager->unlock();
 	isAuthorized = false;
 }

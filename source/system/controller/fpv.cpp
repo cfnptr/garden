@@ -223,7 +223,7 @@ void FpvControllerSystem::updateCharacterControl()
 		return;
 	#endif
 
-	auto characterEntities = LinkSystem::Instance::get()->findEntities(characterEntityTag);
+	auto characterEntities = LinkSystem::Instance::get()->tryGet(characterEntityTag);
 	if (characterEntities.first == characterEntities.second)
 		return;
 

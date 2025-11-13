@@ -188,7 +188,11 @@ public:
 	 * @param child target child entity
 	 * @throw GardenError if child already has a parent.
 	 */
-	void addChild(ID<Entity> child);
+	void addChild(ID<Entity> child)
+	{
+		if (!tryAddChild(child))
+			throw GardenError("Failed to add child, child already has a parent.");
+	}
 	/**
 	 * @brief Tries to add a new child to this entity.
 	 * @note It also changes parent of the child entity.
@@ -205,10 +209,12 @@ public:
 	/**
 	 * @brief Returns this entity child.
 	 * @param index target child index in the array
+	 * @throw GardenError if out of child array bounds.
 	 */
-	ID<Entity> getChild(uint32 index) const noexcept
+	ID<Entity> getChild(uint32 index) const
 	{
-		GARDEN_ASSERT(index < getChildCount());
+		if (index >= getChildCount())
+			throw GardenError("Out of child array bounds");
 		return childs[index];
 	}
 	/**
@@ -228,16 +234,21 @@ public:
 	 * @param child target child entity
 	 * @throw GardenError if child not found.
 	 */
-	void removeChild(ID<Entity> child);
+	void removeChild(ID<Entity> child) 
+	{
+		if (!tryRemoveChild(child))
+			throw GardenError("Failed to remove child, not found.");
+	}
 	/**
 	 * @brief Removes child from this entity.
 	 * @note It also changes parent of the child entity.
 	 * @param index target child index in the array
-	 * @throw GardenError if child not found.
+	 * @throw GardenError if out of child array bounds, or child not found.
 	 */
 	void removeChild(uint32 index)
 	{
-		GARDEN_ASSERT(index < childCount());
+		if (!tryRemoveChild(index))
+			throw GardenError("Failed to remove child, out of array bounds.");
 		removeChild(childs[index]);
 	}
 
@@ -245,15 +256,22 @@ public:
 	 * @brief Tries to remove child from this entity.
 	 * @note It also changes parent of the child entity.
 	 * @param child target child entity
+	 * @return True if child was removed.
+	 */
+	bool tryRemoveChild(uint32 index) noexcept;
+	/**
+	 * @brief Tries to remove child from this entity.
+	 * @note It also changes parent of the child entity.
+	 * @param child target child entity
 	 * @return True if child is found and was removed.
 	 */
-	bool tryRemoveChild(ID<Entity> child);
+	bool tryRemoveChild(ID<Entity> child) noexcept;
 
 	/**
 	 * @brief Removes all children from this entity.
 	 * @note It also changes parent of the children entities.
 	 */
-	void removeAllChilds();
+	void removeAllChilds() noexcept;
 	/**
 	 * @brief Reduces childs array capacity to fit its size.
 	 * @details Optimizes component memory consumption. 

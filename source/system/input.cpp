@@ -338,7 +338,7 @@ void InputSystem::startRenderThread()
 	auto inputSystem = InputSystem::Instance::get();
 	auto window = (GLFWwindow*)GraphicsAPI::get()->window;
 
-	while (!glfwWindowShouldClose(window))
+	while (!glfwWindowShouldClose(window) && Manager::Instance::get()->isRunning)
 	{
 		#if GARDEN_OS_WINDOWS
 		glfwWaitEvents();

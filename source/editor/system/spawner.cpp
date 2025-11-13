@@ -152,7 +152,7 @@ static void renderSharedPrefabs(const string& searchString, bool searchCaseSensi
 			}
 		}
 
-		auto entity = linkSystem->findEntity(pair.second);
+		auto entity = linkSystem->tryGet(pair.second);
 
 		auto flags = (int)ImGuiTreeNodeFlags_Leaf;
 		if (editorSystem->selectedEntity == entity)
@@ -221,7 +221,7 @@ static void renderSpawnedEntities(const vector<Hash128>& spawnedEntities)
 
 	for (const auto& uuid : spawnedEntities)
 	{
-		auto entity = linkSystem->findEntity(uuid);
+		auto entity = linkSystem->tryGet(uuid);
 
 		auto flags = (int)ImGuiTreeNodeFlags_Leaf;
 		if (editorSystem->selectedEntity == entity)
