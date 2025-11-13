@@ -60,6 +60,7 @@ private:
 	uint32 datagramUID = 0;
 	uint64 clientDatagramIdx = 1;
 	uint64 serverDatagramIdx = 0;
+	int lastDisconnectReason = 0;
 	uint8 messageLengthSize = 0;
 	bool isDatagram = false;
 	uint16 _alignment = 0;
@@ -120,6 +121,10 @@ public:
 	 * @brief Returns stream message length size in bytes.
 	 */
 	uint8 getMessageLengthSize() const noexcept { return messageLengthSize; }
+	/**
+	 * @brief Returns last network client disconnection reason.
+	 */
+	int getLastDisconnectReason() const noexcept { return lastDisconnectReason; }
 	/**
 	 * @brief Returns game server ping time in seconds.
 	 */

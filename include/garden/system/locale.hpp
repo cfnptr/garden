@@ -201,7 +201,7 @@ public:
 	 * @brief Returns true if localization module is loaded.
 	 * @param module target localization module name
 	 */
-	bool isModuleLoaded(string_view module) const { return modules.find(module) != modules.end(); }
+	bool isModuleLoaded(string_view module) const noexcept { return modules.find(module) != modules.end(); }
 	/**
 	 * @brief Loads localization module strings.
 	 * @param module target localization module name

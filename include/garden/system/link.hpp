@@ -113,10 +113,20 @@ public:
 	const TagMap& getTagMap() const noexcept { return tagMap; }
 
 	/**
+	 * @brief Returns entity by UUID.
+	 * @param[in] uuid target entity UUID
+	 * @throw GardenError if entity UUID not found.
+	 */
+	ID<Entity> get(const Hash128& uuid) const
+	{
+		GARDEN_ASSERT(uuid);
+		return uuidMap.at(uuid);
+	}
+	/**
 	 * @brief Returns entity by UUID if found, otherwise null.
 	 * @param[in] uuid target entity UUID
 	 */
-	ID<Entity> findEntity(const Hash128& uuid) const
+	ID<Entity> tryGet(const Hash128& uuid) const noexcept
 	{
 		GARDEN_ASSERT(uuid);
 		auto searchResult = uuidMap.find(uuid);
@@ -129,12 +139,12 @@ public:
 	 * @brief Returns entities iterator by tag if found.
 	 * @param tag target entities tag string
 	 */
-	auto findEntities(string_view tag) const { return tagMap.equal_range(tag); }
+	auto tryGet(string_view tag) const noexcept { return tagMap.equal_range(tag); }
 	/**
 	 * @brief Returns entities array by tag if found.
 	 * @param tag target entities tag string
 	 */
-	void findEntities(string_view tag, vector<ID<Entity>>& entities) const
+	void tryGet(string_view tag, vector<ID<Entity>>& entities) const
 	{
 		GARDEN_ASSERT(!tag.empty());
 		auto result = tagMap.equal_range(tag);
@@ -143,10 +153,22 @@ public:
 	}
 
 	/**
+	 * @brief Returns first found entity by tag.
+	 * @param tag target entity tag string
+	 * @throw GardenError if entity tag not found.
+	 */
+	ID<Entity> getFirst(string_view tag) const
+	{
+		auto result = tagMap.find(tag);
+		if (result == tagMap.end())
+			throw GardenError("Entity tag not found.");
+		return result->second;
+	}
+	/**
 	 * @brief Returns first found entity by tag on success, otherwise null.
 	 * @param tag target entity tag string
 	 */
-	ID<Entity> findFirstEntity(string_view tag) const
+	ID<Entity> tryGetFirst(string_view tag) const noexcept
 	{
 		auto result = tagMap.find(tag);
 		if (result == tagMap.end())

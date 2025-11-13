@@ -65,8 +65,16 @@ void UiInputComponent::setEnabled(bool state)
 	if (enabled == state)
 		return;
 
+	auto hoveredElement = UiTriggerSystem::Instance::get()->getHovered();
+	auto currState = hoveredElement == entity ? "hovered" : "default";
 	setUiInputAnimation(entity, animationPath, text, 
-		state ? (textBad ? "bad" : "default") : "disabled");
+		state ? (textBad ? "bad" : currState) : "disabled");
+
+	if (hoveredElement == entity)
+	{
+		InputSystem::Instance::get()->setCursorType(
+			state ? CursorType::Ibeam : CursorType::Default);
+	}
 	enabled = state;
 }
 void UiInputComponent::setTextBad(bool state)
@@ -342,7 +350,7 @@ void UiInputSystem::updateActive()
 	if (inputSystem->isKeyboardPressed(KeyboardButton::Delete) ||
 		(isRepeated && inputSystem->getKeyboardState(KeyboardButton::Delete)))
 	{
-		if (uiInputView->caretIndex > 0 && uiInputView->caretIndex < uiInputView->text.length())
+		if (uiInputView->caretIndex < uiInputView->text.length())
 		{
 			uiInputView->text.erase(uiInputView->caretIndex, 1);
 			uiInputView->updateText();

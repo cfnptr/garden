@@ -29,7 +29,7 @@ ID<Entity> SpawnerComponent::loadPrefab()
 {
 	if (prefab)
 	{
-		auto entity = LinkSystem::Instance::get()->findEntity(prefab);
+		auto entity = LinkSystem::Instance::get()->tryGet(prefab);
 		if (entity)
 			return entity;
 	}
@@ -53,7 +53,7 @@ ID<Entity> SpawnerComponent::loadPrefab()
 		auto transformView = manager->get<TransformComponent>(entity);
 		transformView->setActive(false);
 
-		auto prefabs = LinkSystem::Instance::get()->findFirstEntity("Prefabs");
+		auto prefabs = LinkSystem::Instance::get()->tryGetFirst("Prefabs");
 		transformView->setParent(prefabs); // Note: sets null if not found.
 
 		auto linkView = manager->add<LinkComponent>(entity);
@@ -146,7 +146,7 @@ void SpawnerComponent::destroySpawned()
 	auto transformSystem = TransformSystem::Instance::get();
 	for (const auto& uuid : spawnedEntities)
 	{
-		auto entity = linkSystem->findEntity(uuid);
+		auto entity = linkSystem->tryGet(uuid);
 		transformSystem->destroyRecursive(entity);
 	}
 	spawnedEntities.clear();
@@ -177,7 +177,7 @@ void SpawnerSystem::preInit()
 {
 	auto manager = Manager::Instance::get();
 	auto prefabs = manager->createEntity();
-	manager->reserveComponents(prefabs, 2);
+	manager->reserveComponents(prefabs, 4);
 
 	auto transformView = manager->add<TransformComponent>(prefabs);
 	transformView->setActive(false);
@@ -265,7 +265,7 @@ void SpawnerSystem::serialize(ISerializer& serializer, const View<Component> com
 
 	if (componentView->prefab)
 	{
-		auto entity = LinkSystem::Instance::get()->findEntity(componentView->prefab);
+		auto entity = LinkSystem::Instance::get()->tryGet(componentView->prefab);
 		if (entity && !Manager::Instance::get()->has<DoNotSerializeComponent>(entity))
 		{
 			componentView->prefab.toBase64URL(valueStringCache);
@@ -310,7 +310,7 @@ bool SpawnerSystem::tryAddSharedPrefab(string_view path, const Hash128& uuid)
 	auto searchResult = sharedPrefabs.find(path);
 	if (searchResult != sharedPrefabs.end())
 	{
-		if (linkSystem->findEntity(searchResult->second))
+		if (linkSystem->tryGet(searchResult->second))
 			return false;
 		searchResult.value() = uuid;
 		return true;
@@ -329,7 +329,7 @@ bool SpawnerSystem::tryAddSharedPrefab(string_view path, ID<Entity> prefab)
 	auto searchResult = sharedPrefabs.find(path);
 	if (searchResult != sharedPrefabs.end())
 	{
-		if (linkSystem->findEntity(searchResult->second))
+		if (linkSystem->tryGet(searchResult->second))
 			return false;
 	}
 
@@ -355,7 +355,7 @@ bool SpawnerSystem::tryGetSharedPrefab(string_view path, Hash128& uuid)
 	GARDEN_ASSERT(!path.empty());
 	auto searchResult = sharedPrefabs.find(path);
 	if (searchResult == sharedPrefabs.end() ||
-		!LinkSystem::Instance::get()->findEntity(searchResult->second))
+		!LinkSystem::Instance::get()->tryGet(searchResult->second))
 	{
 		return false;
 	}
@@ -369,7 +369,7 @@ bool SpawnerSystem::tryGetSharedPrefab(string_view path, ID<Entity>& prefab)
 	if (searchResult == sharedPrefabs.end())
 		return false;
 
-	auto entity = LinkSystem::Instance::get()->findEntity(searchResult->second);
+	auto entity = LinkSystem::Instance::get()->tryGet(searchResult->second);
 	if (!entity)
 		return false;
 
@@ -383,7 +383,7 @@ bool SpawnerSystem::tryGetSharedPrefab(string_view path, Hash128& uuid, ID<Entit
 	if (searchResult == sharedPrefabs.end())
 		return false;
 
-	auto entity = LinkSystem::Instance::get()->findEntity(searchResult->second);
+	auto entity = LinkSystem::Instance::get()->tryGet(searchResult->second);
 	if (!entity)
 		return false;
 
@@ -399,7 +399,7 @@ void SpawnerSystem::destroySharedPrefabs()
 
 	for (const auto& pair : sharedPrefabs)
 	{
-		auto prefab = linkSystem->findEntity(pair.second);
+		auto prefab = linkSystem->tryGet(pair.second);
 		if (!prefab)
 			continue;
 		transformSystem->destroyRecursive(prefab);

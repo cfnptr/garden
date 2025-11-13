@@ -224,14 +224,6 @@ REMOVED_FROM_PARENT:
 }
 
 //**********************************************************************************************************************
-void TransformComponent::addChild(ID<Entity> child)
-{
-	GARDEN_ASSERT(child);
-	GARDEN_ASSERT(child != entity);
-
-	if (!tryAddChild(child))
-		throw GardenError("Failed to add child, child already has a parent.");
-}
 bool TransformComponent::tryAddChild(ID<Entity> child)
 {
 	GARDEN_ASSERT(child);
@@ -280,15 +272,25 @@ bool TransformComponent::hasChild(ID<Entity> child) const noexcept
 }
 
 //**********************************************************************************************************************
-void TransformComponent::removeChild(ID<Entity> child)
+bool TransformComponent::tryRemoveChild(uint32 index) noexcept
 {
-	GARDEN_ASSERT(child);
-	GARDEN_ASSERT(child != entity);
+	if (index >= getChildCount())
+		return false;
 
-	if (!tryRemoveChild(child))
-		throw GardenError("Failed to remove child, not found.");
+	auto thisChildCount = childCount();
+	auto child = childs[index];
+
+	for (uint32 j = index + 1; j < thisChildCount; j++)
+		childs[j - 1] = childs[j];
+
+	auto childTransformView = Manager::Instance::get()->get<TransformComponent>(child);
+	childTransformView->parent = {};
+	childTransformView->ancestorsActive = true;
+
+	childCount()--;
+	return true;
 }
-bool TransformComponent::tryRemoveChild(ID<Entity> child)
+bool TransformComponent::tryRemoveChild(ID<Entity> child) noexcept
 {
 	GARDEN_ASSERT(child);
 	GARDEN_ASSERT(child != entity);
@@ -298,20 +300,15 @@ bool TransformComponent::tryRemoveChild(ID<Entity> child)
 	{
 		if (childs[i] != entity)
 			continue;
-		for (uint32 j = i + 1; j < thisChildCount; j++)
-			childs[j - 1] = childs[j];
 
-		auto childTransformView = Manager::Instance::get()->get<TransformComponent>(child);
-		childTransformView->parent = {};
-		childTransformView->ancestorsActive = true;
-
-		childCount()--;
+		auto result = tryRemoveChild(i);
+		GARDEN_ASSERT_MSG(result, "Detected memory corruption");
 		return true;
 	}
 
 	return false;
 }
-void TransformComponent::removeAllChilds()
+void TransformComponent::removeAllChilds() noexcept
 {
 	auto manager = Manager::Instance::get();
 	auto thisChildCount = childCount();

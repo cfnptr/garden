@@ -160,7 +160,7 @@ public:
 	 * @brief Is shared prefab exists.
 	 * @param path target shared prefab path
 	 */
-	bool hasSharedPrefab(string_view path) const { return sharedPrefabs.find(path) != sharedPrefabs.end(); }
+	bool hasSharedPrefab(string_view path) const noexcept { return sharedPrefabs.find(path) != sharedPrefabs.end(); }
 
 	/**
 	 * @brief Adds shared prefab to the map.
