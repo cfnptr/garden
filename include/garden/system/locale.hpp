@@ -107,6 +107,7 @@ private:
 	StringMap generalStrings;
 	ModuleMap modules;
 	Language loadedLanguage = Language::English;
+	bool bigFontSize = false;
 
 	/**
 	 * @brief Creates a new locale system instance.
@@ -130,6 +131,10 @@ public:
 	 * @brief Returns localization module map.
 	 */
 	const ModuleMap& getModules() const noexcept { return modules; }
+	/**
+	 * @brief Returns true if language uses complex chars, and need increased font size.
+	 */
+	bool isBigFontSize() const noexcept { return bigFontSize; }
 
 	/**
 	 * @brief Returns loaded localizaion strings language.

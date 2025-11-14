@@ -70,8 +70,17 @@ void UiLabelEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	if (ImGui::Checkbox("Use Locale", &uiLabelView->useLocale))
 		uiLabelView->updateText();
 	ImGui::SameLine();
+	if (ImGui::Checkbox("Adjust KJC", &uiLabelView->adjustKJC))
+		uiLabelView->updateText();
+
 	if (ImGui::Checkbox("Load Noto", &uiLabelView->loadNoto))
 		uiLabelView->updateText();
+	ImGui::SameLine();
+
+	ImGui::BeginDisabled();
+	auto isVisible = uiLabelView->isVisible();
+	ImGui::Checkbox("Is Visible", &isVisible);
+	ImGui::EndDisabled();
 	ImGui::Spacing();
 
 	auto fontSize = (int)uiLabelView->fontSize;
