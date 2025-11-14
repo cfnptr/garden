@@ -48,6 +48,7 @@ private:
 	friend class garden::UiLabelSystem;
 public:
 	bool useLocale = false; /**< Use text as localized label string key. */
+	bool adjustKJC = false; /**< Increase font size for complex chars. (Korean, Japanese, Chinese, etc.) */
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	bool loadNoto = true; /**< Also load supporting noto fonts. */
@@ -81,6 +82,7 @@ public:
 struct UiLabelFrame final : public AnimationFrame
 {
 	bool useLocale = false;
+	bool adjustKJC = false;
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	bool loadNoto = true;
 	vector<fs::path> fontPaths;

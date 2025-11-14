@@ -112,9 +112,12 @@ void LocaleSystem::preInit()
 	}
 	#endif
 
+	bigFontSize = ::isBigFontSize(loadedLanguage);
+
 	if (!loadLocaleStrings(generalStrings, "", loadedLanguage))
 	{
 		loadLocaleStrings(generalStrings, "", Language::English);
+		bigFontSize = false;
 		return;
 	}
 
@@ -126,8 +129,13 @@ void LocaleSystem::setLanguage(Language language)
 	if (loadedLanguage == language)
 		return;
 
+	bigFontSize = ::isBigFontSize(language);
+
 	if (!loadLocaleStrings(generalStrings, "", language))
+	{
 		loadLocaleStrings(generalStrings, "", Language::English);
+		bigFontSize = false;
+	}
 
 	for (auto i = modules.begin(); i != modules.end(); i++)
 	{

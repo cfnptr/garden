@@ -19,7 +19,6 @@
 #include "garden/system/transform.hpp"
 #include "garden/system/resource.hpp"
 #include "garden/system/locale.hpp"
-#include "garden/system/log.hpp"
 #include "math/matrix/transform.hpp"
 
 using namespace garden;
@@ -51,13 +50,24 @@ static DescriptorSet::Uniforms getUniforms(ID<Text> text)
 	return uniforms;
 }
 
+static uint32 calcTotalFontSize(uint32 fontSize, bool adjustKJC) noexcept
+{
+	auto isBigFontSize = LocaleSystem::Instance::get()->isBigFontSize();
+	auto kjcFontSize = (uint32)round((float)fontSize * 1.2f);
+	return adjustKJC && isBigFontSize ? kjcFontSize : fontSize;
+}
+static uint32 calcScaledFontSize(uint32 totalFontSize) noexcept
+{
+	// TODO: take into account macOS differend window and framebuffer scale!
+	auto uiScale = UiTransformSystem::Instance::get()->uiScale;
+	return (uint32)ceil(totalFontSize / uiScale);
+}
+
 //**********************************************************************************************************************
 bool UiLabelComponent::updateText(bool shrink)
 {
 	auto textSystem = TextSystem::Instance::get();
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto uiScale = UiTransformSystem::Instance::get()->uiScale;
-	// TODO: take into account macOS differend window and framebuffer scale!
 
 	if (shrink)
 	{
@@ -66,7 +76,10 @@ bool UiLabelComponent::updateText(bool shrink)
 		textData = {}; descriptorSet = {}; 
 	}
 
-	if (text.empty() || fontSize == 0 || uiScale <= 0.0f
+	auto totalFontSize = calcTotalFontSize(fontSize, adjustKJC);
+	auto scaledFontSize = calcScaledFontSize(totalFontSize);
+
+	if (text.empty() || scaledFontSize == 0
 		#if GARDEN_DEBUG || GARDEN_EDITOR
 		|| fontPaths.empty() && !loadNoto
 		#endif
@@ -89,9 +102,7 @@ bool UiLabelComponent::updateText(bool shrink)
 	}
 	else textString = text;
 
-	auto scaledFontSize = (uint32)ceil(fontSize / uiScale);
 	ID<Image> currFontAtlas = {}; ID<Buffer> currInstanceBuffer = {};
-
 	if (textData)
 	{
 		auto textView = textSystem->get(textData);
@@ -140,7 +151,7 @@ bool UiLabelComponent::updateText(bool shrink)
 		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.uiLabel" + to_string(*descriptorSet));
 	}
 
-	aabb.setSize(f32x4(float3(textView->getSize() * fontSize, 1.0f)));
+	aabb.setSize(f32x4(float3(textView->getSize() * totalFontSize, 1.0f)));
 	isEnabled = true;
 	return true;
 }
@@ -184,6 +195,7 @@ void UiLabelSystem::update()
 		}
 		lastUiScale = newUiScale;
 	}
+	// TODO: !!! Update text of the animation frames !!!
 }
 void UiLabelSystem::localeChange()
 {
@@ -193,6 +205,7 @@ void UiLabelSystem::localeChange()
 			continue;
 		component.updateText(true);
 	}
+	// TODO: !!! Update text of the animation frames !!!
 }
 
 //**********************************************************************************************************************
@@ -217,7 +230,8 @@ void UiLabelSystem::copyComponent(View<Component> source, View<Component> destin
 	auto destinationView = View<UiLabelComponent>(destination);
 	**destinationView = **sourceView;
 
-	if (sourceView->textData)
+	if (sourceView->textData && !sourceView->text.empty() && sourceView->fontSize > 0 &&
+		UiTransformSystem::Instance::get()->uiScale > 0.0f)
 	{
 		auto textSystem = TextSystem::Instance::get();
 		auto srcTextView = textSystem->get(sourceView->textData);
@@ -238,14 +252,13 @@ void UiLabelSystem::copyComponent(View<Component> source, View<Component> destin
 		ID<Text> text;
 		if (srcTextView->isAtlasShared())
 		{
-			text = textSystem->createText(textString, srcTextView->getFontAtlas(), 
-				srcTextView->getProperties(), true);
+			text = textSystem->createText(textString, srcTextView->getFontAtlas(), srcTextView->getProperties(), true);
 		}
 		else
 		{
 			auto fonts = textSystem->get(srcTextView->getFontAtlas())->getFonts();
-			text = textSystem->createText(textString, std::move(fonts), 
-				sourceView->fontSize, srcTextView->getProperties());
+			auto scaledFontSize = calcScaledFontSize(calcTotalFontSize(sourceView->fontSize, sourceView->adjustKJC));
+			text = textSystem->createText(textString, std::move(fonts), scaledFontSize, srcTextView->getProperties());
 		}
 		destinationView->textData = text;
 
@@ -300,9 +313,10 @@ void UiLabelSystem::drawAsync(MeshRenderComponent* meshRenderView,
 	if (!textView->isReady() || textView->getInstanceCount() == 0)
 		return;
 
-	auto entity = uiLabelView->getEntity(); auto fontSize = uiLabelView->fontSize;
+	auto entity = uiLabelView->getEntity();
 	auto transformView = manager->get<TransformComponent>(entity);
-	auto localScale = transformView->getScale() * f32x4(fontSize, fontSize, 1.0f);
+	auto totalFontSize = calcTotalFontSize(uiLabelView->fontSize, uiLabelView->adjustKJC);
+	auto localScale = transformView->getScale() * f32x4(totalFontSize, totalFontSize, 1.0f);
 	auto localModel = scale(model, (1.0f / extractScale(model)) * localScale);
 	setTranslation(localModel, (f32x4)u32x4(getTranslation(localModel) / lastUiScale) * lastUiScale);
 	// TODO: take into account macOS differend window and framebuffer scale!
@@ -338,6 +352,8 @@ void UiLabelSystem::serialize(ISerializer& serializer, const View<Component> com
 		serializer.write("fontSize", componentView->fontSize);
 	if (componentView->useLocale)
 		serializer.write("useLocale", true);
+	if (componentView->adjustKJC)
+		serializer.write("adjustKJC", true);
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	if (!componentView->fontPaths.empty())
@@ -366,6 +382,7 @@ void UiLabelSystem::deserialize(IDeserializer& deserializer, View<Component> com
 	deserializer.read("useTags", componentView->propterties.useTags);
 	deserializer.read("fontSize", componentView->fontSize);
 	deserializer.read("useLocale", componentView->useLocale);
+	deserializer.read("adjustKJC", componentView->adjustKJC);
 
 	string alignment;
 	if (deserializer.read("alignment", alignment))
@@ -422,6 +439,8 @@ void UiLabelSystem::serializeAnimation(ISerializer& serializer, View<AnimationFr
 		serializer.write("fontSize", frameView->fontSize);
 	if (frameView->useLocale)
 		serializer.write("useLocale", true);
+	if (frameView->adjustKJC)
+		serializer.write("adjustKJC", true);
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	if (!frameView->fontPaths.empty())
@@ -450,6 +469,7 @@ void UiLabelSystem::deserializeAnimation(IDeserializer& deserializer, View<Anima
 	deserializer.read("useTags", frameView->propterties.useTags);
 	deserializer.read("fontSize", frameView->fontSize);
 	deserializer.read("useLocale", frameView->useLocale);
+	deserializer.read("adjustKJC", frameView->adjustKJC);
 
 	string alignment;
 	if (deserializer.read("alignment", alignment))
@@ -487,7 +507,9 @@ void UiLabelSystem::deserializeAnimation(IDeserializer& deserializer, View<Anima
 	frameView->loadNoto = loadNoto;
 	#endif
 
-	if (frameView->text.empty() || frameView->fontSize == 0 || uiScale <= 0.0f
+	auto scaledFontSize = calcScaledFontSize(calcTotalFontSize(frameView->fontSize, frameView->adjustKJC));
+
+	if (frameView->text.empty() || scaledFontSize == 0
 		#if GARDEN_DEBUG || GARDEN_EDITOR
 		|| frameView->fontPaths.empty() && !frameView->loadNoto
 		#endif
@@ -507,8 +529,9 @@ void UiLabelSystem::deserializeAnimation(IDeserializer& deserializer, View<Anima
 	else textString = frameView->text;
 
 	auto fonts = ResourceSystem::Instance::get()->loadFonts(fontPaths, 0, loadNoto);
+	
 	auto text = TextSystem::Instance::get()->createText(textString, 
-		std::move(fonts), frameView->fontSize, frameView->propterties);
+		std::move(fonts), scaledFontSize, frameView->propterties);
 	frameView->textData = text;
 
 	auto uniforms = getUniforms(text);
@@ -535,6 +558,7 @@ void UiLabelSystem::animateAsync(View<Component> component, View<AnimationFrame>
 			componentView->textData = frameB->textData;
 			componentView->descriptorSet = frameB->descriptorSet;
 			componentView->useLocale = frameB->useLocale;
+			componentView->adjustKJC = frameB->adjustKJC;
 			#if GARDEN_DEBUG || GARDEN_EDITOR
 			componentView->fontPaths = frameB->fontPaths;
 			componentView->loadNoto = frameB->loadNoto;
@@ -551,6 +575,7 @@ void UiLabelSystem::animateAsync(View<Component> component, View<AnimationFrame>
 			componentView->textData = frameA->textData;
 			componentView->descriptorSet = frameA->descriptorSet;
 			componentView->useLocale = frameA->useLocale;
+			componentView->adjustKJC = frameA->adjustKJC;
 			#if GARDEN_DEBUG || GARDEN_EDITOR
 			componentView->fontPaths = frameA->fontPaths;
 			componentView->loadNoto = frameA->loadNoto;
@@ -563,7 +588,8 @@ void UiLabelSystem::animateAsync(View<Component> component, View<AnimationFrame>
 	if (componentView->textData)
 	{
 		auto textView = textSystem->get(componentView->textData);
-		componentView->aabb.setSize(f32x4(float3(textView->getSize() * componentView->fontSize, 1.0f)));
+		auto totalFontSize = calcTotalFontSize(componentView->fontSize, componentView->adjustKJC);
+		componentView->aabb.setSize(f32x4(float3(textView->getSize() * totalFontSize, 1.0f)));
 		componentView->isEnabled = true;
 	}
 	else
@@ -588,7 +614,6 @@ void UiLabelSystem::resetAnimation(View<AnimationFrame> frame, bool full)
 	}
 }
 
-//**********************************************************************************************************************
 ID<GraphicsPipeline> UiLabelSystem::getPipeline()
 {
 	if (!pipeline)
