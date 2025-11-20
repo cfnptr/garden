@@ -343,6 +343,7 @@ int StreamServerHandle::onPingRequest(ClientSession* session, StreamInput reques
 //**********************************************************************************************************************
 ServerNetworkSystem::ServerNetworkSystem(bool setSingleton) : Singleton(setSingleton)
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("PreInit", ServerNetworkSystem::preInit);
 	ECSM_SUBSCRIBE_TO_EVENT("Update", ServerNetworkSystem::update);
 }
@@ -352,6 +353,7 @@ ServerNetworkSystem::~ServerNetworkSystem()
 
 	if (Manager::Instance::get()->isRunning)
 	{
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PreInit", ServerNetworkSystem::preInit);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Update", ServerNetworkSystem::update);
 	}
@@ -393,6 +395,7 @@ static void updateSessions(StreamServerHandle* streamServer, std::function<int(C
 	auto threadSystem = ThreadSystem::Instance::tryGet();
 	streamServer->lockSessions();
 	
+	auto sessions = streamServer->getSessions();
 	auto sessionCount = streamServer->getSessionCount();
 	if (sessionCount == 0)
 	{
@@ -402,8 +405,7 @@ static void updateSessions(StreamServerHandle* streamServer, std::function<int(C
 
 	auto manager = Manager::Instance::get();
 	manager->unlock();
-
-	auto sessions = streamServer->getSessions();
+	
 	if (threadSystem)
 	{
 		auto& threadPool = threadSystem->getForegroundPool();
@@ -512,7 +514,11 @@ void ServerNetworkSystem::stop()
 	else
 		GARDEN_LOG_WARN("Server is not running.");
 
+	auto manager = Manager::Instance::get();
+	manager->unlock();
 	streamServer->destroy();
+	manager->lock();
+
 	ClientSession::destroyCipher(streamServer->cipher);
 	delete streamServer; streamServer = nullptr;
 }

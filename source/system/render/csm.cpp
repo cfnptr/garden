@@ -149,7 +149,8 @@ static DescriptorSet::Uniforms getUniforms(GraphicsSystem* graphicsSystem, ID<Im
 //**********************************************************************************************************************
 CsmRenderSystem::CsmRenderSystem(bool setSingleton) : Singleton(setSingleton)
 {
-	Manager::Instance::get()->addGroupSystem<IShadowMeshRenderSystem>(this);
+	auto manager = Manager::Instance::get();
+	manager->addGroupSystem<IShadowMeshRenderSystem>(this);
 
 	ECSM_SUBSCRIBE_TO_EVENT("Init", CsmRenderSystem::init);
 	ECSM_SUBSCRIBE_TO_EVENT("Deinit", CsmRenderSystem::deinit);
@@ -158,7 +159,8 @@ CsmRenderSystem::~CsmRenderSystem()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
-		Manager::Instance::get()->removeGroupSystem<IShadowMeshRenderSystem>(this);
+		auto manager = Manager::Instance::get();
+		manager->removeGroupSystem<IShadowMeshRenderSystem>(this);
 
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", CsmRenderSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", CsmRenderSystem::deinit);
@@ -169,6 +171,7 @@ CsmRenderSystem::~CsmRenderSystem()
 
 void CsmRenderSystem::init()
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("ShadowRender", CsmRenderSystem::shadowRender);
 	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", CsmRenderSystem::gBufferRecreate);
 
@@ -191,6 +194,7 @@ void CsmRenderSystem::deinit()
 		graphicsSystem->destroy(dataBuffers);
 		graphicsSystem->destroy(pipeline);
 
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("ShadowRender", CsmRenderSystem::shadowRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("GBufferRecreate", CsmRenderSystem::gBufferRecreate);
 	}

@@ -75,6 +75,7 @@ static DescriptorSet::Uniforms getUniforms(GraphicsSystem* graphicsSystem, ID<Im
 //**********************************************************************************************************************
 HbaoRenderSystem::HbaoRenderSystem(bool setSingleton) : Singleton(setSingleton)
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", HbaoRenderSystem::init);
 	ECSM_SUBSCRIBE_TO_EVENT("Deinit", HbaoRenderSystem::deinit);
 }
@@ -82,6 +83,7 @@ HbaoRenderSystem::~HbaoRenderSystem()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", HbaoRenderSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", HbaoRenderSystem::deinit);
 	}
@@ -91,6 +93,7 @@ HbaoRenderSystem::~HbaoRenderSystem()
 
 void HbaoRenderSystem::init()
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("PreAoRender", HbaoRenderSystem::preAoRender);
 	ECSM_SUBSCRIBE_TO_EVENT("AoRender", HbaoRenderSystem::aoRender);
 	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", HbaoRenderSystem::gBufferRecreate);
@@ -108,6 +111,7 @@ void HbaoRenderSystem::deinit()
 		graphicsSystem->destroy(pipeline);
 		graphicsSystem->destroy(noiseImage);
 
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PreAoRender", HbaoRenderSystem::preAoRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("AoRender", HbaoRenderSystem::aoRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("GBufferRecreate", HbaoRenderSystem::gBufferRecreate);

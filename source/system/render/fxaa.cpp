@@ -62,6 +62,7 @@ static DescriptorSet::Uniforms getUniforms(GraphicsSystem* graphicsSystem)
 //**********************************************************************************************************************
 FxaaRenderSystem::FxaaRenderSystem(bool setSingleton) : Singleton(setSingleton)
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", FxaaRenderSystem::init);
 	ECSM_SUBSCRIBE_TO_EVENT("Deinit", FxaaRenderSystem::deinit);
 }
@@ -69,6 +70,7 @@ FxaaRenderSystem::~FxaaRenderSystem()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", FxaaRenderSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", FxaaRenderSystem::deinit);
 	}
@@ -78,6 +80,7 @@ FxaaRenderSystem::~FxaaRenderSystem()
 
 void FxaaRenderSystem::init()
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("PreUiRender", FxaaRenderSystem::preUiRender);
 	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", FxaaRenderSystem::gBufferRecreate);
 
@@ -94,6 +97,7 @@ void FxaaRenderSystem::deinit()
 		graphicsSystem->destroy(framebuffer);
 		graphicsSystem->destroy(pipeline);
 
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PreUiRender", FxaaRenderSystem::preUiRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("GBufferRecreate", FxaaRenderSystem::gBufferRecreate);
 	}

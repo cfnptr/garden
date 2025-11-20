@@ -123,11 +123,11 @@ GraphicsSystem::~GraphicsSystem()
 	{
 		// Note: Constants buffers and other resources will destroyed by terminating graphics API.
 
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PreInit", GraphicsSystem::preInit);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PreDeinit", GraphicsSystem::preDeinit);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Update", GraphicsSystem::update);
 
-		auto manager = Manager::Instance::get();
 		manager->unregisterEvent("Render");
 		manager->unregisterEvent("Present");
 		manager->unregisterEvent("SwapchainRecreate");
@@ -185,6 +185,7 @@ static void logVkGpuInfo()
 
 void GraphicsSystem::preInit()
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Input", GraphicsSystem::input);
 	ECSM_SUBSCRIBE_TO_EVENT("Present", GraphicsSystem::present);
 
@@ -205,6 +206,7 @@ void GraphicsSystem::preDeinit()
 
 	if (Manager::Instance::get()->isRunning)
 	{
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Input", GraphicsSystem::input);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Present", GraphicsSystem::present);
 	}

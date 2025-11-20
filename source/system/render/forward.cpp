@@ -112,10 +112,10 @@ ForwardRenderSystem::~ForwardRenderSystem()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", ForwardRenderSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", ForwardRenderSystem::deinit);
 		
-		auto manager = Manager::Instance::get();
 		manager->unregisterEvent("PreForwardRender");
 		manager->unregisterEvent("ForwardRender");
 		manager->unregisterEvent("PreDepthForwardRender");
@@ -134,6 +134,7 @@ void ForwardRenderSystem::init()
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	GARDEN_ASSERT(asyncRecording == graphicsSystem->useAsyncRecording());
 
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Render", ForwardRenderSystem::render);
 	ECSM_SUBSCRIBE_TO_EVENT("SwapchainRecreate", ForwardRenderSystem::swapchainRecreate);
 }
@@ -151,6 +152,7 @@ void ForwardRenderSystem::deinit()
 			graphicsSystem->destroy(uiBuffer);
 		graphicsSystem->destroy(colorBuffer);
 
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Render", ForwardRenderSystem::render);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("SwapchainRecreate", ForwardRenderSystem::swapchainRecreate);
 	}

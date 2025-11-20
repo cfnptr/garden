@@ -147,6 +147,10 @@ public:
 	 * @brief Returns true if server use encrypted connection.
 	 */
 	bool isSecure() const noexcept { return streamServer && streamServer->isSecure(); }
+	/**
+	 * @brief Returns stream server internal handle.
+	 */
+	StreamServerHandle* getStreamHandle() const noexcept { return streamServer; }
 
 	/**
 	 * @brief Starts server listening and receiving.
@@ -163,7 +167,7 @@ public:
 	 * @throw Error with a @ref NetsResult string on failure.
 	 */
 	void start(SocketFamily socketFamily, const char* service, size_t sessionBufferSize = 512, 
-		size_t connectionQueueSize = 256, size_t receiveBufferSize = UINT16_MAX + 2, size_t messageBufferSize = UINT8_MAX, 
+		size_t connectionQueueSize = 256, size_t receiveBufferSize = UINT16_MAX + 1, size_t messageBufferSize = UINT8_MAX, 
 		double timeoutTime = 5.0f, nets::SslContextView sslContext = nets::SslContextView(nullptr));
 	/**
 	 * @brief Stops server listening and receiving.

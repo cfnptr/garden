@@ -32,6 +32,7 @@ using namespace garden;
 
 DlssRenderSystem::DlssRenderSystem(bool setSingleton) : Singleton(setSingleton)
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("PreInit", DlssRenderSystem::preInit);
 	ECSM_SUBSCRIBE_TO_EVENT("PostDeinit", DlssRenderSystem::postDeinit);
 	ECSM_SUBSCRIBE_TO_EVENT("PreLdrRender", DlssRenderSystem::preLdrRender);
@@ -41,6 +42,7 @@ DlssRenderSystem::~DlssRenderSystem()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PreInit", DlssRenderSystem::preInit);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PostDeinit", DlssRenderSystem::postDeinit);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PreLdrRender", DlssRenderSystem::preLdrRender);

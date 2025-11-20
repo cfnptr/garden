@@ -27,6 +27,7 @@ using namespace garden;
 //**********************************************************************************************************************
 TransformEditorSystem::TransformEditorSystem(bool setSingleton) : Singleton(setSingleton)
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", TransformEditorSystem::init);
 	ECSM_SUBSCRIBE_TO_EVENT("Deinit", TransformEditorSystem::deinit);
 }
@@ -34,6 +35,7 @@ TransformEditorSystem::~TransformEditorSystem()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", TransformEditorSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", TransformEditorSystem::deinit);
 	}

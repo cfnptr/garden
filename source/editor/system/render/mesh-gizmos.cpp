@@ -63,6 +63,7 @@ constexpr array<float3, 18> arrowVertices =
 //**********************************************************************************************************************
 MeshGizmosEditorSystem::MeshGizmosEditorSystem()
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", MeshGizmosEditorSystem::init);
 	ECSM_SUBSCRIBE_TO_EVENT("Deinit", MeshGizmosEditorSystem::deinit);
 }
@@ -75,6 +76,7 @@ MeshGizmosEditorSystem::~MeshGizmosEditorSystem()
 		graphicsSystem->destroy(backGizmosPipeline);
 		graphicsSystem->destroy(frontGizmosPipeline);
 
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", MeshGizmosEditorSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", MeshGizmosEditorSystem::deinit);
 	}
@@ -83,6 +85,7 @@ MeshGizmosEditorSystem::~MeshGizmosEditorSystem()
 //**********************************************************************************************************************
 void MeshGizmosEditorSystem::init()
 {
+	auto manager = Manager::Instance::get();
 	if (DeferredRenderSystem::Instance::has())
 		ECSM_SUBSCRIBE_TO_EVENT("DepthLdrRender", MeshGizmosEditorSystem::render);
 	else
@@ -128,6 +131,7 @@ void MeshGizmosEditorSystem::deinit()
 		graphicsSystem->destroy(backGizmosPipeline);
 		graphicsSystem->destroy(frontGizmosPipeline);
 
+		auto manager = Manager::Instance::get();
 		if (DeferredRenderSystem::Instance::has())
 			ECSM_UNSUBSCRIBE_FROM_EVENT("DepthLdrRender", MeshGizmosEditorSystem::render);
 		else

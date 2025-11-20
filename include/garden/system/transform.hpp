@@ -51,7 +51,7 @@ private:
 	friend class LinearPool<TransformComponent>;
 	friend class ComponentSystem<TransformComponent>;
 public:
-	bool modelWithAncestors = true; /**< Are ancestors accounted when calculating model matrix. */
+	volatile bool modelWithAncestors = true; /**< Are ancestors accounted when calculating model matrix. */
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	string debugName; /**< Entity debug name. (Debug and editor only) */

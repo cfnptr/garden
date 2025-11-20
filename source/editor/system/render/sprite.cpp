@@ -26,6 +26,7 @@ using namespace garden;
 
 SpriteRenderEditorSystem::SpriteRenderEditorSystem()
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", SpriteRenderEditorSystem::init);
 	ECSM_SUBSCRIBE_TO_EVENT("Deinit", SpriteRenderEditorSystem::deinit);
 }
@@ -33,6 +34,7 @@ SpriteRenderEditorSystem::~SpriteRenderEditorSystem()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", SpriteRenderEditorSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", SpriteRenderEditorSystem::deinit);
 	}
@@ -158,7 +160,10 @@ void SpriteRenderEditorSystem::renderComponent(SpriteRenderComponent* componentV
 		componentView->descriptorSet, componentView->getEntity(), componentType, maxMipCount, flags);
 	editorSystem->drawResource(componentView->descriptorSet);
 
-	ImGui::Checkbox("Enabled", &componentView->isEnabled); ImGui::SameLine();
+	auto isEnabed = componentView->isEnabled;
+	if (ImGui::Checkbox("Enabled", &isEnabed))
+		componentView->isEnabled = isEnabed;
+	ImGui::SameLine();
 
 	auto reloadImage = false;
 	if (ImGui::Checkbox("Array", &componentView->isArray))

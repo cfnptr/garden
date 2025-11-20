@@ -24,6 +24,7 @@ using namespace garden;
 //**********************************************************************************************************************
 SpawnerEditorSystem::SpawnerEditorSystem()
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", SpawnerEditorSystem::init);
 	ECSM_SUBSCRIBE_TO_EVENT("Deinit", SpawnerEditorSystem::deinit);
 }
@@ -31,6 +32,7 @@ SpawnerEditorSystem::~SpawnerEditorSystem()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", SpawnerEditorSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", SpawnerEditorSystem::deinit);
 	}
@@ -38,6 +40,7 @@ SpawnerEditorSystem::~SpawnerEditorSystem()
 
 void SpawnerEditorSystem::init()
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("PreUiRender", SpawnerEditorSystem::preUiRender);
 	ECSM_SUBSCRIBE_TO_EVENT("EditorBarTool", SpawnerEditorSystem::editorBarTool);
 
@@ -54,6 +57,7 @@ void SpawnerEditorSystem::deinit()
 	{
 		EditorRenderSystem::Instance::get()->unregisterEntityInspector<SpawnerComponent>();
 
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PreUiRender", SpawnerEditorSystem::preUiRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarTool", SpawnerEditorSystem::editorBarTool);
 	}

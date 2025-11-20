@@ -171,6 +171,7 @@ static void createBuffers(GraphicsSystem* graphicsSystem,
 ImGuiRenderSystem::ImGuiRenderSystem(bool setSingleton, 
 	const fs::path& fontPath) : Singleton(setSingleton), fontPath(fontPath)
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("PreInit", ImGuiRenderSystem::preInit);
 	ECSM_SUBSCRIBE_TO_EVENT("PostInit", ImGuiRenderSystem::postInit);
 	ECSM_SUBSCRIBE_TO_EVENT("PostDeinit", ImGuiRenderSystem::postDeinit);
@@ -186,6 +187,7 @@ ImGuiRenderSystem::~ImGuiRenderSystem()
 	{
 		ImGui::DestroyContext();
 
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PreInit", ImGuiRenderSystem::preInit);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PostInit", ImGuiRenderSystem::postInit);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PostDeinit", ImGuiRenderSystem::postDeinit);
@@ -227,6 +229,7 @@ static LRESULT CALLBACK imGuiWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM 
 //**********************************************************************************************************************
 void ImGuiRenderSystem::preInit()
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Input", ImGuiRenderSystem::input);
 
 	auto& io = ImGui::GetIO();
@@ -291,6 +294,7 @@ void ImGuiRenderSystem::preInit()
 }
 void ImGuiRenderSystem::postInit()
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("PostLdrToUI", ImGuiRenderSystem::postLdrToUI);
 	ECSM_SUBSCRIBE_TO_EVENT("UiRender", ImGuiRenderSystem::uiRender);
 }
@@ -323,6 +327,7 @@ void ImGuiRenderSystem::postDeinit()
 		io.BackendFlags &= ~(ImGuiBackendFlags_HasMouseCursors | 
 			ImGuiBackendFlags_HasSetMousePos | ImGuiBackendFlags_HasGamepad);
 
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Input", ImGuiRenderSystem::input);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PostLdrToUI", ImGuiRenderSystem::postLdrToUI);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("UiRender", ImGuiRenderSystem::uiRender);

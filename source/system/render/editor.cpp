@@ -54,10 +54,10 @@ EditorRenderSystem::~EditorRenderSystem()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", EditorRenderSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", EditorRenderSystem::deinit);
 
-		auto manager = Manager::Instance::get();
 		manager->unregisterEvent("EditorPlayStart");
 		manager->unregisterEvent("EditorPlayStop");
 		manager->unregisterEvent("EditorBarFile");
@@ -998,12 +998,16 @@ void EditorRenderSystem::showFileSelector()
 //**********************************************************************************************************************
 void EditorRenderSystem::init()
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("PreUiRender", EditorRenderSystem::preUiRender);
 }
 void EditorRenderSystem::deinit()
 {
 	if (Manager::Instance::get()->isRunning)
+	{
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PreUiRender", EditorRenderSystem::preUiRender);
+	}
 }
 
 void EditorRenderSystem::preUiRender()

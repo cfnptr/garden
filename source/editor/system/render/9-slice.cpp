@@ -25,6 +25,7 @@ using namespace garden;
 
 NineSliceEditorSystem::NineSliceEditorSystem()
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", NineSliceEditorSystem::init);
 	ECSM_SUBSCRIBE_TO_EVENT("Deinit", NineSliceEditorSystem::deinit);
 }
@@ -32,6 +33,7 @@ NineSliceEditorSystem::~NineSliceEditorSystem()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", NineSliceEditorSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", NineSliceEditorSystem::deinit);
 	}

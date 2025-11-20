@@ -27,6 +27,7 @@ using namespace garden;
 //**********************************************************************************************************************
 MeshSelectorEditorSystem::MeshSelectorEditorSystem()
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", MeshSelectorEditorSystem::init);
 	ECSM_SUBSCRIBE_TO_EVENT("Deinit", MeshSelectorEditorSystem::deinit);
 }
@@ -34,6 +35,7 @@ MeshSelectorEditorSystem::~MeshSelectorEditorSystem()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", MeshSelectorEditorSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", MeshSelectorEditorSystem::deinit);
 	}
@@ -41,6 +43,7 @@ MeshSelectorEditorSystem::~MeshSelectorEditorSystem()
 
 void MeshSelectorEditorSystem::init()
 {
+	auto manager = Manager::Instance::get();
 	if (DeferredRenderSystem::Instance::has())
 		ECSM_SUBSCRIBE_TO_EVENT("DepthLdrRender", MeshSelectorEditorSystem::render);
 	else
@@ -55,6 +58,7 @@ void MeshSelectorEditorSystem::deinit()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
+		auto manager = Manager::Instance::get();
 		if (DeferredRenderSystem::Instance::has())
 			ECSM_UNSUBSCRIBE_FROM_EVENT("DepthLdrRender", MeshSelectorEditorSystem::render);
 		else

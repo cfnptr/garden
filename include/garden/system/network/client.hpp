@@ -72,8 +72,8 @@ private:
 	 * @param timeoutTime server timeout time in seconds
 	 * @param setSingleton set system singleton instance
 	 */
-	ClientNetworkSystem(size_t receiveBufferSize = UINT16_MAX + 2, size_t messageBufferSize = UINT16_MAX, 
-		double timeoutTime = 5.0f, bool setSingleton = true);
+	ClientNetworkSystem(size_t receiveBufferSize = UINT16_MAX + sizeof(uint16), 
+		size_t messageBufferSize = UINT16_MAX, double timeoutTime = 5.0f, bool setSingleton = true);
 	/**
 	 * @brief Destroys network client system instance.
 	 */

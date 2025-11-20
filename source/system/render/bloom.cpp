@@ -142,17 +142,21 @@ static ID<GraphicsPipeline> createUpsamplePipeline(ID<Framebuffer> framebuffer)
 BloomRenderSystem::BloomRenderSystem(bool useThreshold, bool useAntiFlickering, bool setSingleton) :
 	Singleton(setSingleton), useThreshold(useThreshold), useAntiFlickering(useAntiFlickering)
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", BloomRenderSystem::init);
 	ECSM_SUBSCRIBE_TO_EVENT("Deinit", BloomRenderSystem::deinit);
-	Manager::Instance::get()->registerEvent("BloomRecreate");
+
+	manager->registerEvent("BloomRecreate");
 }
 BloomRenderSystem::~BloomRenderSystem()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
+		auto manager = Manager::Instance::get();
+		manager->unregisterEvent("BloomRecreate");
+
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", BloomRenderSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", BloomRenderSystem::deinit);
-		Manager::Instance::get()->unregisterEvent("BloomRecreate");
 	}
 
 	unsetSingleton();
@@ -160,6 +164,7 @@ BloomRenderSystem::~BloomRenderSystem()
 
 void BloomRenderSystem::init()
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("PreLdrRender", BloomRenderSystem::preLdrRender);
 	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", BloomRenderSystem::gBufferRecreate);
 	ECSM_SUBSCRIBE_TO_EVENT("QualityChange", BloomRenderSystem::qualityChange);
@@ -182,6 +187,7 @@ void BloomRenderSystem::deinit()
 		graphicsSystem->destroy(imageViews);
 		graphicsSystem->destroy(bloomBuffer);
 
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PreLdrRender", BloomRenderSystem::preLdrRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("GBufferRecreate", BloomRenderSystem::gBufferRecreate);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("QualityChange", BloomRenderSystem::qualityChange);

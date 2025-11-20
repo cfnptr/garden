@@ -50,8 +50,8 @@ protected:
 	uint16 unused2 = 0;
 	bool visible = false;
 public:
-	bool isEnabled = true; /**< Is mesh should be rendered. */
-	Aabb aabb = Aabb::one; /**< Mesh axis aligned bounding box. */
+	volatile bool isEnabled = true; /**< Is mesh should be rendered. */
+	Aabb aabb = Aabb::one;          /**< Mesh axis aligned bounding box. */
 
 	/**
 	 * @brief Is mesh visible on camera after last frustum culling.

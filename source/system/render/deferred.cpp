@@ -353,10 +353,10 @@ DeferredRenderSystem::~DeferredRenderSystem()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", DeferredRenderSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", DeferredRenderSystem::deinit);
 
-		auto manager = Manager::Instance::get();
 		manager->unregisterEvent("PreDeferredRender");
 		manager->unregisterEvent("DeferredRender");
 		manager->unregisterEvent("PreHdrRender");
@@ -390,6 +390,7 @@ void DeferredRenderSystem::init()
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	GARDEN_ASSERT(options.useAsyncRecording == graphicsSystem->useAsyncRecording());
 
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Render", DeferredRenderSystem::render);
 	ECSM_SUBSCRIBE_TO_EVENT("SwapchainRecreate", DeferredRenderSystem::swapchainRecreate);
 }
@@ -432,6 +433,7 @@ void DeferredRenderSystem::deinit()
 		graphicsSystem->destroy(hdrBuffer);
 		graphicsSystem->destroy(gBuffers);
 
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Render", DeferredRenderSystem::render);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("SwapchainRecreate", DeferredRenderSystem::swapchainRecreate);
 	}

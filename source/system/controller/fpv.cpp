@@ -28,6 +28,7 @@ using namespace garden;
 //**********************************************************************************************************************
 FpvControllerSystem::FpvControllerSystem(bool setSingleton) : Singleton(setSingleton)
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", FpvControllerSystem::init);
 	ECSM_SUBSCRIBE_TO_EVENT("Deinit", FpvControllerSystem::deinit);
 	ECSM_SUBSCRIBE_TO_EVENT("Update", FpvControllerSystem::update);
@@ -36,6 +37,7 @@ FpvControllerSystem::~FpvControllerSystem()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", FpvControllerSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", FpvControllerSystem::deinit);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Update", FpvControllerSystem::update);
@@ -46,9 +48,9 @@ FpvControllerSystem::~FpvControllerSystem()
 
 void FpvControllerSystem::init()
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("SwapchainRecreate", FpvControllerSystem::swapchainRecreate);
 
-	auto manager = Manager::Instance::get();
 	camera = manager->createEntity();
 	manager->reserveComponents(camera, 8);
 
@@ -80,8 +82,9 @@ void FpvControllerSystem::deinit()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
+		auto manager = Manager::Instance::get();
 		GraphicsSystem::Instance::get()->camera = {};
-		Manager::Instance::get()->destroy(camera);
+		manager->destroy(camera);
 
 		ECSM_UNSUBSCRIBE_FROM_EVENT("SwapchainRecreate", FpvControllerSystem::swapchainRecreate);
 	}

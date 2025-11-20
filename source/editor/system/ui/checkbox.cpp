@@ -22,6 +22,7 @@ using namespace garden;
 //**********************************************************************************************************************
 UiCheckboxEditorSystem::UiCheckboxEditorSystem(bool setSingleton) : Singleton(setSingleton)
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", UiCheckboxEditorSystem::init);
 	ECSM_SUBSCRIBE_TO_EVENT("Deinit", UiCheckboxEditorSystem::deinit);
 }
@@ -29,6 +30,7 @@ UiCheckboxEditorSystem::~UiCheckboxEditorSystem()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", UiCheckboxEditorSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", UiCheckboxEditorSystem::deinit);
 	}

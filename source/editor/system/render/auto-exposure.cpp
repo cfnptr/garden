@@ -51,6 +51,7 @@ static DescriptorSet::Uniforms getLimitsUniforms(GraphicsSystem* graphicsSystem)
 //**********************************************************************************************************************
 AutoExposureEditorSystem::AutoExposureEditorSystem()
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", AutoExposureEditorSystem::init);
 	ECSM_SUBSCRIBE_TO_EVENT("Deinit", AutoExposureEditorSystem::deinit);
 }
@@ -58,6 +59,7 @@ AutoExposureEditorSystem::~AutoExposureEditorSystem()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", AutoExposureEditorSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", AutoExposureEditorSystem::deinit);
 	}
@@ -65,6 +67,7 @@ AutoExposureEditorSystem::~AutoExposureEditorSystem()
 
 void AutoExposureEditorSystem::init()
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("PreUiRender", AutoExposureEditorSystem::preUiRender);
 	ECSM_SUBSCRIBE_TO_EVENT("UiRender", AutoExposureEditorSystem::uiRender);
 	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", AutoExposureEditorSystem::gBufferRecreate);
@@ -79,6 +82,7 @@ void AutoExposureEditorSystem::deinit()
 		graphicsSystem->destroy(limitsPipeline);
 		graphicsSystem->destroy(readbackBuffer);
 		
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PreUiRender", AutoExposureEditorSystem::preUiRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("UiRender", AutoExposureEditorSystem::uiRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("GBufferRecreate", AutoExposureEditorSystem::gBufferRecreate);

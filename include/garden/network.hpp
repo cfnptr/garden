@@ -255,8 +255,8 @@ struct ClientSession
 	uint8* decKey = nullptr;
 	void* encContext = nullptr;
 	void* decContext = nullptr;
-	uint32 datagramUID = 0;
 	void* datagramAddress = nullptr;
+	uint32 datagramUID = 0;
 	bool isAuthorized = false;
 
 	/**

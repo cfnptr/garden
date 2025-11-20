@@ -47,6 +47,7 @@ static void createInstanceBuffers(uint64 bufferSize, DescriptorSet::Buffers& ins
 //**********************************************************************************************************************
 InstanceRenderSystem::InstanceRenderSystem()
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", InstanceRenderSystem::init);
 	ECSM_SUBSCRIBE_TO_EVENT("Deinit", InstanceRenderSystem::deinit);
 }
@@ -54,6 +55,7 @@ InstanceRenderSystem::~InstanceRenderSystem()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", InstanceRenderSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", InstanceRenderSystem::deinit);
 	}
@@ -61,7 +63,8 @@ InstanceRenderSystem::~InstanceRenderSystem()
 
 void InstanceRenderSystem::init()
 {
-	if (Manager::Instance::get()->hasEvent("GBufferRecreate"))
+	auto manager = Manager::Instance::get();
+	if (manager->hasEvent("GBufferRecreate"))
 		ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", InstanceRenderSystem::gBufferRecreate);
 	else
 		ECSM_SUBSCRIBE_TO_EVENT("SwapchainRecreate", InstanceRenderSystem::gBufferRecreate);
@@ -78,7 +81,8 @@ void InstanceRenderSystem::deinit()
 		graphicsSystem->destroy(shadowPipeline);
 		graphicsSystem->destroy(basePipeline);
 
-		if (Manager::Instance::get()->hasEvent("GBufferRecreate"))
+		auto manager = Manager::Instance::get();
+		if (manager->hasEvent("GBufferRecreate"))
 			ECSM_UNSUBSCRIBE_FROM_EVENT("GBufferRecreate", InstanceRenderSystem::gBufferRecreate);
 		else
 			ECSM_UNSUBSCRIBE_FROM_EVENT("SwapchainRecreate", InstanceRenderSystem::gBufferRecreate);

@@ -27,6 +27,7 @@ using namespace garden;
 //**********************************************************************************************************************
 HierarchyEditorSystem::HierarchyEditorSystem()
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", HierarchyEditorSystem::init);
 	ECSM_SUBSCRIBE_TO_EVENT("Deinit", HierarchyEditorSystem::deinit);
 }
@@ -34,6 +35,7 @@ HierarchyEditorSystem::~HierarchyEditorSystem()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", HierarchyEditorSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", HierarchyEditorSystem::deinit);
 	}
@@ -41,6 +43,7 @@ HierarchyEditorSystem::~HierarchyEditorSystem()
 
 void HierarchyEditorSystem::init()
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("PreUiRender", HierarchyEditorSystem::preUiRender);
 	ECSM_SUBSCRIBE_TO_EVENT("EditorBarTool", HierarchyEditorSystem::editorBarTool);
 }
@@ -48,6 +51,7 @@ void HierarchyEditorSystem::deinit()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PreUiRender", HierarchyEditorSystem::preUiRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarTool", HierarchyEditorSystem::editorBarTool);
 	}

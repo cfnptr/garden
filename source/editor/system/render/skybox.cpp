@@ -22,6 +22,7 @@ using namespace garden;
 //**********************************************************************************************************************
 SkyboxRenderEditorSystem::SkyboxRenderEditorSystem()
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", SkyboxRenderEditorSystem::init);
 	ECSM_SUBSCRIBE_TO_EVENT("Deinit", SkyboxRenderEditorSystem::deinit);
 }
@@ -29,6 +30,7 @@ SkyboxRenderEditorSystem::~SkyboxRenderEditorSystem()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", SkyboxRenderEditorSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", SkyboxRenderEditorSystem::deinit);
 	}
@@ -36,6 +38,7 @@ SkyboxRenderEditorSystem::~SkyboxRenderEditorSystem()
 
 void SkyboxRenderEditorSystem::init()
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("EditorSettings", SkyboxRenderEditorSystem::editorSettings);
 
 	EditorRenderSystem::Instance::get()->registerEntityInspector<SkyboxRenderComponent>(
@@ -50,6 +53,8 @@ void SkyboxRenderEditorSystem::deinit()
 	if (Manager::Instance::get()->isRunning)
 	{
 		EditorRenderSystem::Instance::get()->unregisterEntityInspector<SkyboxRenderComponent>();
+
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorSettings", SkyboxRenderEditorSystem::editorSettings);
 	}
 }

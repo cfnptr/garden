@@ -1096,7 +1096,7 @@ void PhysicsSystem::preInit()
 	this->contactListener = contactListener;
 	physicsInstance->SetContactListener(contactListener);
 
-	bodyInterface = &physicsInstance->GetBodyInterfaceNoLock(); // Version that does not lock the bodies, use with great care!
+	bodyInterface = &physicsInstance->GetBodyInterface(); // Note: we should lock physics sim for thread safety!
 	lockInterface = &physicsInstance->GetBodyLockInterfaceNoLock(); // Version that does not lock the bodies, use with great care!
 	narrowPhaseQuery = &physicsInstance->GetNarrowPhaseQueryNoLock(); // Version that does not lock the bodies, use with great care!
 

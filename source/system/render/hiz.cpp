@@ -96,6 +96,7 @@ static ID<GraphicsPipeline> createPipeline(ID<Framebuffer> framebuffer)
 //**********************************************************************************************************************
 HizRenderSystem::HizRenderSystem(bool setSingleton) : Singleton(setSingleton)
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", HizRenderSystem::init);
 	ECSM_SUBSCRIBE_TO_EVENT("Deinit", HizRenderSystem::deinit);
 }
@@ -103,6 +104,7 @@ HizRenderSystem::~HizRenderSystem()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", HizRenderSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", HizRenderSystem::deinit);
 	}
@@ -112,6 +114,7 @@ HizRenderSystem::~HizRenderSystem()
 
 void HizRenderSystem::init()
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("PreHdrRender", HizRenderSystem::preHdrRender);
 	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", HizRenderSystem::gBufferRecreate);
 }
@@ -125,6 +128,7 @@ void HizRenderSystem::deinit()
 		graphicsSystem->destroy(imageViews);
 		graphicsSystem->destroy(hizBuffer);
 
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PreHdrRender", HizRenderSystem::preHdrRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("GBufferRecreate", HizRenderSystem::gBufferRecreate);
 	}

@@ -547,10 +547,10 @@ PbrLightingSystem::~PbrLightingSystem()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", PbrLightingSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", PbrLightingSystem::deinit);
 
-		auto manager = Manager::Instance::get();
 		manager->unregisterEvent("DfgLutRecreate");
 		manager->unregisterEvent("PbrIblRecreate");
 
@@ -581,6 +581,7 @@ PbrLightingSystem::~PbrLightingSystem()
 //**********************************************************************************************************************
 void PbrLightingSystem::init()
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("PreHdrRender", PbrLightingSystem::preHdrRender);
 	ECSM_SUBSCRIBE_TO_EVENT("HdrRender", PbrLightingSystem::hdrRender);
 	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", PbrLightingSystem::gBufferRecreate);
@@ -638,6 +639,7 @@ void PbrLightingSystem::deinit()
 		destroyShadowBuffers(graphicsSystem, shadowBuffer, shadowImageViews);
 		graphicsSystem->destroy(dfgLUT);
 
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PreHdrRender", PbrLightingSystem::preHdrRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("HdrRender", PbrLightingSystem::hdrRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("GBufferRecreate", PbrLightingSystem::gBufferRecreate);

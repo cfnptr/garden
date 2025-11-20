@@ -23,6 +23,7 @@ using namespace garden;
 //**********************************************************************************************************************
 LogEditorSystem::LogEditorSystem(bool setSingleton) : Singleton(setSingleton)
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", LogEditorSystem::init);
 	ECSM_SUBSCRIBE_TO_EVENT("Deinit", LogEditorSystem::deinit);
 }
@@ -30,6 +31,7 @@ LogEditorSystem::~LogEditorSystem()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", LogEditorSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", LogEditorSystem::deinit);
 	}
@@ -39,6 +41,7 @@ LogEditorSystem::~LogEditorSystem()
 
 void LogEditorSystem::init()
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("PreUiRender", LogEditorSystem::preUiRender);
 	ECSM_SUBSCRIBE_TO_EVENT("EditorBarTool", LogEditorSystem::editorBarTool);
 }
@@ -46,6 +49,7 @@ void LogEditorSystem::deinit()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PreUiRender", LogEditorSystem::preUiRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarTool", LogEditorSystem::editorBarTool);
 	}

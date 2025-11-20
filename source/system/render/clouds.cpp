@@ -104,6 +104,7 @@ static DescriptorSet::Uniforms getBlendUniforms(GraphicsSystem* graphicsSystem,
 //**********************************************************************************************************************
 CloudsRenderSystem::CloudsRenderSystem(bool setSingleton) : Singleton(setSingleton)
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", CloudsRenderSystem::init);
 	ECSM_SUBSCRIBE_TO_EVENT("Deinit", CloudsRenderSystem::deinit);
 }
@@ -111,6 +112,7 @@ CloudsRenderSystem::~CloudsRenderSystem()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", CloudsRenderSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", CloudsRenderSystem::deinit);
 	}
@@ -120,6 +122,7 @@ CloudsRenderSystem::~CloudsRenderSystem()
 
 void CloudsRenderSystem::init()
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("PreDeferredRender", CloudsRenderSystem::preDeferredRender);
 	ECSM_SUBSCRIBE_TO_EVENT("PreHdrRender", CloudsRenderSystem::preHdrRender);
 	ECSM_SUBSCRIBE_TO_EVENT("HdrRender", CloudsRenderSystem::hdrRender);
@@ -142,6 +145,7 @@ void CloudsRenderSystem::deinit()
 		graphicsSystem->destroy(blendPipeline);
 		graphicsSystem->destroy(cloudsPipeline);
 
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PreDeferredRender", CloudsRenderSystem::preDeferredRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PreHdrRender", CloudsRenderSystem::preHdrRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("HdrRender", CloudsRenderSystem::hdrRender);
