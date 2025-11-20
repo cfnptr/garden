@@ -31,6 +31,7 @@ static DescriptorSet::Uniforms getUniforms(GraphicsSystem* graphicsSystem)
 //**********************************************************************************************************************
 InfiniteGridEditorSystem::InfiniteGridEditorSystem()
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", InfiniteGridEditorSystem::init);
 	ECSM_SUBSCRIBE_TO_EVENT("Deinit", InfiniteGridEditorSystem::deinit);
 }
@@ -42,6 +43,7 @@ InfiniteGridEditorSystem::~InfiniteGridEditorSystem()
 		graphicsSystem->destroy(descriptorSet);
 		graphicsSystem->destroy(pipeline);
 
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", InfiniteGridEditorSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", InfiniteGridEditorSystem::deinit);
 	}
@@ -50,6 +52,7 @@ InfiniteGridEditorSystem::~InfiniteGridEditorSystem()
 //**********************************************************************************************************************
 void InfiniteGridEditorSystem::init()
 {
+	auto manager = Manager::Instance::get();
 	if (OitRenderSystem::Instance::has())
 	{
 		ECSM_SUBSCRIBE_TO_EVENT("PreOitRender", InfiniteGridEditorSystem::preRender);
@@ -90,6 +93,7 @@ void InfiniteGridEditorSystem::deinit()
 		graphicsSystem->destroy(descriptorSet);
 		graphicsSystem->destroy(pipeline);
 
+		auto manager = Manager::Instance::get();
 		if (OitRenderSystem::Instance::has())
 		{
 			ECSM_UNSUBSCRIBE_FROM_EVENT("PreOitRender", InfiniteGridEditorSystem::preRender);

@@ -22,6 +22,7 @@ using namespace garden;
 //**********************************************************************************************************************
 UiButtonEditorSystem::UiButtonEditorSystem(bool setSingleton) : Singleton(setSingleton)
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", UiButtonEditorSystem::init);
 	ECSM_SUBSCRIBE_TO_EVENT("Deinit", UiButtonEditorSystem::deinit);
 }
@@ -29,6 +30,7 @@ UiButtonEditorSystem::~UiButtonEditorSystem()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", UiButtonEditorSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", UiButtonEditorSystem::deinit);
 	}

@@ -19,6 +19,7 @@ using namespace garden;
 
 ModelRenderSystem::ModelRenderSystem(bool setSingleton) : Singleton(setSingleton)
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", ModelRenderSystem::init);
 	ECSM_SUBSCRIBE_TO_EVENT("Deinit", ModelRenderSystem::deinit);
 }
@@ -26,6 +27,7 @@ ModelRenderSystem::~ModelRenderSystem()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", ModelRenderSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", ModelRenderSystem::deinit);
 	}

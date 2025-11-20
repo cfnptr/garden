@@ -22,6 +22,7 @@ using namespace garden;
 //**********************************************************************************************************************
 ModelRenderEditorSystem::ModelRenderEditorSystem()
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", ModelRenderEditorSystem::init);
 	ECSM_SUBSCRIBE_TO_EVENT("Deinit", ModelRenderEditorSystem::deinit);
 }
@@ -29,6 +30,7 @@ ModelRenderEditorSystem::~ModelRenderEditorSystem()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", ModelRenderEditorSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", ModelRenderEditorSystem::deinit);
 	}

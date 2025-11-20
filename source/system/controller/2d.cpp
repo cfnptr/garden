@@ -30,6 +30,7 @@ using namespace garden;
 //**********************************************************************************************************************
 Controller2DSystem::Controller2DSystem(bool setSingleton) : Singleton(setSingleton)
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", Controller2DSystem::init);
 	ECSM_SUBSCRIBE_TO_EVENT("Deinit", Controller2DSystem::deinit);
 	ECSM_SUBSCRIBE_TO_EVENT("Update", Controller2DSystem::update);
@@ -38,6 +39,7 @@ Controller2DSystem::~Controller2DSystem()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", Controller2DSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", Controller2DSystem::deinit);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Update", Controller2DSystem::update);
@@ -48,9 +50,9 @@ Controller2DSystem::~Controller2DSystem()
 
 void Controller2DSystem::init()
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("SwapchainRecreate", Controller2DSystem::swapchainRecreate);
 
-	auto manager = Manager::Instance::get();
 	camera = manager->createEntity();
 	manager->reserveComponents(camera, 8);
 
@@ -92,9 +94,10 @@ void Controller2DSystem::deinit()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
+		auto manager = Manager::Instance::get();
 		GraphicsSystem::Instance::get()->camera = {};
-		Manager::Instance::get()->destroy(camera);
-
+		manager->destroy(camera);
+		
 		ECSM_UNSUBSCRIBE_FROM_EVENT("SwapchainRecreate", Controller2DSystem::swapchainRecreate);
 	}
 }

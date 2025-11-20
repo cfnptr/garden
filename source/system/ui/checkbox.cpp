@@ -77,8 +77,8 @@ UiCheckboxSystem::~UiCheckboxSystem()
 		manager->removeGroupSystem<ISerializable>(this);
 		manager->removeGroupSystem<IAnimatable>(this);
 
-		manager->unregisterEvent("UiCheckboxClick");
 		ECSM_UNSUBSCRIBE_FROM_EVENT("UiCheckboxClick", UiCheckboxSystem::uiCheckboxClick);
+		manager->unregisterEvent("UiCheckboxClick");
 	}
 	unsetSingleton();
 }

@@ -39,6 +39,7 @@ static DescriptorSet::Uniforms getUniforms(GraphicsSystem* graphicsSystem, ID<Im
 
 SkyboxRenderSystem::SkyboxRenderSystem(bool setSingleton) : Singleton(setSingleton)
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", SkyboxRenderSystem::init);
 	ECSM_SUBSCRIBE_TO_EVENT("Deinit", SkyboxRenderSystem::deinit);
 }
@@ -46,6 +47,7 @@ SkyboxRenderSystem::~SkyboxRenderSystem()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", SkyboxRenderSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", SkyboxRenderSystem::deinit);
 	}
@@ -76,6 +78,7 @@ string_view SkyboxRenderSystem::getComponentName() const
 //**********************************************************************************************************************
 void SkyboxRenderSystem::init()
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("ImageLoaded", SkyboxRenderSystem::imageLoaded);
 	ECSM_SUBSCRIBE_TO_EVENT("DepthHdrRender", SkyboxRenderSystem::depthHdrRender);
 }
@@ -85,6 +88,7 @@ void SkyboxRenderSystem::deinit()
 	{
 		GraphicsSystem::Instance::get()->destroy(pipeline);
 
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("ImageLoaded", SkyboxRenderSystem::imageLoaded);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("DepthHdrRender", SkyboxRenderSystem::depthHdrRender);
 	}

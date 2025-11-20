@@ -30,6 +30,8 @@ SpriteRenderSystem::SpriteRenderSystem(const fs::path& pipelinePath) : pipelineP
 void SpriteRenderSystem::init()
 {
 	InstanceRenderSystem::init();
+
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("ImageLoaded", SpriteRenderSystem::imageLoaded);
 
 	#if GARDEN_DEBUG
@@ -41,7 +43,10 @@ void SpriteRenderSystem::deinit()
 	// TODO: somehow destroy default image view, maybe check it ref count?
 
 	if (Manager::Instance::get()->isRunning)
+	{
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("ImageLoaded", SpriteRenderSystem::imageLoaded);
+	}
 
 	InstanceRenderSystem::deinit();
 }
@@ -200,15 +205,16 @@ void SpriteRenderSystem::serialize(ISerializer& serializer, const View<Component
 }
 void SpriteRenderSystem::deserialize(IDeserializer& deserializer, View<Component> component)
 {
-	auto componentView = View<SpriteRenderComponent>(component);
+	auto componentView = View<SpriteRenderComponent>(component); bool isEnabled = true;
 	deserializer.read("isArray", componentView->isArray);
 	deserializer.read("useMipmap", componentView->useMipmap);
 	deserializer.read("aabb", componentView->aabb);
-	deserializer.read("isEnabled", componentView->isEnabled);
+	deserializer.read("isEnabled", isEnabled);
 	deserializer.read("colorMapLayer", componentView->colorMapLayer);
 	deserializer.read("color", componentView->color);
 	deserializer.read("uvSize", componentView->uvSize);
 	deserializer.read("uvOffset", componentView->uvOffset);
+	componentView->isEnabled = isEnabled;
 
 	string colorMapPath;
 	if (deserializer.read("colorMapPath", colorMapPath))

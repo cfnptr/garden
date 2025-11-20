@@ -23,6 +23,7 @@ using namespace garden;
 //**********************************************************************************************************************
 UiInputEditorSystem::UiInputEditorSystem(bool setSingleton) : Singleton(setSingleton)
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", UiInputEditorSystem::init);
 	ECSM_SUBSCRIBE_TO_EVENT("Deinit", UiInputEditorSystem::deinit);
 }
@@ -30,6 +31,7 @@ UiInputEditorSystem::~UiInputEditorSystem()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", UiInputEditorSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", UiInputEditorSystem::deinit);
 	}

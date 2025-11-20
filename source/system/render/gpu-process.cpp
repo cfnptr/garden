@@ -70,12 +70,16 @@ static ID<GraphicsPipeline> createGaussianBlur(ID<Framebuffer> framebuffer)
 //**********************************************************************************************************************
 GpuProcessSystem::GpuProcessSystem(bool setSingleton)
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Deinit", GpuProcessSystem::deinit);
 }
 GpuProcessSystem::~GpuProcessSystem()
 {
 	if (Manager::Instance::get()->isRunning)
+	{
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", GpuProcessSystem::deinit);
+	}
 	unsetSingleton();
 }
 

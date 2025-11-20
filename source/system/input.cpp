@@ -104,11 +104,12 @@ InputSystem::~InputSystem()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PreInit", InputSystem::preInit);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", InputSystem::deinit);
 
-		auto manager = Manager::Instance::get();
 		manager->unregisterEvent("Input");
+		manager->unregisterEvent("Output");
 		manager->unregisterEvent("FileDrop");
 	}
 
@@ -118,6 +119,7 @@ InputSystem::~InputSystem()
 //**********************************************************************************************************************
 void InputSystem::preInit()
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Input", InputSystem::input);
 	ECSM_SUBSCRIBE_TO_EVENT("Output", InputSystem::output);
 
@@ -195,6 +197,7 @@ void InputSystem::deinit()
 			glfwDestroyCursor((GLFWcursor*)standardCursors[i]);
 		standardCursors.clear();
 
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Input", InputSystem::input);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Output", InputSystem::output);
 	}

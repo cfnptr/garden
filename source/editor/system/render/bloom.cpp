@@ -33,6 +33,7 @@ static DescriptorSet::Uniforms getThresholdUniforms(GraphicsSystem* graphicsSyst
 //**********************************************************************************************************************
 BloomRenderEditorSystem::BloomRenderEditorSystem()
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", BloomRenderEditorSystem::init);
 	ECSM_SUBSCRIBE_TO_EVENT("Deinit", BloomRenderEditorSystem::deinit);
 }
@@ -40,6 +41,7 @@ BloomRenderEditorSystem::~BloomRenderEditorSystem()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", BloomRenderEditorSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", BloomRenderEditorSystem::deinit);
 	}
@@ -47,6 +49,7 @@ BloomRenderEditorSystem::~BloomRenderEditorSystem()
 
 void BloomRenderEditorSystem::init()
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("PreUiRender", BloomRenderEditorSystem::preUiRender);
 	ECSM_SUBSCRIBE_TO_EVENT("UiRender", BloomRenderEditorSystem::uiRender);
 	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", BloomRenderEditorSystem::gBufferRecreate);
@@ -60,6 +63,7 @@ void BloomRenderEditorSystem::deinit()
 		graphicsSystem->destroy(thresholdDS);
 		graphicsSystem->destroy(thresholdPipeline);
 
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PreUiRender", BloomRenderEditorSystem::preUiRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("UiRender", BloomRenderEditorSystem::uiRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("GBufferRecreate", BloomRenderEditorSystem::gBufferRecreate);

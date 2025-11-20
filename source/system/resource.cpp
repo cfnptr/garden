@@ -161,10 +161,10 @@ ResourceSystem::~ResourceSystem()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", ResourceSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", ResourceSystem::deinit);
 
-		auto manager = Manager::Instance::get();
 		manager->unregisterEvent("ImageLoaded");
 		manager->unregisterEvent("BufferLoaded");
 	}
@@ -175,6 +175,7 @@ ResourceSystem::~ResourceSystem()
 //**********************************************************************************************************************
 void ResourceSystem::init()
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Input", ResourceSystem::input);
 }
 void ResourceSystem::deinit()
@@ -213,6 +214,7 @@ void ResourceSystem::deinit()
 		}
 		GraphicsAPI::get()->forceResourceDestroy = false;
 
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Input", ResourceSystem::input);
 	}
 }

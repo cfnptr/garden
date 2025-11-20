@@ -22,6 +22,7 @@ using namespace garden;
 //**********************************************************************************************************************
 UiLabelEditorSystem::UiLabelEditorSystem(bool setSingleton) : Singleton(setSingleton)
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", UiLabelEditorSystem::init);
 	ECSM_SUBSCRIBE_TO_EVENT("Deinit", UiLabelEditorSystem::deinit);
 }
@@ -29,6 +30,7 @@ UiLabelEditorSystem::~UiLabelEditorSystem()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", UiLabelEditorSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", UiLabelEditorSystem::deinit);
 	}
@@ -66,11 +68,14 @@ void UiLabelEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 		uiLabelView->updateText();
 	}
 
-	ImGui::Checkbox("Enabled", &uiLabelView->isEnabled); ImGui::SameLine();
+	auto isEnabled = uiLabelView->isEnabled;
+	if (ImGui::Checkbox("Enabled", &isEnabled))
+		uiLabelView->isEnabled = isEnabled;
+	ImGui::SameLine();
 	if (ImGui::Checkbox("Use Locale", &uiLabelView->useLocale))
 		uiLabelView->updateText();
 	ImGui::SameLine();
-	if (ImGui::Checkbox("Adjust KJC", &uiLabelView->adjustKJC))
+	if (ImGui::Checkbox("Adjust CJK", &uiLabelView->adjustCJK))
 		uiLabelView->updateText();
 
 	if (ImGui::Checkbox("Load Noto", &uiLabelView->loadNoto))

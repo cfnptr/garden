@@ -22,6 +22,7 @@ using namespace garden;
 //**********************************************************************************************************************
 UiScissorEditorSystem::UiScissorEditorSystem(bool setSingleton) : Singleton(setSingleton)
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", UiScissorEditorSystem::init);
 	ECSM_SUBSCRIBE_TO_EVENT("Deinit", UiScissorEditorSystem::deinit);
 }
@@ -29,6 +30,7 @@ UiScissorEditorSystem::~UiScissorEditorSystem()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", UiScissorEditorSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", UiScissorEditorSystem::deinit);
 	}

@@ -54,12 +54,12 @@ class ThreadSystem final : public System, public Singleton<ThreadSystem>
 	friend class ecsm::Manager;
 public:
 	/**
-	 * @brief Returns background thread pool instance.
+	 * @brief Returns background thread pool instance. (MT-Safe)
 	 * @details Use it to add async background tasks, which can take several frames.
 	 */
 	ThreadPool& getBackgroundPool() noexcept { return backgroundPool; }
 	/**
-	 * @brief Returns foreground thread pool instance.
+	 * @brief Returns foreground thread pool instance. (MT-Safe)
 	 * @details Use it to parallel some jobs during current frame.
 	 */
 	ThreadPool& getForegroundPool() noexcept { return foregroundPool; }

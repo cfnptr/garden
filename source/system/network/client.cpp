@@ -234,6 +234,7 @@ ClientNetworkSystem::ClientNetworkSystem(size_t receiveBufferSize,
 	: 
 	Singleton(setSingleton), nets::IStreamClient(receiveBufferSize, timeoutTime)
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("PreInit", ClientNetworkSystem::preInit);
 	ECSM_SUBSCRIBE_TO_EVENT("PreDeinit", ClientNetworkSystem::preDeinit);
 	ECSM_SUBSCRIBE_TO_EVENT("Update", ClientNetworkSystem::update);
@@ -252,6 +253,7 @@ ClientNetworkSystem::~ClientNetworkSystem()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PreInit", ClientNetworkSystem::preInit);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PreDeinit", ClientNetworkSystem::preDeinit);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Update", ClientNetworkSystem::update);

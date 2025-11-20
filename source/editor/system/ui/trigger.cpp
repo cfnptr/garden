@@ -22,6 +22,7 @@ using namespace garden;
 //**********************************************************************************************************************
 UiTriggerEditorSystem::UiTriggerEditorSystem(bool setSingleton) : Singleton(setSingleton)
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", UiTriggerEditorSystem::init);
 	ECSM_SUBSCRIBE_TO_EVENT("Deinit", UiTriggerEditorSystem::deinit);
 }
@@ -29,6 +30,7 @@ UiTriggerEditorSystem::~UiTriggerEditorSystem()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", UiTriggerEditorSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", UiTriggerEditorSystem::deinit);
 	}

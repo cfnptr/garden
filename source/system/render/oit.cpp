@@ -42,6 +42,7 @@ static DescriptorSet::Uniforms getUniforms(GraphicsSystem* graphicsSystem)
 
 OitRenderSystem::OitRenderSystem(bool setSingleton) : Singleton(setSingleton)
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", OitRenderSystem::init);
 	ECSM_SUBSCRIBE_TO_EVENT("Deinit", OitRenderSystem::deinit);
 }
@@ -49,6 +50,7 @@ OitRenderSystem::~OitRenderSystem()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", OitRenderSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", OitRenderSystem::deinit);
 	}
@@ -59,6 +61,7 @@ OitRenderSystem::~OitRenderSystem()
 //**********************************************************************************************************************
 void OitRenderSystem::init()
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("PreLdrRender", OitRenderSystem::preLdrRender);
 	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", OitRenderSystem::gBufferRecreate);
 }
@@ -70,6 +73,7 @@ void OitRenderSystem::deinit()
 		graphicsSystem->destroy(descriptorSet);
 		graphicsSystem->destroy(pipeline);
 
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PreLdrRender", OitRenderSystem::preLdrRender);
 		ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", OitRenderSystem::gBufferRecreate);
 	}

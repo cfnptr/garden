@@ -20,6 +20,7 @@ using namespace garden;
 //**********************************************************************************************************************
 ToneMappingEditorSystem::ToneMappingEditorSystem()
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", ToneMappingEditorSystem::init);
 	ECSM_SUBSCRIBE_TO_EVENT("Deinit", ToneMappingEditorSystem::deinit);
 }
@@ -27,6 +28,7 @@ ToneMappingEditorSystem::~ToneMappingEditorSystem()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", ToneMappingEditorSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", ToneMappingEditorSystem::deinit);
 	}
@@ -34,6 +36,7 @@ ToneMappingEditorSystem::~ToneMappingEditorSystem()
 
 void ToneMappingEditorSystem::init()
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("PreUiRender", ToneMappingEditorSystem::preUiRender);
 	ECSM_SUBSCRIBE_TO_EVENT("EditorBarToolPP", ToneMappingEditorSystem::editorBarToolPP);
 }
@@ -41,6 +44,7 @@ void ToneMappingEditorSystem::deinit()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PreUiRender", ToneMappingEditorSystem::preUiRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarToolPP", ToneMappingEditorSystem::editorBarToolPP);
 	}

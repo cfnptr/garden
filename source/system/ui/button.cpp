@@ -87,13 +87,13 @@ UiButtonSystem::~UiButtonSystem()
 		manager->removeGroupSystem<ISerializable>(this);
 		manager->removeGroupSystem<IAnimatable>(this);
 
-		manager->unregisterEvent("UiButtonEnter");
-		manager->unregisterEvent("UiButtonExit");
-		manager->unregisterEvent("UiButtonStay");
-
 		ECSM_UNSUBSCRIBE_FROM_EVENT("UiButtonEnter", UiButtonSystem::uiButtonEnter);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("UiButtonExit", UiButtonSystem::uiButtonExit);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("UiButtonStay", UiButtonSystem::uiButtonStay);
+
+		manager->unregisterEvent("UiButtonEnter");
+		manager->unregisterEvent("UiButtonExit");
+		manager->unregisterEvent("UiButtonStay");
 	}
 	unsetSingleton();
 }

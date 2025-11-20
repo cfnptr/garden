@@ -76,15 +76,17 @@ static bool loadLocaleStrings(LocaleSystem::StringMap& strings, string_view modu
 //**********************************************************************************************************************
 LocaleSystem::LocaleSystem(bool setSingleton) : Singleton(setSingleton)
 {
-	Manager::Instance::get()->registerEvent("LocaleChange");
+	auto manager = Manager::Instance::get();
+	manager->registerEvent("LocaleChange");
 	ECSM_SUBSCRIBE_TO_EVENT("PreInit", LocaleSystem::preInit);
 }
 LocaleSystem::~LocaleSystem()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PreInit", LocaleSystem::preInit);
-		Manager::Instance::get()->unregisterEvent("LocaleChange");
+		manager->unregisterEvent("LocaleChange");
 	}
 	unsetSingleton();
 }

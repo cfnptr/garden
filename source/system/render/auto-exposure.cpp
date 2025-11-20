@@ -72,6 +72,7 @@ static ID<ComputePipeline> createAveragePipeline()
 //**********************************************************************************************************************
 AutoExposureSystem::AutoExposureSystem(bool setSingleton) : Singleton(setSingleton)
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", AutoExposureSystem::init);
 	ECSM_SUBSCRIBE_TO_EVENT("Deinit", AutoExposureSystem::deinit);
 }
@@ -79,6 +80,7 @@ AutoExposureSystem::~AutoExposureSystem()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", AutoExposureSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", AutoExposureSystem::deinit);
 	}
@@ -88,6 +90,7 @@ AutoExposureSystem::~AutoExposureSystem()
 
 void AutoExposureSystem::init()
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Render", AutoExposureSystem::render);
 	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", AutoExposureSystem::gBufferRecreate);
 }
@@ -101,6 +104,7 @@ void AutoExposureSystem::deinit()
 		graphicsSystem->destroy(histogramPipeline);
 		graphicsSystem->destroy(histogramBuffer);
 
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Render", AutoExposureSystem::render);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("GBufferRecreate", AutoExposureSystem::gBufferRecreate);
 	}

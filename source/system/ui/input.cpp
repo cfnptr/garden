@@ -213,14 +213,14 @@ UiInputSystem::~UiInputSystem()
 		manager->removeGroupSystem<ISerializable>(this);
 		manager->removeGroupSystem<IAnimatable>(this);
 
-		manager->unregisterEvent("UiInputEnter");
-		manager->unregisterEvent("UiInputExit");
-		manager->unregisterEvent("UiInputStay");
-
 		ECSM_UNSUBSCRIBE_FROM_EVENT("UiInputEnter", UiInputSystem::uiInputEnter);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("UiInputExit", UiInputSystem::uiInputExit);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("UiInputStay", UiInputSystem::uiInputStay);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Update", UiInputSystem::update);
+
+		manager->unregisterEvent("UiInputEnter");
+		manager->unregisterEvent("UiInputExit");
+		manager->unregisterEvent("UiInputStay");
 	}
 	unsetSingleton();
 }

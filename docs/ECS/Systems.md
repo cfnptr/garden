@@ -114,10 +114,12 @@ class MyCustomSystem : public System
 
 MyCustomSystem::MyCustomSystem()
 {
+    auto manager = Manager::Instance::get();
     ECSM_SUBSCRIBE_TO_EVENT("Update", MyCustomSystem::update);
 }
 ~MyCustomSystem::MyCustomSystem()
 {
+    auto manager = Manager::Instance::get();
     ECSM_UNSUBSCRIBE_FROM_EVENT("Update", MyCustomSystem::update);
 }
 

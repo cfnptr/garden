@@ -345,6 +345,7 @@ static DescriptorSet::Uniforms getShReduceUniforms(
 //**********************************************************************************************************************
 AtmosphereRenderSystem::AtmosphereRenderSystem(bool setSingleton) :Singleton(setSingleton)
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", AtmosphereRenderSystem::init);
 	ECSM_SUBSCRIBE_TO_EVENT("Deinit", AtmosphereRenderSystem::deinit);
 
@@ -356,6 +357,7 @@ AtmosphereRenderSystem::~AtmosphereRenderSystem()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", AtmosphereRenderSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", AtmosphereRenderSystem::deinit);
 	}
@@ -365,6 +367,7 @@ AtmosphereRenderSystem::~AtmosphereRenderSystem()
 
 void AtmosphereRenderSystem::init()
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("PreDeferredRender", AtmosphereRenderSystem::preDeferredRender);
 	ECSM_SUBSCRIBE_TO_EVENT("HdrRender", AtmosphereRenderSystem::hdrRender);
 	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", AtmosphereRenderSystem::gBufferRecreate);
@@ -405,6 +408,7 @@ void AtmosphereRenderSystem::deinit()
 		graphicsSystem->destroy(multiScatLUT);
 		graphicsSystem->destroy(transLUT);
 
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PreDeferredRender", AtmosphereRenderSystem::preDeferredRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("HdrRender", AtmosphereRenderSystem::hdrRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("GBufferRecreate", AtmosphereRenderSystem::gBufferRecreate);

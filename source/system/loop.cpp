@@ -76,10 +76,10 @@ LoopSystem::~LoopSystem()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PreInit", LoopSystem::preInit);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", LoopSystem::deinit);
 
-		auto manager = Manager::Instance::get(); 
 		manager->unregisterEvent("Input");
 		manager->unregisterEvent("Output");
 	}
@@ -88,6 +88,7 @@ LoopSystem::~LoopSystem()
 
 void LoopSystem::preInit()
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Input", LoopSystem::input);
 	ECSM_SUBSCRIBE_TO_EVENT("Output", LoopSystem::output);
 
@@ -97,6 +98,7 @@ void LoopSystem::deinit()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Input", LoopSystem::input);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Output", LoopSystem::output);
 	}

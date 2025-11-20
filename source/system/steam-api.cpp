@@ -68,12 +68,16 @@ SteamApiSystem::SteamApiSystem(bool setSingleton) : Singleton(setSingleton)
 	authTicket = k_HAuthTicketInvalid;
 	eventHandler = new SteamEventHandler(this);
 
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Update", SteamApiSystem::update);
 }
 SteamApiSystem::~SteamApiSystem()
 {
 	if (Manager::Instance::get()->isRunning)
+	{
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Update", SteamApiSystem::update);
+	}
 
 	delete (SteamEventHandler*)eventHandler;
 	SteamAPI_Shutdown();

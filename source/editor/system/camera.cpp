@@ -22,6 +22,7 @@ using namespace garden;
 //**********************************************************************************************************************
 CameraEditorSystem::CameraEditorSystem()
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", CameraEditorSystem::init);
 	ECSM_SUBSCRIBE_TO_EVENT("Deinit", CameraEditorSystem::deinit);
 }
@@ -29,6 +30,7 @@ CameraEditorSystem::~CameraEditorSystem()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", CameraEditorSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", CameraEditorSystem::deinit);
 	}

@@ -25,6 +25,7 @@ using namespace garden;
 //**********************************************************************************************************************
 GraphicsEditorSystem::GraphicsEditorSystem()
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", GraphicsEditorSystem::init);
 	ECSM_SUBSCRIBE_TO_EVENT("Deinit", GraphicsEditorSystem::deinit);
 }
@@ -32,6 +33,7 @@ GraphicsEditorSystem::~GraphicsEditorSystem()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", GraphicsEditorSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", GraphicsEditorSystem::deinit);
 
@@ -44,6 +46,7 @@ GraphicsEditorSystem::~GraphicsEditorSystem()
 
 void GraphicsEditorSystem::init()
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("PreUiRender", GraphicsEditorSystem::preUiRender);
 	ECSM_SUBSCRIBE_TO_EVENT("EditorBarTool", GraphicsEditorSystem::editorBarTool);
 }
@@ -51,6 +54,7 @@ void GraphicsEditorSystem::deinit()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PreUiRender", GraphicsEditorSystem::preUiRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarTool", GraphicsEditorSystem::editorBarTool);
 	}

@@ -26,6 +26,7 @@ using namespace garden;
 //**********************************************************************************************************************
 PhysicsEditorSystem::PhysicsEditorSystem()
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", PhysicsEditorSystem::init);
 	ECSM_SUBSCRIBE_TO_EVENT("Deinit", PhysicsEditorSystem::deinit);
 }
@@ -33,6 +34,7 @@ PhysicsEditorSystem::~PhysicsEditorSystem()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", PhysicsEditorSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", PhysicsEditorSystem::deinit);
 	}
@@ -40,6 +42,7 @@ PhysicsEditorSystem::~PhysicsEditorSystem()
 
 void PhysicsEditorSystem::init()
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("PreDepthLdrRender", PhysicsEditorSystem::preDepthLdrRender);
 	ECSM_SUBSCRIBE_TO_EVENT("DepthLdrRender", PhysicsEditorSystem::depthLdrRender);
 	ECSM_SUBSCRIBE_TO_EVENT("EditorBarTool", PhysicsEditorSystem::editorBarTool);
@@ -71,6 +74,7 @@ void PhysicsEditorSystem::deinit()
 		editorSystem->unregisterEntityInspector<RigidbodyComponent>();
 		editorSystem->tryUnregisterEntityInspector<CharacterComponent>();
 
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PreDepthLdrRender", PhysicsEditorSystem::preDepthLdrRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("DepthLdrRender", PhysicsEditorSystem::depthLdrRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarTool", PhysicsEditorSystem::editorBarTool);

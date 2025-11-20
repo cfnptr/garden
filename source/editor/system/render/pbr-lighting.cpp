@@ -22,6 +22,7 @@ using namespace garden;
 
 PbrLightingEditorSystem::PbrLightingEditorSystem()
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", PbrLightingEditorSystem::init);
 	ECSM_SUBSCRIBE_TO_EVENT("Deinit", PbrLightingEditorSystem::deinit);
 }
@@ -29,6 +30,7 @@ PbrLightingEditorSystem::~PbrLightingEditorSystem()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", PbrLightingEditorSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", PbrLightingEditorSystem::deinit);
 	}
@@ -36,6 +38,7 @@ PbrLightingEditorSystem::~PbrLightingEditorSystem()
 
 void PbrLightingEditorSystem::init()
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("PreUiRender", PbrLightingEditorSystem::preUiRender);
 	ECSM_SUBSCRIBE_TO_EVENT("EditorBarToolPP", PbrLightingEditorSystem::editorBarToolPP);
 
@@ -52,6 +55,7 @@ void PbrLightingEditorSystem::deinit()
 	{
 		EditorRenderSystem::Instance::get()->unregisterEntityInspector<PbrLightingComponent>();
 
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PreUiRender", PbrLightingEditorSystem::preUiRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarToolPP", PbrLightingEditorSystem::editorBarToolPP);
 	}

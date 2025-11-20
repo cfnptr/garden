@@ -33,6 +33,7 @@ using namespace garden;
 MeshRenderSystem::MeshRenderSystem(bool useOIT, bool useAsyncRecording, bool useAsyncPreparing, bool setSingleton) :
 	Singleton(setSingleton), hasOIT(useOIT), asyncRecording(useAsyncRecording), asyncPreparing(useAsyncPreparing)
 {
+	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", MeshRenderSystem::init);
 	ECSM_SUBSCRIBE_TO_EVENT("Deinit", MeshRenderSystem::deinit);
 }
@@ -40,6 +41,7 @@ MeshRenderSystem::~MeshRenderSystem()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
+		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", MeshRenderSystem::init);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", MeshRenderSystem::deinit);
 	}
@@ -48,6 +50,7 @@ MeshRenderSystem::~MeshRenderSystem()
 //**********************************************************************************************************************
 void MeshRenderSystem::init()
 {
+	auto manager = Manager::Instance::get();
 	if (ForwardRenderSystem::Instance::has())
 	{
 		ECSM_SUBSCRIBE_TO_EVENT("PreForwardRender", MeshRenderSystem::preForwardRender);
@@ -79,6 +82,7 @@ void MeshRenderSystem::deinit()
 {
 	if (Manager::Instance::get()->isRunning)
 	{
+		auto manager = Manager::Instance::get();
 		if (ForwardRenderSystem::Instance::has())
 		{
 			ECSM_UNSUBSCRIBE_FROM_EVENT("PreForwardRender", MeshRenderSystem::preForwardRender);
