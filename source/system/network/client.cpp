@@ -51,7 +51,7 @@ void ClientNetworkSystem::onConnectionResult(NetsResult result)
 		datagramLocker.unlock();
 
 		if (result == SUCCESS_NETS_RESULT)
-			result = sendEncMessage(this, encKey, messageLengthSize);
+			result = sendEncMessage(this, encKey, clientLengthSize);
 	}
 
 	if (result == SUCCESS_NETS_RESULT) GARDEN_LOG_INFO("Connected to the server.");
@@ -87,7 +87,7 @@ void ClientNetworkSystem::onDisconnect(int reason)
 int ClientNetworkSystem::onStreamReceive(const uint8_t* receiveBuffer, size_t byteCount)
 {
 	return handleStreamMessage(receiveBuffer, byteCount, messageBuffer, 
-		messageBufferSize, &messageByteCount, messageLengthSize, onMessageReceive, this);
+		messageBufferSize, &messageByteCount, serverLengthSize, onMessageReceive, this);
 }
 int ClientNetworkSystem::onDatagramReceive(const uint8_t* receiveBuffer, size_t byteCount)
 {
@@ -141,6 +141,8 @@ int ClientNetworkSystem::onDatagramReceive(const uint8_t* receiveBuffer, size_t 
 	alive();
 	return result;
 }
+
+//**********************************************************************************************************************
 int ClientNetworkSystem::onMessageReceive(::StreamMessage message, void* argument)
 {
 	SET_CPU_ZONE_SCOPED("On Message Receive");
@@ -163,18 +165,18 @@ int ClientNetworkSystem::onMessageReceive(::StreamMessage message, void* argumen
 	{
 		auto searchResult = clientSystem->networkables.find(messageType);
 		if (searchResult != clientSystem->networkables.end())
-			return searchResult->second->onResponse(message);
+			return searchResult->second->onResponse(message, clientSystem->isDatagram);
 	}
 	else
 	{
 		auto searchResult = clientSystem->listeners.find(messageType);
 		if (searchResult != clientSystem->listeners.end())
-			return searchResult->second(message);
+			return searchResult->second(message, clientSystem->isDatagram);
 	}
 	return BAD_DATA_NETS_RESULT;
 }
 
-int ClientNetworkSystem::onEncResponse(StreamInput response)
+int ClientNetworkSystem::onEncResponse(StreamInput response, bool isDatagram)
 {
 	if (isDatagram)
 		return BAD_DATA_NETS_RESULT;
@@ -229,23 +231,23 @@ int ClientNetworkSystem::onEncResponse(StreamInput response)
 }
 
 //**********************************************************************************************************************
-ClientNetworkSystem::ClientNetworkSystem(size_t receiveBufferSize, 
-	size_t messageBufferSize, double timeoutTime, bool setSingleton)
+ClientNetworkSystem::ClientNetworkSystem(psize receiveBufferSize, psize messageBufferSize, 
+	uint8 clientLengthSize, double timeoutTime, bool setSingleton)
 	: 
-	Singleton(setSingleton), nets::IStreamClient(receiveBufferSize, timeoutTime)
+	Singleton(setSingleton), nets::IStreamClient(receiveBufferSize, timeoutTime), clientLengthSize(clientLengthSize)
 {
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("PreInit", ClientNetworkSystem::preInit);
 	ECSM_SUBSCRIBE_TO_EVENT("PreDeinit", ClientNetworkSystem::preDeinit);
 	ECSM_SUBSCRIBE_TO_EVENT("Update", ClientNetworkSystem::update);
 
-	if (messageBufferSize <= UINT8_MAX) messageLengthSize = sizeof(uint8);
-	else if (messageBufferSize <= UINT16_MAX) messageLengthSize = sizeof(uint16);
-	else if (messageBufferSize <= UINT32_MAX) messageLengthSize = sizeof(uint32);
-	else if (messageBufferSize <= UINT64_MAX) messageLengthSize = sizeof(uint64);
+	if (messageBufferSize <= UINT8_MAX) serverLengthSize = sizeof(uint8);
+	else if (messageBufferSize <= UINT16_MAX) serverLengthSize = sizeof(uint16);
+	else if (messageBufferSize <= UINT32_MAX) serverLengthSize = sizeof(uint32);
+	else if (messageBufferSize <= UINT64_MAX) serverLengthSize = sizeof(uint64);
 	else abort();
 
-	this->messageBufferSize = messageBufferSize + messageLengthSize;
+	this->messageBufferSize = messageBufferSize + serverLengthSize;
 	GARDEN_ASSERT(this->messageBufferSize <= receiveBufferSize);
 	this->messageBuffer = new uint8[this->messageBufferSize];
 }
@@ -285,14 +287,14 @@ void ClientNetworkSystem::preInit()
 		}
 	}
 
-	addListener("ping", [this](StreamInput request)
+	addListener("ping", [this](StreamInput request, bool isDatagram)
 	{
 		if (!isDatagram || !request.isComplete())
 			return (NetsResult)BAD_DATA_NETS_RESULT;
-		StreamOutputBuffer<16> message("pong", 0, messageLengthSize);
+		StreamOutputBuffer<16> message("pong", 0, clientLengthSize);
 		return sendDatagram(message);
 	});
-	addListener("pong", [this](StreamInput response)
+	addListener("pong", [this](StreamInput response, bool isDatagram)
 	{
 		if (!isDatagram || !response.isComplete())
 			return BAD_DATA_NETS_RESULT;
@@ -306,9 +308,9 @@ void ClientNetworkSystem::preInit()
 		// GARDEN_LOG_DEBUG("Server ping: " + to_string(serverPing * 1000.0) + "ms.");
 		return SUCCESS_NETS_RESULT;
 	});
-	addListener("enc", [this](StreamInput message)
+	addListener("enc", [this](StreamInput message, bool isDatagram)
 	{
-		return onEncResponse(message);
+		return onEncResponse(message, isDatagram);
 	});
 }
 void ClientNetworkSystem::preDeinit()
@@ -327,7 +329,7 @@ void ClientNetworkSystem::update()
 		auto currentTime = mpio::OS::getCurrentClock();
 		if (currentTime > pingMessageDelay)
 		{
-			StreamOutputBuffer<16> message("ping", 0, messageLengthSize);
+			StreamOutputBuffer<16> message("ping", 0, clientLengthSize);
 			auto result = sendDatagram(message);
 			if (result != SUCCESS_NETS_RESULT)
 				disconnect(result);
@@ -349,7 +351,7 @@ NetsResult ClientNetworkSystem::sendDatagram(const void* data, size_t byteCount)
 		{
 			if (!RAND_bytes(encKey, ClientSession::keySize) || !ClientSession::updateEncDecKey(encContext, encKey))
 				return FAILED_TO_CREATE_SSL_NETS_RESULT;
-			auto result = sendEncMessage(this, encKey, messageLengthSize);
+			auto result = sendEncMessage(this, encKey, clientLengthSize);
 			if (result != SUCCESS_NETS_RESULT)
 				return result;
 		}

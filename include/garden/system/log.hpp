@@ -139,7 +139,7 @@ class LogSystem final : public System, public Singleton<LogSystem>
 	 * @param rotationTime delay between log file rotation (0.0 = disabled)
 	 * @param setSingleton set system singleton instance
 	 */
-	LogSystem(LogLevel level = ALL_LOG_LEVEL, double rotationTime = 0.0, bool setSingleton = true);
+	LogSystem(LogLevel level = GARDEN_LOG_LEVEL, double rotationTime = 0.0, bool setSingleton = true);
 	/**
 	 * @brief Destroys logging system instance.
 	 */

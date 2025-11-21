@@ -20,21 +20,21 @@
 
 using namespace garden;
 
-StreamServerHandle::StreamServerHandle(ServerNetworkSystem* serverSystem, SocketFamily socketFamily, 
-	const char* service, size_t sessionBufferSize, size_t connectionQueueSize, size_t receiveBufferSize, 
-	size_t messageBufferSize, double timeoutTime, nets::SslContextView sslContext)
+StreamServerHandle::StreamServerHandle(ServerNetworkSystem* serverSystem, SocketFamily socketFamily, const char* service, 
+	size_t sessionBufferSize, size_t connectionQueueSize, size_t receiveBufferSize, size_t messageBufferSize, 
+	uint8_t serverLengthSize, double timeoutTime, nets::SslContextView sslContext)
 	:
 	nets::IStreamServer(socketFamily, service, sessionBufferSize, 
 		connectionQueueSize, receiveBufferSize, timeoutTime, sslContext),
-	serverSystem(serverSystem)
+	serverSystem(serverSystem), serverLengthSize(serverLengthSize)
 {
-	if (messageBufferSize <= UINT8_MAX) messageLengthSize = sizeof(uint8);
-	else if (messageBufferSize <= UINT16_MAX) messageLengthSize = sizeof(uint16);
-	else if (messageBufferSize <= UINT32_MAX) messageLengthSize = sizeof(uint32);
-	else if (messageBufferSize <= UINT64_MAX) messageLengthSize = sizeof(uint64);
+	if (messageBufferSize <= UINT8_MAX) clientLengthSize = sizeof(uint8);
+	else if (messageBufferSize <= UINT16_MAX) clientLengthSize = sizeof(uint16);
+	else if (messageBufferSize <= UINT32_MAX) clientLengthSize = sizeof(uint32);
+	else if (messageBufferSize <= UINT64_MAX) clientLengthSize = sizeof(uint64);
 	else abort();
 
-	this->messageBufferSize = messageBufferSize + messageLengthSize;
+	this->messageBufferSize = messageBufferSize + clientLengthSize;
 	GARDEN_ASSERT(this->messageBufferSize <= receiveBufferSize);
 }
 
@@ -62,7 +62,7 @@ NetsResult StreamServerHandle::sendDatagram(ClientSession* clientSession, const 
 			{
 				return FAILED_TO_CREATE_SSL_NETS_RESULT;
 			}
-			auto result = sendEncMessage(clientSession, messageLengthSize);
+			auto result = sendEncMessage(clientSession, serverLengthSize);
 			if (result != SUCCESS_NETS_RESULT)
 				return result;
 		}
@@ -138,12 +138,12 @@ void* StreamServerHandle::onSessionCreate(nets::StreamSessionView streamSession)
 
 	if (isSecure())
 	{
-		if (sendEncMessage(clientSession, messageLengthSize) != SUCCESS_NETS_RESULT)
+		if (sendEncMessage(clientSession, serverLengthSize) != SUCCESS_NETS_RESULT)
 			streamSession.shutdown();
 	}
 	else
 	{
-		StreamOutputBuffer<16 + sizeof(uint32)> message("enc", sizeof(uint32), messageLengthSize);
+		StreamOutputBuffer<16 + sizeof(uint32)> message("enc", sizeof(uint32), serverLengthSize);
 		message.write((const void*)&clientSession->datagramUID, sizeof(uint32)); // Note: No endianness swap for random data.
 		if (clientSession->send(message) != SUCCESS_NETS_RESULT)
 		{
@@ -192,7 +192,7 @@ int StreamServerHandle::onStreamReceive(nets::StreamSessionView streamSession,
 	auto clientSession = (ClientSession*)streamSession.getHandle();
 	std::pair<ServerNetworkSystem*, ClientSession*> pair = { serverSystem, clientSession };
 	return handleStreamMessage(receiveBuffer, byteCount, clientSession->messageBuffer, messageBufferSize, 
-		&clientSession->messageByteCount, messageLengthSize, onMessageReceive, &pair);
+		&clientSession->messageByteCount, clientLengthSize, onMessageReceive, &pair);
 }
 void StreamServerHandle::onDatagramReceive(nets::SocketAddressView remoteAddress, 
 	const uint8_t* receiveBuffer, size_t byteCount)
@@ -262,6 +262,8 @@ void StreamServerHandle::onDatagramReceive(nets::SocketAddressView remoteAddress
 	}
 	clientSession->alive();
 }
+
+//**********************************************************************************************************************
 int StreamServerHandle::onMessageReceive(::StreamMessage message, void* argument)
 {
 	SET_CPU_ZONE_SCOPED("On Message Receive");
@@ -336,7 +338,7 @@ int StreamServerHandle::onPingRequest(ClientSession* session, StreamInput reques
 {
 	if (!session->isAuthorized || !session->datagramAddress || !request.isComplete())
 		return BAD_DATA_NETS_RESULT;
-	StreamOutputBuffer<16> response("pong", 0, messageLengthSize);
+	StreamOutputBuffer<16> response("pong", 0, serverLengthSize);
 	return sendDatagram(session, response);
 }
 
@@ -392,6 +394,9 @@ void ServerNetworkSystem::preInit()
 //**********************************************************************************************************************
 static void updateSessions(StreamServerHandle* streamServer, std::function<int(ClientSession*)> onSessionUpdate)
 {
+	auto manager = Manager::Instance::get();
+	manager->unlock();
+
 	auto threadSystem = ThreadSystem::Instance::tryGet();
 	streamServer->lockSessions();
 	
@@ -402,9 +407,6 @@ static void updateSessions(StreamServerHandle* streamServer, std::function<int(C
 		streamServer->unlockSessions();
 		return;
 	}
-
-	auto manager = Manager::Instance::get();
-	manager->unlock();
 	
 	if (threadSystem)
 	{
@@ -464,8 +466,8 @@ static void updateSessions(StreamServerHandle* streamServer, std::function<int(C
 	}
 
 	streamServer->flushSessions();
-	manager->lock();
 	streamServer->unlockSessions();
+	manager->lock();
 }
 void ServerNetworkSystem::update()
 {
@@ -485,9 +487,9 @@ void ServerNetworkSystem::update()
 }
 
 //**********************************************************************************************************************
-void ServerNetworkSystem::start(SocketFamily socketFamily, const char* service, 
-	size_t sessionBufferSize, size_t connectionQueueSize, size_t receiveBufferSize, 
-	size_t messageBufferSize, double timeoutTime, nets::SslContextView sslContext)
+void ServerNetworkSystem::start(SocketFamily socketFamily, const char* service, psize sessionBufferSize, 
+	psize connectionQueueSize, psize receiveBufferSize, psize messageBufferSize, 
+	uint8 serverLengthSize, double timeoutTime, nets::SslContextView sslContext)
 {
 	GARDEN_ASSERT(service);
 	GARDEN_ASSERT(sessionBufferSize > 0);
@@ -497,8 +499,8 @@ void ServerNetworkSystem::start(SocketFamily socketFamily, const char* service,
 	GARDEN_ASSERT(timeoutTime > 0);
 	GARDEN_ASSERT(!streamServer);
 
-	streamServer = new StreamServerHandle(this, socketFamily, service, sessionBufferSize, 
-		connectionQueueSize, receiveBufferSize, messageBufferSize, timeoutTime, sslContext);
+	streamServer = new StreamServerHandle(this, socketFamily, service, sessionBufferSize, connectionQueueSize, 
+		receiveBufferSize, messageBufferSize, serverLengthSize, timeoutTime, sslContext);
 
 	if (!streamServer->isSecure())
 		GARDEN_LOG_WARN("Server messages are not encrypted!");

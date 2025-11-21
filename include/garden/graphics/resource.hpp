@@ -30,7 +30,7 @@ class ResourceExt;
  */
 enum class ResourceType : uint8
 {
-	Buffer,  Image, ImageView, Framebuffer, Sampler, Blas, Tlas, 
+	Buffer, Image, ImageView, Framebuffer, Sampler, Blas, Tlas, 
 	GraphicsPipeline, ComputePipeline, RayTracingPipeline, DescriptorSet, Count
 };
 

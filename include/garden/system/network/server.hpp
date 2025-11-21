@@ -37,13 +37,14 @@ class StreamServerHandle final : public nets::IStreamServer
 	ServerNetworkSystem* serverSystem = nullptr;
 	void* cipher = nullptr;
 	psize messageBufferSize = 0;
-	uint8 messageLengthSize = 0;
+	uint8 serverLengthSize = 0;
+	uint8 clientLengthSize = 0;
 public:
 	using nets::IStreamServer::destroySession;
 
 	StreamServerHandle(ServerNetworkSystem* serverSystem, SocketFamily socketFamily, const char* service, 
-		size_t sessionBufferSize, size_t connectionQueueSize, size_t receiveBufferSize, 
-		size_t messageBufferSize, double timeoutTime, nets::SslContextView sslContext);
+		size_t sessionBufferSize, size_t connectionQueueSize, size_t receiveBufferSize, size_t messageBufferSize, 
+		uint8_t serverLengthSize, double timeoutTime, nets::SslContextView sslContext);
 
 	void destroySession(ClientSession* clientSession, int reason)
 	{
@@ -55,7 +56,7 @@ public:
 	{
 		GARDEN_ASSERT(message.isComplete());
 		return sendDatagram(clientSession, message.getBuffer() + 
-			messageLengthSize, message.getSize() - messageLengthSize);
+			serverLengthSize, message.getSize() - serverLengthSize);
 	}
 private:
 	void* onSessionCreate(nets::StreamSessionView streamSession) final;
@@ -161,13 +162,15 @@ public:
 	 * @param connectionQueueSize pending connections queue size
 	 * @param receiveBufferSize receive data buffer size in bytes
 	 * @param messageBufferSize biggest client request size in bytes
+	 * @param serverLengthSize server message length size in bytes
 	 * @param timeoutTime session timeout time in seconds
 	 * @param sslContext socket SSL context instance or NULL
 	 *
 	 * @throw Error with a @ref NetsResult string on failure.
 	 */
-	void start(SocketFamily socketFamily, const char* service, size_t sessionBufferSize = 512, 
-		size_t connectionQueueSize = 256, size_t receiveBufferSize = UINT16_MAX + 1, size_t messageBufferSize = UINT8_MAX, 
+	void start(SocketFamily socketFamily, const char* service, psize sessionBufferSize = 512, 
+		psize connectionQueueSize = 256, psize receiveBufferSize = UINT16_MAX + 1, 
+		psize messageBufferSize = UINT8_MAX, uint8 serverLengthSize = sizeof(uint8),
 		double timeoutTime = 5.0f, nets::SslContextView sslContext = nets::SslContextView(nullptr));
 	/**
 	 * @brief Stops server listening and receiving.
