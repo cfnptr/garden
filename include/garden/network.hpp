@@ -130,7 +130,7 @@ protected:
 		GARDEN_ASSERT_MSG(!result, "Stream message buffer is too small");
 	}
 public:
-	static constexpr uint8 baseTotalSize = maxLengthSize + 3; /**< 3 = type + typeSize + isSystem */
+	static constexpr uint8 baseTotalSize = maxLengthSize + 3; /**< 3 = type('c') + typeSize + isSystem */
 
 	/**
 	 * @brief Creates a new stream output container.
@@ -347,9 +347,11 @@ public:
 	 * @brief On message receive from the server.
 	 * @details Client closes connection on this function non zero return result.
 	 * @warning This function is called asynchronously from the receive thread!
+	 *
 	 * @param message received stream message
+	 * @param isDatagram is stream message datagram
 	 */
-	virtual int onResponse(StreamInput message) { return NOT_SUPPORTED_NETS_RESULT; }
+	virtual int onResponse(StreamInput message, bool isDatagram) { return NOT_SUPPORTED_NETS_RESULT; }
 };
 
 } // namespace garden

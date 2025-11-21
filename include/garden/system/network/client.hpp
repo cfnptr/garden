@@ -38,10 +38,10 @@ public:
 	 * @details Client stops receive thread on this function non zero return result.
 	 * @warning This function is called asynchronously from the receive thread!
 	 *
-	 * @param[in] session client session instance
 	 * @param message received stream message
+	 * @param isDatagram is stream message datagram
 	 */
-	using OnReceive = std::function<int(StreamInput)>;
+	using OnReceive = std::function<int(StreamInput message, bool isDatagram)>;
 private:
 	tsl::robin_map<string, INetworkable*, SvHash, SvEqual> networkables;
 	tsl::robin_map<string, OnReceive, SvHash, SvEqual> listeners;
@@ -61,19 +61,21 @@ private:
 	uint64 clientDatagramIdx = 1;
 	uint64 serverDatagramIdx = 0;
 	int lastDisconnectReason = 0;
-	uint8 messageLengthSize = 0;
+	uint8 clientLengthSize = 0;
+	uint8 serverLengthSize = 0;
 	bool isDatagram = false;
-	uint16 _alignment = 0;
+	uint8 _alignment = 0;
 
 	/**
 	 * @brief Creates a new network client system instance.
 	 * @param receiveBufferSize receive data buffer size in bytes
 	 * @param messageBufferSize biggest server response size in bytes
+	 * @param clientLengthSize client message length size in bytes
 	 * @param timeoutTime server timeout time in seconds
 	 * @param setSingleton set system singleton instance
 	 */
-	ClientNetworkSystem(size_t receiveBufferSize = UINT16_MAX + sizeof(uint16), 
-		size_t messageBufferSize = UINT16_MAX, double timeoutTime = 5.0f, bool setSingleton = true);
+	ClientNetworkSystem(psize receiveBufferSize = UINT16_MAX + sizeof(uint16), psize messageBufferSize = UINT16_MAX, 
+		uint8 clientLengthSize = sizeof(uint8), double timeoutTime = 5.0f, bool setSingleton = true);
 	/**
 	 * @brief Destroys network client system instance.
 	 */
@@ -89,7 +91,7 @@ private:
 	int onDatagramReceive(const uint8_t* receiveBuffer, size_t byteCount) final;
 	static int onMessageReceive(::StreamMessage message, void* argument);
 
-	int onEncResponse(StreamInput response);
+	int onEncResponse(StreamInput response, bool isDatagram);
 	friend class ecsm::Manager;
 public:
 	/**
@@ -118,9 +120,13 @@ public:
 	}
 
 	/**
-	 * @brief Returns stream message length size in bytes.
+	 * @brief Returns client stream message length size in bytes.
 	 */
-	uint8 getMessageLengthSize() const noexcept { return messageLengthSize; }
+	uint8 getClientLengthSize() const noexcept { return clientLengthSize; }
+	/**
+	 * @brief Returns server stream message length size in bytes.
+	 */
+	uint8 getServerLengthSize() const noexcept { return serverLengthSize; }
 	/**
 	 * @brief Returns last network client disconnection reason.
 	 */
@@ -146,8 +152,7 @@ public:
 	NetsResult sendDatagram(const StreamOutput& message) noexcept
 	{
 		GARDEN_ASSERT(message.isComplete());
-		return sendDatagram(message.getBuffer() + 
-			messageLengthSize, message.getSize() - messageLengthSize);
+		return sendDatagram(message.getBuffer() + clientLengthSize, message.getSize() - clientLengthSize);
 	}
 
 	/**

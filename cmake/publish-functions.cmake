@@ -64,7 +64,7 @@ macro(collectPackJson2bsons PACK_CACHE_DIR PACK_RESOURCES_DIR
 	INCLUDE_EDITOR INCLUDE_DEBUG PACK_JSONS PACK_RESOURCES)
 
 	file(GLOB_RECURSE PACK_JSON_PATHS ${${PACK_RESOURCES_DIR}}/scenes/*.scene 
-		${${PACK_RESOURCES_DIR}}/configs/*.json)
+		${${PACK_RESOURCES_DIR}}/animations/*.anim ${${PACK_RESOURCES_DIR}}/configs/*.json)
 	
 	foreach(JSON ${PACK_JSON_PATHS})
 		if((NOT ${INCLUDE_EDITOR} AND JSON MATCHES "editor") OR
@@ -113,11 +113,12 @@ macro(collectPackEqui2cubes PACK_CACHE_DIR PACK_RESOURCES_DIR
 endmacro()
 
 #***********************************************************************************************************************
-macro(collectPackResources PACK_RESOURCES_DIR INCLUDE_EDITOR INCLUDE_DEBUG PACK_RESOURCES)
+macro(collectPackResources PACK_RESOURCES_DIR INCLUDE_EDITOR INCLUDE_DEBUG PACK_RESOURCES APP_RESOURCES)
 
-	file(GLOB_RECURSE PACK_ANY_RESOURCE_PATHS
-		${${PACK_RESOURCES_DIR}}/images/*.webp ${${PACK_RESOURCES_DIR}}/images/*.png
-		${${PACK_RESOURCES_DIR}}/images/*.jpg ${${PACK_RESOURCES_DIR}}/fonts/*.ttf)
+	file(GLOB_RECURSE PACK_ANY_RESOURCE_PATHS ${${PACK_RESOURCES_DIR}}/images/*.webp 
+		${${PACK_RESOURCES_DIR}}/images/*.png ${${PACK_RESOURCES_DIR}}/images/*.jpg 
+		${${PACK_RESOURCES_DIR}}/fonts/*.ttf ${${PACK_RESOURCES_DIR}}/locales/*.txt)
+	list(APPEND PACK_ANY_RESOURCE_PATHS ${${APP_RESOURCES}})
 
 	foreach(ANY_RESOURCE ${PACK_ANY_RESOURCE_PATHS})
 		if(ANY_RESOURCE MATCHES "cubemap" OR 
@@ -139,8 +140,8 @@ macro(collectPackResources PACK_RESOURCES_DIR INCLUDE_EDITOR INCLUDE_DEBUG PACK_
 endmacro()
 
 #***********************************************************************************************************************
-function(packResources PACK_EXE_NAME PACK_CACHE_DIR PACK_APP_RES_DIR
-	PACK_GARDEN_RES_DIR PACK_APP_VERSION INCLUDE_EDITOR INCLUDE_DEBUG)
+function(packResources PACK_EXE_NAME PACK_CACHE_DIR PACK_APP_RES_DIR PACK_GARDEN_RES_DIR 
+	PACK_APP_VERSION INCLUDE_EDITOR INCLUDE_DEBUG APP_RESOURCES)
 
 	set(PACK_APP_RES_PATHS)
 	set(PACK_GARDEN_SHADERS)
@@ -167,8 +168,8 @@ function(packResources PACK_EXE_NAME PACK_CACHE_DIR PACK_APP_RES_DIR
 	collectPackEqui2cubes(PACK_CACHE_DIR PACK_APP_RES_DIR INCLUDE_EDITOR
 		INCLUDE_DEBUG PACK_APP_EQUI2CUBES PACK_APP_RES_PATHS)
 
-	collectPackResources(PACK_GARDEN_RES_DIR INCLUDE_EDITOR INCLUDE_DEBUG PACK_APP_RES_PATHS)
-	collectPackResources(PACK_APP_RES_DIR INCLUDE_EDITOR INCLUDE_DEBUG PACK_APP_RES_PATHS)
+	collectPackResources(PACK_GARDEN_RES_DIR INCLUDE_EDITOR INCLUDE_DEBUG PACK_APP_RES_PATHS "")
+	collectPackResources(PACK_APP_RES_DIR INCLUDE_EDITOR INCLUDE_DEBUG PACK_APP_RES_PATHS APP_RESOURCES)
 
 	add_custom_command(TARGET ${PACK_EXE_NAME} POST_BUILD VERBATIM
 		COMMAND ${CMAKE_COMMAND} -E echo "Cleaning up cache..."

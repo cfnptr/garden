@@ -419,7 +419,7 @@ bool TransformComponent::hasStaticWithDescendants() const noexcept
 	return false;
 }
 
-#if GARDEN_DEBUG
+#if GARDEN_EDITOR
 void TransformComponent::resetUIDs()
 {
 	auto manager = Manager::Instance::get();
@@ -465,8 +465,12 @@ TransformSystem::~TransformSystem()
 void TransformSystem::destroyComponent(ID<Component> instance)
 {
 	#if GARDEN_EDITOR
-	auto componentView = components.get(ID<TransformComponent>(instance));
-	TransformEditorSystem::Instance::get()->onEntityDestroy(componentView->entity);
+	auto transformEditor = TransformEditorSystem::Instance::tryGet();
+	if (transformEditor)
+	{
+		auto componentView = components.get(ID<TransformComponent>(instance));
+		transformEditor->onEntityDestroy(componentView->entity);
+	}
 	#endif
 	components.destroy(ID<TransformComponent>(instance));
 }

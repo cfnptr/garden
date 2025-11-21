@@ -295,7 +295,7 @@ public:
 	 */
 	bool hasStaticWithDescendants() const noexcept;
 
-	#if GARDEN_DEBUG
+	#if GARDEN_EDITOR
 	/**
 	 * @brief Resets entity and it childs UIDs. (Editor only!)
 	 */
