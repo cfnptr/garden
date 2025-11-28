@@ -421,6 +421,8 @@ static void updateSessions(StreamServerHandle* streamServer, std::function<int(C
 			for (uint32 i = task.getItemOffset(); i < itemCount; i++)
 			{
 				auto streamSession = sessions[i];
+				if (!streamSession.getSocket().getInstance())
+					continue;
 				auto result = streamServer->updateSession(streamSession, currentTime);
 				if (result != SUCCESS_NETS_RESULT)
 					streamServer->destroySession(streamSession, result);
@@ -447,6 +449,8 @@ static void updateSessions(StreamServerHandle* streamServer, std::function<int(C
 		for (psize i = 0; i < sessionCount; i++)
 		{
 			auto streamSession = sessions[i];
+			if (!streamSession.getSocket().getInstance())
+				continue;
 			auto result = streamServer->updateSession(streamSession, currentTime);
 			if (result != SUCCESS_NETS_RESULT)
 				streamServer->destroySession(streamSession, result);

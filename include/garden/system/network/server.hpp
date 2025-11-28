@@ -116,7 +116,7 @@ public:
 	std::function<int(nets::StreamSessionView, ClientSession*&)> onSessionCreate = nullptr;
 	/**
 	 * @brief Stream session destroy function.
-	 * @warning This function is called asynchronously from the receive thread!
+	 * @note This function is called synchronously.
 	 */
 	std::function<void(ClientSession*, int)> onSessionDestroy = nullptr;
 	/**
