@@ -63,6 +63,15 @@ static uint32 calcScaledFontSize(uint32 totalFontSize) noexcept
 	return (uint32)ceil(totalFontSize / uiScale);
 }
 
+static ID<DescriptorSet> createDescritproSet(ID<Text> textData)
+{
+	auto uniforms = getUniforms(textData);
+	auto descriptorSet = GraphicsSystem::Instance::get()->createDescriptorSet(
+		UiLabelSystem::Instance::get()->getPipeline(), std::move(uniforms));
+	SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.uiLabel" + to_string(*descriptorSet));
+	return descriptorSet;
+}
+
 //**********************************************************************************************************************
 bool UiLabelComponent::updateText(bool shrink)
 {
@@ -144,11 +153,7 @@ bool UiLabelComponent::updateText(bool shrink)
 		currFontAtlas != textSystem->get(textView->getFontAtlas())->getImage())
 	{
 		graphicsSystem->destroy(descriptorSet);
-
-		auto uniforms = getUniforms(textData);
-		descriptorSet = graphicsSystem->createDescriptorSet(
-			UiLabelSystem::Instance::get()->getPipeline(), std::move(uniforms));
-		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.uiLabel" + to_string(*descriptorSet));
+		descriptorSet = createDescritproSet(textData);
 	}
 
 	aabb.setSize(f32x4(float3(textView->getSize() * totalFontSize, 1.0f)));
@@ -249,24 +254,20 @@ void UiLabelSystem::copyComponent(View<Component> source, View<Component> destin
 		}
 		else textString = destinationView->text;
 
-		ID<Text> text;
+		ID<Text> textData;
 		if (srcTextView->isAtlasShared())
 		{
-			text = textSystem->createText(textString, srcTextView->getFontAtlas(), srcTextView->getProperties(), true);
+			textData = textSystem->createText(textString, srcTextView->getFontAtlas(), srcTextView->getProperties(), true);
 		}
 		else
 		{
 			auto fonts = textSystem->get(srcTextView->getFontAtlas())->getFonts();
 			auto scaledFontSize = calcScaledFontSize(calcTotalFontSize(sourceView->fontSize, sourceView->adjustCJK));
-			text = textSystem->createText(textString, std::move(fonts), scaledFontSize, srcTextView->getProperties());
+			textData = textSystem->createText(textString, std::move(fonts), scaledFontSize, srcTextView->getProperties());
 		}
-		destinationView->textData = text;
 
-		auto uniforms = getUniforms(text);
-		auto descriptorSet = GraphicsSystem::Instance::get()->createDescriptorSet(
-			UiLabelSystem::Instance::get()->getPipeline(), std::move(uniforms));
-		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.uiLabel" + to_string(*descriptorSet));
-		destinationView->descriptorSet = descriptorSet;
+		destinationView->textData = textData;
+		destinationView->descriptorSet = createDescritproSet(textData);
 	}
 }
 string_view UiLabelSystem::getComponentName() const
@@ -416,7 +417,24 @@ void UiLabelSystem::deserialize(IDeserializer& deserializer, View<Component> com
 	componentView->loadNoto = loadNoto;
 	#endif
 
-	componentView->updateText();
+	auto totalFontSize = calcTotalFontSize(componentView->fontSize, componentView->adjustCJK);
+	auto scaledFontSize = calcScaledFontSize(totalFontSize);
+	auto fonts = ResourceSystem::Instance::get()->loadFonts(fontPaths, 0, loadNoto);
+
+	if (!componentView->text.empty() && scaledFontSize != 0 && (!fonts.empty() || loadNoto))
+	{
+		auto textSystem = TextSystem::Instance::get();
+		auto textData = textSystem->createText(componentView->text, 
+			std::move(fonts), scaledFontSize, componentView->propterties);
+		componentView->textData = textData;
+
+		if (textData)
+		{
+			componentView->descriptorSet = createDescritproSet(textData);
+			auto textSize = textSystem->get(textData)->getSize() * totalFontSize;
+			componentView->aabb.setSize(f32x4(float3(textSize, 1.0f)));
+		}
+	}
 }
 
 //**********************************************************************************************************************
@@ -529,16 +547,11 @@ void UiLabelSystem::deserializeAnimation(IDeserializer& deserializer, View<Anima
 	else textString = frameView->text;
 
 	auto fonts = ResourceSystem::Instance::get()->loadFonts(fontPaths, 0, loadNoto);
-	
-	auto text = TextSystem::Instance::get()->createText(textString, 
+	auto textData = TextSystem::Instance::get()->createText(textString, 
 		std::move(fonts), scaledFontSize, frameView->propterties);
-	frameView->textData = text;
+	frameView->textData = textData;
 
-	auto uniforms = getUniforms(text);
-	auto descriptorSet = GraphicsSystem::Instance::get()->createDescriptorSet(
-		UiLabelSystem::Instance::get()->getPipeline(), std::move(uniforms));
-	SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.uiLabel" + to_string(*descriptorSet));
-	frameView->descriptorSet = descriptorSet;
+	frameView->descriptorSet = createDescritproSet(textData);
 }
 
 //**********************************************************************************************************************
@@ -587,7 +600,7 @@ void UiLabelSystem::animateAsync(View<Component> component, View<AnimationFrame>
 
 	if (componentView->textData)
 	{
-		auto textView = textSystem->get(componentView->textData);
+		auto textView = TextSystem::Instance::get()->get(componentView->textData);
 		auto totalFontSize = calcTotalFontSize(componentView->fontSize, componentView->adjustCJK);
 		componentView->aabb.setSize(f32x4(float3(textView->getSize() * totalFontSize, 1.0f)));
 		componentView->isEnabled = true;
