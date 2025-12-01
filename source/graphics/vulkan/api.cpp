@@ -127,7 +127,9 @@ static vk::Instance createVkInstance(const string& appName, Version appVersion,
 
 	instanceVersionMajor = VK_API_VERSION_MAJOR(installedVersion);
 	instanceVersionMinor = VK_API_VERSION_MINOR(installedVersion);
-	// instanceVersionMinor = 2; // TODO: debugging
+
+	if (instanceVersionMajor <= 1 && instanceVersionMinor <= 1)
+		throw GardenError("Vulkan API 1.1 version is not supported.");
 
 	#if GARDEN_OS_MACOS
 	// TODO: remove after MoltenVK 1.4 support on mac.
@@ -491,19 +493,6 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 		else if (strcmp(properties.extensionName, VK_KHR_RAY_QUERY_EXTENSION_NAME) == 0)
 			features.rayQuery = true;
 
-		if (versionMinor < 2)
-		{
-			if (strcmp(properties.extensionName, VK_KHR_8BIT_STORAGE_EXTENSION_NAME) == 0)
-				features.int8BitStorage = true;
-			else if (strcmp(properties.extensionName, VK_KHR_SHADER_FLOAT16_INT8_EXTENSION_NAME) == 0)
-				features.float16Int8 = true;
-			else if (strcmp(properties.extensionName, VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME) == 0)
-				features.descriptorIndexing = true;
-			else if (strcmp(properties.extensionName, VK_EXT_SCALAR_BLOCK_LAYOUT_EXTENSION_NAME) == 0)
-				features.scalarBlockLayout = true;
-			else if (strcmp(properties.extensionName, VK_EXT_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME) == 0)
-				features.bufferDeviceAddress = true;
-		}
 		if (versionMinor < 3)
 		{
 			if (strcmp(properties.extensionName, VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME) == 0)
@@ -515,25 +504,28 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 		{
 			if (strcmp(properties.extensionName, VK_KHR_MAINTENANCE_5_EXTENSION_NAME) == 0)
 				features.maintenance5 = true;
+			else if (strcmp(properties.extensionName, VK_KHR_MAINTENANCE_6_EXTENSION_NAME) == 0)
+				features.maintenance6 = true;
 		}
 	}
 
 	struct VkFeatures final
 	{
 		vk::PhysicalDeviceFeatures2 device;
-		vk::PhysicalDevice8BitStorageFeatures _8BitStorage;
 		vk::PhysicalDevice16BitStorageFeatures _16BitStorage;
+		vk::PhysicalDevice8BitStorageFeatures _8BitStorage;
 		vk::PhysicalDeviceShaderFloat16Int8FeaturesKHR float16Int8;
-		vk::PhysicalDevicePageableDeviceLocalMemoryFeaturesEXT pageableMemory;
-		vk::PhysicalDeviceDynamicRenderingFeatures dynamicRendering;
 		vk::PhysicalDeviceDescriptorIndexingFeatures descriptorIndexing;
 		vk::PhysicalDeviceScalarBlockLayoutFeatures scalarBlockLayout;
 		vk::PhysicalDeviceBufferDeviceAddressFeatures bufferDeviceAddress;
+		vk::PhysicalDevicePageableDeviceLocalMemoryFeaturesEXT pageableMemory;
+		vk::PhysicalDeviceDynamicRenderingFeatures dynamicRendering;
 		vk::PhysicalDeviceAccelerationStructureFeaturesKHR accelerationStructure;
 		vk::PhysicalDeviceRayTracingPipelineFeaturesKHR rayTracingPipeline;
 		vk::PhysicalDeviceRayQueryFeaturesKHR rayQuery;
 		vk::PhysicalDeviceMaintenance4Features maintenance4;
 		vk::PhysicalDeviceMaintenance5Features maintenance5;
+		vk::PhysicalDeviceMaintenance6Features maintenance6;
 
 		#if GARDEN_OS_MACOS
 		vk::PhysicalDevicePortabilitySubsetFeaturesKHR portability;
@@ -542,6 +534,9 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 
 	auto vkFeatures = new VkFeatures();
 	vkFeatures->device.pNext = &vkFeatures->_16BitStorage;
+	vkFeatures->_16BitStorage.pNext = &vkFeatures->_8BitStorage;
+	vkFeatures->_8BitStorage.pNext = &vkFeatures->float16Int8;
+	vkFeatures->float16Int8.pNext = &vkFeatures->descriptorIndexing;
 	physicalDevice.getFeatures2(&vkFeatures->device);
 
 	auto hasShaderInt16 = vkFeatures->device.features.shaderInt16;
@@ -560,75 +555,6 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 		if (vkFeatures->pageableMemory.pageableDeviceLocalMemory)
 			extensions.push_back(VK_EXT_PAGEABLE_DEVICE_LOCAL_MEMORY_EXTENSION_NAME);
 		else features.pageableMemory = false;
-	}
-
-	if (versionMinor < 2)
-	{
-		if (features.int8BitStorage)
-		{
-			vkFeatures->device.pNext = &vkFeatures->_8BitStorage;
-			physicalDevice.getFeatures2(&vkFeatures->device);
-			if (vkFeatures->_8BitStorage.storageBuffer8BitAccess &&
-				vkFeatures->_8BitStorage.uniformAndStorageBuffer8BitAccess &&
-				vkFeatures->_8BitStorage.storagePushConstant8)
-			{
-				extensions.push_back(VK_KHR_8BIT_STORAGE_EXTENSION_NAME);
-			}
-			else
-			{
-				features.int8BitStorage = false;
-			}
-		}
-		if (features.float16Int8)
-		{
-			vkFeatures->device.pNext = &vkFeatures->float16Int8;
-			physicalDevice.getFeatures2(&vkFeatures->device);
-			if (vkFeatures->float16Int8.shaderFloat16 && vkFeatures->float16Int8.shaderInt8)
-				extensions.push_back(VK_KHR_SHADER_FLOAT16_INT8_EXTENSION_NAME);
-			else features.float16Int8 = false;
-		}
-		if (features.descriptorIndexing)
-		{
-			vkFeatures->device.pNext = &vkFeatures->descriptorIndexing;
-			physicalDevice.getFeatures2(&vkFeatures->device);
-			if (vkFeatures->descriptorIndexing.descriptorBindingUniformBufferUpdateAfterBind &&
-				vkFeatures->descriptorIndexing.descriptorBindingSampledImageUpdateAfterBind &&
-				vkFeatures->descriptorIndexing.descriptorBindingStorageImageUpdateAfterBind &&
-				vkFeatures->descriptorIndexing.descriptorBindingStorageBufferUpdateAfterBind &&
-				vkFeatures->descriptorIndexing.descriptorBindingPartiallyBound &&
-				vkFeatures->descriptorIndexing.runtimeDescriptorArray)
-			{
-				extensions.push_back(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME);
-			}
-			else
-			{
-				features.descriptorIndexing = false;
-			}
-		}
-		if (features.scalarBlockLayout)
-		{
-			vkFeatures->device.pNext = &vkFeatures->scalarBlockLayout;
-			physicalDevice.getFeatures2(&vkFeatures->device);
-			if (vkFeatures->scalarBlockLayout.scalarBlockLayout)
-				extensions.push_back(VK_EXT_SCALAR_BLOCK_LAYOUT_EXTENSION_NAME);
-			else features.scalarBlockLayout = false;
-		}
-		if (features.bufferDeviceAddress)
-		{
-			vkFeatures->device.pNext = &vkFeatures->bufferDeviceAddress;
-			physicalDevice.getFeatures2(&vkFeatures->device);
-			if (vkFeatures->bufferDeviceAddress.bufferDeviceAddress)
-				extensions.push_back(VK_EXT_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME);
-			else features.bufferDeviceAddress = false;
-		}
-	}
-	else
-	{
-		features.int8BitStorage = true;
-		features.float16Int8 = true;
-		features.descriptorIndexing = true;
-		features.scalarBlockLayout = true;
-		features.bufferDeviceAddress = true;
 	}
 
 	if (versionMinor < 3)
@@ -666,14 +592,21 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 				extensions.push_back(VK_KHR_MAINTENANCE_5_EXTENSION_NAME);
 			else features.maintenance5 = false;
 		}
+		if (features.maintenance6)
+		{
+			vkFeatures->device.pNext = &vkFeatures->maintenance6;
+			physicalDevice.getFeatures2(&vkFeatures->device);
+			if (vkFeatures->maintenance6.maintenance6)
+				extensions.push_back(VK_KHR_MAINTENANCE_6_EXTENSION_NAME);
+			else features.maintenance6 = false;
+		}
 	}
 	else
 	{
-		features.maintenance5 = true;
+		features.maintenance5 = features.maintenance6 = true;
 	}
 
-	if (hasDeferredHostOperations && hasAccelerationStructure && 
-		features.descriptorIndexing && features.bufferDeviceAddress)
+	if (hasDeferredHostOperations && hasAccelerationStructure)
 	{
 		vkFeatures->device.pNext = &vkFeatures->accelerationStructure;
 		physicalDevice.getFeatures2(&vkFeatures->device);
@@ -758,12 +691,23 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 	vkFeatures->device.features.shaderInt16 = hasShaderInt16;
 	vkFeatures->device.features.shaderInt64 = hasShaderInt64;
 	vkFeatures->device.features.shaderFloat64 = hasShaderFloat64;
-	vkFeatures->device.pNext = nullptr;
-	void** lastPNext = &vkFeatures->device.pNext;
+	vkFeatures->scalarBlockLayout.scalarBlockLayout = VK_TRUE;
+	vkFeatures->bufferDeviceAddress.bufferDeviceAddress = VK_TRUE;
 
-	vkFeatures->_16BitStorage.pNext = nullptr;
+	void** lastPNext = &vkFeatures->device.pNext;
 	*lastPNext = &vkFeatures->_16BitStorage;
 	lastPNext = &vkFeatures->_16BitStorage.pNext;
+	*lastPNext = &vkFeatures->_8BitStorage;
+	lastPNext = &vkFeatures->_8BitStorage.pNext;
+	*lastPNext = &vkFeatures->float16Int8;
+	lastPNext = &vkFeatures->float16Int8.pNext;
+	*lastPNext = &vkFeatures->descriptorIndexing;
+	lastPNext = &vkFeatures->descriptorIndexing.pNext;
+	*lastPNext = &vkFeatures->scalarBlockLayout;
+	lastPNext = &vkFeatures->scalarBlockLayout.pNext;
+	*lastPNext = &vkFeatures->bufferDeviceAddress;
+	lastPNext = &vkFeatures->bufferDeviceAddress.pNext;
+	*lastPNext = nullptr;
 
 	#if GARDEN_OS_MACOS
 	vkFeatures->portability.mutableComparisonSamplers = VK_TRUE;
@@ -771,23 +715,6 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 	lastPNext = &vkFeatures->portability.pNext;
 	#endif
 
-	if (features.int8BitStorage)
-	{
-		vkFeatures->_8BitStorage = vk::PhysicalDevice8BitStorageFeatures();
-		vkFeatures->_8BitStorage.storageBuffer8BitAccess = VK_TRUE;
-		vkFeatures->_8BitStorage.uniformAndStorageBuffer8BitAccess = VK_TRUE;
-		vkFeatures->_8BitStorage.storagePushConstant8 = VK_TRUE;
-		*lastPNext = &vkFeatures->_8BitStorage;
-		lastPNext = &vkFeatures->_8BitStorage.pNext;
-	}
-	if (features.float16Int8)
-	{
-		vkFeatures->float16Int8 = vk::PhysicalDeviceShaderFloat16Int8FeaturesKHR();
-		vkFeatures->float16Int8.shaderFloat16 = VK_TRUE;
-		vkFeatures->float16Int8.shaderInt8 = VK_TRUE;
-		*lastPNext = &vkFeatures->float16Int8;
-		lastPNext = &vkFeatures->float16Int8.pNext;
-	}
 	if (features.maintenance4)
 	{
 		vkFeatures->maintenance4 = vk::PhysicalDeviceMaintenance4FeaturesKHR();
@@ -802,38 +729,19 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 		*lastPNext = &vkFeatures->maintenance5;
 		lastPNext = &vkFeatures->maintenance5.pNext;
 	}
+	if (features.maintenance6)
+	{
+		vkFeatures->maintenance6 = vk::PhysicalDeviceMaintenance6FeaturesKHR();
+		vkFeatures->maintenance6.maintenance6 = VK_TRUE;
+		*lastPNext = &vkFeatures->maintenance6;
+		lastPNext = &vkFeatures->maintenance6.pNext;
+	}
 	if (features.pageableMemory)
 	{
 		vkFeatures->pageableMemory = vk::PhysicalDevicePageableDeviceLocalMemoryFeaturesEXT();
 		vkFeatures->pageableMemory.pageableDeviceLocalMemory = VK_TRUE;
 		*lastPNext = &vkFeatures->pageableMemory;
 		lastPNext = &vkFeatures->pageableMemory.pNext;
-	}
-	if (features.descriptorIndexing)
-	{
-		vkFeatures->descriptorIndexing = vk::PhysicalDeviceDescriptorIndexingFeatures();
-		vkFeatures->descriptorIndexing.descriptorBindingUniformBufferUpdateAfterBind = VK_TRUE;
-		vkFeatures->descriptorIndexing.descriptorBindingSampledImageUpdateAfterBind = VK_TRUE;
-		vkFeatures->descriptorIndexing.descriptorBindingStorageImageUpdateAfterBind = VK_TRUE;
-		vkFeatures->descriptorIndexing.descriptorBindingStorageBufferUpdateAfterBind = VK_TRUE;
-		vkFeatures->descriptorIndexing.descriptorBindingPartiallyBound = VK_TRUE;
-		vkFeatures->descriptorIndexing.runtimeDescriptorArray = VK_TRUE;
-		*lastPNext = &vkFeatures->descriptorIndexing;
-		lastPNext = &vkFeatures->descriptorIndexing.pNext;
-	}
-	if (features.scalarBlockLayout)
-	{
-		vkFeatures->scalarBlockLayout = vk::PhysicalDeviceScalarBlockLayoutFeatures();
-		vkFeatures->scalarBlockLayout.scalarBlockLayout = VK_TRUE;
-		*lastPNext = &vkFeatures->scalarBlockLayout;
-		lastPNext = &vkFeatures->scalarBlockLayout.pNext;
-	}
-	if (features.bufferDeviceAddress)
-	{
-		vkFeatures->bufferDeviceAddress = vk::PhysicalDeviceBufferDeviceAddressFeatures();
-		vkFeatures->bufferDeviceAddress.bufferDeviceAddress = VK_TRUE;
-		*lastPNext = &vkFeatures->bufferDeviceAddress;
-		lastPNext = &vkFeatures->bufferDeviceAddress.pNext;
 	}
 	if (features.dynamicRendering)
 	{
@@ -889,12 +797,11 @@ static VmaAllocator createVmaMemoryAllocator(uint32 majorVersion, uint32 minorVe
 	allocatorInfo.device = device;
 	allocatorInfo.instance = instance;
 
+	allocatorInfo.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
 	if (features.memoryBudget)
 		allocatorInfo.flags |= VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
 	if (features.memoryPriority)
 		allocatorInfo.flags |= VMA_ALLOCATOR_CREATE_EXT_MEMORY_PRIORITY_BIT;
-	if (features.bufferDeviceAddress)
-		allocatorInfo.flags |= VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
 	if (features.maintenance4)
 		allocatorInfo.flags |= VMA_ALLOCATOR_CREATE_KHR_MAINTENANCE4_BIT;
 	if (features.maintenance5)

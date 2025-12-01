@@ -339,7 +339,7 @@ bool CsmRenderSystem::prepareShadowRender(uint32 passIndex, f32x4x4& viewProj, f
 		farPlane *= cascadeSplits[passIndex];
 	farPlanes[passIndex] = farPlane;
 
-	viewProj = calcLightViewProj(cc.view, cc.lightDir, cameraOffset, cameraView->p.perspective.fieldOfView, 
+	viewProj = calcLightViewProj(cc.view, (f32x4)cc.lightDir, cameraOffset, cameraView->p.perspective.fieldOfView, 
 		cameraView->p.perspective.aspectRatio, nearPlane, farPlane, zCoeff, shadowMapSize);
 
 	auto inFlightIndex = graphicsSystem->getInFlightIndex();
@@ -347,7 +347,8 @@ bool CsmRenderSystem::prepareShadowRender(uint32 passIndex, f32x4x4& viewProj, f
 	auto data = (ShadowData*)dataBufferView->getMap();
 	data->uvToLight[passIndex] = (float4x4)(f32x4x4::ndcToUV * viewProj * cc.invViewProj * f32x4x4::uvToNDC);
 	data->farPlanes = float4((float3)(cc.nearPlane / farPlanes), 0.0f);
-	data->sunDirBias = float4((float3)-cc.lightDir, biasNormalFactor);
+	data->sunDir = -cc.lightDir;
+	data->normBias = biasNormalFactor;
 	return true;
 }
 

@@ -53,7 +53,8 @@ public:
 	{
 		float4x4 uvToLight[cascadeCount];
 		float4 farPlanes;
-		float4 sunDirBias;
+		float3 sunDir;
+		float normBias;
 	};
 private:
 	f32x4 farPlanes = f32x4::zero;

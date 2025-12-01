@@ -259,13 +259,12 @@ static void prepareCommonConstants(ID<Entity> camera, ID<Entity> directionalLigh
 	{
 		cc.view = calcRelativeView(*transformView);
 		setTranslation(cc.view, f32x4::zero);
-		cc.cameraPos = transformView->getPosition();
-		cc.cameraPos.fixW();
+		cc.cameraPos = (float3)transformView->getPosition();
 	}
 	else
 	{
 		cc.view = f32x4x4::identity;
-		cc.cameraPos = f32x4::zero;
+		cc.cameraPos = float3::zero;
 	}
 
 	auto cameraView = manager->tryGet<CameraComponent>(camera);
@@ -306,21 +305,19 @@ static void prepareCommonConstants(ID<Entity> camera, ID<Entity> directionalLigh
 	cc.inverseView = inverse4x4(cc.view);
 	cc.inverseProj = inverse4x4(cc.projection);
 	cc.invViewProj = inverse4x4(cc.viewProj);
-	cc.viewDir = normalize3(cc.inverseView * f32x4(f32x4::front, 1.0f));
-	cc.viewDir.fixW();
+	cc.viewDir = (float3)normalize3(cc.inverseView * f32x4(f32x4::front, 1.0f));
 
 	if (directionalLight)
 	{
 		auto lightTransformView = manager->tryGet<TransformComponent>(directionalLight);
 		if (lightTransformView)
-			cc.lightDir = normalize3(lightTransformView->getRotation() * f32x4::front);
-		else cc.lightDir = f32x4::bottom;
+			cc.lightDir = (float3)normalize3(lightTransformView->getRotation() * f32x4::front);
+		else cc.lightDir = float3::bottom;
 	}
 	else
 	{
-		cc.lightDir = f32x4::bottom;
+		cc.lightDir = float3::bottom;
 	}
-	cc.lightDir.fixW();
 
 	cc.frameSize = scaledFramebufferSize;
 	cc.invFrameSize = 1.0f / (float2)scaledFramebufferSize;

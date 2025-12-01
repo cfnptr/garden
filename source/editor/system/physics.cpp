@@ -141,7 +141,7 @@ void PhysicsEditorSystem::preDepthLdrRender()
 	auto renderer = (PhysicsDebugRenderer*)debugRenderer;
 	auto instance = (JPH::PhysicsSystem*)PhysicsSystem::Instance::get()->getInstance();
 	const auto& cc = GraphicsSystem::Instance::get()->getCommonConstants();
-	renderer->setCameraPosition(cc.cameraPos);
+	renderer->setCameraPosition((f32x4)cc.cameraPos);
 
 	JPH::BodyManager::DrawSettings drawSettings;
 	drawSettings.mDrawShapeWireframe = true;

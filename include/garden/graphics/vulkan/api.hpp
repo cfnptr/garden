@@ -48,19 +48,15 @@ public:
 	struct Features final
 	{
 		bool hasDebugUtils = false;
-		bool int8BitStorage = false;
-		bool float16Int8 = false;
 		bool memoryBudget = false;
 		bool memoryPriority = false;
 		bool pageableMemory = false;
 		bool dynamicRendering = false;
-		bool descriptorIndexing = false;
-		bool scalarBlockLayout = false;
-		bool bufferDeviceAddress = false;
 		bool rayTracing = false;
 		bool rayQuery = false;
 		bool maintenance4 = false;
 		bool maintenance5 = false;
+		bool maintenance6 = false;
 		bool hasNvidiaDlss = false;
 	};
 private:
@@ -145,10 +141,6 @@ public:
 	 */
 	void waitIdle() final;
 
-	/**
-	 * @brief Returns true if device buffer address supported.
-	 */
-	bool hasBufferDeviceAddress() const final { return features.bufferDeviceAddress; }
 	/**
 	 * @brief Returns true if ray tracing supported.
 	 */

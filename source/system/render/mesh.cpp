@@ -445,7 +445,7 @@ void MeshRenderSystem::prepareMeshes(const f32x4x4& viewProj,
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto threadSystem = asyncPreparing ? ThreadSystem::Instance::tryGet() : nullptr;
 	const auto& cc = graphicsSystem->getCommonConstants();
-	auto cameraPosition = cc.cameraPos;
+	auto cameraPosition = (f32x4)cc.cameraPos;
 	uint32 unsortedBufferIndex = 0, sortedBufferIndex = 0;
 	Plane frustumPlanes[Plane::frustumCount];
 	extractFrustumPlanes(viewProj, frustumPlanes);

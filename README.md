@@ -29,7 +29,7 @@ However, you can also compile it under any other Linux distribution or operating
 * Intel [Gen9](https://en.wikichip.org/wiki/intel/microarchitectures/gen9) microarchitecture and newer
 * Apple [M1](https://en.wikipedia.org/wiki/Apple_M1) integrated GPU and newer (partial support)
 
-At least GPU with Vulkan API 1.1 support.
+At least GPU with Vulkan API 1.2 support.
 
 ### Central processing unit (CPU)
 
