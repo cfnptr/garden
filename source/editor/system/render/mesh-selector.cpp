@@ -83,7 +83,7 @@ void MeshSelectorEditorSystem::render()
 	auto editorSystem = EditorRenderSystem::Instance::get();
 	auto uiTranformSystem = UiTriggerSystem::Instance::tryGet();
 	const auto& commonConstants = graphicsSystem->getCommonConstants();
-	auto cameraPosition = commonConstants.cameraPos;
+	auto cameraPosition = (f32x4)commonConstants.cameraPos;
 	auto selectedEntity = editorSystem->selectedEntity;
 
 	auto updateSelector = !lastDragging && !ImGui::GetIO().WantCaptureMouse && 

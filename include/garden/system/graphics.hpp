@@ -173,9 +173,9 @@ public:
 	 * @details See the @ref getCommonConstants().
 	 * @param giBufferPos target GI buffer position
 	 */
-	void setGiBufferPos(float3 giBufferPos, float intensity = 1.0f) noexcept
+	void setGiBufferPos(float3 giBufferPos) noexcept
 	{
-		currentCommonConstants.giBufferPos = (f32x4)float4(giBufferPos, 0.0f);
+		currentCommonConstants.giBufferPos = giBufferPos;
 	}
 	/**
 	 * @brief Sets shadow color and intensity
@@ -195,7 +195,7 @@ public:
 	 */
 	void setSkyColor(float3 skyColor) noexcept
 	{
-		currentCommonConstants.skyColor = (f32x4)float4(skyColor, 0.0f);
+		currentCommonConstants.skyColor = skyColor;
 	}
 	/**
 	 * @brief Sets emissive coefficient. (Produces maximum brightness)

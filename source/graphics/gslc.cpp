@@ -34,8 +34,15 @@
 using namespace garden;
 using namespace garden::graphics;
 
-//******************************************************************************************************************
 constexpr uint8 gslHeader[] = { 1, 0, 0, GARDEN_LITTLE_ENDIAN, };
+
+#define REQUIRED_GLSL_EXTENSIONS ""                                 \
+	"#extension GL_EXT_nonuniform_qualifier : enable\n"             \
+	"#extension GL_EXT_scalar_block_layout : enable\n"              \
+	"#extension GL_EXT_buffer_reference : enable\n"                 \
+	"#extension GL_EXT_shader_8bit_storage : enable\n"              \
+	"#extension GL_EXT_shader_16bit_storage : enable\n"             \
+	"#extension GL_EXT_shader_explicit_arithmetic_types : enable\n"
 
 namespace garden::graphics
 {
@@ -84,7 +91,7 @@ namespace garden::graphics
 		string line; uint32 lineIndex = 1;
 		int8 isUniform = 0, isBuffer = 0, isPushConstants = 0, isSamplerState = 0;
 		bool isSkipMode = false, isReadonly = false, isWriteonly = false, isMutable = false, 
-			isRestrict = false, isVolatile = false, isCoherent = false, isScalar = false;
+			isRestrict = false, isVolatile = false, isCoherent = false, isStd430 = false;
 		uint8 attachmentIndex = 0, descriptorSetIndex = 0, specConstIndex = 1;
 		GslUniformType uniformType = {};
 		Sampler::State samplerState;
@@ -299,7 +306,7 @@ static string_view toGlslString(Image::Format imageFormat)
 static void endShaderUniform(FileData& fileData)
 {
 	fileData.isReadonly = fileData.isWriteonly = fileData.isMutable = fileData.isRestrict = 
-		fileData.isVolatile = fileData.isCoherent = fileData.isScalar = false;
+		fileData.isVolatile = fileData.isCoherent = fileData.isStd430 = false;
 	fileData.isUniform = fileData.descriptorSetIndex = 0;
 }
 
@@ -314,7 +321,7 @@ static void onShaderUniform(FileData& fileData, LineData& lineData, ShaderStage 
 		else if (lineData.word == "restrict") fileData.isRestrict = true;
 		else if (lineData.word == "volatile") fileData.isVolatile = true;
 		else if (lineData.word == "coherent") fileData.isCoherent = true;
-		else if (lineData.word == "scalar") fileData.isScalar = true;
+		else if (lineData.word == "std430") fileData.isStd430 = true;
 		else if (lineData.word == "reference") lineData.isReference = true;
 		else if (lineData.word.length() > 3 && memcmp(lineData.word.data(), "set", 3) == 0) // Note: Do not move down.
 		{
@@ -328,8 +335,8 @@ static void onShaderUniform(FileData& fileData, LineData& lineData, ShaderStage 
 			if (lineData.isReference)
 			{
 				fileData.outputFileStream << "layout(buffer_reference";
-				if (fileData.isScalar) fileData.outputFileStream << ", scalar";
-				else fileData.outputFileStream << ", std430";
+				if (fileData.isStd430) fileData.outputFileStream << ", std430";
+				else fileData.outputFileStream << ", scalar";
 				fileData.outputFileStream << ") ";
 				if (fileData.isReadonly) fileData.outputFileStream << "readonly ";
 				if (fileData.isWriteonly) fileData.outputFileStream << "writeonly ";
@@ -350,12 +357,12 @@ static void onShaderUniform(FileData& fileData, LineData& lineData, ShaderStage 
 		else if (lineData.word == toString(GslUniformType::PushConstants))
 		{
 			fileData.outputFileStream << "layout(push_constant";
-			if (fileData.isScalar)
+			if (fileData.isStd430)
 			{
-				fileData.outputFileStream << ", scalar";
-				fileData.isScalar = false;
+				fileData.outputFileStream << ", std430";
+				fileData.isStd430 = false;
 			}
-			else fileData.outputFileStream << ", std430";
+			else fileData.outputFileStream << ", scalar";
 			fileData.outputFileStream << ") uniform pushConstants ";
 			fileData.isUniform = 0; fileData.isPushConstants = 1;
 		}
@@ -532,15 +539,16 @@ static void onShaderUniform(FileData& fileData, LineData& lineData, ShaderStage 
 	{
 		fileData.outputFileStream << "layout(binding = " << to_string(binding) <<
 			", set = " << to_string(fileData.descriptorSetIndex);
-		if (fileData.isScalar) fileData.outputFileStream << ", scalar";
+		if (fileData.isStd430) fileData.outputFileStream << ", std430";
+		else fileData.outputFileStream << ", scalar";
 		fileData.outputFileStream << ") uniform " << fileData.outputStream.str();
 	}
 	else if (fileData.uniformType == GslUniformType::StorageBuffer)
 	{
 		fileData.outputFileStream << "layout(binding = " << to_string(binding) <<
 			", set = " << to_string(fileData.descriptorSetIndex);
-		if (fileData.isScalar) fileData.outputFileStream << ", scalar";
-		else fileData.outputFileStream << ", std430";
+		if (fileData.isStd430) fileData.outputFileStream << ", std430";
+		else fileData.outputFileStream << ", scalar";
 		fileData.outputFileStream << ") ";
 		if (fileData.isReadonly) fileData.outputFileStream << "readonly ";
 		if (fileData.isWriteonly) fileData.outputFileStream << "writeonly ";
@@ -1141,18 +1149,6 @@ static void onShaderFeature(FileData& fileData, LineData& lineData)
 {
 	if (lineData.word == "ext.debugPrintf")
 		fileData.outputFileStream << "#extension GL_EXT_debug_printf : require";
-	else if (lineData.word == "ext.explicitTypes")
-		fileData.outputFileStream << "#extension GL_EXT_shader_explicit_arithmetic_types : require";
-	else if (lineData.word == "ext.int8BitStorage")
-		fileData.outputFileStream << "#extension GL_EXT_shader_8bit_storage : require";
-	else if (lineData.word == "ext.int16BitStorage")
-		fileData.outputFileStream << "#extension GL_EXT_shader_16bit_storage : require";
-	else if (lineData.word == "ext.bindless")
-		fileData.outputFileStream << "#extension GL_EXT_nonuniform_qualifier : require";
-	else if (lineData.word == "ext.scalarLayout")
-		fileData.outputFileStream << "#extension GL_EXT_scalar_block_layout : require";
-	else if (lineData.word == "ext.bufferReference")
-		fileData.outputFileStream << "#extension GL_EXT_buffer_reference : require";
 	else if (lineData.word == "ext.subgroupBasic")
 		fileData.outputFileStream << "#extension GL_KHR_shader_subgroup_basic : require";
 	else if (lineData.word == "ext.subgroupVote")
@@ -1340,7 +1336,7 @@ static bool compileGraphicsShader(const fs::path& inputPath, const fs::path& out
 		fileData.inputFileStream, fileData.outputFileStream);
 	if (!fileResult) return false;
 
-	fileData.outputFileStream << "#define GRAPHICS_GSL\n"
+	fileData.outputFileStream << REQUIRED_GLSL_EXTENSIONS "#define GRAPHICS_GSL\n"
 		"#line 1 // Note: Compiler error is at the source shader file line!\n";
 	
 	while (getline(fileData.inputFileStream, fileData.line))
@@ -1678,7 +1674,7 @@ bool GslCompiler::compileComputeShader(const fs::path& inputPath,
 		fileData.inputFileStream, fileData.outputFileStream);
 	if (!fileResult) return false;
 
-	fileData.outputFileStream << "#define COMPUTE_GSL\n"
+	fileData.outputFileStream << REQUIRED_GLSL_EXTENSIONS "#define COMPUTE_GSL\n"
 		"#line 1 // Note: Compiler error is at the source shader file line!\n";
 	
 	while (getline(fileData.inputFileStream, fileData.line))
@@ -1836,7 +1832,8 @@ static bool compileRayTracingShader(const fs::path& inputPath, const fs::path& o
 		fileData.inputFileStream, fileData.outputFileStream);
 	if (!fileResult) return false;
 
-	fileData.outputFileStream << "#extension GL_EXT_ray_tracing : require\n#include \"ray-tracing.gsl\"\n"
+	fileData.outputFileStream << REQUIRED_GLSL_EXTENSIONS 
+		"#extension GL_EXT_ray_tracing : require\n#include \"ray-tracing.gsl\"\n"
 		"#line 1 // Note: Compiler error is at the source shader file line!\n";
 
 	// TODO: shaderRecordEXT support

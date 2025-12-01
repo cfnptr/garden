@@ -141,9 +141,8 @@ public:
 		float4 position;
 		float4 texCoords;
 		uint32 atlasIndex = 0;
-		uint32 color = 0;
-		uint32 _alignment0 = 0;
-		uint32 _alignment1 = 0;
+		uint32 srgbColor = 0;
+		uint64 _alignment = 0;
 	};
 
 	/**

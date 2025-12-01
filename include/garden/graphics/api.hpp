@@ -243,10 +243,6 @@ public:
 	static void terminate();
 
 	/**
-	 * @brief Returns true if buffer device address supported.
-	 */
-	virtual bool hasBufferDeviceAddress() const { return false; }
-	/**
 	 * @brief Returns true if ray tracing supported.
 	 */
 	virtual bool hasRayTracing() const { return false; }

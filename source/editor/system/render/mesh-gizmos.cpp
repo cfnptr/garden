@@ -246,7 +246,7 @@ void MeshGizmosEditorSystem::render()
 	}
 
 	const auto& cc = graphicsSystem->getCommonConstants();
-	auto model = transformView->calcModel(cc.cameraPos);
+	auto model = transformView->calcModel((f32x4)cc.cameraPos);
 	
 	auto windowSize = inputSystem->getWindowSize();
 	auto cursorPosition = inputSystem->getCursorPosition();

@@ -494,7 +494,7 @@ void AtmosphereRenderSystem::preDeferredRender()
 	}
 
 	const auto& cc = graphicsSystem->getCommonConstants();
-	auto cameraHeight = calcCameraHeight(cc.cameraPos.getY(), groundRadius);
+	auto cameraHeight = calcCameraHeight(cc.cameraPos.y, groundRadius);
 	auto cameraPos = float3(0.0f, cameraHeight, 0.0f);
 	auto topRadius = groundRadius + atmosphereHeight;
 	auto rayDensityExpScale = -1.0f / rayleightScaleHeight;
@@ -698,7 +698,7 @@ void AtmosphereRenderSystem::updateSkybox()
 				}
 
 				auto& cc = graphicsSystem->getCommonConstants();
-				auto cameraHeight = calcCameraHeight(cc.cameraPos.getY(), groundRadius);
+				auto cameraHeight = calcCameraHeight(cc.cameraPos.y, groundRadius);
 				auto viewProj = (f32x4x4)calcPerspProjInfRevZ(
 					radians(90.0f), 1.0f, defaultHmdDepth) * sideLookAts[updatePhase];
 				pipelineView->updateFramebuffer(framebuffer);
@@ -789,8 +789,8 @@ void AtmosphereRenderSystem::updateSkybox()
 				{ 
 					shRedPipelineView->bindDescriptorSet(shReduceDS, shInFlightIndex);
 					shRedPipelineView->pushConstants(&pc);
-					shRedPipelineView->dispatch(i);
-					pc.offset += i;
+					shRedPipelineView->dispatch((uint32)i);
+					pc.offset += (uint32)i;
 				}
 
 				auto inFlightCount = graphicsSystem->getInFlightCount();
@@ -846,7 +846,7 @@ void AtmosphereRenderSystem::hdrRender()
 	}
 
 	auto& cc = graphicsSystem->getCommonConstants();
-	auto cameraHeight = calcCameraHeight(cc.cameraPos.getY(), groundRadius);
+	auto cameraHeight = calcCameraHeight(cc.cameraPos.y, groundRadius);
 	pipelineView->updateFramebuffer(graphicsSystem->getCurrentFramebuffer());
 
 	SkyPushConstants pc;

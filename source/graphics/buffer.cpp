@@ -156,9 +156,6 @@ Buffer::Buffer(Usage usage, CpuAccess cpuAccess, Location location, Strategy str
 	GARDEN_ASSERT(size > 0);
 
 	auto graphicsAPI = GraphicsAPI::get();
-	if (hasAnyFlag(usage, Buffer::Usage::DeviceAddress) && !graphicsAPI->hasBufferDeviceAddress())
-		throw GardenError("Device buffer address is not supported on this GPU.");
-
 	if (!graphicsAPI->hasRayTracing() && hasAnyFlag(usage, Buffer::Usage::StorageAS | 
 		Buffer::Usage::BuildInputAS | Buffer::Usage::SBT))
 	{

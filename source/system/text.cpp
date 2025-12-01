@@ -444,7 +444,7 @@ static bool fillTextInstances(u32string_view value, Text::Properties properties,
 				float4(instanceOffset, instanceOffset);
 			instance.texCoords = result->second.texCoords;
 			instance.atlasIndex = atlasIndex;
-			instance.color = encodeColor(color);
+			instance.srgbColor = (uint32)color;
 			instances[instanceIndex++] = instance;
 		}
 		instanceOffset.x += result->second.advance;

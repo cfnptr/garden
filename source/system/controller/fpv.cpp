@@ -239,9 +239,9 @@ void FpvControllerSystem::updateCharacterControl()
 
 	auto velocity = f32x4::zero;
 	if (inputSystem->getKeyboardState(KeyboardButton::W))
-		velocity = cc.viewDir;
+		velocity = (f32x4)cc.viewDir;
 	if (inputSystem->getKeyboardState(KeyboardButton::S))
-		velocity -= cc.viewDir;
+		velocity -= (f32x4)cc.viewDir;
 	if (velocity != f32x4::zero)
 	{
 		velocity.setY(0.0f);

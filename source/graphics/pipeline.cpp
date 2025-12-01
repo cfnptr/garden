@@ -360,12 +360,6 @@ Pipeline::Pipeline(CreateData& createData, bool asyncRecording)
 	auto graphicsAPI = GraphicsAPI::get();
 	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
-		if (createData.maxBindlessCount > 0 && !VulkanAPI::get()->features.descriptorIndexing)
-		{
-			throw GardenError("Bindless descriptors are not supported on this GPU. ("
-				"pipeline: )" + createData.shaderPath.generic_string() + ")");
-		}
-
 		this->pushConstantsMask = (uint32)toVkShaderStages(createData.pushConstantsStages);
 
 		tsl::robin_map<string, vk::Sampler> immutableSamplers;

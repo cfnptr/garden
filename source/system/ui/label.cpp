@@ -419,21 +419,37 @@ void UiLabelSystem::deserialize(IDeserializer& deserializer, View<Component> com
 
 	auto totalFontSize = calcTotalFontSize(componentView->fontSize, componentView->adjustCJK);
 	auto scaledFontSize = calcScaledFontSize(totalFontSize);
-	auto fonts = ResourceSystem::Instance::get()->loadFonts(fontPaths, 0, loadNoto);
 
-	if (!componentView->text.empty() && scaledFontSize != 0 && (!fonts.empty() || loadNoto))
+	if (componentView->text.empty() || scaledFontSize == 0
+		#if GARDEN_DEBUG || GARDEN_EDITOR
+		|| componentView->fontPaths.empty() && !componentView->loadNoto
+		#endif
+		)
 	{
-		auto textSystem = TextSystem::Instance::get();
-		auto textData = textSystem->createText(componentView->text, 
-			std::move(fonts), scaledFontSize, componentView->propterties);
-		componentView->textData = textData;
+		return;
+	}
 
-		if (textData)
-		{
-			componentView->descriptorSet = createDescritproSet(textData);
-			auto textSize = textSystem->get(textData)->getSize() * totalFontSize;
-			componentView->aabb.setSize(f32x4(float3(textSize, 1.0f)));
-		}
+	u32string_view textString; u32string utf32;
+	if (componentView->useLocale)
+	{
+		LocaleSystem::Instance::get()->get(componentView->text, utf32);
+		if (utf32.empty())
+			return;
+		textString = utf32;
+	}
+	else textString = componentView->text;
+
+	auto textSystem = TextSystem::Instance::get();
+	auto fonts = ResourceSystem::Instance::get()->loadFonts(fontPaths, 0, loadNoto);
+	auto textData = textSystem->createText(textString, std::move(fonts), scaledFontSize, componentView->propterties);
+	componentView->textData = textData;
+
+	if (textData)
+	{
+		componentView->descriptorSet = createDescritproSet(textData);
+		auto textSize = textSystem->get(textData)->getSize() * totalFontSize;
+		componentView->aabb.setSize(f32x4(float3(textSize, 1.0f)));
+		componentView->isEnabled = true;
 	}
 }
 
@@ -551,7 +567,8 @@ void UiLabelSystem::deserializeAnimation(IDeserializer& deserializer, View<Anima
 		std::move(fonts), scaledFontSize, frameView->propterties);
 	frameView->textData = textData;
 
-	frameView->descriptorSet = createDescritproSet(textData);
+	if (textData)
+		frameView->descriptorSet = createDescritproSet(textData);
 }
 
 //**********************************************************************************************************************

@@ -280,13 +280,11 @@ rayPayload float4 payload;
 **.rmiss** - Ray miss shader
 **.rcall** - Callable shader
 
-## Bindless
+## Bindless (Unsized Arrays)
 
 Allows to declare uniforms without specified array size.
 
 ```
-#feature ext.bindless
-
 uniform SomeBuffer
 {
     float someValue;
@@ -301,10 +299,7 @@ You can access GPU storage buffer data by it device address, which can
 be passed to the shader using push constants or another storage buffer.
 
 ```
-#feature ext.bufferReference
-#feature ext.scalarLayout
-
-buffer reference scalar VertexBuffer
+buffer reference VertexBuffer
 {
     float3 vertices[];
 };
@@ -328,18 +323,10 @@ TODO:
 To enable specific GLSL extensions use this shorting:
 
 ```
-#feature ext.bindless
+#feature ext.debugPrintf
 ```
 
 **Features**:
 
 * ext.debugPrintf - [GLSL_EXT_debug_printf](https://github.com/KhronosGroup/GLSL/blob/main/extensions/ext/GLSL_EXT_debug_printf.txt)
-* ext.explicitTypes - [GL_EXT_shader_explicit_arithmetic_types](https://github.com/KhronosGroup/GLSL/blob/main/extensions/ext/GL_EXT_shader_explicit_arithmetic_types.txt)
-* ext.int8BitStorage - [GL_EXT_shader_8bit_storage](https://github.com/KhronosGroup/GLSL/blob/main/extensions/ext/GL_EXT_shader_16bit_storage.txt)
-* ext.int16BitStorage - [GL_EXT_shader_16bit_storage](https://github.com/KhronosGroup/GLSL/blob/main/extensions/ext/GL_EXT_shader_16bit_storage.txt)
-* ext.bindless - [GL_EXT_nonuniform_qualifier](https://github.com/KhronosGroup/GLSL/blob/main/extensions/ext/GL_EXT_nonuniform_qualifier.txt)
-* ext.scalarLayout - [GL_EXT_scalar_block_layout](https://github.com/KhronosGroup/GLSL/blob/main/extensions/ext/GL_EXT_scalar_block_layout.txt)
-* ext.bufferReference - [GL_EXT_buffer_reference](https://github.com/KhronosGroup/GLSL/blob/main/extensions/ext/GLSL_EXT_buffer_reference.txt)
-* ext.subgroupBasic - [GL_KHR_shader_subgroup_basic](https://github.com/KhronosGroup/GLSL/blob/main/extensions/khr/GL_KHR_shader_subgroup.txt)
-* ext.subgroupVote - [GL_KHR_shader_subgroup_vote](https://github.com/KhronosGroup/GLSL/blob/main/extensions/khr/GL_KHR_shader_subgroup.txt)
 * ext.rayQuery - [GL_EXT_ray_query](https://github.com/KhronosGroup/GLSL/blob/main/extensions/ext/GLSL_EXT_ray_query.txt)

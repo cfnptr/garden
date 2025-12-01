@@ -242,7 +242,7 @@ void CloudsRenderSystem::preHdrRender()
 	}
 
 	auto& cc = graphicsSystem->getCommonConstants();
-	auto cameraHeight =  max(cc.cameraPos.getY(), 0.0f) * 0.001f;
+	auto cameraHeight =  max(cc.cameraPos.y, 0.0f) * 0.001f;
 	auto framebufferView = graphicsSystem->get(viewFramebuffer);
 	pipelineView->updateFramebuffer(viewFramebuffer);
 
