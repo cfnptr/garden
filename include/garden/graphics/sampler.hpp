@@ -79,9 +79,8 @@ public:
 	 * @brief Clamp to border sampling color.
 	 * 
 	 * @details
-	 * Color applied to pixels that fall outside the texture coordinates when using @ref ClampToBorder sampling modes.
-	 * 
-	 * @todo Support custom color extension?
+	 * Color applied to pixels that fall outside the texture 
+	 * coordinates when using @ref ClampToBorder sampling modes.
 	 */
 	enum class BorderColor : uint8
 	{
@@ -92,6 +91,7 @@ public:
 		FloatOpaqueWhite,      /**< Opaque, floating point format, white color. */
 		IntOpaqueWhite,        /**< Opaque, integer format, white color. */
 		Count                  /**< Clamp to border sampling color count. */
+		// TODO: Support custom color extension?
 	};
 	/**
 	 * @brief Comparison operator for depth, stencil, and sampler operations

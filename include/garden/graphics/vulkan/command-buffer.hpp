@@ -36,7 +36,7 @@ public:
 	static void addBufferBarrier(VulkanAPI* vulkanAPI, Buffer::BarrierState newBufferState, 
 		ID<Buffer> buffer, uint64 size = VK_WHOLE_SIZE, uint64 offset = 0);
 	static void addImageBarrier(VulkanAPI* vulkanAPI, 
-		Image::BarrierState newImageState, ID<ImageView> imageView);
+		Image::LayoutState newImageState, ID<ImageView> imageView);
 	static void addDescriptorSetBarriers(VulkanAPI* vulkanAPI, 
 		const DescriptorSet::Range* descriptorSetRange, uint32 rangeCount);
 	void addRenderPassBarriers(VulkanAPI* vulkanAPI, psize offset);
@@ -87,7 +87,8 @@ public:
 		VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT | VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT |
 		VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR | VK_ACCESS_COMMAND_PREPROCESS_WRITE_BIT_EXT;
 
-	static constexpr bool isDifferentState(const Image::BarrierState& oldState, const Image::BarrierState& newState) noexcept
+	static constexpr bool isDifferentState(const Image::LayoutState& oldState, 
+		const Image::LayoutState& newState) noexcept
 	{
 		auto layoutTransition = false;
 		switch (newState.stage)
@@ -105,7 +106,7 @@ public:
 		return oldState.access & writeAccessMask;
 	}
 
-	static constexpr void updateLayoutTrans(const Image::BarrierState& oldState, Image::BarrierState& newState) noexcept
+	static constexpr void updateLayoutTrans(const Image::LayoutState& oldState, Image::LayoutState& newState) noexcept
 	{
 		if (oldState.layout != newState.layout)
 		{

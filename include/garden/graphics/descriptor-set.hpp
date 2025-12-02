@@ -18,7 +18,6 @@
  */
 
 #pragma once
-#include "garden/graphics/common.hpp"
 #include "garden/graphics/image.hpp"
 #include "garden/graphics/acceleration-structure/tlas.hpp"
 #include "tsl/robin_map.h"

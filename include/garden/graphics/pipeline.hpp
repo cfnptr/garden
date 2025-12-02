@@ -49,15 +49,15 @@ public:
 	 */
 	struct Uniform final
 	{
-		ShaderStage shaderStages = {}; /**< Shader stages where uniform is used. */
-		GslUniformType type = {};      /**< Uniform variable type. */
-		uint8 bindingIndex = 0;        /**< Binding index inside the descriptor set. */
-		uint8 descriptorSetIndex = 0;  /**< Index of the descriptor set. */
-		uint8 arraySize = 0;           /**< Number of descriptors contained in the binding. */
-		bool readAccess = true;        /**< Is variable read access allowed. */
-		bool writeAccess = true;       /**< Is variable write access allowed. */
-		bool isMutable = false;        /**< Is uniform resource can be assigned dynamically. */
-		uint8 _alignment = 0;          // Note: Should be aligned.
+		PipelineStage pipelineStages = {}; /**< Pipeline stages where uniform is used. */
+		GslUniformType type = {};          /**< Uniform variable type. */
+		uint8 bindingIndex = 0;            /**< Binding index inside the descriptor set. */
+		uint8 descriptorSetIndex = 0;      /**< Index of the descriptor set. */
+		uint8 arraySize = 0;               /**< Number of descriptors contained in the binding. */
+		bool readAccess = true;            /**< Is variable read access allowed. */
+		bool writeAccess = true;           /**< Is variable write access allowed. */
+		bool isMutable = false;            /**< Is uniform resource can be assigned dynamically. */
+		uint8 _alignment = 0;              // Note: Should be aligned.
 	};
 
 	/*******************************************************************************************************************
@@ -71,7 +71,7 @@ public:
 	 */
 	struct SpecConst
 	{
-		ShaderStage shaderStages = {};
+		PipelineStage pipelineStages = {};
 		GslDataType dataType = {};
 		uint8 index = 0;
 		uint16 _alignment = 0;
@@ -123,7 +123,7 @@ public:
 		uint64 pipelineVersion = 0;
 		uint32 maxBindlessCount = 0;
 		uint32 rayRecursionDepth = 0;
-		ShaderStage pushConstantsStages = {};
+		PipelineStage pushConstantsStages = {};
 		uint16 pushConstantsSize = 0;
 		uint8 descriptorSetCount = 0;
 		uint8 variantCount = 0;
@@ -164,7 +164,7 @@ protected:
 	static void destroyShaders(const vector<void*>& shaders);
 
 	static void fillVkSpecConsts(const fs::path& path, void* specInfo, const SpecConsts& specConsts, 
-		const SpecConstValues& specConstValues, ShaderStage shaderStage, uint8 variantCount);
+		const SpecConstValues& specConstValues, PipelineStage pipelineStage, uint8 variantCount);
 	static void setVkVariantIndex(void* specInfo, uint8 variantIndex);
 	static void updateDescriptorsLock(const DescriptorSet::Range* descriptorSetRange, uint8 descriptorDataSize);
 	static bool checkThreadIndex(int32 threadIndex);
@@ -411,7 +411,7 @@ public:
 	 */
 	static uint32& getMaxBindlessCount(Pipeline& pipeline) noexcept { return pipeline.maxBindlessCount; }
 	/**
-	 * @brief Returns pipeline push constants shader stages mask.
+	 * @brief Returns pipeline push constants pipeline stages mask.
 	 * @warning In most cases you should use @ref Pipeline functions.
 	 * @param[in] pipeline target pipeline instance
 	 */

@@ -178,7 +178,7 @@ public:
 	 * @param mip image mip level
 	 * @param layer image layer index
 	 */
-	Image::BarrierState& getImageState(ID<Image> image, uint8 mip, uint32 layer) noexcept
+	Image::LayoutState& getImageState(ID<Image> image, uint8 mip, uint32 layer) noexcept
 	{
 		auto imageView = imagePool.get(image);
 		auto& barrierStates = ImageExt::getBarrierStates(**imageView);

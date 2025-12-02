@@ -19,7 +19,6 @@
 
 #pragma once
 #include "linear-pool.hpp"
-#include "garden/graphics/common.hpp"
 #include "garden/graphics/memory.hpp"
 
 namespace garden::graphics
@@ -100,15 +99,6 @@ public:
 		uint64 srcOffset = 0; /**< Source buffer offset of the region in bytes. */
 		uint64 dstOffset = 0; /**< Destination buffer offset of the region in bytes. */
 	};
-
-	/**
-	 * @brief Buffer memory barrier state.
-	 */
-	struct BarrierState final
-	{
-		uint32 access = 0;
-		uint32 stage = 0;
-	};
 private:
 	uint8 _alignment = 0;
 	uint8* map = nullptr;
@@ -138,17 +128,17 @@ public:
 
 	/**
 	 * @brief Returns pointer to the buffer mapped memory or nullptr.
-	 * @warning Use it only according to the @ref Memory::Access!
+	 * @warning Use it only according to the @ref Memory::CpuAccess!
 	 */
 	uint8* getMap() noexcept { return map; }
 	/**
 	 * @brief Returns constant pointer to the buffer mapped memory or nullptr.
-	 * @warning Use it only according to the @ref Memory::Access!
+	 * @warning Use it only according to the @ref Memory::CpuAccess!
 	 */
 	const uint8* getMap() const noexcept { return map; }
 	/**
 	 * @brief Returns buffer device address which can be used inside shaders.
-	 * @warning Make sure that your target GPU supports buffer device address!
+	 * @warning Use it only according to the @ref Buffer::Usage!
 	 */
 	uint64 getDeviceAddress() const noexcept { return deviceAddress; }
 
@@ -323,7 +313,7 @@ DECLARE_ENUM_CLASS_FLAG_OPERATORS(Buffer::Usage)
 
 /***********************************************************************************************************************
  * @brief Returns buffer usage name string.
- * @param imageUsage target buffer usage flags
+ * @param imageUsage target buffer usage flag
  */
 static string_view toString(Buffer::Usage bufferUsage)
 {

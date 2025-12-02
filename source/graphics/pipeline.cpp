@@ -87,7 +87,7 @@ static void createVkDescriptorSetLayouts(vector<void*>& descriptorSetLayouts, ve
 			auto& descriptorSetBinding = descriptorSetBindings[bindingIndex];
 			descriptorSetBinding.binding = (uint32)uniform.bindingIndex;
 			descriptorSetBinding.descriptorType = toVkDescriptorType(uniform.type);
-			descriptorSetBinding.stageFlags = toVkShaderStages(uniform.shaderStages);
+			descriptorSetBinding.stageFlags = toVkShaderStages(uniform.pipelineStages);
 
 			if (uniform.arraySize > 0)
 			{
@@ -214,32 +214,32 @@ static void createVkDescriptorSetLayouts(vector<void*>& descriptorSetLayouts, ve
 }
 
 //**********************************************************************************************************************
-static vk::PipelineLayout createVkPipelineLayout(uint16 pushConstantsSize, ShaderStage pushConstantsStages,
+static vk::PipelineLayout createVkPipelineLayout(uint16 pushConstantsSize, PipelineStage pushConstantsStages,
 	const vector<void*>& descriptorSetLayouts, const fs::path& pipelinePath)
 {
 	vector<vk::PushConstantRange> pushConstantRanges;
 
-	if (hasAnyFlag(pushConstantsStages, ShaderStage::Vertex))
+	if (hasAnyFlag(pushConstantsStages, PipelineStage::Vertex))
 		pushConstantRanges.emplace_back(vk::ShaderStageFlagBits::eVertex, 0, pushConstantsSize);
-	if (hasAnyFlag(pushConstantsStages, ShaderStage::Fragment))
+	if (hasAnyFlag(pushConstantsStages, PipelineStage::Fragment))
 		pushConstantRanges.emplace_back(vk::ShaderStageFlagBits::eFragment, 0, pushConstantsSize);
-	if (hasAnyFlag(pushConstantsStages, ShaderStage::Compute))
+	if (hasAnyFlag(pushConstantsStages, PipelineStage::Compute))
 		pushConstantRanges.emplace_back(vk::ShaderStageFlagBits::eCompute, 0, pushConstantsSize);
-	if (hasAnyFlag(pushConstantsStages, ShaderStage::RayGeneration))
+	if (hasAnyFlag(pushConstantsStages, PipelineStage::RayGeneration))
 		pushConstantRanges.emplace_back(vk::ShaderStageFlagBits::eRaygenKHR, 0, pushConstantsSize);
-	if (hasAnyFlag(pushConstantsStages, ShaderStage::Intersection))
+	if (hasAnyFlag(pushConstantsStages, PipelineStage::Intersection))
 		pushConstantRanges.emplace_back(vk::ShaderStageFlagBits::eIntersectionKHR, 0, pushConstantsSize);
-	if (hasAnyFlag(pushConstantsStages, ShaderStage::AnyHit))
+	if (hasAnyFlag(pushConstantsStages, PipelineStage::AnyHit))
 		pushConstantRanges.emplace_back(vk::ShaderStageFlagBits::eAnyHitKHR, 0, pushConstantsSize);
-	if (hasAnyFlag(pushConstantsStages, ShaderStage::ClosestHit))
+	if (hasAnyFlag(pushConstantsStages, PipelineStage::ClosestHit))
 		pushConstantRanges.emplace_back(vk::ShaderStageFlagBits::eClosestHitKHR, 0, pushConstantsSize);
-	if (hasAnyFlag(pushConstantsStages, ShaderStage::Miss))
+	if (hasAnyFlag(pushConstantsStages, PipelineStage::Miss))
 		pushConstantRanges.emplace_back(vk::ShaderStageFlagBits::eMissKHR, 0, pushConstantsSize);
-	if (hasAnyFlag(pushConstantsStages, ShaderStage::Callable))
+	if (hasAnyFlag(pushConstantsStages, PipelineStage::Callable))
 		pushConstantRanges.emplace_back(vk::ShaderStageFlagBits::eCallableKHR, 0, pushConstantsSize);
-	if (hasAnyFlag(pushConstantsStages, ShaderStage::Mesh))
+	if (hasAnyFlag(pushConstantsStages, PipelineStage::Mesh))
 		pushConstantRanges.emplace_back(vk::ShaderStageFlagBits::eMeshEXT, 0, pushConstantsSize);
-	if (hasAnyFlag(pushConstantsStages, ShaderStage::Task))
+	if (hasAnyFlag(pushConstantsStages, PipelineStage::Task))
 		pushConstantRanges.emplace_back(vk::ShaderStageFlagBits::eTaskEXT, 0, pushConstantsSize);
 
 	vk::PipelineLayoutCreateInfo pipelineLayoutInfo({}, 0, nullptr,
@@ -428,7 +428,7 @@ void Pipeline::destroyShaders(const vector<void*>& shaders)
 
 //**********************************************************************************************************************
 void Pipeline::fillVkSpecConsts(const fs::path& path, void* specInfo, const Pipeline::SpecConsts& specConsts, 
-	const Pipeline::SpecConstValues& specConstValues, ShaderStage shaderStage, uint8 variantCount)
+	const Pipeline::SpecConstValues& specConstValues, PipelineStage pipelineStage, uint8 variantCount)
 {
 	auto info = (vk::SpecializationInfo*)specInfo;
 	uint32 dataSize = 0, entryCount = 0;
@@ -441,7 +441,7 @@ void Pipeline::fillVkSpecConsts(const fs::path& path, void* specInfo, const Pipe
 
 	for (const auto& pair : specConsts)
 	{
-		if (!hasAnyFlag(pair.second.shaderStages, shaderStage))
+		if (!hasAnyFlag(pair.second.pipelineStages, pipelineStage))
 			continue;
 		dataSize += sizeof(uint32);
 		entryCount++;
@@ -464,7 +464,7 @@ void Pipeline::fillVkSpecConsts(const fs::path& path, void* specInfo, const Pipe
 
 	for (const auto& pair : specConsts)
 	{
-		if (!hasAnyFlag(pair.second.shaderStages, shaderStage))
+		if (!hasAnyFlag(pair.second.pipelineStages, pipelineStage))
 			continue;
 
 		#if GARDEN_DEBUG
@@ -869,7 +869,7 @@ void Pipeline::pushConstants(const void* data)
 
 	PushConstantsCommand command;
 	command.dataSize = pushConstantsSize;
-	command.shaderStages = pushConstantsMask;
+	command.pipelineStages = pushConstantsMask;
 	command.pipelineLayout = pipelineLayout;
 	command.data = data;
 	graphicsAPI->currentCommandBuffer->addCommand(command);

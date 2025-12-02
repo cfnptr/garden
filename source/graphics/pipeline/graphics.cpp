@@ -120,19 +120,19 @@ void GraphicsPipeline::createVkInstance(GraphicsCreateData& createData)
 		this->instance = malloc<vk::Pipeline>(variantCount);
 
 	constexpr uint8 maxStageCount = 2;
-	ShaderStage shaderStages[maxStageCount]; 
+	PipelineStage pipelineStages[maxStageCount]; 
 	vector<uint8> codeArray[maxStageCount];
 	uint8 stageCount = 0;
 
 	if (!createData.vertexCode.empty())
 	{
-		shaderStages[stageCount] = ShaderStage::Vertex;
+		pipelineStages[stageCount] = PipelineStage::Vertex;
 		codeArray[stageCount] = std::move(createData.vertexCode);
 		stageCount++;
 	}
 	if (!createData.fragmentCode.empty())
 	{
-		shaderStages[stageCount] = ShaderStage::Fragment;
+		pipelineStages[stageCount] = PipelineStage::Fragment;
 		codeArray[stageCount] = std::move(createData.fragmentCode);
 		stageCount++;
 	}
@@ -143,10 +143,10 @@ void GraphicsPipeline::createVkInstance(GraphicsCreateData& createData)
 
 	for (uint8 i = 0; i < stageCount; i++)
 	{
-		auto shaderStage = shaderStages[i]; auto specializationInfo = &specializationInfos[i];
+		auto pipelineStage = pipelineStages[i]; auto specializationInfo = &specializationInfos[i];
 		fillVkSpecConsts(createData.shaderPath, specializationInfo, 
-			createData.specConsts, createData.specConstValues, shaderStage, variantCount);
-		vk::PipelineShaderStageCreateInfo stageInfo({}, toVkShaderStage(shaderStage), (VkShaderModule)shaders[i], 
+			createData.specConsts, createData.specConstValues, pipelineStage, variantCount);
+		vk::PipelineShaderStageCreateInfo stageInfo({}, toVkShaderStage(pipelineStage), (VkShaderModule)shaders[i], 
 			"main", specializationInfo->mapEntryCount > 0 ? specializationInfo : nullptr);
 		stageInfos[i] = stageInfo;
 	}
@@ -616,23 +616,14 @@ void GraphicsPipeline::drawAsync(int32 threadIndex, ID<Buffer> vertexBuffer,
 		auto vulkanAPI = VulkanAPI::get();
 		auto secondaryCommandBuffer = vulkanAPI->secondaryCommandBuffers[threadIndex];
 
-		if (vertexBuffer != vulkanAPI->currentVertexBuffers[threadIndex])
+		if (vertexBuffer && vertexBuffer != vulkanAPI->currentVertexBuffers[threadIndex])
 		{
-			vk::Buffer instance;
-			if (vertexBuffer)
-			{
-				vertexBufferView = OptView<Buffer>(vulkanAPI->bufferPool.get(vertexBuffer));
-				GARDEN_ASSERT_MSG(ResourceExt::getInstance(**vertexBufferView), "Vertex buffer [" + 
-					vertexBufferView->getDebugName() + "] is not ready");
-				instance = (VkBuffer)ResourceExt::getInstance(**vertexBufferView);
-			}
-			else
-			{
-				instance = nullptr;
-			}
-
-			const vk::DeviceSize size = 0;
-			secondaryCommandBuffer.bindVertexBuffers(0, 1, (vk::Buffer*)&instance, &size);
+			constexpr vk::DeviceSize size = 0;
+			vertexBufferView = OptView<Buffer>(vulkanAPI->bufferPool.get(vertexBuffer));
+			GARDEN_ASSERT_MSG(ResourceExt::getInstance(**vertexBufferView), "Vertex buffer [" + 
+				vertexBufferView->getDebugName() + "] is not ready");			
+			vk::Buffer instance = (VkBuffer)ResourceExt::getInstance(**vertexBufferView);
+			secondaryCommandBuffer.bindVertexBuffers(0, 1, &instance, &size);
 			vulkanAPI->currentVertexBuffers[threadIndex] = vertexBuffer;
 		}
 

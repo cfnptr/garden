@@ -40,21 +40,21 @@ public:
 	/**
 	 * @brief Framebuffer input attachment description.
 	 * @details See the @ref Framebuffer::getSubpasses().
-	 * @warning shaderStages variable affects memory syncronization!
+	 * @warning pipelineStages variable affects memory syncronization!
 	 */
 	struct InputAttachment final
 	{
-		ID<ImageView> imageView = {};  /**< Input attachment image view. */
-		ShaderStage shaderStages = {}; /**< Shader stages where attachment is used. [affects synchronization!] */
+		ID<ImageView> imageView = {};      /**< Input attachment image view. */
+		PipelineStage pipelineStages = {}; /**< Pipeline stages where attachment is used. [affects synchronization!] */
 
 		/**
 		 * @brief Creates a new framebuffer input attachment.
 		 * 
 		 * @param imageView target input image view
-		 * @param shaderStages shader stages where attachment is used [affects synchronization!]
+		 * @param pipelineStages pipeline stages where attachment is used [affects synchronization!]
 		 */
-		constexpr InputAttachment(ID<ImageView> imageView, ShaderStage shaderStages) noexcept :
-			imageView(imageView), shaderStages(shaderStages) { }
+		constexpr InputAttachment(ID<ImageView> imageView, PipelineStage pipelineStages) noexcept :
+			imageView(imageView), pipelineStages(pipelineStages) { }
 		/**
 		 * @brief Creates a new empty framebuffer input attachment.
 		 * @note It can not be used to create a framebuffer.

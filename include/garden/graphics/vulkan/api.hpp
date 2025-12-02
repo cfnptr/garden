@@ -237,7 +237,8 @@ static vk::Format toVkFormat(Image::Format formatType) noexcept
 	default: abort();
 	}
 }
-/**
+
+/***********************************************************************************************************************
  * @brief Returns image data format type from the Vulkan format.
  * @param formatType target Vulkan format type
  */
@@ -468,87 +469,89 @@ static vk::CompareOp toVkCompareOp(Sampler::CompareOp compareOperation) noexcept
 }
 
 /***********************************************************************************************************************
- * @brief Returns Vulkan shader stage flag bits from the shader stage.
- * @param shaderStage target shader stage
+ * @brief Returns Vulkan shader stage flag bits from the pipeline stage.
+ * @param pipelineStage target shader stage
  */
-static vk::ShaderStageFlagBits toVkShaderStage(ShaderStage shaderStage) noexcept
+static vk::ShaderStageFlagBits toVkShaderStage(PipelineStage pipelineStage)
 {
-	if (hasOneFlag(shaderStage, ShaderStage::Vertex))
+	if (hasOneFlag(pipelineStage, PipelineStage::Vertex))
 		return vk::ShaderStageFlagBits::eVertex;
-	if (hasOneFlag(shaderStage, ShaderStage::Fragment))
+	if (hasOneFlag(pipelineStage, PipelineStage::Fragment))
 		return vk::ShaderStageFlagBits::eFragment;
-	if (hasOneFlag(shaderStage, ShaderStage::Compute))
+	if (hasOneFlag(pipelineStage, PipelineStage::Compute))
 		return vk::ShaderStageFlagBits::eCompute;
-	if (hasOneFlag(shaderStage, ShaderStage::RayGeneration))
+	if (hasOneFlag(pipelineStage, PipelineStage::RayGeneration))
 		return vk::ShaderStageFlagBits::eRaygenKHR;
-	if (hasOneFlag(shaderStage, ShaderStage::Intersection))
+	if (hasOneFlag(pipelineStage, PipelineStage::Intersection))
 		return vk::ShaderStageFlagBits::eIntersectionKHR;
-	if (hasOneFlag(shaderStage, ShaderStage::AnyHit))
+	if (hasOneFlag(pipelineStage, PipelineStage::AnyHit))
 		return vk::ShaderStageFlagBits::eAnyHitKHR;
-	if (hasOneFlag(shaderStage, ShaderStage::ClosestHit))
+	if (hasOneFlag(pipelineStage, PipelineStage::ClosestHit))
 		return vk::ShaderStageFlagBits::eClosestHitKHR;
-	if (hasOneFlag(shaderStage, ShaderStage::Miss))
+	if (hasOneFlag(pipelineStage, PipelineStage::Miss))
 		return vk::ShaderStageFlagBits::eMissKHR;
-	if (hasOneFlag(shaderStage, ShaderStage::Callable))
+	if (hasOneFlag(pipelineStage, PipelineStage::Callable))
 		return vk::ShaderStageFlagBits::eCallableKHR;
-	if (hasOneFlag(shaderStage, ShaderStage::Mesh))
+	if (hasOneFlag(pipelineStage, PipelineStage::Mesh))
 		return vk::ShaderStageFlagBits::eMeshEXT;
-	if (hasOneFlag(shaderStage, ShaderStage::Task))
+	if (hasOneFlag(pipelineStage, PipelineStage::Task))
 		return vk::ShaderStageFlagBits::eTaskEXT;
-	abort();
+	throw GardenError("Invalid shader stage. (" + string(toString(pipelineStage)) + ")");
 }
 /**
- * @brief Returns Vulkan shader stage flags from the shader stage.
- * @param shaderStage target shader stage
+ * @brief Returns Vulkan shader stage flags from the pipeline stage.
+ * @param pipelineStage target shader stage
  */
-static constexpr vk::ShaderStageFlags toVkShaderStages(ShaderStage shaderStage) noexcept
+static constexpr vk::ShaderStageFlags toVkShaderStages(PipelineStage pipelineStage) noexcept
 {
 	vk::ShaderStageFlags flags;
-	if (hasAnyFlag(shaderStage, ShaderStage::Vertex))
+	if (hasAnyFlag(pipelineStage, PipelineStage::Vertex))
 		flags |= vk::ShaderStageFlagBits::eVertex;
-	if (hasAnyFlag(shaderStage, ShaderStage::Fragment))
+	if (hasAnyFlag(pipelineStage, PipelineStage::Fragment))
 		flags |= vk::ShaderStageFlagBits::eFragment;
-	if (hasAnyFlag(shaderStage, ShaderStage::Compute))
+	if (hasAnyFlag(pipelineStage, PipelineStage::Compute))
 		flags |= vk::ShaderStageFlagBits::eCompute;
-	if (hasAnyFlag(shaderStage, ShaderStage::RayGeneration))
+	if (hasAnyFlag(pipelineStage, PipelineStage::RayGeneration))
 		flags |= vk::ShaderStageFlagBits::eRaygenKHR;
-	if (hasAnyFlag(shaderStage, ShaderStage::Intersection))
+	if (hasAnyFlag(pipelineStage, PipelineStage::Intersection))
 		flags |= vk::ShaderStageFlagBits::eIntersectionKHR;
-	if (hasAnyFlag(shaderStage, ShaderStage::AnyHit))
+	if (hasAnyFlag(pipelineStage, PipelineStage::AnyHit))
 		flags |= vk::ShaderStageFlagBits::eAnyHitKHR;
-	if (hasAnyFlag(shaderStage, ShaderStage::ClosestHit))
+	if (hasAnyFlag(pipelineStage, PipelineStage::ClosestHit))
 		flags |= vk::ShaderStageFlagBits::eClosestHitKHR;
-	if (hasAnyFlag(shaderStage, ShaderStage::Miss))
+	if (hasAnyFlag(pipelineStage, PipelineStage::Miss))
 		flags |= vk::ShaderStageFlagBits::eMissKHR;
-	if (hasAnyFlag(shaderStage, ShaderStage::Callable))
+	if (hasAnyFlag(pipelineStage, PipelineStage::Callable))
 		flags |= vk::ShaderStageFlagBits::eCallableKHR;
-	if (hasAnyFlag(shaderStage, ShaderStage::Mesh))
+	if (hasAnyFlag(pipelineStage, PipelineStage::Mesh))
 		flags |= vk::ShaderStageFlagBits::eMeshEXT;
-	if (hasAnyFlag(shaderStage, ShaderStage::Task))
+	if (hasAnyFlag(pipelineStage, PipelineStage::Task))
 		flags |= vk::ShaderStageFlagBits::eTaskEXT;
 	return flags;
 }
 /**
- * @brief Returns Vulkan pipeline stage flags from the shader stage.
- * @param shaderStage target shader stage
+ * @brief Returns Vulkan pipeline stage flags from the pipeline stage.
+ * @param pipelineStage target pipeline stage
  */
-static constexpr vk::PipelineStageFlags toVkPipelineStages(ShaderStage shaderStage) noexcept
+static constexpr vk::PipelineStageFlags toVkPipelineStages(PipelineStage pipelineStage) noexcept
 {
 	vk::PipelineStageFlags flags;
-	if (hasAnyFlag(shaderStage, ShaderStage::Vertex))
+	if (hasAnyFlag(pipelineStage, PipelineStage::Transfer))
+		flags |= vk::PipelineStageFlagBits::eTransfer;
+	if (hasAnyFlag(pipelineStage, PipelineStage::Vertex))
 		flags |= vk::PipelineStageFlagBits::eVertexShader;
-	if (hasAnyFlag(shaderStage, ShaderStage::Fragment))
+	if (hasAnyFlag(pipelineStage, PipelineStage::Fragment))
 		flags |= vk::PipelineStageFlagBits::eFragmentShader;
-	if (hasAnyFlag(shaderStage, ShaderStage::Compute))
+	if (hasAnyFlag(pipelineStage, PipelineStage::Compute))
 		flags |= vk::PipelineStageFlagBits::eComputeShader;
-	if (hasAnyFlag(shaderStage, ShaderStage::RayGeneration | ShaderStage::Intersection | 
-		ShaderStage::AnyHit | ShaderStage::ClosestHit | ShaderStage::Miss | ShaderStage::Callable))
+	if (hasAnyFlag(pipelineStage, PipelineStage::RayGeneration | PipelineStage::Intersection | 
+		PipelineStage::AnyHit | PipelineStage::ClosestHit | PipelineStage::Miss | PipelineStage::Callable))
 	{
 		flags |= vk::PipelineStageFlagBits::eRayTracingShaderKHR;
 	}
-	if (hasAnyFlag(shaderStage, ShaderStage::Mesh))
+	if (hasAnyFlag(pipelineStage, PipelineStage::Mesh))
 		flags |= vk::PipelineStageFlagBits::eMeshShaderEXT;
-	if (hasAnyFlag(shaderStage, ShaderStage::Task))
+	if (hasAnyFlag(pipelineStage, PipelineStage::Task))
 		flags |= vk::PipelineStageFlagBits::eTaskShaderEXT;
 	return flags;
 }
@@ -578,6 +581,20 @@ static constexpr vk::ImageAspectFlags toVkImageAspectFlags(Image::Format imageFo
 	if (isFormatDepthOnly(imageFormat)) return vk::ImageAspectFlagBits::eDepth;
 	if (isFormatStencilOnly(imageFormat)) return vk::ImageAspectFlagBits::eStencil;
 	return vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil;
+}
+
+/**
+ * @brief Returns Vulkanaccess flags from the memory access flags.
+ * @param accessFlags target memory access flags
+ */
+static vk::AccessFlags toVkAccessFlags(Memory::AccessFlags accessFlags) noexcept
+{
+	vk::AccessFlags flags;
+	if (hasAnyFlag(accessFlags, Memory::AccessFlags::ShaderRead))
+		flags |= vk::AccessFlagBits::eShaderRead;
+	if (hasAnyFlag(accessFlags, Memory::AccessFlags::ShaderWrite))
+		flags |= vk::AccessFlagBits::eShaderWrite;
+	return flags;
 }
 
 /***********************************************************************************************************************

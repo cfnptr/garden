@@ -29,9 +29,9 @@ void ComputePipeline::createVkInstance(ComputeCreateData& createData)
 
 	vk::SpecializationInfo specializationInfo;
 	fillVkSpecConsts(createData.shaderPath, &specializationInfo, createData.specConsts,
-		createData.specConstValues, ShaderStage::Compute, variantCount);
+		createData.specConstValues, PipelineStage::Compute, variantCount);
 
-	vk::PipelineShaderStageCreateInfo stageInfo({}, toVkShaderStage(ShaderStage::Compute), 
+	vk::PipelineShaderStageCreateInfo stageInfo({}, vk::ShaderStageFlagBits::eCompute, 
 		(VkShaderModule)shaders[0], "main", specializationInfo.mapEntryCount > 0 ? &specializationInfo : nullptr);
 	vk::ComputePipelineCreateInfo pipelineInfo({}, stageInfo, (VkPipelineLayout)pipelineLayout, nullptr, -1);
 

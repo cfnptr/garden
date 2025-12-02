@@ -23,6 +23,7 @@
 #include "garden/system/app-info.hpp"
 #include "garden/system/resource.hpp"
 #include "garden/system/transform.hpp"
+#include "garden/graphics/vulkan/command-buffer.hpp"
 #include "garden/graphics/vulkan/api.hpp"
 #include "garden/graphics/glfw.hpp" // Note: Do not move it.
 #include "garden/resource/primitive.hpp"
@@ -1019,8 +1020,8 @@ ID<Framebuffer> GraphicsSystem::createFramebuffer(uint2 size, vector<Framebuffer
 			auto imageView = graphicsAPI->imageViewPool.get(inputAttachment.imageView);
 			GARDEN_ASSERT_MSG(inputAttachment.imageView, "Incorrect framebuffer input "
 				"attachment [" + to_string(i) + "] image view [" + imageView->getDebugName() + "] format");
-			GARDEN_ASSERT_MSG(inputAttachment.shaderStages != ShaderStage::None, "No framebuffer input "
-				"attachment [" + to_string(i) + "] image view [" + imageView->getDebugName() + "] shader stages");
+			GARDEN_ASSERT_MSG(inputAttachment.pipelineStages != PipelineStage::None, "No framebuffer input "
+				"attachment [" + to_string(i) + "] image view [" + imageView->getDebugName() + "] pipeline stages");
 			
 			auto image = graphicsAPI->imagePool.get(imageView->getImage());
 			GARDEN_ASSERT_MSG(size == imageView->calcSize(), "Incorrect framebuffer input attachment [" + 
@@ -1320,6 +1321,54 @@ Image::Usage GraphicsSystem::getImageQ() const noexcept
 	if (graphicsAPI->currentCommandBuffer == graphicsAPI->computeCommandBuffer)
 		return Image::Usage::ComputeQ;
 	return Image::Usage::None;
+}
+
+void GraphicsSystem::addBarriers(Buffer::BarrierState state, const ID<Buffer>* buffers, uint32 bufferCount)
+{
+	auto graphicsAPI = GraphicsAPI::get();
+
+	GARDEN_ASSERT(buffers);
+	GARDEN_ASSERT(bufferCount);
+	GARDEN_ASSERT(graphicsAPI->currentCommandBuffer);
+
+	#if GARDEN_DEBUG
+	if (graphicsAPI->currentCommandBuffer == graphicsAPI->transferCommandBuffer)
+	{
+		for (uint32 i = 0; i < bufferCount; i++)
+		{
+			auto bufferView = graphicsAPI->bufferPool.get(buffers[i]);
+			GARDEN_ASSERT_MSG(hasAnyFlag(bufferView->getUsage(), Buffer::Usage::TransferQ), 
+				"Buffer [" + bufferView->getDebugName() + "] does not have transfer queue flag");
+		}
+	}
+	else if (graphicsAPI->currentCommandBuffer == graphicsAPI->computeCommandBuffer)
+	{
+		for (uint32 i = 0; i < bufferCount; i++)
+		{
+			auto bufferView = graphicsAPI->bufferPool.get(buffers[i]);
+			GARDEN_ASSERT_MSG(hasAnyFlag(bufferView->getUsage(), Buffer::Usage::ComputeQ), 
+				"Buffer [" + bufferView->getDebugName() + "] does not have compute queue flag");
+		}
+	}
+	#endif
+
+	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
+	{
+		for (uint32 i = 0; i < bufferCount; i++)
+		{
+			auto bufferView = graphicsAPI->bufferPool.get(buffers[i]);
+			if (VulkanCommandBuffer::isDifferentState(BufferExt::getBarrierState(**bufferView)))
+				barrierBuffers.push_back(buffers[i]);
+		}
+	}
+	else abort();
+
+	BufferBarrierCommand command;
+	command.newState = state;
+	command.bufferCount = (uint32)barrierBuffers.size();
+	command.buffers = barrierBuffers.data();
+	graphicsAPI->currentCommandBuffer->addCommand(command);
+	barrierBuffers.clear();
 }
 
 void GraphicsSystem::customCommand(void(*onCommand)(void*, void*), void* argument)
