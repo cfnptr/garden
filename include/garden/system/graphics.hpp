@@ -81,6 +81,7 @@ class GraphicsSystem final : public System, public Singleton<GraphicsSystem>
 	DescriptorSet::Buffers commonConstantsBuffers;
 	CommonConstants currentCommonConstants = {};
 	vector<float2> jitterOffsets;
+	vector<ID<Buffer>> barrierBuffers;
 	uint64 frameIndex = 0, tickIndex = 0;
 	double beginSleepClock = 0.0;
 	ID<Buffer> cubeVertexBuffer = {};
@@ -1104,6 +1105,30 @@ public:
 	 * @brief Return current command buffer queue usage flag.
 	 */
 	Image::Usage getImageQ() const noexcept;
+
+	/**
+	 * @brief Adds buffer memory barriers command.
+	 * @note You should manually synchronize memory access when use buffer device addresses!
+	 * 
+	 * @param state target buffers barrier state
+	 * @param[in] buffers buffer array to synchronize
+	 * @param bufferCount buffer array size
+	 */
+	void addBarriers(Buffer::BarrierState state, const ID<Buffer>* buffers, uint32 bufferCount);
+	/**
+	 * @brief Adds buffer memory barriers command.
+	 * @note You should manually synchronize memory access when use buffer device addresses!
+	 * 
+	 * @param accessFlags memory access flags
+	 * @param pipelineStages barrier pipeline stages
+	 * @param[in] buffers buffer array to synchronize
+	 * @param bufferCount buffer array size
+	 */
+	void addBarriers(Memory::AccessFlags accessFlags, PipelineStage pipelineStages,
+		 const ID<Buffer>* buffers, uint32 bufferCount)
+	{
+		addBarriers(Memory::toBarrierState(accessFlags, pipelineStages), buffers, bufferCount);
+	}
 
 	/**
 	 * @brief Records custom rendering command.

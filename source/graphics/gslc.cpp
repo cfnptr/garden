@@ -38,8 +38,8 @@ constexpr uint8 gslHeader[] = { 1, 0, 0, GARDEN_LITTLE_ENDIAN, };
 
 #define REQUIRED_GLSL_EXTENSIONS ""                                 \
 	"#extension GL_EXT_nonuniform_qualifier : enable\n"             \
-	"#extension GL_EXT_scalar_block_layout : enable\n"              \
-	"#extension GL_EXT_buffer_reference : enable\n"                 \
+	"#extension GL_EXT_scalar_block_layout : require\n"             \
+	"#extension GL_EXT_buffer_reference2 : enable\n"                \
 	"#extension GL_EXT_shader_8bit_storage : enable\n"              \
 	"#extension GL_EXT_shader_16bit_storage : enable\n"             \
 	"#extension GL_EXT_shader_explicit_arithmetic_types : enable\n"
@@ -61,7 +61,7 @@ namespace garden::graphics
 		uint8 vertexAttributeCount = 0;
 		uint8 blendStateCount = 0;
 		uint16 vertexAttributesSize = 0;
-		ShaderStage pushConstantsStages = {};
+		PipelineStage pushConstantsStages = {};
 		GraphicsPipeline::State pipelineState = {};
 		// Note: Should be aligned.
 	};
@@ -74,7 +74,7 @@ namespace garden::graphics
 	struct RayTracingGslValues final : public GslValues
 	{
 		uint8 _alignment = 0;
-		ShaderStage pushConstantsStages = {};
+		PipelineStage pushConstantsStages = {};
 		uint32 rayRecursionDepth = 0;
 		// Note: Should be aligned.
 	};
@@ -310,7 +310,7 @@ static void endShaderUniform(FileData& fileData)
 	fileData.isUniform = fileData.descriptorSetIndex = 0;
 }
 
-static void onShaderUniform(FileData& fileData, LineData& lineData, ShaderStage shaderStage, 
+static void onShaderUniform(FileData& fileData, LineData& lineData, PipelineStage pipelineStage, 
 	uint8& bindingIndex, Pipeline::Uniforms& uniforms, Pipeline::SamplerStates& samplerStates)
 {
 	if (fileData.isUniform == 1)
@@ -344,7 +344,9 @@ static void onShaderUniform(FileData& fileData, LineData& lineData, ShaderStage 
 				if (fileData.isVolatile) fileData.outputFileStream << "volatile ";
 				if (fileData.isCoherent) fileData.outputFileStream << "coherent ";
 				fileData.outputFileStream << "buffer " << lineData.word;
+				fileData.isBuffer = lineData.isReference = 0;
 				endShaderUniform(fileData);
+				return;
 			}
 			else
 			{
@@ -486,7 +488,7 @@ static void onShaderUniform(FileData& fileData, LineData& lineData, ShaderStage 
 	{
 		Pipeline::Uniform uniform;
 		uniform.type = fileData.uniformType;
-		uniform.shaderStages = shaderStage;
+		uniform.pipelineStages = pipelineStage;
 		uniform.bindingIndex = binding = bindingIndex++;
 		uniform.descriptorSetIndex = fileData.descriptorSetIndex;
 		uniform.arraySize = lineData.arraySize;
@@ -525,7 +527,7 @@ static void onShaderUniform(FileData& fileData, LineData& lineData, ShaderStage 
 			throw CompileError("different mutable state between "
 				"stages is not supported yet", fileData.lineIndex); // TODO: add support
 		}
-		uniform.shaderStages |= shaderStage; binding = uniform.bindingIndex;
+		uniform.pipelineStages |= pipelineStage; binding = uniform.bindingIndex;
 	}
 	
 	if (fileData.uniformType == GslUniformType::SubpassInput)
@@ -622,8 +624,7 @@ static void onShaderPushConstants(FileData& fileData, LineData& lineData, uint16
 		else
 		{
 			try { lineData.dataType = toGslDataType(lineData.word); }
-			catch (const exception&)
-			{ throw CompileError("unrecognized push constant GSL data type", fileData.lineIndex, lineData.word); }
+			catch (const exception&) { lineData.dataType = GslDataType::Uint64; } // Reference.
 			fileData.isPushConstants = 3;
 		}
 	}
@@ -1082,7 +1083,7 @@ static void onShaderPipelineState(GraphicsFileData& fileData, GraphicsLineData& 
 
 //******************************************************************************************************************
 static void onSpecConst(FileData& fileData, LineData& lineData,
-	Pipeline::SpecConsts& specConsts, ShaderStage shaderStage)
+	Pipeline::SpecConsts& specConsts, PipelineStage pipelineStage)
 {
 	if (lineData.isSpecConst == 1)
 	{
@@ -1111,7 +1112,7 @@ static void onSpecConst(FileData& fileData, LineData& lineData,
 		if (result == specConsts.end())
 		{
 			Pipeline::SpecConst data;
-			data.shaderStages = shaderStage;
+			data.pipelineStages = pipelineStage;
 			data.dataType = lineData.dataType;
 			data.index = fileData.specConstIndex++;
 
@@ -1122,7 +1123,7 @@ static void onSpecConst(FileData& fileData, LineData& lineData,
 		{
 			if (lineData.dataType != result->second.dataType)
 				throw CompileError("different spec consts with the same name", fileData.lineIndex, lineData.word);
-			result.value().shaderStages |= shaderStage;
+			result.value().pipelineStages |= pipelineStage;
 		}
 
 		fileData.outputFileStream << " " << lineData.word;
@@ -1217,7 +1218,7 @@ static bool openShaderFileStream(const fs::path& inputFilePath,
 		throw CompileError("failed to open output shader file");
 	outputFileStream.exceptions(ios::failbit | ios::badbit);
 
-	outputFileStream << "#version 460\n#include \"types.gsl\"\n\n#define printf debugPrintfEXT\n";
+	outputFileStream << "#version 460\n#include \"types.gsl\"\n#define printf debugPrintfEXT\n";
 	return true;
 }
 static void compileShaderFile(const fs::path& filePath, const vector<fs::path>& includePaths)
@@ -1273,11 +1274,11 @@ static void writeGslHeaderArray(ofstream& headerStream, const A& valueArray)
 //******************************************************************************************************************
 static bool processCommonKeywords(Pipeline::CreateData& data, FileData& fileData, 
 	LineData& lineData, bool& overrideOutput, uint8& bindingIndex, 
-	uint16& pushConstantsSize, uint8& variantCount, ShaderStage shaderStage)
+	uint16& pushConstantsSize, uint8& variantCount, PipelineStage pipelineStage)
 {
 	if (fileData.isUniform)
 	{
-		onShaderUniform(fileData, lineData, shaderStage, bindingIndex, data.uniforms, data.samplerStates);
+		onShaderUniform(fileData, lineData, pipelineStage, bindingIndex, data.uniforms, data.samplerStates);
 		overrideOutput = true; return true;
 	}
 	if (fileData.isPushConstants)
@@ -1292,7 +1293,7 @@ static bool processCommonKeywords(Pipeline::CreateData& data, FileData& fileData
 	}
 	if (lineData.isSpecConst)
 	{
-		onSpecConst(fileData, lineData, data.specConsts, shaderStage);
+		onSpecConst(fileData, lineData, data.specConsts, pipelineStage);
 		overrideOutput = true; return true;
 	}
 	if (lineData.isFeature)
@@ -1323,12 +1324,12 @@ static bool setCommonKeywords(FileData& fileData, LineData& lineData, bool& over
 //******************************************************************************************************************
 static bool compileGraphicsShader(const fs::path& inputPath, const fs::path& outputPath,
 	const vector<fs::path>& includePaths, GslCompiler::GraphicsData& data, uint8& bindingIndex, 
-	uint8& inIndex, uint8& outIndex, uint16& pushConstantsSize, uint8& variantCount, ShaderStage shaderStage)
+	uint8& inIndex, uint8& outIndex, uint16& pushConstantsSize, uint8& variantCount, PipelineStage pipelineStage)
 {
 	GraphicsFileData fileData;
 	auto filePath = data.shaderPath;
-	if (shaderStage == ShaderStage::Vertex) filePath += ".vert";
-	else if (shaderStage == ShaderStage::Fragment) filePath += ".frag";
+	if (pipelineStage == PipelineStage::Vertex) filePath += ".vert";
+	else if (pipelineStage == PipelineStage::Fragment) filePath += ".frag";
 	else abort();
 
 	auto inputFilePath = inputPath / filePath, outputFilePath = outputPath / filePath;
@@ -1383,7 +1384,7 @@ static bool compileGraphicsShader(const fs::path& inputPath, const fs::path& out
 			auto overrideOutput = false;
 			if (lineData.isIn)
 			{
-				if (shaderStage == ShaderStage::Vertex)
+				if (pipelineStage == PipelineStage::Vertex)
 				{
 					if (lineData.isIn == 1)
 					{
@@ -1449,7 +1450,7 @@ static bool compileGraphicsShader(const fs::path& inputPath, const fs::path& out
 			}
 			else if (lineData.isOut)
 			{
-				if (shaderStage == ShaderStage::Vertex)
+				if (pipelineStage == PipelineStage::Vertex)
 				{
 					if (lineData.word == "flat") { lineData.isFlat = true; overrideOutput = true; }
 					else if (lineData.word == "noperspective") { lineData.isNoperspective = true; overrideOutput = true; }
@@ -1501,7 +1502,7 @@ static bool compileGraphicsShader(const fs::path& inputPath, const fs::path& out
 				data.vertexAttributesSize += (uint16)offset; lineData.isAttributeOffset = 0;
 			}
 			else if (processCommonKeywords(data, fileData, lineData, overrideOutput, 
-				bindingIndex, pushConstantsSize, variantCount, shaderStage)) { }
+				bindingIndex, pushConstantsSize, variantCount, pipelineStage)) { }
 			else
 			{
 				if (lineData.word == "in" && wordIndex == 1) { lineData.isIn = 1; overrideOutput = true; }
@@ -1511,27 +1512,27 @@ static bool compileGraphicsShader(const fs::path& inputPath, const fs::path& out
 				else if (lineData.word == "#attachmentOffset") { lineData.isAttachmentOffset = 1; overrideOutput = true; }
 				else if (lineData.word == "#attributeOffset")
 				{
-					if (shaderStage != ShaderStage::Vertex)
+					if (pipelineStage != PipelineStage::Vertex)
 						throw CompileError("#attributeOffset is accessible only in vertex shaders", fileData.lineIndex);
 					lineData.isAttributeOffset = 1; overrideOutput = true;
 				}
 				else if (lineData.word == "depthLess")
 				{
-					if (shaderStage != ShaderStage::Fragment)
+					if (pipelineStage != PipelineStage::Fragment)
 						throw CompileError("depthLess is accessible only in fragment shaders", fileData.lineIndex);
 					fileData.outputFileStream << "layout(depth_less) ";
 					lineData.isDepthOverride = 1; overrideOutput = true;
 				}
 				else if (lineData.word == "depthGreater")
 				{
-					if (shaderStage != ShaderStage::Fragment)
+					if (pipelineStage != PipelineStage::Fragment)
 						throw CompileError("depthGreater is accessible only in fragment shaders", fileData.lineIndex);
 					fileData.outputFileStream << "layout(depth_greater) ";
 					lineData.isDepthOverride = 1; overrideOutput = true;
 				}
 				else if (lineData.word == "earlyFragmentTests")
 				{
-					if (shaderStage != ShaderStage::Fragment)
+					if (pipelineStage != PipelineStage::Fragment)
 						throw CompileError("earlyFragmentTests is accessible only in fragment shaders", fileData.lineIndex);
 					fileData.outputFileStream << "layout(early_fragment_tests) ";
 					overrideOutput = true;
@@ -1548,7 +1549,7 @@ static bool compileGraphicsShader(const fs::path& inputPath, const fs::path& out
 			fileData.outputFileStream << "\n";
 	}
 
-	if (shaderStage == ShaderStage::Fragment)
+	if (pipelineStage == PipelineStage::Fragment)
 	{
 		if (data.blendStates.size() < fileData.outIndex)
 			data.blendStates.resize(fileData.outIndex);
@@ -1558,8 +1559,8 @@ static bool compileGraphicsShader(const fs::path& inputPath, const fs::path& out
 	compileShaderFile(outputFilePath, includePaths);
 
 	vector<uint8>* shaderCode;
-	if (shaderStage == ShaderStage::Vertex) shaderCode = &data.vertexCode;
-	else if (shaderStage == ShaderStage::Fragment) shaderCode = &data.fragmentCode;
+	if (pipelineStage == PipelineStage::Vertex) shaderCode = &data.vertexCode;
+	else if (pipelineStage == PipelineStage::Fragment) shaderCode = &data.fragmentCode;
 	else abort();
 
 	outputFilePath += ".spv";
@@ -1582,9 +1583,9 @@ bool GslCompiler::compileGraphicsShaders(const fs::path& inputPath,
 	// TODO: support mesh and task shaders.
 
 	auto compileResult = compileGraphicsShader(inputPath, outputPath, includePaths, data, bindingIndex, 
-		inIndex, outIndex, vertexPushConstantsSize, vertexVariantCount, ShaderStage::Vertex);
+		inIndex, outIndex, vertexPushConstantsSize, vertexVariantCount, PipelineStage::Vertex);
 	compileResult |= compileGraphicsShader(inputPath, outputPath, includePaths, data, bindingIndex, 
-		inIndex, outIndex, fragmentPushConstantsSize, fragmentVariantCount, ShaderStage::Fragment);
+		inIndex, outIndex, fragmentPushConstantsSize, fragmentVariantCount, PipelineStage::Fragment);
 	if (!compileResult) return false;
 
 	if (!data.fragmentCode.empty() && !data.vertexCode.empty() && outIndex != inIndex)
@@ -1607,9 +1608,9 @@ bool GslCompiler::compileGraphicsShaders(const fs::path& inputPath,
 	GARDEN_ASSERT(data.uniforms.size() <= UINT8_MAX);
 	GARDEN_ASSERT(data.samplerStates.size() <= UINT8_MAX);
 
-	data.pushConstantsStages = ShaderStage::None;
-	if (vertexPushConstantsSize > 0) data.pushConstantsStages |= ShaderStage::Vertex;
-	if (fragmentPushConstantsSize > 0) data.pushConstantsStages |= ShaderStage::Fragment;
+	data.pushConstantsStages = PipelineStage::None;
+	if (vertexPushConstantsSize > 0) data.pushConstantsStages |= PipelineStage::Vertex;
+	if (fragmentPushConstantsSize > 0) data.pushConstantsStages |= PipelineStage::Fragment;
 
 	if (vertexPushConstantsSize > 0) data.pushConstantsSize = vertexPushConstantsSize;
 	else if (fragmentPushConstantsSize > 0) data.pushConstantsSize = fragmentPushConstantsSize;
@@ -1665,7 +1666,7 @@ bool GslCompiler::compileComputeShader(const fs::path& inputPath,
 	const fs::path& outputPath, const vector<fs::path>& includePaths, ComputeData& data)
 {
 	GARDEN_ASSERT(!data.shaderPath.empty());
-	constexpr auto shaderStage = ShaderStage::Compute;
+	constexpr auto pipelineStage = PipelineStage::Compute;
 
 	ComputeFileData fileData;
 	auto filePath = data.shaderPath; filePath += ".comp";
@@ -1758,7 +1759,7 @@ bool GslCompiler::compileComputeShader(const fs::path& inputPath,
 				overrideOutput = true;
 			}
 			else if (processCommonKeywords(data, fileData, lineData, overrideOutput, 
-				fileData.bindingIndex, data.pushConstantsSize, data.variantCount, shaderStage)) { }
+				fileData.bindingIndex, data.pushConstantsSize, data.variantCount, pipelineStage)) { }
 			else
 			{
 				if (lineData.word == "localSize") { lineData.isLocalSize = 1; overrideOutput = true; }
@@ -1783,7 +1784,7 @@ bool GslCompiler::compileComputeShader(const fs::path& inputPath,
 	fileData.outputFileStream.close();
 	compileShaderFile(outputFilePath, includePaths);
 
-	if (data.pushConstantsSize > 0) data.pushConstantsStages = shaderStage;
+	if (data.pushConstantsSize > 0) data.pushConstantsStages = pipelineStage;
 	if (data.variantCount == 0) data.variantCount = 1;
 
 	data.descriptorSetCount = 0;
@@ -1823,10 +1824,10 @@ bool GslCompiler::compileComputeShader(const fs::path& inputPath,
 static bool compileRayTracingShader(const fs::path& inputPath, const fs::path& outputPath,
 	const vector<fs::path>& includePaths, GslCompiler::RayTracingData& data, 
 	uint8& bindingIndex, uint16& pushConstantsSize, uint8& variantCount, 
-	uint32& rayRecursionDepth, uint8 groupIndex, ShaderStage shaderStage)
+	uint32& rayRecursionDepth, uint8 groupIndex, PipelineStage pipelineStage)
 {
 	RayTracingFileData fileData;
-	auto filePath = data.shaderPath; filePath += toShaderStageExt(shaderStage);
+	auto filePath = data.shaderPath; filePath += toPipelineStageExt(pipelineStage);
 	auto inputFilePath = inputPath / filePath, outputFilePath = outputPath / filePath;
 	auto fileResult = openShaderFileStream(inputFilePath, outputFilePath,
 		fileData.inputFileStream, fileData.outputFileStream);
@@ -1925,13 +1926,13 @@ static bool compileRayTracingShader(const fs::path& inputPath, const fs::path& o
 				rayRecursionDepth = (uint32)depth; lineData.isRayRecursionDepth = 0;
 			}
 			else if (processCommonKeywords(data, fileData, lineData, overrideOutput, 
-				bindingIndex, pushConstantsSize, variantCount, shaderStage)) { }
+				bindingIndex, pushConstantsSize, variantCount, pipelineStage)) { }
 			else
 			{
 				if (lineData.word == "rayPayload")
 				{
-					if (shaderStage != ShaderStage::RayGeneration && shaderStage != 
-						ShaderStage::ClosestHit && shaderStage != ShaderStage::Miss)
+					if (pipelineStage != PipelineStage::RayGeneration && pipelineStage != 
+						PipelineStage::ClosestHit && pipelineStage != PipelineStage::Miss)
 					{
 						throw CompileError("rayPayload is accessible only in ray gen/chit/miss shaders", fileData.lineIndex);
 					}
@@ -1939,8 +1940,8 @@ static bool compileRayTracingShader(const fs::path& inputPath, const fs::path& o
 				}
 				else if (lineData.word == "rayPayloadIn")
 				{
-					if (shaderStage != ShaderStage::AnyHit && shaderStage != 
-						ShaderStage::ClosestHit && shaderStage != ShaderStage::Miss)
+					if (pipelineStage != PipelineStage::AnyHit && pipelineStage != 
+						PipelineStage::ClosestHit && pipelineStage != PipelineStage::Miss)
 					{
 						throw CompileError("rayPayloadIn is accessible only in ray hit/miss shaders", fileData.lineIndex);
 					}
@@ -1967,32 +1968,32 @@ static bool compileRayTracingShader(const fs::path& inputPath, const fs::path& o
 	compileShaderFile(outputFilePath, includePaths);
 
 	vector<uint8>* shaderCode;
-	if (shaderStage == ShaderStage::RayGeneration)
+	if (pipelineStage == PipelineStage::RayGeneration)
 	{
 		if (data.rayGenGroups.size() <= groupIndex) data.rayGenGroups.push_back({});
 		shaderCode = &data.rayGenGroups[groupIndex];
 	}
-	else if (shaderStage == ShaderStage::Miss)
+	else if (pipelineStage == PipelineStage::Miss)
 	{
 		if (data.missGroups.size() <= groupIndex) data.missGroups.push_back({});
 		shaderCode = &data.missGroups[groupIndex];
 	}
-	else if (shaderStage == ShaderStage::Callable)
+	else if (pipelineStage == PipelineStage::Callable)
 	{
 		if (data.callGroups.size() <= groupIndex) data.callGroups.push_back({});
 		shaderCode = &data.callGroups[groupIndex];
 	}
-	else if (shaderStage == ShaderStage::Intersection)
+	else if (pipelineStage == PipelineStage::Intersection)
 	{
 		if (data.hitGroups.size() <= groupIndex) data.hitGroups.push_back({});
 		shaderCode = &data.hitGroups[groupIndex].intersectionCode;
 	}
-	else if (shaderStage == ShaderStage::AnyHit)
+	else if (pipelineStage == PipelineStage::AnyHit)
 	{
 		if (data.hitGroups.size() <= groupIndex) data.hitGroups.push_back({});
 		shaderCode = &data.hitGroups[groupIndex].anyHitCode;
 	}
-	else if (shaderStage == ShaderStage::ClosestHit)
+	else if (pipelineStage == PipelineStage::ClosestHit)
 	{
 		if (data.hitGroups.size() <= groupIndex) data.hitGroups.push_back({});
 		shaderCode = &data.hitGroups[groupIndex].closestHitCode;
@@ -2059,29 +2060,29 @@ bool GslCompiler::compileRayTracingShaders(const fs::path& inputPath,
 
 	auto compileResult = compileRayTracingShader(inputPath, outputPath, includePaths, 
 		data, bindingIndex, bValues.rayGenPushConstantsSize, bValues.rayGenVariantCount, 
-		bValues.rayGenRayRecDepth, rayGenGroupIndex, ShaderStage::RayGeneration);
+		bValues.rayGenRayRecDepth, rayGenGroupIndex, PipelineStage::RayGeneration);
 	compileResult &= compileRayTracingShader(inputPath, outputPath, includePaths, 
 		data, bindingIndex, bValues.missPushConstantsSize, bValues.missVariantCount, 
-		bValues.missRayRecDepth, missGroupIndex, ShaderStage::Miss);
+		bValues.missRayRecDepth, missGroupIndex, PipelineStage::Miss);
 	auto hitCompileResult = compileRayTracingShader(inputPath, outputPath, includePaths, 
 		data, bindingIndex, bValues.anyHitPushConstantsSize, bValues.anyHitVariantCount, 
-		bValues.anyHitRayRecDepth, hitGroupIndex, ShaderStage::AnyHit);
+		bValues.anyHitRayRecDepth, hitGroupIndex, PipelineStage::AnyHit);
 	hitCompileResult |= compileRayTracingShader(inputPath, outputPath, includePaths, 
 		data, bindingIndex, bValues.closHitPushConstantsSize, bValues.closHitVariantCount, 
-		bValues.closHitRayRecDepth, hitGroupIndex, ShaderStage::ClosestHit);
+		bValues.closHitRayRecDepth, hitGroupIndex, PipelineStage::ClosestHit);
 	hitCompileResult |= compileRayTracingShader(inputPath, outputPath, includePaths, 
 		data, bindingIndex, bValues.intersectPushConstantsSize, bValues.intersectVariantCount, 
-		bValues.intersectRayRecDepth, hitGroupIndex, ShaderStage::Intersection);
+		bValues.intersectRayRecDepth, hitGroupIndex, PipelineStage::Intersection);
 	if (!compileResult || !hitCompileResult) return false;
 
 	auto callCompileResult = compileRayTracingShader(inputPath, outputPath, includePaths, 
 		data, bindingIndex, bValues.callPushConstantsSize, bValues.callVariantCount, 
-		bValues.callRayRecDepth, callGroupIndex, ShaderStage::Callable);
+		bValues.callRayRecDepth, callGroupIndex, PipelineStage::Callable);
 	if (callCompileResult) callGroupIndex++;
 
 	checkRtShaderValues(bValues, bValues);
 	rayGenGroupIndex++; missGroupIndex++; hitGroupIndex++;
-	data.pushConstantsStages = ShaderStage::None;
+	data.pushConstantsStages = PipelineStage::None;
 
 	uint8 groupIndex = 1;
 	while (true)
@@ -2090,30 +2091,30 @@ bool GslCompiler::compileRayTracingShaders(const fs::path& inputPath,
 		data.shaderPath.replace_extension(to_string(groupIndex++));
 		compileResult = compileRayTracingShader(inputPath, outputPath, includePaths, 
 			data, bindingIndex, hgValues.rayGenPushConstantsSize, hgValues.rayGenVariantCount, 
-			hgValues.rayGenRayRecDepth, rayGenGroupIndex, ShaderStage::RayGeneration);
+			hgValues.rayGenRayRecDepth, rayGenGroupIndex, PipelineStage::RayGeneration);
 		if (compileResult) rayGenGroupIndex++;
 
 		auto groupCompileResult = compileRayTracingShader(inputPath, outputPath, includePaths, 
 			data, bindingIndex, hgValues.missPushConstantsSize, hgValues.missVariantCount, 
-			hgValues.missRayRecDepth, missGroupIndex, ShaderStage::Miss);
+			hgValues.missRayRecDepth, missGroupIndex, PipelineStage::Miss);
 		compileResult |= groupCompileResult;
 		if (groupCompileResult) missGroupIndex++;
 
 		groupCompileResult = compileRayTracingShader(inputPath, outputPath, includePaths, 
 			data, bindingIndex, hgValues.callPushConstantsSize, hgValues.callVariantCount, 
-			hgValues.callRayRecDepth, callGroupIndex, ShaderStage::Callable);
+			hgValues.callRayRecDepth, callGroupIndex, PipelineStage::Callable);
 		compileResult |= groupCompileResult;
 		if (groupCompileResult) callGroupIndex++;
 		
 		groupCompileResult = compileRayTracingShader(inputPath, outputPath, includePaths, 
 			data, bindingIndex, hgValues.intersectPushConstantsSize, hgValues.intersectVariantCount, 
-			hgValues.intersectRayRecDepth, hitGroupIndex, ShaderStage::Intersection);
+			hgValues.intersectRayRecDepth, hitGroupIndex, PipelineStage::Intersection);
 		groupCompileResult |= compileRayTracingShader(inputPath, outputPath, includePaths, 
 			data, bindingIndex, hgValues.anyHitPushConstantsSize, hgValues.anyHitVariantCount, 
-			hgValues.anyHitRayRecDepth, hitGroupIndex, ShaderStage::AnyHit);
+			hgValues.anyHitRayRecDepth, hitGroupIndex, PipelineStage::AnyHit);
 		groupCompileResult |= compileRayTracingShader(inputPath, outputPath, includePaths, 
 			data, bindingIndex, hgValues.closHitPushConstantsSize, hgValues.closHitVariantCount, 
-			hgValues.closHitRayRecDepth, hitGroupIndex, ShaderStage::ClosestHit);
+			hgValues.closHitRayRecDepth, hitGroupIndex, PipelineStage::ClosestHit);
 		compileResult |= groupCompileResult;
 		if (groupCompileResult) hitGroupIndex++;
 		
@@ -2121,24 +2122,24 @@ bool GslCompiler::compileRayTracingShaders(const fs::path& inputPath,
 			break;
 
 		checkRtShaderValues(bValues, hgValues);
-		if (hgValues.rayGenPushConstantsSize > 0) data.pushConstantsStages |= ShaderStage::RayGeneration;
-		if (hgValues.missPushConstantsSize > 0) data.pushConstantsStages |= ShaderStage::Miss;
-		if (hgValues.callPushConstantsSize > 0) data.pushConstantsStages |= ShaderStage::Callable;
-		if (hgValues.intersectPushConstantsSize > 0) data.pushConstantsStages |= ShaderStage::Intersection;
-		if (hgValues.anyHitPushConstantsSize > 0) data.pushConstantsStages |= ShaderStage::AnyHit;
-		if (hgValues.closHitPushConstantsSize > 0) data.pushConstantsStages |= ShaderStage::ClosestHit;
+		if (hgValues.rayGenPushConstantsSize > 0) data.pushConstantsStages |= PipelineStage::RayGeneration;
+		if (hgValues.missPushConstantsSize > 0) data.pushConstantsStages |= PipelineStage::Miss;
+		if (hgValues.callPushConstantsSize > 0) data.pushConstantsStages |= PipelineStage::Callable;
+		if (hgValues.intersectPushConstantsSize > 0) data.pushConstantsStages |= PipelineStage::Intersection;
+		if (hgValues.anyHitPushConstantsSize > 0) data.pushConstantsStages |= PipelineStage::AnyHit;
+		if (hgValues.closHitPushConstantsSize > 0) data.pushConstantsStages |= PipelineStage::ClosestHit;
 	}
 	data.shaderPath.replace_extension();
 
 	GARDEN_ASSERT(data.uniforms.size() <= UINT8_MAX);
 	GARDEN_ASSERT(data.samplerStates.size() <= UINT8_MAX);
 
-	if (bValues.rayGenPushConstantsSize > 0) data.pushConstantsStages |= ShaderStage::RayGeneration;
-	if (bValues.missPushConstantsSize > 0) data.pushConstantsStages |= ShaderStage::Miss;
-	if (bValues.callPushConstantsSize > 0) data.pushConstantsStages |= ShaderStage::Callable;
-	if (bValues.intersectPushConstantsSize > 0) data.pushConstantsStages |= ShaderStage::Intersection;
-	if (bValues.anyHitPushConstantsSize > 0) data.pushConstantsStages |= ShaderStage::AnyHit;
-	if (bValues.closHitPushConstantsSize > 0) data.pushConstantsStages |= ShaderStage::ClosestHit;
+	if (bValues.rayGenPushConstantsSize > 0) data.pushConstantsStages |= PipelineStage::RayGeneration;
+	if (bValues.missPushConstantsSize > 0) data.pushConstantsStages |= PipelineStage::Miss;
+	if (bValues.callPushConstantsSize > 0) data.pushConstantsStages |= PipelineStage::Callable;
+	if (bValues.intersectPushConstantsSize > 0) data.pushConstantsStages |= PipelineStage::Intersection;
+	if (bValues.anyHitPushConstantsSize > 0) data.pushConstantsStages |= PipelineStage::AnyHit;
+	if (bValues.closHitPushConstantsSize > 0) data.pushConstantsStages |= PipelineStage::ClosestHit;
 	
 	data.pushConstantsSize = bValues.rayGenPushConstantsSize;
 	data.variantCount = max(max(max(max(max(bValues.rayGenVariantCount, bValues.missVariantCount), 
@@ -2308,7 +2309,7 @@ void GslCompiler::loadComputeShader(ComputeData& data)
 		dataOffset, values.specConstCount, data.specConsts);
 
 	if (values.pushConstantsSize > 0)
-		data.pushConstantsStages = ShaderStage::Compute;
+		data.pushConstantsStages = PipelineStage::Compute;
 
 	data.pushConstantsSize = values.pushConstantsSize;
 	data.descriptorSetCount = values.descriptorSetCount;

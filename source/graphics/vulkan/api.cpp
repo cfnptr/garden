@@ -131,12 +131,6 @@ static vk::Instance createVkInstance(const string& appName, Version appVersion,
 	if (instanceVersionMajor <= 1 && instanceVersionMinor <= 1)
 		throw GardenError("Vulkan API 1.1 version is not supported.");
 
-	#if GARDEN_OS_MACOS
-	// TODO: remove after MoltenVK 1.4 support on mac.
-	if (instanceVersionMinor > 3)
-		instanceVersionMinor = 3;
-	#endif
-
 	auto vkEngineVersion = VK_MAKE_API_VERSION(0,
 		GARDEN_VERSION_MAJOR, GARDEN_VERSION_MINOR, GARDEN_VERSION_PATCH);
 	auto vkAppVersion = VK_MAKE_API_VERSION(0,
@@ -518,6 +512,8 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 		vk::PhysicalDeviceDescriptorIndexingFeatures descriptorIndexing;
 		vk::PhysicalDeviceScalarBlockLayoutFeatures scalarBlockLayout;
 		vk::PhysicalDeviceBufferDeviceAddressFeatures bufferDeviceAddress;
+		vk::PhysicalDeviceTimelineSemaphoreFeatures timelineSemaphore;
+		vk::PhysicalDeviceVulkanMemoryModelFeatures vulkanMemoryModel;
 		vk::PhysicalDevicePageableDeviceLocalMemoryFeaturesEXT pageableMemory;
 		vk::PhysicalDeviceDynamicRenderingFeatures dynamicRendering;
 		vk::PhysicalDeviceAccelerationStructureFeaturesKHR accelerationStructure;
@@ -537,11 +533,11 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 	vkFeatures->_16BitStorage.pNext = &vkFeatures->_8BitStorage;
 	vkFeatures->_8BitStorage.pNext = &vkFeatures->float16Int8;
 	vkFeatures->float16Int8.pNext = &vkFeatures->descriptorIndexing;
+	vkFeatures->descriptorIndexing.pNext = &vkFeatures->scalarBlockLayout;
+	vkFeatures->scalarBlockLayout.pNext = &vkFeatures->bufferDeviceAddress;
+	vkFeatures->bufferDeviceAddress.pNext = &vkFeatures->timelineSemaphore;
+	vkFeatures->timelineSemaphore.pNext = &vkFeatures->vulkanMemoryModel;
 	physicalDevice.getFeatures2(&vkFeatures->device);
-
-	auto hasShaderInt16 = vkFeatures->device.features.shaderInt16;
-	auto hasShaderInt64 = vkFeatures->device.features.shaderInt64;
-	auto hasShaderFloat64 = vkFeatures->device.features.shaderFloat64;
 
 	if (features.memoryBudget)
 		extensions.push_back(VK_EXT_MEMORY_BUDGET_EXTENSION_NAME);
@@ -684,16 +680,6 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 	}
 	#endif
 
-	vkFeatures->device.features = vk::PhysicalDeviceFeatures();
-	vkFeatures->device.features.independentBlend = VK_TRUE;
-	vkFeatures->device.features.depthClamp = VK_TRUE;
-	vkFeatures->device.features.samplerAnisotropy = VK_TRUE;
-	vkFeatures->device.features.shaderInt16 = hasShaderInt16;
-	vkFeatures->device.features.shaderInt64 = hasShaderInt64;
-	vkFeatures->device.features.shaderFloat64 = hasShaderFloat64;
-	vkFeatures->scalarBlockLayout.scalarBlockLayout = VK_TRUE;
-	vkFeatures->bufferDeviceAddress.bufferDeviceAddress = VK_TRUE;
-
 	void** lastPNext = &vkFeatures->device.pNext;
 	*lastPNext = &vkFeatures->_16BitStorage;
 	lastPNext = &vkFeatures->_16BitStorage.pNext;
@@ -707,6 +693,10 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 	lastPNext = &vkFeatures->scalarBlockLayout.pNext;
 	*lastPNext = &vkFeatures->bufferDeviceAddress;
 	lastPNext = &vkFeatures->bufferDeviceAddress.pNext;
+	*lastPNext = &vkFeatures->timelineSemaphore;
+	lastPNext = &vkFeatures->timelineSemaphore.pNext;
+	*lastPNext = &vkFeatures->vulkanMemoryModel;
+	lastPNext = &vkFeatures->vulkanMemoryModel.pNext;
 	*lastPNext = nullptr;
 
 	#if GARDEN_OS_MACOS

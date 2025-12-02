@@ -141,7 +141,7 @@ public:
 		float4 position;
 		float4 texCoords;
 		uint32 atlasIndex = 0;
-		uint32 srgbColor = 0;
+		Color srgbColor = Color::transparent;
 		uint64 _alignment = 0;
 	};
 

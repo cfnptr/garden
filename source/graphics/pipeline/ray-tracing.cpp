@@ -59,52 +59,52 @@ void RayTracingPipeline::createVkInstance(RayTracingCreateData& createData)
 		shaderGroupInfos[groupIndex++] = groupInfo;
 	}
 
-	vector<ShaderStage> shaderStages; vector<vector<uint8>> codeArray;
+	vector<PipelineStage> pipelineStages; vector<vector<uint8>> codeArray;
 	for (const auto& rayGenCode : createData.rayGenGroups)
 	{
-		shaderStages.push_back(ShaderStage::RayGeneration);
+		pipelineStages.push_back(PipelineStage::RayGeneration);
 		codeArray.push_back(std::move(rayGenCode));
 	}
 	for (const auto& missCode : createData.missGroups)
 	{
-		shaderStages.push_back(ShaderStage::Miss);
+		pipelineStages.push_back(PipelineStage::Miss);
 		codeArray.push_back(std::move(missCode));
 	}
 	for (const auto& callCode : createData.callGroups)
 	{
-		shaderStages.push_back(ShaderStage::Callable);
+		pipelineStages.push_back(PipelineStage::Callable);
 		codeArray.push_back(std::move(callCode));
 	}
 	for (const auto& hitGroup : createData.hitGroups)
 	{
 		if (!hitGroup.closestHitCode.empty())
 		{
-			shaderStages.push_back(ShaderStage::ClosestHit);
+			pipelineStages.push_back(PipelineStage::ClosestHit);
 			codeArray.push_back(std::move(hitGroup.closestHitCode));
 		}
 		if (!hitGroup.anyHitCode.empty())
 		{
-			shaderStages.push_back(ShaderStage::AnyHit);
+			pipelineStages.push_back(PipelineStage::AnyHit);
 			codeArray.push_back(std::move(hitGroup.anyHitCode));
 		}
 		if (!hitGroup.intersectionCode.empty())
 		{
-			shaderStages.push_back(ShaderStage::Intersection);
+			pipelineStages.push_back(PipelineStage::Intersection);
 			codeArray.push_back(std::move(hitGroup.intersectionCode));
 		}
 	}
 
-	auto stageCount = (uint8)shaderStages.size();
+	auto stageCount = (uint8)pipelineStages.size();
 	auto shaders = createShaders(codeArray.data(), stageCount, createData.shaderPath);
 	vector<vk::PipelineShaderStageCreateInfo> stageInfos(stageCount);
 	vector<vk::SpecializationInfo> specializationInfos(stageCount);
 	
 	for (uint8 i = 0; i < stageCount; i++)
 	{
-		auto shaderStage = shaderStages[i]; auto specializationInfo = &specializationInfos[i];
+		auto pipelineStage = pipelineStages[i]; auto specializationInfo = &specializationInfos[i];
 		fillVkSpecConsts(createData.shaderPath, specializationInfo, 
-			createData.specConsts, createData.specConstValues, shaderStage, variantCount);
-		vk::PipelineShaderStageCreateInfo stageInfo({}, toVkShaderStage(shaderStage), (VkShaderModule)shaders[i], 
+			createData.specConsts, createData.specConstValues, pipelineStage, variantCount);
+		vk::PipelineShaderStageCreateInfo stageInfo({}, toVkShaderStage(pipelineStage), (VkShaderModule)shaders[i], 
 			"main", specializationInfo->mapEntryCount > 0 ? specializationInfo : nullptr);
 		stageInfos[i] = stageInfo;
 	}

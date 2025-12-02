@@ -75,7 +75,7 @@ static void onDlssLog(const char* message, NVSDK_NGX_Logging_Level loggingLevel,
 static NVSDK_NGX_Resource_VK imageToNgxResource(VulkanAPI* vulkanAPI, 
 	VulkanCommandBuffer* vkCommandBuffer, ID<ImageView> imageView)
 {
-	Image::BarrierState newImageState;
+	Image::LayoutState newImageState;
 	newImageState.access = (uint32)vk::AccessFlagBits::eShaderWrite;
 	newImageState.layout = (uint32)vk::ImageLayout::eGeneral;
 	newImageState.stage = (uint32)vk::PipelineStageFlagBits::eComputeShader;

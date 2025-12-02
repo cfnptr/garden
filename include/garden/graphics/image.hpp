@@ -234,20 +234,18 @@ public:
 	};
 
 	/**
-	 * @brief Image memory barrier state.
+	 * @brief Image layout memory barrier state.
 	 */
-	struct BarrierState final
+	struct LayoutState final : BarrierState
 	{
-		uint32 access = 0; /**< Image access type mask. */
-		uint32 layout = 0; /**< Target image data layout type. */
-		uint32 stage = 0;  /**< Pipeline stage type. */
+		uint32 layout = 0;          /**< Image data layout type. (Internal API format) */
 		uint8 fragLayoutTrans : 1;  /**< Fragment pipeline stage image layout transition. */
 		uint8 transLayoutTrans : 1; /**< Transfer pipeline stage image layout transition. */
 		uint8 compLayoutTrans : 1;  /**< Compute pipeline stage image layout transition. */
 		uint8 rtLayoutTrans : 1;    /**< Ray tracing pipeline stage image layout transition. */
 		uint8 _unused : 4;          /**< Unused pipeline stage image layout transition. */
 
-		BarrierState() : fragLayoutTrans(0), transLayoutTrans(0), 
+		LayoutState() : fragLayoutTrans(0), transLayoutTrans(0), 
 			compLayoutTrans(0), rtLayoutTrans(0), _unused(0) { }
 	};
 
@@ -264,7 +262,7 @@ private:
 	Usage usage = {};
 	u32x4 size = u32x4::zero;
 	ID<ImageView> defaultView = {};
-	vector<BarrierState> barrierStates;
+	vector<LayoutState> barrierStates;
 
 	Image(Type type, Format format, Usage usage, Strategy strategy, u32x4 size, uint64 version);
 	Image(Usage usage, Strategy strategy, uint64 version) noexcept :
@@ -1121,7 +1119,7 @@ static Image::Type toImageType(GslUniformType uniformType)
 
 /***********************************************************************************************************************
  * @brief Returns image usage name string.
- * @param imageUsage target image usage flags
+ * @param imageUsage target image usage flag
  */
 static string_view toString(Image::Usage imageUsage) noexcept
 {
@@ -1267,7 +1265,7 @@ public:
 	 * @warning In most cases you should use @ref Image functions.
 	 * @param[in] image target image instance
 	 */
-	static vector<Image::BarrierState>& getBarrierStates(Image& image) noexcept { return image.barrierStates; }
+	static vector<Image::LayoutState>& getBarrierStates(Image& image) noexcept { return image.barrierStates; }
 
 	/**
 	 * @brief Creates a new image data.

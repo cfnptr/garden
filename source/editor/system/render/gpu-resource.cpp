@@ -1036,7 +1036,7 @@ static void renderPipelineDetails(const Pipeline& pipeline, ID<Pipeline> instanc
 
 			ImGui::SeparatorText(pair.first.c_str());
 			ImGui::TextWrapped("Type: %s", toString(uniform.type).data());
-			ImGui::TextWrapped("Shader stages: %s", toStringList(uniform.shaderStages).c_str());
+			ImGui::TextWrapped("Pipeline stages: %s", toStringList(uniform.pipelineStages).c_str());
 			ImGui::TextWrapped("Binding index: %lu", (unsigned long)uniform.bindingIndex);
 			ImGui::TextWrapped("Descriptor set index: %lu", (unsigned long)uniform.descriptorSetIndex);
 			ImGui::TextWrapped("Array size: %lu", (unsigned long)uniform.arraySize);

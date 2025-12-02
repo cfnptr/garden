@@ -34,21 +34,60 @@ namespace garden::graphics
 enum class GslDataType : uint8
 {
 	Bool,     /**< Boolean type, true / false. (32-bit integer internally) */
+	Int8,     /**< 8-bit signed integer type. (1 byte) */
+	Int16,    /**< 16-bit signed integer type. (2 bytes) */
 	Int32,    /**< 32-bit signed integer type. (4 bytes) */
+	Int64,    /**< 64-bit signed integer type. (8 bytes) */
+	Uint8,    /**< 8-bit unsigned integer type. (1 byte) */
+	Uint16,   /**< 16-bit unsigned integer type. (2 bytes) */
 	Uint32,   /**< 32-bit unsigned integer type. (4 bytes) */
+	Uint64,   /**< 64-bit unsigned integer type. (8 bytes) */
+	Half,     /**< 16-bit floating point type. (IEEE-754) */
 	Float,    /**< 32-bit floating point type. (IEEE-754) */
-	Bool2,    /**< 2D boolean type. (2D 32-bit integer internally) */
-	Bool3,    /**< 3D boolean type. (3D 32-bit integer internally) */
-	Bool4,    /**< 4D boolean type. (4D 32-bit integer internally) */
+
+	Bool2,    /**< 2D boolean type. (32-bit integer internally) */
+	Bool3,    /**< 3D boolean type. (32-bit integer internally) */
+	Bool4,    /**< 4D boolean type. (32-bit integer internally) */
+	Sbyte2,   /**< 2D 8-bit signed integer type. */
+	Sbyte3,   /**< 3D 8-bit signed integer type. */
+	Sbyte4,   /**< 4D 8-bit signed integer type. */
+	Short2,   /**< 2D 16-bit signed integer type. */
+	Short3,   /**< 3D 16-bit signed integer type. */
+	Short4,   /**< 4D 16-bit signed integer type. */
 	Int2,     /**< 2D 32-bit signed integer type. */
 	Int3,     /**< 3D 32-bit signed integer type. */
 	Int4,     /**< 4D 32-bit signed integer type. */
+	Long2,    /**< 2D 64-bit signed integer type. */
+	Long3,    /**< 3D 64-bit signed integer type. */
+	Long4,    /**< 4D 64-bit signed integer type. */
+	Byte2,    /**< 2D 8-bit unsigned integer type. */
+	Byte3,    /**< 3D 8-bit unsigned integer type. */
+	Byte4,    /**< 4D 8-bit unsigned integer type. */
+	Ushort2,  /**< 2D 16-bit unsigned integer type. */
+	Ushort3,  /**< 3D 16-bit unsigned integer type. */
+	Ushort4,  /**< 4D 16-bit unsigned integer type. */
 	Uint2,    /**< 2D 32-bit unsigned integer type. */
 	Uint3,    /**< 3D 32-bit unsigned integer type. */
 	Uint4,    /**< 4D 32-bit unsigned integer type. */
+	Ulong2,   /**< 2D 64-bit unsigned integer type. */
+	Ulong3,   /**< 3D 64-bit unsigned integer type. */
+	Ulong4,   /**< 4D 64-bit unsigned integer type. */
+	Half2,   /**< 2D 32-bit floating point type. (IEEE-754) */
+	Half3,   /**< 3D 32-bit floating point type. (IEEE-754) */
+	Half4,   /**< 4D 32-bit floating point type. (IEEE-754) */
 	Float2,   /**< 2D 32-bit floating point type. (IEEE-754) */
 	Float3,   /**< 3D 32-bit floating point type. (IEEE-754) */
 	Float4,   /**< 4D 32-bit floating point type. (IEEE-754) */
+	
+	Half2x2,  /**< 2x2 matrix 16-bit floating point type. (IEEE-754) */
+	Half3x3,  /**< 3x3 matrix 16-bit floating point type. (IEEE-754) */
+	Half4x4,  /**< 4x4 matrix 16-bit floating point type. (IEEE-754) */
+	Half2x3,  /**< 2x3 matrix 16-bit floating point type. (IEEE-754) */
+	Half3x2,  /**< 3x2 matrix 16-bit floating point type. (IEEE-754) */
+	Half2x4,  /**< 2x4 matrix 16-bit floating point type. (IEEE-754) */
+	Half4x2,  /**< 4x2 matrix 16-bit floating point type. (IEEE-754) */
+	Half3x4,  /**< 3x4 matrix 16-bit floating point type. (IEEE-754) */
+	Half4x3,  /**< 4x3 matrix 16-bit floating point type. (IEEE-754) */
 	Float2x2, /**< 2x2 matrix 32-bit floating point type. (IEEE-754) */
 	Float3x3, /**< 3x3 matrix 32-bit floating point type. (IEEE-754) */
 	Float4x4, /**< 4x4 matrix 32-bit floating point type. (IEEE-754) */
@@ -146,10 +185,12 @@ enum class GslUniformType : uint8
  */
 constexpr const char* gslDataTypeNames[(psize)GslDataType::Count] =
 {
-	"bool", "int", "uint", "float", "bool2", "bool3", "bool4",
-	"int2", "int3", "int4", "uint2", "uint3", "uint4",
-	"float2", "float3", "float4", "float2x2", "float3x3", "float4x4",
-	"float2x3", "float3x2", "float2x4", "float4x2", "float3x4", "float4x3"
+	"bool", "int8", "int16", "int32", "int64", "uint8", "uint16", "uint32", "uint64", "half", "float",
+	"bool2", "bool3", "bool4", "sbyte2", "sbyte3", "sbyte4", "short2", "short3", "short4", "int2", "int3", "int4",
+	"long2", "long3", "long4",  "byte2", "byte3", "byte4", "ushort2", "ushort3", "ushort4", "uint2", "uint3", "uint4", 
+	"ulong2", "ulong3", "ulong4", "half2", "half3", "half4", "half2", "half3", "half4",
+	"half2x2", "half3x3", "half4x4", "half2x3", "half3x2", "half2x4", "halfx2", "half3x4", "half4x3",
+	"float2x2", "float3x3", "float4x4", "float2x3", "float3x2", "float2x4", "float4x2", "float3x4", "float4x3"
 };
 /**
  * @brief GSL data format name strings. (camelCase)
@@ -182,21 +223,61 @@ constexpr const char* gslUniformTypeNames[(psize)GslUniformType::Count] =
 static GslDataType toGslDataType(string_view dataType)
 {
 	if (dataType == "bool") return GslDataType::Bool;
+	if (dataType == "int8") return GslDataType::Int8;
+	if (dataType == "int16") return GslDataType::Int16;
 	if (dataType == "int32") return GslDataType::Int32;
+	if (dataType == "int64") return GslDataType::Int64;
+	if (dataType == "uint8") return GslDataType::Uint8;
+	if (dataType == "uint16") return GslDataType::Uint16;
 	if (dataType == "uint32") return GslDataType::Uint32;
+	if (dataType == "uint32") return GslDataType::Uint32;
+	if (dataType == "uint64") return GslDataType::Uint64;
+	if (dataType == "half") return GslDataType::Half;
 	if (dataType == "float") return GslDataType::Float;
+
 	if (dataType == "bool2") return GslDataType::Bool2;
 	if (dataType == "bool3") return GslDataType::Bool3;
 	if (dataType == "bool4") return GslDataType::Bool4;
+	if (dataType == "sbyte2") return GslDataType::Sbyte2;
+	if (dataType == "sbyte3") return GslDataType::Sbyte3;
+	if (dataType == "sbyte4") return GslDataType::Sbyte4;
+	if (dataType == "short2") return GslDataType::Short2;
+	if (dataType == "short3") return GslDataType::Short3;
+	if (dataType == "short4") return GslDataType::Short4;
 	if (dataType == "int2") return GslDataType::Int2;
 	if (dataType == "int3") return GslDataType::Int3;
 	if (dataType == "int4") return GslDataType::Int4;
+	if (dataType == "long2") return GslDataType::Long2;
+	if (dataType == "long3") return GslDataType::Long3;
+	if (dataType == "long4") return GslDataType::Long4;
+	if (dataType == "byte2") return GslDataType::Byte2;
+	if (dataType == "byte3") return GslDataType::Byte3;
+	if (dataType == "byte4") return GslDataType::Byte4;
+	if (dataType == "ushort2") return GslDataType::Ushort2;
+	if (dataType == "ushort3") return GslDataType::Ushort3;
+	if (dataType == "ushort4") return GslDataType::Ushort4;
 	if (dataType == "uint2") return GslDataType::Uint2;
 	if (dataType == "uint3") return GslDataType::Uint3;
 	if (dataType == "uint4") return GslDataType::Uint4;
+	if (dataType == "ulong2") return GslDataType::Ulong2;
+	if (dataType == "ulong3") return GslDataType::Ulong3;
+	if (dataType == "ulong4") return GslDataType::Ulong4;
+	if (dataType == "half2") return GslDataType::Half2;
+	if (dataType == "half3") return GslDataType::Half3;
+	if (dataType == "half4") return GslDataType::Half4;
 	if (dataType == "float2") return GslDataType::Float2;
 	if (dataType == "float3") return GslDataType::Float3;
 	if (dataType == "float4") return GslDataType::Float4;
+
+	if (dataType == "half2x2") return GslDataType::Half2x2;
+	if (dataType == "half3x3") return GslDataType::Half3x3;
+	if (dataType == "half4x4") return GslDataType::Half4x4;
+	if (dataType == "half2x3") return GslDataType::Half2x3;
+	if (dataType == "half3x2") return GslDataType::Half3x2;
+	if (dataType == "half2x4") return GslDataType::Half2x4;
+	if (dataType == "half4x2") return GslDataType::Half4x2;
+	if (dataType == "half3x4") return GslDataType::Half3x4;
+	if (dataType == "half4x3") return GslDataType::Half4x3;
 	if (dataType == "float2x2") return GslDataType::Float2x2;
 	if (dataType == "float3x3") return GslDataType::Float3x3;
 	if (dataType == "float4x4") return GslDataType::Float4x4;
@@ -328,31 +409,35 @@ static uint8 toComponentCount(GslDataType dataType) noexcept
 {
 	switch (dataType)
 	{
-		case GslDataType::Bool: return 1;
-		case GslDataType::Int32: return 1;
-		case GslDataType::Uint32: return 1;
-		case GslDataType::Float: return 1;
-		case GslDataType::Bool2: return 2;
-		case GslDataType::Int2: return 2;
-		case GslDataType::Uint2: return 2;
-		case GslDataType::Float2: return 2;
-		case GslDataType::Bool3: return 3;
-		case GslDataType::Int3: return 3;
-		case GslDataType::Uint3: return 3;
-		case GslDataType::Float3: return 3;
-		case GslDataType::Bool4: return 4;
-		case GslDataType::Int4: return 4;
-		case GslDataType::Uint4: return 4;
-		case GslDataType::Float4: return 4;
-		case GslDataType::Float2x2: return 4;
-		case GslDataType::Float3x3: return 9;
-		case GslDataType::Float4x4: return 16;
-		case GslDataType::Float2x3: return 6;
-		case GslDataType::Float3x2: return 6;
-		case GslDataType::Float2x4: return 8;
-		case GslDataType::Float4x2: return 8;
-		case GslDataType::Float3x4: return 12;
-		case GslDataType::Float4x3: return 12;
+		case GslDataType::Bool:
+		case GslDataType::Int8: case GslDataType::Int16: case GslDataType::Int32: case GslDataType::Int64:
+		case GslDataType::Uint8: case GslDataType::Uint16: case GslDataType::Uint32: case GslDataType::Uint64:
+		case GslDataType::Half: case GslDataType::Float:
+			return 1;
+		case GslDataType::Bool2:
+		case GslDataType::Sbyte2: case GslDataType::Short2: case GslDataType::Int2: case GslDataType::Long2:
+		case GslDataType::Byte2: case GslDataType::Ushort2: case GslDataType::Uint2: case GslDataType::Ulong2:
+		case GslDataType::Half2: case GslDataType::Float2:
+			return 2;
+		case GslDataType::Bool3:
+		case GslDataType::Sbyte3: case GslDataType::Short3: case GslDataType::Int3: case GslDataType::Long3:
+		case GslDataType::Byte3: case GslDataType::Ushort3: case GslDataType::Uint3: case GslDataType::Ulong3:
+		case GslDataType::Half3: case GslDataType::Float3:
+			return 3;
+		case GslDataType::Bool4:
+		case GslDataType::Sbyte4: case GslDataType::Short4: case GslDataType::Int4: case GslDataType::Long4:
+		case GslDataType::Byte4: case GslDataType::Ushort4: case GslDataType::Uint4: case GslDataType::Ulong4:
+		case GslDataType::Half4: case GslDataType::Float4:
+			return 4;
+		case GslDataType::Half2x2: case GslDataType::Float2x2: return 4;
+		case GslDataType::Half3x3: case GslDataType::Float3x3: return 9;
+		case GslDataType::Half4x4: case GslDataType::Float4x4: return 16;
+		case GslDataType::Half2x3: case GslDataType::Float2x3: return 6;
+		case GslDataType::Half3x2: case GslDataType::Float3x2: return 6;
+		case GslDataType::Half2x4: case GslDataType::Float2x4: return 8;
+		case GslDataType::Half4x2: case GslDataType::Float4x2: return 8;
+		case GslDataType::Half3x4: case GslDataType::Float3x4: return 12;
+		case GslDataType::Half4x3: case GslDataType::Float4x3: return 12;
 		default: abort();
 	}
 }
@@ -365,31 +450,31 @@ static uint8 toLocationOffset(GslDataType dataType) noexcept
 {
 	switch (dataType)
 	{
-		case GslDataType::Bool: return 1;
-		case GslDataType::Int32: return 1;
-		case GslDataType::Uint32: return 1;
-		case GslDataType::Float: return 1;
-		case GslDataType::Bool2: return 1;
-		case GslDataType::Int2: return 1;
-		case GslDataType::Uint2: return 1;
-		case GslDataType::Float2: return 1;
-		case GslDataType::Bool3: return 1;
-		case GslDataType::Int3: return 1;
-		case GslDataType::Uint3: return 1;
-		case GslDataType::Float3: return 1;
-		case GslDataType::Bool4: return 1;
-		case GslDataType::Int4: return 1;
-		case GslDataType::Uint4: return 1;
-		case GslDataType::Float4: return 1;
-		case GslDataType::Float2x2: return 2;
-		case GslDataType::Float3x3: return 3;
-		case GslDataType::Float4x4: return 4;
-		case GslDataType::Float2x3: return 3;
-		case GslDataType::Float3x2: return 2;
-		case GslDataType::Float2x4: return 4;
-		case GslDataType::Float4x2: return 2;
-		case GslDataType::Float3x4: return 4;
-		case GslDataType::Float4x3: return 3;
+		case GslDataType::Bool:
+		case GslDataType::Int8: case GslDataType::Int16: case GslDataType::Int32: case GslDataType::Int64:
+		case GslDataType::Uint8: case GslDataType::Uint16: case GslDataType::Uint32: case GslDataType::Uint64:
+		case GslDataType::Half: case GslDataType::Float:
+		case GslDataType::Bool2: case GslDataType::Bool3: case GslDataType::Bool4:
+		case GslDataType::Sbyte2: case GslDataType::Sbyte3: case GslDataType::Sbyte4:
+		case GslDataType::Short2: case GslDataType::Short3: case GslDataType::Short4:
+		case GslDataType::Int2: case GslDataType::Int3: case GslDataType::Int4:
+		case GslDataType::Long2: case GslDataType::Long3: case GslDataType::Long4:
+		case GslDataType::Byte2: case GslDataType::Byte3: case GslDataType::Byte4:
+		case GslDataType::Ushort2: case GslDataType::Ushort3: case GslDataType::Ushort4:
+		case GslDataType::Uint2: case GslDataType::Uint3: case GslDataType::Uint4:
+		case GslDataType::Ulong2: case GslDataType::Ulong3: case GslDataType::Ulong4:
+		case GslDataType::Half2: case GslDataType::Half3: case GslDataType::Half4:
+		case GslDataType::Float2: case GslDataType::Float3: case GslDataType::Float4:
+			return 1;
+		case GslDataType::Half2x2: case GslDataType::Float2x2: return 2;
+		case GslDataType::Half3x3: case GslDataType::Float3x3: return 3;
+		case GslDataType::Half4x4: case GslDataType::Float4x4: return 4;
+		case GslDataType::Half2x3: case GslDataType::Float2x3: return 3;
+		case GslDataType::Half3x2: case GslDataType::Float3x2: return 2;
+		case GslDataType::Half2x4: case GslDataType::Float2x4: return 4;
+		case GslDataType::Half4x2: case GslDataType::Float4x2: return 2;
+		case GslDataType::Half3x4: case GslDataType::Float3x4: return 4;
+		case GslDataType::Half4x3: case GslDataType::Float4x3: return 3;
 		default: abort();
 	}
 }
@@ -403,21 +488,60 @@ static constexpr psize toBinarySize(GslDataType dataType) noexcept
 	switch (dataType)
 	{
 		case GslDataType::Bool: return sizeof(uint32);
+		case GslDataType::Int8: return sizeof(int8);
+		case GslDataType::Int16: return sizeof(int16);
 		case GslDataType::Int32: return sizeof(int32);
+		case GslDataType::Int64: return sizeof(int64);
+		case GslDataType::Uint8: return sizeof(uint8);
+		case GslDataType::Uint16: return sizeof(uint16);
 		case GslDataType::Uint32: return sizeof(uint32);
+		case GslDataType::Uint64: return sizeof(uint64);
+		case GslDataType::Half: return sizeof(uint16); // TODO: half format?
 		case GslDataType::Float: return sizeof(float);
+
 		case GslDataType::Bool2: return sizeof(uint32) * 2;
 		case GslDataType::Bool3: return sizeof(uint32) * 3;
 		case GslDataType::Bool4: return sizeof(uint32) * 4;
+		case GslDataType::Sbyte2: return sizeof(int8) * 2;
+		case GslDataType::Sbyte3: return sizeof(int8) * 3;
+		case GslDataType::Sbyte4: return sizeof(int8) * 4;
+		case GslDataType::Short2: return sizeof(int16) * 2;
+		case GslDataType::Short3: return sizeof(int16) * 3;
+		case GslDataType::Short4: return sizeof(int16) * 4;
 		case GslDataType::Int2: return sizeof(int32) * 2;
 		case GslDataType::Int3: return sizeof(int32) * 3;
 		case GslDataType::Int4: return sizeof(int32) * 4;
+		case GslDataType::Long2: return sizeof(int64) * 2;
+		case GslDataType::Long3: return sizeof(int64) * 3;
+		case GslDataType::Long4: return sizeof(int64) * 4;
+		case GslDataType::Byte2: return sizeof(uint8) * 2;
+		case GslDataType::Byte3: return sizeof(uint8) * 3;
+		case GslDataType::Byte4: return sizeof(uint8) * 4;
+		case GslDataType::Ushort2: return sizeof(uint16) * 2;
+		case GslDataType::Ushort3: return sizeof(uint16) * 3;
+		case GslDataType::Ushort4: return sizeof(uint16) * 4;
 		case GslDataType::Uint2: return sizeof(uint32) * 2;
 		case GslDataType::Uint3: return sizeof(uint32) * 3;
 		case GslDataType::Uint4: return sizeof(uint32) * 4;
+		case GslDataType::Ulong2: return sizeof(uint64) * 2;
+		case GslDataType::Ulong3: return sizeof(uint64) * 3;
+		case GslDataType::Ulong4: return sizeof(uint64) * 4;
+		case GslDataType::Half2: return sizeof(uint16) * 2;
+		case GslDataType::Half3: return sizeof(uint16) * 3;
+		case GslDataType::Half4: return sizeof(uint16) * 4;
 		case GslDataType::Float2: return sizeof(float) * 2;
 		case GslDataType::Float3: return sizeof(float) * 3;
 		case GslDataType::Float4: return sizeof(float) * 4;
+
+		case GslDataType::Half2x2: return sizeof(uint16) * 2 * 2;
+		case GslDataType::Half3x3: return sizeof(uint16) * 3 * 3;
+		case GslDataType::Half4x4: return sizeof(uint16) * 4 * 4;
+		case GslDataType::Half2x3: return sizeof(uint16) * 2 * 3;
+		case GslDataType::Half3x2: return sizeof(uint16) * 3 * 2;
+		case GslDataType::Half2x4: return sizeof(uint16) * 2 * 4;
+		case GslDataType::Half4x2: return sizeof(uint16) * 4 * 2;
+		case GslDataType::Half3x4: return sizeof(uint16) * 3 * 4;
+		case GslDataType::Half4x3: return sizeof(uint16) * 4 * 3;
 		case GslDataType::Float2x2: return sizeof(float) * 2 * 2;
 		case GslDataType::Float3x3: return sizeof(float) * 3 * 3;
 		case GslDataType::Float4x4: return sizeof(float) * 4 * 4;

@@ -18,7 +18,9 @@
  */
 
 #pragma once
+#include "garden/graphics/common.hpp"
 #include "garden/graphics/resource.hpp"
+#include "math/flags.hpp"
 
 namespace garden::graphics
 {
@@ -65,6 +67,25 @@ public:
 		Speed,   /**< Allocate memory as fast as possible, sacrificing the size. */
 		Count    /**< Graphics memory allocation strategy count. */
 	};
+	/**
+	 * @brief Graphics memory access flags.
+	 */
+	enum class AccessFlags : uint8
+	{
+		None = 0x00,        /**< No memory access flags. */
+		ShaderRead = 0x01,  /**< Specifies read access to a shader uniform. */
+		ShaderWrite = 0x02, /**< Specifies write access to a shader uniform. */
+		// TODO: other shader access flags
+	};
+
+	/**
+	 * @brief Graphics memory barrier state.
+	 */
+	struct BarrierState
+	{
+		uint32 access = 0; /**< Memory access flags. (Internal API format) */
+		uint32 stage = 0;  /**< Pipeline stages. (Internal API format)*/
+	};
 protected:
 	void* allocation = nullptr;
 	uint64 binarySize = 0;
@@ -103,9 +124,41 @@ public:
 	 * @details Describes allocation strategy, prefer speed or size.
 	 */
 	Strategy getStrategy() const noexcept { return strategy; }
+
+	/**
+	 * @brief Creates memory barrier state.
+	 * @param accessFlags memory access flags
+	 */
+	static BarrierState toBarrierState(AccessFlags accessFlags, PipelineStage pipelineStages) noexcept;
 };
 
+DECLARE_ENUM_CLASS_FLAG_OPERATORS(Memory::AccessFlags)
+
+/***********************************************************************************************************************
+ * @brief Returns memory access flag name string.
+ * @param accessFlag target memory access flag
+ */
+static string_view toString(Memory::AccessFlags accessFlag)
+{
+	if (hasOneFlag(accessFlag, Memory::AccessFlags::ShaderRead)) return "ShaderRead";
+	if (hasOneFlag(accessFlag, Memory::AccessFlags::ShaderWrite)) return "ShaderWrite";
+	return "None";
+}
 /**
+ * @brief Returns buffer usage name string list.
+ * @param accessFlags target memory access flags
+ */
+static string toStringList(Memory::AccessFlags accessFlags)
+{
+	string list;
+	if (hasAnyFlag(accessFlags, Memory::AccessFlags::ShaderRead)) list += "ShaderRead | ";
+	if (hasAnyFlag(accessFlags, Memory::AccessFlags::ShaderWrite)) list += "ShaderWrite | ";
+	if (list.length() >= 3) list.resize(list.length() - 3);
+	else return "None";
+	return list;
+}
+
+/***********************************************************************************************************************
  * @brief Memory CPU side access name strings.
  */
 constexpr const char* memoryCpuAccessNames[(psize)Memory::CpuAccess::Count] =

@@ -144,7 +144,7 @@ struct PushConstantsCommandBase : public Command
 {
 	uint8 _alignment = 0;
 	uint16 dataSize = 0;
-	uint32 shaderStages = 0;
+	uint32 pipelineStages = 0;
 	void* pipelineLayout = nullptr;
 	PushConstantsCommandBase() noexcept : Command(Type::PushConstants) { }
 };

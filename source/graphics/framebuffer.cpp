@@ -75,7 +75,7 @@ static vk::RenderPass createVkRenderPass(VulkanAPI* vulkanAPI, uint2 size,
 			attachmentReferences[j + referenceOffset] = vk::AttachmentReference(
 				result.index, vk::ImageLayout::eShaderReadOnlyOptimal);
 
-			auto newStage = (uint32)toVkPipelineStages(inputAttachment.shaderStages);
+			auto newStage = (uint32)toVkPipelineStages(inputAttachment.pipelineStages);
 			auto newAccess = (uint32)vk::AccessFlagBits::eInputAttachmentRead;
 			oldDependencyStage |= result.stage;
 			oldDependencyAccess |= result.access;
