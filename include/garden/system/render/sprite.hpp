@@ -118,7 +118,7 @@ protected:
 
 	static void resetComponent(View<Component> component);
 
-	bool isMeshReady(MeshRenderComponent* meshRenderView) override;
+	bool isMeshReadyAsync(MeshRenderComponent* meshRenderView) override;
 	void drawAsync(MeshRenderComponent* meshRenderView, const f32x4x4& viewProj,
 		const f32x4x4& model, uint32 drawIndex, int32 taskIndex) override;
 

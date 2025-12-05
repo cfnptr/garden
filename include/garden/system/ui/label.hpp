@@ -138,7 +138,7 @@ private:
 	MeshRenderType getMeshRenderType() const final;
 
 	bool isDrawReady(int8 shadowPass) final;
-	bool isMeshReady(MeshRenderComponent* meshRenderView) override;
+	bool isMeshReadyAsync(MeshRenderComponent* meshRenderView) override;
 	void prepareDraw(const f32x4x4& viewProj, uint32 drawCount, int8 shadowPass) final;
 	void beginDrawAsync(int32 taskIndex) final;
 	void drawAsync(MeshRenderComponent* meshRenderView, const f32x4x4& viewProj,

@@ -99,7 +99,7 @@ void SpriteRenderSystem::resetComponent(View<Component> component)
 }
 
 //**********************************************************************************************************************
-bool SpriteRenderSystem::isMeshReady(MeshRenderComponent* meshRenderView)
+bool SpriteRenderSystem::isMeshReadyAsync(MeshRenderComponent* meshRenderView)
 {
 	auto spriteRenderView = (SpriteRenderComponent*)meshRenderView;
 	return (bool)spriteRenderView->descriptorSet;
