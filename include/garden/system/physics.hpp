@@ -22,7 +22,9 @@
 #include "garden/hash.hpp"
 #include "garden/animate.hpp"
 #include "garden/network.hpp"
+
 #include "math/flags.hpp"
+#include "math/sphere.hpp"
 
 namespace garden
 {
@@ -559,8 +561,9 @@ public:
 	 * @param position target rigidbody position
 	 * @param rotation target rigidbody rotation
 	 * @param activate is rigidbody should be activated
+	 * @param leaveLast leave last position and rotation intact
 	 */
-	void setPosAndRot(f32x4 position, quat rotation, bool activate = true);
+	void setPosAndRot(f32x4 position, quat rotation, bool activate = true, bool leaveLast = false);
 	/**
 	 * @brief Are rigidbody position and rotation differ from specified values.
 	 * @note It also checks if values are far enough to count it as changed.
@@ -697,6 +700,13 @@ public:
 		uint16 _alignment1 = 0;
 	};
 
+	struct NetRigidbody final
+	{
+		quat rotation;
+		float3 position;
+		float3 linearVelocity;
+		float3 angularVelocity;
+	};
 	static constexpr const char* messageType = "r";
 private:
 	struct EntityConstraint final
@@ -719,8 +729,8 @@ private:
 	set<ID<Entity>> serializedConstraints;
 	tsl::robin_map<uint64, ID<Entity>> deserializedEntities;
 	vector<EntityConstraint> deserializedConstraints;
-	vector<RigidbodyComponent*> networkRigidbodies;
-	mutex bodyEventLocker;
+	tsl::robin_map<uint32, NetRigidbody> netRigidbodies;
+	mutex bodyEventLocker, netRigidbodyLocker;
 	string valueStringCache;
 	void* tempAllocator = nullptr;
 	void* jobSystem = nullptr;
@@ -733,8 +743,8 @@ private:
 	void* bodyInterface = nullptr;
 	const void* lockInterface = nullptr;
 	const void* narrowPhaseQuery = nullptr;
-	ID<Entity> thisBody = {};
-	ID<Entity> otherBody = {};
+	const void* broadPhaseQuery = nullptr;
+	ID<Entity> thisBody = {}, otherBody = {};
 	float deltaTimeAccum = 0.0f;
 	uint32 cascadeLagCount = 0;
 
@@ -761,8 +771,8 @@ private:
 	void prepareSimulate();
 	void processSimulate();
 	void interpolateResult(float t);
-	void sendServer();
-	void sendClient(uint32 rigidodyCount);
+	void flushNetRigidbodies();
+	void sendServerMessages();
 
 	void resetComponent(View<Component> component, bool full) final;
 	void copyComponent(View<Component> source, View<Component> destination) final;
@@ -786,9 +796,11 @@ private:
 	friend class CharacterSystem;
 public:
 	/******************************************************************************************************************/
-	int32 collisionSteps = 1;         /**< Collision step count during simulation step. */
-	uint16 simulationRate = 60;       /**< Simulation update count per second. */
-	float cascadeLagThreshold = 0.1f; /**< Underperforming simulation frames threshold to try recover performance. */
+	float cascadeLagThreshold = 0.1f;  /**< Underperforming simulation frames threshold to try recover performance. */
+	float networkViewRadius = 1000.0f; /**< Network world bodies synchronization radius. */
+	int32 collisionSteps = 1;          /**< Collision step count during simulation step. */
+	uint16 simulationRate = 60;        /**< Simulation update count per second. */
+	
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	float statsLogRate = 10.0f;       /**< Simulation debug stats log rate in seconds. */
@@ -974,45 +986,63 @@ public:
 
 	/**
 	 * @brief Casts a ray to find the closest rigidbody shape hit.
-	 * @return True if found a rigidbody shape hit.
 	 * 
 	 * @param[in] ray target ray to cast
 	 * @param[out] hit rigidbody shape hit information
 	 * @param maxDistance maximum ray cast distance
+	 * @param broadPhaseLayer broad phase layer filter (-1 = all)
 	 * @param castInactive also cast inactive rigidbodies
 	 */
-	bool castRay(const Ray& ray, RayCastHit& hit, float maxDistance = 1000.0f, bool castInactive = false);
+	RayCastHit castRay(const Ray& ray, float maxDistance = 1000.0f, 
+		int8 broadPhaseLayer = -1, bool castInactive = false);
 	/**
 	 * @brief Casts a ray to find all rigidbody shape hits.
-	 * @return True if found rigidbody shape hits.
 	 * 
 	 * @param[in] ray target ray to cast
 	 * @param[out] hits rigidbody shape hit information array
 	 * @param maxDistance maximum ray cast distance
+	 * @param broadPhaseLayer broad phase layer filter (-1 = all)
 	 * @param sortHits order hits on closest first
 	 * @param castInactive also cast inactive rigidbodies
 	 */
-	bool castRay(const Ray& ray, vector<RayCastHit>& hits, float maxDistance = 1000.0f, 
-		bool sortHits = false, bool castInactive = false);
+	void castRay(const Ray& ray, vector<RayCastHit>& hits, float maxDistance = 1000.0f, 
+		int8 broadPhaseLayer = -1, bool sortHits = false, bool castInactive = false);
 
 	/**
-	 * @brief Checks if point is inside any rigidbody shape.
-	 * @return True if found a rigidbody shape hit.
+	 * @brief Collides specified AABB with all rigidbody AABBs. (Broad phase)
+	 * 
+	 * @param aabb target axis aligned bounding box to collide
+	 * @param[out] hits rigidbody shape hit information array
+	 * @param broadPhaseLayer broad phase layer filter (-1 = all)
+	 */
+	void collideAABB(const Aabb& aabb, vector<ShapeHit>& hits, int8 broadPhaseLayer = -1);
+	/**
+	 * @brief Collides specified sphere with all rigidbody AABBs. (Broad phase)
+	 * 
+	 * @param sphere target sphere to collide
+	 * @param[out] hits rigidbody shape hit information array
+	 * @param broadPhaseLayer broad phase layer filter (-1 = all)
+	 */
+	void collideSphere(Sphere sphere, vector<ShapeHit>& hits, int8 broadPhaseLayer = -1);
+
+	/**
+	 * @brief Collides specified point with a first rigidbody shape.
 	 * 
 	 * @param point target point to collide
 	 * @param[out] hit rigidbody shape hit information
+	 * @param broadPhaseLayer broad phase layer filter (-1 = all)
 	 * @param collideInactive also collide inactive rigidbodies
 	 */	
-	bool collidePoint(f32x4 point, ShapeHit& hit, bool collideInactive = false);
+	ShapeHit collidePoint(f32x4 point, int8 broadPhaseLayer = -1, bool collideInactive = false);
 	/**
-	 * @brief Checks if point is inside any rigidbody shape.
-	 * @return True if found rigidbody shape hits.
+	 * @brief Collides specified point with all rigidbody shape.
 	 * 
 	 * @param point target point to collide
 	 * @param[out] hits rigidbody shape hit information array
+	 * @param broadPhaseLayer broad phase layer filter (-1 = all)
 	 * @param collideInactive also collide inactive rigidbodies
 	 */	
-	bool collidePoint(f32x4 point, vector<ShapeHit>& hits, bool collideInactive = false);
+	void collidePoint(f32x4 point, vector<ShapeHit>& hits, int8 broadPhaseLayer = -1, bool collideInactive = false);
 
 	/*******************************************************************************************************************
 	 * @brief Wakes up rigidbody if it's sleeping.

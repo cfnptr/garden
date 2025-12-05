@@ -593,7 +593,7 @@ bool JsonDeserializer::read(string_view name, string& value)
 	auto& object = hierarchy.top()->operator[](name);
 	if (!object.is_string())
 		return false;
-	value.assign(object);
+	value.assign((const string&)object);
 	return true;
 }
 bool JsonDeserializer::read(string_view name, u32string& value)
@@ -602,8 +602,7 @@ bool JsonDeserializer::read(string_view name, u32string& value)
 	auto& object = hierarchy.top()->operator[](name);
 	if (!object.is_string())
 		return false;
-	string value8(object);
-	return UTF::convert(value8, value) == 0;
+	return UTF::convert((const string&)object, value) == 0;
 }
 
 //**********************************************************************************************************************
