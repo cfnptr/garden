@@ -135,8 +135,8 @@ void LinkSystem::serialize(ISerializer& serializer, const View<Component> compon
 	const auto componentView = View<LinkComponent>(component);
 	if (componentView->uuid)
 	{
-		componentView->uuid.toBase64URL(uuidStringCache);
-		serializer.write("uuid", uuidStringCache);
+		componentView->uuid.toBase64URL(valueStringCache);
+		serializer.write("uuid", valueStringCache);
 	}
 
 	if (!componentView->tag.empty())
@@ -145,15 +145,15 @@ void LinkSystem::serialize(ISerializer& serializer, const View<Component> compon
 void LinkSystem::deserialize(IDeserializer& deserializer, View<Component> component)
 {
 	auto componentView = View<LinkComponent>(component);
-	if (deserializer.read("uuid", uuidStringCache))
+	if (deserializer.read("uuid", valueStringCache))
 	{
-		if (!componentView->uuid.fromBase64URL(uuidStringCache))
-			GARDEN_LOG_ERROR("Deserialized entity with invalid link uuid. (uuid: " + uuidStringCache + ")");
+		if (!componentView->uuid.fromBase64URL(valueStringCache))
+			GARDEN_LOG_ERROR("Deserialized entity with invalid link UUID. (UUID: " + valueStringCache + ")");
 
 		auto result = uuidMap.emplace(componentView->uuid, componentView->entity);
 		if (!result.second)
 		{
-			GARDEN_LOG_ERROR("Deserialized entity with already existing link uuid. (uuid: " + uuidStringCache + ")");
+			GARDEN_LOG_ERROR("Deserialized entity with already existing link UUID. (UUID: " + valueStringCache + ")");
 			componentView->uuid = {};
 		}
 	}

@@ -99,12 +99,15 @@ void SpriteRenderSystem::resetComponent(View<Component> component)
 }
 
 //**********************************************************************************************************************
+bool SpriteRenderSystem::isMeshReady(MeshRenderComponent* meshRenderView)
+{
+	auto spriteRenderView = (SpriteRenderComponent*)meshRenderView;
+	return (bool)spriteRenderView->descriptorSet;
+}
 void SpriteRenderSystem::drawAsync(MeshRenderComponent* meshRenderView,
 	const f32x4x4& viewProj, const f32x4x4& model, uint32 drawIndex, int32 taskIndex)
 {
 	auto spriteRenderView = (SpriteRenderComponent*)meshRenderView;
-	if (!spriteRenderView->descriptorSet)
-		return;
 
 	DescriptorSet::Range dsRange[2];
 	dsRange[0] = DescriptorSet::Range(descriptorSet, 1, inFlightIndex);
@@ -216,24 +219,23 @@ void SpriteRenderSystem::deserialize(IDeserializer& deserializer, View<Component
 	deserializer.read("uvOffset", componentView->uvOffset);
 	componentView->isEnabled = isEnabled;
 
-	string colorMapPath;
-	if (deserializer.read("colorMapPath", colorMapPath))
+	if (deserializer.read("colorMapPath", valueStringCache))
 	{
-		if (colorMapPath.empty())
-			colorMapPath = "missing";
+		if (valueStringCache.empty())
+			valueStringCache = "missing";
 
 		auto taskPriority = 0.0f;
 		deserializer.read("taskPriority", taskPriority);
 
 		#if GARDEN_DEBUG || GARDEN_EDITOR
-		componentView->colorMapPath = colorMapPath;
+		componentView->colorMapPath = valueStringCache;
 		componentView->taskPriority = taskPriority;
 		#endif
 
 		auto maxMipCount = componentView->useMipmap ? 0 : 1;
 		auto flags = imageFlags; if (componentView->isArray) flags |= ImageLoadFlags::LoadArray;
 		auto usage = imageUsage; if (maxMipCount == 0) usage |= Image::Usage::TransferSrc;
-		componentView->colorMap = ResourceSystem::Instance::get()->loadImage(colorMapPath, 
+		componentView->colorMap = ResourceSystem::Instance::get()->loadImage(valueStringCache, 
 			usage, maxMipCount, Image::Strategy::Default, flags, taskPriority);
 	}
 }

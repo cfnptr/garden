@@ -80,21 +80,22 @@ void CameraSystem::serialize(ISerializer& serializer, const View<Component> comp
 void CameraSystem::deserialize(IDeserializer& deserializer, View<Component> component)
 {
 	auto componentView = View<CameraComponent>(component);
-
-	string type; deserializer.read("projection", type);
-	if (type == "Perspective")
+	if (deserializer.read("projection", valueStringCache))
 	{
-		componentView->type = ProjectionType::Perspective;
-		deserializer.read("fieldOfView", componentView->p.perspective.fieldOfView);
-		deserializer.read("aspectRatio", componentView->p.perspective.aspectRatio);
-		deserializer.read("nearPlane", componentView->p.perspective.nearPlane);
-	}
-	else if (type == "Orthographic")
-	{
-		componentView->type = ProjectionType::Orthographic;
-		deserializer.read("width", componentView->p.orthographic.width);
-		deserializer.read("height", componentView->p.orthographic.height);
-		deserializer.read("depth", componentView->p.orthographic.depth);
+		if (valueStringCache == "Perspective")
+		{
+			componentView->type = ProjectionType::Perspective;
+			deserializer.read("fieldOfView", componentView->p.perspective.fieldOfView);
+			deserializer.read("aspectRatio", componentView->p.perspective.aspectRatio);
+			deserializer.read("nearPlane", componentView->p.perspective.nearPlane);
+		}
+		else if (valueStringCache == "Orthographic")
+		{
+			componentView->type = ProjectionType::Orthographic;
+			deserializer.read("width", componentView->p.orthographic.width);
+			deserializer.read("height", componentView->p.orthographic.height);
+			deserializer.read("depth", componentView->p.orthographic.depth);
+		}
 	}
 }
 

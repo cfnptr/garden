@@ -286,7 +286,7 @@ int StreamServerHandle::onMessageReceive(::StreamMessage message, void* argument
 	{
 		auto searchResult = pair.first->networkables.find(messageType);
 		if (searchResult != pair.first->networkables.end())
-			return searchResult->second->onRequest(pair.second, message);
+			return searchResult->second->onMsgFromClient(pair.second, message);
 	}
 	else
 	{
@@ -308,7 +308,7 @@ int StreamServerHandle::onEncRequest(ClientSession* session, StreamInput request
 
 	session->datagramLocker.lock();
 
-	if (!session->decKey)
+	if (!session->decKey) // Note: key is allocated for memory safety.
 		session->decKey = new uint8[ClientSession::keySize];
 	memcpy(session->decKey, newKey, ClientSession::keySize * sizeof(uint8));
 
@@ -394,22 +394,22 @@ void ServerNetworkSystem::preInit()
 //**********************************************************************************************************************
 static void updateSessions(StreamServerHandle* streamServer, std::function<int(ClientSession*)> onSessionUpdate)
 {
-	auto manager = Manager::Instance::get();
-	manager->unlock();
-
 	auto threadSystem = ThreadSystem::Instance::tryGet();
 	streamServer->lockSessions();
-	
-	auto sessions = streamServer->getSessions();
+
 	auto sessionCount = streamServer->getSessionCount();
 	if (sessionCount == 0)
 	{
 		streamServer->unlockSessions();
 		return;
 	}
-	
+
+	auto sessions = streamServer->getSessions();
 	if (threadSystem)
 	{
+		auto manager = Manager::Instance::get();
+		manager->unlock();
+
 		auto& threadPool = threadSystem->getForegroundPool();
 		threadPool.addItems([streamServer, onSessionUpdate, sessions](const ThreadPool::Task& task)
 		{
@@ -441,7 +441,9 @@ static void updateSessions(StreamServerHandle* streamServer, std::function<int(C
 			}
 		},
 		sessionCount);
+
 		threadPool.wait();
+		manager->lock();
 	}
 	else
 	{
@@ -471,7 +473,6 @@ static void updateSessions(StreamServerHandle* streamServer, std::function<int(C
 
 	streamServer->flushSessions();
 	streamServer->unlockSessions();
-	manager->lock();
 }
 void ServerNetworkSystem::update()
 {

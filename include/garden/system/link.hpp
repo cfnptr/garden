@@ -80,7 +80,7 @@ public:
 private:
 	UuidMap uuidMap;
 	TagMap tagMap;
-	string uuidStringCache;
+	string valueStringCache;
 	random_device randomDevice;
 
 	/**

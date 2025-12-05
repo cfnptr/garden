@@ -165,7 +165,7 @@ int ClientNetworkSystem::onMessageReceive(::StreamMessage message, void* argumen
 	{
 		auto searchResult = clientSystem->networkables.find(messageType);
 		if (searchResult != clientSystem->networkables.end())
-			return searchResult->second->onResponse(message, clientSystem->isDatagram);
+			return searchResult->second->onMsgFromServer(message, clientSystem->isDatagram);
 	}
 	else
 	{

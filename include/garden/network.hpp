@@ -107,6 +107,44 @@ public:
 		iter += sizeof(uint4);
 		return false;
 	}
+
+	/**
+	 * @brief Reads 32-bit int 2 component vector from the stream message and advances offset.
+	 * @return True if no more data to read, otherwise false.
+	 * @param[out] value pointer to the unsigned integer vector
+	 */
+	bool read(int2& value) noexcept { return read(*((uint2*)&value)); }
+	/**
+	 * @brief Reads 32-bit int 3 component vector from the stream message and advances offset.
+	 * @return True if no more data to read, otherwise false.
+	 * @param[out] value pointer to the unsigned integer vector
+	 */
+	bool read(int3& value) noexcept { return read(*((uint3*)&value)); }
+	/**
+	 * @brief Reads 32-bit int 4 component vector from the stream message and advances offset.
+	 * @return True if no more data to read, otherwise false.
+	 * @param[out] value pointer to the unsigned integer vector
+	 */
+	bool read(int4& value) noexcept { return read(*((uint4*)&value)); }
+
+	/**
+	 * @brief Reads 32-bit float 2 component vector from the stream message and advances offset.
+	 * @return True if no more data to read, otherwise false.
+	 * @param[out] value pointer to the unsigned integer vector
+	 */
+	bool read(float2& value) noexcept { return read(*((uint2*)&value)); }
+	/**
+	 * @brief Reads 32-bit float 3 component vector from the stream message and advances offset.
+	 * @return True if no more data to read, otherwise false.
+	 * @param[out] value pointer to the unsigned integer vector
+	 */
+	bool read(float3& value) noexcept { return read(*((uint3*)&value)); }
+	/**
+	 * @brief Reads 32-bit float 4 component vector from the stream message and advances offset.
+	 * @return True if no more data to read, otherwise false.
+	 * @param[out] value pointer to the unsigned integer vector
+	 */
+	bool read(float4& value) noexcept { return read(*((uint4*)&value)); }
 };
 
 /***********************************************************************************************************************
@@ -215,6 +253,44 @@ public:
 		iter += sizeof(uint4);
 		return false;
 	}
+
+	/**
+	 * @brief Writes 32-bit int 2 component vector to the stream message and advances offset.
+	 * @return True if no more space to write data, otherwise false.
+	 * @param value unsigned integer vector to write
+	 */
+	bool write(int2 value) noexcept { return write(*((const uint2*)&value)); }
+	/**
+	 * @brief Writes 32-bit int 3 component vector to the stream message and advances offset.
+	 * @return True if no more space to write data, otherwise false.
+	 * @param value unsigned integer vector to write
+	 */
+	bool write(int3 value) noexcept { return write(*((const uint3*)&value)); }
+	/**
+	 * @brief Writes 32-bit int 4 component vector to the stream message and advances offset.
+	 * @return True if no more space to write data, otherwise false.
+	 * @param value unsigned integer vector to write
+	 */
+	bool write(int4 value) noexcept { return write(*((const uint4*)&value)); }
+
+	/**
+	 * @brief Writes 32-bit float 2 component vector to the stream message and advances offset.
+	 * @return True if no more space to write data, otherwise false.
+	 * @param value unsigned integer vector to write
+	 */
+	bool write(float2 value) noexcept { return write(*((const uint2*)&value)); }
+	/**
+	 * @brief Writes 32-bit float 3 component vector to the stream message and advances offset.
+	 * @return True if no more space to write data, otherwise false.
+	 * @param value unsigned integer vector to write
+	 */
+	bool write(float3 value) noexcept { return write(*((const uint3*)&value)); }
+	/**
+	 * @brief Writes 32-bit float 4 component vector to the stream message and advances offset.
+	 * @return True if no more space to write data, otherwise false.
+	 * @param value unsigned integer vector to write
+	 */
+	bool write(float4 value) noexcept { return write(*((const uint4*)&value)); }
 };
 
 /**
@@ -257,6 +333,7 @@ struct ClientSession
 	void* decContext = nullptr;
 	void* datagramAddress = nullptr;
 	uint32 datagramUID = 0;
+	uint32 entityUID = 0;
 	bool isAuthorized = false;
 
 	/**
@@ -335,23 +412,23 @@ public:
 	virtual string_view getMessageType() = 0;
 
 	/**
-	 * @brief On message receive from a client.
+	 * @brief On client message receive by the server. (Client->Server)
 	 * @details Server destroys session on this function non zero return result.
 	 * @warning This function is called asynchronously from the receive thread!
 	 *
 	 * @param[in] session client session instance
 	 * @param message received stream message
 	 */
-	virtual int onRequest(ClientSession* session, StreamInput message) { return NOT_SUPPORTED_NETS_RESULT; }
+	virtual int onMsgFromClient(ClientSession* session, StreamInput message) { return NOT_SUPPORTED_NETS_RESULT; }
 	/**
-	 * @brief On message receive from the server.
+	 * @brief On server message receive by the client. (Server->Client)
 	 * @details Client closes connection on this function non zero return result.
 	 * @warning This function is called asynchronously from the receive thread!
 	 *
 	 * @param message received stream message
 	 * @param isDatagram is stream message datagram
 	 */
-	virtual int onResponse(StreamInput message, bool isDatagram) { return NOT_SUPPORTED_NETS_RESULT; }
+	virtual int onMsgFromServer(StreamInput message, bool isDatagram) { return NOT_SUPPORTED_NETS_RESULT; }
 };
 
 } // namespace garden

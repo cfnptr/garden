@@ -72,7 +72,7 @@ void* ClientSession::createEncContext(uint8*& encKey, void*& cipher) noexcept
 	if (!encContext)
 		return NULL;
 
-	encKey = new uint8[keySize];
+	encKey = new uint8[keySize]; // Note: key is allocated for memory safety.
 	if (!RAND_bytes(encKey, keySize))
 	{
 		EVP_CIPHER_CTX_free(encContext); free(encKey);

@@ -139,6 +139,12 @@ public:
 	 * @brief Returns system mesh component size in bytes.
 	 */
 	virtual psize getMeshComponentSize() const = 0;
+
+	/**
+	 * @brief Is mesh render component ready for rendering. (All resources loaded, etc.)
+	 * @param meshRenderView target mesh render view
+	 */
+	virtual bool isMeshReady(MeshRenderComponent* meshRenderView) = 0;
 };
 
 /***********************************************************************************************************************

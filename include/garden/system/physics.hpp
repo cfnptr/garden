@@ -21,8 +21,8 @@
 #pragma once
 #include "garden/hash.hpp"
 #include "garden/animate.hpp"
+#include "garden/network.hpp"
 #include "math/flags.hpp"
-#include <cfloat>
 
 namespace garden
 {
@@ -662,7 +662,7 @@ public:
  * @details Registers events: Simulate.
  */
 class PhysicsSystem final : public ComponentSystem<RigidbodyComponent, false>, 
-	public Singleton<PhysicsSystem>, public ISerializable
+	public Singleton<PhysicsSystem>, public ISerializable, public INetworkable
 {
 public:
 	using ShapePool = LinearPool<Shape>;
@@ -696,6 +696,8 @@ public:
 		uint8 _alignment0 = 0;
 		uint16 _alignment1 = 0;
 	};
+
+	static constexpr const char* messageType = "r";
 private:
 	struct EntityConstraint final
 	{
@@ -717,6 +719,7 @@ private:
 	set<ID<Entity>> serializedConstraints;
 	tsl::robin_map<uint64, ID<Entity>> deserializedEntities;
 	vector<EntityConstraint> deserializedConstraints;
+	vector<RigidbodyComponent*> networkRigidbodies;
 	mutex bodyEventLocker;
 	string valueStringCache;
 	void* tempAllocator = nullptr;
@@ -758,6 +761,8 @@ private:
 	void prepareSimulate();
 	void processSimulate();
 	void interpolateResult(float t);
+	void sendServer();
+	void sendClient(uint32 rigidodyCount);
 
 	void resetComponent(View<Component> component, bool full) final;
 	void copyComponent(View<Component> source, View<Component> destination) final;
@@ -770,6 +775,10 @@ private:
 	ID<Shape> deserializeDecoratedShape(IDeserializer& deserializer, string& valueStringCache);
 	void deserialize(IDeserializer& deserializer, View<Component> component) final;
 	void postDeserialize(IDeserializer& deserializer) final;
+
+	string_view getMessageType() final;
+	int onMsgFromClient(ClientSession* session, StreamInput message) final;
+	int onMsgFromServer(StreamInput message, bool isDatagram) final;
 	
 	friend class ecsm::Manager;
 	friend struct RigidbodyComponent;

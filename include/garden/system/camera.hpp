@@ -173,6 +173,8 @@ public:
 class CameraSystem final : public CompAnimSystem<CameraComponent, CameraFrame, false, false>, 
 	public Singleton<CameraSystem>, public ISerializable
 {
+	string valueStringCache;
+
 	/**
 	 * @brief Creates a new camera system instance.
 	 * @param setSingleton set system singleton instance

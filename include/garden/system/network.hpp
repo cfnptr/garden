@@ -23,12 +23,52 @@
 namespace garden
 {
 
+class NetworkSystem;
+
 /**
  * @brief Contains entity networking properties.
  */
 struct NetworkComponent final : public Component
 {
 	bool isClientOwned = false; /**< Is this entity controlled by the client or server. */
+private:
+	char* clientUID = nullptr;
+	uint32 entityUID = 0;
+
+	friend class NetworkSystem;
+public:
+	float sendDelay = 0.0f; /**< Next data send delay time in seconds. */
+
+	/**
+	* @brief Returns entity controlling client unique identifier c-string.
+	*/
+	const char* getClientUID() const noexcept { return clientUID; }
+	/**
+	 * @brief Sets entity controlling client unique identifier.
+	 * @param uid target client UID string
+	 */
+	void setClientUID(string_view uid);
+
+	/**
+	 * @brief Returns network entity unique identifier.
+	 */
+	uint32 getEntityUID() const noexcept { return entityUID; }
+	/**
+	 * @brief Sets network entity unique identifier.
+	 * @return True if UID is was sent, false if UID is already exist.
+	 * @param uid target network entity UID or 0
+	 */
+	bool trySetEntityUID(uint32 uid);
+	/**
+	 * @brief Sets network entity unique identifier.
+	 * @return True if UID is was sent, false if UID is already exist.
+	 * @param uid target network entity UID or 0
+	 */
+	void setEntityUID(uint32 uid)
+	{
+		if (!trySetEntityUID(uid))
+			throw GardenError("Network entity UID already exist.");
+	}
 };
 
 /***********************************************************************************************************************
@@ -37,6 +77,9 @@ struct NetworkComponent final : public Component
 class NetworkSystem final : public ComponentSystem<NetworkComponent, false>, 
 	public Singleton<NetworkSystem>, public ISerializable
 {
+	tsl::robin_map<uint32, ID<Entity>> entityMap;
+	string valueStringCache;
+
 	/**
 	 * @brief Creates a new network system instance.
 	 * @param setSingleton set system singleton instance
@@ -55,6 +98,20 @@ class NetworkSystem final : public ComponentSystem<NetworkComponent, false>,
 	void deserialize(IDeserializer& deserializer, View<Component> component) final;
 
 	friend class ecsm::Manager;
+	friend class NetworkComponent;
+public:
+	/**
+	 * @brief Returns network entity by UID if found.
+	 * @param uid target network entity UID
+	 */
+	ID<Entity> findEntity(uint32 uid) const noexcept
+	{
+		GARDEN_ASSERT(uid != 0);
+		auto result = entityMap.find(uid);
+		if (result == entityMap.end())
+			return {};
+		return result.value();
+	}
 };
 
 } // namespace garden

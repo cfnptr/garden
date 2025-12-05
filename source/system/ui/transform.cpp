@@ -148,9 +148,8 @@ void UiTransformSystem::deserialize(IDeserializer& deserializer, View<Component>
 	deserializer.read("scale", componentView->scale);
 	deserializer.read("rotation", componentView->rotation);
 
-	string anchor;
-	if (deserializer.read("anchor", anchor))
-		toUiAnchor(anchor, componentView->anchor);
+	if (deserializer.read("anchor", valueStringCache))
+		toUiAnchor(valueStringCache, componentView->anchor);
 }
 
 //**********************************************************************************************************************

@@ -84,12 +84,24 @@ static T* realloc(T* oldMemoryBlock, psize elementCount)
  * 
  * @tparam T target size type
  * @param size size in bytes
- * @param alignment  alignment in bytes
+ * @param alignment alignment in bytes
  */
 template<typename T = psize>
-constexpr T alignSize(T size, T alignment) noexcept
+static constexpr T alignSize(T size, T alignment) noexcept
 {
 	return (size + (alignment - 1)) & ~(alignment - 1);
+}
+/**
+ * @brief Returns true if specified size is aligned.
+ * 
+ * @tparam T target size type
+ * @param size size in bytes
+ * @param alignment alignment in bytes
+ */
+template <typename T = psize>
+static constexpr bool isSizeAligned(T size, T alignment) noexcept
+{
+	return size & (alignment - 1) == 0;
 }
 
 } // namespace garden
