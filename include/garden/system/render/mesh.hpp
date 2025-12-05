@@ -112,7 +112,6 @@ protected:
 	virtual void endDrawAsync(uint32 drawCount, int32 taskIndex) { }
 	/**
 	 * @brief Finalizes data used for mesh rendering.
-	 * @warning Be careful with multithreaded code!
 	 * 
 	 * @param[in] viewProj camera view * projection matrix
 	 * @param drawCount total mesh draw item count
@@ -121,7 +120,6 @@ protected:
 	virtual void finalizeDraw(const f32x4x4& viewProj, uint32 drawCount, int8 shadowPass) { }
 	/**
 	 * @brief Cleans up data used for mesh rendering.
-	 * @warning Be careful with multithreaded code!
 	 */
 	virtual void renderCleanup() { }
 
@@ -142,9 +140,10 @@ public:
 
 	/**
 	 * @brief Is mesh render component ready for rendering. (All resources loaded, etc.)
+	 * @warning Be careful with multithreaded code!
 	 * @param meshRenderView target mesh render view
 	 */
-	virtual bool isMeshReady(MeshRenderComponent* meshRenderView) = 0;
+	virtual bool isMeshReadyAsync(MeshRenderComponent* meshRenderView) = 0;
 };
 
 /***********************************************************************************************************************

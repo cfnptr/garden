@@ -286,9 +286,10 @@ bool UiLabelSystem::isDrawReady(int8 shadowPass)
 		return false; // Note: no shadow pass for UI.
 	if (!pipeline)
 		pipeline = createPipeline();
+	textSystem = TextSystem::Instance::get();
 	return GraphicsSystem::Instance::get()->get(pipeline)->isReady();
 }
-bool UiLabelSystem::isMeshReady(MeshRenderComponent* meshRenderView)
+bool UiLabelSystem::isMeshReadyAsync(MeshRenderComponent* meshRenderView)
 {
 	auto uiLabelView = (UiLabelComponent*)meshRenderView;
 	if (!uiLabelView->textData)
@@ -299,14 +300,12 @@ bool UiLabelSystem::isMeshReady(MeshRenderComponent* meshRenderView)
 void UiLabelSystem::prepareDraw(const f32x4x4& viewProj, uint32 drawCount, int8 shadowPass)
 {
 	manager = Manager::Instance::get();
-	textSystem = TextSystem::Instance::get();
 	uiScissorSystem = UiScissorSystem::Instance::tryGet();
 	pipelineView = OptView<GraphicsPipeline>(GraphicsSystem::Instance::get()->get(pipeline));
 }
 void UiLabelSystem::beginDrawAsync(int32 taskIndex)
 {
 	pipelineView->bindAsync(0, taskIndex);
-
 	if (uiScissorSystem)
 		pipelineView->setViewportAsync(float4::zero, taskIndex);
 	else pipelineView->setViewportScissorAsync(float4::zero, taskIndex);
