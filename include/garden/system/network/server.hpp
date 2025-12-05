@@ -58,6 +58,9 @@ public:
 		return sendDatagram(clientSession, message.getBuffer() + 
 			serverLengthSize, message.getSize() - serverLengthSize);
 	}
+
+	uint8 getServerLengthSize() const noexcept { return serverLengthSize; }
+	uint8 getClientLengthSize() const noexcept { return clientLengthSize; }
 private:
 	void* onSessionCreate(nets::StreamSessionView streamSession) final;
 	void onSessionDestroy(nets::StreamSessionView streamSession, int reason) final;

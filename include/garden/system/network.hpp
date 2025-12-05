@@ -37,8 +37,6 @@ private:
 
 	friend class NetworkSystem;
 public:
-	float sendDelay = 0.0f; /**< Next data send delay time in seconds. */
-
 	/**
 	* @brief Returns entity controlling client unique identifier c-string.
 	*/

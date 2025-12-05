@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "garden/system/physics.hpp"
-#include "garden/system/network/client.hpp"
 #include "garden/system/network/server.hpp"
 #include "garden/system/physics-impl.hpp"
 #include "garden/system/character.hpp"
@@ -55,7 +54,6 @@
 using namespace garden;
 using namespace garden::physics;
 
-//**********************************************************************************************************************
 static void TraceImpl(const char* inFMT, ...)
 {
 	va_list list;
@@ -724,15 +722,19 @@ void RigidbodyComponent::getPosAndRot(f32x4& position, quat& rotation) const
 	position = toF32x4(body->GetPosition());
 	rotation = toQuat(body->GetRotation());
 }
-void RigidbodyComponent::setPosAndRot(f32x4 position, quat rotation, bool activate)
+void RigidbodyComponent::setPosAndRot(f32x4 position, quat rotation, bool activate, bool leaveLast)
 {
 	GARDEN_ASSERT(shape);
 	auto body = (JPH::Body*)instance;
 	auto bodyInterface = (JPH::BodyInterface*)PhysicsSystem::Instance::get()->bodyInterface;
 	bodyInterface->SetPositionAndRotation(body->GetID(), toVec3(position), toQuat(rotation),
 		activate && inSimulation ? JPH::EActivation::Activate : JPH::EActivation::DontActivate);
-	lastPosition = position;
-	lastRotation = rotation;
+
+	if (!leaveLast)
+	{
+		lastPosition = position;
+		lastRotation = rotation;
+	}
 }
 bool RigidbodyComponent::isPosAndRotChanged(f32x4 position, quat rotation) const
 {
@@ -978,6 +980,7 @@ PhysicsSystem::PhysicsSystem(const Properties& properties, bool setSingleton) : 
 	auto manager = Manager::Instance::get();
 	manager->registerEventBefore("Simulate", "Update");
 	manager->addGroupSystem<ISerializable>(this);
+	manager->addGroupSystem<INetworkable>(this);
 
 	ECSM_SUBSCRIBE_TO_EVENT("PreInit", PhysicsSystem::preInit);
 	ECSM_SUBSCRIBE_TO_EVENT("PostInit", PhysicsSystem::postInit);
@@ -1102,6 +1105,7 @@ void PhysicsSystem::preInit()
 	bodyInterface = &physicsInstance->GetBodyInterface(); // Note: we should lock physics sim for thread safety!
 	lockInterface = &physicsInstance->GetBodyLockInterfaceNoLock(); // Version that does not lock the bodies, use with great care!
 	narrowPhaseQuery = &physicsInstance->GetNarrowPhaseQueryNoLock(); // Version that does not lock the bodies, use with great care!
+	broadPhaseQuery = &physicsInstance->GetBroadPhaseQuery();
 
 	// We need a job system that will execute physics jobs on multiple threads.
 	auto threadPool = &ThreadSystem::Instance::get()->getForegroundPool();
@@ -1123,20 +1127,12 @@ void PhysicsSystem::prepareSimulate()
 
 	auto jobSystem = (GardenJobSystem*)this->jobSystem;
 	auto threadPool = jobSystem->getThreadPool();
-	auto componentData = components.getData();
 
-	atomic_uint32_t netRigidbodyCount = 0;
-	if (ClientNetworkSystem::Instance::has())
-		networkRigidbodies.resize(components.getCount());
-	auto netRigidbodies = networkRigidbodies.data();
-
-	threadPool->addItems([componentData, netRigidbodies, &netRigidbodyCount](const ThreadPool::Task& task)
+	threadPool->addItems([this](const ThreadPool::Task& task)
 	{
 		auto manager = Manager::Instance::get();
-		auto clientNetworkSystem = ClientNetworkSystem::Instance::tryGet();
-		if (clientNetworkSystem && !clientNetworkSystem->isAuthorized) clientNetworkSystem = nullptr;
-		auto physicsInstance = (JPH::PhysicsSystem*)PhysicsSystem::Instance::get()->physicsInstance;
-		auto& bodyInterface = physicsInstance->GetBodyInterface(); // This one is with lock.
+		auto bodyInterface = (JPH::BodyInterface*)this->bodyInterface;
+		auto componentData = components.getData();
 		auto itemCount = task.getItemCount();
 
 		for (uint32 i = task.getItemOffset(); i < itemCount; i++)
@@ -1158,25 +1154,14 @@ void PhysicsSystem::prepareSimulate()
 
 				auto body = (JPH::Body*)rigidbodyView->instance;
 				JPH::RVec3 position = {}; JPH::Quat rotation = {};
-				bodyInterface.GetPositionAndRotation(body->GetID(), position, rotation);
+				bodyInterface->GetPositionAndRotation(body->GetID(), position, rotation);
 				transformView->setPosition(rigidbodyView->lastPosition = toF32x4(position));
 				transformView->setRotation(rigidbodyView->lastRotation = toQuat(rotation));
-			}
-
-			if (clientNetworkSystem)
-			{
-				auto networkView = manager->tryGet<NetworkComponent>(entity);
-				if (networkView && networkView->isClientOwned && networkView->getEntityUID())
-					netRigidbodies[netRigidbodyCount++] = rigidbodyView;
-				// TODO: maybe use per thread netRigidbodies here? But we expect just couple of these.
 			}
 		}
 	},
 	components.getOccupancy());
 	threadPool->wait();
-
-	sendServer();
-	sendClient(netRigidbodyCount);
 }
 
 //**********************************************************************************************************************
@@ -1254,11 +1239,11 @@ void PhysicsSystem::interpolateResult(float t)
 
 	auto jobSystem = (GardenJobSystem*)this->jobSystem;
 	auto threadPool = jobSystem->getThreadPool();
-	auto componentData = components.getData();
 
-	threadPool->addItems([componentData, t](const ThreadPool::Task& task)
+	threadPool->addItems([this, t](const ThreadPool::Task& task)
 	{
 		auto manager = Manager::Instance::get();
+		auto componentData = components.getData();
 		auto itemCount = task.getItemCount();
 
 		for (uint32 i = task.getItemOffset(); i < itemCount; i++)
@@ -1285,16 +1270,20 @@ void PhysicsSystem::interpolateResult(float t)
 	threadPool->wait();
 }
 
+static float getPhysicsDeltaTime() noexcept
+{
+	auto inputSystem = InputSystem::Instance::tryGet();
+	if (inputSystem) return (float)inputSystem->getDeltaTime();
+	return (float)LoopSystem::Instance::get()->getDeltaTime();
+}
+
 //**********************************************************************************************************************
 void PhysicsSystem::simulate()
 {
 	SET_CPU_ZONE_SCOPED("Physics Simulate");
+	flushNetRigidbodies();
 
-	float deltaTime;
-	auto inputSystem = InputSystem::Instance::tryGet();
-	if (inputSystem) deltaTime = (float)inputSystem->getDeltaTime();
-	else deltaTime = (float)LoopSystem::Instance::get()->getDeltaTime();
-
+	auto deltaTime = getPhysicsDeltaTime();
 	auto simDeltaTime = 1.0f / (float)(simulationRate + 1);
 	deltaTimeAccum += deltaTime;
 
@@ -1333,23 +1322,24 @@ void PhysicsSystem::simulate()
 
 		#if (GARDEN_DEBUG || GARDEN_EDITOR) && defined(JPH_TRACK_BROADPHASE_STATS)
 		static auto lastBroadphaseTime = 0.0;
-		if (logBroadPhaseStats && lastBroadphaseTime < inputSystem->getCurrentTime())
+		if (logBroadPhaseStats && lastBroadphaseTime < InputSystem::Instance::get()->getCurrentTime())
 		{
 			physicsInstance->ReportBroadphaseStats();
-			lastBroadphaseTime = inputSystem->getCurrentTime() + statsLogRate;
+			lastBroadphaseTime = InputSystem::Instance::get()->getCurrentTime() + statsLogRate;
 		}
 		#endif
 
 		#if (GARDEN_DEBUG || GARDEN_EDITOR) && defined(JPH_TRACK_NARROWPHASE_STATS)
 		static auto lastNarrowphaseTime = 0.0;
-		if (logNarrowPhaseStats && lastNarrowphaseTime < inputSystem->getCurrentTime())
+		if (logNarrowPhaseStats && lastNarrowphaseTime < InputSystem::Instance::get()->getCurrentTime())
 		{
 			JPH::NarrowPhaseStat::sReportStats();
-			lastNarrowphaseTime = inputSystem->getCurrentTime() + statsLogRate;
+			lastNarrowphaseTime = InputSystem::Instance::get()->getCurrentTime() + statsLogRate;
 		}
 		#endif
 
 		processSimulate();
+		sendServerMessages();
 		deltaTimeAccum = 0.0f;
 	}
 	else
@@ -1359,75 +1349,149 @@ void PhysicsSystem::simulate()
 	}
 }
 
-//**********************************************************************************************************************
-static constexpr uint32 rbTransformSize = (sizeof(uint32) * 2 + sizeof(uint64) * 2 + sizeof(float3));
-static constexpr uint32 maxRbPerMessage = (MAX_DATAGRAM_MESSAGE_SIZE - StreamOutput::baseTotalSize) / rbTransformSize;
-
-static void encodeRigidbody(Manager* manager, RigidbodyComponent* rigidbodyView, StreamOutput& message)
+void PhysicsSystem::flushNetRigidbodies()
 {
-	auto networkView = manager->get<NetworkComponent>(rigidbodyView->getEntity());
-	message.write(networkView->getEntityUID());
+	SET_CPU_ZONE_SCOPED("Net Rigidbodies Flush");
 
-	f32x4 position; quat rotation; rigidbodyView->getPosAndRot(position, rotation);
-	message.write((float3)position); message.write(compressUnit(rotation));
-
-	uint32 compressed; float magnitude;
-	compress3(rigidbodyView->getLinearVelocity(), compressed, magnitude);
-	message.write(compressed); message.write(magnitude);
-	compress3(rigidbodyView->getAngularVelocity(), compressed, magnitude);
-	message.write(compressed); message.write(magnitude);
-}
-void PhysicsSystem::sendServer()
-{
-	SET_CPU_ZONE_SCOPED("Server Rigidbody Send");
-
-	if (!ServerNetworkSystem::Instance::has())
-		return;
+	auto manager = Manager::Instance::get();
 	auto networkSystem = NetworkSystem::Instance::get();
 
-	ServerSessionLocker sessions;
-	for (uint32 i = 0; i < sessions.count(); i++)
+	netRigidbodyLocker.lock();
+	for (auto pair : netRigidbodies)
 	{
-		auto clientSession = sessions.get(i);
-		if (!clientSession->entityUID)
-			continue;
-
-		auto entity = networkSystem->findEntity(clientSession->entityUID);
+		auto entity = networkSystem->findEntity(pair.first);
 		if (!entity)
 			continue;
 
-		// TODO: when we receive rigidbody transforms, put them into the map instead of locking mutex and applying tranforms.
-		// TODO: clientSession->send()
-	}
-}
-void PhysicsSystem::sendClient(uint32 rigidbodyCount)
-{
-	SET_CPU_ZONE_SCOPED("Client Rigidbody Send");
+		auto rigidbodyView = manager->tryGet<RigidbodyComponent>(entity);
+		if (!rigidbodyView)
+			continue;
 
-	if (rigidbodyCount == 0)
+		rigidbodyView->setPosAndRot((f32x4)pair.second.position, pair.second.rotation, true, true);
+		rigidbodyView->setLinearVelocity((f32x4)pair.second.linearVelocity);
+		rigidbodyView->setAngularVelocity((f32x4)pair.second.angularVelocity);
+	}
+	netRigidbodies.clear();
+	netRigidbodyLocker.unlock();
+}
+
+//**********************************************************************************************************************
+static constexpr uint32 rbTransformSize = (sizeof(uint32) * 2 + sizeof(uint64) * 2 + sizeof(float3));
+static constexpr uint32 maxRbPerMessage = (MAX_DATAGRAM_MESSAGE_SIZE - StreamOutput::baseTotalSize) / rbTransformSize;
+static thread_local vector<ShapeHit> shapeHits;
+static thread_local vector<RigidbodyComponent*> rigidbodyViews;
+
+static void encodeNetRigidbody(Manager* manager, const RigidbodyComponent* rigidbodyView, StreamOutput& message)
+{
+	auto networkView = manager->get<NetworkComponent>(rigidbodyView->getEntity());
+	f32x4 position; quat rotation; rigidbodyView->getPosAndRot(position, rotation);
+	uint32 linearData, angularData; float linearMagnitude, angularMagnitude;
+	auto rotationData = compressUnit(rotation);
+	compress3(rigidbodyView->getLinearVelocity(), linearData, linearMagnitude);
+	compress3(rigidbodyView->getAngularVelocity(), angularData, angularMagnitude);
+
+	message.write(networkView->getEntityUID());
+	message.write((float3)position); message.write(rotationData);
+	message.write(linearData); message.write(angularData);
+	message.write(linearMagnitude); message.write(angularMagnitude);
+}
+static bool decodeNetRigidbody(StreamInput& message, uint32& entityUID, PhysicsSystem::NetRigidbody& netRigidbody)
+{
+	uint32 rotationData, linearData, angularData; float3 position; float linearMagnitude, angularMagnitude;
+	if (message.read(entityUID) || message.read(position) || message.read(rotationData) || message.read(linearData) || 
+		message.read(angularData) || message.read(linearMagnitude) || message.read(angularMagnitude))
+	{
+		return false;
+	}
+
+	auto rotation = normalize(decompressUnit(rotationData));
+	auto linearVelocity = decompress3(linearData, linearMagnitude);
+	auto angularVelocity = decompress3(angularData, angularMagnitude);
+
+	if (isNan4((f32x4)position) || isNan4(rotation) || isNan3(linearVelocity) || isNan3(angularVelocity))
+		return false;
+
+	netRigidbody.rotation = rotation; netRigidbody.position = position;
+	netRigidbody.linearVelocity = (float3)linearVelocity;
+	netRigidbody.angularVelocity = (float3)angularVelocity;
+	return true;
+}
+
+//**********************************************************************************************************************
+void PhysicsSystem::sendServerMessages()
+{
+	SET_CPU_ZONE_SCOPED("Server Rigidbody Send");
+
+	auto serverNetworkSystem = ServerNetworkSystem::Instance::tryGet();
+	if (!serverNetworkSystem || !serverNetworkSystem->getStreamHandle())
 		return;
 
-	auto manager = Manager::Instance::get();
-	auto clientNetworkSystem = ClientNetworkSystem::Instance::get();
-	auto messageCount = (uint32)ceil((float)rigidbodyCount / maxRbPerMessage);
-	auto lengthSize = clientNetworkSystem->getClientLengthSize();
-	auto rigidbodies = networkRigidbodies.data();
+	auto streamServer = serverNetworkSystem->getStreamHandle();
+	auto jobSystem = (GardenJobSystem*)this->jobSystem;
+	auto threadPool = jobSystem->getThreadPool();
+	
+	ServerSessionLocker sessions;
+	if (sessions.count() == 0)
+		return;
 
-	uint32 index = 0;
-	for (uint32 i = 0; i < messageCount; i++)
+	threadPool->addItems([this, &sessions, streamServer](const ThreadPool::Task& task)
 	{
-		auto msgRigidbodyCount = min(rigidbodyCount - i * maxRbPerMessage, maxRbPerMessage);
-		auto messageSize = msgRigidbodyCount * rbTransformSize;
-		StreamOutputBuffer<MAX_DATAGRAM_MESSAGE_SIZE> message(messageType, messageSize, lengthSize, true);
+		auto manager = Manager::Instance::get();
+		auto networkSystem = NetworkSystem::Instance::get();
+		auto lengthSize = streamServer->getServerLengthSize();
+		auto deltaTime = getPhysicsDeltaTime();
+		auto itemCount = task.getItemCount();
 
-		for (uint32 j = 0; j < msgRigidbodyCount; j++)
+		for (uint32 i = task.getItemOffset(); i < itemCount; i++)
 		{
-			auto rigidbodyView = rigidbodies[index++];
-			encodeRigidbody(manager, rigidbodyView, message);
-		}
+			auto clientSession = sessions.get(i);
+			if (!clientSession->entityUID)
+				continue;
 
-		clientNetworkSystem->sendDatagram(message);
-	}
+			auto entity = networkSystem->findEntity(clientSession->entityUID);
+			if (!entity)
+				continue;
+
+			auto rigidbodyView = manager->tryGet<RigidbodyComponent>(entity);
+			if (!rigidbodyView)
+				continue;
+
+			auto sphere = Sphere(networkViewRadius, rigidbodyView->getPosition());
+			collideSphere(sphere, shapeHits, (int8)BroadPhaseLayer::Moving);
+			if (shapeHits.empty())
+				continue;
+
+			for (auto hit : shapeHits)
+			{
+				if (!manager->has<NetworkComponent>(hit.entity))
+					continue;
+				auto rigidbodyView = manager->get<RigidbodyComponent>(hit.entity);
+				if (!rigidbodyView->isActive())
+					continue;
+				rigidbodyViews.push_back(*rigidbodyView);
+			}
+			shapeHits.clear();
+
+			auto rigidbodyCount = (uint32)rigidbodyViews.size();
+			auto messageCount = (uint32)ceil((float)rigidbodyCount / maxRbPerMessage);
+			const auto rigidbodies = rigidbodyViews.data();
+
+			uint32 index = 0;
+			for (uint32 i = 0; i < messageCount; i++)
+			{
+				auto msgRigidbodyCount = min(rigidbodyCount - i * maxRbPerMessage, maxRbPerMessage);
+				auto messageSize = msgRigidbodyCount * rbTransformSize;
+				StreamOutputBuffer<MAX_DATAGRAM_MESSAGE_SIZE> message(messageType, messageSize, lengthSize, true);
+
+				for (uint32 j = 0; j < msgRigidbodyCount; j++)
+					encodeNetRigidbody(manager, rigidbodies[index++], message);
+				streamServer->sendDatagram(clientSession, message);
+			}
+			rigidbodyViews.clear();
+		}
+	},
+	sessions.count());
+	threadPool->wait();
 }
 
 //**********************************************************************************************************************
@@ -1801,14 +1865,34 @@ void PhysicsSystem::postDeserialize(IDeserializer& deserializer)
 
 //**********************************************************************************************************************
 string_view PhysicsSystem::getMessageType() { return messageType; }
+int PhysicsSystem::onMsgFromClient(ClientSession* session, StreamInput message) { return BAD_DATA_NETS_RESULT; }
 
-int PhysicsSystem::onMsgFromClient(ClientSession* session, StreamInput message)
-{
-	return (int)SUCCESS_NETS_RESULT;
-}
 int PhysicsSystem::onMsgFromServer(StreamInput message, bool isDatagram)
 {
-	return (int)SUCCESS_NETS_RESULT;
+	auto messageSize = message.getLeft();
+	if (!isDatagram || messageSize % rbTransformSize)
+		return BAD_DATA_NETS_RESULT;
+
+	auto rigidbodyCount = messageSize / rbTransformSize;
+	uint32 entityUID; NetRigidbody netRigidbody;
+
+	netRigidbodyLocker.lock();
+	for (uint32 i = 0; i < rigidbodyCount; i++)
+	{
+		if (!decodeNetRigidbody(message, entityUID, netRigidbody))
+		{
+			netRigidbodyLocker.unlock();
+			return BAD_DATA_NETS_RESULT;
+		}
+
+		auto result = netRigidbodies.find(entityUID);
+		if (result == netRigidbodies.end())
+			netRigidbodies.emplace(entityUID, netRigidbody);
+		else result.value() = netRigidbody;
+	}
+	netRigidbodyLocker.unlock();
+
+	return SUCCESS_NETS_RESULT;
 }
 
 //**********************************************************************************************************************
@@ -2117,127 +2201,200 @@ public:
 	}
 };
 
+static const JPH::BroadPhaseLayerFilter defaultbroadPhaseFilter;
 static const JPH::BodyFilter defaultBodyFilter;
 
-bool PhysicsSystem::castRay(const Ray& ray, RayCastHit& hit, float maxDistance, bool castInactive)
+RayCastHit PhysicsSystem::castRay(const Ray& ray, float maxDistance, int8 broadPhaseLayer, bool castInactive)
 {
 	GARDEN_ASSERT(ray.getDirection() != f32x4::zero);
 	GARDEN_ASSERT(maxDistance > 0.0f);
 
 	auto narrowPhaseQuery = (const JPH::NarrowPhaseQuery*)this->narrowPhaseQuery;
+	auto broadPhaseFilter = JPH::SpecifiedBroadPhaseLayerFilter(JPH::BroadPhaseLayer(broadPhaseLayer));
 	auto activeBodyFilter = ActiveBodyFilter((const JPH::BodyLockInterface*)this->lockInterface);
 	auto rayCast = JPH::RRayCast(toRVec3(ray.origin), toRVec3(ray.getDirection()) * maxDistance);
 
 	JPH::RayCastResult rayCastResult;
-	if (!narrowPhaseQuery->CastRay(rayCast, rayCastResult, {}, {}, 
-		castInactive ? defaultBodyFilter : activeBodyFilter))
+	if (!narrowPhaseQuery->CastRay(rayCast, rayCastResult, 
+		broadPhaseLayer > -1 ? broadPhaseFilter : defaultbroadPhaseFilter,
+		{}, castInactive ? defaultBodyFilter : activeBodyFilter))
 	{
-		return false;
+		return {};
 	}
-
-	hit.subShapeID = rayCastResult.mSubShapeID2.GetValue();
-	hit.surfacePoint = toF32x4(rayCast.GetPointOnRay(rayCastResult.mFraction));
 
 	auto& lockInterface = *((const JPH::BodyLockInterface*)this->lockInterface);
 	JPH::BodyLockRead lock(lockInterface, rayCastResult.mBodyID);
-	if (lock.Succeeded())
-	{
-		auto& body = lock.GetBody();
-		hit.surfaceNormal = toF32x4(body.GetWorldSpaceSurfaceNormal(
-			rayCastResult.mSubShapeID2, rayCast.GetPointOnRay(rayCastResult.mFraction)));
-		*hit.entity = (uint32)body.GetUserData();
-	}
-	return true;
+	if (!lock.Succeeded())
+		return {};
+	auto& body = lock.GetBody();
+
+	RayCastHit hit;
+	*hit.entity = (uint32)body.GetUserData();
+	hit.subShapeID = rayCastResult.mSubShapeID2.GetValue();
+	hit.surfacePoint = toF32x4(rayCast.GetPointOnRay(rayCastResult.mFraction));
+	hit.surfaceNormal = toF32x4(body.GetWorldSpaceSurfaceNormal(
+		rayCastResult.mSubShapeID2, rayCast.GetPointOnRay(rayCastResult.mFraction)));
+	return hit;
 }
-bool PhysicsSystem::castRay(const Ray& ray, vector<RayCastHit>& hits, float maxDistance, bool sortHits, bool castInactive)
+void PhysicsSystem::castRay(const Ray& ray, vector<RayCastHit>& hits, 
+	float maxDistance, int8 broadPhaseLayer, bool sortHits, bool castInactive)
 {
 	GARDEN_ASSERT(ray.getDirection() != f32x4::zero);
 	GARDEN_ASSERT(maxDistance > 0.0f);
 
 	auto narrowPhaseQuery = (const JPH::NarrowPhaseQuery*)this->narrowPhaseQuery;
+	auto broadPhaseFilter = JPH::SpecifiedBroadPhaseLayerFilter(JPH::BroadPhaseLayer(broadPhaseLayer));
 	auto activeBodyFilter = ActiveBodyFilter((const JPH::BodyLockInterface*)this->lockInterface);
 	auto rayCast = JPH::RRayCast(toRVec3(ray.origin), toRVec3(ray.getDirection()) * maxDistance);
 
 	static const JPH::RayCastSettings settings;
 	JPH::AllHitCollisionCollector<JPH::CastRayCollector> collector;
-	narrowPhaseQuery->CastRay(rayCast, settings, collector, {}, {}, 
-		castInactive ? defaultBodyFilter : activeBodyFilter);
+	narrowPhaseQuery->CastRay(rayCast, settings, collector, 
+		broadPhaseLayer > -1 ? broadPhaseFilter : defaultbroadPhaseFilter, 
+		{}, castInactive ? defaultBodyFilter : activeBodyFilter);
 	if (!collector.HadHit())
-		return false;
-	
+	{
+		hits.resize(0);
+		return;
+	}
+
 	if (sortHits)
 		collector.Sort();
-	
+
 	auto& lockInterface = *((const JPH::BodyLockInterface*)this->lockInterface);
-	const auto& collectorHits = collector.mHits;
-	hits.resize(collectorHits.size()); auto hitData = hits.data();
+	hits.clear(); hits.reserve(collector.mHits.size());
 
-	for (psize i = 0; i < collectorHits.size(); i++)
+	for (const auto& hitResult : collector.mHits)
 	{
+		JPH::BodyLockRead lock(lockInterface, hitResult.mBodyID);
+		if (!lock.Succeeded())
+			continue;
+		auto& body = lock.GetBody();
+
 		RayCastHit hit;
-		auto collectorHit = collectorHits[i];
-		hit.subShapeID = collectorHit.mSubShapeID2.GetValue();
-		hit.surfacePoint = toF32x4(rayCast.GetPointOnRay(collectorHit.mFraction));
-
-		JPH::BodyLockRead lock(lockInterface, collectorHit.mBodyID);
-		if (lock.Succeeded())
-		{
-			auto& body = lock.GetBody();
-			hit.surfaceNormal = toF32x4(body.GetWorldSpaceSurfaceNormal(
-				collectorHit.mSubShapeID2, rayCast.GetPointOnRay(collectorHit.mFraction)));
-			*hit.entity = (uint32)body.GetUserData();
-		}
-
-		hitData[i] = hit;
+		*hit.entity = (uint32)body.GetUserData();
+		hit.subShapeID = hitResult.mSubShapeID2.GetValue();
+		hit.surfacePoint = toF32x4(rayCast.GetPointOnRay(hitResult.mFraction));
+		hit.surfaceNormal = toF32x4(body.GetWorldSpaceSurfaceNormal(
+			hitResult.mSubShapeID2, rayCast.GetPointOnRay(hitResult.mFraction)));
+		hits.push_back(hit);
 	}
-	return true;
 }
 
 //**********************************************************************************************************************
-bool PhysicsSystem::collidePoint(f32x4 point, ShapeHit& hit, bool collideInactive)
+void PhysicsSystem::collideAABB(const Aabb& aabb, vector<ShapeHit>& hits, int8 broadPhaseLayer)
+{
+	auto broadPhaseQuery = (const JPH::BroadPhaseQuery*)this->broadPhaseQuery;
+	auto broadPhaseFilter = JPH::SpecifiedBroadPhaseLayerFilter(JPH::BroadPhaseLayer(broadPhaseLayer));
+	auto activeBodyFilter = ActiveBodyFilter((const JPH::BodyLockInterface*)this->lockInterface);
+
+	JPH::AllHitCollisionCollector<JPH::CollideShapeBodyCollector> collector;
+	broadPhaseQuery->CollideAABox(toAABox(aabb), collector, 
+		broadPhaseLayer > -1 ? broadPhaseFilter : defaultbroadPhaseFilter);
+	if (!collector.HadHit())
+	{
+		hits.resize(0);
+		return;
+	}
+
+	auto& lockInterface = *((const JPH::BodyLockInterface*)this->lockInterface);
+	hits.clear(); hits.reserve(collector.mHits.size());
+
+	for (const auto& hitBody : collector.mHits)
+	{
+		JPH::BodyLockRead lock(lockInterface, hitBody);
+		if (!lock.Succeeded())
+			continue;
+
+		RayCastHit hit;
+		*hit.entity = (uint32)lock.GetBody().GetUserData();
+		hits.push_back(hit);
+	}
+}
+void PhysicsSystem::collideSphere(Sphere sphere, vector<ShapeHit>& hits, int8 broadPhaseLayer)
+{
+	auto broadPhaseQuery = (const JPH::BroadPhaseQuery*)this->broadPhaseQuery;
+	auto broadPhaseFilter = JPH::SpecifiedBroadPhaseLayerFilter(JPH::BroadPhaseLayer(broadPhaseLayer));
+	auto activeBodyFilter = ActiveBodyFilter((const JPH::BodyLockInterface*)this->lockInterface);
+
+	JPH::AllHitCollisionCollector<JPH::CollideShapeBodyCollector> collector;
+	broadPhaseQuery->CollideSphere(toVec3(sphere.getPosition()), sphere.getRadius(), 
+		collector, broadPhaseLayer > -1 ? broadPhaseFilter : defaultbroadPhaseFilter);
+	if (!collector.HadHit())
+	{
+		hits.resize(0);
+		return;
+	}
+
+	auto& lockInterface = *((const JPH::BodyLockInterface*)this->lockInterface);
+	hits.clear(); hits.reserve(collector.mHits.size());
+
+	for (const auto& hitBody : collector.mHits)
+	{
+		JPH::BodyLockRead lock(lockInterface, hitBody);
+		if (!lock.Succeeded())
+			continue;
+
+		RayCastHit hit;
+		*hit.entity = (uint32)lock.GetBody().GetUserData();
+		hits.push_back(hit);
+	}
+}
+
+//**********************************************************************************************************************
+ShapeHit PhysicsSystem::collidePoint(f32x4 point, int8 broadPhaseLayer, bool collideInactive)
 {
 	auto narrowPhaseQuery = (const JPH::NarrowPhaseQuery*)this->narrowPhaseQuery;
+	auto broadPhaseFilter = JPH::SpecifiedBroadPhaseLayerFilter(JPH::BroadPhaseLayer(broadPhaseLayer));
 	auto activeBodyFilter = ActiveBodyFilter((const JPH::BodyLockInterface*)this->lockInterface);
 
 	JPH::AnyHitCollisionCollector<JPH::CollidePointCollector> collector;
-	narrowPhaseQuery->CollidePoint(toVec3(point), collector, {}, {}, 
-		collideInactive ? defaultBodyFilter : activeBodyFilter);
+	narrowPhaseQuery->CollidePoint(toVec3(point), collector, 
+		broadPhaseLayer > -1 ? broadPhaseFilter : defaultbroadPhaseFilter, 
+		{}, collideInactive ? defaultBodyFilter : activeBodyFilter);
 	if (!collector.HadHit())
-		return false;
+		return {};
 
 	auto& lockInterface = *((const JPH::BodyLockInterface*)this->lockInterface);
 	JPH::BodyLockRead lock(lockInterface, collector.mHit.mBodyID);
-	if (lock.Succeeded())
-		*hit.entity = (uint32)lock.GetBody().GetUserData();
+	if (!lock.Succeeded())
+		return {};
+
+	ShapeHit hit;
+	*hit.entity = (uint32)lock.GetBody().GetUserData();
 	hit.subShapeID = collector.mHit.mSubShapeID2.GetValue();
-	return true;
+	return hit;
 }
-bool PhysicsSystem::collidePoint(f32x4 point, vector<ShapeHit>& hits, bool collideInactive)
+void PhysicsSystem::collidePoint(f32x4 point, vector<ShapeHit>& hits, int8 broadPhaseLayer, bool collideInactive)
 {
 	auto narrowPhaseQuery = (const JPH::NarrowPhaseQuery*)this->narrowPhaseQuery;
+	auto broadPhaseFilter = JPH::SpecifiedBroadPhaseLayerFilter(JPH::BroadPhaseLayer(broadPhaseLayer));
 	auto activeBodyFilter = ActiveBodyFilter((const JPH::BodyLockInterface*)this->lockInterface);
 
 	JPH::AllHitCollisionCollector<JPH::CollidePointCollector> collector;
-	narrowPhaseQuery->CollidePoint(toVec3(point), collector, {}, {}, 
-		collideInactive ? defaultBodyFilter : activeBodyFilter);
+	narrowPhaseQuery->CollidePoint(toVec3(point), collector, 
+		broadPhaseLayer > -1 ? broadPhaseFilter : defaultbroadPhaseFilter, 
+		{}, collideInactive ? defaultBodyFilter : activeBodyFilter);
 	if (!collector.HadHit())
-		return false;
-	
-	auto& lockInterface = *((const JPH::BodyLockInterface*)this->lockInterface);
-	auto& collectorHits = collector.mHits;
-	hits.resize(collectorHits.size());
-
-	for (psize i = 0; i < hits.size(); i++)
 	{
-		auto hit = hits[i];
-		auto collectorHit = collectorHits[i];
-		hit.subShapeID = collectorHit.mSubShapeID2.GetValue();
-
-		JPH::BodyLockRead lock(lockInterface, collectorHit.mBodyID);
-		if (lock.Succeeded())
-			*hit.entity = (uint32)lock.GetBody().GetUserData();
+		hits.resize(0);
+		return;
 	}
-	return true;
+
+	auto& lockInterface = *((const JPH::BodyLockInterface*)this->lockInterface);
+	hits.clear(); hits.reserve(collector.mHits.size());
+
+	for (const auto& collideResult : collector.mHits)
+	{
+		JPH::BodyLockRead lock(lockInterface, collideResult.mBodyID);
+		if (!lock.Succeeded())
+			continue;
+
+		ShapeHit hit;
+		*hit.entity = (uint32)lock.GetBody().GetUserData();
+		hit.subShapeID = collideResult.mSubShapeID2.GetValue();
+		hits.push_back(hit);
+	}
 }
 
 //**********************************************************************************************************************
