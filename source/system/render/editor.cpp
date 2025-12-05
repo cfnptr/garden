@@ -632,21 +632,22 @@ void EditorRenderSystem::showEntityInspector()
 	{
 		auto manager = Manager::Instance::get();
 		auto entityView = manager->getEntities().get(selectedEntity);
-		auto components = entityView->getComponents();
-		auto componentCount = entityView->getComponentCount();
 
 		if (ImGui::BeginItemTooltip())
 		{
 			ImGui::Text("Runtime ID: %lu, Components: %lu / %lu", (unsigned long)*selectedEntity, 
-				(unsigned long)componentCount, (unsigned long)entityView->getComponentCapacity());
+				(unsigned long)entityView->getComponentCount(), (unsigned long)entityView->getComponentCapacity());
 			ImGui::EndTooltip();
 		}
-		
+
 		if (!renderInspectorWindowPopup(entityInspectors, selectedEntity))
 		{
 			ImGui::End();
 			return;
 		}
+
+		auto components = entityView->getComponents(); // Note: do not move this!!!
+		auto componentCount = entityView->getComponentCount();
 
 		for (uint32 i = 0; i < componentCount; i++)
 		{
@@ -663,7 +664,7 @@ void EditorRenderSystem::showEntityInspector()
 				typeToString(system->getComponentType()) : string(system->getComponentName());
 			ImGui::PushID(componentName.c_str());
 			auto isOpened = ImGui::CollapsingHeader(componentName.c_str());
-				
+	
 			if (!renderInspectorComponentPopup(selectedEntity, 
 				system, system->getComponentType(), componentName))
 			{
@@ -690,7 +691,7 @@ void EditorRenderSystem::showEntityInspector()
 				auto componentName = system->getComponentName().empty() ? 
 					typeToString(componentType) : string(system->getComponentName());
 				ImGui::CollapsingHeader(componentName.c_str(), ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_Bullet);
-				
+
 				if (!renderInspectorComponentPopup(selectedEntity, system, componentType, componentName))
 					continue;
 			}

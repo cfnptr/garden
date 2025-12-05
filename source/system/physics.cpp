@@ -13,9 +13,12 @@
 // limitations under the License.
 
 #include "garden/system/physics.hpp"
+#include "garden/system/network/client.hpp"
+#include "garden/system/network/server.hpp"
 #include "garden/system/physics-impl.hpp"
 #include "garden/system/character.hpp"
 #include "garden/system/transform.hpp"
+#include "garden/system/network.hpp"
 #include "garden/system/thread.hpp"
 #include "garden/system/input.hpp"
 #include "garden/system/loop.hpp"
@@ -1115,31 +1118,42 @@ void PhysicsSystem::prepareSimulate()
 {
 	SET_CPU_ZONE_SCOPED("Physics Simulate Prepare");
 
-	if (components.getCount() > 0 && TransformSystem::Instance::has())
+	if (components.getCount() == 0)
+		return;
+
+	auto jobSystem = (GardenJobSystem*)this->jobSystem;
+	auto threadPool = jobSystem->getThreadPool();
+	auto componentData = components.getData();
+
+	atomic_uint32_t netRigidbodyCount = 0;
+	if (ClientNetworkSystem::Instance::has())
+		networkRigidbodies.resize(components.getCount());
+	auto netRigidbodies = networkRigidbodies.data();
+
+	threadPool->addItems([componentData, netRigidbodies, &netRigidbodyCount](const ThreadPool::Task& task)
 	{
-		auto jobSystem = (GardenJobSystem*)this->jobSystem;
-		auto threadPool = jobSystem->getThreadPool();
-		auto componentData = components.getData();
+		auto manager = Manager::Instance::get();
+		auto clientNetworkSystem = ClientNetworkSystem::Instance::tryGet();
+		if (clientNetworkSystem && !clientNetworkSystem->isAuthorized) clientNetworkSystem = nullptr;
+		auto physicsInstance = (JPH::PhysicsSystem*)PhysicsSystem::Instance::get()->physicsInstance;
+		auto& bodyInterface = physicsInstance->GetBodyInterface(); // This one is with lock.
+		auto itemCount = task.getItemCount();
 
-		threadPool->addItems([componentData](const ThreadPool::Task& task)
+		for (uint32 i = task.getItemOffset(); i < itemCount; i++)
 		{
-			auto manager = Manager::Instance::get();
-			auto physicsInstance = (JPH::PhysicsSystem*)PhysicsSystem::Instance::get()->physicsInstance;
-			auto& bodyInterface = physicsInstance->GetBodyInterface(); // This one is with lock.
-			auto itemCount = task.getItemCount();
+			auto rigidbodyView = &componentData[i];
+			auto entity = rigidbodyView->entity;
 
-			for (uint32 i = task.getItemOffset(); i < itemCount; i++)
+			if (!entity || !rigidbodyView->instance || !rigidbodyView->inSimulation ||
+				rigidbodyView->getMotionType() == MotionType::Static || manager->has<CharacterComponent>(entity))
 			{
-				auto rigidbodyView = &componentData[i];
-				if (!rigidbodyView->entity || !rigidbodyView->instance || !rigidbodyView->inSimulation ||
-					rigidbodyView->getMotionType() == MotionType::Static ||
-					manager->has<CharacterComponent>(rigidbodyView->entity))
-				{
-					continue;
-				}
+				continue;
+			}
 
-				auto transformView = manager->tryGet<TransformComponent>(rigidbodyView->entity);
-				if (!transformView || !transformView->isActive())
+			auto transformView = manager->tryGet<TransformComponent>(entity);
+			if (transformView)
+			{
+				if (!transformView->isActive())
 					continue;
 
 				auto body = (JPH::Body*)rigidbodyView->instance;
@@ -1148,10 +1162,21 @@ void PhysicsSystem::prepareSimulate()
 				transformView->setPosition(rigidbodyView->lastPosition = toF32x4(position));
 				transformView->setRotation(rigidbodyView->lastRotation = toQuat(rotation));
 			}
-		},
-		components.getOccupancy());
-		threadPool->wait();
-	}
+
+			if (clientNetworkSystem)
+			{
+				auto networkView = manager->tryGet<NetworkComponent>(entity);
+				if (networkView && networkView->isClientOwned && networkView->getEntityUID())
+					netRigidbodies[netRigidbodyCount++] = rigidbodyView;
+				// TODO: maybe use per thread netRigidbodies here? But we expect just couple of these.
+			}
+		}
+	},
+	components.getOccupancy());
+	threadPool->wait();
+
+	sendServer();
+	sendClient(netRigidbodyCount);
 }
 
 //**********************************************************************************************************************
@@ -1224,42 +1249,43 @@ void PhysicsSystem::interpolateResult(float t)
 {
 	SET_CPU_ZONE_SCOPED("Physics Result Interpolate");
 
-	if (components.getCount() > 0 && TransformSystem::Instance::has())
+	if (components.getCount() == 0 || !TransformSystem::Instance::has())
+		return;
+
+	auto jobSystem = (GardenJobSystem*)this->jobSystem;
+	auto threadPool = jobSystem->getThreadPool();
+	auto componentData = components.getData();
+
+	threadPool->addItems([componentData, t](const ThreadPool::Task& task)
 	{
-		auto jobSystem = (GardenJobSystem*)this->jobSystem;
-		auto threadPool = jobSystem->getThreadPool();
-		auto componentData = components.getData();
+		auto manager = Manager::Instance::get();
+		auto itemCount = task.getItemCount();
 
-		threadPool->addItems([componentData, t](const ThreadPool::Task& task)
+		for (uint32 i = task.getItemOffset(); i < itemCount; i++)
 		{
-			auto manager = Manager::Instance::get();
-			auto itemCount = task.getItemCount();
-
-			for (uint32 i = task.getItemOffset(); i < itemCount; i++)
+			auto rigidbodyView = &componentData[i];
+			if (!rigidbodyView->instance || !rigidbodyView->inSimulation || 
+				rigidbodyView->getMotionType() == MotionType::Static ||
+				manager->has<CharacterComponent>(rigidbodyView->entity))
 			{
-				auto rigidbodyView = &componentData[i];
-				if (!rigidbodyView->instance || !rigidbodyView->inSimulation || 
-					rigidbodyView->getMotionType() == MotionType::Static ||
-					manager->has<CharacterComponent>(rigidbodyView->entity))
-				{
-					continue;
-				}
-
-				auto transformView = manager->tryGet<TransformComponent>(rigidbodyView->entity);
-				if (!transformView)
-					continue;
-
-				f32x4 position; quat rotation;
-				rigidbodyView->getPosAndRot(position, rotation);
-				transformView->setPosition(lerp(rigidbodyView->lastPosition, position, t));
-				transformView->setRotation(slerp(rigidbodyView->lastRotation, rotation, t));
+				continue;
 			}
-		},
-		components.getOccupancy());
-		threadPool->wait();
-	}
+
+			auto transformView = manager->tryGet<TransformComponent>(rigidbodyView->entity);
+			if (!transformView)
+				continue;
+
+			f32x4 position; quat rotation;
+			rigidbodyView->getPosAndRot(position, rotation);
+			transformView->setPosition(lerp(rigidbodyView->lastPosition, position, t));
+			transformView->setRotation(slerp(rigidbodyView->lastRotation, rotation, t));
+		}
+	},
+	components.getOccupancy());
+	threadPool->wait();
 }
 
+//**********************************************************************************************************************
 void PhysicsSystem::simulate()
 {
 	SET_CPU_ZONE_SCOPED("Physics Simulate");
@@ -1330,6 +1356,77 @@ void PhysicsSystem::simulate()
 	{
 		auto t = clamp(deltaTimeAccum / simDeltaTime, 0.0f, 1.0f);
 		interpolateResult(t);
+	}
+}
+
+//**********************************************************************************************************************
+static constexpr uint32 rbTransformSize = (sizeof(uint32) * 2 + sizeof(uint64) * 2 + sizeof(float3));
+static constexpr uint32 maxRbPerMessage = (MAX_DATAGRAM_MESSAGE_SIZE - StreamOutput::baseTotalSize) / rbTransformSize;
+
+static void encodeRigidbody(Manager* manager, RigidbodyComponent* rigidbodyView, StreamOutput& message)
+{
+	auto networkView = manager->get<NetworkComponent>(rigidbodyView->getEntity());
+	message.write(networkView->getEntityUID());
+
+	f32x4 position; quat rotation; rigidbodyView->getPosAndRot(position, rotation);
+	message.write((float3)position); message.write(compressUnit(rotation));
+
+	uint32 compressed; float magnitude;
+	compress3(rigidbodyView->getLinearVelocity(), compressed, magnitude);
+	message.write(compressed); message.write(magnitude);
+	compress3(rigidbodyView->getAngularVelocity(), compressed, magnitude);
+	message.write(compressed); message.write(magnitude);
+}
+void PhysicsSystem::sendServer()
+{
+	SET_CPU_ZONE_SCOPED("Server Rigidbody Send");
+
+	if (!ServerNetworkSystem::Instance::has())
+		return;
+	auto networkSystem = NetworkSystem::Instance::get();
+
+	ServerSessionLocker sessions;
+	for (uint32 i = 0; i < sessions.count(); i++)
+	{
+		auto clientSession = sessions.get(i);
+		if (!clientSession->entityUID)
+			continue;
+
+		auto entity = networkSystem->findEntity(clientSession->entityUID);
+		if (!entity)
+			continue;
+
+		// TODO: when we receive rigidbody transforms, put them into the map instead of locking mutex and applying tranforms.
+		// TODO: clientSession->send()
+	}
+}
+void PhysicsSystem::sendClient(uint32 rigidbodyCount)
+{
+	SET_CPU_ZONE_SCOPED("Client Rigidbody Send");
+
+	if (rigidbodyCount == 0)
+		return;
+
+	auto manager = Manager::Instance::get();
+	auto clientNetworkSystem = ClientNetworkSystem::Instance::get();
+	auto messageCount = (uint32)ceil((float)rigidbodyCount / maxRbPerMessage);
+	auto lengthSize = clientNetworkSystem->getClientLengthSize();
+	auto rigidbodies = networkRigidbodies.data();
+
+	uint32 index = 0;
+	for (uint32 i = 0; i < messageCount; i++)
+	{
+		auto msgRigidbodyCount = min(rigidbodyCount - i * maxRbPerMessage, maxRbPerMessage);
+		auto messageSize = msgRigidbodyCount * rbTransformSize;
+		StreamOutputBuffer<MAX_DATAGRAM_MESSAGE_SIZE> message(messageType, messageSize, lengthSize, true);
+
+		for (uint32 j = 0; j < msgRigidbodyCount; j++)
+		{
+			auto rigidbodyView = rigidbodies[index++];
+			encodeRigidbody(manager, rigidbodyView, message);
+		}
+
+		clientNetworkSystem->sendDatagram(message);
 	}
 }
 
@@ -1700,6 +1797,18 @@ void PhysicsSystem::postDeserialize(IDeserializer& deserializer)
 
 	deserializedConstraints.clear();
 	deserializedEntities.clear();
+}
+
+//**********************************************************************************************************************
+string_view PhysicsSystem::getMessageType() { return messageType; }
+
+int PhysicsSystem::onMsgFromClient(ClientSession* session, StreamInput message)
+{
+	return (int)SUCCESS_NETS_RESULT;
+}
+int PhysicsSystem::onMsgFromServer(StreamInput message, bool isDatagram)
+{
+	return (int)SUCCESS_NETS_RESULT;
 }
 
 //**********************************************************************************************************************

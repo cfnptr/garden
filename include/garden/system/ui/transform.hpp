@@ -123,6 +123,7 @@ struct UiTransformFrame final : public AnimationFrame
 class UiTransformSystem final : public CompAnimSystem<UiTransformComponent, UiTransformFrame, false, false>,
 	public Singleton<UiTransformSystem>, public ISerializable
 {
+	string valueStringCache;
 	float2 uiSize = float2::zero;
 	float2 cursorPosition = float2::zero;
 

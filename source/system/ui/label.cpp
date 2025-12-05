@@ -288,6 +288,14 @@ bool UiLabelSystem::isDrawReady(int8 shadowPass)
 		pipeline = createPipeline();
 	return GraphicsSystem::Instance::get()->get(pipeline)->isReady();
 }
+bool UiLabelSystem::isMeshReady(MeshRenderComponent* meshRenderView)
+{
+	auto uiLabelView = (UiLabelComponent*)meshRenderView;
+	if (!uiLabelView->textData)
+		return false;
+	auto textView = textSystem->get(uiLabelView->textData);
+	return textView->isReady() && textView->getInstanceCount() > 0;
+}
 void UiLabelSystem::prepareDraw(const f32x4x4& viewProj, uint32 drawCount, int8 shadowPass)
 {
 	manager = Manager::Instance::get();
@@ -307,13 +315,7 @@ void UiLabelSystem::drawAsync(MeshRenderComponent* meshRenderView,
 	const f32x4x4& viewProj, const f32x4x4& model, uint32 drawIndex, int32 taskIndex)
 {
 	auto uiLabelView = (UiLabelComponent*)meshRenderView;
-	if (!uiLabelView->textData)
-		return;
-
 	auto textView = textSystem->get(uiLabelView->textData);
-	if (!textView->isReady() || textView->getInstanceCount() == 0)
-		return;
-
 	auto entity = uiLabelView->getEntity();
 	auto transformView = manager->get<TransformComponent>(entity);
 	auto totalFontSize = calcTotalFontSize(uiLabelView->fontSize, uiLabelView->adjustCJK);
@@ -385,9 +387,8 @@ void UiLabelSystem::deserialize(IDeserializer& deserializer, View<Component> com
 	deserializer.read("useLocale", componentView->useLocale);
 	deserializer.read("adjustCJK", componentView->adjustCJK);
 
-	string alignment;
-	if (deserializer.read("alignment", alignment))
-		toTextAlignment(alignment, componentView->propterties.alignment);
+	if (deserializer.read("alignment", valueStringCache))
+		toTextAlignment(valueStringCache, componentView->propterties.alignment);
 
 	vector<fs::path> fontPaths;
 	if (deserializer.beginChild("fontPaths"))

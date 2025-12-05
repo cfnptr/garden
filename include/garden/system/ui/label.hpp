@@ -111,11 +111,12 @@ public:
 		float4 color;
 	};
 private:
-	ID<GraphicsPipeline> pipeline = {};
+	string valueStringCache;
 	OptView<GraphicsPipeline> pipelineView = {};
 	Manager* manager = nullptr;
 	TextSystem* textSystem = nullptr;
 	UiScissorSystem* uiScissorSystem = nullptr;
+	ID<GraphicsPipeline> pipeline = {};
 	float lastUiScale = 1.0f;
 
 	/**
@@ -137,6 +138,7 @@ private:
 	MeshRenderType getMeshRenderType() const final;
 
 	bool isDrawReady(int8 shadowPass) final;
+	bool isMeshReady(MeshRenderComponent* meshRenderView) override;
 	void prepareDraw(const f32x4x4& viewProj, uint32 drawCount, int8 shadowPass) final;
 	void beginDrawAsync(int32 taskIndex) final;
 	void drawAsync(MeshRenderComponent* meshRenderView, const f32x4x4& viewProj,

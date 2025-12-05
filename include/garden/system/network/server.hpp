@@ -178,4 +178,52 @@ public:
 	void stop();
 };
 
+/**
+ * @brief Network server session buffer access locker.
+ */
+class ServerSessionLocker final
+{
+	nets::StreamSessionView* sessions = nullptr;
+	uint32 sessionCount = 0;
+public:
+	/**
+	 * @brief Locks stream server session buffer access.
+	 */
+	ServerSessionLocker()
+	{
+		auto networkSystem = ServerNetworkSystem::Instance::get();
+		auto streamHandle = networkSystem->getStreamHandle();
+		if (!streamHandle)
+			return;
+
+		streamHandle->lockSessions();
+		sessions = streamHandle->getSessions();
+		sessionCount = streamHandle->getSessionCount();
+	}
+	/**
+	 * @brief Unlocks stream server session buffer access.
+	 */
+	~ServerSessionLocker()
+	{
+		if (!sessions)
+			return;
+		auto networkSystem = ServerNetworkSystem::Instance::get();
+		networkSystem->getStreamHandle()->unlockSessions();
+	}
+
+	/**
+	 * @brief Returns server stream session count.
+	 */
+	uint32 count() const noexcept { return sessionCount; }
+	/**
+	 * @brief Returns server client session at specified index.
+	 * @param i target client session index in the buffer
+	 */
+	ClientSession* get(uint32 i) const noexcept
+	{
+		GARDEN_ASSERT(i < sessionCount);
+		return (ClientSession*)sessions[i].getHandle();
+	}
+};
+
 } // namespace garden
