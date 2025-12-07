@@ -210,6 +210,8 @@ public:
 	{
 		if (!sessions)
 			return;
+		
+		sessions = nullptr; sessionCount = 0;
 		auto networkSystem = ServerNetworkSystem::Instance::get();
 		networkSystem->getStreamHandle()->unlockSessions();
 	}
@@ -220,6 +222,7 @@ public:
 	uint32 count() const noexcept { return sessionCount; }
 	/**
 	 * @brief Returns server client session at specified index.
+	 * @warning Session may be null if socket is not fully connected!
 	 * @param i target client session index in the buffer
 	 */
 	ClientSession* get(uint32 i) const noexcept

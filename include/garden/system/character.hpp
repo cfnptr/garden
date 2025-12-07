@@ -254,12 +254,15 @@ public:
  *     equipped with 'inertial dampers' (a sci-fi concept often used in games).
  */
 class CharacterSystem final : public ComponentSystem<CharacterComponent, false>, 
-	public Singleton<CharacterSystem>, public ISerializable
+	public Singleton<CharacterSystem>, public ISerializable, public INetworkable
 {
+public:
+	static constexpr const char* messageType = "c";
+private:
 	stack<ID<Entity>, vector<ID<Entity>>> entityStack;
 	void* charVsCharCollision = nullptr;
 	string valueStringCache;
-public:
+
 	/**
 	 * @brief Creates a new character system instance.
 	 * @param setSingleton set system singleton instance
@@ -278,6 +281,10 @@ public:
 
 	void serialize(ISerializer& serializer, const View<Component> component) final;
 	void deserialize(IDeserializer& deserializer, View<Component> component) final;
+
+	string_view getMessageType() final;
+	int onMsgFromClient(ClientSession* session, StreamInput message) final;
+	int onMsgFromServer(StreamInput message, bool isDatagram) final;
 
 	friend class ecsm::Manager;
 	friend struct CharacterComponent;

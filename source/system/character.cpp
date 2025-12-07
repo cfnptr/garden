@@ -383,7 +383,10 @@ void CharacterComponent::setWorldTransform()
 //**********************************************************************************************************************
 CharacterSystem::CharacterSystem(bool setSingleton) : Singleton(setSingleton)
 {
-	Manager::Instance::get()->addGroupSystem<ISerializable>(this);
+	auto manager = Manager::Instance::get();
+	manager->addGroupSystem<ISerializable>(this);
+	manager->addGroupSystem<INetworkable>(this);
+
 	this->charVsCharCollision = new JPH::CharacterVsCharacterCollisionSimple();
 }
 CharacterSystem::~CharacterSystem()
@@ -488,6 +491,17 @@ void CharacterSystem::deserialize(IDeserializer& deserializer, View<Component> c
 				componentView->setLinearVelocity(f32x4Value);
 		}
 	}
+}
+
+string_view CharacterSystem::getMessageType() { return messageType; }
+
+int CharacterSystem::onMsgFromClient(ClientSession* session, StreamInput message)
+{
+	return BAD_DATA_NETS_RESULT;
+}
+int CharacterSystem::onMsgFromServer(StreamInput message, bool isDatagram)
+{
+	return SUCCESS_NETS_RESULT;
 }
 
 //**********************************************************************************************************************

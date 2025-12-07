@@ -1125,9 +1125,7 @@ void PhysicsSystem::prepareSimulate()
 	if (components.getCount() == 0)
 		return;
 
-	auto jobSystem = (GardenJobSystem*)this->jobSystem;
-	auto threadPool = jobSystem->getThreadPool();
-
+	auto threadPool = ((GardenJobSystem*)this->jobSystem)->getThreadPool();
 	threadPool->addItems([this](const ThreadPool::Task& task)
 	{
 		auto manager = Manager::Instance::get();
@@ -1237,9 +1235,7 @@ void PhysicsSystem::interpolateResult(float t)
 	if (components.getCount() == 0 || !TransformSystem::Instance::has())
 		return;
 
-	auto jobSystem = (GardenJobSystem*)this->jobSystem;
-	auto threadPool = jobSystem->getThreadPool();
-
+	auto threadPool = ((GardenJobSystem*)this->jobSystem)->getThreadPool();
 	threadPool->addItems([this, t](const ThreadPool::Task& task)
 	{
 		auto manager = Manager::Instance::get();
@@ -1376,7 +1372,7 @@ void PhysicsSystem::flushNetRigidbodies()
 }
 
 //**********************************************************************************************************************
-static constexpr uint32 rbTransformSize = (sizeof(uint32) * 2 + sizeof(uint64) * 2 + sizeof(float3));
+static constexpr uint32 rbTransformSize = sizeof(uint32) * 2 + sizeof(uint64) * 2 + sizeof(float3);
 static constexpr uint32 maxRbPerMessage = (MAX_DATAGRAM_MESSAGE_SIZE - StreamOutput::baseTotalSize) / rbTransformSize;
 static thread_local vector<ShapeHit> shapeHits;
 static thread_local vector<RigidbodyComponent*> rigidbodyViews;
@@ -1426,18 +1422,16 @@ void PhysicsSystem::sendServerMessages()
 	if (!serverNetworkSystem || !serverNetworkSystem->getStreamHandle())
 		return;
 
-	auto streamServer = serverNetworkSystem->getStreamHandle();
-	auto jobSystem = (GardenJobSystem*)this->jobSystem;
-	auto threadPool = jobSystem->getThreadPool();
-	
 	ServerSessionLocker sessions;
 	if (sessions.count() == 0)
 		return;
 
-	threadPool->addItems([this, &sessions, streamServer](const ThreadPool::Task& task)
+	auto threadPool = ((GardenJobSystem*)this->jobSystem)->getThreadPool();
+	threadPool->addItems([this, &sessions](const ThreadPool::Task& task)
 	{
 		auto manager = Manager::Instance::get();
 		auto networkSystem = NetworkSystem::Instance::get();
+		auto streamServer = ServerNetworkSystem::Instance::get()->getStreamHandle();
 		auto lengthSize = streamServer->getServerLengthSize();
 		auto deltaTime = getPhysicsDeltaTime();
 		auto itemCount = task.getItemCount();
@@ -1445,7 +1439,7 @@ void PhysicsSystem::sendServerMessages()
 		for (uint32 i = task.getItemOffset(); i < itemCount; i++)
 		{
 			auto clientSession = sessions.get(i);
-			if (!clientSession->entityUID)
+			if (!clientSession || !clientSession->entityUID)
 				continue;
 
 			auto entity = networkSystem->findEntity(clientSession->entityUID);
@@ -1480,7 +1474,7 @@ void PhysicsSystem::sendServerMessages()
 			for (uint32 i = 0; i < messageCount; i++)
 			{
 				auto msgRigidbodyCount = min(rigidbodyCount - i * maxRbPerMessage, maxRbPerMessage);
-				auto messageSize = msgRigidbodyCount * rbTransformSize;
+				auto messageSize = msgRigidbodyCount * rbTransformSize; // TODO: this goes out of rigidbodyCount range!
 				StreamOutputBuffer<MAX_DATAGRAM_MESSAGE_SIZE> message(messageType, messageSize, lengthSize, true);
 
 				for (uint32 j = 0; j < msgRigidbodyCount; j++)

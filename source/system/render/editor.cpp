@@ -303,6 +303,7 @@ void EditorRenderSystem::showOptionsWindow()
 		if (ImGui::DragInt("Scaled Size X", (int*)&scaledSize.x, 1.0f,
 			GraphicsAPI::minFramebufferSize, framebufferSize.x * 2))
 		{
+			scaledSize.x = max(scaledSize.x, (uint32)GraphicsAPI::minFramebufferSize);
 			scaledSize.y = ((float)scaledSize.x / framebufferSize.x) * framebufferSize.y;
 			graphicsSystem->setScaledFrameSize(scaledSize);
 		}
