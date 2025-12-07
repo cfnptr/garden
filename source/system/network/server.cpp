@@ -421,8 +421,8 @@ static void updateSessions(StreamServerHandle* streamServer, std::function<int(C
 			for (uint32 i = task.getItemOffset(); i < itemCount; i++)
 			{
 				auto streamSession = sessions[i];
-				if (!streamSession.getSocket().getInstance())
-					continue;
+				if (!streamSession.getSocket())
+					continue; 
 				auto result = streamServer->updateSession(streamSession, currentTime);
 				if (result != SUCCESS_NETS_RESULT)
 					streamServer->destroySession(streamSession, result);
@@ -432,8 +432,8 @@ static void updateSessions(StreamServerHandle* streamServer, std::function<int(C
 				for (uint32 i = task.getItemOffset(); i < itemCount; i++)
 				{
 					auto streamSession = sessions[i];
-					if (!streamSession.getSocket().getInstance())
-						continue;
+					if (!streamSession.getSocket() || !streamSession.getHandle())
+						continue; // Note: checking if socket is not fully connected or disconnected.
 					auto result = onSessionUpdate((ClientSession*)streamSession.getHandle());
 					if (result != SUCCESS_NETS_RESULT)
 						streamServer->destroySession(streamSession, result);
@@ -451,7 +451,7 @@ static void updateSessions(StreamServerHandle* streamServer, std::function<int(C
 		for (psize i = 0; i < sessionCount; i++)
 		{
 			auto streamSession = sessions[i];
-			if (!streamSession.getSocket().getInstance())
+			if (!streamSession.getSocket())
 				continue;
 			auto result = streamServer->updateSession(streamSession, currentTime);
 			if (result != SUCCESS_NETS_RESULT)
@@ -462,8 +462,8 @@ static void updateSessions(StreamServerHandle* streamServer, std::function<int(C
 			for (psize i = 0; i < sessionCount; i++)
 			{
 				auto streamSession = sessions[i];
-				if (!streamSession.getSocket().getInstance())
-					continue;
+				if (!streamSession.getSocket() || !streamSession.getHandle())
+					continue; // Note: checking if socket is not fully connected or disconnected.
 				auto result = onSessionUpdate((ClientSession*)streamSession.getHandle());
 				if (result != SUCCESS_NETS_RESULT)
 					streamServer->destroySession(streamSession, result);

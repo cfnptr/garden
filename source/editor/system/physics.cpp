@@ -140,7 +140,8 @@ void PhysicsEditorSystem::preDepthLdrRender()
 
 	auto renderer = (PhysicsDebugRenderer*)debugRenderer;
 	auto instance = (JPH::PhysicsSystem*)PhysicsSystem::Instance::get()->getInstance();
-	const auto& cc = GraphicsSystem::Instance::get()->getCommonConstants();
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	const auto& cc = graphicsSystem->getCommonConstants();
 	renderer->setCameraPosition((f32x4)cc.cameraPos);
 
 	JPH::BodyManager::DrawSettings drawSettings;
@@ -157,8 +158,12 @@ void PhysicsEditorSystem::preDepthLdrRender()
 	if (drawConstraintRefFrame)
 		instance->DrawConstraintReferenceFrame(renderer);
 
-	SET_GPU_DEBUG_LABEL("Physics Debug");
-	renderer->preDraw();
+	graphicsSystem->startRecording(CommandBufferType::Frame);
+	{
+		SET_GPU_DEBUG_LABEL("Physics Debug");
+		renderer->preDraw();
+	}
+	graphicsSystem->stopRecording();
 }
 void PhysicsEditorSystem::depthLdrRender()
 {

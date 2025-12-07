@@ -225,6 +225,7 @@ void ToneMappingSystem::setLuminance(float luminance)
 
 	graphicsSystem->startRecording(CommandBufferType::Frame);
 	{
+		SET_GPU_DEBUG_LABEL("Tone Mapping Luminance Set");
 		luminanceBufferView->fill(*((uint32*)&luminance), sizeof(float), 0);
 		luminanceBufferView->fill(*((uint32*)&exposure), sizeof(float), sizeof(float));
 	}
@@ -238,6 +239,7 @@ void ToneMappingSystem::setExposure(float exposure)
 
 	graphicsSystem->startRecording(CommandBufferType::Frame);
 	{
+		SET_GPU_DEBUG_LABEL("Tone Mapping Exposure Set");
 		luminanceBufferView->fill(*((uint32*)&luminance), sizeof(float), 0);
 		luminanceBufferView->fill(*((uint32*)&exposure), sizeof(float), sizeof(float));
 	}

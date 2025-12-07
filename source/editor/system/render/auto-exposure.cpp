@@ -157,6 +157,7 @@ void AutoExposureEditorSystem::preUiRender()
 			{	
 				auto deferredSystem = DeferredRenderSystem::Instance::get();
 				ResourceSystem::GraphicsOptions options;
+				options.useAsyncRecording = deferredSystem->getOptions().useAsyncRecording;
 				limitsPipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline(
 					"editor/auto-exposure-limits", deferredSystem->getUiFramebuffer(), options);
 			}
@@ -201,17 +202,30 @@ void AutoExposureEditorSystem::uiRender()
 	}
 
 	auto autoExposureSystem = AutoExposureSystem::Instance::get();
+	auto isCurrentRenderPassAsync = graphicsSystem->isCurrentRenderPassAsync();
+	auto threadIndex = graphicsSystem->getThreadCount() - 1;
 
 	PushConstants pc;
 	pc.minLum = std::exp2(autoExposureSystem->minLogLum);
 	pc.maxLum = std::exp2(autoExposureSystem->maxLogLum);
 
 	SET_GPU_DEBUG_LABEL("Auto Exposure Limits");
-	pipelineView->bind();
-	pipelineView->setViewportScissor();
-	pipelineView->bindDescriptorSet(limitsDS);
-	pipelineView->pushConstants(&pc);
-	pipelineView->drawFullscreen();
+	if (isCurrentRenderPassAsync)
+	{
+		pipelineView->bindAsync(0, threadIndex);
+		pipelineView->setViewportScissorAsync(float4::zero, threadIndex);
+		pipelineView->bindDescriptorSetAsync(limitsDS, 0, threadIndex);
+		pipelineView->pushConstantsAsync(&pc, threadIndex);
+		pipelineView->drawFullscreenAsync(threadIndex);
+	}
+	else
+	{
+		pipelineView->bind();
+		pipelineView->setViewportScissor();
+		pipelineView->bindDescriptorSet(limitsDS);
+		pipelineView->pushConstants(&pc);
+		pipelineView->drawFullscreen();
+	}
 }
 
 //**********************************************************************************************************************

@@ -123,6 +123,7 @@ void BloomRenderEditorSystem::preUiRender()
 			{
 				auto deferredSystem = DeferredRenderSystem::Instance::get();
 				ResourceSystem::GraphicsOptions options;
+				options.useAsyncRecording = deferredSystem->getOptions().useAsyncRecording;
 				thresholdPipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline(
 					"editor/bloom-threshold", deferredSystem->getUiFramebuffer(), options);
 			}
@@ -151,15 +152,29 @@ void BloomRenderEditorSystem::uiRender()
 		SET_RESOURCE_DEBUG_NAME(thresholdDS, "descriptorSet.editor.bloom.threshold");
 	}
 
+	auto isCurrentRenderPassAsync = graphicsSystem->isCurrentRenderPassAsync();
+	auto threadIndex = graphicsSystem->getThreadCount() - 1;
+
 	PushConstants pc;
 	pc.threshold = BloomRenderSystem::Instance::get()->threshold;
 
 	SET_GPU_DEBUG_LABEL("Bloom Threshold");
-	pipelineView->bind();
-	pipelineView->setViewportScissor();
-	pipelineView->bindDescriptorSet(thresholdDS);
-	pipelineView->pushConstants(&pc);
-	pipelineView->drawFullscreen();
+	if (isCurrentRenderPassAsync)
+	{
+		pipelineView->bindAsync(0, threadIndex);
+		pipelineView->setViewportScissorAsync(float4::zero, threadIndex);
+		pipelineView->bindDescriptorSetAsync(thresholdDS, 0, threadIndex);
+		pipelineView->pushConstantsAsync(&pc, threadIndex);
+		pipelineView->drawFullscreenAsync(threadIndex);
+	}
+	else
+	{
+		pipelineView->bind();
+		pipelineView->setViewportScissor();
+		pipelineView->bindDescriptorSet(thresholdDS);
+		pipelineView->pushConstants(&pc);
+		pipelineView->drawFullscreen();
+	}
 }
 
 //**********************************************************************************************************************
