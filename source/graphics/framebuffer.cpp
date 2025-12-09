@@ -273,7 +273,7 @@ static vk::RenderPass createVkRenderPass(VulkanAPI* vulkanAPI, uint2 size,
 		subpassDescriptions[i] = subpassDescription;
 	}
 
-	// Note: Eequired for loadOp/storeOp.
+	// Note: Required for loadOp/storeOp.
 	if (!subpassDependencies.empty())
 	{
 		auto firstDependency = subpassDependencies.begin();

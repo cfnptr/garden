@@ -36,13 +36,14 @@ using namespace garden::graphics;
 
 constexpr uint8 gslHeader[] = { 1, 0, 0, GARDEN_LITTLE_ENDIAN, };
 
-#define REQUIRED_GLSL_EXTENSIONS ""                                 \
-	"#extension GL_EXT_nonuniform_qualifier : enable\n"             \
-	"#extension GL_EXT_scalar_block_layout : require\n"             \
-	"#extension GL_EXT_buffer_reference2 : enable\n"                \
-	"#extension GL_EXT_shader_8bit_storage : enable\n"              \
-	"#extension GL_EXT_shader_16bit_storage : enable\n"             \
-	"#extension GL_EXT_shader_explicit_arithmetic_types : enable\n"
+#define REQUIRED_GLSL_EXTENSIONS ""                                         \
+	"#extension GL_EXT_nonuniform_qualifier : enable\n"                     \
+	"#extension GL_EXT_scalar_block_layout : require\n"                     \
+	"#extension GL_EXT_buffer_reference2 : enable\n"                        \
+	"#extension GL_EXT_shader_8bit_storage : enable\n"                      \
+	"#extension GL_EXT_shader_16bit_storage : enable\n"                     \
+	"#extension GL_EXT_shader_explicit_arithmetic_types : enable\n"         \
+	"#extension GL_EXT_shader_explicit_arithmetic_types_float16 : enable\n" \
 
 namespace garden::graphics
 {

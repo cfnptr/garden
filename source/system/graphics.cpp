@@ -1323,7 +1323,7 @@ Image::Usage GraphicsSystem::getImageQ() const noexcept
 	return Image::Usage::None;
 }
 
-void GraphicsSystem::addBarriers(Buffer::BarrierState state, const ID<Buffer>* buffers, uint32 bufferCount)
+void GraphicsSystem::addBarriers(Buffer::BarrierState newState, const ID<Buffer>* buffers, uint32 bufferCount)
 {
 	auto graphicsAPI = GraphicsAPI::get();
 
@@ -1357,14 +1357,14 @@ void GraphicsSystem::addBarriers(Buffer::BarrierState state, const ID<Buffer>* b
 		for (uint32 i = 0; i < bufferCount; i++)
 		{
 			auto bufferView = graphicsAPI->bufferPool.get(buffers[i]);
-			if (VulkanCommandBuffer::isDifferentState(BufferExt::getBarrierState(**bufferView)))
+			if (VulkanCommandBuffer::isDifferentState(BufferExt::getBarrierState(**bufferView), newState))
 				barrierBuffers.push_back(buffers[i]);
 		}
 	}
 	else abort();
 
 	BufferBarrierCommand command;
-	command.newState = state;
+	command.newState = newState;
 	command.bufferCount = (uint32)barrierBuffers.size();
 	command.buffers = barrierBuffers.data();
 	graphicsAPI->currentCommandBuffer->addCommand(command);

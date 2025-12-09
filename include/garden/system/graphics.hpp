@@ -1110,11 +1110,11 @@ public:
 	 * @brief Adds buffer memory barriers command.
 	 * @note You should manually synchronize memory access when use buffer device addresses!
 	 * 
-	 * @param state target buffers barrier state
+	 * @param newState new buffers barrier state
 	 * @param[in] buffers buffer array to synchronize
 	 * @param bufferCount buffer array size
 	 */
-	void addBarriers(Buffer::BarrierState state, const ID<Buffer>* buffers, uint32 bufferCount);
+	void addBarriers(Buffer::BarrierState newState, const ID<Buffer>* buffers, uint32 bufferCount);
 	/**
 	 * @brief Adds buffer memory barriers command.
 	 * @note You should manually synchronize memory access when use buffer device addresses!

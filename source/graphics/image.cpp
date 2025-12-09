@@ -859,44 +859,43 @@ void Image::setDebugName(const string& name)
 #endif
 
 //**********************************************************************************************************************
-static void* createVkImageView(ID<Image> image, Image::Type type, Image::Format format, 
+static void* createVkImageView(View<Image> imageView, Image::Type type, Image::Format format, 
 	uint8 baseMip, uint8 mipCount, uint32 baseLayer, uint32 layerCount)
 {
-	auto vulkanAPI = VulkanAPI::get();
-	auto imageView = vulkanAPI->imagePool.get(image);
-	auto aspectFlags = toVkImageAspectFlags(format);
-
-	if (isFormatDepthAndStencil(imageView->getFormat()))
-		format = imageView->getFormat();
-	if (imageView->getType() == Image::Type::Cubemap && layerCount == 1)
-	{
-		switch (baseLayer) // Note: remapping Vulkan API cubemap face indices.
-		{
-		case 0: baseLayer = 1; break;
-		case 1: baseLayer = 0; break;
-		case 2: baseLayer = 3; break;
-		case 3: baseLayer = 2; break;
-		case 4: baseLayer = 5; break;
-		case 5: baseLayer = 4; break;
-		default: abort();
-		}
-	}
-
 	vk::ImageViewCreateInfo imageViewInfo({}, (VkImage)ResourceExt::getInstance(**imageView),
 		toVkImageViewType(type), toVkFormat(format), vk::ComponentMapping(
 			vk::ComponentSwizzle::eIdentity, vk::ComponentSwizzle::eIdentity,
 			vk::ComponentSwizzle::eIdentity, vk::ComponentSwizzle::eIdentity),
 		// TODO: utilize component swizzle
-		vk::ImageSubresourceRange(aspectFlags, baseMip, mipCount, baseLayer, layerCount));
-	return (VkImageView)vulkanAPI->device.createImageView(imageViewInfo);
+		vk::ImageSubresourceRange(toVkImageAspectFlags(format), baseMip, mipCount, baseLayer, layerCount));
+	return (VkImageView)VulkanAPI::get()->device.createImageView(imageViewInfo);
 }
 
-//**********************************************************************************************************************
 ImageView::ImageView(bool isDefault, ID<Image> image, Image::Type type,
 	Image::Format format, uint32 baseLayer, uint32 layerCount, uint8 baseMip, uint8 mipCount)
 {
 	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
-		this->instance = createVkImageView(image, type, format, baseMip, mipCount, baseLayer, layerCount);
+	{
+		auto imageView = VulkanAPI::get()->imagePool.get(image);
+		if (isFormatDepthAndStencil(imageView->getFormat()))
+			format = imageView->getFormat();
+
+		if (imageView->getType() == Image::Type::Cubemap && layerCount == 1)
+		{
+			switch (baseLayer) // Note: remapping Vulkan API cubemap face indices.
+			{
+			case 0: baseLayer = 1; break;
+			case 1: baseLayer = 0; break;
+			case 2: baseLayer = 3; break;
+			case 3: baseLayer = 2; break;
+			case 4: baseLayer = 5; break;
+			case 5: baseLayer = 4; break;
+			default: abort();
+			}
+		}
+
+		this->instance = createVkImageView(imageView, type, format, baseMip, mipCount, baseLayer, layerCount);
+	}
 	else abort();
 
 	this->image = image;
