@@ -468,8 +468,8 @@ void InputSystem::startRenderThread()
 		inputSystem->eventLocker.unlock();
 		#endif
 
-		//if (newCursorMode != -1)
-			// glfwSetInputMode(window, GLFW_CURSOR, newCursorMode + 0x00034001);
+		if (newCursorMode != -1)
+			glfwSetInputMode(window, GLFW_CURSOR, newCursorMode + 0x00034001);
 		if (newCursorType != -1)
 		{
 			glfwSetCursor(window, newCursorType == (int)CursorType::Default ?

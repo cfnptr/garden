@@ -87,58 +87,17 @@ public:
 		VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT | VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT |
 		VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR | VK_ACCESS_COMMAND_PREPROCESS_WRITE_BIT_EXT;
 
-	static constexpr bool isDifferentState(const Image::LayoutState& oldState, 
-		const Image::LayoutState& newState) noexcept
+	static constexpr bool isDifferentState(Image::LayoutState oldState, Image::LayoutState newState) noexcept
 	{
-		auto layoutTransition = false;
-		switch (newState.stage)
-		{
-			case (uint32)vk::PipelineStageFlagBits::eFragmentShader: layoutTransition = oldState.fragLayoutTrans; break;
-			case (uint32)vk::PipelineStageFlagBits::eTransfer: layoutTransition = oldState.transLayoutTrans; break;
-			case (uint32)vk::PipelineStageFlagBits::eComputeShader: layoutTransition = oldState.compLayoutTrans; break;
-			case (uint32)vk::PipelineStageFlagBits::eRayTracingShaderKHR: layoutTransition = oldState.rtLayoutTrans; break;
-			default: layoutTransition = false; break; // TODO: other stages.
-		}
-		return oldState.layout != newState.layout || (oldState.access & writeAccessMask) || layoutTransition;
+		// TODO: Suboptimal, we can skip read after read barriers on the same stage.
+		//       But Vulkans needs to track transition for each stage separately.
+		return oldState.stage != newState.stage || 
+			oldState.layout != newState.layout || (oldState.access & writeAccessMask);
 	}
-	static constexpr bool isDifferentState(const Buffer::BarrierState& oldState) noexcept
+	static constexpr bool isDifferentState(Buffer::BarrierState oldState, Buffer::BarrierState newState) noexcept
 	{
-		return oldState.access & writeAccessMask;
-	}
-
-	static constexpr void updateLayoutTrans(const Image::LayoutState& oldState, Image::LayoutState& newState) noexcept
-	{
-		if (oldState.layout != newState.layout)
-		{
-			newState.fragLayoutTrans = newState.transLayoutTrans = newState.compLayoutTrans = newState.rtLayoutTrans = 0;
-			switch (newState.stage)
-			{
-			case (uint32)vk::PipelineStageFlagBits::eFragmentShader:
-				newState.transLayoutTrans = newState.compLayoutTrans = newState.rtLayoutTrans = 1; break;
-			case (uint32)vk::PipelineStageFlagBits::eTransfer:
-				newState.fragLayoutTrans = newState.compLayoutTrans = newState.rtLayoutTrans = 1; break;
-			case (uint32)vk::PipelineStageFlagBits::eComputeShader:
-				newState.fragLayoutTrans = newState.transLayoutTrans = newState.rtLayoutTrans = 1; break;
-			case (uint32)vk::PipelineStageFlagBits::eRayTracingShaderKHR:
-				newState.fragLayoutTrans = newState.transLayoutTrans = newState.compLayoutTrans = 1; break;
-			// TODO: other stages.
-			}
-			return;
-		}
-
-		newState.fragLayoutTrans = oldState.fragLayoutTrans;
-		newState.transLayoutTrans = oldState.transLayoutTrans;
-		newState.compLayoutTrans = oldState.compLayoutTrans;
-		newState.rtLayoutTrans = oldState.rtLayoutTrans;
-
-		switch (newState.stage)
-		{
-			case (uint32)vk::PipelineStageFlagBits::eFragmentShader: newState.fragLayoutTrans = 0; break;
-			case (uint32)vk::PipelineStageFlagBits::eTransfer: newState.transLayoutTrans = 0; break;
-			case (uint32)vk::PipelineStageFlagBits::eComputeShader: newState.compLayoutTrans = 0; break;
-			case (uint32)vk::PipelineStageFlagBits::eRayTracingShaderKHR: newState.rtLayoutTrans = 0; break;
-			// TODO: other stages.
-		}
+		// TODO: The same suboptimal stage transition as in the image barrier.
+		return oldState.stage != newState.stage || oldState.access & writeAccessMask;
 	}
 };
 

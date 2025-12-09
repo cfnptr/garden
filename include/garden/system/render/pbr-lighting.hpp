@@ -109,7 +109,7 @@ public:
 
 	static constexpr uint8 shadowBufferCount = 2;
 	static constexpr uint8 aoBufferCount = 3;
-	static constexpr Framebuffer::OutputAttachment::Flags framebufferFlags = { false, false, true };
+	static constexpr Framebuffer::OutputAttachment::Flags framebufferFlags = { true, false, true };
 	static constexpr Image::Format shadowBufferFormat = Image::Format::UnormR8G8B8A8;
 	static constexpr Image::Format aoBufferFormat = Image::Format::UnormR8;
 	static constexpr Image::Format reflBufferFormat = Image::Format::SfloatR16G16B16A16;

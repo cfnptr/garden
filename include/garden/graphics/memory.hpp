@@ -84,7 +84,7 @@ public:
 	struct BarrierState
 	{
 		uint32 access = 0; /**< Memory access flags. (Internal API format) */
-		uint32 stage = 0;  /**< Pipeline stages. (Internal API format)*/
+		uint32 stage = 0;  /**< Pipeline stages. (Internal API format) */
 	};
 protected:
 	void* allocation = nullptr;
