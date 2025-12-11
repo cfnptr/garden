@@ -108,7 +108,8 @@ static void createVkImage(Image::Type type, Image::Format format, Image::Usage u
 			queueFamilyIndices[imageInfo.queueFamilyIndexCount++] = vulkanAPI->transferQueueFamilyIndex;
 		}
 		if (hasAnyFlag(usage, Image::Usage::ComputeQ) &&
-			vulkanAPI->graphicsQueueFamilyIndex != vulkanAPI->computeQueueFamilyIndex)
+			vulkanAPI->graphicsQueueFamilyIndex != vulkanAPI->computeQueueFamilyIndex &&
+			vulkanAPI->transferQueueFamilyIndex != vulkanAPI->computeQueueFamilyIndex)
 		{
 			queueFamilyIndices[imageInfo.queueFamilyIndexCount++] = vulkanAPI->computeQueueFamilyIndex;
 		}

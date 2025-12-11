@@ -422,9 +422,8 @@ void GraphicsSystem::update()
 		Manager::Instance::get()->runEvent("SwapchainRecreate");
 		swapchainChanges = {};
 
-		graphicsAPI->forceResourceDestroy = true;
-		disposeGpuResources(graphicsAPI);
-		graphicsAPI->forceResourceDestroy = false;
+		// Note: Do not force resource dispose!
+		//       It breaks already writen stagings.
 	}
 
 	if (camera && isFramebufferSizeValid)

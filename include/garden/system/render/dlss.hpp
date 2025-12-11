@@ -67,6 +67,11 @@ class DlssRenderSystem final : public System, public Singleton<DlssRenderSystem>
 	friend class ecsm::Manager;
 public:
 	/**
+	 * @brief Returns true if Nvidia DLSS is available and initialized.
+	 */
+	bool isInitialized() const noexcept { return parameters; }
+
+	/**
 	 * @brief Returns Nvidia DLSS quality mode.
 	 */
 	DlssQuality getQuality() const noexcept { return quality; }

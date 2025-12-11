@@ -57,7 +57,8 @@ public:
 		bool maintenance4 = false;
 		bool maintenance5 = false;
 		bool maintenance6 = false;
-		bool hasNvidiaDlss = false;
+		bool nvidiaDlss = false;
+		bool amdAntiLag = false;
 	};
 private:
 	VulkanAPI(const string& appName, const string& appDataName, Version appVersion, uint2 windowSize, 

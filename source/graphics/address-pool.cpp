@@ -245,6 +245,8 @@ void AddressPool::addBufferBarriers(Buffer::BarrierState newState)
 				continue;
 
 			auto bufferView = graphicsAPI->bufferPool.get(buffers[i]);
+			GARDEN_ASSERT(bufferView->getBinarySize() > 0); // Note: not deallocated.
+
 			if (VulkanCommandBuffer::isDifferentState(BufferExt::getBarrierState(**bufferView), newState))
 				barriers[barrierCount++] = buffers[i];
 		}

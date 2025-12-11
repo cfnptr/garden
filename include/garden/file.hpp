@@ -118,24 +118,30 @@ public:
 };
 
 /**
- * @brief Converts binary size to the string representation. (KB, MB, GB)
+ * @brief Converts binary size to the string representation. (KB, MB, GB, TB)
  * @param size target binary size
  */
 static string toBinarySizeString(uint64 size)
 {
-	if (size > (uint64)(1024 * 1024 * 1024))
+	if (size > (uint64)1024 * 1024 * 1024 * 1024)
+	{
+		auto floatSize = (double)size / (double)((uint64)1024 * 1024 * 1024 * 1024);
+		return to_string((uint64)floatSize) + "." + to_string((uint64)(
+			(double)(floatSize - (uint64)floatSize) * 10.0)) + " TB";
+	}
+	if (size > (uint64)1024 * 1024 * 1024)
 	{
 		auto floatSize = (double)size / (double)(1024 * 1024 * 1024);
 		return to_string((uint64)floatSize) + "." + to_string((uint64)(
 			(double)(floatSize - (uint64)floatSize) * 10.0)) + " GB";
 	}
-	if (size > (uint64)(1024 * 1024))
+	if (size > (uint64)1024 * 1024)
 	{
 		auto floatSize = (double)size / (double)(1024 * 1024);
 		return to_string((uint64)floatSize) + "." + to_string((uint64)(
 			(double)(floatSize - (uint64)floatSize) * 10.0)) + " MB";
 	}
-	if (size > (uint64)(1024))
+	if (size > (uint64)1024)
 	{
 		auto floatSize = (double)size / (double)(1024);
 		return to_string((uint64)floatSize) + "." + to_string((uint64)(

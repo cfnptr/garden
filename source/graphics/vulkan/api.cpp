@@ -88,7 +88,6 @@ static bool hasExtension(const vector<const char*>& extensions, const char* exte
 }
 
 #if GARDEN_NVIDIA_DLSS
-//**********************************************************************************************************************
 static NVSDK_NGX_FeatureDiscoveryInfo getDlssDiscoveryInfo()
 {
 	NVSDK_NGX_FeatureDiscoveryInfo discoveryInfo;
@@ -197,9 +196,9 @@ static vk::Instance createVkInstance(const string& appName, Version appVersion,
 	uint32_t dlssExtensionCount; VkExtensionProperties* dlssExtensions;
 	auto ngxResult = NVSDK_NGX_VULKAN_GetFeatureInstanceExtensionRequirements(
 		&dlssDiscoveryInfo, &dlssExtensionCount, &dlssExtensions);
-	features.hasNvidiaDlss = ngxResult == NVSDK_NGX_Result_Success;
+	features.nvidiaDlss = ngxResult == NVSDK_NGX_Result_Success;
 
-	if (features.hasNvidiaDlss)
+	if (features.nvidiaDlss)
 	{
 		for (uint32 i = 0; i < dlssExtensionCount; i++)
 		{
@@ -214,11 +213,11 @@ static vk::Instance createVkInstance(const string& appName, Version appVersion,
 
 			if (hasNvidiaDlss)
 				continue;
-			features.hasNvidiaDlss = false;
+			features.nvidiaDlss = false;
 			break;
 		}
 
-		if (features.hasNvidiaDlss)
+		if (features.nvidiaDlss)
 		{
 			for (uint32 i = 0; i < dlssExtensionCount; i++)
 			{
@@ -486,6 +485,8 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 			features.rayTracing = true;
 		else if (strcmp(properties.extensionName, VK_KHR_RAY_QUERY_EXTENSION_NAME) == 0)
 			features.rayQuery = true;
+		else if (strcmp(properties.extensionName, VK_AMD_ANTI_LAG_EXTENSION_NAME) == 0)
+			features.amdAntiLag = true;
 
 		if (versionMinor < 3)
 		{
@@ -506,6 +507,9 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 	struct VkFeatures final
 	{
 		vk::PhysicalDeviceFeatures2 device;
+		vk::PhysicalDeviceMaintenance4Features maintenance4;
+		vk::PhysicalDeviceMaintenance5Features maintenance5;
+		vk::PhysicalDeviceMaintenance6Features maintenance6;
 		vk::PhysicalDevice16BitStorageFeatures _16BitStorage;
 		vk::PhysicalDevice8BitStorageFeatures _8BitStorage;
 		vk::PhysicalDeviceShaderFloat16Int8FeaturesKHR float16Int8;
@@ -519,10 +523,7 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 		vk::PhysicalDeviceAccelerationStructureFeaturesKHR accelerationStructure;
 		vk::PhysicalDeviceRayTracingPipelineFeaturesKHR rayTracingPipeline;
 		vk::PhysicalDeviceRayQueryFeaturesKHR rayQuery;
-		vk::PhysicalDeviceMaintenance4Features maintenance4;
-		vk::PhysicalDeviceMaintenance5Features maintenance5;
-		vk::PhysicalDeviceMaintenance6Features maintenance6;
-
+		vk::PhysicalDeviceAntiLagFeaturesAMD amdAntiLag;
 		#if GARDEN_OS_MACOS
 		vk::PhysicalDevicePortabilitySubsetFeaturesKHR portability;
 		#endif
@@ -641,15 +642,15 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 
 	#if GARDEN_NVIDIA_DLSS
 	uint32_t dlssExtensionCount; VkExtensionProperties* dlssExtensions;
-	if (features.hasNvidiaDlss)
+	if (features.nvidiaDlss)
 	{
 		auto dlssDiscoveryInfo = getDlssDiscoveryInfo();
 		auto ngxResult = NVSDK_NGX_VULKAN_GetFeatureDeviceExtensionRequirements(instance, 
 			physicalDevice, &dlssDiscoveryInfo, &dlssExtensionCount, &dlssExtensions);
 		if (ngxResult != NVSDK_NGX_Result_Success)
-			features.hasNvidiaDlss = false;
+			features.nvidiaDlss = false;
 
-		if (features.hasNvidiaDlss)
+		if (features.nvidiaDlss)
 		{
 			for (uint32 i = 0; i < dlssExtensionCount; i++)
 			{
@@ -664,11 +665,11 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 
 				if (hasNvidiaDlss)
 					continue;
-				features.hasNvidiaDlss = false;
+				features.nvidiaDlss = false;
 				break;
 			}
 
-			if (features.hasNvidiaDlss)
+			if (features.nvidiaDlss)
 			{
 				for (uint32 i = 0; i < dlssExtensionCount; i++)
 				{
@@ -679,6 +680,15 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 		}
 	}
 	#endif
+
+	if (features.amdAntiLag)
+	{
+		vkFeatures->device.pNext = &vkFeatures->amdAntiLag;
+		physicalDevice.getFeatures2(&vkFeatures->device);
+		if (vkFeatures->amdAntiLag.antiLag)
+			extensions.push_back(VK_AMD_ANTI_LAG_EXTENSION_NAME);
+		else features.amdAntiLag = false;
+	}
 
 	void** lastPNext = &vkFeatures->device.pNext;
 	*lastPNext = &vkFeatures->_16BitStorage;
@@ -760,6 +770,13 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 		vkFeatures->rayQuery.rayQuery = VK_TRUE;
 		*lastPNext = &vkFeatures->rayQuery;
 		lastPNext = &vkFeatures->rayQuery.pNext;
+	}
+	if (features.amdAntiLag)
+	{
+		vkFeatures->amdAntiLag = vk::PhysicalDeviceAntiLagFeaturesAMD();
+		vkFeatures->amdAntiLag.antiLag = VK_TRUE;
+		*lastPNext = &vkFeatures->amdAntiLag;
+		lastPNext = &vkFeatures->amdAntiLag.pNext;
 	}
 
 	#if 0 // Debug only
@@ -985,6 +1002,17 @@ VulkanAPI::VulkanAPI(const string& appName, const string& appDataName, Version a
 		deviceProperties.pNext = &rtProperties;
 		rtProperties.pNext = &asProperties;
 		physicalDevice.getProperties2(&deviceProperties);
+	}
+
+	switch (deviceProperties.properties.vendorID)
+	{
+		case 0x10DE: gpuVendor = GpuVendor::Nvidia; break;
+		case 0x1002: gpuVendor = GpuVendor::AMD; break;
+		case 0x8086: gpuVendor = GpuVendor::Intel; break;
+		case 0x106B: gpuVendor = GpuVendor::Apple; break;
+		case 0x13B5: gpuVendor = GpuVendor::ARM; break;
+		case 0x5143: gpuVendor = GpuVendor::Qualcomm; break;
+		case 0x1010: gpuVendor = GpuVendor::ImgTec; break;
 	}
 
 	int sizeX = 0, sizeY = 0;

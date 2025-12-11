@@ -172,6 +172,7 @@ CsmRenderSystem::~CsmRenderSystem()
 void CsmRenderSystem::init()
 {
 	auto manager = Manager::Instance::get();
+	ECSM_SUBSCRIBE_TO_EVENT("PreShadowRender", CsmRenderSystem::preShadowRender);
 	ECSM_SUBSCRIBE_TO_EVENT("ShadowRender", CsmRenderSystem::shadowRender);
 	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", CsmRenderSystem::gBufferRecreate);
 
@@ -195,17 +196,23 @@ void CsmRenderSystem::deinit()
 		graphicsSystem->destroy(pipeline);
 
 		auto manager = Manager::Instance::get();
+		ECSM_UNSUBSCRIBE_FROM_EVENT("PreShadowRender", CsmRenderSystem::preShadowRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("ShadowRender", CsmRenderSystem::shadowRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("GBufferRecreate", CsmRenderSystem::gBufferRecreate);
 	}
 }
 
 //**********************************************************************************************************************
+void CsmRenderSystem::preShadowRender()
+{
+	if (isEnabled && depthMap && transparentMap && !dataBuffers.empty())
+		PbrLightingSystem::Instance::get()->markFbShadow();
+}
 void CsmRenderSystem::shadowRender()
 {
 	SET_CPU_ZONE_SCOPED("Cascade Shadow Mapping");
 
-	if (!isEnabled || !depthMap || !transparentMap || dataBuffers.empty())
+	if (!PbrLightingSystem::Instance::get()->isFbShadow())
 		return;
 
 	if (!pipeline)

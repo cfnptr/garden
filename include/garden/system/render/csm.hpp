@@ -82,6 +82,7 @@ private:
 
 	void init();
 	void deinit();
+	void preShadowRender();
 	void shadowRender();
 	void gBufferRecreate();
 

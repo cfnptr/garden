@@ -36,6 +36,13 @@ enum class GraphicsBackend : uint8
 {
 	VulkanAPI, Count
 };
+/**
+ * @brief Common GPU vendors. (Company, Manufacturer)
+ */
+enum class GpuVendor : uint8
+{
+	Unknown, Nvidia, AMD, Intel, Apple, ARM, Qualcomm, ImgTec, Count
+};
 
 /**
  * @brief Base graphics API class.
@@ -83,9 +90,9 @@ public:
 protected:
 	vector<DestroyResource> destroyBuffers[inFlightCount + 1];
 	GraphicsBackend backendType = {};
+	GpuVendor gpuVendor = {};
 	uint8 fillDestroyIndex = 0;
 	uint8 flushDestroyIndex = 1;
-	uint8 _alignment0 = 0;
 
 	inline static GraphicsAPI* apiInstance = nullptr;
 
@@ -137,6 +144,10 @@ public:
 	 * @brief Returns graphics API backend type. 
 	 */
 	GraphicsBackend getBackendType() const noexcept { return backendType; }
+	/**
+	 * @brief Returns current GPU vendor. (Company, Manufacturer)
+	 */
+	GpuVendor getGpuVendor() const noexcept { return gpuVendor; }
 
 	/**
 	 * @brief Returns pipeline pool instance from it pointer.

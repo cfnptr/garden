@@ -103,7 +103,8 @@ static void createVkBuffer(Buffer::Usage usage, Buffer::CpuAccess cpuAccess, Buf
 			queueFamilyIndices[bufferInfo.queueFamilyIndexCount++] = vulkanAPI->transferQueueFamilyIndex;
 		}
 		if (hasAnyFlag(usage, Buffer::Usage::ComputeQ) &&
-			vulkanAPI->graphicsQueueFamilyIndex != vulkanAPI->computeQueueFamilyIndex)
+			vulkanAPI->graphicsQueueFamilyIndex != vulkanAPI->computeQueueFamilyIndex &&
+			vulkanAPI->transferQueueFamilyIndex != vulkanAPI->computeQueueFamilyIndex)
 		{
 			queueFamilyIndices[bufferInfo.queueFamilyIndexCount++] = vulkanAPI->computeQueueFamilyIndex;
 		}
