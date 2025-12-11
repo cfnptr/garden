@@ -60,9 +60,12 @@ static ID<GraphicsPipeline> createBilateralBlurD(ID<Framebuffer> framebuffer, ui
 	options.loadAsync = false;
 	return ResourceSystem::Instance::get()->loadGraphicsPipeline("process/bilateral-blur-d", framebuffer, options);
 }
-static ID<GraphicsPipeline> createGaussianBlur(ID<Framebuffer> framebuffer)
+static ID<GraphicsPipeline> createGaussianBlur(ID<Framebuffer> framebuffer, uint32 coeffCount)
 {
+	Pipeline::SpecConstValues specConsts = { { "COEFF_COUNT", Pipeline::SpecConstValue(coeffCount) }, };
+
 	ResourceSystem::GraphicsOptions options;
+	options.specConstValues = &specConsts;
 	options.loadAsync = false;
 	return ResourceSystem::Instance::get()->loadGraphicsPipeline("process/gaussian-blur", framebuffer, options);
 }
@@ -210,20 +213,24 @@ void GpuProcessSystem::calcGaussCoeffs(float sigma, float2* coeffs, uint8 coeffC
 }
 
 void GpuProcessSystem::gaussianBlur(ID<ImageView> srcBuffer, ID<Framebuffer> dstFramebuffer,
-	ID<Framebuffer> tmpFramebuffer, ID<Buffer> kernelBuffer, uint8 coeffCount, bool reinhard, 
+	ID<Framebuffer> tmpFramebuffer, ID<Buffer> kernelBuffer, float intensity, bool reinhard, 
 	ID<GraphicsPipeline>& pipeline, ID<DescriptorSet>& descriptorSet)
 {
 	GARDEN_ASSERT(srcBuffer);
 	GARDEN_ASSERT(dstFramebuffer);
 	GARDEN_ASSERT(tmpFramebuffer);
 	GARDEN_ASSERT(kernelBuffer);
-	GARDEN_ASSERT(coeffCount > 0);
 	GARDEN_ASSERT(GraphicsSystem::Instance::get()->isRecording());
 
-	if (!pipeline)
-		pipeline = createGaussianBlur(dstFramebuffer);
-
 	auto graphicsSystem = GraphicsSystem::Instance::get();
+	if (!pipeline)
+	{
+		auto kenrelBufferView = graphicsSystem->get(kernelBuffer);
+		GARDEN_ASSERT(kenrelBufferView->getBinarySize() % sizeof(float2) == 0);
+		auto coeffCount = kenrelBufferView->getBinarySize() / sizeof(float2);
+		pipeline = createGaussianBlur(dstFramebuffer, coeffCount);
+	}
+
 	if (!descriptorSet)
 	{
 		auto tmpFramebufferView = graphicsSystem->get(tmpFramebuffer);
@@ -239,15 +246,14 @@ void GpuProcessSystem::gaussianBlur(ID<ImageView> srcBuffer, ID<Framebuffer> dst
 
 	auto variant = reinhard ? GAUSSIAN_BLUR_REINHARD : GAUSSIAN_BLUR_BASE;
 	auto texelSize = float2(1.0f) / graphicsSystem->get(srcBuffer)->calcSize();
+	auto pipelineView = graphicsSystem->get(pipeline);
 
 	GaussianBlurPC pc;
-	pc.count = coeffCount;
-
-	auto pipelineView = graphicsSystem->get(pipeline);
-	pipelineView->updateFramebuffer(tmpFramebuffer);
-	pc.texelSize = float2(texelSize.x, 0.0f);
+	pc.intensity = intensity;
 
 	SET_GPU_DEBUG_LABEL("Gaussian Blur");
+	pipelineView->updateFramebuffer(tmpFramebuffer);
+	pc.texelSize = float2(texelSize.x, 0.0f);
 	{
 		RenderPass renderPass(tmpFramebuffer, float4::zero);
 		pipelineView->bind(variant);
@@ -416,10 +422,12 @@ bool GpuProcessSystem::ggxBlur(ID<Image> buffer,
 		blitRegion.dstMipLevel = i;
 		Image::blit(buffer, buffer, blitRegion, Sampler::Filter::Linear);
 
-		gaussianBlur(imageViewData[i], framebufferData[i], framebuffers[roughnessLodCount + i], 
-			ggxBlurKernel, brdf::ggxCoeffCount, reinhard, pipeline, descriptorSets[i]);
+		gaussianBlur(imageViewData[i], framebufferData[i], framebufferData[roughnessLodCount + i], 
+			ggxBlurKernel, 1.0f, reinhard, pipeline, descriptorSets[i]);
 		reinhard = false;
 	}
 
 	return true;
 }
+
+const uint8 GpuProcessSystem::ggxCoeffCount = brdf::ggxCoeffCount;

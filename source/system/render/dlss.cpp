@@ -258,11 +258,14 @@ static void destroyDlssFeature(NVSDK_NGX_Handle* ngxFeature)
 //**********************************************************************************************************************
 void DlssRenderSystem::preInit()
 {
+	auto graphicsAPI = GraphicsAPI::get();
+	if (graphicsAPI->getGpuVendor() != GpuVendor::Nvidia)
+		return;
+
 	auto settingsSystem = SettingsSystem::Instance::tryGet();
 	if (settingsSystem)
 		settingsSystem->getType("dlss.quality", quality, dlssQualityNames, (uint32)DlssQuality::Count);
 
-	auto graphicsAPI = GraphicsAPI::get();
 	auto appInfoSystem = AppInfoSystem::Instance::get();
 	auto appDataPath = mpio::Directory::getAppDataPath(appInfoSystem->getAppDataName());
 	auto nvidiaDlssPath = (appDataPath / "nvidia").generic_wstring();
@@ -306,7 +309,7 @@ void DlssRenderSystem::preInit()
 	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
 		auto vulkanAPI = VulkanAPI::get();
-		if (!vulkanAPI->features.hasNvidiaDlss)
+		if (!vulkanAPI->features.nvidiaDlss)
 			return;
 		
 		ngxResult = NVSDK_NGX_VULKAN_GetFeatureRequirements(vulkanAPI->instance, 
@@ -453,9 +456,12 @@ void DlssRenderSystem::swapchainRecreate()
 
 void DlssRenderSystem::setQuality(DlssQuality quality)
 {
-	GraphicsAPI::get()->waitIdle();
-	destroyDlssFeature((NVSDK_NGX_Handle*)feature);
-	feature = {};
+	if (feature)
+	{
+		GraphicsAPI::get()->waitIdle();
+		destroyDlssFeature((NVSDK_NGX_Handle*)feature);
+		feature = {};
+	}
 
 	if (quality == DlssQuality::Off)
 	{

@@ -36,7 +36,7 @@ public:
 	struct GaussianBlurPC final
 	{
 		float2 texelSize;
-		uint32 count;
+		float intensity;
 	};
 	struct BilateralBlurPC final
 	{
@@ -108,13 +108,12 @@ public:
 	 * @param dstFramebuffer destination framebuffer
 	 * @param tmpFramebuffer temporary framebuffer
 	 * @param kernelBuffer blur coefficients buffer
-	 * @param coeffCount kernel buffer coefficient count
 	 * @param reinhard use reinhard weighted filter
 	 * @param[in,out] pipeline gaussian blur graphics pipeline
 	 * @param[in,out] descriptorSet gaussian blur descriptor set
 	 */
 	void gaussianBlur(ID<ImageView> srcBuffer, ID<Framebuffer> dstFramebuffer, 
-		ID<Framebuffer> tmpFramebuffer, ID<Buffer> kernelBuffer, uint8 coeffCount, 
+		ID<Framebuffer> tmpFramebuffer, ID<Buffer> kernelBuffer, float intensity,
 		bool reinhard, ID<GraphicsPipeline>& pipeline, ID<DescriptorSet>& descriptorSet);
 
 	/**
@@ -151,6 +150,8 @@ public:
 	 */
 	bool ggxBlur(ID<Image> buffer, const vector<ID<ImageView>>& imageViews, const vector<ID<Framebuffer>>& framebuffers, 
 		ID<GraphicsPipeline>& pipeline, vector<ID<DescriptorSet>>& descriptorSets);
+
+	static const uint8 ggxCoeffCount; /** GGX kernel coefficient count. */
 };
 
 } // namespace garden

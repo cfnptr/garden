@@ -55,7 +55,10 @@ void DlssRenderEditorSystem::editorSettings()
 {
 	ImGui::Spacing();
 	ImGui::PushID("dlss");
+
 	auto dlssSystem = DlssRenderSystem::Instance::get();
+	ImGui::BeginDisabled(!dlssSystem->isInitialized());
+
 	auto quality = (int)dlssSystem->getQuality();
 	if (ImGui::Combo("DLSS Quality", &quality, dlssQualityNames, (int)DlssQuality::Count))
 	{
@@ -64,6 +67,16 @@ void DlssRenderEditorSystem::editorSettings()
 		if (settingsSystem)
 			settingsSystem->setString("dlss.quality", toString((DlssQuality)quality));
 	}
+	if (!dlssSystem->isInitialized())
+	{
+		if (ImGui::BeginItemTooltip())
+		{
+			ImGui::Text("Nvidia DLSS is not available or initialized!");
+			ImGui::EndTooltip();
+		}
+	}
+
+	ImGui::EndDisabled();
 	ImGui::PopID();
 }
 #endif

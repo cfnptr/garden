@@ -23,8 +23,8 @@ using namespace garden;
 static ID<Framebuffer> createFramebuffer(GraphicsSystem* graphicsSystem)
 {
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
-	auto gBuffer = deferredSystem->getGBuffers()[0]; // Note: Reusing G-Buffer memory.
-	auto gBufferView = graphicsSystem->get(gBuffer)->getDefaultView();
+	auto gBuffer = deferredSystem->getGBuffers()[DeferredRenderSystem::gBufferBaseColor];
+	auto gBufferView = graphicsSystem->get(gBuffer)->getDefaultView(); // Note: Reusing G-Buffer memory.
 	GARDEN_ASSERT(graphicsSystem->get(gBuffer)->getFormat() == DeferredRenderSystem::ldrBufferFormat);
 
 	vector<Framebuffer::OutputAttachment> colorAttachments =
@@ -161,8 +161,8 @@ void FxaaRenderSystem::gBufferRecreate()
 	if (framebuffer)
 	{
 		auto deferredSystem = DeferredRenderSystem::Instance::get();
-		auto gBuffer = deferredSystem->getGBuffers()[0]; // Note: Reusing G-Buffer memory.
-		auto gBufferView = graphicsSystem->get(gBuffer)->getDefaultView();
+		auto gBuffer = deferredSystem->getGBuffers()[DeferredRenderSystem::gBufferBaseColor];
+		auto gBufferView = graphicsSystem->get(gBuffer)->getDefaultView(); // Note: Reusing G-Buffer memory.
 		GARDEN_ASSERT(graphicsSystem->get(gBuffer)->getFormat() == DeferredRenderSystem::ldrBufferFormat);
 
 		auto framebufferView = graphicsSystem->get(framebuffer);

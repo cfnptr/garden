@@ -286,6 +286,7 @@ void EditorRenderSystem::showOptionsWindow()
 		ImGui::SameLine();
 		ImGui::Checkbox("Triple Buffering", &graphicsSystem->useTripleBuffering);
 
+		ImGui::BeginDisabled(graphicsSystem->useVsync);
 		auto frameRate = (int)graphicsSystem->maxFrameRate;
 		if (ImGui::DragInt("Max Frame Rate", &frameRate, 1, 1, UINT16_MAX))
 		{
@@ -293,7 +294,15 @@ void EditorRenderSystem::showOptionsWindow()
 			if (settingsSystem)
 				settingsSystem->setInt("render.maxFrameRate", frameRate);
 		}
-
+		if (graphicsSystem->useVsync)
+		{
+			if (ImGui::BeginItemTooltip())
+			{
+				ImGui::Text("Controlled by the V-Sync!");
+				ImGui::EndTooltip();
+			}
+		}
+		ImGui::EndDisabled();
 		
 		auto scaledSize = graphicsSystem->getScaledFrameSize();
 		auto framebufferSize = graphicsSystem->getFramebufferSize();

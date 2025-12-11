@@ -94,9 +94,9 @@ public:
 	{
 		float4x4 uvToWorld;
 		float4 shadowColor;
-		float ggxLodOffset;
 		float emissiveCoeff;
 		float reflectanceCoeff;
+		float ggxLodOffset;
 	};
 	struct SpecularPC final
 	{
@@ -109,7 +109,7 @@ public:
 
 	static constexpr uint8 shadowBufferCount = 2;
 	static constexpr uint8 aoBufferCount = 3;
-	static constexpr Framebuffer::OutputAttachment::Flags framebufferFlags = { true, false, true };
+	static constexpr Framebuffer::OutputAttachment::Flags framebufferFlags = { false, false, true };
 	static constexpr Image::Format shadowBufferFormat = Image::Format::UnormR8G8B8A8;
 	static constexpr Image::Format aoBufferFormat = Image::Format::UnormR8;
 	static constexpr Image::Format reflBufferFormat = Image::Format::SfloatR16G16B16A16;
@@ -141,11 +141,12 @@ private:
 	ID<DescriptorSet> aoBlurDS = {};
 	Options options = {};
 	GraphicsQuality quality = GraphicsQuality::High;
+	bool hasFbShadow = false;
 	bool hasAnyShadow = false;
 	bool hasAnyAO = false;
 	bool hasAnyRefl = false;
 	bool hasAnyGI = false;
-	uint16 _alignment = 0;
+	uint8 _alignment = 0;
 
 	/**
 	 * @brief Creates a new PBR lighting rendering system instance. (Physically Based Rendering)
@@ -448,6 +449,16 @@ public:
 		return createDescriptorSet(entity, ID<Pipeline>(pipeline), PipelineType::RayTracing, index);
 	}
 
+	/**
+	 * @brief Returns true there is rendered framebuffer shadow data on the current frame.
+	 */
+	bool isFbShadow() const noexcept { return hasFbShadow; }
+
+	/**
+	 * @brief Marks that there is rendered framebuffer shadow data on the current frame.
+	 * @details See the @ref useShadowBuffer().
+	 */
+	void markFbShadow() noexcept { hasFbShadow = true; }
 	/**
 	 * @brief Marks that there is rendered shadow data on the current frame.
 	 * @details See the @ref useShadowBuffer().

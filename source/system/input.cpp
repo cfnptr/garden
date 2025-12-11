@@ -208,16 +208,29 @@ void InputSystem::input()
 {
 	SET_CPU_ZONE_SCOPED("Input Update");
 
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+	{
+		auto vulkanAPI = VulkanAPI::get();
+		if (vulkanAPI->features.amdAntiLag)
+		{
+			vk::AntiLagDataAMD antiLagData;
+			antiLagData.mode = vk::AntiLagModeAMD::eOn;
+			antiLagData.maxFPS = graphicsSystem->useVsync ? 0 : graphicsSystem->maxFrameRate;
+			vulkanAPI->device.antiLagUpdateAMD(antiLagData);
+		}
+	}
+	else abort();
+
 	#if GARDEN_OS_WINDOWS
 		#if GARDEN_DEBUG
 		if (mpmt::Thread::isCurrentMain())
 			throw GardenError("Expected to run on a render thread."); // Note: See the startRenderThread().
 		#endif
-
 	eventLocker.lock();
 	#endif
 
-	if (GraphicsSystem::Instance::get()->isOutOfDateSwapchain())
+	if (graphicsSystem->isOutOfDateSwapchain())
 	{
 		if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
 		{

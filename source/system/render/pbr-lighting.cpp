@@ -706,11 +706,15 @@ void PbrLightingSystem::preHdrRender()
 		SET_CPU_ZONE_SCOPED("Shadows Render Pass");
 		SET_GPU_DEBUG_LABEL("Shadows Pass");
 
-		auto event = &manager->getEvent("ShadowRender");
-		if (event->hasSubscribers())
+		if (hasFbShadow)
 		{
-			RenderPass renderPass(shadowFramebuffers[0], float4::one);
-			event->run();
+			auto event = &manager->getEvent("ShadowRender");
+			if (event->hasSubscribers())
+			{
+				RenderPass renderPass(shadowFramebuffers[0], float4::zero);
+				event->run();
+			}
+			hasFbShadow = false;
 		}
 
 		if (hasAnyShadow)
@@ -718,7 +722,7 @@ void PbrLightingSystem::preHdrRender()
 			if (quality > GraphicsQuality::Low)
 			{
 				GpuProcessSystem::Instance::get()->bilateralBlurD(shadowImageViews[0], shadowFramebuffers[0], 
-						shadowFramebuffers[1], blurSharpness, shadowBlurPipeline, shadowBlurDS, 4);
+					shadowFramebuffers[1], blurSharpness, shadowBlurPipeline, shadowBlurDS, 4);
 			}
 			hasAnyShadow = false;
 		}
@@ -737,7 +741,7 @@ void PbrLightingSystem::preHdrRender()
 		if (event->hasSubscribers())
 		{
 			auto framebufferView = graphicsSystem->get(aoFramebuffers[2]);
-			RenderPass renderPass(aoFramebuffers[2], float4::one);
+			RenderPass renderPass(aoFramebuffers[2], float4::zero);
 			event->run();
 		}
 
@@ -920,9 +924,9 @@ void PbrLightingSystem::hdrRender()
 	LightingPC pc;
 	pc.uvToWorld = (float4x4)(cc.invViewProj * f32x4x4::uvToNDC);
 	pc.shadowColor = (float4)cc.shadowColor;
-	pc.ggxLodOffset = cc.ggxLodOffset;
 	pc.emissiveCoeff = cc.emissiveCoeff;
 	pc.reflectanceCoeff = reflectanceCoeff;
+	pc.ggxLodOffset = cc.ggxLodOffset;
 
 	SET_GPU_DEBUG_LABEL("PBR Lighting");
 	pipelineView->bind();
@@ -961,7 +965,7 @@ void PbrLightingSystem::gBufferRecreate()
 		if (options.useReflBlur)
 		{
 			graphicsSystem->destroy(reflImageViews);
-			reflImageViews = {};
+			reflImageViews.clear();
 		}
 		else reflImageViews[0] = reflBufferView;
 	}
@@ -970,7 +974,7 @@ void PbrLightingSystem::gBufferRecreate()
 		if (options.useReflBlur)
 		{
 			graphicsSystem->destroy(reflFramebuffers);
-			reflFramebuffers = {};
+			reflFramebuffers.clear();
 		}
 		else
 		{
