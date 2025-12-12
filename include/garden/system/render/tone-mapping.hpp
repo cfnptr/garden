@@ -30,12 +30,25 @@ namespace garden
 class ToneMappingSystem final : public System, public Singleton<ToneMappingSystem>
 {
 public:
+	/**
+	 * @brief Tone mapping rendering system initialization options.
+	 */
+	struct Options final
+	{
+		uint8 toneMapper = TONE_MAPPER_ACES; /**< Tone mapping function. (Curve) */
+		bool useBloomBuffer = false;         /**< Use bloom (light glow) buffer for tone mapping. */
+		bool useLightAbsorption = false;     /**< Use global light absorption effect. */
+		Options() { }
+	};
+
 	struct PushConstants final
 	{
 		uint32 frameIndex;
 		float exposureFactor;
 		float ditherIntensity;
 		float bloomIntensity;
+		float3 lightAbsorption;
+		float nearPlane;
 	};
 	struct LuminanceData final
 	{
@@ -51,10 +64,8 @@ private:
 	ID<GraphicsPipeline> pipeline = {};
 	ID<DescriptorSet> descriptorSet = {};
 	ID<Buffer> luminanceBuffer = {};
-	bool useBloomBuffer = false;
+	Options options = {};
 	bool lastUpscaleState = false;
-	uint8 toneMapper = TONE_MAPPER_ACES;
-	uint8 _alignment = 0;
 
 	/**
 	 * @brief Creates a new tone mapping rendering system instance.
@@ -63,8 +74,7 @@ private:
 	 * @param toneMapper target tone mapping function
 	 * @param setSingleton set system singleton instance
 	 */
-	ToneMappingSystem(bool useBloomBuffer = false, 
-		uint8 toneMapper = TONE_MAPPER_ACES, bool setSingleton = true);
+	ToneMappingSystem(Options options = {}, bool setSingleton = true);
 	/**
 	 * @brief Destroys tone mapping rendering system instance.
 	 */
@@ -77,24 +87,20 @@ private:
 
 	friend class ecsm::Manager;
 public:
+	float3 lightAbsorption = float3::zero;
 	float exposureFactor = 1.0f;
 	float ditherIntensity = (0.5f / 255.0f); /**< (255 for R8G8B8 format) */
 
-	/**
-	 * @brief Use bloom (light glow) buffer for tone mapping.
+	/*******************************************************************************************************************
+	 * @brief Returns tone mapping rendering system options.
 	 */
-	bool getUseBloomBuffer() const noexcept { return useBloomBuffer; }
+	Options getOptions() const noexcept { return options; }
 	/**
-	 * @brief Returns current tone mapping function.
+	 * @brief Enables or disables use of the specific system rendering options.
+	 * @details It destroys existing buffers on use set to false.
+	 * @param options target tone mapping system options
 	 */
-	uint8 getToneMapper() const noexcept { return toneMapper; }
-	/**
-	 * @brief Sets tone mapping pipeline constants. (Recreates pipeline!)
-	 * 
-	 * @param useBloomBuffer use bloom (light glow) buffer for tone mapping
-	 * @param toneMapper target tone mapping function
-	 */
-	void setConsts(bool useBloomBuffer, uint8 toneMapper);
+	void setOptions(Options options);
 
 	/**
 	 * @brief Returns tone mapping graphics pipeline.

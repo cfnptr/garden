@@ -59,6 +59,7 @@ public:
 		bool maintenance6 = false;
 		bool nvidiaDlss = false;
 		bool amdAntiLag = false;
+		bool nvLowLatency = false;
 	};
 private:
 	VulkanAPI(const string& appName, const string& appDataName, Version appVersion, uint2 windowSize, 
@@ -150,6 +151,10 @@ public:
 	 * @brief Returns true if ray query supported.
 	 */
 	bool hasRayQuery() const final { return features.rayQuery; }
+	/**
+	 * @brief Returns true if low latency input supported.
+	 */
+	bool hasLowLatency() const final { return features.nvLowLatency || features.amdAntiLag; }
 
 	/**
 	 * @brief Returns Vulkan graphics API instance.

@@ -155,6 +155,10 @@ static vk::SwapchainKHR createVkSwapchain(VulkanAPI* vulkanAPI, uint2& framebuff
 		surfaceFormat.colorSpace, surfaceExtent, 1, vk::ImageUsageFlagBits::eColorAttachment | 
 		vk::ImageUsageFlagBits::eTransferDst, vk::SharingMode::eExclusive, {}, 
 		surfaceTransform, compositeAlpha, presentMode, VK_TRUE, oldSwapchain);
+
+	vk::SwapchainLatencyCreateInfoNV nvLatencyInfo(VK_TRUE);
+	if (vulkanAPI->features.nvLowLatency)
+		swapchainInfo.pNext = &nvLatencyInfo;
 	return vulkanAPI->device.createSwapchainKHR(swapchainInfo);
 }
 

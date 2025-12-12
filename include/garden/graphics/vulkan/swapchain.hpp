@@ -69,6 +69,7 @@ private:
 
 	friend class garden::VulkanAPI;
 public:
+	vk::SwapchainKHR getInstance() noexcept { return instance; }
 	InFlightFrame& getInFlightFrame() noexcept { return inFlightFrames[inFlightIndex]; }
 
 	void recreate(uint2 framebufferSize, bool useVsync, bool useTripleBuffering) final;

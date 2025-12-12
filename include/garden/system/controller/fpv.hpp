@@ -64,7 +64,10 @@ public:
 	float moveLerpFactor = 0.99999f;
 	float boostFactor = 2.0f;
 	float jumpSpeed = 5.0f;
+	float swimSpeed = 1.0f;
+	float swimpResist = 0.9f;
 	bool isMouseLocked = false;
+	bool canSwim = false;
 };
 
 } // namespace garden

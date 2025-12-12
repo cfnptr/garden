@@ -38,10 +38,11 @@ static ID<Buffer> createLuminanceBuffer(GraphicsSystem* graphicsSystem)
 
 //**********************************************************************************************************************
 static DescriptorSet::Uniforms getUniforms(GraphicsSystem* graphicsSystem, 
-	ID<Buffer> luminanceBuffer, bool useBloomBuffer)
+	ID<Buffer> luminanceBuffer, bool useBloomBuffer, bool useLightAbsorption)
 {
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	auto bloomSystem = BloomRenderSystem::Instance::tryGet();
+	auto inFlightCount = graphicsSystem->getInFlightCount();
 	auto hdrFramebufferView = graphicsSystem->get(deferredSystem->getUpscaleHdrFramebuffer());
 	auto hdrBufferView = hdrFramebufferView->getColorAttachments()[0].imageView;
 
@@ -51,27 +52,35 @@ static DescriptorSet::Uniforms getUniforms(GraphicsSystem* graphicsSystem,
 		auto bloomBuffer = bloomSystem->getBloomBuffer();
 		bloomBufferView = graphicsSystem->get(bloomBuffer)->getDefaultView();
 	}
-	else
+	else bloomBufferView = graphicsSystem->getEmptyTexture();
+
+	ID<ImageView> depthBufferView;
+	if (useLightAbsorption)
 	{
-		bloomBufferView = graphicsSystem->getEmptyTexture();
+		auto gFramebufferView = graphicsSystem->get(deferredSystem->getGFramebuffer());
+		depthBufferView = gFramebufferView->getDepthStencilAttachment().imageView;
 	}
+	else depthBufferView = graphicsSystem->getEmptyTexture();
 
 	DescriptorSet::Uniforms uniforms =
 	{ 
-		{ "hdrBuffer", DescriptorSet::Uniform(hdrBufferView) },
-		{ "bloomBuffer", DescriptorSet::Uniform(bloomBufferView) },
-		{ "luminance", DescriptorSet::Uniform(luminanceBuffer) }
+		{ "hdrBuffer", DescriptorSet::Uniform(hdrBufferView, 1, inFlightCount) },
+		{ "depthBuffer", DescriptorSet::Uniform(depthBufferView, 1, inFlightCount) },
+		{ "bloomBuffer", DescriptorSet::Uniform(bloomBufferView, 1, inFlightCount) },
+		{ "luminance", DescriptorSet::Uniform(luminanceBuffer, 1, inFlightCount) },
+		{ "cc", DescriptorSet::Uniform(graphicsSystem->getCommonConstantsBuffers()) },
 	};
 	return uniforms;
 }
 
-static ID<GraphicsPipeline> createPipeline(bool useBloomBuffer, uint8 toneMapper)
+static ID<GraphicsPipeline> createPipeline(ToneMappingSystem::Options tmOptions)
 {
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	Pipeline::SpecConstValues specConsts =
 	{
-		{ "USE_BLOOM_BUFFER", Pipeline::SpecConstValue(useBloomBuffer) },
-		{ "TONE_MAPPER", Pipeline::SpecConstValue((uint32)toneMapper) }
+		{ "TONE_MAPPER", Pipeline::SpecConstValue((uint32)tmOptions.toneMapper) },
+		{ "USE_BLOOM_BUFFER", Pipeline::SpecConstValue(tmOptions.useBloomBuffer) },
+		{ "USE_LIGHT_ABSORPTION", Pipeline::SpecConstValue(tmOptions.useLightAbsorption) }
 	};
 
 	ResourceSystem::GraphicsOptions options;
@@ -83,10 +92,9 @@ static ID<GraphicsPipeline> createPipeline(bool useBloomBuffer, uint8 toneMapper
 }
 
 //**********************************************************************************************************************
-ToneMappingSystem::ToneMappingSystem(bool useBloomBuffer, uint8 toneMapper, bool setSingleton) :
-	Singleton(setSingleton), useBloomBuffer(useBloomBuffer), toneMapper(toneMapper)
+ToneMappingSystem::ToneMappingSystem(Options options, bool setSingleton) : Singleton(setSingleton), options(options)
 {
-	GARDEN_ASSERT(toneMapper < TONE_MAPPER_COUNT);
+	GARDEN_ASSERT(options.toneMapper < TONE_MAPPER_COUNT);
 
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", ToneMappingSystem::init);
@@ -114,7 +122,7 @@ void ToneMappingSystem::init()
 	if (!luminanceBuffer)
 		luminanceBuffer = createLuminanceBuffer(GraphicsSystem::Instance::get());
 	if (!pipeline)
-		pipeline = createPipeline(useBloomBuffer, toneMapper);
+		pipeline = createPipeline(options);
 }
 void ToneMappingSystem::deinit()
 {
@@ -146,29 +154,33 @@ void ToneMappingSystem::ldrRender()
 
 	if (lastUpscaleState != graphicsSystem->useUpscaling)
 	{
-		graphicsSystem->destroy(descriptorSet);
-		descriptorSet = {}; 
+		graphicsSystem->destroy(descriptorSet); descriptorSet = {}; 
 		lastUpscaleState = graphicsSystem->useUpscaling;
 	}
 	if (!descriptorSet)
 	{
-		auto uniforms = getUniforms(graphicsSystem, luminanceBuffer, useBloomBuffer);
+		auto uniforms = getUniforms(graphicsSystem, luminanceBuffer, 
+			options.useBloomBuffer, options.useLightAbsorption);
 		descriptorSet = graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms));
 		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.deferred.toneMapping");
 	}
 
 	auto bloomSystem = BloomRenderSystem::Instance::tryGet();
+	auto inFlightIndex = graphicsSystem->getInFlightIndex();
+	auto& cc = graphicsSystem->getCommonConstants();
 
 	PushConstants pc;
 	pc.frameIndex = (uint32)graphicsSystem->getCurrentFrameIndex();
 	pc.exposureFactor = exposureFactor;
 	pc.ditherIntensity = ditherIntensity;
 	pc.bloomIntensity = bloomSystem ? bloomSystem->intensity : 0.0f;
+	pc.lightAbsorption = -lightAbsorption;
+	pc.nearPlane = cc.nearPlane;
 
 	SET_GPU_DEBUG_LABEL("Tone Mapping");
 	pipelineView->bind();
 	pipelineView->setViewportScissor();
-	pipelineView->bindDescriptorSet(descriptorSet);
+	pipelineView->bindDescriptorSet(descriptorSet, inFlightIndex);
 	pipelineView->pushConstants(&pc);
 	pipelineView->drawFullscreen();
 }
@@ -183,31 +195,28 @@ void ToneMappingSystem::dsRecreate()
 	}
 }
 
-void ToneMappingSystem::setConsts(bool useBloomBuffer, uint8 toneMapper)
+void ToneMappingSystem::setOptions(Options options)
 {
-	GARDEN_ASSERT(toneMapper < TONE_MAPPER_COUNT);
-
-	if (this->useBloomBuffer == useBloomBuffer && this->toneMapper == toneMapper)
+	GARDEN_ASSERT(options.toneMapper < TONE_MAPPER_COUNT);
+	if (memcmp(&this->options, &options, sizeof(Options)) == 0)
 		return;
 
-	this->useBloomBuffer = useBloomBuffer;
-	this->toneMapper = toneMapper;
-
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	graphicsSystem->destroy(descriptorSet);
-	descriptorSet = {};
+	graphicsSystem->destroy(descriptorSet); descriptorSet = {};
 
 	if (pipeline)
 	{
 		graphicsSystem->destroy(pipeline);
-		pipeline = createPipeline(useBloomBuffer, toneMapper);
+		pipeline = createPipeline(options);
 	}
+
+	this->options = options;
 }
 
 ID<GraphicsPipeline> ToneMappingSystem::getPipeline()
 {
 	if (!pipeline)
-		pipeline = createPipeline(useBloomBuffer, toneMapper);
+		pipeline = createPipeline(options);
 	return pipeline;
 }
 ID<Buffer> ToneMappingSystem::getLuminanceBuffer()

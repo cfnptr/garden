@@ -92,6 +92,7 @@ class GraphicsSystem final : public System, public Singleton<GraphicsSystem>
 	ID<ImageView> normalMapTexture = {};
 	ID<Framebuffer> swapchainFramebuffer = {};
 	uint2 scaledFrameSize = uint2::zero;
+	uint16 nvMaxFrameRate = UINT16_MAX;
 	bool asyncRecording = false;
 	bool forceRecreateSwapchain = false;
 	bool isFramebufferSizeValid = false;

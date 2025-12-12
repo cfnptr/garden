@@ -219,6 +219,12 @@ void InputSystem::input()
 			antiLagData.maxFPS = graphicsSystem->useVsync ? 0 : graphicsSystem->maxFrameRate;
 			vulkanAPI->device.antiLagUpdateAMD(antiLagData);
 		}
+		else if (vulkanAPI->features.nvLowLatency)
+		{
+			vk::LatencySleepInfoNV sleepInfo(VK_NULL_HANDLE, 0); // TODO: implement semaphore and check if works on supported GPU.
+			vulkanAPI->device.latencySleepNV(vulkanAPI->vulkanSwapchain->getInstance(), sleepInfo);
+			// TODO: also support latency markers. vkSetLatencyMarkerNV()
+		}
 	}
 	else abort();
 
