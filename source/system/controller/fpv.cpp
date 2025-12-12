@@ -280,10 +280,18 @@ void FpvControllerSystem::updateCharacterControl()
 		linearVelocity.setX(lerpDelta(linearVelocity.getX(), velocity.getX(), 1.0f - moveLerpFactor, deltaTime));
 		linearVelocity.setZ(lerpDelta(linearVelocity.getZ(), velocity.getZ(), 1.0f - moveLerpFactor, deltaTime));
 
-		if (groundState == CharacterGround::OnGround)
-			linearVelocity.setY(isJumping ? jumpSpeed : 0.0f);
+		if (canSwim)
+		{
+			if (isJumping) linearVelocity.setY(swimSpeed * boostFactor);
+			else linearVelocity += gravity * deltaTime;
+			linearVelocity *= swimpResist;
+		}
 		else
-			linearVelocity += gravity * deltaTime;
+		{
+			if (groundState == CharacterGround::OnGround)
+				linearVelocity.setY(isJumping ? jumpSpeed : 0.0f);
+			else linearVelocity += gravity * deltaTime;
+		}
 
 		characterView->setLinearVelocity(linearVelocity);
 		characterView->update(deltaTime, gravity);

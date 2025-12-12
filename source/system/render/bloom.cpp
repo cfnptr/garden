@@ -119,7 +119,9 @@ static ID<GraphicsPipeline> createDownsamplePipeline(
 	ID<Framebuffer> framebuffer, bool useThreshold, bool useAntiFlickering)
 {
 	auto toneMappingSystem = ToneMappingSystem::Instance::get();
-	toneMappingSystem->setConsts(true, toneMappingSystem->getToneMapper());
+	auto tmOptions = toneMappingSystem->getOptions();
+	tmOptions.useBloomBuffer = true;
+	toneMappingSystem->setOptions(tmOptions);
 
 	Pipeline::SpecConstValues specConsts =
 	{

@@ -325,8 +325,11 @@ static void prepareCommonConstants(ID<Entity> camera, ID<Entity> directionalLigh
 	cc.invFrameSizeSq = cc.invFrameSize * 2.0f;
 }
 
-static void limitFrameRate(double beginSleepClock, int maxFrameRate)
+static void limitFrameRate(double beginSleepClock, uint16 maxFrameRate)
 {
+	if (maxFrameRate == 0)
+		return;
+
 	auto deltaClock = mpio::OS::getCurrentClock() - beginSleepClock;
 	auto delayTime = (1.0 / maxFrameRate) - deltaClock - 0.001;
 	if (delayTime > 0.0)
@@ -382,12 +385,24 @@ void GraphicsSystem::update()
 		SET_CPU_ZONE_SCOPED("Swapchain Recreate");
 
 		swapchain->recreate(inputSystem->getFramebufferSize(), useVsync, useTripleBuffering);
-		auto framebufferSize = swapchain->getFramebufferSize();
-		outOfDateSwapchain = false;
+		outOfDateSwapchain = false; nvMaxFrameRate = UINT16_MAX;
 
+		auto framebufferSize = swapchain->getFramebufferSize();
 		GARDEN_LOG_INFO("Recreated swapchain. (" + to_string(framebufferSize.x) + "x" +
 			to_string(framebufferSize.y) + " px, " + to_string(swapchain->getImageCount()) + "I)");
 	}
+
+	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
+	{
+		auto vulkanAPI = VulkanAPI::get();
+		if (vulkanAPI->features.nvLowLatency && nvMaxFrameRate != maxFrameRate)
+		{
+			vk::LatencySleepModeInfoNV sleepModeInfo(VK_TRUE, VK_TRUE, 1000000 / (uint32)maxFrameRate);
+			vulkanAPI->device.setLatencySleepModeNV(vulkanAPI->vulkanSwapchain->getInstance(), sleepModeInfo);
+			nvMaxFrameRate = maxFrameRate;
+		}
+	}
+	else abort();
 
 	if (isFramebufferSizeValid)
 	{
@@ -463,7 +478,7 @@ void GraphicsSystem::present()
 
 		if (graphicsAPI->swapchain->present())
 		{
-			if (!useVsync)
+			if (!useVsync && !graphicsAPI->hasLowLatency())
 				limitFrameRate(beginSleepClock, maxFrameRate);
 		}
 		else

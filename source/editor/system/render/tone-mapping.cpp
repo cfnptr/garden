@@ -60,10 +60,17 @@ void ToneMappingEditorSystem::preUiRender()
 	{
 		auto toneMappingSystem = ToneMappingSystem::Instance::get();
 		if (ImGui::Combo("Tone Mapper", toneMapper, TONE_MAPPER_NAMES, TONE_MAPPER_COUNT))
-			toneMappingSystem->setConsts(toneMappingSystem->getUseBloomBuffer(), toneMapper);
+		{
+			auto options = toneMappingSystem->getOptions();
+			options.toneMapper = toneMapper;
+			toneMappingSystem->setOptions(options);
+		}
 
 		ImGui::DragFloat("Exposure Factor", &toneMappingSystem->exposureFactor, 0.01f, 0.0f, FLT_MAX);
 		ImGui::SliderFloat("Dither Intensity", &toneMappingSystem->ditherIntensity, 0.0f, 1.0f);
+
+		if (toneMappingSystem->getOptions().useLightAbsorption)
+			ImGui::DragFloat3("Light Absorption", &toneMappingSystem->lightAbsorption);
 
 		auto graphicsSystem = GraphicsSystem::Instance::get();
 		const auto& commonConstants = graphicsSystem->getCommonConstants();

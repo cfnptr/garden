@@ -488,6 +488,10 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 		else if (strcmp(properties.extensionName, VK_AMD_ANTI_LAG_EXTENSION_NAME) == 0)
 			features.amdAntiLag = true;
 
+		// TODO: finish implementing semaphore on supported gpu! api.cpp
+		// else if (strcmp(properties.extensionName, VK_NV_LOW_LATENCY_2_EXTENSION_NAME) == 0)
+		//	features.nvLowLatency = true; 
+
 		if (versionMinor < 3)
 		{
 			if (strcmp(properties.extensionName, VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME) == 0)
@@ -544,6 +548,8 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 		extensions.push_back(VK_EXT_MEMORY_BUDGET_EXTENSION_NAME);
 	if (features.memoryPriority)
 		extensions.push_back(VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME);
+	if (features.nvLowLatency)
+		extensions.push_back(VK_NV_LOW_LATENCY_2_EXTENSION_NAME);
 
 	if (features.pageableMemory)
 	{

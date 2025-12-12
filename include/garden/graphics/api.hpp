@@ -254,13 +254,17 @@ public:
 	static void terminate();
 
 	/**
-	 * @brief Returns true if ray tracing supported.
+	 * @brief Returns true if ray tracing issupported.
 	 */
 	virtual bool hasRayTracing() const { return false; }
 	/**
 	 * @brief Returns true if ray query supported.
 	 */
 	virtual bool hasRayQuery() const { return false; }
+	/**
+	 * @brief Returns true low latency input supported.
+	 */
+	virtual bool hasLowLatency() const { return false; }
 
 	/**
 	 * @brief Is graphics API initialized.
