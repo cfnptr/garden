@@ -47,8 +47,7 @@ public:
 		float exposureFactor;
 		float ditherIntensity;
 		float bloomIntensity;
-		float3 lightAbsorption;
-		float nearPlane;
+		float3 absorptionColor;
 	};
 	struct LuminanceData final
 	{
@@ -87,7 +86,7 @@ private:
 
 	friend class ecsm::Manager;
 public:
-	float3 lightAbsorption = float3::zero;
+	float3 absorptionColor = float3::zero;
 	float exposureFactor = 1.0f;
 	float ditherIntensity = (0.5f / 255.0f); /**< (255 for R8G8B8 format) */
 

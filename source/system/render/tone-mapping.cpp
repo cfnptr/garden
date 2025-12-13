@@ -167,15 +167,13 @@ void ToneMappingSystem::ldrRender()
 
 	auto bloomSystem = BloomRenderSystem::Instance::tryGet();
 	auto inFlightIndex = graphicsSystem->getInFlightIndex();
-	auto& cc = graphicsSystem->getCommonConstants();
 
 	PushConstants pc;
 	pc.frameIndex = (uint32)graphicsSystem->getCurrentFrameIndex();
 	pc.exposureFactor = exposureFactor;
 	pc.ditherIntensity = ditherIntensity;
 	pc.bloomIntensity = bloomSystem ? bloomSystem->intensity : 0.0f;
-	pc.lightAbsorption = -lightAbsorption;
-	pc.nearPlane = cc.nearPlane;
+	pc.absorptionColor = -absorptionColor;
 
 	SET_GPU_DEBUG_LABEL("Tone Mapping");
 	pipelineView->bind();

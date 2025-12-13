@@ -65,7 +65,7 @@ void BlurRenderSystem::preDepthLdrRender()
 {
 	SET_CPU_ZONE_SCOPED("Blur Pre Depth LDR Render");
 
-	if (!ldrGgxBlur || intensity == 0.0f)
+	if (!ldrGgxBlur || intensity <= 0.0f)
 		return;
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
