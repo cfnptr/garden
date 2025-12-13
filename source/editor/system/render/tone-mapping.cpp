@@ -70,7 +70,7 @@ void ToneMappingEditorSystem::preUiRender()
 		ImGui::SliderFloat("Dither Intensity", &toneMappingSystem->ditherIntensity, 0.0f, 1.0f);
 
 		if (toneMappingSystem->getOptions().useLightAbsorption)
-			ImGui::DragFloat3("Light Absorption", &toneMappingSystem->lightAbsorption);
+			ImGui::DragFloat3("Absorption Color", &toneMappingSystem->absorptionColor);
 
 		auto graphicsSystem = GraphicsSystem::Instance::get();
 		const auto& commonConstants = graphicsSystem->getCommonConstants();
