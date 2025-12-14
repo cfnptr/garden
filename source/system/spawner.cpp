@@ -21,8 +21,6 @@
 #include "garden/system/character.hpp"
 #include "garden/profiler.hpp"
 
-#include "math/matrix/transform.hpp"
-
 using namespace garden;
 
 ID<Entity> SpawnerComponent::loadPrefab()

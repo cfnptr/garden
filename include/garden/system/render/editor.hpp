@@ -51,7 +51,7 @@ public:
 		OnComponent onComponent;
 		float priority = 0.0f;
 
-		Inspector(const OnComponent& onComponent, float priority = 0.0f) :
+		Inspector(const OnComponent& onComponent, float priority = 0.0f) noexcept :
 			onComponent(onComponent), priority(priority) { }
 	};
 

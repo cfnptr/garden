@@ -34,7 +34,7 @@ namespace garden::graphics
 	{
 		float4 lMip = float4::zero;
 		SpecularData(float3 l, float mip) noexcept : lMip(l, mip) { }
-		SpecularData() = default;
+		SpecularData() noexcept = default;
 	};
 }
 

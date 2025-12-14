@@ -16,7 +16,6 @@
 #include "garden/system/ui/transform.hpp"
 #include "garden/system/log.hpp"
 #include "garden/base64.hpp"
-#include "math/matrix/transform.hpp"
 
 #if GARDEN_EDITOR
 #include "garden/editor/system/transform.hpp"
@@ -132,30 +131,6 @@ void TransformComponent::setActive(bool isActive) noexcept
 }
 
 //**********************************************************************************************************************
-f32x4x4 TransformComponent::calcModel(f32x4 cameraPosition) const noexcept
-{
-	auto manager = Manager::Instance::get();
-	auto model = ::calcModel(posChildCount, rotation, scaleChildCap);
-
-	if (modelWithAncestors)
-	{
-		auto nextParent = parent;
-		while (nextParent)
-		{
-			auto nextTransformView = manager->get<TransformComponent>(nextParent);
-			auto parentModel = ::calcModel(nextTransformView->posChildCount,
-				nextTransformView->rotation, nextTransformView->scaleChildCap);
-			model = parentModel * model;
-			nextParent = nextTransformView->parent;
-		}
-
-		return ::translate(-cameraPosition, model);
-	}
-
-	setTranslation(model, posChildCount - cameraPosition);
-	return model;
-}
-
 void TransformComponent::setParent(ID<Entity> parent)
 {
 	GARDEN_ASSERT(parent != entity);

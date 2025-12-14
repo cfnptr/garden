@@ -190,7 +190,7 @@ void SpriteRenderEditorSystem::renderComponent(SpriteRenderComponent* componentV
 	}
 
 	ImGui::BeginDisabled();
-	auto isVisible = componentView->isVisible();
+	auto isVisible = componentView->isVisible;
 	ImGui::Checkbox("Is Visible", &isVisible);
 	ImGui::EndDisabled();
 	ImGui::Spacing();

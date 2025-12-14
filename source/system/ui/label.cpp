@@ -19,7 +19,6 @@
 #include "garden/system/transform.hpp"
 #include "garden/system/resource.hpp"
 #include "garden/system/locale.hpp"
-#include "math/matrix/transform.hpp"
 
 using namespace garden;
 
@@ -283,21 +282,22 @@ MeshRenderType UiLabelSystem::getMeshRenderType() const
 bool UiLabelSystem::isDrawReady(int8 shadowPass)
 {
 	if (shadowPass >= 0)
-		return false; // Note: no shadow pass for UI.
+		return false; // Note: No shadow pass for UI.
 	if (!pipeline)
 		pipeline = createPipeline();
 	textSystem = TextSystem::Instance::get();
 	return GraphicsSystem::Instance::get()->get(pipeline)->isReady();
 }
-bool UiLabelSystem::isMeshReadyAsync(MeshRenderComponent* meshRenderView)
+uint32 UiLabelSystem::getReadyMeshesAsync(MeshRenderComponent* meshRenderView, 
+	const f32x4& cameraPosition, const Frustum& frustum, f32x4x4& model)
 {
 	auto uiLabelView = (UiLabelComponent*)meshRenderView;
-	if (!uiLabelView->textData)
-		return false;
+	if (!uiLabelView->textData || isBehindFrustum(frustum, uiLabelView->aabb, model))
+		return 0;
 	auto textView = textSystem->get(uiLabelView->textData);
-	return textView->isReady() && textView->getInstanceCount() > 0;
+	return (textView->isReady() && textView->getInstanceCount() > 0) ? 1 : 0;
 }
-void UiLabelSystem::prepareDraw(const f32x4x4& viewProj, uint32 drawCount, int8 shadowPass)
+void UiLabelSystem::prepareDraw(const f32x4x4& viewProj, uint32 drawCount, uint32 instanceCount, int8 shadowPass)
 {
 	manager = Manager::Instance::get();
 	uiScissorSystem = UiScissorSystem::Instance::tryGet();
@@ -311,7 +311,7 @@ void UiLabelSystem::beginDrawAsync(int32 taskIndex)
 	else pipelineView->setViewportScissorAsync(float4::zero, taskIndex);
 }
 void UiLabelSystem::drawAsync(MeshRenderComponent* meshRenderView, 
-	const f32x4x4& viewProj, const f32x4x4& model, uint32 drawIndex, int32 taskIndex)
+	const f32x4x4& viewProj, const f32x4x4& model, uint32 instanceIndex, int32 taskIndex)
 {
 	auto uiLabelView = (UiLabelComponent*)meshRenderView;
 	auto textView = textSystem->get(uiLabelView->textData);

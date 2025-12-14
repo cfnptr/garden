@@ -72,7 +72,7 @@ public:
 	 * @brief Creates a new empty ray tracing bottom level acceleration structure. (BLAS)
 	 * @note Use @ref GraphicsSystem to create, destroy and access BLAS'es.
 	 */
-	Blas() = default;
+	Blas() noexcept = default;
 
 	//******************************************************************************************************************
 	// Render commands

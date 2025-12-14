@@ -147,7 +147,7 @@ public:
 		/**
 		 * @brief Creates a new default sampler state.
 		 */
-		State() : anisoFiltering(0), comparison(0), unnormCoords(0), _unused(0) { }
+		State() noexcept : anisoFiltering(0), comparison(0), unnormCoords(0), _unused(0) { }
 		
 		/**
 		 * @brief Sets sampler minification, magnification and mipmap filter type.
@@ -171,7 +171,7 @@ public:
 	 * @brief Creates a new empty sampler data container.
 	 * @note Use @ref GraphicsSystem to create, destroy and access samplers.
 	 */
-	Sampler() = default;
+	Sampler() noexcept = default;
 
 	/**
 	 * @brief Returns sampler state.

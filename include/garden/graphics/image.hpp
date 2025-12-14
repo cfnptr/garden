@@ -269,7 +269,7 @@ public:
 	 * @brief Creates a new empty image data container.
 	 * @note Use @ref GraphicsSystem to create, destroy and access images.
 	 */
-	Image() = default;
+	Image() noexcept = default;
 
 	/**
 	 * @brief Returns image size in texels.
@@ -803,7 +803,7 @@ public:
 	 * @brief Creates a new empty image view data container.
 	 * @note Use @ref GraphicsSystem to create, destroy and access image views.
 	 */
-	ImageView() = default;
+	ImageView() noexcept = default;
 
 	/**
 	 * @brief Returns parent image.

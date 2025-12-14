@@ -21,7 +21,6 @@
 #include "garden/profiler.hpp"
 
 #include "atmosphere/constants.h"
-#include "math/matrix/projection.hpp"
 #include "math/matrix/transform.hpp"
 #include "math/angles.hpp"
 #include "math/brdf.hpp"

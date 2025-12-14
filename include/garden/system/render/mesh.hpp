@@ -45,22 +45,13 @@ enum class MeshRenderType : uint8
 struct MeshRenderComponent : public Component
 {
 protected:
-	uint32 unused0 = 0;
-	uint32 unused1 = 0;
-	uint16 unused2 = 0;
-	bool visible = false;
+	uint32 reserved0 = 0;
+	uint32 reserved1 = 0;
+	uint16 reserved2 = 0;
 public:
-	volatile bool isEnabled = true; /**< Is mesh should be rendered. */
-	Aabb aabb = Aabb::one;          /**< Mesh axis aligned bounding box. */
-
-	/**
-	 * @brief Is mesh visible on camera after last frustum culling.
-	 */
-	bool isVisible() const noexcept { return visible; }
-	/**
-	 * @brief Set mesh visible on camera.
-	 */
-	void setVisible(bool isVisible) noexcept { visible = isVisible; }
+	volatile bool isEnabled = true;  /**< Is mesh should be rendered. */
+	volatile bool isVisible = false; /**< Is mesh visible on camera after last frustum culling. */
+	Aabb aabb = Aabb::one;           /**< Mesh axis aligned bounding box. */
 };
 
 /**
@@ -73,53 +64,54 @@ public:
 protected:
 	/**
 	 * @brief Is mesh system ready for rendering. (All resources loaded, etc.)
-	 * @param shadowPass current shadow pass index (light pass = -1)
+	 * @param shadowPass shadow pass index (light pass = -1)
 	 */
 	virtual bool isDrawReady(int8 shadowPass) = 0;
 	/**
 	 * @brief Prepares data required for mesh rendering.
 	 *
 	 * @param[in] viewProj camera view * projection matrix
-	 * @param drawCount total mesh draw item count
-	 * @param shadowPass current shadow pass index (light pass = -1)
+	 * @param drawCount system mesh count to draw
+	 * @param instanceCount system mesh count to draw (>= drawCount)
+	 * @param shadowPass shadow pass index (light pass = -1)
 	 */
-	virtual void prepareDraw(const f32x4x4& viewProj, uint32 drawCount, int8 shadowPass) { }
+	virtual void prepareDraw(const f32x4x4& viewProj, uint32 drawCount, uint32 instanceCount, int8 shadowPass) { }
 	/**
 	 * @brief Begins mesh drawing asynchronously.
-	 * @warning Be careful with multithreaded code!
+	 * @warning This function is called asynchronously from the thread pool!
 	 * @param taskIndex task index in the thread pool
 	 */
 	virtual void beginDrawAsync(int32 taskIndex) { }
 	/**
-	 * @brief Draws mesh item asynchronously.
-	 * @warning Be careful with multithreaded code!
+	 * @brief Returns mesh instance count to draw.
+	 * @param meshRenderView target mesh render view
+	 */
+	virtual uint32 getInstancesAsync(MeshRenderComponent* meshRenderView) const { return 1; }
+	/**
+	 * @brief Draws mesh instances asynchronously.
+	 * @warning This function is called asynchronously from the thread pool!
 	 * 
-	 * @param[in,out] meshRenderView target mesh render item
+	 * @param[in,out] meshRenderView target mesh render view
 	 * @param[in] viewProj camera view * projection matrix
 	 * @param[in] model mesh model matrix (position, scale, rotation, etc.)
-	 * @param drawIndex mesh item draw index (sorted)
+	 * @param instanceIndex mesh instance draw index (sorted)
 	 * @param taskIndex task index in the thread pool
 	 */
 	virtual void drawAsync(MeshRenderComponent* meshRenderView, const f32x4x4& viewProj,
-		const f32x4x4& model, uint32 drawIndex, int32 taskIndex) = 0;
+		const f32x4x4& model, uint32 instanceIndex, int32 taskIndex) = 0;
 	/**
 	 * @brief Ends mesh drawing asynchronously.
-	 * @warning Be careful with multithreaded code!
-	 * 
-	 * @param drawCount total mesh draw item count
-	 * @param taskIndex task index in the thread pool
+	 * @warning This function is called asynchronously from the thread pool!
+	 * @param instanceCount task drawn mesh instance count
 	 */
-	virtual void endDrawAsync(uint32 drawCount, int32 taskIndex) { }
+	virtual void endDrawAsync(uint32 instanceCount, int32 taskIndex) { }
 	/**
-	 * @brief Finalizes data used for mesh rendering.
-	 * 
-	 * @param[in] viewProj camera view * projection matrix
-	 * @param drawCount total mesh draw item count
-	 * @param shadowPass current shadow pass index (light pass = -1)
+	 * @brief Finalizes data used for mesh rendering. (Flush buffers, etc.)
+	 * @param instanceCount total drawn mesh instance count
 	 */
-	virtual void finalizeDraw(const f32x4x4& viewProj, uint32 drawCount, int8 shadowPass) { }
+	virtual void finalizeDraw(uint32 instanceCount) { }
 	/**
-	 * @brief Cleans up data used for mesh rendering.
+	 * @brief Cleans up data used for all mesh rendering. (Flush buffers, etc.)
 	 */
 	virtual void renderCleanup() { }
 
@@ -139,11 +131,19 @@ public:
 	virtual psize getMeshComponentSize() const = 0;
 
 	/**
-	 * @brief Is mesh render component ready for rendering. (All resources loaded, etc.)
-	 * @warning Be careful with multithreaded code!
+	 * @brief Returns ready for rendering mesh instance count. (If mesh resources loaded)
+	 * @warning This function is called asynchronously from the thread pool!
+	 *
 	 * @param meshRenderView target mesh render view
+	 * @param[in] cameraPosition camera world position for model matrix
+	 * @param[in] frustum camera frustum planes for mesh culling
+	 * @param[in,out] model mesh model matrix (position, scale, rotation, etc.)
 	 */
-	virtual bool isMeshReadyAsync(MeshRenderComponent* meshRenderView) = 0;
+	virtual uint32 getReadyMeshesAsync(MeshRenderComponent* meshRenderView, 
+		const f32x4& cameraPosition, const Frustum& frustum, f32x4x4& model)
+	{
+		return isBehindFrustum(frustum, meshRenderView->aabb, model) ? 0 : 1;
+	}
 };
 
 /***********************************************************************************************************************
@@ -188,27 +188,27 @@ protected:
 class MeshRenderSystem final : public System, public Singleton<MeshRenderSystem>
 {
 public:
-	struct alignas(64) UnsortedMesh final
+	struct UnsortedMesh final
 	{
 		psize componentOffset = 0;
-		float4x3 model = float4x3::zero;
+		float4x3 bakedModel = float4x3::zero;
 		float distanceSq = 0.0f;
 		bool operator<(const UnsortedMesh& m) const noexcept { return distanceSq < m.distanceSq; }
 	};
-	struct alignas(64) SortedMesh final
+	struct SortedMesh final
 	{
 		psize componentOffset = 0;
-		float4x3 model = float4x3::zero;
+		float4x3 bakedModel = float4x3::zero;
 		float distanceSq = 0.0f;
 		uint32 bufferIndex = 0;
 		bool operator<(const SortedMesh& m) const noexcept { return distanceSq > m.distanceSq; }
 	};
 
-	// Note: Aligning to the cache line size to prevent cache misses.
-	struct alignas(64) MeshBuffer
+	struct MeshBuffer
 	{
 		IMeshRenderSystem* meshSystem = nullptr;
 		atomic<uint32> drawCount = 0;
+		alignas(std::hardware_destructive_interference_size) atomic<uint32> instanceCount = 0;
 	};
 	struct UnsortedBuffer final : public MeshBuffer
 	{
@@ -223,6 +223,7 @@ private:
 	vector<SortedMesh> uiSortedMeshes;
 	vector<vector<SortedMesh>> sortedThreadMeshes;
 	vector<IMeshRenderSystem*> meshSystems;
+	atomic<uint32> transDrawIndex = 0;
 	uint32 unsortedBufferCount = 0;
 	uint32 sortedBufferCount = 0;
 	bool hasOIT = false;
@@ -231,8 +232,7 @@ private:
 	bool hasAnyRefr = false;
 	bool hasAnyOIT = false;
 	bool hasAnyTransDepth = false;
-	atomic<uint32> transDrawIndex = 0;
-	atomic<uint32> uiDrawIndex = 0; // Always last.
+	alignas(std::hardware_destructive_interference_size) atomic<uint32> uiDrawIndex = 0;
 
 	/**
 	 * @brief Creates a new mesh rendering system instance.
@@ -251,7 +251,7 @@ private:
 
 	void prepareSystems();
 	void sortMeshes();
-	void prepareMeshes(const f32x4x4& viewProj, const Plane* uiViewProj, f32x4 cameraOffset, int8 shadowPass);
+	void prepareMeshes(const Frustum& viewFrustum, const Frustum* uiFrustum, f32x4 cameraOffset, int8 shadowPass);
 	void renderUnsorted(const f32x4x4& viewProj, MeshRenderType renderType, int8 shadowPass);
 	void renderSorted(const f32x4x4& viewProj, MeshRenderType renderType, int8 shadowPass);
 	void cleanupMeshes();

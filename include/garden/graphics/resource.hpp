@@ -59,7 +59,7 @@ public:
 	 * @brief Creates a new empty resource data container.
 	 * @note Use @ref GraphicsSystem to create, destroy and access graphics resources.
 	 */
-	Resource() = default;
+	Resource() noexcept = default;
 
 	/**
 	 * @brief Is resource fully ready for graphics rendering.

@@ -63,8 +63,8 @@ private:
 	uint16 _alignment1 = 0;
 	uint3 localSize = uint3::zero;
 
-	ComputePipeline(const fs::path& path, uint32 maxBindlessCount, bool useAsyncRecording, uint64 pipelineVersion) :
-		Pipeline(PipelineType::Compute, path, maxBindlessCount, useAsyncRecording, pipelineVersion) { }
+	ComputePipeline(const fs::path& path, uint32 maxBindlessCount, bool useAsyncRecording, uint64 pipelineVersion) 
+		noexcept : Pipeline(PipelineType::Compute, path, maxBindlessCount, useAsyncRecording, pipelineVersion) { }
 	ComputePipeline(ComputeCreateData& createData, bool useAsyncRecording);
 
 	void createVkInstance(ComputeCreateData& createData);
@@ -76,7 +76,7 @@ public:
 	 * @brief Creates a new empty compute pipeline data container.
 	 * @note Use @ref GraphicsSystem to create, destroy and access compute pipelines.
 	 */
-	ComputePipeline() = default;
+	ComputePipeline() noexcept = default;
 
 	/**
 	 * @brief Returns shader local work group size.

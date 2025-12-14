@@ -40,8 +40,7 @@ namespace garden
 class VulkanAPI final : public GraphicsAPI
 {
 public:
-	// Note: Aligning to the cache line size to prevent cache misses.
-	struct alignas(64) atomic_bool_aligned final : atomic_bool
+	struct alignas(std::hardware_destructive_interference_size) atomic_bool_aligned final : atomic_bool
 	{
 		atomic_bool_aligned() : atomic_bool(false) { }
 	};

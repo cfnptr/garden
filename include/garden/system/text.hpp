@@ -131,7 +131,7 @@ public:
 		bool isBold = false;      /**< Is text bold. (Increased weight)  */
 		bool isItalic = false;    /**< Is text italic. (Oblique, tilted) */
 		bool useTags = false;     /**< Process HTML-like tags when generating text. */
-		Properties() : maxAdvanceX(INFINITY) { }
+		Properties() noexcept : maxAdvanceX(INFINITY) { }
 	};
 	/**
 	 * @brief Text quad rendering instance data.

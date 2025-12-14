@@ -145,7 +145,7 @@ protected:
 
 	Pipeline(CreateData& createData, bool useAsyncRecording);
 	Pipeline(PipelineType type, const fs::path& path, uint32 maxBindlessCount, bool useAsyncRecording, 
-		uint64 pipelineVersion) : pipelinePath(path), pipelineVersion(pipelineVersion),
+		uint64 pipelineVersion) noexcept : pipelinePath(path), pipelineVersion(pipelineVersion),
 		maxBindlessCount(maxBindlessCount), type(type), asyncRecording(useAsyncRecording)
 	{
 		#if GARDEN_DEBUG || GARDEN_EDITOR
@@ -175,7 +175,7 @@ public:
 	 * @brief Creates a new empty pipeline data container.
 	 * @note Use @ref GraphicsSystem to create, destroy and access pipelines.
 	 */
-	Pipeline() = default;
+	Pipeline() noexcept = default;
 
 	/*******************************************************************************************************************
 	 * @brief Returns rendering pipeline type.

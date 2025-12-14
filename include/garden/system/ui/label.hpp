@@ -138,11 +138,13 @@ private:
 	MeshRenderType getMeshRenderType() const final;
 
 	bool isDrawReady(int8 shadowPass) final;
-	bool isMeshReadyAsync(MeshRenderComponent* meshRenderView) override;
-	void prepareDraw(const f32x4x4& viewProj, uint32 drawCount, int8 shadowPass) final;
+	uint32 getReadyMeshesAsync(MeshRenderComponent* meshRenderView, 
+		const f32x4& cameraPosition, const Frustum& frustum, f32x4x4& model) override;
+	void prepareDraw(const f32x4x4& viewProj, uint32 drawCount, 
+		uint32 instanceCount, int8 shadowPass) final;
 	void beginDrawAsync(int32 taskIndex) final;
 	void drawAsync(MeshRenderComponent* meshRenderView, const f32x4x4& viewProj,
-		const f32x4x4& model, uint32 drawIndex, int32 taskIndex) final;
+		const f32x4x4& model, uint32 instanceIndex, int32 taskIndex) final;
 	
 	void serialize(ISerializer& serializer, const View<Component> component) final;
 	void deserialize(IDeserializer& deserializer, View<Component> component) final;

@@ -234,8 +234,8 @@ struct Shape final
 private:
 	void* instance = nullptr;
 
-	Shape() = default;
-	Shape(void* instance) : instance(instance) { }
+	Shape() noexcept = default;
+	Shape(void* instance) noexcept : instance(instance) { }
 
 	bool destroy();
 
@@ -683,8 +683,7 @@ public:
 		uint32 maxContactConstraintCount = 10240;
 		uint16 collisionLayerCount = (uint16)CollisionLayer::DefaultCount;
 		uint16 broadPhaseLayerCount = (uint16)BroadPhaseLayer::DefaultCount;
-
-		Properties() { }
+		Properties() noexcept { }
 	};
 
 	/**

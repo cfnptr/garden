@@ -71,8 +71,9 @@ public:
 	float taskPriority = 0.0f;
 	#endif
 
-	SpriteAnimFrame() : animateIsEnabled(false), animateColor(false), animateUvSize(false), animateUvOffset(false), 
-		animateColorMapLayer(false), animateColorMap(false), isEnabled(true), isArray(false), useMipmap(false) { }
+	SpriteAnimFrame() noexcept : animateIsEnabled(false), animateColor(false), 
+		animateUvSize(false), animateUvOffset(false), animateColorMapLayer(false), 
+		animateColorMap(false), isEnabled(true), isArray(false), useMipmap(false) { }
 
 	bool hasAnimation() override
 	{
@@ -118,15 +119,16 @@ protected:
 
 	static void resetComponent(View<Component> component);
 
-	bool isMeshReadyAsync(MeshRenderComponent* meshRenderView) override;
+	uint32 getReadyMeshesAsync(MeshRenderComponent* meshRenderView, 
+		const f32x4& cameraPosition, const Frustum& frustum, f32x4x4& model) override;
 	void drawAsync(MeshRenderComponent* meshRenderView, const f32x4x4& viewProj,
-		const f32x4x4& model, uint32 drawIndex, int32 taskIndex) override;
+		const f32x4x4& model, uint32 instanceIndex, int32 taskIndex) override;
 
 	uint64 getBaseInstanceDataSize() override;
 	virtual void setInstanceData(SpriteRenderComponent* spriteRenderView, BaseInstanceData* instanceData,
-		const f32x4x4& viewProj, const f32x4x4& model, uint32 drawIndex, int32 taskIndex);
+		const f32x4x4& viewProj, const f32x4x4& model, uint32 instanceIndex, int32 taskIndex);
 	virtual void setPushConstants(SpriteRenderComponent* spriteRenderView, PushConstants* pushConstants,
-		const f32x4x4& viewProj, const f32x4x4& model, uint32 drawIndex, int32 taskIndex);
+		const f32x4x4& viewProj, const f32x4x4& model, uint32 instanceIndex, int32 taskIndex);
 	virtual DescriptorSet::Uniforms getSpriteUniforms(ID<ImageView> colorMap);
 	ID<GraphicsPipeline> createBasePipeline() override;
 

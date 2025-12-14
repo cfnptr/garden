@@ -38,7 +38,7 @@ public:
 		uint8 toneMapper = TONE_MAPPER_ACES; /**< Tone mapping function. (Curve) */
 		bool useBloomBuffer = false;         /**< Use bloom (light glow) buffer for tone mapping. */
 		bool useLightAbsorption = false;     /**< Use global light absorption effect. */
-		Options() { }
+		Options() noexcept { }
 	};
 
 	struct PushConstants final

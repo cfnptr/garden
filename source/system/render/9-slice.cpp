@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "garden/system/render/9-slice.hpp"
-#include "math/matrix/transform.hpp"
 
 using namespace garden;
 
@@ -23,10 +22,10 @@ uint64 NineSliceRenderSystem::getBaseInstanceDataSize()
 	return (uint64)sizeof(NineSliceInstanceData);
 }
 void NineSliceRenderSystem::setInstanceData(SpriteRenderComponent* spriteRenderView, BaseInstanceData* instanceData,
-	const f32x4x4& viewProj, const f32x4x4& model, uint32 drawIndex, int32 threadIndex)
+	const f32x4x4& viewProj, const f32x4x4& model, uint32 instanceIndex, int32 threadIndex)
 {
 	SpriteRenderSystem::setInstanceData(spriteRenderView,
-		instanceData, viewProj, model, drawIndex, threadIndex);
+		instanceData, viewProj, model, instanceIndex, threadIndex);
 
 	auto nineSliceView = (NineSliceComponent*)spriteRenderView;
 	auto nineSliceInstanceData = (NineSliceInstanceData*)instanceData;

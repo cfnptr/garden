@@ -59,7 +59,7 @@ public:
 		 * @brief Creates a new empty framebuffer input attachment.
 		 * @note It can not be used to create a framebuffer.
 		 */
-		constexpr InputAttachment() { }
+		constexpr InputAttachment() noexcept = default;
 	};
 	/**
 	 * @brief Framebuffer output attachment description.
@@ -73,6 +73,7 @@ public:
 			bool clear = false; /**< Clear output attachment content before rendering. */
 			bool load = false;  /**< Load output attachment content before rendering. */
 			bool store = false; /**< Store output attachment content after rendering. */
+			constexpr Flags() noexcept = default;
 		};
 
 		ID<ImageView> imageView = {}; /**< Output attachment image view. */
@@ -90,7 +91,7 @@ public:
 		 * @brief Creates a new empty framebuffer output attachment.
 		 * @note It can not be used to create a framebuffer.
 		 */
-		constexpr OutputAttachment() { }
+		constexpr OutputAttachment() noexcept { }
 
 		/**
 		 * @brief Sets framebuffer output attachment content clear, load and store flags.
@@ -129,7 +130,7 @@ public:
 		 * @brief Creates a new empty framebuffer subpass.
 		 * @note It can not be used to create a framebuffer.
 		 */
-		Subpass() { }
+		Subpass() noexcept = default;
 	};
 	/**
 	 * @brief Framebuffer subpass attachment container.
@@ -154,7 +155,7 @@ public:
 		 * @brief Creates a new empty framebuffer subpass images container.
 		 * @note It can not be used to recreate a subpass.
 		 */
-		SubpassImages() { }
+		SubpassImages() noexcept = default;
 	};
 
 	/*******************************************************************************************************************
@@ -223,7 +224,7 @@ public:
 	 * @brief Creates a new empty framebuffer data container.
 	 * @note Use @ref GraphicsSystem to create, destroy and access framebuffers.
 	 */
-	Framebuffer() = default;
+	Framebuffer() noexcept = default;
 
 	/**
 	 * @brief Returns framebuffer size in texels.

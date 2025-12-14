@@ -75,8 +75,8 @@ struct UiCheckboxFrame final : public AnimationFrame
 	string onChange = "";
 	string animationPath = "";
 
-	UiCheckboxFrame() : animateIsEnabled(false), animateIsChecked(false), animateOnChange(false), 
-		animateAnimationPath(false), isEnabled(true), isChecked(false) { }
+	UiCheckboxFrame() noexcept : animateIsEnabled(false), animateIsChecked(false), 
+		animateOnChange(false), animateAnimationPath(false), isEnabled(true), isChecked(false) { }
 
 	bool hasAnimation() final
 	{

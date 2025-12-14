@@ -19,6 +19,7 @@
 
 #pragma once
 #include "garden/animate.hpp"
+#include "math/matrix/transform.hpp"
 
 namespace garden
 {
@@ -97,7 +98,7 @@ public:
 	 */
 	void setRotation(quat rotation) noexcept { this->rotation = rotation; }
 
-	/**
+	/*******************************************************************************************************************
 	 * @brief Is this entity and its ancestors active.
 	 * @details Is this entity should be processed and used by other systems.
 	 */
@@ -144,7 +145,7 @@ public:
 	 */
 	const ID<Entity>* getChilds() const noexcept { return childs; }
 
-	/**
+	/*******************************************************************************************************************
 	 * @brief Translates this entity by the specified translation.
 	 * @param translation target entity translation
 	 */
@@ -156,10 +157,7 @@ public:
 	 * @brief Scales this entity by the specified scale.
 	 * @param scale target entity scale
 	 */
-	void scale(f32x4 scale) noexcept
-	{
-		scaleChildCap = f32x4(scaleChildCap * scale, scaleChildCap.getW());
-	}
+	void scale(f32x4 scale) noexcept { scaleChildCap = f32x4(scaleChildCap * scale, scaleChildCap.getW()); }
 	/**
 	 * @brief Rotates this entity by the specified rotation.
 	 * @param rotation target entity rotation
@@ -168,12 +166,41 @@ public:
 
 	/**
 	 * @brief Calculates entity model matrix from it position, scale and rotation.
-	 * @note It also takes into account parent and grandparents transforms.
+	 * @note It also takes into account parent and grandparent transforms.
 	 * 
 	 * @param cameraPosition rendering camera position or zero
 	 * @return Entity model 4x4 float matrix.
 	 */
-	f32x4x4 calcModel(f32x4 cameraPosition = f32x4::zero) const noexcept;
+	f32x4x4 calcModel(f32x4 cameraPosition = f32x4::zero) const noexcept
+	{
+		auto model = math::calcModel(posChildCount, rotation, scaleChildCap);
+		if (modelWithAncestors)
+		{
+			auto manager = Manager::Instance::get();
+			auto nextParent = parent;
+			while (nextParent)
+			{
+				auto nextTransformView = manager->get<TransformComponent>(nextParent);
+				auto parentModel = math::calcModel(nextTransformView->posChildCount,
+					nextTransformView->rotation, nextTransformView->scaleChildCap);
+				model = parentModel * model; nextParent = nextTransformView->parent;
+			}
+			return math::translate(-cameraPosition, model);
+		}
+		return math::translate(-cameraPosition, model);
+	}
+	/**
+	 * @brief Calculates entity self model matrix from it position, scale and rotation.
+	 * @note It does not take into account parent and grandparent transforms.
+	 * 
+	 * @param cameraPosition rendering camera position or zero
+	 * @return Entity model 4x4 float matrix.
+	 */
+	f32x4x4 calcSelfModel(f32x4 cameraPosition = f32x4::zero) const noexcept
+	{
+		auto model = math::calcModel(posChildCount, rotation, scaleChildCap);
+		return math::translate(-cameraPosition, model);
+	}
 
 	/*******************************************************************************************************************
 	 * @brief Sets this entity parent object.
@@ -228,7 +255,7 @@ public:
 		return {};
 	}
 
-	/**
+	/*******************************************************************************************************************
 	 * @brief Removes child from this entity.
 	 * @note It also changes parent of the child entity.
 	 * @param child target child entity
@@ -278,7 +305,7 @@ public:
 	 */
 	void shrinkChilds();
 
-	/**
+	/*******************************************************************************************************************
 	 * @brief Does this entity have the specified ancestor.
 	 * @details Including parent, grandparent, great-grandparent...
 	 * @param ancestor target ancestor to check
@@ -317,7 +344,7 @@ struct TransformFrame final : public AnimationFrame
 	f32x4 scale = f32x4::one;
 	quat rotation = quat::identity;
 
-	TransformFrame() : animatePosition(false), animateScale(false), 
+	TransformFrame() noexcept : animatePosition(false), animateScale(false), 
 		animateRotation(false), animateIsActive(false), isActive(true) { }
 
 	bool hasAnimation() final

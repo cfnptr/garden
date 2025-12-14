@@ -118,7 +118,7 @@ public:
 	 * @brief Creates a new empty buffer data container.
 	 * @note Use @ref GraphicsSystem to create, destroy and access buffers.
 	 */
-	Buffer() = default;
+	Buffer() noexcept = default;
 
 	/**
 	 * @brief Returns buffer usage flags.
@@ -148,7 +148,7 @@ public:
 	 */
 	bool isMappable() const;
 	/**
-	 * @brief Invalidates buffer memory.
+	 * @brief Invalidates buffer memory. (Not MT-Safe!)
 	 * @warning Always invalidate buffer memory before reading!
 	 * 
 	 * @param size memory region size (0 = full buffer size)
@@ -158,7 +158,7 @@ public:
 	 */
 	void invalidate(uint64 size = 0, uint64 offset = 0);
 	/**
-	 * @brief Flushes buffer memory.
+	 * @brief Flushes buffer memory. (Not MT-Safe!)
 	 * @warning Always flush buffer memory before using it for rendering!
 	 * 
 	 * @param size memory region size (0 = full buffer size)
@@ -169,7 +169,7 @@ public:
 	void flush(uint64 size = 0, uint64 offset = 0);
 
 	/*******************************************************************************************************************
-	 * @brief Writes data to the buffer.
+	 * @brief Writes data to the buffer. (Not MT-Safe!)
 	 * 
 	 * @param[in] data target buffer data
 	 * @param size data size in bytes (0 = full buffer size)
@@ -179,7 +179,7 @@ public:
 	 */
 	void writeData(const void* data, uint64 size = 0, uint64 offset = 0);
 	/**
-	 * @brief Writes data to the buffer.
+	 * @brief Writes data to the buffer. (Not MT-Safe!)
 	 * 
 	 * @tparam T array element type
 	 * @param[in] data target buffer data
@@ -204,7 +204,7 @@ public:
 		}
 	}
 	/**
-	 * @brief Writes data to the buffer.
+	 * @brief Writes data to the buffer. (Not MT-Safe!)
 	 * 
 	 * @tparam T array element type
 	 * @tparam S size of the array

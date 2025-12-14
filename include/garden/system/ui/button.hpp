@@ -66,7 +66,7 @@ struct UiButtonFrame final : public AnimationFrame
 	string onClick = "";
 	string animationPath = "";
 
-	UiButtonFrame() : animateIsEnabled(false), animateOnClick(false), animateAnimationPath(false), 
+	UiButtonFrame() noexcept : animateIsEnabled(false), animateOnClick(false), animateAnimationPath(false), 
 		animateNoCursorHand(false), isEnabled(true), noCursorHand(false) { }
 	
 	bool hasAnimation() final
