@@ -25,7 +25,6 @@
 #include "garden/system/resource.hpp"
 #include "garden/system/camera.hpp"
 #include "garden/resource/primitive.hpp"
-#include "math/matrix/transform.hpp"
 #include "math/angles.hpp"
 #include <array>
 

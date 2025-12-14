@@ -46,15 +46,15 @@ void Ui9SliceSystem::beginDrawAsync(int32 taskIndex)
 		pipelineView->setViewportAsync(float4::zero, taskIndex);
 	else pipelineView->setViewportScissorAsync(float4::zero, taskIndex);
 }
-void Ui9SliceSystem::prepareDraw(const f32x4x4& viewProj, uint32 drawCount, int8 shadowPass)
+void Ui9SliceSystem::prepareDraw(const f32x4x4& viewProj, uint32 drawCount, uint32 instanceCount, int8 shadowPass)
 {
-	SpriteRenderSystem::prepareDraw(viewProj, drawCount, shadowPass);
+	SpriteRenderSystem::prepareDraw(viewProj, drawCount, instanceCount, shadowPass);
 	uiScissorSystem = UiScissorSystem::Instance::tryGet();
 }
 void Ui9SliceSystem::drawAsync(MeshRenderComponent* meshRenderView, 
-	const f32x4x4& viewProj, const f32x4x4& model, uint32 drawIndex, int32 taskIndex)
+	const f32x4x4& viewProj, const f32x4x4& model, uint32 instanceIndex, int32 taskIndex)
 {
 	if (uiScissorSystem)
 		pipelineView->setScissorAsync(uiScissorSystem->calcScissor(meshRenderView->getEntity()), taskIndex);
-	SpriteRenderSystem::drawAsync(meshRenderView, viewProj, model, drawIndex, taskIndex);
+	SpriteRenderSystem::drawAsync(meshRenderView, viewProj, model, instanceIndex, taskIndex);
 }

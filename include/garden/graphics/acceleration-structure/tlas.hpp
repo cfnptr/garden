@@ -83,7 +83,7 @@ public:
 	 * @brief Creates a new empty ray tracing top level acceleration structure. (TLAS)
 	 * @note Use @ref GraphicsSystem to create, destroy and access TLAS'es.
 	 */
-	Tlas() = default;
+	Tlas() noexcept = default;
 
 	/**
 	 * @brief Returns TLAS instance array.

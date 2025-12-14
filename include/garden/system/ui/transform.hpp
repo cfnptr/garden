@@ -108,7 +108,7 @@ struct UiTransformFrame final : public AnimationFrame
 	f32x4 scale = f32x4::one;
 	quat rotation = quat::identity;
 
-	UiTransformFrame() : animatePosition(false), animateScale(false), 
+	UiTransformFrame() noexcept : animatePosition(false), animateScale(false), 
 		animateRotation(false), animateAnchor(false) { }
 
 	bool hasAnimation() final

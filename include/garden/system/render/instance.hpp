@@ -36,11 +36,12 @@ protected:
 	ID<GraphicsPipeline> shadowPipeline = {};
 	ID<DescriptorSet> baseDescriptorSet = {};
 	ID<DescriptorSet> shadowDescriptorSet = {};
-	uint32 inFlightIndex = 0;
-	uint32 shadowDrawIndex = 0;
 	ID<DescriptorSet> descriptorSet = {};
 	OptView<GraphicsPipeline> pipelineView = {};
 	uint8* instanceMap = nullptr;
+	uint32 inFlightIndex = 0;
+	uint32 shadowInstanceIndex = 0;
+	uint8 shadowPass = 0;
 
 	/**
 	 * @brief Creates a new mesh instance rendering system instance.
@@ -56,9 +57,10 @@ protected:
 	virtual void gBufferRecreate();
 	
 	bool isDrawReady(int8 shadowPass) override;
-	void prepareDraw(const f32x4x4& viewProj, uint32 drawCount, int8 shadowPass) override;
+	void prepareDraw(const f32x4x4& viewProj, uint32 drawCount, 
+		uint32 instanceCount, int8 shadowPass) override;
 	void beginDrawAsync(int32 taskIndex) override;
-	void finalizeDraw(const f32x4x4& viewProj, uint32 drawCount, int8 shadowPass) override;
+	void finalizeDraw(uint32 instanceCount) override;
 	void renderCleanup() override;
 
 	virtual DescriptorSet::Uniforms getBaseUniforms();

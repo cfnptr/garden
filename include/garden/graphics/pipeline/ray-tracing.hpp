@@ -101,8 +101,8 @@ private:
 	uint8 callGroupCount = 0;
 	uint8 hitGroupCount = 0;
 
-	RayTracingPipeline(const fs::path& path, uint32 maxBindlessCount, bool useAsyncRecording, uint64 pipelineVersion) :
-		Pipeline(PipelineType::RayTracing, path, maxBindlessCount, useAsyncRecording, pipelineVersion) { }
+	RayTracingPipeline(const fs::path& path, uint32 maxBindlessCount, bool useAsyncRecording, uint64 pipelineVersion) 
+		noexcept : Pipeline(PipelineType::RayTracing, path, maxBindlessCount, useAsyncRecording, pipelineVersion) { }
 	RayTracingPipeline(RayTracingCreateData& createData, bool useAsyncRecording);
 
 	void createVkInstance(RayTracingCreateData& createData);
@@ -114,7 +114,7 @@ public:
 	 * @brief Creates a new empty ray tracing pipeline data container.
 	 * @note Use @ref GraphicsSystem to create, destroy and access ray tracing pipelines.
 	 */
-	RayTracingPipeline() = default;
+	RayTracingPipeline() noexcept = default;
 
 	//******************************************************************************************************************
 	// Render commands

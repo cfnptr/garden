@@ -72,7 +72,7 @@ public:
 		/**
 		 * @brief Creates a new empty task data container.
 		 */
-		Task() = default;
+		Task() noexcept = default;
 		
 		/**
 		 * @brief Returns function that should be executed by a thread

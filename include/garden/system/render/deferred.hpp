@@ -71,7 +71,7 @@ public:
 		bool useEmission = true;       /**< Create and use light emission buffer for rendering. */
 		bool useVelocity = true;       /**< Create and use reflection buffer for rendering. */
 		bool useAsyncRecording = true; /**< Use multithreaded render commands recording. */
-		Options() { }
+		Options() noexcept { }
 	};
 
 	static constexpr uint8 gBufferBaseColor = 0;   /**< Index of the G-Buffer with encoded base color. */

@@ -100,14 +100,12 @@ public:
 		 * @brief Creates a new descriptor set uniform out of image views.
 		 * @param[in] imageViews target image view array
 		 */
-		Uniform(const ImageViews& imageViews) noexcept :
-			resourceSets(*((const vector<ResourceArray>*)&imageViews)) { }
+		Uniform(const ImageViews& imageViews) noexcept : resourceSets(*((const vector<ResourceArray>*)&imageViews)) { }
 		/**
 		 * @brief Creates a new descriptor set uniform out of image views.
 		 * @param[in] tlases target top level acceleration structure array (TLAS)
 		 */
-		Uniform(const Tlases& tlases) noexcept :
-			resourceSets(*((const vector<ResourceArray>*)&tlases)) { }
+		Uniform(const Tlases& tlases) noexcept : resourceSets(*((const vector<ResourceArray>*)&tlases)) { }
 
 		/**
 		 * @brief Creates a new empty descriptor set uniform.
@@ -168,7 +166,7 @@ public:
 		 * @brief Creates a new empty descriptor set range description.
 		 * @note It can not be used to bind descriptor set range.
 		 */
-		constexpr Range() = default;
+		constexpr Range() noexcept = default;
 	};
 
 	using Uniforms = tsl::robin_map<string, Uniform, SvHash, SvEqual>;
@@ -191,7 +189,7 @@ public:
 	 * @brief Creates a new empty descriptor set data container.
 	 * @note Use @ref GraphicsSystem to create, destroy and access descriptor sets.
 	 */
-	DescriptorSet() = default;
+	DescriptorSet() noexcept = default;
 
 	/**
 	 * @brief Returns descriptor set parent pipeline.

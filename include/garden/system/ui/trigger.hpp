@@ -52,7 +52,7 @@ struct UiTriggerFrame final : public AnimationFrame
 	string onExit = "";
 	string onStay = "";
 
-	UiTriggerFrame() : animateOffset(false), animateScale(false), 
+	UiTriggerFrame() noexcept : animateOffset(false), animateScale(false), 
 		animateOnEnter(false), animateOnExit(false), animateOnStay(false) { }
 
 	bool hasAnimation() final

@@ -69,7 +69,7 @@ private:
 	~Cutout9SliceSystem() final;
 
 	void setPushConstants(SpriteRenderComponent* spriteRenderView, PushConstants* pushConstants,
-		const f32x4x4& viewProj, const f32x4x4& model, uint32 drawIndex, int32 threadIndex) final;
+		const f32x4x4& viewProj, const f32x4x4& model, uint32 instanceIndex, int32 threadIndex) final;
 
 	string_view getComponentName() const final;
 	MeshRenderType getMeshRenderType() const final;

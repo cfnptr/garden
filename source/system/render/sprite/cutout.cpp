@@ -30,10 +30,10 @@ CutoutSpriteSystem::~CutoutSpriteSystem()
 }
 
 void CutoutSpriteSystem::setPushConstants(SpriteRenderComponent* spriteRenderView, PushConstants* pushConstants,
-	const f32x4x4& viewProj, const f32x4x4& model, uint32 drawIndex, int32 threadIndex)
+	const f32x4x4& viewProj, const f32x4x4& model, uint32 instanceIndex, int32 threadIndex)
 {
 	SpriteRenderSystem::setPushConstants(spriteRenderView,
-		pushConstants, viewProj, model, drawIndex, threadIndex);
+		pushConstants, viewProj, model, instanceIndex, threadIndex);
 	auto cutoutSpriteView = (CutoutSpriteComponent*)spriteRenderView;
 	auto cutoutPushConstants = (CutoutPushConstants*)pushConstants;
 	cutoutPushConstants->alphaCutoff = cutoutSpriteView->alphaCutoff;

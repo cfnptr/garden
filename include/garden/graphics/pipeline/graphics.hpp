@@ -235,8 +235,8 @@ public:
 		uint16 _alignment = 0;                                         /**< [structure alignment] */
 		// Note: Should be aligned.
 
-		State() : depthTesting(0), depthWriting(0), depthClamping(0), depthBiasing(0), 
-			stencilTesting(0), faceCulling(1), discarding(0), _unused(0) { }
+		State() noexcept : depthTesting(0), depthWriting(0), depthClamping(0), 
+			depthBiasing(0), stencilTesting(0), faceCulling(1), discarding(0), _unused(0) { }
 	};
 
 	using PipelineStates = tsl::robin_map<uint8, State>;
@@ -295,7 +295,7 @@ private:
 	ID<Framebuffer> framebuffer = {};
 
 	GraphicsPipeline(const fs::path& path, uint32 maxBindlessCount, bool useAsyncRecording,
-		uint64 pipelineVersion, ID<Framebuffer> framebuffer, uint8 subpassIndex) :
+		uint64 pipelineVersion, ID<Framebuffer> framebuffer, uint8 subpassIndex) noexcept :
 		Pipeline(PipelineType::Graphics, path, maxBindlessCount, useAsyncRecording, pipelineVersion),
 		subpassIndex(subpassIndex), framebuffer(framebuffer) { }
 	GraphicsPipeline(GraphicsCreateData& createData, bool useAsyncRecording);
@@ -309,7 +309,7 @@ public:
 	 * @brief Creates a new empty graphics pipeline data container.
 	 * @note Use @ref GraphicsSystem to create, destroy and access graphics pipelines.
 	 */
-	GraphicsPipeline() = default;
+	GraphicsPipeline() noexcept = default;
 
 	/**
 	 * @brief Returns graphics pipeline parent framebuffer.

@@ -99,13 +99,16 @@ void SpriteRenderSystem::resetComponent(View<Component> component)
 }
 
 //**********************************************************************************************************************
-bool SpriteRenderSystem::isMeshReadyAsync(MeshRenderComponent* meshRenderView)
+uint32 SpriteRenderSystem::getReadyMeshesAsync(MeshRenderComponent* meshRenderView, 
+	const f32x4& cameraPosition, const Frustum& frustum, f32x4x4& model)
 {
+	if (isBehindFrustum(frustum, meshRenderView->aabb, model))
+		return 0;
 	auto spriteRenderView = (SpriteRenderComponent*)meshRenderView;
-	return (bool)spriteRenderView->descriptorSet;
+	return spriteRenderView->descriptorSet ? 1 : 0;
 }
 void SpriteRenderSystem::drawAsync(MeshRenderComponent* meshRenderView,
-	const f32x4x4& viewProj, const f32x4x4& model, uint32 drawIndex, int32 taskIndex)
+	const f32x4x4& viewProj, const f32x4x4& model, uint32 instanceIndex, int32 taskIndex)
 {
 	auto spriteRenderView = (SpriteRenderComponent*)meshRenderView;
 
@@ -113,11 +116,11 @@ void SpriteRenderSystem::drawAsync(MeshRenderComponent* meshRenderView,
 	dsRange[0] = DescriptorSet::Range(descriptorSet, 1, inFlightIndex);
 	dsRange[1] = DescriptorSet::Range((ID<DescriptorSet>)spriteRenderView->descriptorSet);
 
-	auto instanceData = (BaseInstanceData*)(instanceMap + drawIndex * getBaseInstanceDataSize());
-	setInstanceData(spriteRenderView, instanceData, viewProj, model, drawIndex, taskIndex);
+	auto instanceData = (BaseInstanceData*)(instanceMap + instanceIndex * getBaseInstanceDataSize());
+	setInstanceData(spriteRenderView, instanceData, viewProj, model, instanceIndex, taskIndex);
 
 	PushConstants pc;
-	setPushConstants(spriteRenderView, &pc, viewProj, model, drawIndex, taskIndex);
+	setPushConstants(spriteRenderView, &pc, viewProj, model, instanceIndex, taskIndex);
 
 	pipelineView->bindDescriptorSetsAsync(dsRange, 2, taskIndex);
 	pipelineView->pushConstantsAsync(&pc, taskIndex);
@@ -129,7 +132,7 @@ uint64 SpriteRenderSystem::getBaseInstanceDataSize()
 	return (uint64)sizeof(BaseInstanceData);
 }
 void SpriteRenderSystem::setInstanceData(SpriteRenderComponent* spriteRenderView, BaseInstanceData* instanceData,
-	const f32x4x4& viewProj, const f32x4x4& model, uint32 drawIndex, int32 taskIndex)
+	const f32x4x4& viewProj, const f32x4x4& model, uint32 instanceIndex, int32 taskIndex)
 {
 	instanceData->mvp = (float4x4)(viewProj * model);
 	instanceData->color = (float4)srgbToRgb(spriteRenderView->color);
@@ -137,9 +140,9 @@ void SpriteRenderSystem::setInstanceData(SpriteRenderComponent* spriteRenderView
 	instanceData->uvOffset = spriteRenderView->uvOffset;
 }
 void SpriteRenderSystem::setPushConstants(SpriteRenderComponent* spriteRenderView, PushConstants* pushConstants,
-	const f32x4x4& viewProj, const f32x4x4& model, uint32 drawIndex, int32 taskIndex)
+	const f32x4x4& viewProj, const f32x4x4& model, uint32 instanceIndex, int32 taskIndex)
 {
-	pushConstants->instanceIndex = drawIndex;
+	pushConstants->instanceIndex = instanceIndex;
 	pushConstants->colorMapLayer = spriteRenderView->colorMapLayer;
 }
 

@@ -94,7 +94,7 @@ protected:
 	Type type = {};
 	BuildFlagsAS flags = {};
 
-	AccelerationStructure(uint32 geometryCount, BuildFlagsAS flags, Type type) : 
+	AccelerationStructure(uint32 geometryCount, BuildFlagsAS flags, Type type) noexcept : 
 		geometryCount(geometryCount), type(type), flags(flags) { }
 	bool destroy() final;
 
@@ -104,7 +104,7 @@ protected:
 	 * @brief Creates a new empty ray tracing acceleration structure.
 	 * @note Use @ref GraphicsSystem to create, destroy and access acceleration structures.
 	 */
-	AccelerationStructure() = default;
+	AccelerationStructure() noexcept = default;
 
 	/**
 	 * @brief Returns acceleration structure type.

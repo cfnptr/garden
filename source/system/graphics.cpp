@@ -30,8 +30,6 @@
 #include "garden/profiler.hpp"
 #include "garden/os.hpp"
 
-#include "math/matrix/projection.hpp"
-#include "math/matrix/transform.hpp"
 #include "math/random.hpp"
 #include "math/brdf.hpp"
 #include "mpmt/thread.hpp"

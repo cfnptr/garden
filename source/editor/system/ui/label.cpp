@@ -83,7 +83,7 @@ void UiLabelEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	ImGui::SameLine();
 
 	ImGui::BeginDisabled();
-	auto isVisible = uiLabelView->isVisible();
+	auto isVisible = uiLabelView->isVisible;
 	ImGui::Checkbox("Is Visible", &isVisible);
 	ImGui::EndDisabled();
 	ImGui::Spacing();

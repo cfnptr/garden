@@ -13,27 +13,8 @@
 // limitations under the License.
 
 #include "garden/system/camera.hpp"
-#include "math/matrix/projection.hpp"
 
 using namespace garden;
-
-f32x4x4 CameraComponent::calcProjection() const noexcept
-{
-	if (type == ProjectionType::Perspective)
-	{
-		return (f32x4x4)calcPerspProjInfRevZ(p.perspective.fieldOfView,
-			p.perspective.aspectRatio, p.perspective.nearPlane);
-	}
-	
-	return (f32x4x4)calcOrthoProjRevZ(p.orthographic.width,
-		p.orthographic.height, p.orthographic.depth);
-}
-float CameraComponent::getNearPlane() const noexcept
-{
-	if (type == ProjectionType::Perspective)
-		return p.perspective.nearPlane;
-	return p.orthographic.depth.x;
-}
 
 //**********************************************************************************************************************
 CameraSystem::CameraSystem(bool setSingleton) : Singleton(setSingleton)

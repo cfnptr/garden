@@ -20,8 +20,6 @@
 #include "garden/system/input.hpp"
 #include "garden/profiler.hpp"
 
-#include "math/matrix/transform.hpp"
-
 using namespace garden;
 
 UiTriggerSystem::UiTriggerSystem(bool setSingleton) : Singleton(setSingleton)

@@ -19,6 +19,7 @@
 
 #pragma once
 #include "garden/animate.hpp"
+#include "math/matrix/projection.hpp"
 #include "math/angles.hpp"
 
 namespace garden
@@ -92,7 +93,7 @@ union CameraProjection final
 {
 	PerspectiveProjection perspective;   /**< Perspective camera projection properties. */
 	OrthographicProjection orthographic; /**< Orthographic camera projection properties. */
-	CameraProjection() : perspective() { }
+	CameraProjection() noexcept : perspective() { }
 };
 
 /***********************************************************************************************************************
@@ -107,12 +108,27 @@ struct CameraComponent final : public Component
 	 * @brief Calculates camera projection matrix.
 	 * @details See the @ref calcPerspProjInfRevZ().
 	 */
-	f32x4x4 calcProjection() const noexcept;
+	f32x4x4 calcProjection() const noexcept
+	{
+		if (type == ProjectionType::Perspective)
+		{
+			return (f32x4x4)calcPerspProjInfRevZ(p.perspective.fieldOfView,
+				p.perspective.aspectRatio, p.perspective.nearPlane);
+		}
+		
+		return (f32x4x4)calcOrthoProjRevZ(p.orthographic.width,
+			p.orthographic.height, p.orthographic.depth);
+	}
 	/**
 	 * @brief Returns camera projection matrix near plane.
 	 * @details Handles projection type inside.
 	 */
-	float getNearPlane() const noexcept;
+	float getNearPlane() const noexcept
+	{
+		if (type == ProjectionType::Perspective)
+			return p.perspective.nearPlane;
+		return p.orthographic.depth.x;
+	}
 
 	// TODO: add perspective/ortho morphing.
 
@@ -161,10 +177,7 @@ public:
 	CameraProjection c = {};
 	FrameProjection f = {};
 
-	bool hasAnimation() final
-	{
-		return f.base.animate0 || f.base.animate1 || f.base.animate2;
-	}
+	bool hasAnimation() final { return f.base.animate0 || f.base.animate1 || f.base.animate2; }
 };
 
 /***********************************************************************************************************************

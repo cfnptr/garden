@@ -87,7 +87,7 @@ public:
 		bool useReflBuffer = true;   /**< Create and use reflection buffer for rendering. */
 		bool useGiBuffer = true;     /**< Create and use global illumination buffer for rendering. */
 		bool useReflBlur = true;     /**< Create and use reflection buffer blur chain. */
-		Options() { }
+		Options() noexcept { }
 	};
 
 	struct LightingPC final

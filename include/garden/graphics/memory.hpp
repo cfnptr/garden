@@ -102,7 +102,7 @@ public:
 	 * @brief Creates a new empty memory data container.
 	 * @note Use @ref GraphicsSystem to create, destroy and access memory resources.
 	 */
-	Memory() = default;
+	Memory() noexcept = default;
 
 	/**
 	 * @brief Returns resource allocated memory size in bytes.

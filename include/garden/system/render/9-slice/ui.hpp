@@ -55,9 +55,10 @@ class Ui9SliceSystem final : public NineSliceCompAnimSystem<
 	MeshRenderType getMeshRenderType() const final;
 
 	void beginDrawAsync(int32 taskIndex) final;
-	void prepareDraw(const f32x4x4& viewProj, uint32 drawCount, int8 shadowPass) final;
+	void prepareDraw(const f32x4x4& viewProj, uint32 drawCount, 
+		uint32 instanceCount, int8 shadowPass) final;
 	void drawAsync(MeshRenderComponent* meshRenderView, const f32x4x4& viewProj,
-		const f32x4x4& model, uint32 drawIndex, int32 taskIndex) final;
+		const f32x4x4& model, uint32 instanceIndex, int32 taskIndex) final;
 	
 	friend class ecsm::Manager;
 };

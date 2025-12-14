@@ -407,7 +407,9 @@ namespace garden
 		
 		Nodes nodes;
 		type_index componentType;
-		ComponentEntry(type_index componentType) : componentType(componentType) { }
+
+		ComponentEntry(type_index componentType) noexcept : 
+			componentType(componentType) { }
 	};
 }
 

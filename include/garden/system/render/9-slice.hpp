@@ -72,7 +72,7 @@ protected:
 
 	uint64 getBaseInstanceDataSize() override;
 	void setInstanceData(SpriteRenderComponent* spriteRenderView, BaseInstanceData* instanceData,
-		const f32x4x4& viewProj, const f32x4x4& model, uint32 drawIndex, int32 threadIndex) override;
+		const f32x4x4& viewProj, const f32x4x4& model, uint32 instanceIndex, int32 threadIndex) override;
 
 	void serialize(ISerializer& serializer, const View<Component> component) override;
 	void deserialize(IDeserializer& deserializer, View<Component> component) override;
