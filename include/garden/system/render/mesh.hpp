@@ -20,6 +20,7 @@
 #pragma once
 #include "garden/system/graphics.hpp"
 #include "math/aabb.hpp"
+#include <new>
 
 namespace garden
 {
