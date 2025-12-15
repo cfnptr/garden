@@ -326,6 +326,8 @@ void GraphicsPipeline::createVkInstance(GraphicsCreateData& createData)
 		pipelineInfo.pDepthStencilState = &depthStencilInfo;
 		pipelineInfo.pColorBlendState = &blendInfo;
 
+
+
 		auto result = vulkanAPI->device.createGraphicsPipeline(vulkanAPI->pipelineCache, pipelineInfo);
 		vk::detail::resultCheck(result.result, "vk::Device::createGraphicsPipeline");
 

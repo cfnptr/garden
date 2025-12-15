@@ -217,7 +217,7 @@ void AccelerationStructure::setDebugName(const string& name)
 	{
 		#if GARDEN_DEBUG // Note: No GARDEN_EDITOR
 		auto vulkanAPI = VulkanAPI::get();
-		if (!vulkanAPI->features.hasDebugUtils || !instance)
+		if (!vulkanAPI->features.debugUtils || !instance)
 			return;
 
 		vk::DebugUtilsObjectNameInfoEXT nameInfo(

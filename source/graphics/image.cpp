@@ -848,7 +848,7 @@ void Image::setDebugName(const string& name)
 	{
 		#if GARDEN_DEBUG // Note: No GARDEN_EDITOR
 		auto vulkanAPI = VulkanAPI::get();
-		if (!vulkanAPI->features.hasDebugUtils || !instance)
+		if (!vulkanAPI->features.debugUtils || !instance)
 			return;
 
 		vk::DebugUtilsObjectNameInfoEXT nameInfo(vk::ObjectType::eImage, (uint64)instance, name.c_str());
@@ -1008,7 +1008,7 @@ void ImageView::setDebugName(const string& name)
 	{
 		#if GARDEN_DEBUG // Note: No GARDEN_EDITOR
 		auto vulkanAPI = VulkanAPI::get();
-		if (!vulkanAPI->features.hasDebugUtils)
+		if (!vulkanAPI->features.debugUtils)
 			return;
 
 		vk::DebugUtilsObjectNameInfoEXT nameInfo(vk::ObjectType::eImageView, (uint64)instance, name.c_str());

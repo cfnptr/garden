@@ -144,7 +144,9 @@ public:
 	 */
 	static constexpr uint2 defaultWindowSize = uint2(defaultWindowWidth, defaultWindowHeight);
 private:
+	#if GARDEN_OS_WINDOWS
 	mutex eventLocker;
+	#endif
 	vector<void*> standardCursors;
 	vector<bool> newKeyboardStates;
 	vector<bool> lastKeyboardStates;
@@ -166,6 +168,7 @@ private:
 	string newClipboard;
 	string lastClipboard;
 	string currClipboard;
+	void* emptyCursor = nullptr;
 	uint2 newFramebufferSize = uint2::zero;
 	uint2 currFramebufferSize = uint2::zero;
 	uint2 newWindowSize = uint2::zero;

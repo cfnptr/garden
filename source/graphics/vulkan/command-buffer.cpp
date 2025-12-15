@@ -45,7 +45,7 @@ VulkanCommandBuffer::VulkanCommandBuffer(VulkanAPI* vulkanAPI, CommandBufferType
 	}
 
 	#if GARDEN_DEBUG // Note: No GARDEN_EDITOR
-	if (vulkanAPI->features.hasDebugUtils)
+	if (vulkanAPI->features.debugUtils)
 	{
 		const char* name = nullptr;
 		switch (type)

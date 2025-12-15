@@ -765,7 +765,7 @@ void Framebuffer::setDebugName(const string& name)
 	{
 		#if GARDEN_DEBUG // Note: No GARDEN_EDITOR
 		auto vulkanAPI = VulkanAPI::get();
-		if (!vulkanAPI->features.hasDebugUtils || !instance || subpasses.empty())
+		if (!vulkanAPI->features.debugUtils || !instance || subpasses.empty())
 			return;
 
 		vk::DebugUtilsObjectNameInfoEXT nameInfo(vk::ObjectType::eFramebuffer, (uint64)instance, name.c_str());

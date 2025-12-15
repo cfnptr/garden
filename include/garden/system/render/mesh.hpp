@@ -20,7 +20,6 @@
 #pragma once
 #include "garden/system/graphics.hpp"
 #include "math/aabb.hpp"
-#include <new>
 
 namespace garden
 {
@@ -209,7 +208,7 @@ public:
 	{
 		IMeshRenderSystem* meshSystem = nullptr;
 		atomic<uint32> drawCount = 0;
-		alignas(std::hardware_destructive_interference_size) atomic<uint32> instanceCount = 0;
+		alignas(64) atomic<uint32> instanceCount = 0;
 	};
 	struct UnsortedBuffer final : public MeshBuffer
 	{
@@ -233,7 +232,7 @@ private:
 	bool hasAnyRefr = false;
 	bool hasAnyOIT = false;
 	bool hasAnyTransDepth = false;
-	alignas(std::hardware_destructive_interference_size) atomic<uint32> uiDrawIndex = 0;
+	alignas(64) atomic<uint32> uiDrawIndex = 0;
 
 	/**
 	 * @brief Creates a new mesh rendering system instance.
@@ -290,6 +289,46 @@ public:
 	 * @warning Be careful when writing asynchronous code!
 	 */
 	bool useAsyncPreparing() const noexcept { return asyncPreparing; }
+};
+
+/***********************************************************************************************************************
+ * @brief Model matrix container.
+ */
+struct ModelStoreComponent : public Component
+{
+protected:
+	uint32 _alignment0 = 0;
+	uint64 _alignment1 = 0;
+public:
+	float4x3 model = float4x3::identity; /**< Stored model matrix. */
+
+	/**
+	 * @brief Returns SIMD model matrix.
+	 */
+	f32x4x4 getModel() const noexcept { return f32x4x4(model, f32x4(0.0f, 0.0f, 0.0f, 1.0f)); }
+	/**
+	 * @brief Sets SIMD model matrix.
+	 * @param model target model matrix
+	 */
+	void setModel(const f32x4x4& model) noexcept { this->model = (float4x3)model; }
+};
+/**
+ * @brief Handles model matrix containers.
+ */
+class ModelStoreSystem : public ComponentSystem<ModelStoreComponent, false>, public Singleton<ModelStoreSystem>
+{
+	/**
+	 * @brief Creates a new model matrix container system instance.
+	 * @param setSingleton set system singleton instance
+	 */
+	ModelStoreSystem(bool setSingleton = true);
+	/**
+	 * @brief Destroys model matrix container system instance.
+	 */
+	~ModelStoreSystem() override;
+
+	string_view getComponentName() const final;
+	friend class ecsm::Manager;
 };
 
 } // namespace garden
