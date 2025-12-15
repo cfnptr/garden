@@ -86,10 +86,26 @@ void GraphicsAPI::destroyResource(DestroyResourceType type, void* data0, void* d
 }
 
 //**********************************************************************************************************************
+static bool isEnv(const char* name, const char* value) noexcept
+{
+	auto envValue = getenv(name);
+	if (!envValue) return false;
+	return strcmp(envValue, value) == 0;
+}
+
 void GraphicsAPI::initialize(GraphicsBackend backendType, const string& appName, 
 	const string& appDataName, Version appVersion, uint2 windowSize, uint32 threadCount, 
 	bool useVsync, bool useTripleBuffering, bool isFullscreen, bool isDecorated)
 {
+	#if GARDEN_OS_LINUX
+	// Note: fixes cursor loading on Wayland.
+	setenv("XCURSOR_SIZE", "24", 0);
+	setenv("XCURSOR_THEME", "default", 0);
+
+	if (isEnv("GLFW_PLATFORM", "x11"))
+		glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_X11);
+	#endif
+
 	if (!glfwInit())
 		throw GardenError("Failed to initialize GLFW.");
 

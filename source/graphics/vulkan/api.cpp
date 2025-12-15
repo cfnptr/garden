@@ -177,10 +177,10 @@ static vk::Instance createVkInstance(const string& appName, Version appVersion,
 	for	(const auto& properties : extensionProperties)
 	{
 		if (strcmp(properties.extensionName.data(), VK_EXT_DEBUG_UTILS_EXTENSION_NAME) == 0)
-			features.hasDebugUtils = true;
+			features.debugUtils = true;
 	}
 
-	if (features.hasDebugUtils)
+	if (features.debugUtils)
 	{
 		if (!hasExtension(extensions, VK_EXT_DEBUG_UTILS_EXTENSION_NAME))
 			extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
@@ -522,8 +522,8 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 		vk::PhysicalDeviceBufferDeviceAddressFeatures bufferDeviceAddress;
 		vk::PhysicalDeviceTimelineSemaphoreFeatures timelineSemaphore;
 		vk::PhysicalDeviceVulkanMemoryModelFeatures vulkanMemoryModel;
-		vk::PhysicalDevicePageableDeviceLocalMemoryFeaturesEXT pageableMemory;
 		vk::PhysicalDeviceDynamicRenderingFeatures dynamicRendering;
+		vk::PhysicalDevicePageableDeviceLocalMemoryFeaturesEXT pageableMemory;
 		vk::PhysicalDeviceAccelerationStructureFeaturesKHR accelerationStructure;
 		vk::PhysicalDeviceRayTracingPipelineFeaturesKHR rayTracingPipeline;
 		vk::PhysicalDeviceRayQueryFeaturesKHR rayQuery;
@@ -713,13 +713,13 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 	lastPNext = &vkFeatures->timelineSemaphore.pNext;
 	*lastPNext = &vkFeatures->vulkanMemoryModel;
 	lastPNext = &vkFeatures->vulkanMemoryModel.pNext;
-	*lastPNext = nullptr;
 
 	#if GARDEN_OS_MACOS
 	vkFeatures->portability.mutableComparisonSamplers = VK_TRUE;
 	*lastPNext = &vkFeatures->portability;
 	lastPNext = &vkFeatures->portability.pNext;
 	#endif
+	*lastPNext = nullptr;
 
 	if (features.maintenance4)
 	{
@@ -975,7 +975,7 @@ VulkanAPI::VulkanAPI(const string& appName, const string& appDataName, Version a
 	instance = createVkInstance(appName, appVersion, versionMajor, versionMinor, features);
 
 	#if GARDEN_DEBUG
-	if (features.hasDebugUtils)
+	if (features.debugUtils)
 		debugMessenger = createVkDebugMessenger(instance);
 	#endif
 	
@@ -1080,7 +1080,7 @@ VulkanAPI::~VulkanAPI()
 	instance.destroySurfaceKHR(surface);
 
 	#if GARDEN_DEBUG
-	if (features.hasDebugUtils)
+	if (features.debugUtils)
 		instance.destroy(debugMessenger, nullptr);
 	#endif
 

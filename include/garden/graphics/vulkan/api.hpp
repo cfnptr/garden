@@ -20,7 +20,6 @@
 #pragma once
 #include "garden/graphics/api.hpp"
 #include "garden/graphics/vulkan/swapchain.hpp"
-#include <new>
 
 namespace garden
 {
@@ -41,13 +40,13 @@ namespace garden
 class VulkanAPI final : public GraphicsAPI
 {
 public:
-	struct alignas(std::hardware_destructive_interference_size) atomic_bool_aligned final : atomic_bool
+	struct alignas(64) atomic_bool_aligned final : atomic_bool
 	{
 		atomic_bool_aligned() : atomic_bool(false) { }
 	};
 	struct Features final
 	{
-		bool hasDebugUtils = false;
+		bool debugUtils = false;
 		bool memoryBudget = false;
 		bool memoryPriority = false;
 		bool pageableMemory = false;

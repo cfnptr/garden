@@ -976,6 +976,7 @@ ID<Image> DeferredRenderSystem::getUpscaleHdrBuffer()
 	return upscaleHdrBuffer;
 }
 
+//**********************************************************************************************************************
 ID<ImageView> DeferredRenderSystem::getDepthStencilIV()
 {
 	if (!depthStencilIV)
@@ -1016,6 +1017,7 @@ const vector<ID<ImageView>>& DeferredRenderSystem::getHdrCopyBlurViews()
 	return hdrCopyBlurViews;
 }
 
+//**********************************************************************************************************************
 ID<Framebuffer> DeferredRenderSystem::getGFramebuffer()
 {
 	if (!gFramebuffer)

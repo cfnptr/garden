@@ -69,10 +69,10 @@ static bool toSpawnMode(string_view name, SpawnMode& spawnMode) noexcept
  */
 struct SpawnerComponent final : public Component
 {
+	float delay = 0.0f;       /**< Delay before next entity spawn in seconds. */
 	fs::path path = "";       /**< Target prefab scene path. */
 	Hash128 prefab = {};      /**< Target runtime prefab entity UUID. */
 	uint32 maxCount = 1;      /**< Maximal automatic entity spawn count. */
-	float delay = 0.0f;       /**< Delay before next entity spawn. (seconds) */
 	SpawnMode mode = {};      /**< Automatic entity spawn mode. */
 	bool isActive = true;     /**< Is spawn component active. */
 	bool spawnAsChild = true; /**< Spawn entity as a spawner entity child. */

@@ -65,8 +65,8 @@ Use building [instructions](BUILDING.md) to install all required tools and libra
 | GARDEN_USE_GAPI_VALIDATIONS | Use graphics API validation layers               | `ON`          |
 | GARDEN_USE_TRACY_PROFILER   | Use Tracy frame profiler                         | `OFF`         |
 | GARDEN_USE_ASAN             | Use Clang address sanitizer                      | `OFF`         |
-
-
+| GARDEN_USE_NVIDIA_DLSS      | Use Nvidia DLSS SDK (Downloads repo)             | `OFF`         |
+| GARDEN_USE_STEAMWORKS_SDK   | Use Steamworks SDK (Manual download)             | `OFF`         |
 
 ### CMake variables
 

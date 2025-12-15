@@ -647,7 +647,7 @@ void MeshRenderSystem::renderUnsorted(const f32x4x4& viewProj, MeshRenderType re
 					auto meshInstanceCount = meshSystem->getInstancesAsync(meshRenderView);
 					auto instanceIndex = instanceCount.fetch_add(meshInstanceCount);
 					meshSystem->drawAsync(meshRenderView, viewProj, model, instanceIndex, taskIndex);
-					drawInstanceCount += instanceIndex;
+					drawInstanceCount += meshInstanceCount;
 				}
 				meshSystem->endDrawAsync(drawInstanceCount, taskIndex);
 			},
@@ -761,7 +761,7 @@ void MeshRenderSystem::renderSorted(const f32x4x4& viewProj, MeshRenderType rend
 				auto instanceIndex = instanceCount->fetch_add(meshInstanceCount);
 				auto model = f32x4x4(mesh.bakedModel, f32x4(0.0f, 0.0f, 0.0f, 1.0f));
 				meshSystem->drawAsync(meshRenderView, viewProj, model, instanceIndex, taskIndex);
-				drawInstanceCount += instanceIndex;
+				drawInstanceCount += meshInstanceCount;
 			}
 			meshSystem->endDrawAsync(drawInstanceCount, taskIndex);
 		},
@@ -804,7 +804,7 @@ void MeshRenderSystem::renderSorted(const f32x4x4& viewProj, MeshRenderType rend
 			auto instanceIndex = instanceCount->fetch_add(meshInstanceCount);
 			auto model = f32x4x4(mesh.bakedModel, f32x4(0.0f, 0.0f, 0.0f, 1.0f));
 			meshSystem->drawAsync(meshRenderView, viewProj, model, instanceIndex, -1);
-			drawInstanceCount += instanceIndex;
+			drawInstanceCount += meshInstanceCount;
 		}
 		meshSystem->endDrawAsync(drawInstanceCount, -1);
 	}
@@ -1038,3 +1038,8 @@ void MeshRenderSystem::uiRender()
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	renderSorted(calcUiProjView(), MeshRenderType::UI, -1);
 }
+
+//**********************************************************************************************************************
+ModelStoreSystem::ModelStoreSystem(bool setSingleton) : Singleton(setSingleton) { }
+ModelStoreSystem::~ModelStoreSystem() { unsetSingleton(); }
+string_view ModelStoreSystem::getComponentName() const { return "Model Store"; }

@@ -172,6 +172,24 @@ void InputSystem::preInit()
 	for (uint8 i = 0; i < (uint8)standardCursors.size(); i++)
 		standardCursors[i] = glfwCreateStandardCursor(GLFW_ARROW_CURSOR + i);
 
+	#if GARDEN_OS_LINUX
+	auto glfwPlatform = glfwGetPlatform();
+	switch (glfwPlatform)
+	{
+		case GLFW_PLATFORM_X11: GARDEN_LOG_INFO("GLFW platform: X11"); break;
+		case GLFW_PLATFORM_WAYLAND: GARDEN_LOG_INFO("GLFW platform: Wayland"); break;
+		default: GARDEN_LOG_ERROR("GLFW platform: Unknown"); break;
+	}
+	if (glfwPlatform == GLFW_PLATFORM_WAYLAND)
+	{
+		unsigned char pixels[4] = { 0, 0, 0, 0 }; 
+		GLFWimage image;
+		image.width = image.height = 2;
+		image.pixels = pixels;
+		emptyCursor = glfwCreateCursor(&image, 0, 0);
+	}
+	#endif
+
 	auto primaryMonitor = glfwGetPrimaryMonitor();
 	if (primaryMonitor)
 	{
@@ -195,7 +213,7 @@ void InputSystem::deinit()
 	{
 		for (uint8 i = 0; i < (uint8)standardCursors.size(); i++)
 			glfwDestroyCursor((GLFWcursor*)standardCursors[i]);
-		standardCursors.clear();
+		glfwDestroyCursor((GLFWcursor*)emptyCursor);
 
 		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Input", InputSystem::input);
@@ -488,7 +506,16 @@ void InputSystem::startRenderThread()
 		#endif
 
 		if (newCursorMode != -1)
+		{
 			glfwSetInputMode(window, GLFW_CURSOR, newCursorMode + 0x00034001);
+
+			if (newCursorType == GLFW_CURSOR_HIDDEN || newCursorMode == GLFW_CURSOR_DISABLED)
+			{
+				glfwSetCursor(window, (GLFWcursor*)inputSystem->emptyCursor);
+				newCursorType = -1;
+			}
+			else if (newCursorType == -1) newCursorType = (int)CursorType::Default;
+		}
 		if (newCursorType != -1)
 		{
 			glfwSetCursor(window, newCursorType == (int)CursorType::Default ?
