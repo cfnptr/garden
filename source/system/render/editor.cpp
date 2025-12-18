@@ -286,6 +286,22 @@ void EditorRenderSystem::showOptionsWindow()
 		ImGui::SameLine();
 		ImGui::Checkbox("Triple Buffering", &graphicsSystem->useTripleBuffering);
 
+		ImGui::BeginDisabled(!GraphicsAPI::get()->hasLowLatency());
+		if (ImGui::Checkbox("Low Latency (Reflex, Anti-lag)", &graphicsSystem->useLowLatency))
+		{
+			if (settingsSystem)
+				settingsSystem->setBool("render.useLowLatency", graphicsSystem->useLowLatency);
+		}
+		if (!GraphicsAPI::get()->hasLowLatency())
+		{
+			if (ImGui::BeginItemTooltip())
+			{
+				ImGui::Text("Low latency is not supported on this GPU.");
+				ImGui::EndTooltip();
+			}
+		}
+		ImGui::EndDisabled();
+
 		ImGui::BeginDisabled(graphicsSystem->useVsync);
 		auto frameRate = (int)graphicsSystem->maxFrameRate;
 		if (ImGui::DragInt("Max Frame Rate", &frameRate, 1, 1, UINT16_MAX))
@@ -321,6 +337,14 @@ void EditorRenderSystem::showOptionsWindow()
 			if (ImGui::BeginItemTooltip())
 			{
 				ImGui::Text("Controlled by the upscaller! (DLSS, FSR, etc.)");
+				ImGui::EndTooltip();
+			}
+		}
+		else if (graphicsSystem->useUpscaling || !isFrameSizeScaled)
+		{
+			if (ImGui::BeginItemTooltip())
+			{
+				ImGui::Text("Enable scaled size first ---> [ ]");
 				ImGui::EndTooltip();
 			}
 		}

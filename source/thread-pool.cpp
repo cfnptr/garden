@@ -28,10 +28,10 @@ using namespace garden;
 // This is useful if we have a lot of tasks.
 
 //**********************************************************************************************************************
-void ThreadPool::threadFunction(uint32 index)
+void ThreadPool::threadFunction(uint32 threadIndex)
 {
 	auto threadName = name.empty() ? "" : name;
-	threadName.push_back('#'); threadName += to_string(index);
+	threadName.push_back('#'); threadName += to_string(threadIndex);
 	mpmt::Thread::setName(threadName.c_str());
 
 	if (background)
@@ -54,27 +54,32 @@ void ThreadPool::threadFunction(uint32 index)
 		if (!isRunning)
 			return;
 
-		workingCount++;
-		auto iterator = taskQueue.begin();
-		auto task = iterator->second;
-		taskQueue.erase(iterator);
-
 		#if GARDEN_TRACY_PROFILER
-		TracyFiberEnterHint(threadName.c_str(), index);
+		TracyFiberEnterHint(threadName.c_str(), threadIndex);
 		#endif
 
-		locker.unlock();
-		task.threadIndex = index;
-		task.function(task);
-		locker.lock();
+		executeTask(threadIndex);
 
 		#if GARDEN_TRACY_PROFILER
 		TracyFiberLeave;
 		#endif
 
-		workingCount--;
 		workingCond.notify_all();
 	}
+}
+void ThreadPool::executeTask(uint32 threadIndex)
+{
+	workingCount++;
+	auto iterator = taskQueue.begin();
+	auto task = iterator->second;
+	taskQueue.erase(iterator);
+
+	mutex.unlock();
+	task.threadIndex = threadIndex;
+	task.function(task);
+	mutex.lock();
+
+	workingCount--;
 }
 
 //**********************************************************************************************************************
@@ -85,11 +90,14 @@ ThreadPool::ThreadPool(bool isBackground, string_view name, uint32 threadCount) 
 	
 	if (threadCount == UINT32_MAX)
 		threadCount = thread::hardware_concurrency();
+	this->threadCount = threadCount;
 
-	this->threads.resize(threadCount);
+	auto offset = isBackground ? 0 : 1;
+	threadCount -= offset; // Note: foreground pool also uses main thread.
+	threads.resize(threadCount);
 
 	for (uint32 i = 0; i < threadCount; i++)
-		this->threads[i] = thread(&ThreadPool::threadFunction, this, i);
+		threads[i] = thread(&ThreadPool::threadFunction, this, i + offset);
 }
 ThreadPool::~ThreadPool()
 {
@@ -192,9 +200,18 @@ void ThreadPool::wait()
 	SET_CPU_ZONE_SCOPED("Thread Pool Wait");
 
 	auto locker = unique_lock(mutex);
-	while (!taskQueue.empty() || workingCount > 0)
-		workingCond.wait(locker);
-	locker.unlock();
+	if (!background)
+	{
+		while(!taskQueue.empty())
+			executeTask(0);
+		while (workingCount > 0)
+			workingCond.wait(locker);
+	}
+	else
+	{
+		while (!taskQueue.empty() || workingCount > 0)
+			workingCond.wait(locker);
+	}
 }
 void ThreadPool::removeAll()
 {
@@ -209,7 +226,7 @@ void ThreadPool::stop()
 	isRunning = false;
 	mutex.unlock();
 	
-	if (shouldJoin)
+	if (shouldJoin && !threads.empty())
 	{
 		workCond.notify_all();
 		for (auto& thread : threads)

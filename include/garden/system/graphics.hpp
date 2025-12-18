@@ -98,6 +98,7 @@ class GraphicsSystem final : public System, public Singleton<GraphicsSystem>
 	bool isFramebufferSizeValid = false;
 	bool outOfDateSwapchain = false;
 	bool wasTeleported = false;
+	bool nvLowLatency = false;
 	SwapchainChanges swapchainChanges;
 	GraphicsQuality lastQuality = GraphicsQuality::High;
 
@@ -141,6 +142,7 @@ public:
 	bool useTripleBuffering = false;  /**< Swapchain triple buffering state. */
 	bool useUpscaling = false;        /**< Use image upscaling. (DLSS, FSR, XeSS, etc.) */
 	bool useJittering = false;        /**< Use sub pixel jittering. (Temporal anti aliasing) */
+	bool useLowLatency = false;       /**< Use low input latency feature. (Reflex, Anti-lag) */
 	GraphicsQuality quality = GraphicsQuality::High;
 
 	/*******************************************************************************************************************

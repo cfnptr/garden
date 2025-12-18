@@ -233,15 +233,18 @@ void InputSystem::input()
 		if (vulkanAPI->features.amdAntiLag)
 		{
 			vk::AntiLagDataAMD antiLagData;
-			antiLagData.mode = vk::AntiLagModeAMD::eOn;
+			antiLagData.mode = graphicsSystem->useLowLatency ? vk::AntiLagModeAMD::eOn : vk::AntiLagModeAMD::eOff;
 			antiLagData.maxFPS = graphicsSystem->useVsync ? 0 : graphicsSystem->maxFrameRate;
 			vulkanAPI->device.antiLagUpdateAMD(antiLagData);
 		}
 		else if (vulkanAPI->features.nvLowLatency)
 		{
-			vk::LatencySleepInfoNV sleepInfo(VK_NULL_HANDLE, 0); // TODO: implement semaphore and check if works on supported GPU.
-			vulkanAPI->device.latencySleepNV(vulkanAPI->vulkanSwapchain->getInstance(), sleepInfo);
-			// TODO: also support latency markers. vkSetLatencyMarkerNV()
+			if (graphicsSystem->useLowLatency)
+			{
+				vk::LatencySleepInfoNV sleepInfo(VK_NULL_HANDLE, 0); // TODO: implement semaphore and check if works on supported GPU.
+				vulkanAPI->device.latencySleepNV(vulkanAPI->vulkanSwapchain->getInstance(), sleepInfo);
+				// TODO: also support latency markers. vkSetLatencyMarkerNV()
+			}
 		}
 	}
 	else abort();

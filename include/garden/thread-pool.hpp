@@ -66,7 +66,6 @@ public:
 		template<class T>
 		Task(const T& function, float priority = 0.0f) noexcept : 
 			function(function), priority(priority) { }
-
 		friend class ThreadPool;
 	public:
 		/**
@@ -115,11 +114,13 @@ private:
 	condition_variable workingCond = {};
 	vector<thread> threads;
 	TaskQueue taskQueue;
+	uint32 threadCount = 0;
 	uint32 workingCount = 0;
 	bool background = false;
 	bool isRunning = false;
 
-	void threadFunction(uint32 index);
+	void threadFunction(uint32 threadIndex);
+	void executeTask(uint32 threadIndex);
 public:
 	/*******************************************************************************************************************
 	 * @brief Creates a new thread pool.
@@ -149,7 +150,7 @@ public:
 	 * @brief Returns thread count in the pool. (MT-Safe)
 	 * @details Optimal value is a logical CPU count in the PC.
 	 */
-	uint32 getThreadCount() const noexcept { return (uint32)threads.size(); }
+	uint32 getThreadCount() const noexcept { return threadCount; }
 	/**
 	 * @brief Does threads have a background priority. (MT-Safe)
 	 * @details This affects how threads are scheduled for execution by the scheduler.
@@ -206,12 +207,12 @@ public:
 	 */
 	void wait();
 	/**
-	 * @brief Drops all pending tasks in the queue.
+	 * @brief Drops all pending tasks in the queue. (MT-Safe)
 	 * @details Locks mutex inside to clear the queue.
 	 */
 	void removeAll();
 	/**
-	 * @brief Stops thread pool tasks execution and joins all threads.
+	 * @brief Stops thread pool tasks execution and joins all threads. (MT-Safe)
 	 */
 	void stop();
 };

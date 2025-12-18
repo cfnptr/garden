@@ -24,12 +24,12 @@
 #include "garden/system/log.hpp"
 #include "garden/profiler.hpp"
 #include "garden/base64.hpp"
+#include "mpmt/thread.hpp"
 
 #include "Jolt/RegisterTypes.h"
 #include "Jolt/Core/Factory.h"
 #include "Jolt/Core/TempAllocator.h"
-#include "Jolt/Core/FixedSizeFreeList.h"
-#include "Jolt/Core/JobSystemWithBarrier.h"
+#include "Jolt/Core/JobSystemThreadPool.h"
 #include "Jolt/Physics/PhysicsSettings.h"
 #include "Jolt/Physics/PhysicsSystem.h"
 #include "Jolt/Physics/Collision/RayCast.h"
@@ -71,98 +71,6 @@ static bool AssertFailedImpl(const char* inExpression, const char* inMessage, co
 	return true;
 };
 #endif
-
-//**********************************************************************************************************************
-class GardenJobSystem final : public JPH::JobSystemWithBarrier
-{
-	ThreadPool* threadPool = nullptr;
-
-	/// Array of jobs (fixed size)
-	using AvailableJobs = JPH::FixedSizeFreeList<Job>;
-	AvailableJobs jobs;
-public:
-	GardenJobSystem(ThreadPool* threadPool)
-	{
-		GARDEN_ASSERT(threadPool);
-		this->threadPool = threadPool;
-
-		JobSystemWithBarrier::Init(JPH::cMaxPhysicsBarriers);
-		jobs.Init(JPH::cMaxPhysicsJobs, JPH::cMaxPhysicsJobs); // Init freelist of jobs
-	}
-
-	int GetMaxConcurrency() const final
-	{
-		return (int)threadPool->getThreadCount();
-	}
-
-	JobHandle CreateJob(const char* inName, JPH::ColorArg inColor,
-		const JobFunction& inJobFunction, JPH::uint32 inNumDependencies = 0) final
-	{
-		// Loop until we can get a job from the free list
-		JPH::uint32 index;
-		while (true)
-		{
-			index = jobs.ConstructObject(inName, inColor, this, inJobFunction, inNumDependencies);
-			if (index != AvailableJobs::cInvalidObjectIndex)
-				break;
-
-			JPH_ASSERT(false, "No jobs available!");
-			std::this_thread::sleep_for(std::chrono::microseconds(100));
-		}
-		Job* job = &jobs.Get(index);
-
-		// Construct handle to keep a reference, the job is queued below and may immediately complete
-		JobHandle handle(job);
-
-		// If there are no dependencies, queue the job now
-		if (inNumDependencies == 0)
-			QueueJob(job);
-
-		// Return the handle
-		return handle;
-	}
-
-	ThreadPool* getThreadPool() const noexcept { return threadPool; }
-protected:
-	void QueueJob(Job* inJob) final
-	{
-		// Add reference to job because we're adding the job to the queue
-		inJob->AddRef();
-
-		threadPool->addTask([inJob](const ThreadPool::Task& task)
-		{
-			inJob->Execute();
-			inJob->Release();
-		});
-	}
-	void QueueJobs(Job** inJobs, JPH::uint inNumJobs) final
-	{
-		static thread_local vector<ThreadPool::Task::Function> functions;
-		if (functions.size() < inNumJobs)
-			functions.resize(inNumJobs);
-		auto functionData = functions.data();
-
-		for (JPH::uint i = 0; i < inNumJobs; i++)
-		{
-			auto job = inJobs[i];
-
-			// Add reference to job because we're adding the job to the queue
-			job->AddRef();
-
-			functionData[i] = [job](const ThreadPool::Task& task)
-			{
-				job->Execute();
-				job->Release();
-			};
-		}
-
-		threadPool->addTasks(functions);
-	}
-	void FreeJob(Job* inJob) final
-	{
-		jobs.DestructObject(inJob);
-	}
-};
 
 //**********************************************************************************************************************
 class GardenContactListener final : public JPH::ContactListener
@@ -1010,7 +918,7 @@ PhysicsSystem::~PhysicsSystem()
 		manager->unregisterEvent("Simulate");
 		manager->removeGroupSystem<ISerializable>(this);
 
-		delete (GardenJobSystem*)jobSystem;
+		delete (JPH::JobSystemThreadPool*)jobSystem;
 		delete (JPH::PhysicsSystem*)physicsInstance;
 		delete (GardenContactListener*)contactListener;
 		delete (GardenBodyActivationListener*)bodyListener;
@@ -1107,9 +1015,15 @@ void PhysicsSystem::preInit()
 	broadPhaseQuery = &physicsInstance->GetBroadPhaseQuery();
 
 	// We need a job system that will execute physics jobs on multiple threads.
-	auto threadPool = &ThreadSystem::Instance::get()->getForegroundPool();
-	auto jobSystem = new GardenJobSystem(threadPool);
-	this->jobSystem = jobSystem;
+	auto jobSystem = new JPH::JobSystemThreadPool();
+	jobSystem->SetThreadInitFunction([](int threadIndex)
+	{
+		mpmt::Thread::setName("JP#" + to_string(threadIndex));
+		mpmt::Thread::setForegroundPriority();
+	});
+	auto threadCount = ThreadSystem::Instance::get()->getForegroundPool().getThreadCount();
+	jobSystem->Init(JPH::cMaxPhysicsJobs, JPH::cMaxPhysicsBarriers, threadCount);
+	this->jobSystem = jobSystem; // TODO: Garden thread pool is not compatible, we need to make custom garden barriers impl.
 }
 void PhysicsSystem::postInit()
 {
@@ -1124,8 +1038,8 @@ void PhysicsSystem::prepareSimulate()
 	if (components.getCount() == 0)
 		return;
 
-	auto threadPool = ((GardenJobSystem*)this->jobSystem)->getThreadPool();
-	threadPool->addItems([this](const ThreadPool::Task& task)
+	auto& threadPool = ThreadSystem::Instance::get()->getForegroundPool();
+	threadPool.addItems([this](const ThreadPool::Task& task)
 	{
 		auto manager = Manager::Instance::get();
 		auto bodyInterface = (JPH::BodyInterface*)this->bodyInterface;
@@ -1158,7 +1072,7 @@ void PhysicsSystem::prepareSimulate()
 		}
 	},
 	components.getOccupancy());
-	threadPool->wait();
+	threadPool.wait();
 }
 
 //**********************************************************************************************************************
@@ -1234,8 +1148,8 @@ void PhysicsSystem::interpolateResult(float t)
 	if (components.getCount() == 0 || !TransformSystem::Instance::has())
 		return;
 
-	auto threadPool = ((GardenJobSystem*)this->jobSystem)->getThreadPool();
-	threadPool->addItems([this, t](const ThreadPool::Task& task)
+	auto& threadPool = ThreadSystem::Instance::get()->getForegroundPool();
+	threadPool.addItems([this, t](const ThreadPool::Task& task)
 	{
 		auto manager = Manager::Instance::get();
 		auto componentData = components.getData();
@@ -1262,7 +1176,7 @@ void PhysicsSystem::interpolateResult(float t)
 		}
 	},
 	components.getOccupancy());
-	threadPool->wait();
+	threadPool.wait();
 }
 
 static float getPhysicsDeltaTime() noexcept
@@ -1288,7 +1202,7 @@ void PhysicsSystem::simulate()
 
 		auto physicsInstance = (JPH::PhysicsSystem*)this->physicsInstance;
 		auto tempAllocator = (JPH::TempAllocator*)this->tempAllocator;
-		auto jobSystem = (GardenJobSystem*)this->jobSystem;
+		auto jobSystem = (JPH::JobSystemThreadPool*)this->jobSystem;
 		auto stepCount = (uint32)(deltaTimeAccum / simDeltaTime);
 
 		if (cascadeLagCount > simulationRate * cascadeLagThreshold)
@@ -1425,8 +1339,8 @@ void PhysicsSystem::sendServerMessages()
 	if (sessions.count() == 0)
 		return;
 
-	auto threadPool = ((GardenJobSystem*)this->jobSystem)->getThreadPool();
-	threadPool->addItems([this, &sessions](const ThreadPool::Task& task)
+	auto& threadPool = ThreadSystem::Instance::get()->getForegroundPool();
+	threadPool.addItems([this, &sessions](const ThreadPool::Task& task)
 	{
 		auto manager = Manager::Instance::get();
 		auto networkSystem = NetworkSystem::Instance::get();
@@ -1484,7 +1398,7 @@ void PhysicsSystem::sendServerMessages()
 		}
 	},
 	sessions.count());
-	threadPool->wait();
+	threadPool.wait();
 }
 
 //**********************************************************************************************************************
