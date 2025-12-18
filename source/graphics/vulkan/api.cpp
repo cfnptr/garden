@@ -156,23 +156,18 @@ static vk::Instance createVkInstance(const string& appName, Version appVersion,
 
 	auto extensionProperties = vk::enumerateInstanceExtensionProperties();
 	auto layerProperties = vk::enumerateInstanceLayerProperties();
-	const void* instanceInfoNext = nullptr;
-
-	#if GARDEN_DEBUG
-	vk::DebugUtilsMessengerCreateInfoEXT debugUtilsInfo;
-	#endif
-
-	#if GARDEN_GAPI_VALIDATIONS
+	
 	for	(const auto& properties : layerProperties)
 	{
-		if (strcmp(properties.layerName.data(), "VK_LAYER_KHRONOS_validation") == 0)
-		{
+		if (strcmp(properties.layerName.data(), "VK_LAYER_MESA_anti_lag") == 0)
+			layers.push_back("VK_LAYER_MESA_anti_lag");
+		#if GARDEN_GAPI_VALIDATIONS
+		else if (strcmp(properties.layerName.data(), "VK_LAYER_KHRONOS_validation") == 0)
 			layers.push_back("VK_LAYER_KHRONOS_validation");
-			break;
-		}
+		#endif
 	}
-	#endif
 
+	const void* instanceInfoNext = nullptr;
 	#if GARDEN_DEBUG
 	for	(const auto& properties : extensionProperties)
 	{
@@ -180,6 +175,7 @@ static vk::Instance createVkInstance(const string& appName, Version appVersion,
 			features.debugUtils = true;
 	}
 
+	vk::DebugUtilsMessengerCreateInfoEXT debugUtilsInfo;
 	if (features.debugUtils)
 	{
 		if (!hasExtension(extensions, VK_EXT_DEBUG_UTILS_EXTENSION_NAME))
@@ -468,6 +464,7 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 
 	auto extensionProperties = physicalDevice.enumerateDeviceExtensionProperties();
 	auto hasDeferredHostOperations = false, hasAccelerationStructure = false;
+	auto hasDemoteToHelperInv = false;
 
 	for (const auto& properties : extensionProperties)
 	{
@@ -481,6 +478,8 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 			hasDeferredHostOperations = true;
 		else if (strcmp(properties.extensionName, VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME) == 0)
 			hasAccelerationStructure = true;
+		else if (strcmp(properties.extensionName, VK_EXT_SHADER_DEMOTE_TO_HELPER_INVOCATION_EXTENSION_NAME) == 0)
+			hasDemoteToHelperInv = true;
 		else if (strcmp(properties.extensionName, VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME) == 0)
 			features.rayTracing = true;
 		else if (strcmp(properties.extensionName, VK_KHR_RAY_QUERY_EXTENSION_NAME) == 0)
@@ -527,6 +526,7 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 		vk::PhysicalDeviceAccelerationStructureFeaturesKHR accelerationStructure;
 		vk::PhysicalDeviceRayTracingPipelineFeaturesKHR rayTracingPipeline;
 		vk::PhysicalDeviceRayQueryFeaturesKHR rayQuery;
+		vk::PhysicalDeviceShaderDemoteToHelperInvocationFeaturesEXT demoteToHelper;
 		vk::PhysicalDeviceAntiLagFeaturesAMD amdAntiLag;
 		#if GARDEN_OS_MACOS
 		vk::PhysicalDevicePortabilitySubsetFeaturesKHR portability;
@@ -644,6 +644,16 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 	else
 	{
 		features.rayTracing = features.rayQuery = false;
+	}
+
+	if (hasDemoteToHelperInv)
+	{
+		vkFeatures->device.pNext = &vkFeatures->demoteToHelper;
+		physicalDevice.getFeatures2(&vkFeatures->device);
+
+		if (vkFeatures->demoteToHelper.shaderDemoteToHelperInvocation)
+			extensions.push_back(VK_EXT_SHADER_DEMOTE_TO_HELPER_INVOCATION_EXTENSION_NAME);
+		else hasDemoteToHelperInv = false;
 	}
 
 	#if GARDEN_NVIDIA_DLSS
@@ -776,6 +786,13 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 		vkFeatures->rayQuery.rayQuery = VK_TRUE;
 		*lastPNext = &vkFeatures->rayQuery;
 		lastPNext = &vkFeatures->rayQuery.pNext;
+	}
+	if (hasDemoteToHelperInv)
+	{
+		vkFeatures->demoteToHelper = vk::PhysicalDeviceShaderDemoteToHelperInvocationFeaturesEXT();
+		vkFeatures->demoteToHelper.shaderDemoteToHelperInvocation = VK_TRUE;
+		*lastPNext = &vkFeatures->demoteToHelper;
+		lastPNext = &vkFeatures->demoteToHelper.pNext;
 	}
 	if (features.amdAntiLag)
 	{

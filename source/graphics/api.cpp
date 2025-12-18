@@ -15,6 +15,7 @@
 #include "garden/graphics/api.hpp"
 #include "garden/graphics/vulkan/api.hpp"
 #include "garden/graphics/glfw.hpp" // Note: Do not move it.
+#include "garden/system/log.hpp" // TODO: we should not include system here
 
 #if GARDEN_OS_WINDOWS
 #define GLFW_EXPOSE_NATIVE_WIN32
@@ -98,9 +99,8 @@ void GraphicsAPI::initialize(GraphicsBackend backendType, const string& appName,
 	bool useVsync, bool useTripleBuffering, bool isFullscreen, bool isDecorated)
 {
 	#if GARDEN_OS_LINUX
-	// Note: fixes cursor loading on Wayland.
 	setenv("XCURSOR_SIZE", "24", 0);
-	setenv("XCURSOR_THEME", "default", 0);
+	// TODO: remove cursor size after fixing: https://github.com/glfw/glfw/issues/2668
 
 	if (isEnv("GLFW_PLATFORM", "x11"))
 		glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_X11);
@@ -111,7 +111,7 @@ void GraphicsAPI::initialize(GraphicsBackend backendType, const string& appName,
 
 	glfwSetErrorCallback([](int error_code, const char* description)
 	{
-		throw GardenError("GLFW::ERROR: " + string(description) + " (code: " + to_string(error_code) + ")");
+		GARDEN_LOG_ERROR("GLFW::ERROR: " + string(description) + " (code: " + to_string(error_code) + ")");
 	});
 
 	GARDEN_ASSERT_MSG(!apiInstance, "Graphics API is already initialized");
@@ -120,6 +120,7 @@ void GraphicsAPI::initialize(GraphicsBackend backendType, const string& appName,
 		apiInstance = new VulkanAPI(appName, appDataName, appVersion, windowSize, 
 			threadCount, useVsync, useTripleBuffering, isFullscreen, isDecorated);
 	}
+	else abort();
 }
 void GraphicsAPI::terminate()
 {

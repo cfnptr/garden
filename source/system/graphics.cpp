@@ -196,6 +196,7 @@ void GraphicsSystem::preInit()
 	if (settingsSystem)
 	{
 		settingsSystem->getBool("render.useVsync", useVsync);
+		settingsSystem->getBool("render.useLowLatency", useLowLatency);
 		settingsSystem->getInt("render.maxFrameRate", maxFrameRate);
 	}
 }
@@ -393,11 +394,11 @@ void GraphicsSystem::update()
 	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
 		auto vulkanAPI = VulkanAPI::get();
-		if (vulkanAPI->features.nvLowLatency && nvMaxFrameRate != maxFrameRate)
+		if (vulkanAPI->features.nvLowLatency && (nvLowLatency != useLowLatency || nvMaxFrameRate != maxFrameRate))
 		{
-			vk::LatencySleepModeInfoNV sleepModeInfo(VK_TRUE, VK_TRUE, 1000000 / (uint32)maxFrameRate);
+			vk::LatencySleepModeInfoNV sleepModeInfo(useLowLatency, VK_TRUE, 1000000 / (uint32)maxFrameRate);
 			vulkanAPI->device.setLatencySleepModeNV(vulkanAPI->vulkanSwapchain->getInstance(), sleepModeInfo);
-			nvMaxFrameRate = maxFrameRate;
+			nvLowLatency = useLowLatency; nvMaxFrameRate = maxFrameRate; 
 		}
 	}
 	else abort();
@@ -476,7 +477,7 @@ void GraphicsSystem::present()
 
 		if (graphicsAPI->swapchain->present())
 		{
-			if (!useVsync && !graphicsAPI->hasLowLatency())
+			if (!useVsync && (!useLowLatency || !graphicsAPI->hasLowLatency()))
 				limitFrameRate(beginSleepClock, maxFrameRate);
 		}
 		else
