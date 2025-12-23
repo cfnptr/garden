@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+if (NOT GARDEN_USE_NVIDIA_DLSS)
+	set(GARDEN_NVIDIA_DLSS 0)
+	return()
+endif()
+
 if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 	message(STATUS "Nvidia DLSS does not support macOS or iOS!")
 	set(GARDEN_NVIDIA_DLSS 0)
