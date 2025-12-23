@@ -115,6 +115,7 @@ ToneMappingSystem::~ToneMappingSystem()
 void ToneMappingSystem::init()
 {
 	auto manager = Manager::Instance::get();
+	ECSM_SUBSCRIBE_TO_EVENT("PreLdrRender", ToneMappingSystem::preLdrRender);
 	ECSM_SUBSCRIBE_TO_EVENT("LdrRender", ToneMappingSystem::ldrRender);
 	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", ToneMappingSystem::dsRecreate);
 	ECSM_SUBSCRIBE_TO_EVENT("BloomRecreate", ToneMappingSystem::dsRecreate);
@@ -134,6 +135,7 @@ void ToneMappingSystem::deinit()
 		graphicsSystem->destroy(luminanceBuffer);
 
 		auto manager = Manager::Instance::get();
+		ECSM_UNSUBSCRIBE_FROM_EVENT("PreLdrRender", ToneMappingSystem::preLdrRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("LdrRender", ToneMappingSystem::ldrRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("GBufferRecreate", ToneMappingSystem::dsRecreate);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("BloomRecreate", ToneMappingSystem::dsRecreate);
@@ -141,29 +143,37 @@ void ToneMappingSystem::deinit()
 }
 
 //**********************************************************************************************************************
+void ToneMappingSystem::preLdrRender()
+{
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	if (lastUpscaleState != graphicsSystem->useUpscaling)
+	{
+		graphicsSystem->destroy(descriptorSet); descriptorSet = {}; 
+		lastUpscaleState = graphicsSystem->useUpscaling;
+	}
+
+	auto pipelineView = graphicsSystem->get(pipeline);
+	auto luminanceBufferView = graphicsSystem->get(luminanceBuffer);
+	if (!pipelineView->isReady() || !luminanceBufferView->isReady())
+		return;
+
+	if (!descriptorSet)
+	{
+		// Note: we should create DS here, because LdrRender is inside render pass.
+		auto uniforms = getUniforms(graphicsSystem, luminanceBuffer, 
+			options.useBloomBuffer, options.useLightAbsorption);
+		descriptorSet = graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms));
+		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.deferred.toneMapping");
+	}
+}
 void ToneMappingSystem::ldrRender()
 {
 	SET_CPU_ZONE_SCOPED("Tone Mapping LDR Render");
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto pipelineView = graphicsSystem->get(pipeline);
-	auto luminanceBufferView = graphicsSystem->get(luminanceBuffer);
-
-	if (!pipelineView->isReady() || !luminanceBufferView->isReady())
+	if (!pipelineView->isReady())
 		return;
-
-	if (lastUpscaleState != graphicsSystem->useUpscaling)
-	{
-		graphicsSystem->destroy(descriptorSet); descriptorSet = {}; 
-		lastUpscaleState = graphicsSystem->useUpscaling;
-	}
-	if (!descriptorSet)
-	{
-		auto uniforms = getUniforms(graphicsSystem, luminanceBuffer, 
-			options.useBloomBuffer, options.useLightAbsorption);
-		descriptorSet = graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms));
-		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.deferred.toneMapping");
-	}
 
 	auto bloomSystem = BloomRenderSystem::Instance::tryGet();
 	auto inFlightIndex = graphicsSystem->getInFlightIndex();
