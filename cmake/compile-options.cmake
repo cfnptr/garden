@@ -37,7 +37,7 @@ elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64" OR CMAKE_SYSTEM_PROCESSOR STREQU
 
 	if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
 		if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-			add_link_options(-fuse-ld=lld)
+			add_link_options(-fuse-ld=lld) # There is no lld in AppleClang.
 		else()
 			add_compile_options(-fno-fat-lto-objects)
 		endif()
@@ -45,7 +45,9 @@ elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64" OR CMAKE_SYSTEM_PROCESSOR STREQU
 endif()
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang") # Note: Do not remove MATCHES!
-	add_compile_options(-ffp-model=precise) # Disabling fast-math, it breaks math.
+	if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
+		add_compile_options(-ffp-model=precise) # Disabling fast-math, it breaks math.
+	endif()
 	if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 		add_compile_options(-fstandalone-debug)
 	endif()

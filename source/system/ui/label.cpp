@@ -169,7 +169,7 @@ UiLabelSystem::UiLabelSystem(bool setSingleton) : Singleton(setSingleton)
 	manager->addGroupSystem<IMeshRenderSystem>(this);
 
 	ECSM_SUBSCRIBE_TO_EVENT("Update", UiLabelSystem::update);
-	ECSM_SUBSCRIBE_TO_EVENT("LocaleChange", UiLabelSystem::localeChange);
+	ECSM_TRY_SUBSCRIBE_TO_EVENT("LocaleChange", UiLabelSystem::localeChange);
 }
 UiLabelSystem::~UiLabelSystem()
 {
@@ -181,7 +181,7 @@ UiLabelSystem::~UiLabelSystem()
 		manager->removeGroupSystem<IMeshRenderSystem>(this);
 
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Update", UiLabelSystem::update);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("LocaleChange", UiLabelSystem::localeChange);
+		ECSM_TRY_UNSUBSCRIBE_FROM_EVENT("LocaleChange", UiLabelSystem::localeChange);
 	}
 	unsetSingleton();
 }
