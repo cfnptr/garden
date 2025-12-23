@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+if (NOT GARDEN_USE_STEAMWORKS_SDK)
+	set(GARDEN_STEAMWORKS_SDK 0)
+	return()
+endif()
+
 if(NOT DEFINED GARDEN_STEAMWORKS_SDK_DIR)
 	set(GARDEN_STEAMWORKS_SDK_DIR libraries/steamworks-sdk)
 endif()

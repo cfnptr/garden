@@ -231,7 +231,6 @@ if(NOT GARDEN_PACK_RESOURCES)
 endif()
 
 include(FetchContent)
-
 find_package(Vulkan REQUIRED)
 find_package(assimp REQUIRED)
 
@@ -338,12 +337,8 @@ if(GARDEN_USE_TRACY_PROFILER)
 	list(APPEND GARDEN_LINK_LIBS Tracy::TracyClient)
 endif()
 
-if(GARDEN_USE_NVIDIA_DLSS)
-	include(cmake/nvidia-dlss.cmake)
-endif()
-if(GARDEN_USE_STEAMWORKS_SDK)
-	include(cmake/steamworks-sdk.cmake)
-endif()
+include(cmake/nvidia-dlss.cmake)
+include(cmake/steamworks-sdk.cmake)
 
 configure_file(cmake/defines.hpp.in include/garden/defines.hpp)
 
