@@ -228,7 +228,7 @@ earlyFragmentTests in;
 ## Shader Variant
 
 You can implement different shader code paths, permutations using variants. Each variant is a separate 
-instance of the pipeline in runtime. And we can choose which variant to use during the pipeline binding.
+instance of the pipeline at runtime. And we can choose which variant to use during the pipeline binding.
 
 ```
 #variantCount 2
@@ -273,12 +273,12 @@ rayPayload float4 payload;
 
 ### Ray Tracing Shaders
 
-**.rgen** - Ray generation shader
-**.rint** - Ray custom intersection shader
-**.rahit** - Ray any hit shader
-**.rchit** - Ray closest hit shader
-**.rmiss** - Ray miss shader
-**.rcall** - Callable shader
+* **.rgen** - Ray generation shader
+* **.rint** - Ray custom intersection shader
+* **.rahit** - Ray any hit shader
+* **.rchit** - Ray closest hit shader
+* **.rmiss** - Ray miss shader
+* **.rcall** - Callable shader
 
 ## Bindless (Unsized Arrays)
 
@@ -308,6 +308,7 @@ buffer readonly VertexBuffers
 {
 	VertexBuffer data[];
 } vertexBuffers;
+
 uniform pushConstants
 {
     VertexBuffer vertexBuffer;
