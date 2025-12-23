@@ -172,7 +172,7 @@ void ToneMappingSystem::ldrRender()
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto pipelineView = graphicsSystem->get(pipeline);
-	if (!pipelineView->isReady())
+	if (!pipelineView->isReady() || !descriptorSet)
 		return;
 
 	auto bloomSystem = BloomRenderSystem::Instance::tryGet();
