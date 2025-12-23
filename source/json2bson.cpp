@@ -80,7 +80,7 @@ int main(int argc, char *argv[])
 {
 	if (argc < 2)
 	{
-		cout << "json2bson: error: no file name\n";
+		cout << "json2bson: error: no file name" << endl;
 		return EXIT_FAILURE;
 	}
 
@@ -104,19 +104,19 @@ int main(int argc, char *argv[])
 				"  -t <value>    Specify thread pool size. (Uses all cores by default)\n"
 				"  -h            Display available options.\n"
 				"  --help        Display available options.\n"
-				"  --version     Display converter version information.\n";
+				"  --version     Display converter version information." << endl;
 			return EXIT_SUCCESS;
 		}
 		else if (strcmp(arg, "--version") == 0)
 		{
-			cout << "json2bson " GARDEN_VERSION_STRING "\n";
+			cout << "json2bson " GARDEN_VERSION_STRING << endl;
 			return EXIT_SUCCESS;
 		}
 		else if (strcmp(arg, "-i") == 0)
 		{
 			if (i + 1 >= argc)
 			{
-				cout << "json2bson: error: no input directory\n";
+				cout << "json2bson: error: no input directory" << endl;
 				return EXIT_FAILURE;
 			}
 
@@ -126,7 +126,7 @@ int main(int argc, char *argv[])
 		{
 			if (i + 1 >= argc)
 			{
-				cout << "json2bson: error: no output directory\n";
+				cout << "json2bson: error: no output directory" << endl;
 				return EXIT_FAILURE;
 			}
 
@@ -136,7 +136,7 @@ int main(int argc, char *argv[])
 		{
 			if (i + 1 >= argc)
 			{
-				cout << "json2bson: error: no thread count\n";
+				cout << "json2bson: error: no thread count" << endl;
 				return EXIT_FAILURE;
 			}
 
@@ -154,7 +154,7 @@ int main(int argc, char *argv[])
 		}
 		else if (arg[0] == '-')
 		{
-			cout << "json2bson: error: unsupported option: '" << arg << "'\n";
+			cout << string("json2bson: error: unsupported option: '") + arg + "'" << endl;
 			return EXIT_FAILURE;
 		}
 		else
@@ -173,12 +173,12 @@ int main(int argc, char *argv[])
 				{
 					auto result = Json2Bson::convertFile(arg, inputPath, outputPath);
 					if (!result)
-						cout << string("json2bson: error: no file found (") + arg + ")\n";
+						cout << string("json2bson: error: no file found (") + arg + ")\n" << flush;
 					convertResult &= result;
 				}
 				catch (const json::parse_error& e)
 				{
-					cout << string("json2bson: ") + e.what() + " (" + arg + ")\n";
+					cout << string("json2bson: ") + e.what() + " (" + arg + ")\n" << flush;
 					convertResult &= false;
 				}
 			});

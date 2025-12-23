@@ -2485,7 +2485,7 @@ int main(int argc, char *argv[])
 {
 	if (argc < 2)
 	{
-		cout << "gslc: error: no shader file name\n";
+		cout << "gslc: error: no shader file name" << endl;
 		return EXIT_FAILURE;
 	}
 
@@ -2511,19 +2511,19 @@ int main(int argc, char *argv[])
 				"  -t <value>    Specify thread pool size. (Uses all cores by default)\n"
 				"  -h            Display available options.\n"
 				"  --help        Display available options.\n"
-				"  --version     Display compiler version information.\n";
+				"  --version     Display compiler version information." << endl;
 			return EXIT_SUCCESS;
 		}
 		else if (strcmp(arg, "--version") == 0)
 		{
-			cout << "gslc " GARDEN_VERSION_STRING "\n";
+			cout << "gslc " GARDEN_VERSION_STRING << endl;
 			return EXIT_SUCCESS;
 		}
 		else if (strcmp(arg, "-i") == 0)
 		{
 			if (i + 1 >= argc)
 			{
-				cout << "gslc: error: no input directory\n";
+				cout << "gslc: error: no input directory" << endl;
 				return EXIT_FAILURE;
 			}
 
@@ -2533,7 +2533,7 @@ int main(int argc, char *argv[])
 		{
 			if (i + 1 >= argc)
 			{
-				cout << "gslc: error: no output directory\n";
+				cout << "gslc: error: no output directory" << endl;
 				return EXIT_FAILURE;
 			}
 
@@ -2543,7 +2543,7 @@ int main(int argc, char *argv[])
 		{
 			if (i + 1 >= argc)
 			{
-				cout << "gslc: error: no include directory\n";
+				cout << "gslc: error: no include directory" << endl;
 				return EXIT_FAILURE;
 			}
 
@@ -2553,7 +2553,7 @@ int main(int argc, char *argv[])
 		{
 			if (i + 1 >= argc)
 			{
-				cout << "gslc: error: no thread count\n";
+				cout << "gslc: error: no thread count" << endl;
 				return EXIT_FAILURE;
 			}
 
@@ -2571,7 +2571,7 @@ int main(int argc, char *argv[])
 		}
 		else if (arg[0] == '-')
 		{
-			cout << "gslc: error: unsupported option: '" << arg << "'\n";
+			cout << string("gslc: error: unsupported option: '") + arg + "'" << endl;
 			return EXIT_FAILURE;
 		}
 		else
@@ -2600,7 +2600,7 @@ int main(int argc, char *argv[])
 				catch (const exception& e)
 				{
 					if (strcmp(e.what(), "_GLSLC") != 0)
-						cout << string(e.what()) + "\n";
+						cout << string(e.what()) + "\n" << flush;
 				}
 	
 				try
@@ -2612,7 +2612,7 @@ int main(int argc, char *argv[])
 				catch (const exception& e)
 				{
 					if (strcmp(e.what(), "_GLSLC") != 0)
-						cout << string(e.what()) + '\n';
+						cout << string(e.what()) + '\n' << flush;
 				}
 
 				try
@@ -2624,11 +2624,11 @@ int main(int argc, char *argv[])
 				catch (const exception& e)
 				{
 					if (strcmp(e.what(), "_GLSLC") != 0)
-						cout << string(e.what()) + '\n';
+						cout << string(e.what()) + '\n' << flush;
 				}
 
 				if (!result)
-					cout << string("gslc: error: no shader files found (") + arg + ")\n";
+					cout << string("gslc: error: no shader files found (") + arg + ")\n" << flush;
 				compileResult &= result;
 			});
 		}

@@ -13,8 +13,7 @@
 # limitations under the License.
 
 if (NOT DEFINED GARDEN_NVIDIA_DLSS_PROJECT_ID AND NOT DEFINED GARDEN_NVIDIA_DLSS_APP_ID)
-	message(FATAL_ERROR "Not defined Nvidia DLSS project or application ID!")
-	# Note that DLSS project ID should be a GUID-like string!
+	set(GARDEN_NVIDIA_DLSS_PROJECT_ID "5df9fb9c-bec4-4cf0-99c4-27b54fd7237e")
 endif()
 
 message(STATUS "Fetching Nvidia DLSS SDK, please wait...")

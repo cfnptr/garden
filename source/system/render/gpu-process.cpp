@@ -206,7 +206,7 @@ void GpuProcessSystem::calcGaussCoeffs(float sigma, float2* coeffs, uint8 coeffC
 		auto k = k0 + k1, o = k1 / k;
 		coeffs[i] = float2(k, o);
 		totalWeight += (k0 + k1) * 2.0f;
-    }
+	}
 
 	for (uint8 i = 0; i < coeffCount; i++)
 		coeffs[i].x /= totalWeight;

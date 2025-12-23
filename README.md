@@ -37,8 +37,8 @@ At least GPU with Vulkan API 1.2 support.
 * AMD [Excavator](https://en.wikipedia.org/wiki/Excavator_(microarchitecture)) microarchitecture and newer
 * Apple [M1](https://en.wikipedia.org/wiki/Apple_M1) processor and newer
 
-These requirements are based on the support of the [AVX2](https://en.wikipedia.org/wiki/Advanced_Vector_Extensions) instruction set in the x86 architecture.
-If you want, you can freely disable it and compile for any other architecture, including **ARM**.
+These requirements are based on the support of the [AVX2](https://en.wikipedia.org/wiki/Advanced_Vector_Extensions) 
+instruction set in the x86 architecture. If you want, you can freely disable it and compile for older x86 CPUs.
 
 ## Build requirements ![CI](https://github.com/cfnptr/garden/actions/workflows/cmake.yml/badge.svg)
 
@@ -65,26 +65,29 @@ Use building [instructions](BUILDING.md) to install all required tools and libra
 | GARDEN_USE_GAPI_VALIDATIONS | Use graphics API validation layers               | `ON`          |
 | GARDEN_USE_TRACY_PROFILER   | Use Tracy frame profiler                         | `OFF`         |
 | GARDEN_USE_ASAN             | Use Clang address sanitizer                      | `OFF`         |
-| GARDEN_USE_NVIDIA_DLSS      | Use Nvidia DLSS SDK (Downloads repo)             | `OFF`         |
-| GARDEN_USE_STEAMWORKS_SDK   | Use Steamworks SDK (Manual download)             | `OFF`         |
+| GARDEN_USE_NVIDIA_DLSS      | Use Nvidia DLSS SDK (Auto-downloads repo)        | `OFF`         |
+| GARDEN_USE_STEAMWORKS_SDK   | Use Valve Steamworks SDK (Download it manually!) | `OFF`         |
 
 ### CMake variables
 
-| Name                      | Description                        | Default value                       |
-|---------------------------|------------------------------------|-------------------------------------|
-| GARDEN_APP_NAME           | Application name                   | `Garden App`                        |
-| GARDEN_APP_NAME_LOWERCASE | Application lowercase name         | `garden-app`                        |
-| GARDEN_APP_NAMESPACE      | Application C++ namespace name     | `garden::app`                       |
-| GARDEN_APP_FILE_NAME      | Application file name (executable) | `Garden App`                        |
-| GARDEN_APP_ICON_PATH      | Application icon file path         |                                     |
-| GARDEN_APP_DESCRIPTION    | Application description            | `Made using Garden engine.`         |
-| GARDEN_APP_CREATOR        | Application creator (company)      | `Garden`                            |
-| GARDEN_APP_COPYRIGHT      | Application copyright (license)    | `20XX {name}. All rights reserved.` |
-| GARDEN_APP_VERSION_MAJOR  | Application major version          | `1`                                 |
-| GARDEN_APP_VERSION_MINOR  | Application minor version          | `0`                                 |
-| GARDEN_APP_VERSION_PATCH  | Application patch version          | `0`                                 |
-| GARDEN_APP_RESOURCES_DIR  | Application resources directory    | `garden/resources/default`          |
-| GARDEN_APP_CACHE_DIR      | Application cache directory        | `garden/.cache`                     |
+| Name                          | Description                        | Default value                          |
+|-------------------------------|------------------------------------|----------------------------------------|
+| GARDEN_APP_NAME               | Application name                   | `Garden App`                           |
+| GARDEN_APP_NAME_LOWERCASE     | Application lowercase name         | `garden-app`                           |
+| GARDEN_APP_NAMESPACE          | Application C++ namespace name     | `garden::app`                          |
+| GARDEN_APP_FILE_NAME          | Application file name (executable) | `Garden App`                           |
+| GARDEN_APP_ICON_PATH          | Application icon file path         |                                        |
+| GARDEN_APP_DESCRIPTION        | Application description            | `Made using Garden engine.`            |
+| GARDEN_APP_CREATOR            | Application creator (company)      | `Garden`                               |
+| GARDEN_APP_COPYRIGHT          | Application copyright (license)    | `20XX {name}. All rights reserved.`    |
+| GARDEN_APP_VERSION_MAJOR      | Application major version          | `1`                                    |
+| GARDEN_APP_VERSION_MINOR      | Application minor version          | `0`                                    |
+| GARDEN_APP_VERSION_PATCH      | Application patch version          | `0`                                    |
+| GARDEN_APP_RESOURCES_DIR      | Application resources directory    | `garden/resources/default`             |
+| GARDEN_APP_CACHE_DIR          | Application cache directory        | `garden/.cache`                        |
+| GARDEN_STEAMWORKS_SDK_DIR     | Valve Steamworks SDK directory     | `libraries/steamworks-sdk`             |
+| GARDEN_NVIDIA_DLSS_APP_ID     | Nvidia DLSS application ID         |                                        |
+| GARDEN_NVIDIA_DLSS_PROJECT_ID | Nvidia DLSS project ID (GUID)      | `5df9fb9c-bec4-4cf0-99c4-27b54fd7237e` |
 
 ### CMake targets
 
@@ -124,6 +127,7 @@ You can install **Visual Studio Code** [extension](https://marketplace.visualstu
 * [PNG](https://github.com/pnggroup/libpng) (PNG-2 license)
 * [stb](https://github.com/nothings/stb) (MIT license)
 * [TinyEXR](https://github.com/syoyo/tinyexr) (BSD-3-Clause license)
+* [TinyGLTF](https://github.com/syoyo/tinygltf) (MIT license)
 * [Tracy](https://github.com/wolfpld/tracy) (BSD-3-Clause license)
 * [VulkanMemoryAllocator](https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator) (MIT license)
 * [Vulkan SDK](https://github.com/KhronosGroup) (Apache-2.0 license)
@@ -137,3 +141,8 @@ You can install **Visual Studio Code** [extension](https://marketplace.visualstu
 ## Physically Based Materials
 
 ![Material chart](https://google.github.io/filament/images/material_chart.jpg)
+
+
+## Trademarks
+
+DLSS (Deep Learning Super Sampling) is a registered trademark of NVIDIA Corporation.

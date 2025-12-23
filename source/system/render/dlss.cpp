@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// This software contains source code provided by NVIDIA Corporation.
+
 #include "garden/system/render/dlss.hpp"
 
 #if GARDEN_NVIDIA_DLSS
@@ -68,7 +70,7 @@ static NVSDK_NGX_PerfQuality_Value toNgxPerfQUality(DlssQuality quality)
 
 static void onDlssLog(const char* message, NVSDK_NGX_Logging_Level loggingLevel, NVSDK_NGX_Feature sourceComponent)
 {
-	std::cout << message;
+	std::cout << message << flush;
 }
 
 //**********************************************************************************************************************
@@ -86,7 +88,7 @@ static NVSDK_NGX_Resource_VK imageToNgxResource(VulkanAPI* vulkanAPI,
 	auto isStorage = hasAnyFlag(baseImageView->getUsage(), Image::Usage::Storage);
 	auto imageSize = imageViewView->calcSize();
 
-    VkImageSubresourceRange subresourceRange;
+	VkImageSubresourceRange subresourceRange;
 	subresourceRange.aspectMask = isFormatDepthOrStencil(imageViewView->getFormat()) ?
 		VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
 	subresourceRange.baseMipLevel = imageViewView->getBaseMip();
@@ -94,7 +96,7 @@ static NVSDK_NGX_Resource_VK imageToNgxResource(VulkanAPI* vulkanAPI,
 	subresourceRange.baseArrayLayer = imageViewView->getBaseLayer();
 	subresourceRange.layerCount = imageViewView->getLayerCount();
 
-    return NVSDK_NGX_Create_ImageView_Resource_VK(
+	return NVSDK_NGX_Create_ImageView_Resource_VK(
 		(VkImageView)ResourceExt::getInstance(**imageViewView), (VkImage)ResourceExt::getInstance(**baseImageView), 
 		subresourceRange, (VkFormat)toVkFormat(imageViewView->getFormat()), imageSize.x, imageSize.y, isStorage);
 }
@@ -215,10 +217,10 @@ static NVSDK_NGX_Handle* createDlssFeature(CommandBuffer* commandBuffer, NVSDK_N
 
 	// TODO: renderPreset
 	// NVSDK_NGX_Parameter_SetUI(ngxParameters, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_DLAA, renderPreset);
-    // NVSDK_NGX_Parameter_SetUI(ngxParameters, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Quality, renderPreset);
-    // NVSDK_NGX_Parameter_SetUI(ngxParameters, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Balanced, renderPreset);
-    // NVSDK_NGX_Parameter_SetUI(ngxParameters, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Performance, renderPreset);
-    // NVSDK_NGX_Parameter_SetUI(ngxParameters, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_UltraPerformance, renderPreset);
+	// NVSDK_NGX_Parameter_SetUI(ngxParameters, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Quality, renderPreset);
+	// NVSDK_NGX_Parameter_SetUI(ngxParameters, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Balanced, renderPreset);
+	// NVSDK_NGX_Parameter_SetUI(ngxParameters, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Performance, renderPreset);
+	// NVSDK_NGX_Parameter_SetUI(ngxParameters, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_UltraPerformance, renderPreset);
 
 	NVSDK_NGX_Handle* ngxFeature = nullptr;
 	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)

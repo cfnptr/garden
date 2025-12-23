@@ -67,3 +67,6 @@
 [submodule "resources"]
 	path = resources
 	url = https://github.com/cfnptr/garden-resources
+[submodule "libraries/tinygltf"]
+	path = libraries/tinygltf
+	url = https://github.com/syoyo/tinygltf
