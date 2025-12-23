@@ -81,6 +81,7 @@ private:
 
 	void init();
 	void deinit();
+	void preLdrRender();
 	void ldrRender();
 	void dsRecreate();
 

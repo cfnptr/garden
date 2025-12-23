@@ -1262,9 +1262,11 @@ void PhysicsSystem::flushNetRigidbodies()
 {
 	SET_CPU_ZONE_SCOPED("Net Rigidbodies Flush");
 
-	auto manager = Manager::Instance::get();
-	auto networkSystem = NetworkSystem::Instance::get();
+	auto networkSystem = NetworkSystem::Instance::tryGet();
+	if (!networkSystem)
+		return;
 
+	auto manager = Manager::Instance::get();
 	netRigidbodyLocker.lock();
 	for (auto pair : netRigidbodies)
 	{

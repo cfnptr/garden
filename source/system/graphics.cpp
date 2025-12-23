@@ -589,8 +589,8 @@ ID<ImageView> GraphicsSystem::getEmptyTexture()
 	if (!emptyTexture)
 	{
 		const Color data[1] = { Color::transparent };
-		auto texture = createImage(Image::Format::UnormB8G8R8A8,
-			Image::Usage::Sampled | Image::Usage::TransferDst, { { data } }, uint2::one);
+		auto texture = createImage(Image::Format::UnormB8G8R8A8, Image::Usage::Sampled | 
+			Image::Usage::TransferDst | Image::Usage::TransferQ, { { data } }, uint2::one);
 		SET_RESOURCE_DEBUG_NAME(texture, "image.emptyTexture");
 		emptyTexture = GraphicsAPI::get()->imagePool.get(texture)->getDefaultView();
 	}
@@ -601,8 +601,8 @@ ID<ImageView> GraphicsSystem::getWhiteTexture()
 	if (!whiteTexture)
 	{
 		const Color data[1] = { Color::white };
-		auto texture = createImage(Image::Format::UnormB8G8R8A8,
-			Image::Usage::Sampled | Image::Usage::TransferDst, { { data } }, uint2::one);
+		auto texture = createImage(Image::Format::UnormB8G8R8A8, Image::Usage::Sampled | 
+			Image::Usage::TransferDst | Image::Usage::TransferQ, { { data } }, uint2::one);
 		SET_RESOURCE_DEBUG_NAME(texture, "image.whiteTexture");
 		whiteTexture = GraphicsAPI::get()->imagePool.get(texture)->getDefaultView();
 	}
@@ -613,8 +613,8 @@ ID<ImageView> GraphicsSystem::getGreenTexture()
 	if (!greenTexture)
 	{
 		const Color data[1] = { Color::green };
-		auto texture = createImage(Image::Format::UnormB8G8R8A8,
-			Image::Usage::Sampled | Image::Usage::TransferDst, { { data } }, uint2::one);
+		auto texture = createImage(Image::Format::UnormB8G8R8A8, Image::Usage::Sampled | 
+			Image::Usage::TransferDst | Image::Usage::TransferQ, { { data } }, uint2::one);
 		SET_RESOURCE_DEBUG_NAME(texture, "image.greenTexture");
 		greenTexture = GraphicsAPI::get()->imagePool.get(texture)->getDefaultView();
 	}
@@ -625,8 +625,8 @@ ID<ImageView> GraphicsSystem::getNormalMapTexture()
 	if (!normalMapTexture)
 	{
 		const Color data[1] = { Color(255, 127, 127, 255) }; // Note: R/B flipped.
-		auto texture = createImage(Image::Format::UnormB8G8R8A8,
-			Image::Usage::Sampled | Image::Usage::TransferDst, { { data } }, uint2::one);
+		auto texture = createImage(Image::Format::UnormB8G8R8A8, Image::Usage::Sampled | 
+			Image::Usage::TransferDst | Image::Usage::TransferQ, { { data } }, uint2::one);
 		SET_RESOURCE_DEBUG_NAME(texture, "image.normalMapTexture");
 		normalMapTexture = GraphicsAPI::get()->imagePool.get(texture)->getDefaultView();
 	}
