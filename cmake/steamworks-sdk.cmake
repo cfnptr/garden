@@ -12,19 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-if (NOT DEFINED GARDEN_STEAMWORKS_APP_ID)
-	message(FATAL_ERROR "Not defined Valve Steam application ID!")
-endif()
-
-message(STATUS "Included Valve Steamworks SDK.")
-
 if(NOT DEFINED GARDEN_STEAMWORKS_SDK_DIR)
 	set(GARDEN_STEAMWORKS_SDK_DIR libraries/steamworks-sdk)
 endif()
 
 if(NOT EXISTS ${PROJECT_SOURCE_DIR}/${GARDEN_STEAMWORKS_SDK_DIR})
-	message(FATAL_ERROR "Steamworks SDK directory does not exist! Please download SDK.")
+	message(WARNING "Steamworks SDK directory does not exist! Please download SDK.")
+	set(GARDEN_STEAMWORKS_SDK 0)
+	return()
 endif()
+
+if (NOT DEFINED GARDEN_STEAMWORKS_APP_ID)
+	message(FATAL_ERROR "Not defined Valve Steam application ID!")
+endif()
+
+message(STATUS "Included Valve Steamworks SDK.")
 
 set(STEAMWORKS_SDK_INCLUDE_DIR ${GARDEN_STEAMWORKS_SDK_DIR}/public)
 set(STEAMWORKS_SDK_BIN_DIR ${GARDEN_STEAMWORKS_SDK_DIR}/redistributable_bin)
@@ -48,3 +50,5 @@ configure_file(${STEAMWORKS_SDK_LIB} ${CMAKE_BINARY_DIR} COPYONLY)
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 	file(WRITE ${CMAKE_BINARY_DIR}/steam_appid.txt ${GARDEN_STEAMWORKS_APP_ID})
 endif()
+
+set(GARDEN_STEAMWORKS_SDK 1)
