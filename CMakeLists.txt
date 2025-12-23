@@ -227,10 +227,10 @@ include(cmake/gather-git-info.cmake)
 #***********************************************************************************************************************
 set(GARDEN_INCLUDE_DIRS ${PROJECT_BINARY_DIR}/include ${PROJECT_SOURCE_DIR}/include resources/shaders 
 	libraries/ecsm/include libraries/voxy/include libraries/vma/include libraries/stb 
-	libraries/tinyexr libraries/png ${PROJECT_BINARY_DIR}/libraries/png)
+	libraries/tinyexr libraries/tinygltf libraries/png ${PROJECT_BINARY_DIR}/libraries/png)
 set(GARDEN_LINK_LIBS Vulkan::Vulkan volk nlohmann_json::nlohmann_json xxHash::xxhash 
 	assimp::assimp ecsm-static math-static conf-static pack-static logy-static nets-static 
-	voxy glfw webp png_static tinyexr freetype FastNoise Jolt)
+	voxy glfw webp png_static tinyexr tinygltf freetype FastNoise Jolt)
 set(GARDEN_LINK_DIRS)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
@@ -314,6 +314,11 @@ add_subdirectory(libraries/png)
 set(TINYEXR_BUILD_SAMPLE OFF CACHE BOOL "" FORCE)
 add_subdirectory(libraries/tinyexr)
 
+set(TINYGLTF_BUILD_LOADER_EXAMPLE OFF CACHE BOOL "" FORCE)
+set(TINYGLTF_INSTALL OFF CACHE BOOL "" FORCE)
+set(TINYGLTF_INSTALL_VENDOR OFF CACHE BOOL "" FORCE)
+add_subdirectory(libraries/tinygltf)
+
 set(FASTNOISE2_NOISETOOL OFF CACHE BOOL "" FORCE)
 add_subdirectory(libraries/fastnoise2)
 
@@ -374,17 +379,15 @@ if(GARDEN_BUILD_GSLC)
 		stripExecutable(gslc)
 	endif()
 endif()
-
 if(GARDEN_BUILD_MODELC)
 	add_executable(modelc source/graphics/modelc.cpp)
 	target_compile_definitions(modelc PUBLIC GARDEN_MODEL_CONVERTER)
 	target_link_libraries(modelc PUBLIC garden)
 
-	if(CMAKE_BUILD_TYPE STREQUAL "Release")
+	if(CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT GARDEN_RELEASE_DEBUGGING)
 		stripExecutable(modelc)
 	endif()
 endif()
-
 if(GARDEN_BUILD_JSON2BSON)
 	add_executable(json2bson source/json2bson.cpp)
 	target_compile_definitions(json2bson PUBLIC JSON2BSON)
@@ -394,7 +397,6 @@ if(GARDEN_BUILD_JSON2BSON)
 		stripExecutable(json2bson)
 	endif()
 endif()
-
 if(GARDEN_BUILD_EQUI2CUBE)
 	add_executable(equi2cube source/graphics/equi2cube.cpp)
 	target_compile_definitions(equi2cube PUBLIC EQUI2CUBE)

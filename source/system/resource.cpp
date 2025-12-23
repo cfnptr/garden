@@ -1578,7 +1578,7 @@ static bool loadOrCompileGraphics(GslCompiler::GraphicsData& data)
 		catch (const exception& e)
 		{
 			if (strcmp(e.what(), "_GLSLC") != 0)
-				cout << vertexInputPath.generic_string() << "(.frag): " << e.what() << "\n"; // TODO: get info which stage throw.
+				cout << vertexInputPath.generic_string() + "(.frag): " + e.what() + "\n"; // TODO: get info which stage throw.
 			GARDEN_LOG_ERROR("Failed to compile graphics shaders. (name: " + dataPath.generic_string() + ")");
 			return false;
 		}
@@ -1830,7 +1830,7 @@ static bool loadOrCompileCompute(GslCompiler::ComputeData& data)
 		catch (const exception& e)
 		{
 			if (strcmp(e.what(), "_GLSLC") != 0)
-				cout << computeInputPath.generic_string() << ": " << e.what() << "\n";
+				cout << computeInputPath.generic_string() + ": " + e.what() + "\n";
 			GARDEN_LOG_ERROR("Failed to compile compute shader. (name: " + dataPath.generic_string() + ")");
 			return false;
 		}
@@ -2035,7 +2035,7 @@ static bool loadOrCompileRayTracing(GslCompiler::RayTracingData& data)
 		catch (const exception& e)
 		{
 			if (strcmp(e.what(), "_GLSLC") != 0)
-				cout << rayGenInputPath.generic_string() << "(.rXXX): " << e.what() << "\n"; // TODO: get info which stage throw.
+				cout << rayGenInputPath.generic_string() + "(.rXXX): " + e.what() + "\n"; // TODO: get info which stage throw.
 			GARDEN_LOG_ERROR("Failed to compile ray tracing shaders. (name: " + dataPath.generic_string() + ")");
 			return false;
 		}

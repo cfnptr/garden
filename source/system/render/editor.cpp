@@ -884,9 +884,9 @@ static void renderDirectory(const fs::path& path, fs::path& selectedEntry)
 static time_t to_time_t(fs::file_time_type tp) noexcept
 {
 	// Dirty hack to convert last_write_time to the time_t. Because C++ standard is a big pile of garbage.
-    auto sctp = chrono::time_point_cast<chrono::system_clock::duration>(
+	auto sctp = chrono::time_point_cast<chrono::system_clock::duration>(
 		tp - fs::file_time_type::clock::now() + chrono::system_clock::now());
-    return chrono::system_clock::to_time_t(sctp);
+	return chrono::system_clock::to_time_t(sctp);
 }
 
 void EditorRenderSystem::showFileSelector()

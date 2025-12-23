@@ -259,21 +259,21 @@ void ImGuiRenderSystem::preInit()
 		return inputSystem->getClipboard().empty() ? nullptr : inputSystem->getClipboard().c_str();
 	};
 
-    auto mainViewport = ImGui::GetMainViewport();
+	auto mainViewport = ImGui::GetMainViewport();
 	mainViewport->PlatformHandle = graphicsAPI->window;
 	#ifdef _WIN32
 	mainViewport->PlatformHandleRaw = glfwGetWin32Window((GLFWwindow*)graphicsAPI->window);
 	#elif defined(__APPLE__)
 	mainViewport->PlatformHandleRaw = (void*)glfwGetCocoaWindow((GLFWwindow*)graphicsAPI->window);
 	#else
-    IM_UNUSED(mainViewport);
+	IM_UNUSED(mainViewport);
 	#endif
 
-    // Note: Register a WndProc hook so we can intercept some messages.
+	// Note: Register a WndProc hook so we can intercept some messages.
 	#ifdef _WIN32
-    prevWndProc = (WNDPROC)::GetWindowLongPtrW((HWND)mainViewport->PlatformHandleRaw, GWLP_WNDPROC);
-    GARDEN_ASSERT(prevWndProc != nullptr);
-    ::SetWindowLongPtrW((HWND)mainViewport->PlatformHandleRaw, GWLP_WNDPROC, (LONG_PTR)imGuiWndProc);
+	prevWndProc = (WNDPROC)::GetWindowLongPtrW((HWND)mainViewport->PlatformHandleRaw, GWLP_WNDPROC);
+	GARDEN_ASSERT(prevWndProc != nullptr);
+	::SetWindowLongPtrW((HWND)mainViewport->PlatformHandleRaw, GWLP_WNDPROC, (LONG_PTR)imGuiWndProc);
 	#endif
 
 	auto contentScale = inputSystem->getContentScale();
@@ -646,7 +646,7 @@ static void updateImGuiTextures(ImVector<ImTextureData*>& textures,
 			auto stagingView = graphicsSystem->get(stagingBuffer);
 			auto map = stagingView->getMap();
 			for (int y = 0; y < updateRect.h; y++)
-                memcpy(map + uploadPitch * y, texture->GetPixelsAt(updateRect.x, updateRect.y + y), uploadPitch);
+				memcpy(map + uploadPitch * y, texture->GetPixelsAt(updateRect.x, updateRect.y + y), uploadPitch);
 			stagingView->flush();
 
 			ID<Image> image; *image = (uint32)(psize)texture->BackendUserData;

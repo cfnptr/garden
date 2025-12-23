@@ -61,11 +61,11 @@ static vk::Bool32 VKAPI_PTR vkDebugMessengerCallback(
 		severity = "ERROR";
 	else
 		severity = "UNKNOWN";
-	cout << "VULKAN::" << severity << ": ";
+	cout << "VULKAN::" + string(severity) + ": ";
 
 	for (int32 i = callbackData->cmdBufLabelCount - 1; i >= 0; i--)
-		cout << callbackData->pCmdBufLabels[i].pLabelName << " -> ";
-	cout << callbackData->pMessage << "\n\n";
+		cout << callbackData->pCmdBufLabels[i].pLabelName + string(" -> ");
+	cout << callbackData->pMessage + string("\n") << endl;
 
 	// Debuging break points \/
 	if (messageSeverity & vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning)
@@ -156,14 +156,21 @@ static vk::Instance createVkInstance(const string& appName, Version appVersion,
 
 	auto extensionProperties = vk::enumerateInstanceExtensionProperties();
 	auto layerProperties = vk::enumerateInstanceLayerProperties();
+	auto isNvidiaGPU = false; // Skipping Nvidia related calls for other vendors.
 	
 	for	(const auto& properties : layerProperties)
 	{
-		if (strcmp(properties.layerName.data(), "VK_LAYER_MESA_anti_lag") == 0)
+		auto layerName = string_view(properties.layerName);
+		if (layerName == "VK_LAYER_MESA_anti_lag")
 			layers.push_back("VK_LAYER_MESA_anti_lag");
 		#if GARDEN_GAPI_VALIDATIONS
-		else if (strcmp(properties.layerName.data(), "VK_LAYER_KHRONOS_validation") == 0)
+		else if (layerName == "VK_LAYER_KHRONOS_validation")
 			layers.push_back("VK_LAYER_KHRONOS_validation");
+		#endif
+
+		#if GARDEN_NVIDIA_DLSS
+		if (layerName.find("VK_LAYER_NV_") != string::npos)
+			isNvidiaGPU = true;
 		#endif
 	}
 
@@ -171,8 +178,14 @@ static vk::Instance createVkInstance(const string& appName, Version appVersion,
 	#if GARDEN_DEBUG
 	for	(const auto& properties : extensionProperties)
 	{
-		if (strcmp(properties.extensionName.data(), VK_EXT_DEBUG_UTILS_EXTENSION_NAME) == 0)
+		auto extensionName = string_view(properties.extensionName);
+		if (extensionName == VK_EXT_DEBUG_UTILS_EXTENSION_NAME)
 			features.debugUtils = true;
+
+		#if GARDEN_NVIDIA_DLSS
+		if (extensionName.find("VK_NV_") != string::npos)
+			isNvidiaGPU = true;
+		#endif
 	}
 
 	vk::DebugUtilsMessengerCreateInfoEXT debugUtilsInfo;
@@ -188,37 +201,40 @@ static vk::Instance createVkInstance(const string& appName, Version appVersion,
 	#endif
 
 	#if GARDEN_NVIDIA_DLSS
-	auto dlssDiscoveryInfo = getDlssDiscoveryInfo();
-	uint32_t dlssExtensionCount; VkExtensionProperties* dlssExtensions;
-	auto ngxResult = NVSDK_NGX_VULKAN_GetFeatureInstanceExtensionRequirements(
-		&dlssDiscoveryInfo, &dlssExtensionCount, &dlssExtensions);
-	features.nvidiaDlss = ngxResult == NVSDK_NGX_Result_Success;
-
-	if (features.nvidiaDlss)
+	if (isNvidiaGPU)
 	{
-		for (uint32 i = 0; i < dlssExtensionCount; i++)
-		{
-			auto hasNvidiaDlss = false;
-			for	(const auto& properties : extensionProperties)
-			{
-				if (strcmp(properties.extensionName.data(), dlssExtensions[i].extensionName) != 0)
-					continue;
-				hasNvidiaDlss = true;
-				break;
-			}
-
-			if (hasNvidiaDlss)
-				continue;
-			features.nvidiaDlss = false;
-			break;
-		}
+		auto dlssDiscoveryInfo = getDlssDiscoveryInfo();
+		uint32_t dlssExtensionCount; VkExtensionProperties* dlssExtensions;
+		auto ngxResult = NVSDK_NGX_VULKAN_GetFeatureInstanceExtensionRequirements(
+			&dlssDiscoveryInfo, &dlssExtensionCount, &dlssExtensions);
+		features.nvidiaDlss = ngxResult == NVSDK_NGX_Result_Success;
 
 		if (features.nvidiaDlss)
 		{
 			for (uint32 i = 0; i < dlssExtensionCount; i++)
 			{
-				if (!hasExtension(extensions, dlssExtensions[i].extensionName))
-					extensions.push_back(dlssExtensions[i].extensionName);
+				auto hasNvidiaDlss = false;
+				for	(const auto& properties : extensionProperties)
+				{
+					if (string_view(properties.extensionName) != dlssExtensions[i].extensionName)
+						continue;
+					hasNvidiaDlss = true;
+					break;
+				}
+
+				if (hasNvidiaDlss)
+					continue;
+				features.nvidiaDlss = false;
+				break;
+			}
+
+			if (features.nvidiaDlss)
+			{
+				for (uint32 i = 0; i < dlssExtensionCount; i++)
+				{
+					if (!hasExtension(extensions, dlssExtensions[i].extensionName))
+						extensions.push_back(dlssExtensions[i].extensionName);
+				}
 			}
 		}
 	}
@@ -468,41 +484,42 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 
 	for (const auto& properties : extensionProperties)
 	{
-		if (strcmp(properties.extensionName, VK_EXT_MEMORY_BUDGET_EXTENSION_NAME) == 0)
+		auto extensionName = string_view(properties.extensionName);
+		if (extensionName == VK_EXT_MEMORY_BUDGET_EXTENSION_NAME)
 			features.memoryBudget = true;
-		else if (strcmp(properties.extensionName, VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME) == 0)
+		else if (extensionName == VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME)
 			features.memoryPriority = true;
-		else if (strcmp(properties.extensionName, VK_EXT_PAGEABLE_DEVICE_LOCAL_MEMORY_EXTENSION_NAME) == 0)
+		else if (extensionName == VK_EXT_PAGEABLE_DEVICE_LOCAL_MEMORY_EXTENSION_NAME)
 			features.pageableMemory = true;
-		else if (strcmp(properties.extensionName, VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME) == 0)
+		else if (extensionName == VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME)
 			hasDeferredHostOperations = true;
-		else if (strcmp(properties.extensionName, VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME) == 0)
+		else if (extensionName == VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME)
 			hasAccelerationStructure = true;
-		else if (strcmp(properties.extensionName, VK_EXT_SHADER_DEMOTE_TO_HELPER_INVOCATION_EXTENSION_NAME) == 0)
+		else if (extensionName == VK_EXT_SHADER_DEMOTE_TO_HELPER_INVOCATION_EXTENSION_NAME)
 			hasDemoteToHelperInv = true;
-		else if (strcmp(properties.extensionName, VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME) == 0)
+		else if (extensionName == VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME)
 			features.rayTracing = true;
-		else if (strcmp(properties.extensionName, VK_KHR_RAY_QUERY_EXTENSION_NAME) == 0)
+		else if (extensionName == VK_KHR_RAY_QUERY_EXTENSION_NAME)
 			features.rayQuery = true;
-		else if (strcmp(properties.extensionName, VK_AMD_ANTI_LAG_EXTENSION_NAME) == 0)
+		else if (extensionName == VK_AMD_ANTI_LAG_EXTENSION_NAME)
 			features.amdAntiLag = true;
 
 		// TODO: finish implementing semaphore on supported gpu! api.cpp
-		// else if (strcmp(properties.extensionName, VK_NV_LOW_LATENCY_2_EXTENSION_NAME) == 0)
+		// else if (extensionName == VK_NV_LOW_LATENCY_2_EXTENSION_NAME)
 		//	features.nvLowLatency = true; 
 
 		if (versionMinor < 3)
 		{
-			if (strcmp(properties.extensionName, VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME) == 0)
+			if (extensionName == VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME)
 				features.dynamicRendering = true;
-			else if (strcmp(properties.extensionName, VK_KHR_MAINTENANCE_4_EXTENSION_NAME) == 0)
+			else if (extensionName == VK_KHR_MAINTENANCE_4_EXTENSION_NAME)
 				features.maintenance4 = true;
 		}
 		if (versionMinor < 4)
 		{
-			if (strcmp(properties.extensionName, VK_KHR_MAINTENANCE_5_EXTENSION_NAME) == 0)
+			if (extensionName == VK_KHR_MAINTENANCE_5_EXTENSION_NAME)
 				features.maintenance5 = true;
-			else if (strcmp(properties.extensionName, VK_KHR_MAINTENANCE_6_EXTENSION_NAME) == 0)
+			else if (extensionName == VK_KHR_MAINTENANCE_6_EXTENSION_NAME)
 				features.maintenance6 = true;
 		}
 	}
@@ -657,10 +674,10 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 	}
 
 	#if GARDEN_NVIDIA_DLSS
-	uint32_t dlssExtensionCount; VkExtensionProperties* dlssExtensions;
 	if (features.nvidiaDlss)
 	{
 		auto dlssDiscoveryInfo = getDlssDiscoveryInfo();
+		uint32_t dlssExtensionCount; VkExtensionProperties* dlssExtensions;
 		auto ngxResult = NVSDK_NGX_VULKAN_GetFeatureDeviceExtensionRequirements(instance, 
 			physicalDevice, &dlssDiscoveryInfo, &dlssExtensionCount, &dlssExtensions);
 		if (ngxResult != NVSDK_NGX_Result_Success)
@@ -673,7 +690,7 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 				auto hasNvidiaDlss = false;
 				for	(const auto& properties : extensionProperties)
 				{
-					if (strcmp(properties.extensionName.data(), dlssExtensions[i].extensionName) != 0)
+					if (string_view(properties.extensionName) != dlssExtensions[i].extensionName)
 						continue;
 					hasNvidiaDlss = true;
 					break;
@@ -1202,8 +1219,8 @@ void VulkanAPI::storePipelineCache()
 		if (outputStream.is_open())
 		{
 			outputStream.write("GSLC", 4);
-			const uint32 vkEngineVersion = VK_MAKE_API_VERSION(0, GARDEN_VERSION_MAJOR,
-				GARDEN_VERSION_MINOR, GARDEN_VERSION_PATCH);
+			constexpr uint32 vkEngineVersion = VK_MAKE_API_VERSION(0, 
+				GARDEN_VERSION_MAJOR, GARDEN_VERSION_MINOR, GARDEN_VERSION_PATCH);
 			const uint32 vkAppVersion = VK_MAKE_API_VERSION(0,
 				appVersion.major, appVersion.minor, appVersion.patch);
 			outputStream.write((const char*)&vkEngineVersion, sizeof(uint32));

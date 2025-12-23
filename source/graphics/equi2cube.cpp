@@ -192,7 +192,7 @@ int main(int argc, char *argv[])
 {
 	if (argc < 2)
 	{
-		cout << "equi2cube: error: no image file name\n";
+		cout << "equi2cube: error: no image file name" << endl;
 		return EXIT_FAILURE;
 	}
 
@@ -216,19 +216,19 @@ int main(int argc, char *argv[])
 				"  -t <value>    Specify thread pool size. (Uses all cores by default)\n"
 				"  -h            Display available options.\n"
 				"  --help        Display available options.\n"
-				"  --version     Display converter version information.\n";
+				"  --version     Display converter version information." << endl;
 			return EXIT_SUCCESS;
 		}
 		else if (strcmp(arg, "--version") == 0)
 		{
-			cout << "equi2cube " GARDEN_VERSION_STRING "\n";
+			cout << "equi2cube " GARDEN_VERSION_STRING << endl;
 			return EXIT_SUCCESS;
 		}
 		else if (strcmp(arg, "-i") == 0)
 		{
 			if (i + 1 >= argc)
 			{
-				cout << "equi2cube: error: no input directory\n";
+				cout << "equi2cube: error: no input directory" << endl;
 				return EXIT_FAILURE;
 			}
 
@@ -238,7 +238,7 @@ int main(int argc, char *argv[])
 		{
 			if (i + 1 >= argc)
 			{
-				cout << "equi2cube: error: no output directory\n";
+				cout << "equi2cube: error: no output directory" << endl;
 				return EXIT_FAILURE;
 			}
 
@@ -248,7 +248,7 @@ int main(int argc, char *argv[])
 		{
 			if (i + 1 >= argc)
 			{
-				cout << "equi2cube: error: no thread count\n";
+				cout << "equi2cube: error: no thread count" << endl;
 				return EXIT_FAILURE;
 			}
 
@@ -266,7 +266,7 @@ int main(int argc, char *argv[])
 		}
 		else if (arg[0] == '-')
 		{
-			cout << "equi2cube: error: unsupported option: '" << arg << "'\n";
+			cout << string("equi2cube: error: unsupported option: '") + arg + "'" << endl;
 			return EXIT_FAILURE;
 		}
 		else
@@ -283,7 +283,7 @@ int main(int argc, char *argv[])
 
 				auto result = Equi2Cube::convertImage(arg, inputPath, outputPath);
 				if (!result)
-					cout << string("equi2cube: error: no image file found (") + arg + ")\n";
+					cout << string("equi2cube: error: no image file found (") + arg + ")\n" << flush;
 				convertResult &= result;
 			});
 		}

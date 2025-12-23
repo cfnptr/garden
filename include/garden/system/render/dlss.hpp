@@ -14,7 +14,7 @@
 
 /***********************************************************************************************************************
  * @file
- * @brief Nvidia DLSS rendering functions.
+ * @brief Nvidia DLSS rendering functions. A registered trademark of NVIDIA Corporation.
  */
 
 #pragma once

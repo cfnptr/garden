@@ -64,9 +64,10 @@ public:
 	 * 
 	 * @throw GardenError if failed to store file data.
 	 */
-	static void storeBinary(const fs::path& filePath, const vector<uint8>& data)
+	template<class T>
+	static void storeBinary(const fs::path& filePath, const vector<T>& data)
 	{
-		storeBinary(filePath, data.data(), data.size());
+		storeBinary(filePath, data.data(), data.size() * sizeof(T));
 	}
 
 	/**
