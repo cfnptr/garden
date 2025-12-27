@@ -19,14 +19,14 @@ using namespace garden;
 //**********************************************************************************************************************
 AppInfoSystem::AppInfoSystem(string_view name, string_view nameLowercase, string_view description,
 	string_view creator, string_view copyright, Version version,
-	#if GARDEN_DEBUG
+	#if GARDEN_DEBUG || GARDEN_EDITOR || !GARDEN_PACK_RESOURCES
 	const fs::path& cachePath, const fs::path& resourcesPath,
 	#endif
 	bool setSingleton) : Singleton(setSingleton), 
 	name(name), nameLowercase(nameLowercase), description(description),
 	creator(creator), copyright(copyright), version(version)
 {
-	#if GARDEN_DEBUG
+	#if GARDEN_DEBUG || GARDEN_EDITOR || !GARDEN_PACK_RESOURCES
 	this->cachePath = cachePath;
 	this->resourcesPath = resourcesPath;
 	#endif

@@ -68,7 +68,7 @@ protected:
 	virtual ID<GraphicsPipeline> createBasePipeline() = 0;
 	virtual ID<GraphicsPipeline> createShadowPipeline() { return {}; }
 public:
-	#if GARDEN_DEBUG
+	#if GARDEN_DEBUG || GARDEN_EDITOR
 	string debugResourceName = "instance";
 	#endif
 

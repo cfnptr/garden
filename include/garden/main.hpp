@@ -20,7 +20,7 @@
 #pragma once
 #include "garden/defines.hpp"
 
-#if GARDEN_OS_WINDOWS && !GARDEN_DEBUG
+#if GARDEN_OS_WINDOWS
 #include <windows.h>
 
 /**
@@ -28,6 +28,15 @@
  * @param[in] cstr target error message C string
  */
 #define GARDEN_MESSAGE_ERROR(cstr) MessageBoxA(nullptr, cstr, "Error", MB_ICONERROR | MB_SYSTEMMODAL)
+#elif GARDEN_OS_LINUX
+#include <cstdlib>
+
+/**
+ * @brief Shows an OS error message with target C string.
+ * @param[in] cstr target error message C string
+ */
+#define GARDEN_MESSAGE_ERROR(cstr) std::system(("zenity --error --text=\"" + \
+	std::string(cstr) + "\" --title=\"Error\"").c_str());
 #else
 /**
  * @brief Shows an OS error message with target C string.

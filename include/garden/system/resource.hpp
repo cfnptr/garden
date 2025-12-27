@@ -186,7 +186,7 @@ protected:
 	#if GARDEN_PACK_RESOURCES
 	pack::Reader packReader = {};
 	#endif
-	#if GARDEN_DEBUG || GARDEN_EDITOR
+	#if GARDEN_DEBUG || GARDEN_EDITOR || !GARDEN_PACK_RESOURCES
 	fs::path appResourcesPath = "";
 	fs::path appCachePath = "";
 	#endif

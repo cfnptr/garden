@@ -2182,11 +2182,11 @@ template<typename T>
 static void readGslHeaderValues(const uint8* data, uint32 dataSize,
 	uint32& dataOffset, string_view gslMagic, T& values)
 {
-	if (dataOffset + GslCompiler::gslMagicSize + sizeof(gslHeader) > dataSize)
+	if (dataOffset + gslMagic.size() + sizeof(gslHeader) > dataSize)
 		throw GardenError("Invalid GSL header size.");
-	if (memcmp(data + dataOffset, gslMagic.data(), GslCompiler::gslMagicSize) != 0)
+	if (memcmp(data + dataOffset, gslMagic.data(), gslMagic.size()) != 0)
 		throw GardenError("Invalid GSL header magic value.");
-	dataOffset += GslCompiler::gslMagicSize;
+	dataOffset += gslMagic.size();
 	if (memcmp(data + dataOffset, gslHeader, sizeof(gslHeader)) != 0)
 		throw GardenError("Invalid GSL header version or endianness.");
 	dataOffset += sizeof(gslHeader);
@@ -2239,6 +2239,11 @@ void GslCompiler::loadGraphicsShaders(GraphicsData& data)
 		if (fs::exists(data.cachePath / fragmentPath)) // Note: It's allowed to have only vertex shader.
 			File::loadBinary(data.cachePath / fragmentPath, data.fragmentCode);
 		#endif
+	}
+	else
+	{
+		GARDEN_ASSERT(!data.headerData.empty());
+		GARDEN_ASSERT(!data.vertexCode.empty());
 	}
 	
 	GraphicsGslValues values; uint32 dataOffset = 0;
@@ -2296,6 +2301,11 @@ void GslCompiler::loadComputeShader(ComputeData& data)
 		File::loadBinary(data.cachePath / headerPath, data.headerData);
 		File::loadBinary(data.cachePath / computePath, data.code);
 		#endif
+	}
+	else
+	{
+		GARDEN_ASSERT(!data.headerData.empty());
+		GARDEN_ASSERT(!data.code.empty());
 	}
 
 	ComputeGslValues values; uint32 dataOffset = 0; 
@@ -2457,6 +2467,12 @@ void GslCompiler::loadRayTracingShaders(RayTracingData& data)
 			closestHitPath = shadersPath; closestHitPath += "." + to_string(i + 1) + ".rchit.spv";
 		}
 	}
+	else
+	{
+		GARDEN_ASSERT(!data.headerData.empty());
+		GARDEN_ASSERT(!data.rayGenGroups.empty() && !data.rayGenGroups[0].empty());
+		GARDEN_ASSERT(!data.missGroups.empty() && !data.missGroups[0].empty());
+	}
 
 	if (data.hitGroups[0].anyHitCode.empty() && data.hitGroups[0].closestHitCode.empty())
 		throw GardenError("No ray tracing hit shader in the first group.");
@@ -2606,7 +2622,7 @@ int main(int argc, char *argv[])
 				try
 				{
 					GslCompiler::ComputeData computeData;
-					computeData.shaderPath = arg;
+					computeData.shaderPath = shaderPath;
 					result |= GslCompiler::compileComputeShader(inputPath, outputPath, includePaths, computeData);
 				}
 				catch (const exception& e)
@@ -2618,7 +2634,7 @@ int main(int argc, char *argv[])
 				try
 				{
 					GslCompiler::RayTracingData rayTracingData;
-					rayTracingData.shaderPath = arg;
+					rayTracingData.shaderPath = shaderPath;
 					result |= GslCompiler::compileRayTracingShaders(inputPath, outputPath, includePaths, rayTracingData);
 				}
 				catch (const exception& e)

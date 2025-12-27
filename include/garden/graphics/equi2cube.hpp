@@ -41,7 +41,8 @@ public:
 	 * @param inputPath input image directory path
 	 * @param outputPath output images directory path
 	 * 
-	 * @return Returns true on success and writes cubemap images, otherwise false.
+	 * @return Returns false if failed to open image file.
+	 * @throw GardenError on image conversion error.
 	 */
 	static bool convertImage(const fs::path& filePath, const fs::path& inputPath, const fs::path& outputPath);
 	#endif

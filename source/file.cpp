@@ -20,6 +20,17 @@
 
 using namespace garden;
 
+psize File::getFileSize(const fs::path& filePath)
+{
+	GARDEN_ASSERT(!filePath.empty());
+	ifstream inputStream(filePath, ios::in | ios::binary | ios::ate);
+	// Note: No need to set stream exception bits.
+
+	if (!inputStream.is_open())
+		throw GardenError("Failed to open binary file. (path: " + filePath.generic_string() + ")");
+	return (psize)inputStream.tellg();
+}
+
 void File::loadBinary(const fs::path& filePath, vector<uint8>& data)
 {
 	GARDEN_ASSERT(!filePath.empty());
@@ -27,7 +38,7 @@ void File::loadBinary(const fs::path& filePath, vector<uint8>& data)
 	// Note: No need to set stream exception bits.
 
 	if (!inputStream.is_open())
-		throw GardenError("Failed to open input binary file. (path: " + filePath.generic_string() + ")");
+		throw GardenError("Failed to open binary file. (path: " + filePath.generic_string() + ")");
 
 	auto fileSize = (psize)inputStream.tellg();
 	data.resize(fileSize);
@@ -57,6 +68,28 @@ bool File::tryLoadBinary(const fs::path& filePath, vector<uint8>& data)
 	return !inputStream.fail();
 }
 
+void File::loadBinary(const fs::path& filePath, uint8* data, psize size)
+{
+	GARDEN_ASSERT(!filePath.empty());
+	ifstream inputStream(filePath, ios::in | ios::binary);
+	// Note: No need to set stream exception bits.
+
+	if (!inputStream.is_open())
+		throw GardenError("Failed to open binary file. (path: " + filePath.generic_string() + ")");
+	if (!inputStream.read((char*)data, size))
+		throw GardenError("Failed to read binary file. (path: " + filePath.generic_string() + ")");
+}
+bool File::tryLoadBinary(const fs::path& filePath, uint8* data, psize size)
+{
+	GARDEN_ASSERT(!filePath.empty());
+	ifstream inputStream(filePath, ios::in | ios::binary);
+	if (!inputStream.is_open())
+		return false;
+	if (!inputStream.read((char*)data, size))
+		return false;
+	return !inputStream.fail();
+}
+
 //**********************************************************************************************************************
 void File::storeBinary(const fs::path& filePath, const void* data, psize size)
 {
@@ -68,7 +101,7 @@ void File::storeBinary(const fs::path& filePath, const void* data, psize size)
 	// Note: No need to set stream exception bits.
 
 	if (!outputStream.is_open())
-		throw GardenError("Failed to open output binary file. (path: " + filePath.generic_string() + ")");
+		throw GardenError("Failed to open binary file. (path: " + filePath.generic_string() + ")");
 	if (!outputStream.write((char*)data, size))
 		throw GardenError("Failed to write binary file. (path: " + filePath.generic_string() + ")");
 }
@@ -81,7 +114,7 @@ fs::path File::createTmpName()
 	return toHex<uint32>(uuid, 4);
 }
 
-#if GARDEN_DEBUG
+#if GARDEN_DEBUG || GARDEN_EDITOR || !GARDEN_PACK_RESOURCES
 bool File::tryGetResourcePath(const fs::path& appResourcesPath, const fs::path& resourcePath, fs::path& filePath)
 {
 	GARDEN_ASSERT(!resourcePath.empty());

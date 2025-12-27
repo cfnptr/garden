@@ -28,6 +28,12 @@ class File final
 {
 public:
 	/**
+	 * @brief Returns specified file size in bytes.
+	 * @throw GardenError if failed to open file.
+	 */
+	static psize getFileSize(const fs::path& filePath);
+
+	/**
 	 * @brief Loads binary data from the file.
 	 * 
 	 * @param[in] filePath target file path
@@ -45,6 +51,27 @@ public:
 	 * @return True on success, otherwise false.
 	 */
 	static bool tryLoadBinary(const fs::path& filePath, vector<uint8>& data);
+
+	/**
+	 * @brief Loads binary data from the file.
+	 * 
+	 * @param[in] filePath target file path
+	 * @param[out] data binary data buffer
+	 * @param size data buffer size in bytes
+	 * 
+	 * @throw GardenError if failed to load file data.
+	 */
+	static void loadBinary(const fs::path& filePath, uint8* data, psize size);
+	/**
+	 * @brief Loads binary data from the file.
+	 * 
+	 * @param[in] filePath target file path
+	 * @param[out] data binary data buffer
+	 * @param size data buffer size in bytes
+	 * 
+	 * @return True on success, otherwise false.
+	 */
+	static bool tryLoadBinary(const fs::path& filePath, uint8* data, psize size);
 
 	/**
 	 * @brief Stores binary data to the file.
@@ -103,7 +130,7 @@ public:
 	 */
 	static fs::path writeTMP(const vector<uint8>& data) { return writeTMP(data.data(), data.size()); }
 
-	#if GARDEN_DEBUG
+	#if GARDEN_DEBUG || GARDEN_EDITOR || !GARDEN_PACK_RESOURCES
 	/******************************************************************************************************************
 	 * @brief Returns resource file path in the system. (Debug Only)
 	 * @details The resource is searched inside the engine resources folder and the application resources folder.
