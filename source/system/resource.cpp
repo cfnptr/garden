@@ -152,7 +152,7 @@ ResourceSystem::ResourceSystem(bool setSingleton) : Singleton(setSingleton)
 	// TODO: iterate over all .gsl files and check if any changed, then search all usages in shaders and touch depending files.
 	#endif
 
-	#if GARDEN_DEBUG || GARDEN_EDITOR
+	#if GARDEN_DEBUG || GARDEN_EDITOR || !GARDEN_PACK_RESOURCES
 	appResourcesPath = appInfoSystem->getResourcesPath();
 	appCachePath = appInfoSystem->getCachePath();
 	#endif
@@ -2832,9 +2832,9 @@ Ref<Font> ResourceSystem::loadFont(const fs::path& path, int32 faceIndex, bool l
 		return {};
 	}
 
-	vector<uint8> fileData; File::loadBinary(fontPath, fileData);
-	auto dataSize = fileData.size(); auto data = new uint8[dataSize];
-	memcpy(data, fileData.data(), dataSize); fileData = {};
+	auto dataSize = File::getFileSize(fontPath);
+	auto data = new uint8[dataSize];
+	File::loadBinary(fontPath, data, dataSize);
 	#endif
 
 	auto ftLibrary = (FT_Library)textSystem->ftLibrary;

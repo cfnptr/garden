@@ -37,7 +37,8 @@ public:
 	 * @param inputPath input JSON directory path
 	 * @param outputPath output BSON directory path
 	 * 
-	 * @return Returns true on success and writes BSON file, otherwise false.
+	 * @return Returns false if failed to open JSON file.
+	 * @throw GardenError on JSON conversion error.
 	 */
 	static bool convertFile(const fs::path& filePath, const fs::path& inputPath, const fs::path& outputPath);
 	#endif

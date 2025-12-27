@@ -34,7 +34,7 @@ public:
 	 *
 	 * @param[in,out] data target shader data container
 	 */
-	// static void loadModel(GraphicsData& data);
+	// static void loadModel();
 
 	#if GARDEN_DEBUG || defined(GARDEN_MODEL_CONVERTER)
 	/**
@@ -43,8 +43,6 @@ public:
 	 * @param filePath target model to convert path
 	 * @param inputPath input model directory path
 	 * @param outputPath output model directory path
-	 * 
-	 * @return Returns true on success and writes model data, otherwise false.
 	 */
 	static bool convertModel(const fs::path& filePath, const fs::path& inputPath, const fs::path& outputPath);
 	#endif

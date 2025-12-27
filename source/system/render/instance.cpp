@@ -27,7 +27,7 @@ static void createInstanceBuffers(uint64 bufferSize, DescriptorSet::Buffers& ins
 	{
 		auto buffer = graphicsSystem->createBuffer(Buffer::Usage::Storage, Buffer::CpuAccess::SequentialWrite,
 			bufferSize, Buffer::Location::Auto, Buffer::Strategy::Size);
-		#if GARDEN_DEBUG
+		#if GARDEN_DEBUG || GARDEN_EDITOR
 		if (isShadow)
 		{
 			SET_RESOURCE_DEBUG_NAME(buffer, "buffer.storage." + 

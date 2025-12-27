@@ -50,11 +50,6 @@ class GslCompiler final
 {
 public:
 	/**
-	 * @brief Compiled shader file magic number size in bytes.
-	 */
-	static constexpr psize gslMagicSize = 4;
-
-	/**
 	 * @brief Graphics pipeline shader data.
 	 */
 	struct GraphicsData : public GraphicsPipeline::GraphicsCreateData

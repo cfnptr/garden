@@ -32,7 +32,7 @@ constexpr uint8 appVersionPatch = @GARDEN_APP_VERSION_PATCH@;
 constexpr Version appVersion = Version(@GARDEN_APP_VERSION_MAJOR@, @GARDEN_APP_VERSION_MINOR@, @GARDEN_APP_VERSION_PATCH@);
 constexpr string_view appVersionString = "@GARDEN_APP_VERSION_STRING@";
 
-#if GARDEN_DEBUG
+#if GARDEN_DEBUG || GARDEN_EDITOR || !GARDEN_PACK_RESOURCES
 const fs::path appCachePath = fs::path("@GARDEN_APP_CACHE_DIR@");
 const fs::path appResourcesPath = fs::path("@GARDEN_APP_RESOURCES_DIR@");
 #endif
@@ -41,7 +41,7 @@ static void createAppSystem(Manager* manager)
 {
 	manager->createSystem<AppInfoSystem>(
 		appName, appNameLowercase, appDescription, appCreator, appCopyright, appVersion
-		#if GARDEN_DEBUG
+		#if GARDEN_DEBUG || GARDEN_EDITOR || !GARDEN_PACK_RESOURCES
 		, appCachePath, appResourcesPath
 		#endif
 		);
