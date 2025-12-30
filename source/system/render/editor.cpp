@@ -77,8 +77,7 @@ static void renderSceneSelector(EditorRenderSystem* editorSystem, fs::path& expo
 	static const vector<string_view> extensions = { ".scene" };
 	editorSystem->openFileSelector([&](const fs::path& selectedFile)
 	{
-		exportScenePath = selectedFile;
-		exportScenePath.replace_extension();
+		exportScenePath = selectedFile; exportScenePath.replace_extension();
 		ResourceSystem::Instance::get()->loadScene(exportScenePath);
 	},
 	AppInfoSystem::Instance::get()->getResourcesPath() / "scenes", extensions);
@@ -114,7 +113,7 @@ void EditorRenderSystem::showMainMenuBar()
 			if (ImGui::MenuItem("Export Scene"))
 				exportScene = true;
 			if (ImGui::MenuItem("Import Scene"))
-				renderSceneSelector(this, exportsScenePath);
+				renderSceneSelector(this, exportScenePath);
 		}
 
 		const auto& event = manager->getEvent("EditorBarFile");
@@ -245,6 +244,14 @@ void EditorRenderSystem::showAboutWindow()
 			ImGui::Text("Build: Debug");
 			#endif
 			ImGui::Text("Target OS: " GARDEN_OS_NAME " (" GARDEN_CPU_ARCH ")");
+		}
+		ImGui::Spacing();
+
+		if (ImGui::CollapsingHeader("Git"))
+		{
+			ImGui::Text("Commit: " GARDEN_GIT_COMMIT);
+			ImGui::Text("SHA1: " GARDEN_GIT_SHA1);
+			ImGui::Text("Date: " GARDEN_GIT_DATE);
 		}
 	}
 	ImGui::End();
@@ -765,7 +772,7 @@ void EditorRenderSystem::showNewScene()
 		{
 			ImGui::CloseCurrentPopup(); newScene = false;
 			ResourceSystem::Instance::get()->clearScene();
-			exportsScenePath = "unnamed";
+			exportScenePath = "unnamed";
 		}
 
 		ImGui::SetItemDefaultFocus(); ImGui::SameLine();
@@ -783,13 +790,13 @@ void EditorRenderSystem::showExportScene()
 	if (ImGui::Begin("Scene Exporter", &exportScene,
 		ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_AlwaysAutoResize))
 	{
-		auto pathString = exportsScenePath.generic_string();
+		auto pathString = exportScenePath.generic_string();
 		if (ImGui::InputText("Path", &pathString))
-			exportsScenePath = pathString;
+			exportScenePath = pathString;
 
-		ImGui::BeginDisabled(exportsScenePath.empty());
+		ImGui::BeginDisabled(exportScenePath.empty());
 		if (ImGui::Button("Export full .scene", ImVec2(-FLT_MIN, 0.0f)))
-			ResourceSystem::Instance::get()->storeScene(exportsScenePath);
+			ResourceSystem::Instance::get()->storeScene(exportScenePath);
 		ImGui::EndDisabled();
 
 		auto manager = Manager::Instance::get();
@@ -803,7 +810,7 @@ void EditorRenderSystem::showExportScene()
 			exportSelectedText += " (" + debugName + ")";
 		}
 		if (ImGui::Button(exportSelectedText.c_str(), ImVec2(-FLT_MIN, 0.0f)))
-			ResourceSystem::Instance::get()->storeScene(exportsScenePath, selectedEntity);
+			ResourceSystem::Instance::get()->storeScene(exportScenePath, selectedEntity);
 		ImGui::EndDisabled();
 	}
 	ImGui::End();

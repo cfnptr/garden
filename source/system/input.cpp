@@ -38,8 +38,8 @@ static void updateWindowMode()
 	auto window = (GLFWwindow*)GraphicsAPI::get()->window;
 	if (glfwGetWindowAttrib(window, GLFW_DECORATED) == GLFW_FALSE)
 	{
-		int width = 0, height = 0; glfwGetWindowSize(window, &width, &height);
-		glfwSetWindowMonitor(window, nullptr, videoMode->width / 2 - width / 2, videoMode->height / 2 - height / 2,
+		glfwSetWindowMonitor(window, nullptr, videoMode->width / 2 - InputSystem::defaultWindowWidth / 2, 
+			videoMode->height / 2 - InputSystem::defaultWindowHeight / 2, // Note: returning default size.
 			InputSystem::defaultWindowWidth, InputSystem::defaultWindowHeight, videoMode->refreshRate);
 		glfwSetWindowAttrib(window, GLFW_DECORATED, GLFW_TRUE);
 	}
@@ -78,7 +78,11 @@ void InputSystem::renderThread()
 {
 	mpmt::Thread::setName("RENDER");
 	mpmt::Thread::setForegroundPriority();
-	Manager::Instance::get()->start();
+
+	auto manager = Manager::Instance::get();
+	while (manager->isRunning)
+		manager->update();
+	// Note: manual loop instead of start().
 }
 
 //**********************************************************************************************************************
@@ -241,8 +245,11 @@ void InputSystem::input()
 		{
 			if (graphicsSystem->useLowLatency)
 			{
-				vk::LatencySleepInfoNV sleepInfo(VK_NULL_HANDLE, 0); // TODO: implement semaphore and check if works on supported GPU.
+				vk::LatencySleepInfoNV sleepInfo(vulkanAPI->pacingSemaphore, vulkanAPI->pacingFrame++);
 				vulkanAPI->device.latencySleepNV(vulkanAPI->vulkanSwapchain->getInstance(), sleepInfo);
+				vk::SemaphoreWaitInfoKHR waitInfo({}, 1, &sleepInfo.signalSemaphore, &sleepInfo.value);
+				auto waitResult = vulkanAPI->device.waitSemaphores(waitInfo, 10000000000); // Note: Emergency 10 seconds timeout.
+				vk::detail::resultCheck(waitResult, "vk::Device::waitSemaphores");
 				// TODO: also support latency markers. vkSetLatencyMarkerNV()
 			}
 		}
@@ -372,16 +379,17 @@ void InputSystem::setWindowIcon(const vector<string>& paths)
 //**********************************************************************************************************************
 void InputSystem::startRenderThread()
 {
+	auto manager = Manager::Instance::get();
+	manager->isRunning = true;
+
 	#if GARDEN_OS_WINDOWS
 	auto renderThread = thread(InputSystem::renderThread);
-	#else
-	Manager::Instance::get()->isRunning = true;
 	#endif
 
 	auto inputSystem = InputSystem::Instance::get();
 	auto window = (GLFWwindow*)GraphicsAPI::get()->window;
 
-	while (!glfwWindowShouldClose(window) && Manager::Instance::get()->isRunning)
+	while (!glfwWindowShouldClose(window) && manager->isRunning)
 	{
 		#if GARDEN_OS_WINDOWS
 		glfwWaitEvents();
@@ -533,7 +541,7 @@ void InputSystem::startRenderThread()
 			glfwSetWindowIcon(window, images.size(), images.data());
 
 		#if !GARDEN_OS_WINDOWS
-		Manager::Instance::get()->update();
+		manager->update();
 		#endif
 	}
 
@@ -541,7 +549,6 @@ void InputSystem::startRenderThread()
 
 	#if GARDEN_OS_WINDOWS
 	renderThread.join();
-	#else
-	Manager::Instance::get()->isRunning = false;
 	#endif
+	manager->isRunning = false;
 }

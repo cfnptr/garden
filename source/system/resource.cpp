@@ -903,7 +903,7 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& left,
 			writeExrImageData(cacheFileString + "-pz.exr", cubemapSize, front);
 		}
 
-		GARDEN_LOG_TRACE("Converted spherical cubemap. (path: " + path.generic_string() + ")");
+		GARDEN_LOG_DEBUG("Converted spherical cubemap. (path: " + path.generic_string() + ")");
 		return;
 	}
 	#endif

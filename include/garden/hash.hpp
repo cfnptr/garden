@@ -204,7 +204,7 @@ namespace std
 			#elif SIZE_MAX == UINT32_MAX
 			return (size_t)(x ^ x >> 32u);
 			#else
-			#error "Unsupported size_t size"
+			#error Unsupported size_t size
 			#endif
 		}
 	};

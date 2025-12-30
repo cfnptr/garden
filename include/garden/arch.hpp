@@ -36,5 +36,5 @@
 #define GARDEN_CPU_ARCH_ARM32
 #define GARDEN_CPU_ARCH_ARM
 #else
-#error "Unknown CPU architecture"
+#error Unknown CPU architecture
 #endif

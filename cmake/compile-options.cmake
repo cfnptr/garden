@@ -17,14 +17,14 @@
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
 	add_compile_options(/MP /nologo /utf-8)
-	if(NOT GARDEN_DO_NOT_USE_AVX2)
+	if(GARDEN_USE_AVX2)
 		add_compile_options(/arch:AVX2)
 	endif()
 	if(CMAKE_BUILD_TYPE STREQUAL "Release")
 		add_compile_options(/GL) # Use link time optimizations.
 	endif()
 elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64" OR CMAKE_SYSTEM_PROCESSOR STREQUAL "AMD64")
-	if(NOT GARDEN_DO_NOT_USE_AVX2)
+	if(GARDEN_USE_AVX2)
 		add_compile_options(-march=haswell)
 	endif()
 	if(CMAKE_BUILD_TYPE STREQUAL "Release")
