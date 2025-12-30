@@ -61,7 +61,7 @@ public:
 private:
 	OnComponents onComponents;
 	EntityInspectors entityInspectors;
-	fs::path exportsScenePath = "unnamed";
+	fs::path exportScenePath = "unnamed";
 	fs::path fileSelectDirectory;
 	fs::path selectedEntry;
 	fs::path selectedFile;

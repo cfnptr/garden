@@ -28,13 +28,12 @@ namespace garden
 using namespace ecsm;
 
 #ifndef GARDEN_LOG_LEVEL
-#if GARDEN_DEBUG
-#define GARDEN_LOG_LEVEL ALL_LOG_LEVEL
-#else
-#define GARDEN_LOG_LEVEL INFO_LOG_LEVEL
+	#if GARDEN_DEBUG
+	#define GARDEN_LOG_LEVEL DEBUG_LOG_LEVEL
+	#else
+	#define GARDEN_LOG_LEVEL INFO_LOG_LEVEL
+	#endif
 #endif
-#endif
-
 
 #if GARDEN_LOG_LEVEL >= TRACE_LOG_LEVEL
 /**

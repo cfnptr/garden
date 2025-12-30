@@ -50,6 +50,12 @@ static vk::Bool32 VKAPI_PTR vkDebugMessengerCallback(
 	const vk::DebugUtilsMessengerCallbackDataEXT* callbackData,
 	void* userData)
 {
+	if (messageSeverity & vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning &&
+		string_view(callbackData->pMessage).find("VK_LAYER_VALVE_steam_") != string::npos)
+	{
+		return VK_FALSE; // Skipping Steam layers API version 1.3 warnings.
+	}
+
 	const char* severity;
 	if (messageSeverity & vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose)
 		severity = "VERBOSE";
@@ -213,19 +219,20 @@ static vk::Instance createVkInstance(const string& appName, Version appVersion,
 		{
 			for (uint32 i = 0; i < dlssExtensionCount; i++)
 			{
-				auto hasNvidiaDlss = false;
+				auto hasDlssExtension = false;
 				for	(const auto& properties : extensionProperties)
 				{
 					if (string_view(properties.extensionName) != dlssExtensions[i].extensionName)
 						continue;
-					hasNvidiaDlss = true;
+					hasDlssExtension = true;
 					break;
 				}
 
-				if (hasNvidiaDlss)
-					continue;
-				features.nvidiaDlss = false;
-				break;
+				if (!hasDlssExtension)
+				{
+					features.nvidiaDlss = false;
+					break;
+				}
 			}
 
 			if (features.nvidiaDlss)
@@ -503,10 +510,8 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 			features.rayQuery = true;
 		else if (extensionName == VK_AMD_ANTI_LAG_EXTENSION_NAME)
 			features.amdAntiLag = true;
-
-		// TODO: finish implementing semaphore on supported gpu! api.cpp
-		// else if (extensionName == VK_NV_LOW_LATENCY_2_EXTENSION_NAME)
-		//	features.nvLowLatency = true; 
+		else if (extensionName == VK_NV_LOW_LATENCY_2_EXTENSION_NAME)
+			features.nvLowLatency = true; 
 
 		if (versionMinor < 3)
 		{
@@ -1037,6 +1042,12 @@ VulkanAPI::VulkanAPI(const string& appName, const string& appDataName, Version a
 	descriptorPool = createVkDescriptorPool(device, features);
 	pipelineCache = createPipelineCache(appDataName, appVersion, device, deviceProperties, isCacheLoaded);
 
+	if (features.nvLowLatency)
+	{
+		vk::SemaphoreTypeCreateInfo typeInfo(vk::SemaphoreType::eTimeline, 0);
+		vk::SemaphoreCreateInfo semaphoreInfo({}, &typeInfo);
+		pacingSemaphore = device.createSemaphore(semaphoreInfo);
+	}
 	if (features.rayTracing)
 	{
 		deviceProperties.pNext = &rtProperties;
@@ -1101,6 +1112,7 @@ VulkanAPI::~VulkanAPI()
 
 	if (device)
 	{
+		device.destroySemaphore(pacingSemaphore);
 		device.destroyPipelineCache(pipelineCache);
 		device.destroyDescriptorPool(descriptorPool);
 		device.destroyCommandPool(computeCommandPool);

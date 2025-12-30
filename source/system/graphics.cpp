@@ -396,7 +396,8 @@ void GraphicsSystem::update()
 		auto vulkanAPI = VulkanAPI::get();
 		if (vulkanAPI->features.nvLowLatency && (nvLowLatency != useLowLatency || nvMaxFrameRate != maxFrameRate))
 		{
-			vk::LatencySleepModeInfoNV sleepModeInfo(useLowLatency, VK_TRUE, 1000000 / (uint32)maxFrameRate);
+			vk::LatencySleepModeInfoNV sleepModeInfo(useLowLatency, useLowLatency, 
+				useVsync ? 0u : 1000000u / (uint32)maxFrameRate);
 			vulkanAPI->device.setLatencySleepModeNV(vulkanAPI->vulkanSwapchain->getInstance(), sleepModeInfo);
 			nvLowLatency = useLowLatency; nvMaxFrameRate = maxFrameRate; 
 		}

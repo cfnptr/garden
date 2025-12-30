@@ -72,12 +72,12 @@ public:
 	Version appVersion;
 	uint32 versionMajor = 0;
 	uint32 versionMinor = 0;
-	vk::Instance instance;
-	vk::PhysicalDevice physicalDevice;
-	vk::SurfaceKHR surface;
 	uint32 graphicsQueueFamilyIndex = 0;
 	uint32 transferQueueFamilyIndex = 0;
 	uint32 computeQueueFamilyIndex = 0;
+	vk::Instance instance;
+	vk::PhysicalDevice physicalDevice;
+	vk::SurfaceKHR surface;
 	vk::Device device;
 	VmaAllocator memoryAllocator = nullptr;
 	vk::Queue frameQueue;
@@ -90,6 +90,7 @@ public:
 	vk::CommandPool computeCommandPool;
 	vk::DescriptorPool descriptorPool;
 	vk::PipelineCache pipelineCache;
+	vk::Semaphore pacingSemaphore;
 	vector<vk::CommandBuffer> secondaryCommandBuffers;
 	vector<atomic_bool_aligned*> secondaryCommandStates; // We need atomic here!
 	vector<vector<vk::DescriptorSet>> bindDescriptorSets;
@@ -120,6 +121,7 @@ public:
 	vk::PhysicalDeviceProperties2 deviceProperties;
 	vk::PhysicalDeviceFeatures2 deviceFeatures;
 	Features features = {};
+	uint64 pacingFrame = 1;
 	uint32 oldPipelineStage = 0, newPipelineStage = 0;
 	bool isCacheLoaded = false;
 	

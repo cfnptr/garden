@@ -55,6 +55,7 @@ Use building [instructions](BUILDING.md) to install all required tools and libra
 
 | Name                        | Description                                      | Default value |
 |-----------------------------|--------------------------------------------------|---------------|
+| GARDEN_USE_AVX2             | Use AVX2 instruction set (Better perf)           | `ON`          |
 | GARDEN_BUILD_GSLC           | Build GSL shader compiler                        | `ON`          |
 | GARDEN_BUILD_MODELC         | Build Garden model converter                     | `ON`          |
 | GARDEN_BUILD_JSON2BSON      | Build JSON to binary JSON converter              | `ON`          |
