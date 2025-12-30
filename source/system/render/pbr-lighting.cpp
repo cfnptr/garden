@@ -887,7 +887,7 @@ void PbrLightingSystem::hdrRender()
 	{
 		pbrLightingView->sh = Ref<Buffer>(graphicsSystem->createBuffer(
 			Buffer::Usage::Uniform | Buffer::Usage::TransferDst, Buffer::CpuAccess::None, 
-			shBinarySize, Buffer::Location::PreferGPU, Buffer::Strategy::Size));
+			ibl::shCoeffCount * sizeof(f16x4), Buffer::Location::PreferGPU, Buffer::Strategy::Size));
 		SET_RESOURCE_DEBUG_NAME(pbrLightingView->sh, "buffer.uniform.sh" + to_string(*pbrLightingView->sh));
 	}
 	if (!pbrLightingView->specular)
@@ -1662,7 +1662,7 @@ void PbrLightingSystem::loadCubemap(const fs::path& path, Ref<Image>& cubemap,
 
 		sh = Ref<Buffer>(graphicsSystem->createBuffer(Buffer::Usage::Uniform | 
 			Buffer::Usage::TransferDst, Buffer::CpuAccess::None, shBuffer->data(), 
-			shBinarySize, Buffer::Location::PreferGPU, strategy));
+			ibl::shCoeffCount * sizeof(f16x4), Buffer::Location::PreferGPU, strategy));
 		SET_RESOURCE_DEBUG_NAME(sh, "buffer.uniform.sh." + path.generic_string());
 
 		vector<float> iblWeightBuffer; vector<uint32> iblCountBuffer;
