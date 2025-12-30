@@ -28,6 +28,9 @@
 
 using namespace garden;
 
+static constexpr int32 shCacheBinarySize = ibl::shCoeffCount * sizeof(f32x4);
+static constexpr int32 shBinarySize = ibl::shCoeffCount * sizeof(f16x4);
+
 static ID<Image> createTransLUT(GraphicsSystem* graphicsSystem, Image::Format format)
 {
 	auto transLUT = graphicsSystem->createImage(format, Image::Usage::Sampled | Image::Usage::ColorAttachment, 
@@ -76,11 +79,11 @@ static void createShCaches(GraphicsSystem* graphicsSystem, uint32 skyboxSize,
 
 	uint64 reducedSize = skyboxSize / localSize;
 	reducedSize = reducedSize * reducedSize * Image::cubemapFaceCount;
-	uint64 cacheSize = sizeof(uint4) + reducedSize * ibl::shBinarySize + ibl::shBinarySize;
+	uint64 cacheSize = sizeof(uint4) + reducedSize * shCacheBinarySize + shCacheBinarySize;
 
 	localSize = localSize * localSize;
 	for (float i = ceil((float)reducedSize / localSize); i > 1.001f; i = ceil(i / localSize))
-		cacheSize += (uint64)i * ibl::shBinarySize;
+		cacheSize += (uint64)i * shCacheBinarySize;
 
 	for (uint32 i = 0; i < inFlightCount; i++)
 	{
@@ -97,7 +100,7 @@ static void createShStagings(GraphicsSystem* graphicsSystem, DescriptorSet::Buff
 
 	for (uint32 i = 0; i < inFlightCount; i++)
 	{
-		auto shStaging = graphicsSystem->createStagingBuffer(Buffer::CpuAccess::SequentialWrite, ibl::shBinarySize);
+		auto shStaging = graphicsSystem->createStagingBuffer(Buffer::CpuAccess::SequentialWrite, shBinarySize);
 		SET_RESOURCE_DEBUG_NAME(shStaging, "buffer.staging.atmosphere.sh" + to_string(i));
 		shStagings[i].push_back(shStaging);
 	}
@@ -797,21 +800,25 @@ void AtmosphereRenderSystem::updateSkybox()
 
 				if (!isFirstSH)
 				{
-					vector<f32x4> shBuffer(ibl::shCoeffCount);
+					f32x4 shCacheBuffer[ibl::shCoeffCount];
 					shCacheView = graphicsSystem->get(shCaches[shInFlightIndex][0]);
-					auto mapOffset = shCacheView->getBinarySize() - ibl::shBinarySize;
-					shCacheView->invalidate(ibl::shBinarySize, mapOffset);
-					memcpy(shBuffer.data(), shCacheView->getMap() + mapOffset, ibl::shBinarySize);
-					for (auto& sh : shBuffer) sh *= giFactor;
-					PbrLightingSystem::processIblSH(shBuffer.data());
+					auto mapOffset = shCacheView->getBinarySize() - shCacheBinarySize;
+					shCacheView->invalidate(shCacheBinarySize, mapOffset);
+					memcpy(shCacheBuffer, shCacheView->getMap() + mapOffset, shCacheBinarySize);
+					for (auto& sh : shCacheBuffer) sh *= giFactor;
+					PbrLightingSystem::processIblSH(shCacheBuffer);
+
+					f16x4 shBuffer[ibl::shCoeffCount];
+					for (uint8 i = 0; i < ibl::shCoeffCount; i++)
+						shBuffer[i] = (f16x4)min(shCacheBuffer[i], f32x4(65504.0f));
 
 					auto shStaging = shStagings[shInFlightIndex][0];
 					auto shStagingView = graphicsSystem->get(shStaging);
-					memcpy(shStagingView->getMap(), shBuffer.data(), ibl::shBinarySize);
+					memcpy(shStagingView->getMap(), shBuffer, shBinarySize);
 					shStagingView->flush();
 					Buffer::copy(shStaging, ID<Buffer>(pbrLightingView->sh));
 
-					graphicsSystem->setSkyColor((float3)brdf::diffuseIrradiance(float3::top, shBuffer.data()));
+					graphicsSystem->setSkyColor((float3)brdf::diffuseIrradiance(float3::top, shCacheBuffer));
 				}
 			}
 
