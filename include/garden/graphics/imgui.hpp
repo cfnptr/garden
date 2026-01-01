@@ -1,4 +1,4 @@
-// Copyright 2022-2025 Nikita Fediuchin. All rights reserved.
+// Copyright 2022-2026 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -265,7 +265,7 @@ static bool ColorEdit3(const char* label, Color* color, ImGuiColorEditFlags flag
 	return result;
 }
 
-}; // namespace ImGui
+} // namespace ImGui
 
 namespace garden
 {
@@ -290,4 +290,4 @@ static bool find(const string& haystack, const string& needle, uint32 id, bool c
 	return id == needleID || find(haystack, needle, caseSensitive);
 }
 
-}; // namespace garden
+} // namespace garden
