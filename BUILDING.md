@@ -4,7 +4,7 @@
 
 * [Window (10/11)](BUILDING.md#windows-1011)
 * [Ubuntu (22.04/24.04)](BUILDING.md#ubuntu-22042404)
-* [macOS (14/15)](BUILDING.md#macos-1415)
+* [macOS (15/26)](BUILDING.md#macos-1526)
 * [Build Project](BUILDING.md#build-project)
 
 
@@ -21,7 +21,7 @@
 
 ## 2. Install Git
 
-* Download and install latest version from [git-cms.com](https://git-scm.com/downloads)
+* Download and install latest version from [git-cms.com](https://git-scm.com/install/windows)
 
 You may use default Git install options or chose any other default Git editor instead of **Vim**.
 
@@ -83,7 +83,7 @@ Alternatively run ```install-packages.bat``` from the repository **scripts/** di
 Follow [this](https://vulkan.lunarg.com/doc/view/latest/linux/getting_started.html) guide to install SDK for your linux distribution.
 
 
-# macOS (14/15)
+# macOS (15/26)
 
 ## 1. Install Xcode (Or any other IDE)
 
@@ -108,17 +108,18 @@ To build the project you will only need The Vulkan SDK Core components.
 
 To build the project run one of the [scripts](scripts/) using **Terminal**, **Git Bash** or build it using **IDE**.
 
-## Visual Studio (2022)
+## Visual Studio
 
-1. Open **Visual Studio 2022** IDE
-2. Click "Open a local folder" and open the repository folder
-3. Click **Build -> Build All** to build the project
+1. Open **Visual Studio** IDE application
+2. Click "Open a project or solution" and open the repository **CMakeLists.txt**
+3. Wait for project CMake generation to finish
+4. Click **Build -> Build All** to build the project
 
 ## Visual Studio Code (VS Code)
 
-1. Open **Visual Studio Code** IDE
+1. Open **Visual Studio Code** IDE application
 2. Install "C/C++" And "CMake Tools" extensions
 3. Click **File -> Open Folder...** and open the repository folder
-4. Click **Yes** in "Would you like to configure project..."
-5. Select one of the compiler **Kits** in the opened window
+4. Select one of the compiler **Kits** in the opened window
+5. Wait for project CMake generation to finish
 6. Click **Build** button at the bottom bar to build the project

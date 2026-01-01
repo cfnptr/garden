@@ -15,7 +15,7 @@ Check out the Garden [demo](https://github.com/cfnptr/garden-demo) app.
 
 * Windows (10/11)
 * Ubuntu (22.04/24.04)
-* macOS (14/15)
+* macOS (15/26)
 
 This list includes only those systems on which functionality testing is conducted.
 However, you can also compile it under any other Linux distribution or operating system.
