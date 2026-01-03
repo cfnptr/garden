@@ -185,16 +185,16 @@ RayTracingPipeline::SBT RayTracingPipeline::createSBT(Buffer::Usage flags)
 			Buffer::CpuAccess::RandomReadWrite, Buffer::Location::Auto, Buffer::Strategy::Speed, sbtSize, 0);
 
 		auto sbtBufferView = vulkanAPI->bufferPool.get(sbt.buffer);
-		auto stagingBufferView = vulkanAPI->bufferPool.get(stagingBuffer);
+		auto stagingView = vulkanAPI->bufferPool.get(stagingBuffer);
 		auto sbtAddress = alignSize(sbtBufferView->getDeviceAddress(), (uint64)baseAlignment);
 		auto sbtOffset = sbtAddress - sbtBufferView->getDeviceAddress();
-		auto stagingMap = stagingBufferView->getMap() + sbtOffset;
+		auto stagingMap = stagingView->getMap() + sbtOffset;
 		vector<uint8> handles(groupCount * handleSize);
 		auto handleData = handles.data();
 
 		#if GARDEN_DEBUG || GARDEN_EDITOR
 		sbtBufferView->setDebugName("buffer.sbt." + pipelinePath.generic_string());
-		stagingBufferView->setDebugName("buffer.staging.sbt." + pipelinePath.generic_string());
+		stagingView->setDebugName("buffer.staging.sbt." + pipelinePath.generic_string());
 		#endif
 	
 		for (uint8 i = 0; i < variantCount; i++)
@@ -267,10 +267,10 @@ RayTracingPipeline::SBT RayTracingPipeline::createSBT(Buffer::Usage flags)
 			stagingMap += hitRegionSize;
 		}
 
-		stagingBufferView->flush();
+		stagingView->flush();
 
 		#if GARDEN_DEBUG // Hack: skips queue ownership asserts.
-		BufferExt::getUsage(**stagingBufferView) |= Buffer::Usage::TransferQ | Buffer::Usage::ComputeQ;
+		BufferExt::getUsage(**stagingView) |= Buffer::Usage::TransferQ | Buffer::Usage::ComputeQ;
 		#endif
 
 		Buffer::copy(stagingBuffer, sbt.buffer);
