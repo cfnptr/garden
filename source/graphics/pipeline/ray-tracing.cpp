@@ -109,6 +109,10 @@ void RayTracingPipeline::createVkInstance(RayTracingCreateData& createData)
 		stageInfos[i] = stageInfo;
 	}
 
+	#if GARDEN_DEBUG | GARDEN_EDITOR
+	this->specConstValues = std::move(createData.specConstValues);
+	#endif
+
 	auto vulkanAPI = VulkanAPI::get();
 	GARDEN_ASSERT(createData.rayRecursionDepth > 0);
 	GARDEN_ASSERT(createData.rayRecursionDepth <= vulkanAPI->rtProperties.maxRayRecursionDepth);

@@ -151,6 +151,10 @@ void GraphicsPipeline::createVkInstance(GraphicsCreateData& createData)
 		stageInfos[i] = stageInfo;
 	}
 
+	#if GARDEN_DEBUG | GARDEN_EDITOR
+	this->specConstValues = std::move(createData.specConstValues);
+	#endif
+
 	vk::VertexInputBindingDescription bindingDescription(0, 
 		createData.vertexAttributesSize, vk::VertexInputRate::eVertex);
 	vk::PipelineVertexInputStateCreateInfo inputInfo;

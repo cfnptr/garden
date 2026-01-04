@@ -30,6 +30,9 @@ void ComputePipeline::createVkInstance(ComputeCreateData& createData)
 	vk::SpecializationInfo specializationInfo;
 	fillVkSpecConsts(createData.shaderPath, &specializationInfo, createData.specConsts,
 		createData.specConstValues, PipelineStage::Compute, variantCount);
+	#if GARDEN_DEBUG | GARDEN_EDITOR
+	this->specConstValues = std::move(createData.specConstValues);
+	#endif
 
 	vk::PipelineShaderStageCreateInfo stageInfo({}, vk::ShaderStageFlagBits::eCompute, 
 		(VkShaderModule)shaders[0], "main", specializationInfo.mapEntryCount > 0 ? &specializationInfo : nullptr);
