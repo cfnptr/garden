@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "garden/system/resource.hpp"
+#include "garden/system/file-watcher.hpp"
 #include "garden/system/transform.hpp"
 #include "garden/system/animation.hpp"
 #include "garden/system/graphics.hpp"
@@ -177,6 +178,9 @@ void ResourceSystem::init()
 {
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Input", ResourceSystem::input);
+	#if GARDEN_DEBUG || GARDEN_EDITOR || !GARDEN_PACK_RESOURCES
+	ECSM_TRY_SUBSCRIBE_TO_EVENT("FileChange", ResourceSystem::fileChange);
+	#endif
 }
 void ResourceSystem::deinit()
 {
@@ -216,6 +220,9 @@ void ResourceSystem::deinit()
 
 		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("Input", ResourceSystem::input);
+		#if GARDEN_DEBUG || GARDEN_EDITOR || !GARDEN_PACK_RESOURCES
+		ECSM_TRY_UNSUBSCRIBE_FROM_EVENT("FileChange", ResourceSystem::fileChange);
+		#endif
 	}
 }
 
@@ -481,6 +488,292 @@ void ResourceSystem::input()
 	dequeueBuffers();
 	dequeueImages();
 	queueLocker.unlock();
+}
+
+#if GARDEN_DEBUG || GARDEN_EDITOR
+//**********************************************************************************************************************
+static void collectChangedPipelines(const string& shaderPath, const fs::path& fileExt,
+	map<fs::path, ID<GraphicsPipeline>>& graphicsPipelines,
+	map<fs::path, ID<ComputePipeline>>& computePipelines,
+	map<fs::path, ID<RayTracingPipeline>>& rayTracingPipelines)
+{
+	auto isGraphicsShader = fileExt == ".vert" || fileExt == ".frag";
+	auto isComputeShader = fileExt == ".comp";
+	auto isRayTracingShader = fileExt == ".rgen" || fileExt == ".rint" || fileExt == ".rahit" || 
+		fileExt == ".rchit" || fileExt == ".rmiss" || fileExt == ".rcall";
+	auto isMeshShader = fileExt == ".mesh" || fileExt == ".task";
+
+	if (isGraphicsShader || isComputeShader || isRayTracingShader || isMeshShader)
+	{
+		auto searchResult = shaderPath.find("shaders/");
+		if (searchResult == string::npos)
+			return;
+		searchResult += 8;
+
+		auto resourcePath = string_view(shaderPath.c_str() + 
+			searchResult, shaderPath.length() - searchResult);
+
+		auto graphicsAPI = GraphicsAPI::get();
+		if (isGraphicsShader)
+		{
+			auto& graphicsPipelinePool = graphicsAPI->graphicsPipelinePool;
+			for (auto& pipeline : graphicsPipelinePool)
+			{
+				if (pipeline.getDebugName().find(resourcePath) == string::npos) continue;
+				graphicsPipelines.emplace(resourcePath, graphicsPipelinePool.getID(&pipeline));
+			}
+		}
+		else if (isComputeShader)
+		{
+			auto& computePipelinePool = graphicsAPI->computePipelinePool;
+			for (auto& pipeline : computePipelinePool)
+			{
+				if (pipeline.getDebugName().find(resourcePath) == string::npos) continue;
+				computePipelines.emplace(resourcePath, computePipelinePool.getID(&pipeline));
+			}
+		}
+		else if (isRayTracingShader)
+		{
+			auto& rayTracingPipelinePool = graphicsAPI->rayTracingPipelinePool;
+			for (auto& pipeline : rayTracingPipelinePool)
+			{
+				if (pipeline.getDebugName().find(resourcePath) == string::npos) continue;
+				rayTracingPipelines.emplace(resourcePath, rayTracingPipelinePool.getID(&pipeline));
+			}
+			// TODO: also detect ray tracing shader variants .1., .2. etc.
+		}
+		else if (isMeshShader)
+		{
+			// TODO:
+		}
+	}
+}
+
+//**********************************************************************************************************************
+static void collectGslHeaderUsers(const fs::path& resourcesPath, const fs::path& appCachePath, 
+	string_view resourcePath, vector<string>& gslHeaders, set<string>& checkedPaths,
+	map<fs::path, ID<GraphicsPipeline>>& graphicsPipelines,
+	map<fs::path, ID<ComputePipeline>>& computePipelines,
+	map<fs::path, ID<RayTracingPipeline>>& rayTracingPipelines)
+{
+	for (const auto& entry : fs::recursive_directory_iterator(resourcesPath))
+	{
+		if (entry.is_directory())
+			continue;
+
+		auto shaderFilePath = entry.path();
+		auto fileExt = shaderFilePath.extension();
+
+		if (fileExt != ".vert" && fileExt != ".frag" && fileExt != ".comp" && fileExt != ".rgen" && 
+			fileExt != ".rint" && fileExt != ".rahit" && fileExt != ".rchit" && fileExt != ".rmiss" && 
+			fileExt != ".rcall" && fileExt != ".mesh" && fileExt != ".task" && fileExt != ".gsl" && fileExt != ".h")
+		{
+			continue;
+		}
+
+		ifstream inputStream(shaderFilePath);
+		if (!inputStream.is_open())
+		{
+			GARDEN_LOG_ERROR("Failed to open shader file for recompile. ("
+				"path: " + shaderFilePath.generic_string() + ")");
+			continue;
+		}
+
+		shaderFilePath.replace_extension();
+		auto shaderPath = shaderFilePath.generic_string();
+
+		string line;
+		while (getline(inputStream, line))
+		{
+			if (line.find("#include") == string::npos || line.find(resourcePath) == string::npos)
+				continue;
+
+			auto searchResult = shaderPath.find("shaders/");
+			if (searchResult == string::npos)
+				continue;
+			searchResult += 8;
+
+			auto resourcePath = string_view(shaderPath.c_str() + 
+				searchResult, shaderPath.length() - searchResult);
+
+			if (fileExt == ".gsl" || fileExt == ".h")
+			{
+				if (checkedPaths.emplace(string(resourcePath)).second)
+					gslHeaders.push_back(string(resourcePath));
+			}
+			else
+			{
+				collectChangedPipelines(shaderPath, fileExt, graphicsPipelines, 
+					computePipelines, rayTracingPipelines);
+
+				auto path = appCachePath / "shaders" / resourcePath;
+				path += fileExt; path += ".spv";
+
+				if (fs::exists(path))
+					fs::remove(path);
+			}
+			break;
+		}
+	}
+}
+static void collectGslHeaderUsers(const fs::path& appResourcesPath, 
+	const fs::path& appCachePath, string_view resourcePath, 
+	map<fs::path, ID<GraphicsPipeline>>& graphicsPipelines, 
+	map<fs::path, ID<ComputePipeline>>& computePipelines, 
+	map<fs::path, ID<RayTracingPipeline>>& rayTracingPipelines)
+{
+	try
+	{
+		vector<string> gslHeaders = { string(resourcePath) };
+		set<string> checkedPaths; uint32 checkCount = 0;
+
+		while (!gslHeaders.empty() && checkCount < 1000)
+		{
+			string_view resourcePath = gslHeaders.back(); gslHeaders.pop_back();
+			collectGslHeaderUsers(GARDEN_RESOURCES_PATH, appCachePath, resourcePath, gslHeaders, 
+				checkedPaths, graphicsPipelines, computePipelines, rayTracingPipelines);
+			collectGslHeaderUsers(appResourcesPath, appCachePath, resourcePath, gslHeaders, 
+				checkedPaths, graphicsPipelines, computePipelines, rayTracingPipelines);
+			checkCount++;
+		}
+
+		if (checkCount >= 10000)
+			GARDEN_LOG_ERROR("Detected shader GSL circular includes!");
+	}
+	catch (exception& e)
+	{
+		GARDEN_LOG_ERROR("Failed to iterate shader dirs. (error: " + string(e.what()) + ")");
+		return;
+	}
+}
+
+//**********************************************************************************************************************
+static void recompilePipelines(ResourceSystem* resourceSystem,
+	const map<fs::path, ID<GraphicsPipeline>>& graphicsPipelines,
+	const map<fs::path, ID<ComputePipeline>>& computePipelines,
+	const map<fs::path, ID<RayTracingPipeline>>& rayTracingPipelines)
+{
+	auto graphicsAPI = GraphicsAPI::get();
+	if (!graphicsPipelines.empty())
+	{
+		for (const auto& pair : graphicsPipelines)
+		{
+			auto& graphicsPipelinePool = graphicsAPI->graphicsPipelinePool;
+			auto pipelineView = graphicsPipelinePool.get(pair.second);
+			auto specConstValues = pipelineView->getSpecConstValues();
+
+			ResourceSystem::GraphicsOptions options;
+			options.specConstValues = &specConstValues;
+			options.maxBindlessCount = pipelineView->getMaxBindlessCount();
+			options.useAsyncRecording = pipelineView->useAsyncRecording();
+			options.loadAsync = false;
+			options.subpassIndex = pipelineView->getSubpassIndex();
+			// TODO: store and load overrides?
+
+			try
+			{
+				auto newPipeline = resourceSystem->loadGraphicsPipeline(
+					pair.first, pipelineView->getFramebuffer(), options);
+				auto newPipelineView = graphicsPipelinePool.get(newPipeline);
+				swap(**graphicsPipelinePool.get(pair.second), **newPipelineView);
+
+				// TODO: we need to recreate all descriptor sets to prevent use after free errors!
+				// graphicsPipelinePool.destroy(newPipeline);
+				newPipelineView->setDebugName(newPipelineView->getDebugName() + ".old");
+			}
+			catch (exception& e)
+			{
+				GARDEN_LOG_ERROR(string(e.what()));
+			}
+		}
+	}
+	if (!computePipelines.empty())
+	{
+		for (const auto& pair : computePipelines)
+		{
+			auto& computePipelinePool = graphicsAPI->computePipelinePool;
+			auto pipelineView = computePipelinePool.get(pair.second);
+			auto specConstValues = pipelineView->getSpecConstValues();
+
+			ResourceSystem::ComputeOptions options;
+			options.specConstValues = &specConstValues;
+			options.maxBindlessCount = pipelineView->getMaxBindlessCount();
+			options.useAsyncRecording = pipelineView->useAsyncRecording();
+			options.loadAsync = false;
+
+			try
+			{
+				auto newPipeline = resourceSystem->loadComputePipeline(pair.first, options);
+				auto newPipelineView = computePipelinePool.get(newPipeline);
+				swap(**computePipelinePool.get(pair.second), **newPipelineView);
+				newPipelineView->setDebugName(newPipelineView->getDebugName() + ".old");
+			}
+			catch (exception& e)
+			{
+				GARDEN_LOG_ERROR(string(e.what()));
+			}
+		}
+	}
+	if (!rayTracingPipelines.empty())
+	{
+		for (const auto& pair : rayTracingPipelines)
+		{
+			auto& rayTracingPipelinePool = graphicsAPI->rayTracingPipelinePool;
+			auto pipelineView = rayTracingPipelinePool.get(pair.second);
+			auto specConstValues = pipelineView->getSpecConstValues();
+
+			ResourceSystem::RayTracingOptions options;
+			options.specConstValues = &specConstValues;
+			options.maxBindlessCount = pipelineView->getMaxBindlessCount();
+			options.useAsyncRecording = pipelineView->useAsyncRecording();
+			options.loadAsync = false;
+
+			try
+			{
+				auto newPipeline = resourceSystem->loadRayTracingPipeline(pair.first, options);
+				auto newPipelineView = rayTracingPipelinePool.get(newPipeline);
+				swap(**rayTracingPipelinePool.get(pair.second), **newPipelineView);
+				newPipelineView->setDebugName(newPipelineView->getDebugName() + ".old");
+			}
+			catch (exception& e)
+			{
+				GARDEN_LOG_ERROR(string(e.what()));
+			}
+		}
+	}
+}
+#endif
+
+//**********************************************************************************************************************
+void ResourceSystem::fileChange()
+{
+	#if GARDEN_DEBUG || GARDEN_EDITOR
+	auto fileWatcherSystem = FileWatcherSystem::Instance::get();
+	auto shaderFilePath = fileWatcherSystem->getFilePath();
+	auto fileExt = shaderFilePath.extension();
+	shaderFilePath.replace_extension();
+	auto shaderPath = shaderFilePath.generic_string();
+	
+	map<fs::path, ID<GraphicsPipeline>> graphicsPipelines;
+	map<fs::path, ID<ComputePipeline>> computePipelines;
+	map<fs::path, ID<RayTracingPipeline>> rayTracingPipelines;
+	collectChangedPipelines(shaderPath, fileExt, graphicsPipelines, computePipelines, rayTracingPipelines);
+
+	if (fileExt == ".gsl" || fileExt == ".h")
+	{
+		auto searchResult = shaderPath.find("shaders/");
+		if (searchResult == string::npos)
+			return;
+		searchResult += 8;
+	
+		auto resourcePath = string_view(shaderPath.c_str() + 
+			searchResult, shaderPath.length() - searchResult);
+		collectGslHeaderUsers(appResourcesPath, appCachePath, resourcePath, 
+			graphicsPipelines, computePipelines, rayTracingPipelines);
+	}
+
+	recompilePipelines(this, graphicsPipelines, computePipelines, rayTracingPipelines);
+	#endif
 }
 
 //**********************************************************************************************************************
@@ -1546,6 +1839,7 @@ static bool loadOrCompileGraphics(GslCompiler::GraphicsData& data)
 	auto headerFilePath = data.cachePath / headerPath;
 	auto vertexOutputPath = data.cachePath / vertexPath;
 	auto fragmentOutputPath = data.cachePath / fragmentPath;
+	// TODO: check for .gsl, .h header changes and recompile shaders!
 	
 	if (!fs::exists(headerFilePath) ||
 		(hasVertexShader && (!fs::exists(vertexOutputPath) ||
@@ -1780,6 +2074,7 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 			pipelineData.shaderPath = path;
 			if (!loadOrCompileGraphics(pipelineData))
 			{
+				graphicsAPI->graphicsPipelinePool.destroy(pipeline);
 				throw GardenError("Failed to load graphics pipeline. ("
 					"path: " + path.generic_string() + ")");
 			}
@@ -1955,6 +2250,7 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(const fs::path& path, co
 			pipelineData.shaderPath = path;
 			if (!loadOrCompileCompute(pipelineData))
 			{
+				graphicsAPI->computePipelinePool.destroy(pipeline);
 				throw GardenError("Failed to load compute pipeline. ("
 					"path: " + path.generic_string() + ")");
 			}
@@ -2163,6 +2459,7 @@ ID<RayTracingPipeline> ResourceSystem::loadRayTracingPipeline(const fs::path& pa
 			pipelineData.shaderPath = path;
 			if (!loadOrCompileRayTracing(pipelineData))
 			{
+				graphicsAPI->rayTracingPipelinePool.destroy(pipeline);
 				throw GardenError("Failed to load ray tracing pipeline. ("
 					"path: " + path.generic_string() + ")");
 			}

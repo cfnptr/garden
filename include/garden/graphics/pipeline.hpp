@@ -142,6 +142,9 @@ protected:
 	PipelineType type = {};
 	uint8 variantCount = 0;
 	bool asyncRecording = false;
+	#if GARDEN_DEBUG || GARDEN_EDITOR
+	Pipeline::SpecConstValues specConstValues;
+	#endif
 
 	Pipeline(CreateData& createData, bool useAsyncRecording);
 	Pipeline(PipelineType type, const fs::path& path, uint32 maxBindlessCount, bool useAsyncRecording, 
@@ -177,7 +180,7 @@ public:
 	 */
 	Pipeline() noexcept = default;
 
-	/*******************************************************************************************************************
+	/**
 	 * @brief Returns rendering pipeline type.
 	 * @details General Pipeline class contains shared functional between all pipeline types.
 	 */
@@ -217,6 +220,13 @@ public:
 	 * @details Helps to reduce overhead associated with binding and switching resources like textures, buffers.
 	 */
 	bool isBindless() const noexcept { return maxBindlessCount > 0; }
+
+	#if GARDEN_DEBUG || GARDEN_EDITOR
+	/**
+	 * @brief Returns pipeline specialization constant variables. (Debug only!)
+	 */
+	const Pipeline::SpecConstValues& getSpecConstValues() const noexcept { return specConstValues; }
+	#endif
 
 	//******************************************************************************************************************
 	// Render commands
@@ -440,6 +450,15 @@ public:
 	 * @param[in] pipeline target pipeline instance
 	 */
 	static bool& isAsyncRecording(Pipeline& pipeline) noexcept { return pipeline.asyncRecording; }
+
+	#if GARDEN_DEBUG || GARDEN_EDITOR
+	/**
+	 * @brief Returns pipeline specialization constant variables. (Debug only!)
+	 * @warning In most cases you should use @ref Pipeline functions.
+	 * @param[in] pipeline target pipeline instance
+	 */
+	static Pipeline::SpecConstValues& getSpecConstValues(Pipeline& pipeline) noexcept { return pipeline.specConstValues; }
+	#endif
 	
 	/*******************************************************************************************************************
 	 * @brief Moves internal pipeline objects.
@@ -458,6 +477,9 @@ public:
 		PipelineExt::getPushConstantsMask(destination) = PipelineExt::getPushConstantsMask(source);
 		PipelineExt::getPushConstantsSize(destination) = PipelineExt::getPushConstantsSize(source);
 		PipelineExt::getVariantCount(destination) = PipelineExt::getVariantCount(source);
+		#if GARDEN_DEBUG || GARDEN_EDITOR
+		PipelineExt::getSpecConstValues(destination) = PipelineExt::getSpecConstValues(source);
+		#endif
 		ResourceExt::getInstance(destination) = ResourceExt::getInstance(source);
 		ResourceExt::getInstance(source) = nullptr;
 	}

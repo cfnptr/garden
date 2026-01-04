@@ -208,6 +208,7 @@ protected:
 	void init();
 	void deinit();
 	void input();
+	void fileChange();
 	
 	friend class ecsm::Manager;
 public:
