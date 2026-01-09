@@ -345,7 +345,7 @@ struct BeginLabelCommandBase : public Command
 {
 	uint8 _alignment0 = 0;
 	uint16 _alignment1 = 0;
-	Color color = Color((uint8)0);
+	Color color = Color::transparent;
 	BeginLabelCommandBase() noexcept : Command(Type::BeginLabel) { }
 };
 struct BeginLabelCommand final : public BeginLabelCommandBase
@@ -362,7 +362,7 @@ struct InsertLabelCommandBase : public Command
 {
 	uint8 _alignment0 = 0;
 	uint16 _alignment1 = 0;
-	Color color = Color((uint8)0);
+	Color color = Color::transparent;
 	InsertLabelCommandBase() noexcept : Command(Type::InsertLabel) { }
 };
 struct InsertLabelCommand final : public InsertLabelCommandBase

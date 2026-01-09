@@ -131,6 +131,7 @@ public:
 	virtual bool read(string_view name, int8& value) = 0;
 	virtual bool read(string_view name, uint8& value) = 0;
 	virtual bool read(string_view name, bool& value) = 0;
+	virtual bool read(string_view name, volatile bool& value) = 0;
 	virtual bool read(string_view name, float& value) = 0;
 	virtual bool read(string_view name, double& value) = 0;
 	virtual bool read(string_view name, string& value) = 0;

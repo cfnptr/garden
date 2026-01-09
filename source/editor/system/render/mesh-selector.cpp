@@ -121,7 +121,7 @@ void MeshSelectorEditorSystem::render()
 					continue;
 
 				auto transformView = manager->tryGet<TransformComponent>(meshRenderView->getEntity());
-				if (!transformView->isActive())
+				if (!transformView || !transformView->isActive())
 					continue;
 
 				auto model = transformView ? transformView->calcModel(cameraPosition) : f32x4x4::identity;

@@ -66,6 +66,7 @@ Use building [instructions](BUILDING.md) to install all required tools and libra
 | GARDEN_USE_GAPI_VALIDATIONS | Use graphics API validation layers               | `ON`          |
 | GARDEN_USE_TRACY_PROFILER   | Use Tracy frame profiler                         | `OFF`         |
 | GARDEN_USE_ASAN             | Use Clang address sanitizer                      | `OFF`         |
+| GARDEN_USE_MESA_RGP         | Use Mesa Radeon GPU Profiler (RGP)               | `OFF`         |
 | GARDEN_USE_NVIDIA_DLSS      | Use Nvidia DLSS SDK (Auto-downloads repo)        | `OFF`         |
 | GARDEN_USE_STEAMWORKS_SDK   | Use Valve Steamworks SDK (Download it manually!) | `OFF`         |
 

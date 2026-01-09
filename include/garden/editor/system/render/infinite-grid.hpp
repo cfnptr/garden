@@ -45,9 +45,9 @@ private:
 	
 	friend class ecsm::Manager;
 public:
-	Color meshColor = Color("101010FF");
-	Color axisColorX = Color("FF1010FF");
-	Color axisColorYZ = Color("1010FFFF");
+	Color meshColor = rgba(16, 16, 16, 1);
+	Color axisColorX = rgba(255, 16, 16, 1);
+	Color axisColorYZ = rgba(16, 16, 255, 1);
 	float meshScale = 1.0f;
 	bool isHorizontal = true;
 	bool isEnabled = true;

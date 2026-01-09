@@ -519,7 +519,8 @@ static void collectChangedPipelines(const string& shaderPath, const fs::path& fi
 			auto& graphicsPipelinePool = graphicsAPI->graphicsPipelinePool;
 			for (auto& pipeline : graphicsPipelinePool)
 			{
-				if (pipeline.getDebugName().find(resourcePath) == string::npos) continue;
+				if (pipeline.getDebugName().find(resourcePath) == string::npos ||
+					pipeline.getDebugName().find(".old") != string::npos) continue;
 				graphicsPipelines.emplace(resourcePath, graphicsPipelinePool.getID(&pipeline));
 			}
 		}
@@ -528,7 +529,8 @@ static void collectChangedPipelines(const string& shaderPath, const fs::path& fi
 			auto& computePipelinePool = graphicsAPI->computePipelinePool;
 			for (auto& pipeline : computePipelinePool)
 			{
-				if (pipeline.getDebugName().find(resourcePath) == string::npos) continue;
+				if (pipeline.getDebugName().find(resourcePath) == string::npos ||
+					pipeline.getDebugName().find(".old") != string::npos) continue;
 				computePipelines.emplace(resourcePath, computePipelinePool.getID(&pipeline));
 			}
 		}
@@ -537,7 +539,8 @@ static void collectChangedPipelines(const string& shaderPath, const fs::path& fi
 			auto& rayTracingPipelinePool = graphicsAPI->rayTracingPipelinePool;
 			for (auto& pipeline : rayTracingPipelinePool)
 			{
-				if (pipeline.getDebugName().find(resourcePath) == string::npos) continue;
+				if (pipeline.getDebugName().find(resourcePath) == string::npos ||
+					pipeline.getDebugName().find(".old") != string::npos) continue;
 				rayTracingPipelines.emplace(resourcePath, rayTracingPipelinePool.getID(&pipeline));
 			}
 			// TODO: also detect ray tracing shader variants .1., .2. etc.
@@ -2764,7 +2767,7 @@ void ResourceSystem::storeScene(const fs::path& path, ID<Entity> rootEntity, con
 		{
 			auto childs = transformView->getChilds();
 			for (int64 i = (int64)transformView->getChildCount() - 1; i >= 0; i--)
-				childEntities.push(childs[i]);
+				childEntities.push(childs[i]); // Note: reversed.
 		}
 
 		serializer.beginArrayElement();

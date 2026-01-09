@@ -569,6 +569,15 @@ bool JsonDeserializer::read(string_view name, bool& value)
 	value = (bool)object;
 	return true;
 }
+bool JsonDeserializer::read(string_view name, volatile bool& value)
+{
+	GARDEN_ASSERT(!name.empty());
+	auto& object = hierarchy.top()->operator[](name);
+	if (!object.is_boolean())
+		return false;
+	value = (bool)object;
+	return true;
+}
 bool JsonDeserializer::read(string_view name, float& value)
 {
 	GARDEN_ASSERT(!name.empty());
@@ -858,10 +867,7 @@ bool JsonDeserializer::read(string_view name, Color& value)
 	auto& object = hierarchy.top()->operator[](name);
 	if (!object.is_string())
 		return false;
-	const string& hex = object;
-	if (hex.length() != 6 && hex.length() != 8)
-		return false;
-	value = Color(hex);
+	value = Color((const string&)object);
 	return true;
 }
 bool JsonDeserializer::read(string_view name, f32x4& value, uint8 components)

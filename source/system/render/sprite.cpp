@@ -211,16 +211,15 @@ void SpriteRenderSystem::serialize(ISerializer& serializer, const View<Component
 }
 void SpriteRenderSystem::deserialize(IDeserializer& deserializer, View<Component> component)
 {
-	auto componentView = View<SpriteRenderComponent>(component); bool isEnabled = true;
+	auto componentView = View<SpriteRenderComponent>(component);
 	deserializer.read("isArray", componentView->isArray);
 	deserializer.read("useMipmap", componentView->useMipmap);
 	deserializer.read("aabb", componentView->aabb);
-	deserializer.read("isEnabled", isEnabled);
+	deserializer.read("isEnabled", componentView->isEnabled);
 	deserializer.read("colorMapLayer", componentView->colorMapLayer);
 	deserializer.read("color", componentView->color);
 	deserializer.read("uvSize", componentView->uvSize);
 	deserializer.read("uvOffset", componentView->uvOffset);
-	componentView->isEnabled = isEnabled;
 
 	if (deserializer.read("colorMapPath", valueStringCache))
 	{

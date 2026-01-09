@@ -30,7 +30,7 @@ class UiCheckboxEditorSystem final : public System, public Singleton<UiCheckboxE
 	void onEntityInspector(ID<Entity> entity, bool isOpened);
 	friend class ecsm::Manager;
 public:
-	float inspectorPriority = 0.8f;
+	float inspectorPriority = 0.6f;
 };
 
 } // namespace garden

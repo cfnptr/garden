@@ -89,9 +89,7 @@ void TransformComponent::setActive(bool isActive) noexcept
 
 		while (!entityStack.empty())
 		{
-			auto entity = entityStack.back();
-			entityStack.pop_back();
-
+			auto entity = entityStack.back(); entityStack.pop_back();
 			auto transformView = manager->get<TransformComponent>(entity);
 			if (!transformView->selfActive)
 				continue;
@@ -112,9 +110,7 @@ void TransformComponent::setActive(bool isActive) noexcept
 	{
 		while (!entityStack.empty())
 		{
-			auto entity = entityStack.back();
-			entityStack.pop_back();
-
+			auto entity = entityStack.back(); entityStack.pop_back();
 			auto transformView = manager->get<TransformComponent>(entity);
 			auto childCount = transformView->childCount();
 			auto childs = transformView->childs;
@@ -345,9 +341,7 @@ bool TransformComponent::hasDescendant(ID<Entity> descendant) const noexcept
 
 	while (!entityStack.empty())
 	{
-		auto entity = entityStack.back();
-		entityStack.pop_back();
-
+		auto entity = entityStack.back(); entityStack.pop_back();
 		auto transformView = manager->get<TransformComponent>(entity);
 		auto transformChildCount = transformView->childCount();
 		auto transformChilds = transformView->childs;
@@ -374,9 +368,7 @@ bool TransformComponent::hasStaticWithDescendants() const noexcept
 
 	while (!entityStack.empty())
 	{
-		auto entity = entityStack.back();
-		entityStack.pop_back();
-
+		auto entity = entityStack.back(); entityStack.pop_back();
 		if (manager->has<StaticTransformComponent>(entity))
 		{
 			entityStack.clear();
@@ -384,11 +376,8 @@ bool TransformComponent::hasStaticWithDescendants() const noexcept
 		}
 
 		auto transformView = manager->get<TransformComponent>(entity);
-		auto transformChildCount = transformView->childCount();
-		auto transformChilds = transformView->getChilds();
-		
-		for (uint32 i = 0; i < transformChildCount; i++)
-			entityStack.push_back(transformChilds[i]);
+		for (auto child : **transformView)
+			entityStack.push_back(child);
 	}
 
 	return false;

@@ -1005,6 +1005,10 @@ VulkanAPI::VulkanAPI(const string& appName, const string& appDataName, Version a
 	this->currentIndexBuffers.resize(threadCount);
 	this->bindDescriptorSets.resize(threadCount);
 
+	#if GARDEN_OS_LINUX && GARDEN_MESA_RGP
+	setenv("MESA_VK_TRACE", "rgp", 0);
+	#endif
+
 	uint32 graphicsQueueMaxCount = 0, transferQueueMaxCount = 0, computeQueueMaxCount = 0;
 	uint32 frameQueueIndex = 0, graphicsQueueIndex = 0, transferQueueIndex = 0, computeQueueIndex = 0;
 
