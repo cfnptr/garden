@@ -30,6 +30,9 @@ namespace garden
  */
 struct TransformComponent final : public Component
 {
+public:
+	struct ChildIterator;
+	struct ConstChildIterator;
 private:
 	ID<Entity> parent = {};
 	uint64 uid = 0;
@@ -47,6 +50,8 @@ private:
 
 	uint32& childCount() noexcept { return posChildCount.uints.w; }
 	uint32& childCapacity() noexcept { return scaleChildCap.uints.w; }
+	uint32 childCount() const noexcept { return posChildCount.uints.w; }
+	uint32 childCapacity() const noexcept { return scaleChildCap.uints.w; }
 
 	friend class TransformSystem;
 	friend class LinearPool<TransformComponent>;
@@ -144,6 +149,24 @@ public:
 	 * @details Use it to iterate over entity children.
 	 */
 	const ID<Entity>* getChilds() const noexcept { return childs; }
+
+	/**
+	 * @brief Returns an iterator pointing to the first children in the array.
+	 */
+	ChildIterator begin() noexcept { return ChildIterator(childs); }
+	/**
+	 * @brief Returns an iterator pointing to the past-the-end children in the array.
+	 */
+	ChildIterator end() noexcept { return ChildIterator(childs + childCount()); }
+
+	/**
+	 * @brief Returns a constant iterator pointing to the first children in the array.
+	 */
+	ConstChildIterator begin() const noexcept { return ConstChildIterator(childs); }
+	/**
+	 * @brief Returns a constant iterator pointing to the past-the-end children in the array.
+	 */
+	ConstChildIterator end() const noexcept { return ConstChildIterator(childs + childCount()); }
 
 	/*******************************************************************************************************************
 	 * @brief Translates this entity by the specified translation.
@@ -328,6 +351,75 @@ public:
 	 */
 	void resetUIDs();
 	#endif
+
+	/**
+	 * @brief Transform children array iterator.
+	 */
+	struct ChildIterator
+	{
+		using iterator_category = std::random_access_iterator_tag;
+		using value_type = ID<Entity>;
+		using difference_type = ptrdiff_t;
+		using pointer = value_type*;
+		using reference = value_type&;
+	private:
+		pointer ptr = nullptr;
+	public:
+		ChildIterator(pointer ptr) noexcept : ptr(ptr) { }
+		ChildIterator& operator=(const ChildIterator& i) noexcept = default;
+		ChildIterator& operator=(pointer ptr) noexcept { this->ptr = ptr; return (*this); }
+
+		operator bool() const noexcept { return ptr; }
+		bool operator==(const ChildIterator& i) const noexcept { return ptr == i.ptr; }
+		bool operator!=(const ChildIterator& i) const noexcept { return ptr != i.ptr; }
+
+		ChildIterator& operator+=(const difference_type& m) noexcept { ptr += m; return *this; }
+		ChildIterator& operator-=(const difference_type& m) noexcept { ptr -= m; return *this; }
+		ChildIterator& operator++() noexcept { ++ptr; return *this; }
+		ChildIterator& operator--() noexcept { --ptr; return *this; }
+		ChildIterator operator++(int) noexcept { auto tmp = *this; ++ptr; return tmp; }
+		ChildIterator operator--(int) noexcept { auto tmp = *this; --ptr; return tmp; }
+		ChildIterator operator+(const difference_type& m) noexcept { return ChildIterator(ptr + m); }
+		ChildIterator operator-(const difference_type& m) noexcept { return ChildIterator(ptr - m); }
+		difference_type operator-(const ChildIterator& i) noexcept { return std::distance(i.ptr, ptr); }
+
+		reference operator*() const noexcept { return *ptr; }
+		pointer operator->() noexcept { return ptr; }
+	};
+	/**
+	 * @brief Transform constant children array iterator.
+	 */
+	struct ConstChildIterator
+	{
+		using iterator_category = std::random_access_iterator_tag;
+		using value_type = const ID<Entity>;
+		using difference_type = ptrdiff_t;
+		using pointer = value_type*;
+		using reference = value_type&;
+	private:
+		pointer ptr = nullptr;
+	public:
+		ConstChildIterator(pointer ptr) noexcept : ptr(ptr) { }
+		ConstChildIterator& operator=(const ConstChildIterator& i) noexcept = default;
+		ConstChildIterator& operator=(pointer ptr) noexcept { this->ptr = ptr; return (*this); }
+
+		operator bool() const noexcept { return ptr; }
+		bool operator==(const ConstChildIterator& i) const noexcept { return ptr == i.ptr; }
+		bool operator!=(const ConstChildIterator& i) const noexcept { return ptr != i.ptr; }
+
+		ConstChildIterator& operator+=(const difference_type& m) noexcept { ptr += m; return *this; }
+		ConstChildIterator& operator-=(const difference_type& m) noexcept { ptr -= m; return *this; }
+		ConstChildIterator& operator++() noexcept { ++ptr; return *this; }
+		ConstChildIterator& operator--() noexcept { --ptr; return *this; }
+		ConstChildIterator operator++(int) noexcept { auto tmp = *this; ++ptr; return tmp; }
+		ConstChildIterator operator--(int) noexcept { auto tmp = *this; --ptr; return tmp; }
+		ConstChildIterator operator+(const difference_type& m) noexcept { return ConstChildIterator(ptr + m); }
+		ConstChildIterator operator-(const difference_type& m) noexcept { return ConstChildIterator(ptr - m); }
+		difference_type operator-(const ConstChildIterator& i) noexcept { return std::distance(i.ptr, ptr); }
+
+		reference operator*() const noexcept { return *ptr; }
+		pointer operator->() noexcept { return ptr; }
+	};
 };
 
 /**

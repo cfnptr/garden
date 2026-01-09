@@ -30,7 +30,7 @@ class UiScissorEditorSystem final : public System, public Singleton<UiScissorEdi
 	void onEntityInspector(ID<Entity> entity, bool isOpened);
 	friend class ecsm::Manager;
 public:
-	float inspectorPriority = 0.8f;
+	float inspectorPriority = 0.7f;
 };
 
 } // namespace garden

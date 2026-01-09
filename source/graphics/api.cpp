@@ -102,7 +102,13 @@ void GraphicsAPI::initialize(GraphicsBackend backendType, const string& appName,
 	setenv("XCURSOR_SIZE", "24", 0);
 	// TODO: remove cursor size after fixing: https://github.com/glfw/glfw/issues/2668
 
-	if (isEnv("GLFW_PLATFORM", "x11"))
+	#if GARDEN_MESA_RGP
+	const auto forceX11 = true;
+	#else
+	const auto forceX11 = false;
+	#endif
+
+	if (isEnv("GLFW_PLATFORM", "x11") || forceX11)
 		glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_X11);
 	#endif
 

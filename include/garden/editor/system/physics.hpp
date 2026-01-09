@@ -88,8 +88,8 @@ public:
 	bool drawConstraintRefFrame = false;
 	float rigidbodyInspectorPriority = 0.8f;
 	float characterInspectorPriority = 0.75f;
-	Color rigidbodyAabbColor = Color::green;
-	Color characterAabbColor = Color("00FF7FFF");
+	Color rigidbodyAabbColor = rgba(0, 255, 0, 1);
+	Color characterAabbColor = rgba(0, 255, 127, 1);
 };
 
 } // namespace garden

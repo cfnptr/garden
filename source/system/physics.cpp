@@ -2325,11 +2325,8 @@ void PhysicsSystem::activateRecursive(ID<Entity> entity)
 		if (!transformView)
 			continue;
 
-		auto childCount = transformView->getChildCount();
-		auto childs = transformView->getChilds();
-
-		for (uint32 i = 0; i < childCount; i++)
-			entityStack.push(childs[i]);
+		for (auto child : **transformView)
+			entityStack.push(child);
 	}
 }
 
@@ -2351,11 +2348,8 @@ void PhysicsSystem::setWorldTransformRecursive(ID<Entity> entity, bool activate)
 		if (!transformView)
 			continue;
 
-		auto childCount = transformView->getChildCount();
-		auto childs = transformView->getChilds();
-
-		for (uint32 i = 0; i < childCount; i++)
-			entityStack.push(childs[i]);
+		for (auto child : **transformView)
+			entityStack.push(child);
 	}
 }
 

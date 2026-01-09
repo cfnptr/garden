@@ -185,9 +185,8 @@ void SettingsSystem::getColor(const string& name, Color& value)
 		if (confReader)
 		{
 			string_view stringView;
-			auto result = ((conf::Reader*)confReader)->get(name, stringView);
-			if (result && (stringView.length() == 8 || stringView.length() == 6))
-				value = Color(string(stringView));
+			if (((conf::Reader*)confReader)->get(name, stringView))
+				value = Color(stringView);
 		}
 		items.emplace(name, Item(Type::Color, (uint32)value));
 		return;

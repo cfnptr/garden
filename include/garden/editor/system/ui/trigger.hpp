@@ -30,7 +30,7 @@ class UiTriggerEditorSystem final : public System, public Singleton<UiTriggerEdi
 	void onEntityInspector(ID<Entity> entity, bool isOpened);
 	friend class ecsm::Manager;
 public:
-	float inspectorPriority = 0.8f;
+	float inspectorPriority = 0.7f;
 };
 
 } // namespace garden

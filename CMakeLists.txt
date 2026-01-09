@@ -48,6 +48,7 @@ option(GARDEN_DEBUG_PACK_RESOURCES "Pack and load resources in the debug build."
 option(GARDEN_USE_GAPI_VALIDATIONS "Use graphics API validation layers." ON)
 option(GARDEN_USE_TRACY_PROFILER "Use Tracy frame profiler." OFF)
 option(GARDEN_USE_ASAN "Use Clang address sanitizer." OFF)
+option(GARDEN_USE_MESA_RGP "Use Mesa Radeon GPU Profiler." OFF)
 
 # By enabling this option you agree to the NVIDIA RTX SDKs license.
 option(GARDEN_USE_NVIDIA_DLSS "Use Nvidia DLSS SDK." OFF)
@@ -190,6 +191,11 @@ if(GARDEN_USE_TRACY_PROFILER)
 	set(GARDEN_TRACY_PROFILER 1)
 else()
 	set(GARDEN_TRACY_PROFILER 0)
+endif()
+if(GARDEN_USE_MESA_RGP)
+	set(GARDEN_MESA_RGP 1)
+else()
+	set(GARDEN_MESA_RGP 0)
 endif()
 
 math(EXPR GARDEN_APP_VERSION "((${GARDEN_APP_VERSION_MAJOR} << 24) | (${GARDEN_APP_VERSION_MINOR} << 16) | (${GARDEN_APP_VERSION_PATCH} << 8))")

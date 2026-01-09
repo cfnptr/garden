@@ -136,6 +136,7 @@ public:
 	bool read(string_view name, int8& value) final;
 	bool read(string_view name, uint8& value) final;
 	bool read(string_view name, bool& value) final;
+	bool read(string_view name, volatile bool& value) final;
 	bool read(string_view name, float& value) final;
 	bool read(string_view name, double& value) final;
 	bool read(string_view name, string& value) final;
