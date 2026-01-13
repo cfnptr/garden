@@ -116,7 +116,7 @@ void UiTransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened
 	auto isStatic = manager->has<StaticTransformComponent>(entity);
 	ImGui::BeginDisabled(isStatic);
 
-	ImGui::Combo("Anchor", uiTransformView->anchor, uiAnchorNames, (int)UiAnchor::Count);
+	ImGui::Combo("Anchor", &uiTransformView->anchor, uiAnchorNames, (int)UiAnchor::Count);
 	if (ImGui::BeginItemTooltip())
 	{
 		ImGui::Text("UI element position relative point on the screen.");

@@ -530,7 +530,7 @@ static void renderConstraints(View<RigidbodyComponent> rigidbodyView, PhysicsEdi
 
 	ImGui::BeginDisabled(!rigidbodyView->getShape());
 	constexpr const char* constraintNames[(uint8)ConstraintType::Count] = { "Fixed", "Point" };
-	ImGui::Combo("Type", cache.constraintType, constraintNames, (int)ConstraintType::Count);
+	ImGui::Combo("Type", &cache.constraintType, constraintNames, (int)ConstraintType::Count);
 
 	auto name = cache.constraintTarget ? "Entity " + to_string(*cache.constraintTarget) : "";
 	if (cache.constraintTarget)
@@ -620,7 +620,7 @@ static void renderConstraints(View<RigidbodyComponent> rigidbodyView, PhysicsEdi
 			}
 
 			auto type = constraint.type;
-			ImGui::Combo("Type", type, constraintNames, (int)ConstraintType::Count);
+			ImGui::Combo("Type", &type, constraintNames, (int)ConstraintType::Count);
 
 			if (constraint.otherBody)
 			{
@@ -860,6 +860,7 @@ void PhysicsEditorSystem::onRigidbodyInspector(ID<Entity> entity, bool isOpened)
 	if (!isOpened)
 		return;
 
+	auto unitScale = EditorRenderSystem::Instance::get()->unitScale;
 	auto rigidbodyView = manager->get<RigidbodyComponent>(entity);
 	auto shape = rigidbodyView->getShape();
 
@@ -897,11 +898,13 @@ void PhysicsEditorSystem::onRigidbodyInspector(ID<Entity> entity, bool isOpened)
 	}
 	ImGui::EndDisabled();
 
-	ImGui::BeginDisabled(!shape);
 	f32x4 position; quat rotation;
 	rigidbodyView->getPosAndRot(position, rotation);
-	if (ImGui::DragFloat3("Position", &position, 0.01f))
-		rigidbodyView->setPosition(position, false);
+	position /= unitScale;
+
+	ImGui::BeginDisabled(!shape);
+	if (ImGui::DragFloat3("Position", &position, 0.01f, 0.0f, 0.0f, "%.4f"))
+		rigidbodyView->setPosition(position * unitScale, false);
 	if (ImGui::BeginPopupContextItem("position"))
 	{
 		if (ImGui::MenuItem("Reset Default"))
@@ -965,7 +968,7 @@ void PhysicsEditorSystem::onRigidbodyInspector(ID<Entity> entity, bool isOpened)
 	if (shape)
 		rigidbodyCache.motionType = rigidbodyView->getMotionType();
 	constexpr const char* motionNames[(uint8)MotionType::Count] = { "Static", "Kinematic", "Dynamic" };
-	if (ImGui::Combo("Motion Type", rigidbodyCache.motionType, motionNames, (int)MotionType::Count))
+	if (ImGui::Combo("Motion Type", &rigidbodyCache.motionType, motionNames, (int)MotionType::Count))
 	{
 		if (rigidbodyCache.motionType != MotionType::Static)
 			rigidbodyCache.allowedDOF = AllowedDOF::All;
@@ -1211,6 +1214,7 @@ void PhysicsEditorSystem::onCharacterInspector(ID<Entity> entity, bool isOpened)
 	if (!isOpened)
 		return;
 
+	auto unitScale = EditorRenderSystem::Instance::get()->unitScale;
 	auto characterView = manager->get<CharacterComponent>(entity);
 	auto shape = characterView->getShape();
 
@@ -1232,8 +1236,10 @@ void PhysicsEditorSystem::onCharacterInspector(ID<Entity> entity, bool isOpened)
 
 	f32x4 position; quat rotation;
 	characterView->getPosAndRot(position, rotation);
-	if (ImGui::DragFloat3("Position", &position, 0.01f))
-		characterView->setPosition(position);
+	position /= unitScale;
+
+	if (ImGui::DragFloat3("Position", &position, 0.01f, 0.0f, 0.0f, "%.4f"))
+		characterView->setPosition(position * unitScale);
 	if (ImGui::BeginPopupContextItem("position"))
 	{
 		if (ImGui::MenuItem("Reset Default"))

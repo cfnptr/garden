@@ -59,7 +59,7 @@ void ToneMappingEditorSystem::preUiRender()
 	if (ImGui::Begin("Tone Mapping", &showWindow, ImGuiWindowFlags_AlwaysAutoResize))
 	{
 		auto toneMappingSystem = ToneMappingSystem::Instance::get();
-		if (ImGui::Combo("Tone Mapper", toneMapper, TONE_MAPPER_NAMES, TONE_MAPPER_COUNT))
+		if (ImGui::Combo("Tone Mapper", &toneMapper, TONE_MAPPER_NAMES, TONE_MAPPER_COUNT))
 		{
 			auto options = toneMappingSystem->getOptions();
 			options.toneMapper = toneMapper;

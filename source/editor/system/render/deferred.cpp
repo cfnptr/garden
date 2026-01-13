@@ -186,7 +186,7 @@ void DeferredRenderEditorSystem::preLdrRender()
 
 	if (ImGui::Begin("G-Buffer Visualizer", &showWindow, ImGuiWindowFlags_AlwaysAutoResize))
 	{
-		ImGui::Combo("Draw Mode", drawMode, G_BUFFER_DRAW_MODE_NAMES, G_BUFFER_DRAW_MODE_COUNT);
+		ImGui::Combo("Draw Mode", &drawMode, G_BUFFER_DRAW_MODE_NAMES, G_BUFFER_DRAW_MODE_COUNT);
 
 		auto deferredSystem = DeferredRenderSystem::Instance::get();
 		if (drawMode == G_BUFFER_DRAW_MODE_LIGHTING_DEBUG)

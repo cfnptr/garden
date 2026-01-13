@@ -1253,7 +1253,7 @@ void PhysicsSystem::simulate()
 	}
 	else
 	{
-		auto t = clamp(deltaTimeAccum / simDeltaTime, 0.0f, 1.0f);
+		auto t = saturate(deltaTimeAccum / simDeltaTime);
 		interpolateResult(t);
 	}
 }

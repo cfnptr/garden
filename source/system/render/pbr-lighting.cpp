@@ -125,18 +125,18 @@ static float log4(float x) noexcept
 	return log2(x) * 0.5f;
 }
 
-static float smithGGXCorrelated(float nov, float nol, float a) noexcept
+static float smithGGXCorrelated(float nov, float nol, float linearRoughness) noexcept
 {
-	auto a2 = a * a;
-	auto lambdaV = nol * sqrt((nov - nov * a2) * nov + a2);
-	auto lambdaL = nov * sqrt((nol - nol * a2) * nol + a2);
+	auto a2 = linearRoughness * linearRoughness;
+	auto lambdaV = nol * sqrt(fma(nov - nov * a2, nov, a2));
+	auto lambdaL = nov * sqrt(fma(nol - nol * a2, nol, a2));
 	return 0.5f / (lambdaV + lambdaL);
 }
 static float2 dfvMultiscatter(uint32 x, uint32 y, uint32 dfgSize, uint32 sampleCount) noexcept
 {
 	auto invSampleCount = 1.0f / sampleCount;
-	auto nov = clamp((x + 0.5f) / dfgSize, 0.0f, 1.0f);
-	auto coord = clamp((dfgSize - y + 0.5f) / dfgSize, 0.0f, 1.0f);
+	auto nov = saturate((x + 0.5f) / dfgSize);
+	auto coord = saturate((dfgSize - y + 0.5f) / dfgSize);
 	auto v = f32x4(sqrt(1.0f - nov * nov), 0.0f, nov);
 	auto linearRoughness = coord * coord;
 
@@ -145,11 +145,8 @@ static float2 dfvMultiscatter(uint32 x, uint32 y, uint32 dfgSize, uint32 sampleC
 	{
 		auto u = hammersley(i, invSampleCount);
 		auto h = importanceSamplingNdfDggx(u, linearRoughness);
-		auto voh = dot3(v, h);
-		auto l = 2.0f * voh * h - v;
-		voh = clamp(voh, 0.0f, 1.0f);
-		auto nol = clamp(l.getZ(), 0.0f, 1.0f);
-		auto noh = clamp(h.getZ(), 0.0f, 1.0f);
+		auto voh = dot3(v, h); auto l = 2.0f * voh * h - v; voh = saturate(voh);
+		auto nol = saturate(l.getZ()), noh = saturate(h.getZ());
 
 		if (nol > 0.0f)
 		{
@@ -165,9 +162,9 @@ static float2 dfvMultiscatter(uint32 x, uint32 y, uint32 dfgSize, uint32 sampleC
 static float mipToLinearRoughness(uint8 lodCount, uint8 mip) noexcept
 {
 	constexpr auto a = 2.0f, b = -1.0f;
-	auto lod = clamp((float)mip / ((int)lodCount - 1), 0.0f, 1.0f);
-	auto perceptualRoughness = clamp((sqrt(
-		a * a + 4.0f * b * lod) - a) / (2.0f * b), 0.0f, 1.0f);
+	auto lod = saturate((float)mip / ((int)lodCount - 1));
+	auto perceptualRoughness = saturate((sqrt(fma(
+		lod, 4.0f * b, a * a)) - a) / (b * 2.0f));
 	return perceptualRoughness * perceptualRoughness;
 }
 
@@ -1368,14 +1365,14 @@ static void calcIblSpecular(SpecularData* specularMap, float* weightBufferData, 
 	auto iblSampleCount = calcIblSampleCount(mipIndex, sampleCount);
 	auto invIblSampleCount = 1.0f / iblSampleCount;
 	auto linearRoughness = mipToLinearRoughness(specularMipCount, mipIndex);
-	auto logOmegaP = log4((4.0f * (float)M_PI) / (6.0f * cubemapSize * cubemapSize));
+	auto logOmegaP = log4(float(4.0 * M_PI) / (6.0f * cubemapSize * cubemapSize));
 	float weight = 0.0f; uint32 count = 0;
 
 	for (uint32 i = 0; i < iblSampleCount; i++)
 	{
 		auto u = hammersley(i, invIblSampleCount);
 		auto h = importanceSamplingNdfDggx(u, linearRoughness);
-		auto noh = h.getZ(), noh2 = noh * noh, nol = 2.0f * noh2 - 1.0f;
+		auto noh = h.getZ(), noh2 = noh * noh, nol = fma(noh2, 2.0f, -1.0f);
 
 		if (nol > 0.0f)
 		{
