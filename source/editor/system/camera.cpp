@@ -122,7 +122,7 @@ void CameraEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	}
 	else abort();
 
-	if (ImGui::Combo("Type", cameraView->type, projectionTypeNames, (int)ProjectionType::Count))
+	if (ImGui::Combo("Type", &cameraView->type, projectionTypeNames, (int)ProjectionType::Count))
 	{
 		if (cameraView->type == ProjectionType::Perspective)
 			cameraView->p.perspective = PerspectiveProjection();

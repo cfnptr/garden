@@ -163,7 +163,7 @@ void EditorRenderSystem::showMainMenuBar()
 
 	auto playText = playing ? "Stop []" : "Play |>";
 	auto textSize = ImGui::CalcTextSize(playText);
-	ImGui::SameLine(ImGui::GetWindowWidth() * 0.5f - (textSize.x * 0.5f + 12.0f));
+	ImGui::SameLine(ImGui::GetWindowWidth() * 0.5f - (textSize.x * 0.5f + (ImGui::GetFontSize() - 2.0f)));
 
 	if (playing)
 	{
@@ -382,11 +382,18 @@ void EditorRenderSystem::showOptionsWindow()
 				uiTransformSystem->uiScale = max(uiTransformSystem->uiScale, 0.001f);
 		}
 
+		if (ImGui::DragFloat("Unit Scale", &unitScale, 0.01f, 0.001f, FLT_MAX, "%.4f"))
+		{
+			unitScale = max(unitScale, 0.001f);
+			if (settingsSystem)
+				settingsSystem->setFloat("editor.unitScale", unitScale);
+		}
+
 		auto localeSystem = LocaleSystem::Instance::tryGet();
 		if (localeSystem)
 		{
 			auto language = localeSystem->getLanguage();
-			if (ImGui::Combo("Language", language, languageNames, (int)Language::Count))
+			if (ImGui::Combo("Language", &language, languageNames, (int)Language::Count))
 			{
 				localeSystem->setLanguage(language);
 				if (settingsSystem)
@@ -1044,6 +1051,10 @@ void EditorRenderSystem::init()
 {
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("PreUiRender", EditorRenderSystem::preUiRender);
+
+	auto settingsSystem = SettingsSystem::Instance::get();
+	if (settingsSystem)
+		settingsSystem->getFloat("editor.unitScale", unitScale);
 }
 void EditorRenderSystem::deinit()
 {

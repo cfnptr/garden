@@ -34,7 +34,7 @@ static ID<Image> createNoiseImage(GraphicsSystem* graphicsSystem)
 	{
 		float rand1 = static_cast<float>(rmt()) / 4294967296.0f;
 		float rand2 = static_cast<float>(rmt()) / 4294967296.0f;
-		float angle = (M_PI * 2.0 * rand1) / SSAO_DIRECTION_COUNT;
+		float angle = (rand1 * float(M_PI * 2.0)) / SSAO_DIRECTION_COUNT;
 		hbaoNoise[i] = float4(cosf(angle), sinf(angle), rand2, 0.0f);
 	}
 
@@ -198,7 +198,7 @@ void HbaoRenderSystem::aoRender()
 	pc.negInvR2 = -1.0f / (radius * radius);
 	pc.radiusToScreen = radius * 0.5f * projScale;
 	pc.powExponent = intensity;
-	pc.novBias = clamp(bias, 0.0f, 1.0f);
+	pc.novBias = saturate(bias);
 	pc.aoMultiplier = 1.0f / (1.0f - pc.novBias);
 	pc.nearPlane = cc.nearPlane;
 

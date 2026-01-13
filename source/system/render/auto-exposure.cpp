@@ -113,7 +113,7 @@ void AutoExposureSystem::deinit()
 //**********************************************************************************************************************
 static float calcTimeCoeff(float adaptationRate, float deltaTime) noexcept
 {
-	return std::clamp(1.0f - std::exp(-deltaTime * adaptationRate), 0.0f, 1.0f);
+	return saturate(1.0f - std::exp(-deltaTime * adaptationRate));
 }
 
 void AutoExposureSystem::render()

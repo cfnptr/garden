@@ -308,7 +308,7 @@ void SpawnerEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	if (ImGui::DragInt("Max Count", &maxCount))
 		spawnerView->maxCount = (uint32)std::max(maxCount, 0);
 	ImGui::DragFloat("Delay", &spawnerView->delay, 1.0f, 0.0f, 0.0f, "%.3f s");
-	ImGui::Combo("Mode", spawnerView->mode, spawnModeNames, (int)SpawnMode::Count);
+	ImGui::Combo("Mode", &spawnerView->mode, spawnModeNames, (int)SpawnMode::Count);
 
 	if (ImGui::CollapsingHeader("Spawned Entities"))
 		renderSpawnedEntities(spawnerView->getSpawnedEntities());

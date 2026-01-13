@@ -131,12 +131,13 @@ void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	if (ImGui::Checkbox("Active", &isSelfActive))
 		transformView->setActive(isSelfActive);
 
+	auto unitScale = EditorRenderSystem::Instance::get()->unitScale;
 	auto isStatic = manager->has<StaticTransformComponent>(entity);
 	ImGui::BeginDisabled(isStatic);
 
-	auto f32x4Value = transformView->getPosition();
-	if (ImGui::DragFloat3("Position", &f32x4Value, 0.01f))
-		transformView->setPosition(f32x4Value);
+	auto f32x4Value = transformView->getPosition() / unitScale;
+	if (ImGui::DragFloat3("Position", &f32x4Value, 0.01f, 0.0f, 0.0f, "%.4f"))
+		transformView->setPosition(f32x4Value * unitScale);
 	if (ImGui::BeginPopupContextItem("position"))
 	{
 		if (ImGui::MenuItem("Reset Default"))
@@ -147,14 +148,14 @@ void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	{
 		if (isStatic)
 			ImGui::Text("Disabled due to StaticTransformComponent!");
-		auto translation = getTranslation(transformView->calcModel());
-		ImGui::Text("Position of the entity.\nGlobal: %.1f, %.1f, %.1f",
+		auto translation = getTranslation(transformView->calcModel()) / unitScale;
+		ImGui::Text("Position of the entity.\nGlobal: %.3f, %.3f, %.3f",
 			translation.getX(), translation.getY(), translation.getZ());
 		ImGui::EndTooltip();
 	}
 
 	f32x4Value = transformView->getScale();
-	if (ImGui::DragFloat3("Scale", &f32x4Value, 0.01f, 0.0f, FLT_MAX))
+	if (ImGui::DragFloat3("Scale", &f32x4Value, 0.01f, 0.0f, FLT_MAX, "%.4f"))
 		transformView->setScale(max(f32x4Value, f32x4(0.0001f)));
 
 	if (ImGui::BeginPopupContextItem("scale"))
@@ -192,7 +193,7 @@ void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 		auto quat = extractQuat(extractRotation(transformView->calcModel()));
 		auto global = degrees(quat.extractEulerAngles());
 		auto rotation = radians(newEulerAngles);
-		ImGui::Text("Rotation in degrees.\nGlobal: %.1f, %.1f, %.1f\n"
+		ImGui::Text("Rotation in degrees.\nGlobal: %.3f, %.3f, %.3f\n"
 			"Radians: %.3f, %.3f, %.3f\nQuat: %.3f, %.3f, %.3f %.3f",
 			global.getX(), global.getY(), global.getZ(), 
 			rotation.getX(), rotation.getY(), rotation.getZ(),

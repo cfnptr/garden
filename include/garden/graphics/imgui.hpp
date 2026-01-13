@@ -40,14 +40,41 @@ using namespace math;
  * @param[in] items all available item list
  */
 template<typename T>
-static bool Combo(const char* label, T& currentItem, const char* const items[], int itemsCount)
+static bool Combo(const char* label, T* currentItem, const char* const items[], int itemsCount)
 {
-	auto item = (int)currentItem;
+	auto item = (int)*currentItem;
 	auto result = ImGui::Combo(label, &item, items, itemsCount);
-	currentItem = (T)item;
+	*currentItem = (T)item;
 	return result;
 }
 
+/**
+ * @brief Collapsing header with isEnabled checkbox.
+ *
+ * @param[in,out] isEnabled is collapsing header enabled
+ * @param[in] label collapsing header label
+ * @param flags additional collapsing header flags
+ */
+static bool CollapsingHeader(bool* isEnabled, const char* label, ImGuiTreeNodeFlags flags = 0)
+{
+	auto& style = ImGui::GetStyle();
+	auto availWidth = ImGui::GetContentRegionAvail().x - 2.0f;
+	
+	if (!*isEnabled)
+		ImGui::PushStyleVar(ImGuiStyleVar_Alpha, style.Alpha * style.DisabledAlpha);
+	auto isOpen = ImGui::CollapsingHeader(label, flags | ImGuiTreeNodeFlags_AllowOverlap);
+	if (!*isEnabled) ImGui::PopStyleVar();
+
+	ImGui::SameLine();
+	ImGui::SetCursorPosX(availWidth);
+
+	ImGui::PushID(label);
+	ImGui::Checkbox("##isEnabled", isEnabled);
+	ImGui::PopID();
+	return isOpen;
+}
+
+//**********************************************************************************************************************
 static bool SliderFloat4(const char* label, f32x4* value, float min,
 	float max, const char* format = "%.3f", ImGuiSliderFlags flags = 0)
 {
@@ -140,6 +167,7 @@ static bool DragFloat2(const char* label, float2* value, float speed = 1.0f, flo
 	return ImGui::DragFloat2(label, (float*)value, speed, min, max, format, flags);
 }
 
+//**********************************************************************************************************************
 static bool SliderInt4(const char* label, i32x4* value, int min,
 	int max, const char* format = "%d", ImGuiSliderFlags flags = 0)
 {
@@ -232,6 +260,7 @@ static bool DragInt2(const char* label, int2* value, float speed = 1.0f, int min
 	return ImGui::DragInt2(label, (int*)value, speed, min, max, format, flags);
 }
 
+//**********************************************************************************************************************
 static bool ColorEdit4(const char* label, f32x4* color, ImGuiColorEditFlags flags = 0)
 {
 	return ImGui::ColorEdit4(label, (float*)color, flags);

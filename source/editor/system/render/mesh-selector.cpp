@@ -152,27 +152,28 @@ void MeshSelectorEditorSystem::render()
 
 	if (selectedEntity)
 	{
-		Aabb selectedEntityAabb = Aabb::inf;
-		for (auto system : *systemGroup)
-		{
-			auto meshSystem = dynamic_cast<IMeshRenderSystem*>(system);
-			const auto& componentPool = meshSystem->getMeshComponentPool();
-			auto componentSize = meshSystem->getMeshComponentSize();
-			auto componentData = (const uint8*)componentPool.getData();
-			auto componentOccupancy = componentPool.getOccupancy();
+		auto entityView = manager->get(selectedEntity);
+		auto components = entityView->getComponents();
+		auto componentCount = entityView->getComponentCount();
 
-			for (uint32 i = 0; i < componentOccupancy; i++)
-			{
-				auto meshRenderView = (const MeshRenderComponent*)(componentData + i * componentSize);
-				if (!meshRenderView->isEnabled || selectedEntity != meshRenderView->getEntity())
-					continue;
-				selectedEntityAabb.shrink(meshRenderView->aabb);
-				break;
-			}
+		Aabb selectedEntityAabb = Aabb::inv();
+		for (uint32 i = 0; i < componentCount; i++)
+		{
+			auto component = components[i];
+			auto meshSystem = dynamic_cast<IMeshRenderSystem*>(component.system);
+			if (!meshSystem)
+				continue;
+
+			auto meshRenderView = View<MeshRenderComponent>(
+				component.system->getComponent(component.instance));
+			if (!meshRenderView->isEnabled)
+				continue;
+
+			selectedEntityAabb.extend(meshRenderView->aabb);
 		}
 
 		auto transformView = manager->tryGet<TransformComponent>(selectedEntity);
-		if (transformView && selectedEntityAabb != Aabb::inf)
+		if (transformView && selectedEntityAabb != Aabb::inv())
 		{
 			auto model = transformView->calcModel(cameraPosition);
 			auto mvp = commonConstants.viewProj * model * translate(

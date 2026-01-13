@@ -104,7 +104,7 @@ void UiLabelEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 		ImGui::EndPopup();
 	}
 
-	if (ImGui::Combo("Alignment", uiLabelView->propterties.alignment, textAlignmentNames, (int)Text::Alignment::Count))
+	if (ImGui::Combo("Alignment", &uiLabelView->propterties.alignment, textAlignmentNames, (int)Text::Alignment::Count))
 		uiLabelView->updateText();
 	if (ImGui::Checkbox("Bold", &uiLabelView->propterties.isBold))
 		uiLabelView->updateText();

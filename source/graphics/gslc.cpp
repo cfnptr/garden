@@ -1219,7 +1219,7 @@ static bool openShaderFileStream(const fs::path& inputFilePath,
 		throw CompileError("failed to open output shader file");
 	outputFileStream.exceptions(ios::failbit | ios::badbit);
 
-	outputFileStream << "#version 460\n#include \"types.gsl\"\n#define printf debugPrintfEXT\n";
+	outputFileStream << "#version 460\n" REQUIRED_GLSL_EXTENSIONS "#include \"types.gsl\"\n";
 	return true;
 }
 static void compileShaderFile(const fs::path& filePath, const vector<fs::path>& includePaths)
@@ -1338,7 +1338,7 @@ static bool compileGraphicsShader(const fs::path& inputPath, const fs::path& out
 		fileData.inputFileStream, fileData.outputFileStream);
 	if (!fileResult) return false;
 
-	fileData.outputFileStream << REQUIRED_GLSL_EXTENSIONS "#define GRAPHICS_GSL\n"
+	fileData.outputFileStream << "#define GRAPHICS_GSL\n"
 		"#line 1 // Note: Compiler error is at the source shader file line!\n";
 	
 	while (getline(fileData.inputFileStream, fileData.line))
@@ -1676,7 +1676,7 @@ bool GslCompiler::compileComputeShader(const fs::path& inputPath,
 		fileData.inputFileStream, fileData.outputFileStream);
 	if (!fileResult) return false;
 
-	fileData.outputFileStream << REQUIRED_GLSL_EXTENSIONS "#define COMPUTE_GSL\n"
+	fileData.outputFileStream << "#define COMPUTE_GSL\n"
 		"#line 1 // Note: Compiler error is at the source shader file line!\n";
 	
 	while (getline(fileData.inputFileStream, fileData.line))
@@ -1834,8 +1834,7 @@ static bool compileRayTracingShader(const fs::path& inputPath, const fs::path& o
 		fileData.inputFileStream, fileData.outputFileStream);
 	if (!fileResult) return false;
 
-	fileData.outputFileStream << REQUIRED_GLSL_EXTENSIONS 
-		"#extension GL_EXT_ray_tracing : require\n#include \"ray-tracing.gsl\"\n"
+	fileData.outputFileStream << "#extension GL_EXT_ray_tracing : require\n#include \"ray-tracing.gsl\"\n"
 		"#line 1 // Note: Compiler error is at the source shader file line!\n";
 
 	// TODO: shaderRecordEXT support

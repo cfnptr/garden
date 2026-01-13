@@ -100,6 +100,7 @@ private:
 	friend class HierarchyEditorSystem;
 public:
 	//******************************************************************************************************************
+	float unitScale = 1.0f;
 	ID<Entity> selectedEntity;
 	bool exportScene = false;
 
