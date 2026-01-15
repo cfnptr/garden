@@ -162,13 +162,13 @@ static vk::SwapchainKHR createVkSwapchain(VulkanAPI* vulkanAPI, uint2& framebuff
 	return vulkanAPI->device.createSwapchainKHR(swapchainInfo);
 }
 
-static vector<vk::CommandPool> createVkCommandPools(vk::Device device, uint32 queueFamilyIndex, uint32 count)
+static void createVkCommandPools(vk::Device device, uint32 queueFamilyIndex, 
+	uint32 count, vector<vk::CommandPool>& commandPools)
 {
-	vector<vk::CommandPool> commandPools(count);
+	commandPools.resize(count);
 	vk::CommandPoolCreateInfo commandPoolInfo({}, queueFamilyIndex);
 	for (uint32 i = 0; i < count; i++)
 		commandPools[i] = device.createCommandPool(commandPoolInfo);
-	return commandPools;
 }
 
 //**********************************************************************************************************************
@@ -220,6 +220,7 @@ VulkanSwapchain::VulkanSwapchain(VulkanAPI* vulkanAPI, uint2 framebufferSize, bo
 	vk::SemaphoreCreateInfo semaphoreInfo;
 	vk::FenceCreateInfo fenceInfo(vk::FenceCreateFlagBits::eSignaled);
 	vk::CommandBufferAllocateInfo commandBufferInfo(vulkanAPI->graphicsCommandPool, vk::CommandBufferLevel::ePrimary, 1);
+	auto threadCount = vulkanAPI->getThreadPool() ? vulkanAPI->getThreadPool()->getThreadCount() : 0;
 
 	for (uint8 i = 0; i < inFlightCount; i++)
 	{
@@ -230,8 +231,12 @@ VulkanSwapchain::VulkanSwapchain(VulkanAPI* vulkanAPI, uint2 framebufferSize, bo
 		auto allocateResult = vulkanAPI->device.allocateCommandBuffers(
 			&commandBufferInfo, &inFlightFrame.primaryCommandBuffer);
 		vk::detail::resultCheck(allocateResult, "vk::Device::allocateCommandBuffers");
-		inFlightFrame.secondaryCommandPools = createVkCommandPools(vulkanAPI->device,
-			vulkanAPI->graphicsQueueFamilyIndex, vulkanAPI->threadCount);
+
+		if (threadCount > 0)
+		{
+			createVkCommandPools(vulkanAPI->device, vulkanAPI->graphicsQueueFamilyIndex, 
+				threadCount, inFlightFrame.secondaryCommandPools);
+		}
 
 		#if GARDEN_DEBUG || GARDEN_EDITOR
 		vk::QueryPoolCreateInfo queryPoolInfo({}, vk::QueryType::eTimestamp, 2);
@@ -309,7 +314,7 @@ void VulkanSwapchain::recreate(uint2 framebufferSize, bool useVsync, bool useTri
 }
 
 //**********************************************************************************************************************
-bool VulkanSwapchain::acquireNextImage(ThreadPool* threadPool)
+bool VulkanSwapchain::acquireNextImage()
 {
 	SET_CPU_ZONE_SCOPED("Next Image Acquire");
 
@@ -330,7 +335,6 @@ bool VulkanSwapchain::acquireNextImage(ThreadPool* threadPool)
 
 	inFlightFrame.secondaryCommandBufferIndex = UINT32_MAX;
 	vmaSetCurrentFrameIndex(vulkanAPI->memoryAllocator, inFlightIndex);
-	this->threadPool = threadPool;
 	return true;
 }
 
@@ -357,13 +361,16 @@ bool VulkanSwapchain::present()
 }
 
 //**********************************************************************************************************************
-void VulkanSwapchain::beginSecondaryCommandBuffers(vk::Framebuffer framebuffer, vk::RenderPass renderPass, 
-	uint8 subpassIndex, const vector<Framebuffer::OutputAttachment>& colorAttachments,
+void VulkanSwapchain::beginSecondaryCommandBuffers(vk::Framebuffer framebuffer, 
+	vk::RenderPass renderPass, uint8 subpassIndex, const vector<Framebuffer::OutputAttachment>& colorAttachments,
 	Framebuffer::OutputAttachment depthStencilAttachment, const string& debugName)
 {
+	GARDEN_ASSERT(vulkanAPI->getThreadPool());
 	SET_CPU_ZONE_SCOPED("Secondary Command Buffers Begin");
 
-	auto threadCount = vulkanAPI->threadCount;
+	auto threadPool = vulkanAPI->getThreadPool();
+	auto threadCount = threadPool->getThreadCount();
+
 	if (vulkanAPI->secondaryCommandBuffers.size() != threadCount)
 	{
 		vulkanAPI->secondaryCommandBuffers.resize(threadCount);
@@ -496,6 +503,7 @@ void VulkanSwapchain::endSecondaryCommandBuffers()
 {
 	SET_CPU_ZONE_SCOPED("Secondary Command Buffers End");
 
+	auto threadPool = vulkanAPI->getThreadPool();
 	threadPool->addTasks([this](const ThreadPool::Task& task)
 	{
 		SET_CPU_ZONE_SCOPED("Secondary Command Buffer End");

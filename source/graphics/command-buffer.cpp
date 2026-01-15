@@ -19,10 +19,17 @@
 using namespace garden::graphics;
 
 //**********************************************************************************************************************
-CommandBuffer::CommandBuffer(CommandBufferType type)
+CommandBuffer::CommandBuffer(ThreadPool* threadPool, CommandBufferType type) : threadPool(threadPool)
 {
-	data = malloc<uint8>(capacity);
 	this->type = type;
+	data = malloc<uint8>(capacity);
+	
+	if (threadPool)
+	{
+		asyncData.resize(threadPool->getThreadCount());
+		for (auto& async : asyncData)
+			async.data = malloc<uint8>(capacity);
+	}
 }
 CommandBuffer::~CommandBuffer()
 {
@@ -31,32 +38,21 @@ CommandBuffer::~CommandBuffer()
 		flushLockedResources(lockedResources);
 		flushLockedResources(lockingResources);
 	}
+
+	for (const auto& async : asyncData)
+		free(async.data);
 	free(data);
 }
 
 //**********************************************************************************************************************
-Command* CommandBuffer::allocateCommand(uint32 size)
-{
-	if (this->size + size > capacity)
-	{
-		capacity = this->size + size;
-		data = realloc<uint8>(data, capacity);
-	}
-
-	auto allocation = (Command*)(data + this->size);
-	this->size += size;
-	return allocation;
-}
-
 void CommandBuffer::processCommands()
 {
 	SET_CPU_ZONE_SCOPED("Command Buffer Process");
 
-	psize offset = 0;
-	while (offset < size)
+	dataIter = data, dataEnd = data + size;
+	while (dataIter < dataEnd)
 	{
-		auto command = (const Command*)(data + offset);
-
+		auto command = (const Command*)dataIter;
 		switch (command->type)
 		{
 		case Command::Type::BufferBarrier:
@@ -83,6 +79,8 @@ void CommandBuffer::processCommands()
 			processCommand(*(const SetScissorCommand*)command); break;
 		case Command::Type::SetViewportScissor:
 			processCommand(*(const SetViewportScissorCommand*)command); break;
+		case Command::Type::SetDepthBias:
+			processCommand(*(const SetDepthBiasCommand*)command); break;
 		case Command::Type::Draw:
 			processCommand(*(const DrawCommand*)command); break;
 		case Command::Type::DrawIndexed:
@@ -119,416 +117,61 @@ void CommandBuffer::processCommands()
 			processCommand(*(const InsertLabelCommand*)command); break;
 		#endif
 
-		default: abort(); // Not implemented redering command. 
+		default:
+			GARDEN_ASSERT_MSG(false, "Not implemented Vulkan command");
+			abort();
 		}
-
-		offset += command->thisSize;
+		dataIter += command->thisSize;
 	}
-
-	GARDEN_ASSERT(offset == size);
+	GARDEN_ASSERT(dataIter == dataEnd);
 }
 
 //**********************************************************************************************************************
-void CommandBuffer::flushLockedResources(vector<CommandBuffer::LockResource>& lockedResources)
+void CommandBuffer::flushLockedResources(LockResources& lockedResources)
 {
 	SET_CPU_ZONE_SCOPED("Locked Resources Flush");
 
 	auto graphicsAPI = GraphicsAPI::get();
 	for (const auto& pair : lockedResources)
 	{
-		switch (pair.second)
+		auto key = *((const ResourceKey*)&pair.first);
+		switch (key.type)
 		{
 		case ResourceType::Buffer:
-			ResourceExt::getBusyLock(**graphicsAPI->bufferPool.get(ID<Buffer>(pair.first)))--;
+			ResourceExt::getBusyLock(**graphicsAPI->bufferPool.get(ID<Buffer>(key.resource))) -= pair.second;
 			break;
 		case ResourceType::Image:
-			ResourceExt::getBusyLock(**graphicsAPI->imagePool.get(ID<Image>(pair.first)))--;
+			ResourceExt::getBusyLock(**graphicsAPI->imagePool.get(ID<Image>(key.resource))) -= pair.second;
 			break;
 		case ResourceType::ImageView:
-			ResourceExt::getBusyLock(**graphicsAPI->imageViewPool.get(ID<ImageView>(pair.first)))--;
+			ResourceExt::getBusyLock(**graphicsAPI->imageViewPool.get(ID<ImageView>(key.resource))) -= pair.second;
 			break;
 		case ResourceType::Framebuffer:
-			ResourceExt::getBusyLock(**graphicsAPI->framebufferPool.get(ID<Framebuffer>(pair.first)))--;
+			ResourceExt::getBusyLock(**graphicsAPI->framebufferPool.get(ID<Framebuffer>(key.resource))) -= pair.second;
 			break;
 		case ResourceType::Sampler:
-			ResourceExt::getBusyLock(**graphicsAPI->samplerPool.get(ID<Sampler>(pair.first)))--;
+			ResourceExt::getBusyLock(**graphicsAPI->samplerPool.get(ID<Sampler>(key.resource))) -= pair.second;
 			break;
 		case ResourceType::Blas:
-			ResourceExt::getBusyLock(**graphicsAPI->blasPool.get(ID<Blas>(pair.first)))--;
+			ResourceExt::getBusyLock(**graphicsAPI->blasPool.get(ID<Blas>(key.resource))) -= pair.second;
 			break;
 		case ResourceType::Tlas:
-			ResourceExt::getBusyLock(**graphicsAPI->tlasPool.get(ID<Tlas>(pair.first)))--;
+			ResourceExt::getBusyLock(**graphicsAPI->tlasPool.get(ID<Tlas>(key.resource))) -= pair.second;
 			break;
 		case ResourceType::GraphicsPipeline:
-			ResourceExt::getBusyLock(**graphicsAPI->graphicsPipelinePool.get(ID<GraphicsPipeline>(pair.first)))--;
+			ResourceExt::getBusyLock(**graphicsAPI->graphicsPipelinePool.get(ID<GraphicsPipeline>(key.resource))) -= pair.second;
 			break;
 		case ResourceType::ComputePipeline:
-			ResourceExt::getBusyLock(**graphicsAPI->computePipelinePool.get(ID<ComputePipeline>(pair.first)))--;
+			ResourceExt::getBusyLock(**graphicsAPI->computePipelinePool.get(ID<ComputePipeline>(key.resource))) -= pair.second;
 			break;
 		case ResourceType::RayTracingPipeline:
-			ResourceExt::getBusyLock(**graphicsAPI->rayTracingPipelinePool.get(ID<RayTracingPipeline>(pair.first)))--;
+			ResourceExt::getBusyLock(**graphicsAPI->rayTracingPipelinePool.get(ID<RayTracingPipeline>(key.resource))) -= pair.second;
 			break;
 		case ResourceType::DescriptorSet:
-			ResourceExt::getBusyLock(**graphicsAPI->descriptorSetPool.get(ID<DescriptorSet>(pair.first)))--;
+			ResourceExt::getBusyLock(**graphicsAPI->descriptorSetPool.get(ID<DescriptorSet>(key.resource))) -= pair.second;
 			break;
 		default: abort();
 		}
 	}
 	lockedResources.clear();
 }
-
-//**********************************************************************************************************************
-void CommandBuffer::addCommand(const BufferBarrierCommand& command)
-{
-	auto commandSize = (uint32)(sizeof(BufferBarrierCommandBase) + command.bufferCount * sizeof(ID<Buffer>));
-	auto allocation = allocateCommand(commandSize);
-	memcpy((uint8*)allocation, &command, sizeof(BufferBarrierCommandBase));
-	memcpy((uint8*)allocation + sizeof(BufferBarrierCommandBase),
-		command.buffers, command.bufferCount * sizeof(ID<Buffer>));
-	allocation->thisSize = commandSize;
-	allocation->lastSize = lastSize;
-	lastSize = commandSize;
-	hasAnyCommand = true;
-}
-void CommandBuffer::addCommand(const BeginRenderPassCommand& command)
-{
-	GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Graphics);
-	auto commandSize = (uint32)(sizeof(BeginRenderPassCommandBase) + command.clearColorCount * sizeof(float4));
-	auto allocation = allocateCommand(commandSize);
-	memcpy((uint8*)allocation, &command, sizeof(BeginRenderPassCommandBase));
-
-	if (command.clearColorCount > 0)
-	{
-		memcpy((uint8*)allocation + sizeof(BeginRenderPassCommandBase),
-			command.clearColors, command.clearColorCount * sizeof(float4));
-	}
-
-	allocation->thisSize = commandSize;
-	allocation->lastSize = lastSize;
-	lastSize = commandSize;
-	hasAnyCommand = true;
-}
-void CommandBuffer::addCommand(const NextSubpassCommand& command)
-{
-	GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Graphics);
-	auto commandSize = (uint32)sizeof(NextSubpassCommand);
-	auto allocation = (NextSubpassCommand*)allocateCommand(commandSize);
-	*allocation = command;
-	allocation->thisSize = commandSize;
-	allocation->lastSize = lastSize;
-	lastSize = commandSize;
-}
-void CommandBuffer::addCommand(const ExecuteCommand& command)
-{
-	auto commandSize = (uint32)(sizeof(ExecuteCommandBase) + command.bufferCount * sizeof(void*));
-	auto allocation = allocateCommand(commandSize);
-	memcpy((uint8*)allocation, &command, sizeof(ExecuteCommandBase));
-	memcpy((uint8*)allocation + sizeof(ExecuteCommandBase),
-		command.buffers, command.bufferCount * sizeof(void*));
-	allocation->thisSize = commandSize;
-	allocation->lastSize = lastSize;
-	lastSize = commandSize;
-	hasAnyCommand = true;
-}
-void CommandBuffer::addCommand(const EndRenderPassCommand& command)
-{
-	GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Graphics);
-	auto commandSize = (uint32)sizeof(EndRenderPassCommand);
-	auto allocation = allocateCommand(commandSize);
-	allocation->type = command.type;
-	allocation->thisSize = commandSize;
-	allocation->lastSize = lastSize;
-	lastSize = commandSize;
-}
-
-//**********************************************************************************************************************
-void CommandBuffer::addCommand(const ClearAttachmentsCommand& command)
-{
-	GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Graphics);
-	auto attachmentsSize = command.attachmentCount * sizeof(Framebuffer::ClearAttachment);
-	auto commandSize = (uint32)(sizeof(ClearAttachmentsCommandBase) +
-		attachmentsSize + command.regionCount * sizeof(Framebuffer::ClearRegion));
-	auto allocation = allocateCommand(commandSize);
-	memcpy((uint8*)allocation, &command, sizeof(ClearAttachmentsCommandBase));
-	memcpy((uint8*)allocation + sizeof(ClearAttachmentsCommandBase),
-		command.attachments, command.attachmentCount * sizeof(Framebuffer::ClearAttachment));
-	memcpy((uint8*)allocation + sizeof(ClearAttachmentsCommandBase) + attachmentsSize,
-		command.regions, command.regionCount * sizeof(Framebuffer::ClearRegion));
-	allocation->thisSize = commandSize;
-	allocation->lastSize = lastSize;
-	lastSize = commandSize;
-}
-void CommandBuffer::addCommand(const BindPipelineCommand& command)
-{
-	GARDEN_ASSERT(type == CommandBufferType::Frame ||
-		type == CommandBufferType::Graphics || type == CommandBufferType::Compute);
-	auto commandSize = (uint32)sizeof(BindPipelineCommand);
-	auto allocation = (BindPipelineCommand*)allocateCommand(commandSize);
-	*allocation = command;
-	allocation->thisSize = commandSize;
-	allocation->lastSize = lastSize;
-	lastSize = commandSize;
-	hasAnyCommand = true;
-}
-void CommandBuffer::addCommand(const BindDescriptorSetsCommand& command)
-{
-	GARDEN_ASSERT(type == CommandBufferType::Frame ||
-		type == CommandBufferType::Graphics || type == CommandBufferType::Compute);
-	auto commandSize = (uint32)(sizeof(BindDescriptorSetsCommandBase) + 
-		command.rangeCount * sizeof(DescriptorSet::Range));
-	auto allocation = allocateCommand(commandSize);
-	memcpy((uint8*)allocation, &command, sizeof(BindDescriptorSetsCommandBase));
-	memcpy((uint8*)allocation + sizeof(BindDescriptorSetsCommandBase),
-		command.descriptorSetRange, command.rangeCount * sizeof(DescriptorSet::Range));
-	allocation->thisSize = commandSize;
-	allocation->lastSize = lastSize;
-	lastSize = commandSize;
-}
-void CommandBuffer::addCommand(const PushConstantsCommand& command)
-{
-	GARDEN_ASSERT(type == CommandBufferType::Frame ||
-		type == CommandBufferType::Graphics || type == CommandBufferType::Compute);
-	auto commandSize = (uint32)(sizeof(PushConstantsCommandBase) + alignSize((psize)command.dataSize, dataAlignment));
-	auto allocation = allocateCommand(commandSize);
-	memcpy((uint8*)allocation, &command, sizeof(PushConstantsCommandBase));
-	memcpy((uint8*)allocation + sizeof(PushConstantsCommandBase), command.data, command.dataSize);
-	allocation->thisSize = commandSize;
-	allocation->lastSize = lastSize;
-	lastSize = commandSize;
-}
-
-//**********************************************************************************************************************
-void CommandBuffer::addCommand(const SetViewportCommand& command)
-{
-	GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Graphics);
-	auto commandSize = (uint32)sizeof(SetViewportCommand);
-	auto allocation = (SetViewportCommand*)allocateCommand(commandSize);
-	*allocation = command;
-	allocation->thisSize = commandSize;
-	allocation->lastSize = lastSize;
-	lastSize = commandSize;
-}
-void CommandBuffer::addCommand(const SetScissorCommand& command)
-{
-	GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Graphics);
-	auto commandSize = (uint32)sizeof(SetScissorCommand);
-	auto allocation = (SetScissorCommand*)allocateCommand(commandSize);
-	*allocation = command;
-	allocation->thisSize = commandSize;
-	allocation->lastSize = lastSize;
-	lastSize = commandSize;
-}
-void CommandBuffer::addCommand(const SetViewportScissorCommand& command)
-{
-	GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Graphics);
-	auto commandSize = (uint32)sizeof(SetViewportScissorCommand);
-	auto allocation = (SetViewportScissorCommand*)allocateCommand(commandSize);
-	*allocation = command;
-	allocation->thisSize = commandSize;
-	allocation->lastSize = lastSize;
-	lastSize = commandSize;
-}
-void CommandBuffer::addCommand(const DrawCommand& command)
-{
-	GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Graphics);
-	auto commandSize = (uint32)sizeof(DrawCommand);
-	auto allocation = (DrawCommand*)allocateCommand(commandSize);
-	*allocation = command;
-	allocation->thisSize = commandSize;
-	allocation->lastSize = lastSize;
-	lastSize = commandSize;
-}
-void CommandBuffer::addCommand(const DrawIndexedCommand& command)
-{
-	GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Graphics);
-	auto commandSize = (uint32)sizeof(DrawIndexedCommand);
-	auto allocation = (DrawIndexedCommand*)allocateCommand(commandSize);
-	*allocation = command;
-	allocation->thisSize = commandSize;
-	allocation->lastSize = lastSize;
-	lastSize = commandSize;
-}
-void CommandBuffer::addCommand(const DispatchCommand& command)
-{
-	GARDEN_ASSERT(type == CommandBufferType::Frame ||
-		type == CommandBufferType::Graphics || type == CommandBufferType::Compute);
-	auto commandSize = (uint32)sizeof(DispatchCommand);
-	auto allocation = (DispatchCommand*)allocateCommand(commandSize);
-	*allocation = command;
-	allocation->thisSize = commandSize;
-	allocation->lastSize = lastSize;
-	lastSize = commandSize;
-	hasAnyCommand = true;
-}
-
-//**********************************************************************************************************************
-void CommandBuffer::addCommand(const FillBufferCommand& command)
-{
-	auto commandSize = (uint32)sizeof(FillBufferCommand);
-	auto allocation = (FillBufferCommand*)allocateCommand(commandSize);
-	*allocation = command;
-	allocation->thisSize = commandSize;
-	allocation->lastSize = lastSize;
-	lastSize = commandSize;
-	hasAnyCommand = true;
-}
-void CommandBuffer::addCommand(const CopyBufferCommand& command)
-{
-	auto commandSize = (uint32)(sizeof(CopyBufferCommandBase) + command.regionCount * sizeof(Buffer::CopyRegion));
-	auto allocation = allocateCommand(commandSize);
-	memcpy((uint8*)allocation, &command, sizeof(CopyBufferCommandBase));
-	memcpy((uint8*)allocation + sizeof(CopyBufferCommandBase),
-		command.regions, command.regionCount * sizeof(Buffer::CopyRegion));
-	allocation->thisSize = commandSize;
-	allocation->lastSize = lastSize;
-	lastSize = commandSize;
-	hasAnyCommand = true;
-}
-
-//**********************************************************************************************************************
-void CommandBuffer::addCommand(const ClearImageCommand& command)
-{
-	GARDEN_ASSERT(type == CommandBufferType::Frame ||
-		type == CommandBufferType::Graphics || type == CommandBufferType::Compute);
-	auto commandSize = (uint32)(sizeof(ClearImageCommandBase) + command.regionCount * sizeof(Image::ClearRegion));
-	auto allocation = allocateCommand(commandSize);
-	memcpy((uint8*)allocation, &command, sizeof(ClearImageCommandBase));
-	memcpy((uint8*)allocation + sizeof(ClearImageCommandBase),
-		command.regions, command.regionCount * sizeof(Image::ClearRegion));
-	allocation->thisSize = commandSize;
-	allocation->lastSize = lastSize;
-	lastSize = commandSize;
-	hasAnyCommand = true;
-}
-void CommandBuffer::addCommand(const CopyImageCommand& command)
-{
-	auto commandSize = (uint32)(sizeof(CopyImageCommandBase) +
-		command.regionCount * sizeof(Image::CopyImageRegion));
-	auto allocation = allocateCommand(commandSize);
-	memcpy((uint8*)allocation, &command, sizeof(CopyImageCommandBase));
-	memcpy((uint8*)allocation + sizeof(CopyImageCommandBase),
-		command.regions, command.regionCount * sizeof(Image::CopyImageRegion));
-	allocation->thisSize = commandSize;
-	allocation->lastSize = lastSize;
-	lastSize = commandSize;
-	hasAnyCommand = true;
-}
-void CommandBuffer::addCommand(const CopyBufferImageCommand& command)
-{
-	auto commandSize = (uint32)(sizeof(CopyBufferImageCommandBase) +
-		command.regionCount * sizeof(Image::CopyBufferRegion));
-	auto allocation = allocateCommand(commandSize);
-	memcpy((uint8*)allocation, &command, sizeof(CopyBufferImageCommandBase));
-	memcpy((uint8*)allocation + sizeof(CopyBufferImageCommandBase),
-		command.regions, command.regionCount * sizeof(Image::CopyBufferRegion));
-	allocation->thisSize = commandSize;
-	allocation->lastSize = lastSize;
-	lastSize = commandSize;
-	hasAnyCommand = true;
-}
-void CommandBuffer::addCommand(const BlitImageCommand& command)
-{
-	GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Graphics);
-	auto commandSize = (uint32)(sizeof(BlitImageCommandBase) + command.regionCount * sizeof(Image::BlitRegion));
-	auto allocation = allocateCommand(commandSize);
-	memcpy((uint8*)allocation, &command, sizeof(BlitImageCommandBase));
-	memcpy((uint8*)allocation + sizeof(BlitImageCommandBase),
-		command.regions, command.regionCount * sizeof(Image::BlitRegion));
-	allocation->thisSize = commandSize;
-	allocation->lastSize = lastSize;
-	lastSize = commandSize;
-	hasAnyCommand = true;
-}
-
-//**********************************************************************************************************************
-void CommandBuffer::addCommand(const SetDepthBiasCommand& command)
-{
-	GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Graphics);
-	auto commandSize = (uint32)sizeof(SetDepthBiasCommand);
-	auto allocation = (SetDepthBiasCommand*)allocateCommand(commandSize);
-	*allocation = command;
-	allocation->thisSize = commandSize;
-	allocation->lastSize = lastSize;
-	lastSize = commandSize;
-}
-
-void CommandBuffer::addCommand(const BuildAccelerationStructureCommand& command)
-{
-	GARDEN_ASSERT(type == CommandBufferType::Compute);
-	auto commandSize = (uint32)sizeof(BuildAccelerationStructureCommand);
-	auto allocation = (BuildAccelerationStructureCommand*)allocateCommand(commandSize);
-	*allocation = command;
-	allocation->thisSize = commandSize;
-	allocation->lastSize = lastSize;
-	lastSize = commandSize;
-	hasAnyCommand = true;
-}
-void CommandBuffer::addCommand(const CopyAccelerationStructureCommand& command)
-{
-	GARDEN_ASSERT(type == CommandBufferType::Compute);
-	auto commandSize = (uint32)sizeof(CopyAccelerationStructureCommand);
-	auto allocation = (CopyAccelerationStructureCommand*)allocateCommand(commandSize);
-	*allocation = command;
-	allocation->thisSize = commandSize;
-	allocation->lastSize = lastSize;
-	lastSize = commandSize;
-	hasAnyCommand = true;
-}
-void CommandBuffer::addCommand(const TraceRaysCommand& command)
-{
-	GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Compute);
-	auto commandSize = (uint32)sizeof(TraceRaysCommand);
-	auto allocation = (TraceRaysCommand*)allocateCommand(commandSize);
-	*allocation = command;
-	allocation->thisSize = commandSize;
-	allocation->lastSize = lastSize;
-	lastSize = commandSize;
-	hasAnyCommand = true;
-}
-void CommandBuffer::addCommand(const CustomRenderCommand& command)
-{
-	auto commandSize = (uint32)sizeof(CustomRenderCommand);
-	auto allocation = (CustomRenderCommand*)allocateCommand(commandSize);
-	*allocation = command;
-	allocation->thisSize = commandSize;
-	allocation->lastSize = lastSize;
-	lastSize = commandSize;
-	hasAnyCommand = true;
-}
-
-#if GARDEN_DEBUG
-//**********************************************************************************************************************
-void CommandBuffer::addCommand(const BeginLabelCommand& command)
-{
-	auto nameLength = strlen(command.name) + 1;
-	auto commandSize = (uint32)(sizeof(BeginLabelCommandBase) + alignSize(nameLength, dataAlignment));
-	auto allocation = allocateCommand(commandSize);
-	memcpy((uint8*)allocation, &command, sizeof(BeginLabelCommandBase));
-	memcpy((uint8*)allocation + sizeof(BeginLabelCommandBase), command.name, nameLength);
-	allocation->thisSize = commandSize;
-	allocation->lastSize = lastSize;
-	lastSize = commandSize;
-	hasAnyCommand = true;
-}
-void CommandBuffer::addCommand(const EndLabelCommand& command)
-{
-	auto commandSize = (uint32)sizeof(EndLabelCommand);
-	auto allocation = (EndLabelCommand*)allocateCommand(commandSize);
-	*allocation = command;
-	allocation->thisSize = commandSize;
-	allocation->lastSize = lastSize;
-	lastSize = commandSize;
-}
-void CommandBuffer::addCommand(const InsertLabelCommand& command)
-{
-	auto nameLength = strlen(command.name) + 1;
-	auto commandSize = (uint32)(sizeof(InsertLabelCommandBase) + alignSize(nameLength, dataAlignment));
-	auto allocation = allocateCommand(commandSize);
-	memcpy((uint8*)allocation, &command, sizeof(InsertLabelCommandBase));
-	memcpy((uint8*)allocation + sizeof(InsertLabelCommandBase), command.name, nameLength);
-	allocation->thisSize = commandSize;
-	allocation->lastSize = lastSize;
-	lastSize = commandSize;
-	hasAnyCommand = true;
-}
-#endif

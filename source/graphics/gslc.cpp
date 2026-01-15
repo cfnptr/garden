@@ -19,7 +19,6 @@
 #include "garden/thread-pool.hpp"
 #include "garden/file.hpp"
 
-#include <atomic>
 #include <cmath>
 #include <exception>
 #include <fstream>

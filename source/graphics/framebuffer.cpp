@@ -617,7 +617,8 @@ void Framebuffer::beginRenderPass(const float4* clearColors, uint8 clearColorCou
 		}
 		else abort();
 
-		for (uint32 i = 0; i < graphicsAPI->threadCount; i++)
+		auto threadCount = graphicsAPI->getThreadPool()->getThreadCount();
+		for (uint32 i = 0; i < threadCount; i++)
 		{
 			graphicsAPI->currentPipelines[i] = {};
 			graphicsAPI->currentPipelineTypes[i] = {};
@@ -636,8 +637,8 @@ void Framebuffer::beginRenderPass(const float4* clearColors, uint8 clearColorCou
 	}
 
 	BeginRenderPassCommand command;
-	command.clearColorCount = clearColorCount;
 	command.asyncRecording = asyncRecording;
+	command.clearColorCount = clearColorCount;
 	command.framebuffer = graphicsAPI->framebufferPool.getID(this);
 	command.clearDepth = clearDepth;
 	command.clearStencil = clearStencil;
@@ -676,7 +677,7 @@ void Framebuffer::nextSubpass(bool asyncRecording)
 			#if GARDEN_DEBUG
 			const auto& name = debugName;
 			#else
-			string name;
+			static constexpr string name;
 			#endif
 
 			swapchain->beginSecondaryCommandBuffers(
@@ -689,7 +690,8 @@ void Framebuffer::nextSubpass(bool asyncRecording)
 		
 	if (asyncRecording)
 	{
-		for (uint32 i = 0; i < graphicsAPI->threadCount; i++)
+		auto threadCount = graphicsAPI->getThreadPool()->getThreadCount();
+		for (uint32 i = 0; i < threadCount; i++)
 		{
 			graphicsAPI->currentPipelines[i] = {};
 			graphicsAPI->currentPipelineTypes[i] = {};

@@ -103,7 +103,7 @@ bool InstanceRenderSystem::isDrawReady(int8 shadowPass)
 
 		auto baseInstanceSize = getBaseInstanceDataSize();
 		if (baseInstanceBuffers.empty() && baseInstanceSize > 0)
-			createInstanceBuffers(baseInstanceSize * 16, baseInstanceBuffers, false, this);
+			createInstanceBuffers(baseInstanceSize, baseInstanceBuffers, false, this);
 
 		if (!baseDescriptorSet)
 		{
@@ -128,7 +128,7 @@ bool InstanceRenderSystem::isDrawReady(int8 shadowPass)
 
 		auto shadowInstanceSize = getShadowInstanceDataSize();
 		if (shadowInstanceBuffers.empty() && shadowInstanceSize > 0)
-			createInstanceBuffers(shadowInstanceSize * 16, shadowInstanceBuffers, true, this);
+			createInstanceBuffers(shadowInstanceSize, shadowInstanceBuffers, true, this);
 
 		if (!shadowDescriptorSet)
 		{

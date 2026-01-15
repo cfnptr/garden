@@ -183,7 +183,7 @@ static void prepareUnsortedMeshes(f32x4 cameraOffset, f32x4 cameraPosition, cons
 		meshes = unsortedBuffer->combinedMeshes.data();
 	}
 
-	uint32 drawCount = 0, instanceCount = 0;;
+	uint32 drawCount = 0, instanceCount = 0;
 	for (uint32 i = itemOffset; i < itemCount; i++)
 	{
 		auto meshRenderView = (MeshRenderComponent*)(componentData + i * componentSize);
@@ -632,7 +632,7 @@ void MeshRenderSystem::renderUnsorted(const f32x4x4& viewProj, MeshRenderType re
 				auto componentSize = meshSystem->getMeshComponentSize();
 				auto componentData = (uint8*)meshSystem->getMeshComponentPool().getData();
 				// Note: Using task index instead of thread to preserve items order.
-				auto itemCount = task.getItemCount(); auto taskIndex = task.getTaskIndex();
+				auto itemCount = task.getItemCount(), taskIndex = task.getTaskIndex();
 				uint32 drawInstanceCount = 0;
 
 				meshSystem->beginDrawAsync(taskIndex);
@@ -733,7 +733,7 @@ void MeshRenderSystem::renderSorted(const f32x4x4& viewProj, MeshRenderType rend
 			auto componentSize = meshSystem->getMeshComponentSize();
 			auto componentData = (uint8*)meshSystem->getMeshComponentPool().getData();
 			// Note: Using task index instead of thread to preserve items order.
-			auto itemCount = task.getItemCount(); auto taskIndex = task.getTaskIndex();
+			auto itemCount = task.getItemCount(), taskIndex = task.getTaskIndex();
 			uint32 drawInstanceCount = 0;
 
 			meshSystem->beginDrawAsync(taskIndex);
@@ -869,23 +869,29 @@ void MeshRenderSystem::renderShadows()
 			prepareMeshes(Frustum(viewProj), nullptr, cameraOffset, passIndex);
 
 			graphicsSystem->startRecording(CommandBufferType::Frame);
-			if (shadowSystem->beginShadowRender(passIndex, MeshRenderType::Opaque))
 			{
 				SET_CPU_ZONE_SCOPED("Opaque Shadow Render");
 				SET_GPU_DEBUG_LABEL("Opaque Shadow Pass");
-				renderUnsorted(viewProj, MeshRenderType::Opaque, passIndex);
-				renderUnsorted(viewProj, MeshRenderType::Color, passIndex);
-				// Note: No TransDepth rendering for shadows, expected RT instead.
-				shadowSystem->endShadowRender(passIndex, MeshRenderType::Opaque);
+
+				if (shadowSystem->beginShadowRender(passIndex, MeshRenderType::Opaque))
+				{
+					renderUnsorted(viewProj, MeshRenderType::Opaque, passIndex);
+					renderUnsorted(viewProj, MeshRenderType::Color, passIndex);
+					// Note: No TransDepth rendering for shadows, expected RT instead.
+					shadowSystem->endShadowRender(passIndex, MeshRenderType::Opaque);
+				}
 			}
-			if (!isNonTranslucent && shadowSystem->beginShadowRender(passIndex, MeshRenderType::Translucent))
 			{
 				SET_CPU_ZONE_SCOPED("Trans Shadow Render");
 				SET_GPU_DEBUG_LABEL("Trans Shadow Pass");
-				renderUnsorted(viewProj, MeshRenderType::Refracted, passIndex);
-				renderUnsorted(viewProj, MeshRenderType::OIT, passIndex);
-				renderSorted(viewProj, MeshRenderType::Translucent, passIndex);
-				shadowSystem->endShadowRender(passIndex, MeshRenderType::Translucent);
+
+				if (!isNonTranslucent && shadowSystem->beginShadowRender(passIndex, MeshRenderType::Translucent))
+				{
+					renderUnsorted(viewProj, MeshRenderType::Refracted, passIndex);
+					renderUnsorted(viewProj, MeshRenderType::OIT, passIndex);
+					renderSorted(viewProj, MeshRenderType::Translucent, passIndex);
+					shadowSystem->endShadowRender(passIndex, MeshRenderType::Translucent);
+				}
 			}
 			graphicsSystem->stopRecording();
 		}

@@ -145,9 +145,9 @@ void SkyboxRenderSystem::depthHdrRender()
 	PushConstants pc;
 	pc.viewProj = (float4x4)cc.viewProj;
 
-	SET_GPU_DEBUG_LABEL("Skybox");
 	if (graphicsSystem->isCurrentRenderPassAsync())
 	{
+		SET_GPU_DEBUG_LABEL_ASYNC("Skybox", 0);
 		pipelineView->bindAsync(0, 0);
 		pipelineView->setViewportScissorAsync(float4::zero, 0);
 		pipelineView->bindDescriptorSetAsync(ID<DescriptorSet>(skyboxView->descriptorSet), 0, 0);
@@ -156,6 +156,7 @@ void SkyboxRenderSystem::depthHdrRender()
 	}
 	else
 	{
+		SET_GPU_DEBUG_LABEL("Skybox");
 		pipelineView->bind();
 		pipelineView->setViewportScissor();
 		pipelineView->bindDescriptorSet(ID<DescriptorSet>(skyboxView->descriptorSet));

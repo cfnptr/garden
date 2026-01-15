@@ -30,6 +30,7 @@ namespace garden::graphics
 class VulkanCommandBuffer final : public CommandBuffer
 {
 public:
+	VulkanAPI* vulkanAPI = nullptr;
 	vk::CommandBuffer instance;
 	vk::Fence fence;
 
@@ -39,8 +40,11 @@ public:
 		Image::LayoutState newImageState, ID<ImageView> imageView);
 	static void addDescriptorSetBarriers(VulkanAPI* vulkanAPI, 
 		const DescriptorSet::Range* descriptorSetRange, uint32 rangeCount);
-	void addRenderPassBarriers(VulkanAPI* vulkanAPI, psize offset);
-	void processPipelineBarriers(VulkanAPI* vulkanAPI);
+
+	void addRenderPassBarriers(const Command* command);
+	void addRenderPassBarriers(uint32 thisSize);
+	void addRenderPassBarriersAsync(uint32 thisSize);
+	void processPipelineBarriers();
 
 	void processCommand(const BufferBarrierCommand& command) final;
 	void processCommand(const BeginRenderPassCommand& command) final;
@@ -54,6 +58,7 @@ public:
 	void processCommand(const SetViewportCommand& command) final;
 	void processCommand(const SetScissorCommand& command) final;
 	void processCommand(const SetViewportScissorCommand& command) final;
+	void processCommand(const SetDepthBiasCommand& command) final;
 	void processCommand(const DrawCommand& command) final;
 	void processCommand(const DrawIndexedCommand& command) final;
 	void processCommand(const DispatchCommand& command) final;
@@ -63,7 +68,7 @@ public:
 	void processCommand(const CopyImageCommand& command) final;
 	void processCommand(const CopyBufferImageCommand& command) final;
 	void processCommand(const BlitImageCommand& command) final;
-	void processCommand(const SetDepthBiasCommand& command) final;
+	
 	void processCommand(const BuildAccelerationStructureCommand& command) final;
 	void processCommand(const CopyAccelerationStructureCommand& command) final;
 	void processCommand(const TraceRaysCommand& command) final;

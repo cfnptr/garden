@@ -35,7 +35,7 @@ static void updateWindowMode()
 	if (!videoMode)
 		return;
 
-	auto window = (GLFWwindow*)GraphicsAPI::get()->window;
+	auto window = (GLFWwindow*)GraphicsAPI::get()->getWindow();
 	if (glfwGetWindowAttrib(window, GLFW_DECORATED) == GLFW_FALSE)
 	{
 		glfwSetWindowMonitor(window, nullptr, videoMode->width / 2 - InputSystem::defaultWindowWidth / 2, 
@@ -127,7 +127,7 @@ void InputSystem::preInit()
 	ECSM_SUBSCRIBE_TO_EVENT("Input", InputSystem::input);
 	ECSM_SUBSCRIBE_TO_EVENT("Output", InputSystem::output);
 
-	auto window = (GLFWwindow*)GraphicsAPI::get()->window;
+	auto window = (GLFWwindow*)GraphicsAPI::get()->getWindow();
 	glfwSetKeyCallback(window, (GLFWkeyfun)InputSystem::onKeyboardButton);
 	glfwSetScrollCallback(window, (GLFWscrollfun)InputSystem::onMouseScroll);
 	glfwSetDropCallback(window, (GLFWdropfun)InputSystem::onFileDrop);
@@ -361,7 +361,7 @@ void InputSystem::output()
 		hasNewClipboard = false;
 	}
 
-	auto window = (GLFWwindow*)GraphicsAPI::get()->window;
+	auto window = (GLFWwindow*)GraphicsAPI::get()->getWindow();
 	if (glfwWindowShouldClose(window))
 		Manager::Instance::get()->isRunning = false;
 
@@ -387,7 +387,7 @@ void InputSystem::startRenderThread()
 	#endif
 
 	auto inputSystem = InputSystem::Instance::get();
-	auto window = (GLFWwindow*)GraphicsAPI::get()->window;
+	auto window = (GLFWwindow*)GraphicsAPI::get()->getWindow();
 
 	while (!glfwWindowShouldClose(window) && manager->isRunning)
 	{

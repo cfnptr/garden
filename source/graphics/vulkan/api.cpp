@@ -991,19 +991,23 @@ static vk::PipelineCache createPipelineCache(const string& appDataName, Version 
 
 //**********************************************************************************************************************
 VulkanAPI::VulkanAPI(const string& appName, const string& appDataName, Version appVersion, uint2 windowSize, 
-	int32 threadCount, bool useVsync, bool useTripleBuffering, bool isFullscreen, bool isDecorated) : 
-	GraphicsAPI(appName, windowSize, isFullscreen, isDecorated)
+	ThreadPool* threadPool, bool useVsync, bool useTripleBuffering, bool isFullscreen, bool isDecorated) : 
+	GraphicsAPI(appName, windowSize, threadPool, isFullscreen, isDecorated)
 {
 	this->backendType = GraphicsBackend::VulkanAPI;
-	this->threadCount = threadCount;
 	this->appDataName = appDataName;
 	this->appVersion = appVersion;
-	this->currentPipelines.resize(threadCount);
-	this->currentPipelineTypes.resize(threadCount);
-	this->currentPipelineVariants.resize(threadCount);
-	this->currentVertexBuffers.resize(threadCount);
-	this->currentIndexBuffers.resize(threadCount);
-	this->bindDescriptorSets.resize(threadCount);
+
+	if (threadPool)
+	{
+		auto threadCount = threadPool->getThreadCount();
+		this->currentPipelines.resize(threadCount);
+		this->currentPipelineTypes.resize(threadCount);
+		this->currentPipelineVariants.resize(threadCount);
+		this->currentVertexBuffers.resize(threadCount);
+		this->currentIndexBuffers.resize(threadCount);
+		this->bindDescriptorSets.resize(threadCount);
+	}
 
 	#if GARDEN_OS_LINUX && GARDEN_MESA_RGP
 	setenv("MESA_VK_TRACE", "rgp", 0);
@@ -1027,7 +1031,7 @@ VulkanAPI::VulkanAPI(const string& appName, const string& appDataName, Version a
 	deviceFeatures = physicalDevice.getFeatures2();
 	versionMajor = VK_API_VERSION_MAJOR(deviceProperties.properties.apiVersion);
 	versionMinor = VK_API_VERSION_MINOR(deviceProperties.properties.apiVersion);
-	isDeviceIntegrated = deviceProperties.properties.deviceType == vk::PhysicalDeviceType::eIntegratedGpu;
+	deviceIntegrated = deviceProperties.properties.deviceType == vk::PhysicalDeviceType::eIntegratedGpu;
 	surface = createVkSurface(instance, (GLFWwindow*)window);
 	getVkQueueFamilyIndices(physicalDevice, surface, graphicsQueueFamilyIndex, transferQueueFamilyIndex, 
 		computeQueueFamilyIndex, graphicsQueueMaxCount, transferQueueMaxCount, computeQueueMaxCount);

@@ -98,7 +98,7 @@ void EditorRenderSystem::showMainMenuBar()
 		if (ImGui::MenuItem("ImGui Demo"))
 			demoWindow = true;
 		if (ImGui::MenuItem("Exit"))
-			glfwSetWindowShouldClose((GLFWwindow*)GraphicsAPI::get()->window, GLFW_TRUE);
+			glfwSetWindowShouldClose((GLFWwindow*)GraphicsAPI::get()->getWindow(), GLFW_TRUE);
 		ImGui::EndMenu();
 	}
 

@@ -89,20 +89,22 @@ public:
 	};
 protected:
 	vector<DestroyResource> destroyBuffers[inFlightCount + 1];
+	ThreadPool* threadPool = nullptr;
+	void* window = nullptr;
+	Swapchain* swapchain = nullptr;
 	GraphicsBackend backendType = {};
 	GpuVendor gpuVendor = {};
 	uint8 fillDestroyIndex = 0;
 	uint8 flushDestroyIndex = 1;
+	bool deviceIntegrated = false;
 
 	inline static GraphicsAPI* apiInstance = nullptr;
 
-	GraphicsAPI(const string& appName, uint2 windowSize, bool isFullscreen, bool isDecorated);
+	GraphicsAPI(const string& appName, uint2 windowSize, 
+		ThreadPool* threadPool, bool isFullscreen, bool isDecorated);
 public:
 	virtual ~GraphicsAPI();
 
-	int32 threadCount = 0;
-	void* window = nullptr;
-	Swapchain* swapchain = nullptr;
 	LinearPool<Buffer> bufferPool;
 	LinearPool<Image> imagePool;
 	LinearPool<ImageView> imageViewPool;
@@ -133,7 +135,6 @@ public:
 	vector<ID<Buffer>> currentVertexBuffers;
 	vector<ID<Buffer>> currentIndexBuffers;
 	bool isCurrentRenderPassAsync = false;
-	bool isDeviceIntegrated = false;
 	bool forceResourceDestroy = false;
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
@@ -148,6 +149,22 @@ public:
 	 * @brief Returns current GPU vendor. (Company, Manufacturer)
 	 */
 	GpuVendor getGpuVendor() const noexcept { return gpuVendor; }
+	/**
+	 * @brief Returns true if GPU is integrated. (Not discrete)
+	 */
+	bool isDeviceIntegrated() const noexcept { return deviceIntegrated; }
+	/**
+	 * @brief Returns thread pool instance. (May be null!)
+	 */
+	ThreadPool* getThreadPool() const noexcept { return threadPool; }
+	/**
+	 * @brief Returns application window instance.
+	 */
+	void* getWindow() const noexcept { return window; }
+	/**
+	 * @brief Returns graphics swapchain instance.
+	 */
+	Swapchain* getSwapchain() const noexcept { return swapchain; }
 
 	/**
 	 * @brief Returns pipeline pool instance from it pointer.
@@ -205,17 +222,31 @@ public:
 	}
 
 	/**
-	 * @brief Calculate rendering operation auto thread count
+	 * @brief Calculate rendering operation auto thread count.
 	 * @param threadIndex current thread index
 	 */
 	int32 calcAutoThreadCount(int32& threadIndex) const noexcept
 	{
+		GARDEN_ASSERT(threadPool);
+		auto threadCount = threadPool->getThreadCount();
 		if (threadIndex < 0)
 		{
 			threadIndex = 0;
 			return threadCount;
 		}
+		threadIndex = min(threadIndex, (int32)threadCount - 1);
 		return threadIndex + 1;
+	}
+	/**
+	 * @brief Calculate rendering operation auto thread index.
+	 * @param threadIndex current thread index
+	 */
+	void calcAutoThreadIndex(int32& threadIndex) const noexcept
+	{
+		GARDEN_ASSERT(threadPool);
+		GARDEN_ASSERT(threadIndex >= 0);
+		auto threadCount = threadPool->getThreadCount();
+		threadIndex = min(threadIndex, (int32)threadCount - 1);
 	}
 
 	/***************************************************************************************************************
@@ -246,7 +277,7 @@ public:
 	 * @brief Creates and initializes a new graphics API instance.
 	 */
 	static void initialize(GraphicsBackend backendType, const string& appName, 
-		const string& appDataName, Version appVersion, uint2 windowSize, uint32 threadCount, 
+		const string& appDataName, Version appVersion, uint2 windowSize, ThreadPool* threadPool, 
 		bool useVsync, bool useTripleBuffering, bool isFullscreen, bool isDecorated);
 	/**
 	 * @brief Terminates and destroys graphics API instance.

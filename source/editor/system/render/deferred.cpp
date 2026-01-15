@@ -159,17 +159,17 @@ void DeferredRenderEditorSystem::deferredRender()
 	if (!pipelineView->isReady())
 		return;
 
-	SET_GPU_DEBUG_LABEL("PBR Lighting Visualizer");
 	if (graphicsSystem->isCurrentRenderPassAsync())
 	{
-		auto threadIndex = graphicsSystem->getThreadCount() - 1;
-		pipelineView->bindAsync(0, threadIndex);
-		pipelineView->setViewportScissorAsync(float4::zero, threadIndex);
-		pipelineView->pushConstantsAsync(&lightingPC, threadIndex);
-		pipelineView->drawFullscreenAsync(threadIndex);
+		SET_GPU_DEBUG_LABEL_ASYNC("PBR Lighting Visualizer", INT32_MAX);
+		pipelineView->bindAsync(0, INT32_MAX);
+		pipelineView->setViewportScissorAsync(float4::zero, INT32_MAX);
+		pipelineView->pushConstantsAsync(&lightingPC, INT32_MAX);
+		pipelineView->drawFullscreenAsync(INT32_MAX);
 	}
 	else
 	{
+		SET_GPU_DEBUG_LABEL("PBR Lighting Visualizer");
 		pipelineView->bind();
 		pipelineView->setViewportScissor();
 		pipelineView->pushConstants(&lightingPC);

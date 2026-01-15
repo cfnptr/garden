@@ -29,7 +29,8 @@
 
 using namespace garden;
 
-GraphicsAPI::GraphicsAPI(const string& appName, uint2 windowSize, bool isFullscreen, bool isDecorated)
+GraphicsAPI::GraphicsAPI(const string& appName, uint2 windowSize, 
+	ThreadPool* threadPool, bool isFullscreen, bool isDecorated) : threadPool(threadPool)
 {
 	GLFWmonitor* primaryMonitor = nullptr;
 	if (isFullscreen)
@@ -95,7 +96,7 @@ static bool isEnv(const char* name, const char* value) noexcept
 }
 
 void GraphicsAPI::initialize(GraphicsBackend backendType, const string& appName, 
-	const string& appDataName, Version appVersion, uint2 windowSize, uint32 threadCount, 
+	const string& appDataName, Version appVersion, uint2 windowSize, ThreadPool* threadPool, 
 	bool useVsync, bool useTripleBuffering, bool isFullscreen, bool isDecorated)
 {
 	#if GARDEN_OS_LINUX
@@ -124,7 +125,7 @@ void GraphicsAPI::initialize(GraphicsBackend backendType, const string& appName,
 	if (backendType == GraphicsBackend::VulkanAPI)
 	{
 		apiInstance = new VulkanAPI(appName, appDataName, appVersion, windowSize, 
-			threadCount, useVsync, useTripleBuffering, isFullscreen, isDecorated);
+			threadPool, useVsync, useTripleBuffering, isFullscreen, isDecorated);
 	}
 	else abort();
 }

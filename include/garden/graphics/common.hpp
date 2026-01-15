@@ -240,18 +240,21 @@ struct SvEqual
  */
 struct DebugLabel
 {
+protected:
+	int32 threadIndex = -1;
+public:
 	/**
 	 * @brief Begins command buffer label region.
 	 * 
 	 * @param[in] name target region name
 	 * @param color label color in the profiler
 	 */
-	static void begin(const string& name, Color color = Color::transparent);
+	static void begin(const string& name, Color color = Color::transparent, int32 threadIndex = -1);
 	/**
 	 * @brief Ends command buffer label region.
 	 * @note Do not forget to end all label regions.
 	 */
-	static void end();
+	static void end(int32 threadIndex = -1);
 
 	/**
 	 * @brief Inserts debug label.
@@ -259,7 +262,7 @@ struct DebugLabel
 	 * @param[in] name target label name
 	 * @param color label color in the profiler
 	 */
-	static void insert(const string& name, Color color = Color::transparent);
+	static void insert(const string& name, Color color = Color::transparent, int32 threadIndex = -1);
 
 	/**
 	 * @brief Creates and begins command buffer label region.
@@ -267,21 +270,33 @@ struct DebugLabel
 	 * @param[in] name target region name
 	 * @param color label color in the profiler
 	 */
-	DebugLabel(const string& name, Color color = Color::transparent) { begin(name, color); }
+	DebugLabel(const string& name, Color color = Color::transparent, 
+		int32 threadIndex = -1) : threadIndex(threadIndex)
+	{
+		begin(name, color, threadIndex);
+	}
 	/**
 	 * @brief Ends command buffer label region.
 	 * @note Use { } to set multiple labels in the same function.
 	 */
-	~DebugLabel() { end(); }
+	~DebugLabel() { end(threadIndex); }
 
 	// TODO: Add support of the queue labels.
 };
 
-/**
+/***********************************************************************************************************************
  * @brief Creates and begins command buffer label region. (Debug Only)
  * @param[in] name target region name
  */
 #define SET_GPU_DEBUG_LABEL(name) DebugLabel _debugLabel(name)
+/**
+ * @brief Creates and begins command buffer label region. (Debug Only)
+ *
+ * @param[in] name target region name
+ * @param threadIndex current thread index
+ */
+#define SET_GPU_DEBUG_LABEL_ASYNC(name, threadIndex) DebugLabel _debugLabel(name, Color::transparent, threadIndex)
+
 /**
  * @brief Creates and begins command buffer label region. (Debug Only)
  * 
@@ -289,12 +304,28 @@ struct DebugLabel
  * @param color label color in the profiler
  */
 #define SET_GPU_DEBUG_LABEL_C(name, color) DebugLabel _debugLabel(name, color)
-
 /**
+ * @brief Creates and begins command buffer label region. (Debug Only)
+ * 
+ * @param[in] name target region name
+ * @param color label color in the profiler
+ * @param threadIndex current thread index
+ */
+#define SET_GPU_DEBUG_LABEL_C_ASYNC(name, color, threadIndex) DebugLabel _debugLabel(name, color, threadIndex)
+
+/***********************************************************************************************************************
  * @brief Inserts debug label. (Debug Only)
  * @param[in] name target region name
  */
 #define INSERT_GPU_DEBUG_LABEL(name) DebugLabel::insert(name)
+/**
+ * @brief Inserts debug label. (Debug Only)
+ *
+ * @param[in] name target region name
+ * @param threadIndex current thread index
+ */
+#define INSERT_GPU_DEBUG_LABEL_ASYNC(name, threadIndex) DebugLabel::insert(name, Color::transparent, threadIndex)
+
 /**
  * @brief Inserts debug label. (Debug Only)
  * 
@@ -302,12 +333,28 @@ struct DebugLabel
  * @param color label color in the profiler
  */
 #define INSERT_GPU_DEBUG_LABEL_C(name, color) DebugLabel::insert(name, color)
-
 /**
+ * @brief Inserts debug label. (Debug Only)
+ * 
+ * @param[in] name target region name
+ * @param color label color in the profiler
+ * @param threadIndex current thread index
+ */
+#define INSERT_GPU_DEBUG_LABEL_C_ASYNC(name, color, threadIndex) DebugLabel::insert(name, color, threadIndex)
+
+/***********************************************************************************************************************
  * @brief Begins command buffer label region. (Debug Only)
  * @param[in] name target region name
  */
 #define BEGIN_GPU_DEBUG_LABEL(name) DebugLabel::begin(name)
+/**
+ * @brief Begins command buffer label region. (Debug Only)
+ *
+ * @param[in] name target region name
+ * @param threadIndex current thread index
+ */
+#define BEGIN_GPU_DEBUG_LABEL_ASYNC(name, threadIndex) DebugLabel::begin(name, Color::transparent, threadIndex)
+
 /**
  * @brief Begins command buffer label region. (Debug Only)
  * 
@@ -315,6 +362,14 @@ struct DebugLabel
  * @param color label color in the profiler
  */
 #define BEGIN_GPU_DEBUG_LABEL_C(name, color) DebugLabel::begin(name, color)
+/**
+ * @brief Begins command buffer label region. (Debug Only)
+ * 
+ * @param[in] name target region name
+ * @param color label color in the profiler
+ * @param threadIndex current thread index
+ */
+#define BEGIN_GPU_DEBUG_LABEL_C_ASYNC(name, color, threadIndex) DebugLabel::begin(name, color, threadIndex)
 
 /**
  * @brief Ends command buffer label region. (Debug Only)
@@ -322,11 +377,19 @@ struct DebugLabel
  */
 #define END_GPU_DEBUG_LABEL() DebugLabel::end()
 #else
-/**
+/***********************************************************************************************************************
  * @brief Creates and begins command buffer label region. (Debug Only)
  * @param[in] name target region name
  */
 #define SET_GPU_DEBUG_LABEL(name) (void)0
+/**
+ * @brief Creates and begins command buffer label region. (Debug Only)
+ *
+ * @param[in] name target region name
+ * @param threadIndex current thread index
+ */
+#define SET_GPU_DEBUG_LABEL_ASYNC(name, threadIndex) (void)0
+
 /**
  * @brief Creates and begins command buffer label region. (Debug Only)
  * 
@@ -334,12 +397,28 @@ struct DebugLabel
  * @param color label color in the profiler
  */
 #define SET_GPU_DEBUG_LABEL_C(name, color) (void)0
-
 /**
+ * @brief Creates and begins command buffer label region. (Debug Only)
+ * 
+ * @param[in] name target region name
+ * @param color label color in the profiler
+ * @param threadIndex current thread index
+ */
+#define SET_GPU_DEBUG_LABEL_C_ASYNC(name, color, threadIndex) (void)0
+
+/***********************************************************************************************************************
  * @brief Inserts debug label. (Debug Only)
  * @param[in] name target region name
  */
 #define INSERT_GPU_DEBUG_LABEL(name) (void)0
+/**
+ * @brief Inserts debug label. (Debug Only)
+ *
+ * @param[in] name target region name
+ * @param threadIndex current thread index
+ */
+#define INSERT_GPU_DEBUG_LABEL_ASYNC(name, threadIndex) (void)0
+
 /**
  * @brief Inserts debug label. (Debug Only)
  * 
@@ -347,12 +426,28 @@ struct DebugLabel
  * @param color label color in the profiler
  */
 #define INSERT_GPU_DEBUG_LABEL_C(name, color) (void)0
-
 /**
+ * @brief Inserts debug label. (Debug Only)
+ * 
+ * @param[in] name target region name
+ * @param color label color in the profiler
+ * @param threadIndex current thread index
+ */
+#define INSERT_GPU_DEBUG_LABEL_C_ASYNC(name, color, threadIndex) (void)0
+
+/***********************************************************************************************************************
  * @brief Begins command buffer label region. (Debug Only)
  * @param[in] name target region name
  */
 #define BEGIN_GPU_DEBUG_LABEL(name) (void)0
+/**
+ * @brief Begins command buffer label region. (Debug Only)
+ *
+ * @param[in] name target region name
+ * @param threadIndex current thread index
+ */
+#define BEGIN_GPU_DEBUG_LABEL_ASYNC(name, threadIndex) (void)0
+
 /**
  * @brief Begins command buffer label region. (Debug Only)
  * 
@@ -360,6 +455,14 @@ struct DebugLabel
  * @param color label color in the profiler
  */
 #define BEGIN_GPU_DEBUG_LABEL_C(name, color) (void)0
+/**
+ * @brief Begins command buffer label region. (Debug Only)
+ * 
+ * @param[in] name target region name
+ * @param color label color in the profiler
+ * @param threadIndex current thread index
+ */
+#define BEGIN_GPU_DEBUG_LABEL_C_ASYNC(name, color, threadIndex) (void)0
 
 /**
  * @brief Ends command buffer label region. (Debug Only)

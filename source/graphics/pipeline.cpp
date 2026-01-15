@@ -490,26 +490,27 @@ void Pipeline::fillVkSpecConsts(const fs::path& path, void* specInfo, const Pipe
 	info->dataSize = dataSize;
 	info->pData = data;
 }
-void Pipeline::setVkVariantIndex(void* specInfo, uint8 variantIndex)
+void Pipeline::setVkVariantIndex(void* specInfo, uint8 variantIndex) noexcept
 {
 	auto info = (vk::SpecializationInfo*)specInfo;
 	*((uint32*)info->pData) = variantIndex;
 }
 
 //**********************************************************************************************************************
-void Pipeline::updateDescriptorsLock(const DescriptorSet::Range* descriptorSetRange, uint8 rangeCount)
+void Pipeline::updateDescriptorsLock(const DescriptorSet::Range* descriptorSetRange, 
+	uint8 rangeCount, int32 threadIndex)
 {
 	auto graphicsAPI = GraphicsAPI::get();
 	if (graphicsAPI->currentCommandBuffer == graphicsAPI->frameCommandBuffer)
 		return;
 
 	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
-	for (uint8 i = 0; i < rangeCount; i++)
+	for (uint8 i = 0; i < rangeCount; i++) // TODO: make non async variant woth busyLock++ or multithread this?
 	{
 		auto descriptorSet = descriptorSetRange[i].set;
 		auto dsView = graphicsAPI->descriptorSetPool.get(descriptorSet);
-		ResourceExt::getBusyLock(**dsView)++;
-		currentCommandBuffer->addLockedResource(descriptorSet);
+		atomicFetchAdd32(&ResourceExt::getBusyLock(**dsView), 1);
+		currentCommandBuffer->addLockedResource(descriptorSet, threadIndex);
 
 		auto dsPipelineView = graphicsAPI->getPipelineView(dsView->getPipelineType(), dsView->getPipeline());
 		const auto& pipelineUniforms = dsPipelineView->getUniforms();
@@ -536,10 +537,10 @@ void Pipeline::updateDescriptorsLock(const DescriptorSet::Range* descriptorSetRa
 
 						auto imageViewView = graphicsAPI->imageViewPool.get(ID<ImageView>(resource));
 						auto imageView = graphicsAPI->imagePool.get(imageViewView->getImage());
-						ResourceExt::getBusyLock(**imageViewView)++;
-						ResourceExt::getBusyLock(**imageView)++;
-						currentCommandBuffer->addLockedResource(ID<ImageView>(resource));
-						currentCommandBuffer->addLockedResource(imageViewView->getImage());
+						atomicFetchAdd32(&ResourceExt::getBusyLock(**imageViewView), 1);
+						atomicFetchAdd32(&ResourceExt::getBusyLock(**imageView), 1);
+						currentCommandBuffer->addLockedResource(ID<ImageView>(resource), threadIndex);
+						currentCommandBuffer->addLockedResource(imageViewView->getImage(), threadIndex);
 
 						#if GARDEN_DEBUG
 						if (graphicsAPI->currentCommandBuffer == graphicsAPI->computeCommandBuffer)
@@ -561,8 +562,8 @@ void Pipeline::updateDescriptorsLock(const DescriptorSet::Range* descriptorSetRa
 							continue;
 
 						auto bufferView = graphicsAPI->bufferPool.get(ID<Buffer>(resource));
-						ResourceExt::getBusyLock(**bufferView)++;
-						currentCommandBuffer->addLockedResource(ID<Buffer>(resource));
+						atomicFetchAdd32(&ResourceExt::getBusyLock(**bufferView), 1);
+						currentCommandBuffer->addLockedResource(ID<Buffer>(resource), threadIndex);
 
 						#if GARDEN_DEBUG
 						if (graphicsAPI->currentCommandBuffer == graphicsAPI->computeCommandBuffer)
@@ -584,15 +585,15 @@ void Pipeline::updateDescriptorsLock(const DescriptorSet::Range* descriptorSetRa
 							continue;
 
 						auto tlasView = graphicsAPI->tlasPool.get(ID<Tlas>(resource));
-						ResourceExt::getBusyLock(**tlasView)++;
-						currentCommandBuffer->addLockedResource(ID<Tlas>(resource));
+						atomicFetchAdd32(&ResourceExt::getBusyLock(**tlasView), 1);
+						currentCommandBuffer->addLockedResource(ID<Tlas>(resource), threadIndex);
 
 						auto& instances = TlasExt::getInstances(**tlasView);
 						for (const auto& instance : instances)
 						{
 							auto blasView = graphicsAPI->blasPool.get(instance.blas);
-							ResourceExt::getBusyLock(**blasView)++;
-							currentCommandBuffer->addLockedResource(instance.blas);
+							atomicFetchAdd32(&ResourceExt::getBusyLock(**blasView), 1);
+							currentCommandBuffer->addLockedResource(instance.blas, threadIndex);
 
 							#if GARDEN_DEBUG
 							if (graphicsAPI->currentCommandBuffer == graphicsAPI->computeCommandBuffer)
@@ -618,11 +619,6 @@ void Pipeline::updateDescriptorsLock(const DescriptorSet::Range* descriptorSetRa
 			else abort();
 		}
 	}
-}
-
-bool Pipeline::checkThreadIndex(int32 threadIndex)
-{
-	return threadIndex >= 0 && threadIndex < GraphicsAPI::get()->threadCount;
 }
 
 //**********************************************************************************************************************
@@ -685,42 +681,26 @@ void Pipeline::bindAsync(uint8 variant, int32 threadIndex)
 	auto graphicsAPI = GraphicsAPI::get();
 	GARDEN_ASSERT_MSG(asyncRecording, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(variant < variantCount, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(threadIndex < graphicsAPI->threadCount, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(graphicsAPI->isCurrentRenderPassAsync, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(graphicsAPI->currentCommandBuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(instance, "Pipeline [" + debugName + "] is not ready");
 
+	auto resourceType = ResourceType::Count;
+	if (graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer)
+	{
+		switch (type)
+		{
+			case PipelineType::Graphics: resourceType = ResourceType::GraphicsPipeline; break;
+			case PipelineType::Compute: resourceType = ResourceType::ComputePipeline; break;
+			case PipelineType::RayTracing: resourceType = ResourceType::RayTracingPipeline; break;
+			default: abort();
+		}
+		atomicFetchAdd32(&busyLock, 1);
+	}
+
 	auto pipeline = graphicsAPI->getPipeline(type, this);
-
-	graphicsAPI->currentCommandBuffer->commandMutex.lock();
-	if (type == PipelineType::Graphics)
-	{
-		if (graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer)
-		{
-			busyLock++;
-			graphicsAPI->currentCommandBuffer->addLockedResource(ID<GraphicsPipeline>(pipeline));
-		}
-	}
-	else if (type == PipelineType::Compute)
-	{
-		if (graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer)
-		{
-			busyLock++;
-			graphicsAPI->currentCommandBuffer->addLockedResource(ID<ComputePipeline>(pipeline));
-		}
-	}
-	else if (type == PipelineType::RayTracing)
-	{
-		if (graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer)
-		{
-			busyLock++;
-			graphicsAPI->currentCommandBuffer->addLockedResource(ID<RayTracingPipeline>(pipeline));
-		}
-	}
-	else abort();
-	graphicsAPI->currentCommandBuffer->commandMutex.unlock();
-
 	auto autoThreadCount = graphicsAPI->calcAutoThreadCount(threadIndex);
+
 	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
 		auto vulkanAPI = VulkanAPI::get();
@@ -739,6 +719,11 @@ void Pipeline::bindAsync(uint8 variant, int32 threadIndex)
 				vulkanAPI->currentPipelineTypes[threadIndex] = type;
 				vulkanAPI->currentPipelineVariants[threadIndex] = variant;
 			}
+			if (resourceType != ResourceType::Count)
+			{
+				graphicsAPI->currentCommandBuffer->addLockedResource(
+					resourceType, ID<Resource>(pipeline), threadIndex);
+			}
 			threadIndex++;
 		}
 	}
@@ -746,10 +731,10 @@ void Pipeline::bindAsync(uint8 variant, int32 threadIndex)
 }
 
 //**********************************************************************************************************************
-void Pipeline::bindDescriptorSets(const DescriptorSet::Range* descriptorSetRange, uint8 rangeCount)
+void Pipeline::bindDescriptorSets(const DescriptorSet::Range* descriptorSetRanges, uint8 rangeCount)
 {
 	auto graphicsAPI = GraphicsAPI::get();
-	GARDEN_ASSERT_MSG(descriptorSetRange, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(descriptorSetRanges, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(rangeCount > 0, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(!graphicsAPI->isCurrentRenderPassAsync, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(graphicsAPI->currentCommandBuffer, "Assert " + debugName);
@@ -760,11 +745,11 @@ void Pipeline::bindDescriptorSets(const DescriptorSet::Range* descriptorSetRange
 	#if GARDEN_DEBUG
 	for (uint8 i = 0; i < rangeCount; i++)
 	{
-		auto descriptor = descriptorSetRange[i];
-		GARDEN_ASSERT_MSG(descriptor.set, "Pipeline [" + debugName + "] "
+		auto dsRange = descriptorSetRanges[i];
+		GARDEN_ASSERT_MSG(dsRange.set, "Pipeline [" + debugName + "] "
 			"descriptor set [" + to_string(i) +  "] is null");
-		auto descriptorSetView = graphicsAPI->descriptorSetPool.get(descriptor.set);
-		GARDEN_ASSERT_MSG(descriptor.offset + descriptor.count <= descriptorSetView->getSetCount(), 
+		auto descriptorSetView = graphicsAPI->descriptorSetPool.get(dsRange.set);
+		GARDEN_ASSERT_MSG(dsRange.offset + dsRange.count <= descriptorSetView->getSetCount(), 
 			"Out of pipeline [" + debugName + "] descriptor set count range");
 		auto pipeline = graphicsAPI->getPipeline(descriptorSetView->getPipelineType(), this);
 		GARDEN_ASSERT_MSG(pipeline == descriptorSetView->getPipeline(), "Descriptor set [" + 
@@ -774,42 +759,46 @@ void Pipeline::bindDescriptorSets(const DescriptorSet::Range* descriptorSetRange
 	
 	BindDescriptorSetsCommand command;
 	command.rangeCount = rangeCount;
-	command.descriptorSetRange = descriptorSetRange;
+	command.descriptorSetRanges = descriptorSetRanges;
 	graphicsAPI->currentCommandBuffer->addCommand(command);
-
-	updateDescriptorsLock(descriptorSetRange, rangeCount);
+	updateDescriptorsLock(descriptorSetRanges, rangeCount);
 }
 
 //**********************************************************************************************************************
-void Pipeline::bindDescriptorSetsAsync(const DescriptorSet::Range* descriptorSetRange, uint8 rangeCount, int32 threadIndex)
+void Pipeline::bindDescriptorSetsAsync(const DescriptorSet::Range* descriptorSetRanges, 
+	uint8 rangeCount, int32 threadIndex)
 {
 	auto graphicsAPI = GraphicsAPI::get();
 	GARDEN_ASSERT_MSG(asyncRecording, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(descriptorSetRange, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(descriptorSetRanges, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(rangeCount > 0, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(threadIndex < graphicsAPI->threadCount, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(rangeCount <= 2, "Assert " + debugName); // TODO: do we need more than 2 for an async??
 	GARDEN_ASSERT_MSG(graphicsAPI->isCurrentRenderPassAsync, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(graphicsAPI->currentCommandBuffer, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(ID<Pipeline>(graphicsAPI->getPipeline(type, this)) == 
-		graphicsAPI->currentPipelines[threadIndex], "Assert " + debugName);
 	GARDEN_ASSERT_MSG(instance, "Pipeline [" + debugName + "] is not ready");
 
 	#if GARDEN_DEBUG
 	for (uint8 i = 0; i < rangeCount; i++)
 	{
-		auto descriptor = descriptorSetRange[i];
-		GARDEN_ASSERT_MSG(descriptor.set,"Pipeline [" + debugName + "] "
+		auto dsRange = descriptorSetRanges[i];
+		GARDEN_ASSERT_MSG(dsRange.set,"Pipeline [" + debugName + "] "
 			"descriptor set [" + to_string(i) +  "] is null");
 		auto thisPipeline = graphicsAPI->getPipeline(type, this);
-		auto descriptorSetView = graphicsAPI->descriptorSetPool.get(descriptor.set);
+		auto descriptorSetView = graphicsAPI->descriptorSetPool.get(dsRange.set);
 		GARDEN_ASSERT_MSG(thisPipeline == descriptorSetView->getPipeline(), "Descriptor set [" + 
 			to_string(i) +  "] pipeline is different from this pipeline [" + debugName + "]");
-		GARDEN_ASSERT_MSG(descriptor.offset + descriptor.count <= descriptorSetView->getSetCount(),
+		GARDEN_ASSERT_MSG(dsRange.offset + dsRange.count <= descriptorSetView->getSetCount(),
 			"Out of pipeline [" + debugName + "] descriptor set count range");
 	}
 	#endif
 
+	BindDescriptorSetsAsyncCommand command;
+	command.rangeCount = rangeCount;
+	memcpy(command.descriptorSetRanges, descriptorSetRanges, sizeof(DescriptorSet::Range) * rangeCount);
+
 	auto autoThreadCount = graphicsAPI->calcAutoThreadCount(threadIndex);
+	GARDEN_ASSERT_MSG(ID<Pipeline>(graphicsAPI->getPipeline(type, this)) == 
+		graphicsAPI->currentPipelines[threadIndex], "Assert " + debugName);
 	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
 		auto vulkanAPI = VulkanAPI::get();
@@ -817,44 +806,32 @@ void Pipeline::bindDescriptorSetsAsync(const DescriptorSet::Range* descriptorSet
 
 		for (uint8 i = 0; i < rangeCount; i++)
 		{
-			auto descriptor = descriptorSetRange[i];
-			auto descriptorSetView = graphicsAPI->descriptorSetPool.get(descriptor.set);
+			auto dsRange = descriptorSetRanges[i];
+			auto descriptorSetView = graphicsAPI->descriptorSetPool.get(dsRange.set);
 			auto instance = (vk::DescriptorSet*)ResourceExt::getInstance(**descriptorSetView);
 
 			if (descriptorSetView->getSetCount() > 1)
 			{
-				auto count = descriptor.offset + descriptor.count;
-				for (uint32 j = descriptor.offset; j < count; j++)
+				auto count = dsRange.offset + dsRange.count;
+				for (uint32 j = dsRange.offset; j < count; j++)
 					vkDescriptorSets.push_back(instance[j]);
 			}
-			else
-			{
-				vkDescriptorSets.push_back((VkDescriptorSet)instance);
-			}
+			else vkDescriptorSets.push_back((VkDescriptorSet)instance);
 		}
 
 		auto bindPoint = toVkPipelineBindPoint(type);
 		while (threadIndex < autoThreadCount)
 		{
-			vulkanAPI->secondaryCommandBuffers[threadIndex++].bindDescriptorSets(
+			vulkanAPI->secondaryCommandBuffers[threadIndex].bindDescriptorSets(
 				bindPoint, (VkPipelineLayout)pipelineLayout, 0, 
 				(uint32)vkDescriptorSets.size(), vkDescriptorSets.data(), 0, nullptr);
+			graphicsAPI->currentCommandBuffer->addCommand(AsyncRenderCommand(command), threadIndex);
+			updateDescriptorsLock(descriptorSetRanges, rangeCount, threadIndex);
+			threadIndex++;
 		}
-
 		vkDescriptorSets.clear();
 	}
 	else abort();
-
-	BindDescriptorSetsCommand command;
-	command.asyncRecording = true;
-	command.rangeCount = rangeCount;
-	command.descriptorSetRange = descriptorSetRange;
-
-	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
-	currentCommandBuffer->commandMutex.lock();
-	currentCommandBuffer->addCommand(command);
-	updateDescriptorsLock(descriptorSetRange, rangeCount);
-	currentCommandBuffer->commandMutex.unlock();
 }
 
 //**********************************************************************************************************************
@@ -881,11 +858,11 @@ void Pipeline::pushConstantsAsync(const void* data, int32 threadIndex)
 	GARDEN_ASSERT_MSG(asyncRecording, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(pushConstantsSize > 0, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(threadIndex >= 0, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(threadIndex < graphicsAPI->threadCount, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(graphicsAPI->isCurrentRenderPassAsync, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(graphicsAPI->currentCommandBuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(instance, "Pipeline [" + debugName + "] is not ready");
 
+	graphicsAPI->calcAutoThreadIndex(threadIndex);
 	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
 		VulkanAPI::get()->secondaryCommandBuffers[threadIndex].pushConstants(
