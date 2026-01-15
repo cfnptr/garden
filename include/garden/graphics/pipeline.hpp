@@ -168,10 +168,9 @@ protected:
 
 	static void fillVkSpecConsts(const fs::path& path, void* specInfo, const SpecConsts& specConsts, 
 		const SpecConstValues& specConstValues, PipelineStage pipelineStage, uint8 variantCount);
-	static void setVkVariantIndex(void* specInfo, uint8 variantIndex);
-	static void updateDescriptorsLock(const DescriptorSet::Range* descriptorSetRange, uint8 descriptorDataSize);
-	static bool checkThreadIndex(int32 threadIndex);
-
+	static void setVkVariantIndex(void* specInfo, uint8 variantIndex) noexcept;
+	static void updateDescriptorsLock(const DescriptorSet::Range* descriptorSetRange, 
+		uint8 rangeCount, int32 threadIndex = -1);
 	friend class PipelineExt;
 public:
 	/*******************************************************************************************************************
@@ -254,23 +253,24 @@ public:
 	/**
 	 * @brief Binds descriptor set range to this pipeline for subsequent rendering.
 	 * 
-	 * @param[in] descriptorSetRange target descriptor set range array
+	 * @param[in] descriptorSetRanges target descriptor set range array
 	 * @param rangeCount descriptor set range array size
 	 * 
 	 * @details
 	 * Descriptors are a way of telling the GPU where to find the resources it needs, 
 	 * such as textures and buffers, that are used by shaders for rendering or computation.
 	 */
-	void bindDescriptorSets(const DescriptorSet::Range* descriptorSetRange, uint8 rangeCount);
+	void bindDescriptorSets(const DescriptorSet::Range* descriptorSetRanges, uint8 rangeCount);
 	/**
 	 * @brief Binds descriptor set range to this pipeline for subsequent rendering.
 	 * @details See the @ref Pipeline::bindDescriptorSets()
 	 * 
-	 * @param[in] descriptorSetRange target descriptor set range array
+	 * @param[in] descriptorSetRanges target descriptor set range array
 	 * @param rangeCount descriptor set range array size
 	 * @param threadIndex thread index in the pool (-1 = all threads)
 	 */
-	void bindDescriptorSetsAsync(const DescriptorSet::Range* descriptorSetRange, uint8 rangeCount, int32 threadIndex = -1);
+	void bindDescriptorSetsAsync(const DescriptorSet::Range* descriptorSetRanges, 
+		uint8 rangeCount, int32 threadIndex = -1);
 
 	/*******************************************************************************************************************
 	 * @brief Binds descriptor set range to this pipeline for subsequent rendering.

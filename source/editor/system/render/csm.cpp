@@ -203,28 +203,28 @@ void CsmRenderEditorSystem::uiRender()
 
 	auto csmSystem = CsmRenderSystem::Instance::get();
 	const auto& cc = graphicsSystem->getCommonConstants();
-	auto isCurrentRenderPassAsync = graphicsSystem->isCurrentRenderPassAsync();
-	auto threadIndex = graphicsSystem->getThreadCount() - 1;
 
 	PushConstants pc;
 	pc.farPlanes = (float3)(cc.nearPlane / csmSystem->getFarPlanes());
 
-	SET_GPU_DEBUG_LABEL("Shadow Map Cascades");
-	if (isCurrentRenderPassAsync)
+	if (graphicsSystem->isCurrentRenderPassAsync())
 	{
+		SET_GPU_DEBUG_LABEL_ASYNC("Shadow Map Cascades", INT32_MAX);
+		pipelineView->bindAsync(0, INT32_MAX);
+		pipelineView->setViewportScissorAsync(float4::zero, INT32_MAX);
+		pipelineView->bindDescriptorSetAsync(cascadesDS, 0, INT32_MAX);
+		pipelineView->pushConstantsAsync(&pc, INT32_MAX);
+		pipelineView->drawFullscreenAsync(INT32_MAX);
+		
+	}
+	else
+	{
+		SET_GPU_DEBUG_LABEL("Shadow Map Cascades");
 		pipelineView->bind();
 		pipelineView->setViewportScissor();
 		pipelineView->bindDescriptorSet(cascadesDS);
 		pipelineView->pushConstants(&pc);
 		pipelineView->drawFullscreen();
-	}
-	else
-	{
-		pipelineView->bindAsync(0, threadIndex);
-		pipelineView->setViewportScissorAsync(float4::zero, threadIndex);
-		pipelineView->bindDescriptorSetAsync(cascadesDS, 0, threadIndex);
-		pipelineView->pushConstantsAsync(&pc, threadIndex);
-		pipelineView->drawFullscreenAsync(threadIndex);
 	}
 }
 

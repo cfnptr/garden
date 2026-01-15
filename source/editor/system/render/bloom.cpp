@@ -152,23 +152,21 @@ void BloomRenderEditorSystem::uiRender()
 		SET_RESOURCE_DEBUG_NAME(thresholdDS, "descriptorSet.editor.bloom.threshold");
 	}
 
-	auto isCurrentRenderPassAsync = graphicsSystem->isCurrentRenderPassAsync();
-	auto threadIndex = graphicsSystem->getThreadCount() - 1;
-
 	PushConstants pc;
 	pc.threshold = BloomRenderSystem::Instance::get()->threshold;
 
-	SET_GPU_DEBUG_LABEL("Bloom Threshold");
-	if (isCurrentRenderPassAsync)
+	if (graphicsSystem->isCurrentRenderPassAsync())
 	{
-		pipelineView->bindAsync(0, threadIndex);
-		pipelineView->setViewportScissorAsync(float4::zero, threadIndex);
-		pipelineView->bindDescriptorSetAsync(thresholdDS, 0, threadIndex);
-		pipelineView->pushConstantsAsync(&pc, threadIndex);
-		pipelineView->drawFullscreenAsync(threadIndex);
+		SET_GPU_DEBUG_LABEL_ASYNC("Bloom Threshold", INT32_MAX);
+		pipelineView->bindAsync(0, INT32_MAX);
+		pipelineView->setViewportScissorAsync(float4::zero, INT32_MAX);
+		pipelineView->bindDescriptorSetAsync(thresholdDS, 0, INT32_MAX);
+		pipelineView->pushConstantsAsync(&pc, INT32_MAX);
+		pipelineView->drawFullscreenAsync(INT32_MAX);
 	}
 	else
 	{
+		SET_GPU_DEBUG_LABEL("Bloom Threshold");
 		pipelineView->bind();
 		pipelineView->setViewportScissor();
 		pipelineView->bindDescriptorSet(thresholdDS);

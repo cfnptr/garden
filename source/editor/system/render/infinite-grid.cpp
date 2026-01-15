@@ -191,9 +191,10 @@ void InfiniteGridEditorSystem::render()
 
 	auto inFlightIndex = graphicsSystem->getInFlightIndex();
 
-	SET_GPU_DEBUG_LABEL("Infinite Grid");
+	
 	if (graphicsSystem->isCurrentRenderPassAsync())
 	{
+		SET_GPU_DEBUG_LABEL_ASYNC("Infinite Grid", 0);
 		pipelineView->bindAsync(0);
 		pipelineView->setViewportScissorAsync(float4::zero, 0);
 		pipelineView->bindDescriptorSetAsync(descriptorSet, inFlightIndex, 0);
@@ -202,6 +203,7 @@ void InfiniteGridEditorSystem::render()
 	}
 	else
 	{
+		SET_GPU_DEBUG_LABEL("Infinite Grid");
 		pipelineView->bind();
 		pipelineView->setViewportScissor();
 		pipelineView->bindDescriptorSet(descriptorSet, inFlightIndex);

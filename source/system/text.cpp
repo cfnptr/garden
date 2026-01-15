@@ -252,7 +252,7 @@ bool FontAtlas::update(u32string_view chars, uint32 fontSize, Image::Usage image
 	if (image && !shrink)
 	{
 		auto imageView = graphicsSystem->get(image);
-		if (imageView->isReady()) // Note: it may be asyn transfering right now.
+		if (imageView->isReady()) // Note: it may be async transfering right now.
 			currPixelSize = (uint2)imageView->getSize();
 	}
 
@@ -601,7 +601,7 @@ bool Text::update(u32string_view value, uint32 fontSize, Properties properties,
 	if (instanceBuffer && !shrink)
 	{
 		auto bufferView = graphicsSystem->get(instanceBuffer);
-		if (bufferView->isReady()) // Note: it may be asyn transfering right now.
+		if (bufferView->isReady()) // Note: it may be async transfering right now.
 			currBinarySize = bufferView->getBinarySize();
 	}
 

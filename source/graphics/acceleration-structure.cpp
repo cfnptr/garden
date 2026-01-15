@@ -170,8 +170,7 @@ void AccelerationStructure::build(ID<Buffer> scratchBuffer)
 	command.srcAS = {};
 	if (type == AccelerationStructure::Type::Blas)
 		command.dstAS = ID<AccelerationStructure>(graphicsAPI->blasPool.getID((const Blas*)this));
-	else
-		command.dstAS = ID<AccelerationStructure>(graphicsAPI->tlasPool.getID((const Tlas*)this));
+	else command.dstAS = ID<AccelerationStructure>(graphicsAPI->tlasPool.getID((const Tlas*)this));
 	command.scratchBuffer = scratchBuffer;
 	graphicsAPI->currentCommandBuffer->addCommand(command);
 
@@ -187,8 +186,7 @@ void AccelerationStructure::build(ID<Buffer> scratchBuffer)
 
 	if (type == AccelerationStructure::Type::Blas)
 		currentCommandBuffer->addLockedResource(ID<Blas>(command.dstAS));
-	else
-		currentCommandBuffer->addLockedResource(ID<Tlas>(command.dstAS));
+	else currentCommandBuffer->addLockedResource(ID<Tlas>(command.dstAS));
 
 	auto syncBuffers = (ID<Buffer>*)((uint8*)buildData + sizeof(AccelerationStructure::BuildDataHeader));
 	for (uint32 i = 0; i < buildDataHeader->bufferCount; i++)

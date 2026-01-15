@@ -259,12 +259,13 @@ void ImGuiRenderSystem::preInit()
 		return inputSystem->getClipboard().empty() ? nullptr : inputSystem->getClipboard().c_str();
 	};
 
+	auto glfwWindow = (GLFWwindow*)graphicsAPI->getWindow();
 	auto mainViewport = ImGui::GetMainViewport();
-	mainViewport->PlatformHandle = graphicsAPI->window;
+	mainViewport->PlatformHandle = glfwWindow;
 	#ifdef _WIN32
-	mainViewport->PlatformHandleRaw = glfwGetWin32Window((GLFWwindow*)graphicsAPI->window);
+	mainViewport->PlatformHandleRaw = glfwGetWin32Window(glfwWindow);
 	#elif defined(__APPLE__)
-	mainViewport->PlatformHandleRaw = (void*)glfwGetCocoaWindow((GLFWwindow*)graphicsAPI->window);
+	mainViewport->PlatformHandleRaw = (void*)glfwGetCocoaWindow(glfwWindow);
 	#else
 	IM_UNUSED(mainViewport);
 	#endif
@@ -655,6 +656,7 @@ static void updateImGuiTextures(ImVector<ImTextureData*>& textures,
 			copyRegion.imageExtent = uint3(updateRect.w, updateRect.h, 1);
 			copyRegion.imageLayerCount = 1;
 			Image::copy(stagingBuffer, image, copyRegion);
+			graphicsSystem->destroy(stagingBuffer);
 
 			texture->SetStatus(ImTextureStatus_OK);
 		}
@@ -762,7 +764,6 @@ void ImGuiRenderSystem::uiRender()
 	auto framebufferView = graphicsSystem->get(pipelineView->getFramebuffer());
 	auto framebufferSize = (float2)framebufferView->getSize();
 	auto isCurrentRenderPassAsync = graphicsSystem->isCurrentRenderPassAsync();
-	auto threadIndex = graphicsSystem->getThreadCount() - 1;
 	auto threadSystem = ThreadSystem::Instance::tryGet();
 
 	PushConstants pc;
@@ -770,15 +771,16 @@ void ImGuiRenderSystem::uiRender()
 	pc.translate = float2(-1.0f - drawData->DisplayPos.x * pc.scale.x,
 		-1.0f - drawData->DisplayPos.y * pc.scale.y);
 
-	SET_GPU_DEBUG_LABEL("ImGui");
 	if (isCurrentRenderPassAsync)
 	{
-		pipelineView->bindAsync(0, threadIndex);
-		pipelineView->setViewportAsync(float4::zero, threadIndex);
-		pipelineView->pushConstantsAsync(&pc, threadIndex);
+		SET_GPU_DEBUG_LABEL_ASYNC("ImGui", INT32_MAX);
+		pipelineView->bindAsync(0, INT32_MAX);
+		pipelineView->setViewportAsync(float4::zero, INT32_MAX);
+		pipelineView->pushConstantsAsync(&pc, INT32_MAX);
 	}
 	else
 	{
+		SET_GPU_DEBUG_LABEL("ImGui");
 		pipelineView->bind();
 		pipelineView->setViewport();
 		pipelineView->pushConstants(&pc);
@@ -811,9 +813,8 @@ void ImGuiRenderSystem::uiRender()
 			scissor.y = framebufferSize.y - (scissor.y + scissor.w);
 
 			if (isCurrentRenderPassAsync)
-				pipelineView->setScissorAsync(scissor, threadIndex);
-			else
-				pipelineView->setScissor(scissor);
+				pipelineView->setScissorAsync(scissor, INT32_MAX);
+			else pipelineView->setScissor(scissor);
 
 			ID<DescriptorSet> descriptorSet;
 			ID<ImageView> imageView; *imageView = cmd.GetTexID();
@@ -836,8 +837,8 @@ void ImGuiRenderSystem::uiRender()
 
 			if (isCurrentRenderPassAsync)
 			{
-				pipelineView->bindDescriptorSetAsync(descriptorSet, 0, threadIndex);
-				pipelineView->drawIndexedAsync(threadIndex, vertexBuffer, indexBuffer, indexType, 
+				pipelineView->bindDescriptorSetAsync(descriptorSet, 0, INT32_MAX);
+				pipelineView->drawIndexedAsync(INT32_MAX, vertexBuffer, indexBuffer, indexType, 
 					cmd.ElemCount, 1, cmd.IdxOffset + globalIdxOffset, cmd.VtxOffset + globalVtxOffset);
 			}
 			else

@@ -502,11 +502,10 @@ void DeferredRenderSystem::render()
 				velocityPipelineView = graphicsSystem->get(velocityPipeline); // Note: do not move.
 				if (options.useAsyncRecording)
 				{
-					auto threadIndex = graphicsSystem->getThreadCount() - 1;
-					velocityPipelineView->bindAsync(0, threadIndex);
-					velocityPipelineView->setViewportScissorAsync(float4::zero, threadIndex);
-					velocityPipelineView->bindDescriptorSetAsync(velocityDS, inFlightIndex, threadIndex);
-					velocityPipelineView->drawFullscreenAsync(threadIndex);
+					velocityPipelineView->bindAsync(0, INT32_MAX);
+					velocityPipelineView->setViewportScissorAsync(float4::zero, INT32_MAX);
+					velocityPipelineView->bindDescriptorSetAsync(velocityDS, inFlightIndex, INT32_MAX);
+					velocityPipelineView->drawFullscreenAsync(INT32_MAX);
 				}
 				else
 				{

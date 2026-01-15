@@ -87,13 +87,14 @@ GraphicsSystem::GraphicsSystem(uint2 windowSize, bool isFullscreen, bool isDecor
 		setSingleton();
 
 	auto appInfoSystem = AppInfoSystem::Instance::get();
-	auto threadCount = getBestForegroundThreadCount();
+	auto threadSystem = ThreadSystem::Instance::tryGet();
+	auto threadPool = threadSystem ? &threadSystem->getForegroundPool() : nullptr;
 
 	GraphicsAPI::initialize(GraphicsBackend::VulkanAPI, appInfoSystem->getName(), appInfoSystem->getAppDataName(),
-		appInfoSystem->getVersion(), windowSize, threadCount, useVsync, useTripleBuffering, isFullscreen, isDecorated);
+		appInfoSystem->getVersion(), windowSize, threadPool, useVsync, useTripleBuffering, isFullscreen, isDecorated);
 
 	auto graphicsAPI = GraphicsAPI::get();
-	auto swapchainImage = graphicsAPI->imagePool.get(graphicsAPI->swapchain->getCurrentImage());
+	auto swapchainImage = graphicsAPI->imagePool.get(graphicsAPI->getSwapchain()->getCurrentImage());
 	auto swapchainImageView = swapchainImage->getDefaultView();
 	auto framebufferSize = (uint2)swapchainImage->getSize();
 	calcJitterOffsets(jitterOffsets, framebufferSize, framebufferSize);
@@ -240,7 +241,7 @@ static void updateCurrentFramebuffer(GraphicsAPI* graphicsAPI,
 	ID<Framebuffer> swapchainFramebuffer, uint2 framebufferSize)
 {
 	auto framebufferView = graphicsAPI->framebufferPool.get(swapchainFramebuffer);
-	auto swapchainView = graphicsAPI->imagePool.get(graphicsAPI->swapchain->getCurrentImage());
+	auto swapchainView = graphicsAPI->imagePool.get(graphicsAPI->getSwapchain()->getCurrentImage());
 	FramebufferExt::getSize(**framebufferView) = framebufferSize;
 	FramebufferExt::getColorAttachments(**framebufferView)[0].imageView = swapchainView->getDefaultView();
 }
@@ -364,8 +365,8 @@ void GraphicsSystem::update()
 	SET_CPU_ZONE_SCOPED("Graphics Update");
 
 	auto graphicsAPI = GraphicsAPI::get();
-	auto swapchain = graphicsAPI->swapchain;
 	auto inputSystem = InputSystem::Instance::get();
+	auto swapchain = graphicsAPI->getSwapchain();
 
 	SwapchainChanges newSwapchainChanges;
 	newSwapchainChanges.framebufferSize = inputSystem->getFramebufferSize() != swapchain->getFramebufferSize();
@@ -406,8 +407,7 @@ void GraphicsSystem::update()
 
 	if (isFramebufferSizeValid)
 	{
-		auto threadSystem = ThreadSystem::Instance::tryGet();
-		if (!swapchain->acquireNextImage(&threadSystem->getForegroundPool()))
+		if (!swapchain->acquireNextImage())
 		{
 			isFramebufferSizeValid = false;
 			outOfDateSwapchain = true;
@@ -476,7 +476,7 @@ void GraphicsSystem::present()
 	{
 		graphicsAPI->flushDestroyBuffer();
 
-		if (graphicsAPI->swapchain->present())
+		if (graphicsAPI->getSwapchain()->present())
 		{
 			if (!useVsync && (!useLowLatency || !graphicsAPI->hasLowLatency()))
 				limitFrameRate(beginSleepClock, maxFrameRate);
@@ -507,7 +507,7 @@ void GraphicsSystem::present()
 uint2 GraphicsSystem::getScaledFrameSize()
 {
 	if (scaledFrameSize == uint2::zero)
-		return GraphicsAPI::get()->swapchain->getFramebufferSize();
+		return GraphicsAPI::get()->getSwapchain()->getFramebufferSize();
 	return scaledFrameSize;
 }
 void GraphicsSystem::setScaledFrameSize(uint2 frameSize)
@@ -524,7 +524,7 @@ void GraphicsSystem::setScaledFrameSize(uint2 frameSize)
 
 uint2 GraphicsSystem::getFramebufferSize() const noexcept
 {
-	return GraphicsAPI::get()->swapchain->getFramebufferSize();
+	return GraphicsAPI::get()->getSwapchain()->getFramebufferSize();
 }
 
 ID<Framebuffer> GraphicsSystem::getCurrentFramebuffer() const noexcept
@@ -555,12 +555,7 @@ uint32 GraphicsSystem::getInFlightCount() const noexcept
 }
 uint32 GraphicsSystem::getInFlightIndex() const noexcept
 {
-	return GraphicsAPI::get()->swapchain->getInFlightIndex();
-}
-
-uint32 GraphicsSystem::getThreadCount() const noexcept
-{
-	return GraphicsAPI::get()->threadCount;
+	return GraphicsAPI::get()->getSwapchain()->getInFlightIndex();
 }
 
 //**********************************************************************************************************************

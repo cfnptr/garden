@@ -297,12 +297,6 @@ public:
 	uint32 getInFlightIndex() const noexcept;
 
 	/**
-	 * @brief Returns current swapchain asynchronous thread count.
-	 * @details Useful for an async rendering commands.
-	 */
-	uint32 getThreadCount() const noexcept;
-
-	/**
 	 * @brief Is current swapchain out of date.
 	 * @details Swapchain will be recreated on next frame with valid framebuffer size.
 	 */

@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "garden/graphics/common.hpp"
-#include "garden/graphics/api.hpp"
+#include "garden/graphics/vulkan/api.hpp"
 
 using namespace std;
 using namespace math;
@@ -21,46 +21,79 @@ using namespace garden::graphics;
 
 #if GARDEN_DEBUG
 //**********************************************************************************************************************
-void DebugLabel::begin(const string& name, Color color)
+void DebugLabel::begin(const string& name, Color color, int32 threadIndex)
 {
 	auto graphicsAPI = GraphicsAPI::get();
 	GARDEN_ASSERT(!name.empty());
 	GARDEN_ASSERT_MSG(graphicsAPI->currentCommandBuffer, "Assert " + name);
 
-	BeginLabelCommand command;
-	command.name = name.c_str();
-	command.color = color;
-
 	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
-	currentCommandBuffer->commandMutex.lock();
-	currentCommandBuffer->addCommand(command);
-	currentCommandBuffer->commandMutex.unlock();
+	if (threadIndex < 0)
+	{
+		GARDEN_ASSERT_MSG(!graphicsAPI->isCurrentRenderPassAsync, "Assert " + name);
+		BeginLabelCommand command;
+		command.color = color;
+		command.name = name.c_str();
+		currentCommandBuffer->addCommand(command, threadIndex);
+	}
+	else
+	{
+		GARDEN_ASSERT_MSG(graphicsAPI->isCurrentRenderPassAsync, "Assert " + name);
+		graphicsAPI->calcAutoThreadIndex(threadIndex);
+		if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+		{
+			array<float, 4> values; *(float4*)values.data() = (float4)color;
+			vk::DebugUtilsLabelEXT debugLabel(name.c_str(), values);
+			VulkanAPI::get()->secondaryCommandBuffers[threadIndex].beginDebugUtilsLabelEXT(debugLabel);
+		}
+		else abort();
+	}
 }
-void DebugLabel::end()
+void DebugLabel::end(int32 threadIndex)
 {
 	auto graphicsAPI = GraphicsAPI::get();
 	GARDEN_ASSERT(graphicsAPI->currentCommandBuffer);
 
-	EndLabelCommand command;
-
 	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
-	currentCommandBuffer->commandMutex.lock();
-	currentCommandBuffer->addCommand(command);
-	currentCommandBuffer->commandMutex.unlock();
+	if (threadIndex < 0)
+	{
+		GARDEN_ASSERT(!graphicsAPI->isCurrentRenderPassAsync);
+		currentCommandBuffer->addCommand(EndLabelCommand(), threadIndex);
+	}
+	else
+	{
+		GARDEN_ASSERT(graphicsAPI->isCurrentRenderPassAsync);
+		graphicsAPI->calcAutoThreadIndex(threadIndex);
+		if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+			VulkanAPI::get()->secondaryCommandBuffers[threadIndex].endDebugUtilsLabelEXT();
+		else abort();
+	}
 }
-void DebugLabel::insert(const string& name, Color color)
+void DebugLabel::insert(const string& name, Color color, int32 threadIndex)
 {
 	auto graphicsAPI = GraphicsAPI::get();
 	GARDEN_ASSERT(!name.empty());
-	GARDEN_ASSERT_MSG(graphicsAPI->currentCommandBuffer, "Assert " + name);
-
-	InsertLabelCommand command;
-	command.name = name.c_str();
-	command.color = color;
 
 	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
-	currentCommandBuffer->commandMutex.lock();
-	currentCommandBuffer->addCommand(command);
-	currentCommandBuffer->commandMutex.unlock();
+	if (threadIndex < 0)
+	{
+		GARDEN_ASSERT_MSG(!graphicsAPI->isCurrentRenderPassAsync, "Assert " + name);
+		InsertLabelCommand command;
+		command.color = color;
+		command.name = name.c_str();
+		currentCommandBuffer->addCommand(command, threadIndex);
+	}
+	else
+	{
+		GARDEN_ASSERT_MSG(graphicsAPI->isCurrentRenderPassAsync, "Assert " + name);
+		graphicsAPI->calcAutoThreadIndex(threadIndex);
+		if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+		{
+			array<float, 4> values; *(float4*)values.data() = (float4)color;
+			vk::DebugUtilsLabelEXT debugLabel(name.c_str(), values);
+			VulkanAPI::get()->secondaryCommandBuffers[threadIndex].insertDebugUtilsLabelEXT(debugLabel);
+		}
+		else abort();
+	}	
 }
 #endif

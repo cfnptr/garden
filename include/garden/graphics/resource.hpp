@@ -19,6 +19,7 @@
 
 #pragma once
 #include "garden/defines.hpp"
+#include "mpmt/atomic.h"
 
 namespace garden::graphics
 {
@@ -45,7 +46,7 @@ class Resource
 {
 protected:
 	void* instance = nullptr;
-	uint32 busyLock = 0;
+	atomic_int32 busyLock = 0;
 	
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	#define UNNAMED_RESOURCE "unnamed"
@@ -104,11 +105,11 @@ public:
 	 */
 	static void*& getInstance(Resource& resource) noexcept { return resource.instance; }
 	/**
-	 * @brief Returns resource busy lock.
+	 * @brief Returns resource busy lock. (MT-Safe)
 	 * @warning In most cases you should use @ref Resource functions.
 	 * @param[in] resource target resource instance
 	 */
-	static uint32& getBusyLock(Resource& resource) noexcept { return resource.busyLock; }
+	static atomic_int32& getBusyLock(Resource& resource) noexcept { return resource.busyLock; }
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	/**

@@ -22,8 +22,7 @@
 #include "garden/graphics/pipeline/graphics.hpp"
 #include "garden/graphics/pipeline/ray-tracing.hpp"
 #include "garden/graphics/acceleration-structure/tlas.hpp"
-
-#include <mutex>
+#include "garden/thread-pool.hpp"
 
 namespace garden::graphics
 {
@@ -34,9 +33,8 @@ struct Command
 	{
 		Unknown, BufferBarrier, BeginRenderPass, NextSubpass, Execute, EndRenderPass, ClearAttachments,
 		BindPipeline, BindDescriptorSets, PushConstants, SetViewport, SetScissor,
-		SetViewportScissor, Draw, DrawIndexed, Dispatch, // TODO: indirect
-		FillBuffer, CopyBuffer, ClearImage, CopyImage, CopyBufferImage, BlitImage,
-		SetDepthBias, // TODO: other dynamic setters
+		SetViewportScissor, SetDepthBias, Draw, DrawIndexed, DrawIndirect, DrawIndexedIndirect, 
+		Dispatch, FillBuffer, CopyBuffer, ClearImage, CopyImage, CopyBufferImage, BlitImage,
 		BuildAccelerationStructure, CopyAccelerationStructure, TraceRays, Custom,
 
 		#if GARDEN_DEBUG
@@ -69,8 +67,8 @@ struct BufferBarrierCommand final : public BufferBarrierCommandBase
 //**********************************************************************************************************************
 struct BeginRenderPassCommandBase : public Command
 {
-	uint8 clearColorCount = 0;
 	uint8 asyncRecording = false;
+	uint8 clearColorCount = 0;
 	uint8 _alignment = 0;
 	ID<Framebuffer> framebuffer = {};
 	float clearDepth = 0.0f;
@@ -92,6 +90,7 @@ struct ExecuteCommandBase : public Command
 {
 	uint8 _alignment = 0;
 	uint16 bufferCount = 0;
+	uint32 asyncCommandCount = 0;
 	ExecuteCommandBase() noexcept : Command(Type::Execute) { }
 };
 struct ExecuteCommand final : public ExecuteCommandBase
@@ -129,14 +128,17 @@ struct BindPipelineCommand final : public Command
 };
 struct BindDescriptorSetsCommandBase : public Command
 {
-	uint8 asyncRecording = false;
 	uint8 rangeCount = 0;
-	uint8 _alignment = 0;
+	uint16 _alignment = 0;
 	BindDescriptorSetsCommandBase() noexcept : Command(Type::BindDescriptorSets) { }
 };
 struct BindDescriptorSetsCommand final : public BindDescriptorSetsCommandBase
 {
-	const DescriptorSet::Range* descriptorSetRange = nullptr;
+	const DescriptorSet::Range* descriptorSetRanges = nullptr;
+};
+struct BindDescriptorSetsAsyncCommand final : public BindDescriptorSetsCommandBase
+{
+	DescriptorSet::Range descriptorSetRanges[2]; // TODO: Looks like there is no more than 2 for an async bind. Rethink later?
 };
 
 //**********************************************************************************************************************
@@ -176,12 +178,21 @@ struct SetViewportScissorCommand final : public Command
 	int2 framebufferSize = int2::zero;
 	SetViewportScissorCommand() noexcept : Command(Type::SetViewportScissor) { }
 };
+struct SetDepthBiasCommand final : public Command
+{
+	uint8 _alignment0 = 0;
+	uint16 _alignment1 = 0;
+	float constantFactor = 0.0f;
+	float slopeFactor = 0.0f;
+	float clamp = 0.0f;
+	SetDepthBiasCommand() noexcept : Command(Type::SetDepthBias) { }
+};
 
 //**********************************************************************************************************************
 struct DrawCommand final : public Command
 {
-	uint8 asyncRecording = false;
-	uint16 _alignment = 0;
+	uint8 _alignment0 = 0;
+	uint16 _alignment1 = 0;
 	uint32 vertexCount = 0;
 	uint32 instanceCount = 0;
 	uint32 vertexOffset = 0;
@@ -192,8 +203,7 @@ struct DrawCommand final : public Command
 struct DrawIndexedCommand final : public Command
 {
 	IndexType indexType = {};
-	uint8 asyncRecording = false;
-	uint8 _alignment = 0;
+	uint16 _alignment = 0;
 	uint32 indexCount = 0;
 	uint32 instanceCount = 0;
 	uint32 indexOffset = 0;
@@ -203,6 +213,27 @@ struct DrawIndexedCommand final : public Command
 	ID<Buffer> indexBuffer = {};
 	DrawIndexedCommand() noexcept : Command(Type::DrawIndexed) { }
 };
+struct DrawIndirectCommand final : public Command
+{
+	uint8 _alignment0 = 0;
+	uint16 _alignment1 = 0;
+	uint32 offset = 0;
+	uint32 drawCount = 0;
+	uint32 stride = 0;
+	ID<Buffer> buffer = {};
+	DrawIndirectCommand() noexcept : Command(Type::DrawIndirect) { }
+};
+struct DrawIndexedIndirectCommand final : public Command
+{
+	uint8 _alignment0 = 0;
+	uint16 _alignment1 = 0;
+	uint32 offset = 0;
+	uint32 drawCount = 0;
+	uint32 stride = 0;
+	ID<Buffer> buffer = {};
+	DrawIndexedIndirectCommand() noexcept : Command(Type::DrawIndexedIndirect) { }
+};
+
 struct DispatchCommand final : public Command
 {
 	uint8 _alignment0 = 0;
@@ -290,16 +321,6 @@ struct BlitImageCommand final : public BlitImageCommandBase
 	const Image::BlitRegion* regions = nullptr;
 };
 
-struct SetDepthBiasCommand final : public Command
-{
-	uint8 _alignment0 = 0;
-	uint16 _alignment1 = 0;
-	float constantFactor = 0.0f;
-	float slopeFactor = 0.0f;
-	float clamp = 0.0f;
-	SetDepthBiasCommand() noexcept : Command(Type::SetDepthBias) { }
-};
-
 //**********************************************************************************************************************
 struct BuildAccelerationStructureCommand final : public Command
 {
@@ -337,6 +358,19 @@ struct CustomRenderCommand final : public Command
 	void(*onCommand)(void*, void*) = nullptr;
 	void* argument = nullptr;
 	CustomRenderCommand() noexcept : Command(Type::Custom) { }
+};
+union AsyncRenderCommand final
+{
+	Command base;
+	BindPipelineCommand bindPipeline;
+	BindDescriptorSetsAsyncCommand bindDescriptorSets;
+	DrawCommand draw;
+	DrawIndexedCommand drawIndexed;
+
+	AsyncRenderCommand(const BindPipelineCommand& command) noexcept : bindPipeline(command) { }
+	AsyncRenderCommand(const BindDescriptorSetsAsyncCommand& command) noexcept : bindDescriptorSets(command) { }
+	AsyncRenderCommand(const DrawCommand& command) noexcept : draw(command) { }
+	AsyncRenderCommand(const DrawIndexedCommand& command) noexcept : drawIndexed(command) { }
 };
 
 #if GARDEN_DEBUG
@@ -383,20 +417,74 @@ struct InsertLabelCommand final : public InsertLabelCommandBase
 class CommandBuffer
 {
 public:
-	typedef pair<ID<Resource>, ResourceType> LockResource;
-	static constexpr psize dataAlignment = 4;
+	typedef tsl::robin_map<uint64, uint32> LockResources;
+	static constexpr psize dataAlignment = 4; /**< Command buffer data alignment. */
+
+	static constexpr auto asyncCommandOffset = sizeof(uint32) * 2;
+	static constexpr auto asyncCommandSize = sizeof(AsyncRenderCommand) - asyncCommandOffset;
+	// Note: skipping command size part, because size is fixed for async.
+
+	// Note: optimal for little endian arch.
+	struct ResourceKey { ID<Resource> resource; ResourceType type; }; 
+
+	struct AsyncData
+	{
+	 	LockResources lockingResources;
+		uint8* data = nullptr;
+		psize size = 0, capacity = 16;
+	};
 protected:
+	LockResources lockedResources;
+	LockResources lockingResources;
+	vector<AsyncData> asyncData;
+	ThreadPool* threadPool = nullptr;
 	uint8* data = nullptr;
 	psize size = 0, capacity = 16;
-	vector<LockResource> lockedResources;
-	vector<LockResource> lockingResources;
+	uint8* dataIter = nullptr, *dataEnd = nullptr;
 	uint32 lastSize = 0;
 	CommandBufferType type = {};
 	bool noSubpass = false;
-	bool hasAnyCommand = false;
 	bool isRunning = false;
+	volatile bool hasAnyCommand = false;
 
-	Command* allocateCommand(uint32 size);
+	template<class T = Command>
+	T* allocateCommand(const T& command, psize size, int32 threadIndex = -1)
+	{
+		T* allocation;
+		if (threadIndex < 0)
+		{
+			if (this->size + size > this->capacity)
+			{
+				this->capacity = this->size + size;
+				this->data = realloc<uint8>(this->data, this->capacity);
+			}
+
+			allocation = (T*)(this->data + this->size);
+			*allocation = command; allocation->lastSize = lastSize;
+			this->size += size; this->lastSize = size;
+		}
+		else
+		{
+			GARDEN_ASSERT(threadPool);
+			GARDEN_ASSERT(threadIndex < threadPool->getThreadCount());
+
+			auto& async = asyncData[threadIndex];
+			if (async.size + size > async.capacity)
+			{
+				async.capacity = async.size + size;
+				async.data = realloc<uint8>(async.data, capacity);
+			}
+
+			allocation = (T*)(async.data + async.size);
+			*allocation = command; async.size += size;
+		}
+
+		allocation->thisSize = size;
+		return allocation;
+	}
+	template<class T = Command>
+	T* allocateCommand(const T& command) { return allocateCommand(command, sizeof(T)); }
+
 	void processCommands();
 
 	virtual void processCommand(const BufferBarrierCommand& command) = 0;
@@ -411,6 +499,7 @@ protected:
 	virtual void processCommand(const SetViewportCommand& command) = 0;
 	virtual void processCommand(const SetScissorCommand& command) = 0;
 	virtual void processCommand(const SetViewportScissorCommand& command) = 0;
+	virtual void processCommand(const SetDepthBiasCommand& command) = 0;
 	virtual void processCommand(const DrawCommand& command) = 0;
 	virtual void processCommand(const DrawIndexedCommand& command) = 0;
 	virtual void processCommand(const DispatchCommand& command) = 0;
@@ -420,7 +509,6 @@ protected:
 	virtual void processCommand(const CopyImageCommand& command) = 0;
 	virtual void processCommand(const CopyBufferImageCommand& command) = 0;
 	virtual void processCommand(const BlitImageCommand& command) = 0;
-	virtual void processCommand(const SetDepthBiasCommand& command) = 0;
 	virtual void processCommand(const BuildAccelerationStructureCommand& command) = 0;
 	virtual void processCommand(const CopyAccelerationStructureCommand& command) = 0;
 	virtual void processCommand(const TraceRaysCommand& command) = 0;
@@ -432,61 +520,268 @@ protected:
 	virtual void processCommand(const InsertLabelCommand& command) = 0;
 	#endif
 
-	void flushLockedResources(vector<LockResource>& lockedResources);
+	void flushLockedResources(LockResources& lockedResources);
 public:
 	/*******************************************************************************************************************
 	 * @brief Creates a new command buffer instance.
+	 *
+	 * @param[in] threadPool thread pool instance or null
+	 * @param type target command buffer type
 	 */
-	CommandBuffer(CommandBufferType type);
+	CommandBuffer(ThreadPool* threadPool, CommandBufferType type);
 	/**
 	 * @brief Destroys command buffer instance.
 	 */
 	virtual ~CommandBuffer();
 
 	/**
-	 * @brief Asynchronous command recording mutex.
-	 */
-	mutex commandMutex;
-
-	/**
 	 * @brief Return command buffer type.
 	 */
 	CommandBufferType getType() const noexcept { return type; }
 
-	void addCommand(const BufferBarrierCommand& command);
-	void addCommand(const BeginRenderPassCommand& command);
-	void addCommand(const NextSubpassCommand& command);
-	void addCommand(const ExecuteCommand& command);
-	void addCommand(const EndRenderPassCommand& command);
-	void addCommand(const ClearAttachmentsCommand& command);
-	void addCommand(const BindPipelineCommand& command);
-	void addCommand(const BindDescriptorSetsCommand& command);
-	void addCommand(const PushConstantsCommand& command);
-	void addCommand(const SetViewportCommand& command);
-	void addCommand(const SetScissorCommand& command);
-	void addCommand(const SetViewportScissorCommand& command);
-	void addCommand(const DrawCommand& command);
-	void addCommand(const DrawIndexedCommand& command);
-	void addCommand(const DispatchCommand& command);
-	void addCommand(const FillBufferCommand& command);
-	void addCommand(const CopyBufferCommand& command);
-	void addCommand(const ClearImageCommand& command);
-	void addCommand(const CopyImageCommand& command);
-	void addCommand(const CopyBufferImageCommand& command);
-	void addCommand(const BlitImageCommand& command);
-	void addCommand(const SetDepthBiasCommand& command);
-	void addCommand(const BuildAccelerationStructureCommand& command);
-	void addCommand(const CopyAccelerationStructureCommand& command);
-	void addCommand(const TraceRaysCommand& command);
-	void addCommand(const CustomRenderCommand& command);
+	void addCommand(const BufferBarrierCommand& command)
+	{
+		auto commandSize = sizeof(BufferBarrierCommandBase) + command.bufferCount * sizeof(ID<Buffer>);
+		auto allocation = allocateCommand<BufferBarrierCommandBase>(command, commandSize);
+		memcpy(allocation + 1, command.buffers, command.bufferCount * sizeof(ID<Buffer>));
+	}
+	void addCommand(const BeginRenderPassCommand& command)
+	{
+		GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Graphics);
+		auto commandSize = sizeof(BeginRenderPassCommandBase) + command.clearColorCount * sizeof(float4);
+		auto allocation = allocateCommand<BeginRenderPassCommandBase>(command, commandSize);
+		if (command.clearColorCount > 0)
+			memcpy(allocation + 1, command.clearColors, command.clearColorCount * sizeof(float4));
+		hasAnyCommand = true;
+	}
+	void addCommand(const NextSubpassCommand& command)
+	{
+		GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Graphics);
+		allocateCommand(command);
+	}
+	void addCommand(const ExecuteCommand& command)
+	{
+		psize asynSize = 0;
+		for (const auto& async : asyncData)
+			asynSize += async.size;
+		if (asynSize == 0) return;
+
+		GARDEN_ASSERT(asynSize % asyncCommandSize == 0);
+		auto bufferBinarySize = command.bufferCount * sizeof(void*);
+		auto commandSize = sizeof(ExecuteCommandBase) + bufferBinarySize + asynSize;
+		auto allocation = allocateCommand<ExecuteCommandBase>(command, commandSize);
+		allocation->asyncCommandCount = asynSize / asyncCommandSize;
+
+		auto data = (uint8*)allocation + sizeof(ExecuteCommandBase);
+		memcpy(data, command.buffers, bufferBinarySize);
+		data += bufferBinarySize;
+
+		for (auto& async : asyncData)
+		{
+			if (async.size == 0)
+				continue;
+			memcpy(data, async.data, async.size); data += async.size;
+
+			for (auto pair : async.lockingResources)
+			{
+				auto result = lockingResources.find(pair.first);
+				if (result == lockingResources.end())
+					lockingResources.emplace(pair.first, pair.second);
+				else result.value() += pair.second;
+			}
+			async.lockingResources.clear(); async.size = 0;
+		}
+		GARDEN_ASSERT(data == (uint8*)allocation + commandSize);
+	}
+	void addCommand(const EndRenderPassCommand& command)
+	{
+		GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Graphics);
+		allocateCommand(command);
+	}
+
+	//******************************************************************************************************************
+	void addCommand(const ClearAttachmentsCommand& command)
+	{
+		GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Graphics);
+		auto attachmentsSize = command.attachmentCount * sizeof(Framebuffer::ClearAttachment);
+		auto commandSize = sizeof(ClearAttachmentsCommandBase) +
+			attachmentsSize + command.regionCount * sizeof(Framebuffer::ClearRegion);
+		auto allocation = allocateCommand<ClearAttachmentsCommandBase>(command, commandSize);
+		memcpy((uint8*)allocation + sizeof(ClearAttachmentsCommandBase),
+			command.attachments, command.attachmentCount * sizeof(Framebuffer::ClearAttachment));
+		memcpy((uint8*)allocation + sizeof(ClearAttachmentsCommandBase) + attachmentsSize,
+			command.regions, command.regionCount * sizeof(Framebuffer::ClearRegion));
+	}
+	void addCommand(const BindPipelineCommand& command)
+	{
+		GARDEN_ASSERT(type == CommandBufferType::Frame ||
+			type == CommandBufferType::Graphics || type == CommandBufferType::Compute);
+		allocateCommand(command); hasAnyCommand = true;
+	}
+	void addCommand(const BindDescriptorSetsCommand& command)
+	{
+		GARDEN_ASSERT(type == CommandBufferType::Frame ||
+			type == CommandBufferType::Graphics || type == CommandBufferType::Compute);
+		auto commandSize = sizeof(BindDescriptorSetsCommandBase) + command.rangeCount * sizeof(DescriptorSet::Range);
+		auto allocation = allocateCommand<BindDescriptorSetsCommandBase>(command, commandSize);
+		memcpy(allocation + 1, command.descriptorSetRanges, command.rangeCount * sizeof(DescriptorSet::Range));
+	}
+	void addCommand(const BindDescriptorSetsAsyncCommand& command, int32 threadIndex = -1)
+	{
+		GARDEN_ASSERT(type == CommandBufferType::Frame ||
+			type == CommandBufferType::Graphics || type == CommandBufferType::Compute);
+		allocateCommand(command, sizeof(BindDescriptorSetsAsyncCommand), threadIndex);
+	}
+	void addCommand(const PushConstantsCommand& command)
+	{
+		GARDEN_ASSERT(type == CommandBufferType::Frame ||
+			type == CommandBufferType::Graphics || type == CommandBufferType::Compute);
+		auto commandSize = sizeof(PushConstantsCommandBase) + alignSize((psize)command.dataSize, dataAlignment);
+		auto allocation = allocateCommand<PushConstantsCommandBase>(command, commandSize);
+		memcpy(allocation + 1, command.data, command.dataSize);
+	}
+
+	//******************************************************************************************************************
+	void addCommand(const SetViewportCommand& command)
+	{
+		GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Graphics);
+		allocateCommand(command);
+	}
+	void addCommand(const SetScissorCommand& command)
+	{
+		GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Graphics);
+		allocateCommand(command);
+	}
+	void addCommand(const SetViewportScissorCommand& command)
+	{
+		GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Graphics);
+		allocateCommand(command);
+	}
+	void addCommand(const SetDepthBiasCommand& command)
+	{
+		GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Graphics);
+		allocateCommand(command);
+	}
+	void addCommand(const DrawCommand& command)
+	{
+		GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Graphics);
+		allocateCommand(command);
+	}
+	void addCommand(const DrawIndexedCommand& command)
+	{
+		GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Graphics);
+		allocateCommand(command);
+	}
+	void addCommand(const DispatchCommand& command)
+	{
+		GARDEN_ASSERT(type == CommandBufferType::Frame ||
+			type == CommandBufferType::Graphics || type == CommandBufferType::Compute);
+		allocateCommand(command); hasAnyCommand = true;
+	}
+
+	//******************************************************************************************************************
+	void addCommand(const FillBufferCommand& command)
+	{
+		allocateCommand(command); hasAnyCommand = true;
+	}
+	void addCommand(const CopyBufferCommand& command)
+	{
+		auto commandSize = sizeof(CopyBufferCommandBase) + command.regionCount * sizeof(Buffer::CopyRegion);
+		auto allocation = allocateCommand<CopyBufferCommandBase>(command, commandSize);
+		memcpy(allocation + 1, command.regions, command.regionCount * sizeof(Buffer::CopyRegion));
+		hasAnyCommand = true;
+	}
+	void addCommand(const ClearImageCommand& command)
+	{
+		GARDEN_ASSERT(type == CommandBufferType::Frame ||
+			type == CommandBufferType::Graphics || type == CommandBufferType::Compute);
+		auto commandSize = sizeof(ClearImageCommandBase) + command.regionCount * sizeof(Image::ClearRegion);
+		auto allocation = allocateCommand<ClearImageCommandBase>(command, commandSize);
+		memcpy(allocation + 1, command.regions, command.regionCount * sizeof(Image::ClearRegion));
+		hasAnyCommand = true;
+	}
+	void addCommand(const CopyImageCommand& command)
+	{
+		auto commandSize = sizeof(CopyImageCommandBase) + command.regionCount * sizeof(Image::CopyImageRegion);
+		auto allocation = allocateCommand<CopyImageCommandBase>(command, commandSize);
+		memcpy(allocation + 1, command.regions, command.regionCount * sizeof(Image::CopyImageRegion));
+		hasAnyCommand = true;
+	}
+	void addCommand(const CopyBufferImageCommand& command)
+	{
+		auto commandSize = sizeof(CopyBufferImageCommandBase) + command.regionCount * sizeof(Image::CopyBufferRegion);
+		auto allocation = allocateCommand<CopyBufferImageCommandBase>(command, commandSize);
+		memcpy(allocation + 1, command.regions, command.regionCount * sizeof(Image::CopyBufferRegion));
+		hasAnyCommand = true;
+	}
+	void addCommand(const BlitImageCommand& command)
+	{
+		GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Graphics);
+		auto commandSize = sizeof(BlitImageCommandBase) + command.regionCount * sizeof(Image::BlitRegion);
+		auto allocation = allocateCommand<BlitImageCommandBase>(command, commandSize);
+		memcpy(allocation + 1, command.regions, command.regionCount * sizeof(Image::BlitRegion));
+		hasAnyCommand = true;
+	}
+
+	//******************************************************************************************************************
+	void addCommand(const BuildAccelerationStructureCommand& command)
+	{
+		GARDEN_ASSERT(type == CommandBufferType::Compute);
+		allocateCommand(command); hasAnyCommand = true;
+	}
+	void addCommand(const CopyAccelerationStructureCommand& command)
+	{
+		GARDEN_ASSERT(type == CommandBufferType::Compute);
+		allocateCommand(command); hasAnyCommand = true;
+	}
+	void addCommand(const TraceRaysCommand& command)
+	{
+		GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Compute);
+		allocateCommand(command); hasAnyCommand = true;
+	}
+	void addCommand(const CustomRenderCommand& command)
+	{
+		allocateCommand(command); hasAnyCommand = true;
+	}
+	void addCommand(const AsyncRenderCommand& command, int32 threadIndex)
+	{
+		GARDEN_ASSERT(threadPool);
+		GARDEN_ASSERT(threadIndex < threadPool->getThreadCount());
+		GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Graphics);
+
+		auto& async = asyncData[threadIndex];		
+		if (async.size + asyncCommandSize > async.capacity)
+		{
+			async.capacity = async.size + sizeof(AsyncRenderCommand);
+			async.data = realloc<uint8>(async.data, capacity);
+		}
+
+		memcpy(async.data + async.size, (const uint8*)&command + asyncCommandOffset, asyncCommandSize);
+		async.size += asyncCommandSize;
+	}
 
 	#if GARDEN_DEBUG
-	void addCommand(const BeginLabelCommand& command);
-	void addCommand(const EndLabelCommand& command);
-	void addCommand(const InsertLabelCommand& command);
+	void addCommand(const BeginLabelCommand& command, int32 threadIndex)
+	{
+		auto nameLength = strlen(command.name) + 1;
+		auto commandSize = sizeof(BeginLabelCommandBase) + alignSize(nameLength, dataAlignment);
+		auto allocation = allocateCommand<BeginLabelCommandBase>(command, commandSize, threadIndex);
+		memcpy(allocation + 1, command.name, nameLength);
+	}
+	void addCommand(const EndLabelCommand& command, int32 threadIndex)
+	{
+		allocateCommand(command, sizeof(EndLabelCommand), threadIndex);
+	}
+	void addCommand(const InsertLabelCommand& command, int32 threadIndex)
+	{
+		auto nameLength = strlen(command.name) + 1;
+		auto commandSize = sizeof(InsertLabelCommandBase) + alignSize(nameLength, dataAlignment);
+		auto allocation = allocateCommand<InsertLabelCommandBase>(command, commandSize, threadIndex);
+		memcpy(allocation + 1, command.name, nameLength);
+	}
 	#endif
 
-	/**
+	/*******************************************************************************************************************
 	 * @brief Submits recorded command to the GPU.
 	 */
 	virtual void submit() = 0;
@@ -495,28 +790,47 @@ public:
 	 */
 	virtual bool isBusy() = 0;
 
-	void addLockedResource(ID<Buffer> resource)
-	{ lockingResources.emplace_back(ID<Resource>(resource), ResourceType::Buffer); }
-	void addLockedResource(ID<Image> resource)
-	{ lockingResources.emplace_back(ID<Resource>(resource), ResourceType::Image); }
-	void addLockedResource(ID<ImageView> resource)
-	{ lockingResources.emplace_back(ID<Resource>(resource), ResourceType::ImageView); }
-	void addLockedResource(ID<Framebuffer> resource)
-	{ lockingResources.emplace_back(ID<Resource>(resource), ResourceType::Framebuffer); }
-	void addLockedResource(ID<Sampler> resource)
-	{ lockingResources.emplace_back(ID<Resource>(resource), ResourceType::Sampler); }
-	void addLockedResource(ID<Blas> resource)
-	{ lockingResources.emplace_back(ID<Resource>(resource), ResourceType::Blas); }
-	void addLockedResource(ID<Tlas> resource)
-	{ lockingResources.emplace_back(ID<Resource>(resource), ResourceType::Tlas); }
-	void addLockedResource(ID<GraphicsPipeline> resource)
-	{ lockingResources.emplace_back(ID<Resource>(resource), ResourceType::GraphicsPipeline); }
-	void addLockedResource(ID<ComputePipeline> resource)
-	{ lockingResources.emplace_back(ID<Resource>(resource), ResourceType::ComputePipeline); }
-	void addLockedResource(ID<RayTracingPipeline> resource)
-	{ lockingResources.emplace_back(ID<Resource>(resource), ResourceType::RayTracingPipeline); }
-	void addLockedResource(ID<DescriptorSet> resource)
-	{ lockingResources.emplace_back(ID<Resource>(resource), ResourceType::DescriptorSet); }
+	void addLockedResource(ResourceType type, ID<Resource> resource, int32 threadIndex)
+	{
+		LockResources* lockResources;
+		if (threadIndex >= 0)
+		{
+			GARDEN_ASSERT(threadPool);
+			GARDEN_ASSERT(threadIndex < threadPool->getThreadCount());
+			lockResources = &asyncData[threadIndex].lockingResources;
+		}
+		else lockResources = &lockingResources;
+
+		ResourceKey key = { resource, type };
+		auto hash = *((const uint64*)&key);
+		auto result = lockResources->find(hash);
+		if (result == lockResources->end())
+			lockResources->emplace(hash, 1);
+		else result.value()++;
+	}
+
+	void addLockedResource(ID<Buffer> resource, int32 threadIndex = -1)
+	{ addLockedResource(ResourceType::Buffer, ID<Resource>(resource), threadIndex); }
+	void addLockedResource(ID<Image> resource, int32 threadIndex = -1)
+	{ addLockedResource(ResourceType::Image, ID<Resource>(resource), threadIndex); }
+	void addLockedResource(ID<ImageView> resource, int32 threadIndex = -1)
+	{ addLockedResource(ResourceType::ImageView, ID<Resource>(resource), threadIndex); }
+	void addLockedResource(ID<Framebuffer> resource, int32 threadIndex = -1)
+	{ addLockedResource(ResourceType::Framebuffer, ID<Resource>(resource), threadIndex); }
+	void addLockedResource(ID<Sampler> resource, int32 threadIndex = -1)
+	{ addLockedResource(ResourceType::Sampler, ID<Resource>(resource), threadIndex); }
+	void addLockedResource(ID<Blas> resource, int32 threadIndex = -1)
+	{ addLockedResource(ResourceType::Blas, ID<Resource>(resource), threadIndex); }
+	void addLockedResource(ID<Tlas> resource, int32 threadIndex = -1)
+	{ addLockedResource(ResourceType::Tlas, ID<Resource>(resource), threadIndex); }
+	void addLockedResource(ID<GraphicsPipeline> resource, int32 threadIndex = -1)
+	{ addLockedResource(ResourceType::GraphicsPipeline, ID<Resource>(resource), threadIndex); }
+	void addLockedResource(ID<ComputePipeline> resource, int32 threadIndex = -1)
+	{ addLockedResource(ResourceType::ComputePipeline, ID<Resource>(resource), threadIndex); }
+	void addLockedResource(ID<RayTracingPipeline> resource, int32 threadIndex = -1)
+	{ addLockedResource(ResourceType::RayTracingPipeline, ID<Resource>(resource), threadIndex); }
+	void addLockedResource(ID<DescriptorSet> resource, int32 threadIndex = -1)
+	{ addLockedResource(ResourceType::DescriptorSet, ID<Resource>(resource), threadIndex); }
 };
 
 } // namespace garden::graphics

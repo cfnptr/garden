@@ -49,7 +49,6 @@ class Swapchain
 {
 protected:
 	vector<ID<Image>> images;
-	ThreadPool* threadPool = nullptr;
 	uint2 framebufferSize = uint2::zero;
 	uint32 imageIndex = 0;
 	uint32 inFlightIndex = 0;
@@ -107,10 +106,9 @@ public:
 	virtual void recreate(uint2 framebufferSize, bool useVsync, bool useTripleBuffering) = 0;
 	/**
 	 * @brief Acquires next (front) swapchain rendering buffer.
-	 * @param[in,out] threadPool async recording thread pool instance or null
 	 * @return True on success, or false if swapchain is out of date.
 	 */
-	virtual bool acquireNextImage(ThreadPool* threadPool) = 0;
+	virtual bool acquireNextImage() = 0;
 	/**
 	 * @brief Submits current (front) swapchain rendering buffer.
 	 */

@@ -73,7 +73,7 @@ public:
 	InFlightFrame& getInFlightFrame() noexcept { return inFlightFrames[inFlightIndex]; }
 
 	void recreate(uint2 framebufferSize, bool useVsync, bool useTripleBuffering) final;
-	bool acquireNextImage(ThreadPool* threadPool) final;
+	bool acquireNextImage() final;
 	void submit() final;
 	bool present() final;
 

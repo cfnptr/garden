@@ -177,9 +177,9 @@ void GraphicsEditorSystem::showPerformanceStats()
 		}
 		else abort();
 
-		auto isIntegrated = !graphicsAPI->isDeviceIntegrated;
+		auto isIntegrated = !graphicsAPI->isDeviceIntegrated();
 		ImGui::Checkbox("Discrete |", &isIntegrated); ImGui::SameLine();
-		ImGui::Text("Swapchain Size: %lu", (unsigned long)graphicsAPI->swapchain->getImageCount());
+		ImGui::Text("Swapchain Size: %lu", (unsigned long)graphicsAPI->getSwapchain()->getImageCount());
 		
 		graphicsAPI->recordGpuTime = true;
 	}
