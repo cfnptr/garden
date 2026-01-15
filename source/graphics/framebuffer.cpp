@@ -677,7 +677,7 @@ void Framebuffer::nextSubpass(bool asyncRecording)
 			#if GARDEN_DEBUG
 			const auto& name = debugName;
 			#else
-			static constexpr string name;
+			static string name;
 			#endif
 
 			swapchain->beginSecondaryCommandBuffers(
