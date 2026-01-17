@@ -59,17 +59,15 @@ void ToneMappingEditorSystem::preUiRender()
 	if (ImGui::Begin("Tone Mapping", &showWindow, ImGuiWindowFlags_AlwaysAutoResize))
 	{
 		auto toneMappingSystem = ToneMappingSystem::Instance::get();
-		if (ImGui::Combo("Tone Mapper", &toneMapper, TONE_MAPPER_NAMES, TONE_MAPPER_COUNT))
-		{
-			auto options = toneMappingSystem->getOptions();
-			options.toneMapper = toneMapper;
+		auto options = toneMappingSystem->getOptions();
+
+		if (ImGui::Combo("Tone Mapper", &options.toneMapper, TONE_MAPPER_NAMES, TONE_MAPPER_COUNT))
 			toneMappingSystem->setOptions(options);
-		}
 
 		ImGui::DragFloat("Exposure Factor", &toneMappingSystem->exposureFactor, 0.01f, 0.0f, FLT_MAX);
 		ImGui::SliderFloat("Dither Intensity", &toneMappingSystem->ditherIntensity, 0.0f, 1.0f);
 
-		if (toneMappingSystem->getOptions().useLightAbsorption)
+		if (options.useLightAbsorption)
 			ImGui::DragFloat3("Absorption Color", &toneMappingSystem->absorptionColor);
 
 		auto graphicsSystem = GraphicsSystem::Instance::get();
