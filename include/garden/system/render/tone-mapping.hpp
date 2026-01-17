@@ -35,9 +35,9 @@ public:
 	 */
 	struct Options final
 	{
-		uint8 toneMapper = TONE_MAPPER_ACES; /**< Tone mapping function. (Curve) */
-		bool useBloomBuffer = false;         /**< Use bloom (light glow) buffer for tone mapping. */
-		bool useLightAbsorption = false;     /**< Use global light absorption effect. */
+		uint8 toneMapper = TONE_MAPPER_UCHIMURA; /**< Tone mapping function. (Curve) */
+		bool useBloomBuffer = false;             /**< Use bloom (light glow) buffer for tone mapping. */
+		bool useLightAbsorption = false;         /**< Use global light absorption effect. */
 		Options() noexcept { }
 	};
 
@@ -87,9 +87,9 @@ private:
 
 	friend class ecsm::Manager;
 public:
-	float3 absorptionColor = float3::zero;
-	float exposureFactor = 1.0f;
-	float ditherIntensity = (0.5f / 255.0f); /**< (255 for R8G8B8 format) */
+	float3 absorptionColor = float3::zero;   /**< Global color absorption color. */
+	float exposureFactor = 1.0f;             /**< Final exposure multiplier. */
+	float ditherIntensity = (0.5f / 255.0f); /**< Dithering. (255 for R8G8B8 format) */
 
 	/*******************************************************************************************************************
 	 * @brief Returns tone mapping rendering system options.
