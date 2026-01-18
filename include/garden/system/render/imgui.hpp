@@ -25,6 +25,12 @@ namespace garden
 
 /**
  * @brief Immediate mode GUI rendering system. (ImGui)
+ *
+ * @details
+ * Dear ImGui is a bloat-free, platform-agnostic library designed to create functional tools and debugging overlays 
+ * within real-time 3D applications. Unlike traditional "retained mode" UI systems that store persistent widget 
+ * hierarchies and states, ImGui follows an immediate mode paradigm where the UI is defined and rendered every frame 
+ * alongside the game’s logic.
  */
 class ImGuiRenderSystem final : public System, public Singleton<ImGuiRenderSystem>
 {

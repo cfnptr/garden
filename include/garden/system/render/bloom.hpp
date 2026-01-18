@@ -26,6 +26,13 @@ namespace garden
 
 /**
  * @brief Bloom (light glow) rendering system.
+ *
+ * @details
+ * Bloom is a post-processing effect used in game engines to simulate the physical phenomenon of light scattering in 
+ * real-world camera lenses or the human eye. It functions by identifying pixels in a rendered frame that exceed a 
+ * specific brightness threshold, isolating them into a separate buffer, and applying a series of blur passes to 
+ * expand their influence. This blurred "glow" is then composited back onto the original image, creating the 
+ * illusion of intense luminosity that "bleeds" into surrounding darker areas.
  */
 class BloomRenderSystem final : public System, public Singleton<BloomRenderSystem>
 {

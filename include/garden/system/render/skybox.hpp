@@ -34,6 +34,12 @@ struct SkyboxRenderComponent final : public Component
 
 /**
  * @brief Skybox rendering system.
+ *
+ * @details
+ * Skybox is a method of creating the illusion of a vast, distant background by enclosing the game world within a large, 
+ * textured cube that surrounds the camera. The textures applied to the interior faces of this box render "behind" all 
+ * other objects in the scene, effectively simulating the sky, horizon, and distant environmental features like 
+ * mountains or stars.
  */
 class SkyboxRenderSystem final : public ComponentSystem<
 	SkyboxRenderComponent, false>, public Singleton<SkyboxRenderSystem>

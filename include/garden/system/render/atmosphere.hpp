@@ -31,6 +31,13 @@ namespace garden
 
 /**
  * @brief Physically based atmosphere rendering system. (Sky)
+ *
+ * @details
+ * Physically based atmosphere rendering is a simulation technique that uses the principles of light physics to 
+ * recreate the appearance of the sky and aerial perspective rather than relying on artistic gradients or simple fog. 
+ * By modeling the interactions between sunlight and particles in a virtual planetary volume, the system calculates 
+ * Rayleigh scattering (the redirection of light by small air molecules, creating blue skies and red sunsets) and 
+ * Mie scattering (the interaction with larger aerosols like dust or moisture, creating solar halos and haze).
  */
 class AtmosphereRenderSystem final : public System, public Singleton<AtmosphereRenderSystem>
 {

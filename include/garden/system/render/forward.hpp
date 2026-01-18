@@ -41,9 +41,9 @@ namespace garden
 class ForwardRenderSystem final : public System, public Singleton<ForwardRenderSystem>
 {
 public:
-	static constexpr Image::Format colorBufferFormat = Image::Format::SrgbB8G8R8A8;
+	static constexpr Image::Format colorBufferFormat = Image::Format::SrgbR8G8B8A8;
 	static constexpr Image::Format hdrBufferFormat = Image::Format::SfloatR16G16B16A16;
-	static constexpr Image::Format uiBufferFormat = Image::Format::SrgbB8G8R8A8;
+	static constexpr Image::Format uiBufferFormat = Image::Format::SrgbR8G8B8A8;
 	static constexpr Image::Format depthStencilFormat = Image::Format::UnormD16;
 
 	static constexpr Framebuffer::OutputAttachment::Flags colorBufferFlags = { false, false, true };

@@ -43,7 +43,7 @@ public:
 	static constexpr uint8 cascadeCount = 3;
 
 	static constexpr Image::Format depthFormat = Image::Format::UnormD16;
-	static constexpr Image::Format transparentFormat = Image::Format::SrgbB8G8R8A8;
+	static constexpr Image::Format transparentFormat = Image::Format::SrgbR8G8B8A8;
 
 	static constexpr Framebuffer::OutputAttachment::Flags shadowFlags = { true, false, true };
 	static constexpr Framebuffer::OutputAttachment::Flags transDepthFlags = { false, true, false };

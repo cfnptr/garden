@@ -84,6 +84,11 @@ public:
 
 /***********************************************************************************************************************
  * @brief General sprite mesh rendering system.
+ *
+ * @details
+ * Sprite is a 2D bitmap or animation that is integrated into a larger scene, acting as a single visual entity. 
+ * Unlike 3D models composed of complex meshes, sprites are rendered as flat rectangular planes (quads) with a 
+ * texture mapped onto them, frequently utilizing alpha transparency to define non-rectangular shapes.
  */
 class SpriteRenderSystem : public InstanceRenderSystem, public ISerializable
 {

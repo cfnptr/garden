@@ -28,6 +28,16 @@ namespace garden
 
 /**
  * @brief Physically based volumetric clouds rendering system.
+ *
+ * @details
+ * Physically based volumetric cloud rendering is a technique that simulates the interaction of light with 3D density 
+ * fields to create realistic skybox and atmospheric effects. Unlike traditional skyboxes that use 2D textures, 
+ * this system utilizes ray marching to traverse a volume to calculate how light is absorbed and scattered 
+ * within the medium. By applying the Volume Rendering Equation, the engine can simulate complex optical phenomena 
+ * like multiple scattering (which gives clouds their soft, luminous look), Beer’s Law for light attenuation, and 
+ * anisotropic scattering (the silver-lining effect). This allows for dynamic, high-fidelity clouds that interact 
+ * naturally with time-of-day systems, cast real-time shadows on the terrain, and support seamless camera transitions 
+ * from the ground through the cloud layer into space.
  */
 class CloudsRenderSystem final : public System, public Singleton<CloudsRenderSystem>
 {

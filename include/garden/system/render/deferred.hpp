@@ -19,11 +19,11 @@
  * @details
  * 
  * G-Buffer structure:
- *   0. SrgbB8G8R8A8       (Base Color, Specular Factor)
- *   1. UnormB8G8R8A8      (Metallic, Roughness, Ambient Occlusion, Reflectance)
+ *   0. SrgbR8G8B8A8       (Base Color, Specular Factor)
+ *   1. UnormR8G8B8A8      (Metallic, Roughness, Ambient Occlusion, Reflectance)
  *   2. UnormA2B10G10R10   (Encoded Normal, Shadow)
  *   3. UnormA2B10G10R10   (Clear Coat Normal and Roughness) [optional]
- *   4. SrgbB8G8R8A8       (Emissive Color and Factor) [optional]
+ *   4. SrgbR8G8B8A8       (Emissive Color and Factor) [optional]
  *   5. SfloatR16G16       (Velocity) [optional]
  */
 
@@ -89,18 +89,18 @@ public:
 	static constexpr uint8 gBufferVelocity = 5;    /**< Index of the G-Buffer with encoded velocity. */
 	static constexpr uint8 gBufferCount = 6;       /**< Deferred rendering G-Buffer count. */
 
-	static constexpr Image::Format gBufferFormat0 = Image::Format::SrgbB8G8R8A8;
-	static constexpr Image::Format gBufferFormat1 = Image::Format::UnormB8G8R8A8;
+	static constexpr Image::Format gBufferFormat0 = Image::Format::SrgbR8G8B8A8;
+	static constexpr Image::Format gBufferFormat1 = Image::Format::UnormR8G8B8A8;
 	static constexpr Image::Format gBufferFormat2 = Image::Format::UnormA2B10G10R10;
 	static constexpr Image::Format gBufferFormat3 = Image::Format::UnormA2B10G10R10;
-	static constexpr Image::Format gBufferFormat4 = Image::Format::SrgbB8G8R8A8;
+	static constexpr Image::Format gBufferFormat4 = Image::Format::SrgbR8G8B8A8;
 	static constexpr Image::Format gBufferFormat5 = Image::Format::SfloatR16G16;
 	static constexpr Image::Format depthStencilFormat = Image::Format::SfloatD32UintS8;
 	static constexpr Image::Format depthFormat = Image::Format::SfloatD32;
 	static constexpr Image::Format stencilFormat = Image::Format::UintS8;
 	static constexpr Image::Format hdrBufferFormat = Image::Format::SfloatR16G16B16A16;
-	static constexpr Image::Format ldrBufferFormat = Image::Format::SrgbB8G8R8A8;
-	static constexpr Image::Format uiBufferFormat = Image::Format::SrgbB8G8R8A8;
+	static constexpr Image::Format ldrBufferFormat = Image::Format::SrgbR8G8B8A8;
+	static constexpr Image::Format uiBufferFormat = Image::Format::SrgbR8G8B8A8;
 	static constexpr Image::Format oitAccumBufferFormat = Image::Format::SfloatR16G16B16A16;
 	static constexpr Image::Format oitRevealBufferFormat = Image::Format::UnormR8;
 	static constexpr Image::Format transBufferFormat = Image::Format::UnormR8;

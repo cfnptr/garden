@@ -37,6 +37,15 @@ enum class PbrCubemapMode
 
 /**
  * @brief PBR lighting rendering data container. (Physically Based Rendering)
+ *
+ * @details
+ * Physically Based Rendering is a shading and rendering approach that seeks to simulate how light interacts with 
+ * surfaces in a way that accurately mimics the real world. Unlike legacy "ad-hoc" lighting models that relied on 
+ * manual artistic approximations, PBR uses mathematically based formulas to ensure that materials conserve energy 
+ * and react realistically under varying lighting conditions. By utilizing standardized parameters such as 
+ * Albedo (base color), Roughness (surface microsurface detail), and Metallicity (conductive properties), PBR ensures 
+ * that assets look consistent and "correct" across different environments, from a dark dungeon to a sunlit field, 
+ * without requiring per-scene manual adjustments.
  */
 struct PbrLightingComponent final : public Component
 {
@@ -393,14 +402,15 @@ public:
 	 * @note Loads from the scenes directory in debug build.
 	 * 
 	 * @param[in] path target cubemap resource path
+	 * @param format required image data format
 	 * @param[out] cubemap cubemap image instance
 	 * @param[out] sh spherical harmonics buffer instance
 	 * @param[out] specular specular cubemap instance
 	 * @param strategy graphics memory allocation strategy
 	 * @param[out] shBuffer spherical harmonics data buffer or null
 	 */
-	void loadCubemap(const fs::path& path, Ref<Image>& cubemap, Ref<Buffer>& sh, Ref<Image>& specular, 
-		Memory::Strategy strategy = Memory::Strategy::Size, vector<f32x4>* shBuffer = nullptr);
+	void loadCubemap(const fs::path& path, Image::Format format, Ref<Image>& cubemap, Ref<Buffer>& sh, 
+		Ref<Image>& specular, Memory::Strategy strategy = Memory::Strategy::Size, vector<f32x4>* shBuffer = nullptr);
 
 	/*******************************************************************************************************************
 	 * @brief Creates PBR lighting descriptor set.
