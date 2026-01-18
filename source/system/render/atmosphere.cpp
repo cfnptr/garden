@@ -108,7 +108,7 @@ static void createShStagings(GraphicsSystem* graphicsSystem, DescriptorSet::Buff
 
 static constexpr Image::Format getTransLutFormat(GraphicsQuality quality) noexcept
 {
-	return quality == GraphicsQuality::PotatoPC ? Image::Format::UnormB8G8R8A8 : Image::Format::SfloatR16G16B16A16;
+	return quality == GraphicsQuality::PotatoPC ? Image::Format::UnormR8G8B8A8 : Image::Format::SfloatR16G16B16A16;
 }
 
 //**********************************************************************************************************************

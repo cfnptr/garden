@@ -499,8 +499,9 @@ void InputSystem::startRenderThread()
 
 				for (psize i = 0; i < paths.size(); i++)
 				{
-					uint2 size; Image::Format format;
-					resourceSystem->loadImageData(paths[i], imageData[i], size, format);
+					uint2 size;
+					resourceSystem->loadImageData(paths[i], 
+						Image::Format::SrgbR8G8B8A8, imageData[i], size);
 
 					GLFWimage image;
 					image.width = size.x;

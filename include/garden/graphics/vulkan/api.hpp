@@ -234,6 +234,7 @@ static vk::Format toVkFormat(Image::Format formatType) noexcept
 
 	case Image::Format::SrgbR8G8B8A8: return vk::Format::eR8G8B8A8Srgb;
 	case Image::Format::SrgbB8G8R8A8: return vk::Format::eB8G8R8A8Srgb;
+	case Image::Format::SrgbA8B8G8R8: return vk::Format::eA8B8G8R8SrgbPack32;
 	
 	case Image::Format::UnormD16: return vk::Format::eD16Unorm;
 	case Image::Format::SfloatD32: return vk::Format::eD32Sfloat;
@@ -309,6 +310,7 @@ static Image::Format toImageFormat(vk::Format formatType) noexcept
 
 		case vk::Format::eR8G8B8A8Srgb: return Image::Format::SrgbR8G8B8A8;
 		case vk::Format::eB8G8R8A8Srgb: return Image::Format::SrgbB8G8R8A8;
+		case vk::Format::eA8B8G8R8SrgbPack32: return Image::Format::SrgbA8B8G8R8;
 
 		case vk::Format::eD16Unorm: return Image::Format::UnormD16;
 		case vk::Format::eD32Sfloat: return Image::Format::SfloatD32;

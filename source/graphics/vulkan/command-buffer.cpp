@@ -935,9 +935,7 @@ void VulkanCommandBuffer::processCommand(const ClearAttachmentsCommand& command)
 
 		ID<ImageView> attachmentView;
 		if (attachment.index < colorAttachments.size())
-		{
 			attachmentView = colorAttachments[attachment.index].imageView;
-		}
 		else if (attachment.index == colorAttachments.size())
 		{
 			GARDEN_ASSERT_MSG(framebufferView->getDepthStencilAttachment().imageView, 
@@ -951,17 +949,11 @@ void VulkanCommandBuffer::processCommand(const ClearAttachmentsCommand& command)
 
 		vk::ClearValue clearValue;
 		if (isFormatFloat(format) | isFormatSrgb(format) | isFormatNorm(format))
-		{
 			memcpy(clearValue.color.float32.data(), &attachment.clearColor.floatValue, sizeof(float) * 4);
-		}
 		else if (isFormatSint(format))
-		{
 			memcpy(clearValue.color.int32.data(), &attachment.clearColor.intValue, sizeof(int32) * 4);
-		}
 		else if (isFormatUint(format))
-		{
 			memcpy(clearValue.color.uint32.data(), &attachment.clearColor.uintValue, sizeof(uint32) * 4);
-		}
 		else
 		{
 			clearValue.depthStencil.depth = attachment.clearColor.deptStencilValue.depth;

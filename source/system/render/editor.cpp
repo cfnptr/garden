@@ -1149,7 +1149,7 @@ void EditorRenderSystem::drawFileSelector(const char* name, fs::path& path, ID<E
 }
 
 //**********************************************************************************************************************
-void EditorRenderSystem::drawImageSelector(const char* name, fs::path& path, 
+void EditorRenderSystem::drawImageSelector(const char* name, fs::path& path, Image::Format format, 
 	Ref<Image>& image, Ref<DescriptorSet>& descriptorSet, ID<Entity> entity, 
 	type_index componentType, uint8 maxMipCount, ImageLoadFlags loadFlags)
 {
@@ -1164,8 +1164,8 @@ void EditorRenderSystem::drawImageSelector(const char* name, fs::path& path,
 	{
 		if (ImGui::MenuItem("Select Image"))
 		{
-			openFileSelector([&path, &image, &descriptorSet, entity, componentType, 
-				maxMipCount, loadFlags](const fs::path& selectedFile)
+			openFileSelector([format, &path, &image, &descriptorSet, entity, 
+				componentType, maxMipCount, loadFlags](const fs::path& selectedFile)
 			{
 				if (EditorRenderSystem::Instance::get()->selectedEntity != entity ||
 					!Manager::Instance::get()->has(entity, componentType))
@@ -1182,7 +1182,8 @@ void EditorRenderSystem::drawImageSelector(const char* name, fs::path& path,
 
 				auto usage = Image::Usage::Sampled | Image::Usage::TransferDst | Image::Usage::TransferQ;
 				if (maxMipCount == 0) usage |= Image::Usage::TransferSrc;
-				image = resourceSystem->loadImage(path, usage, maxMipCount, Image::Strategy::Default, loadFlags);
+				image = resourceSystem->loadImage(path, format, usage, 
+					maxMipCount, Image::Strategy::Default, loadFlags);
 				descriptorSet = {};
 			},
 			AppInfoSystem::Instance::get()->getResourcesPath() / "images", ResourceSystem::imageFileExts);
