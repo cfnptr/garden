@@ -29,7 +29,6 @@
 #include "garden/json2bson.hpp"
 #include "garden/profiler.hpp"
 #include "garden/file.hpp"
-#include "math/common.hpp"
 #include "math/types.hpp"
 
 #include "webp/decode.h"
