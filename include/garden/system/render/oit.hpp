@@ -14,7 +14,7 @@
 
 /***********************************************************************************************************************
  * @file
- * @brief Order independent transparency rendering functions.
+ * @brief Order independent transparency rendering functions. (OIT)
  */
 
 #pragma once
@@ -24,7 +24,16 @@ namespace garden
 {
 
 /**
- * @brief Order independent transparency rendering system.
+ * @brief Order independent transparency rendering system. (OIT)
+ *
+ * @details
+ * Order-independent transparency is a technique used to render overlapping transparent objects correctly without 
+ * requiring the CPU to manually sort geometry from back-to-front every frame. Traditional alpha blending is 
+ * non-commutative, meaning that if a distant glass bottle is rendered after a closer puff of smoke, the depth 
+ * buffer will incorrectly discard the bottle or blend it with "wrong" background data, leading to visual artifacts 
+ * like flickering or missing surfaces. OIT resolves this by handling the sorting or blending logic per-pixel on the 
+ * GPU to ensure that light transmittance is mathematically accurate even when complex transparent meshes intersect 
+ * or rotate around the camera.
  */
 class OitRenderSystem final : public System, public Singleton<OitRenderSystem>
 {

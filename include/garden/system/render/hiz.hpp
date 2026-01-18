@@ -26,6 +26,14 @@ namespace garden
 
 /**
  * @brief Hierarchical depth (Z) buffer rendering system. (Hi-Z)
+ *
+ * @details
+ * Hierarchical Z-buffering is a visibility acceleration technique that uses a multi-resolution "pyramid" of depth 
+ * values to rapidly cull occluded geometry before it undergoes expensive shading. By downsampling the standard depth 
+ * buffer into a series of mipmaps the engine can perform a single depth test against a low-resolution tile to 
+ * determine if an entire object or group of triangles is hidden. This hierarchical approach allows the GPU to skip 
+ * processing large chunks of hidden geometry with minimal texture fetches, significantly reducing overdraw and 
+ * improving performance in complex, depth-heavy scenes.
  */
 class HizRenderSystem final : public System, public Singleton<HizRenderSystem>
 {

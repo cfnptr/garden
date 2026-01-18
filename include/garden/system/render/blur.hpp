@@ -26,6 +26,12 @@ namespace garden
 
 /**
  * @brief Blur camera effect rendering system.
+ *
+ * @details
+ * Blur is a post-processing technique used to soften or smear pixel data to simulate optical phenomena, 
+ * enhance immersion, or reduce visual artifacts. Most commonly implemented via a Gaussian or Box filter, 
+ * blurring involves sampling neighboring pixels and averaging their color values to create a smoother 
+ * transition between edges and details.
  */
 class BlurRenderSystem final : public System, public Singleton<BlurRenderSystem>
 {

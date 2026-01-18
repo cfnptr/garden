@@ -14,7 +14,7 @@
 
 /***********************************************************************************************************************
  * @file
- * @brief Nvidia DLSS rendering functions. A registered trademark of NVIDIA Corporation.
+ * @brief Nvidia DLSS rendering functions. (A registered trademark of NVIDIA Corporation)
  */
 
 #pragma once
@@ -35,6 +35,11 @@ enum class DlssQuality : uint8
 
 /**
  * @brief Nvidia DLSS rendering system. (Deep Learning Super Sampling)
+ *
+ * @details
+ * Deep learning super sampling is an AI-powered neural rendering technology that enhances performance by decoupling 
+ * internal shading resolution from final output resolution. Integrated into the post-processing stage of a rendering 
+ * pipeline, DLSS utilizes a deep learning model to reconstruct a high-resolution frame from a lower-resolution input.
  */
 class DlssRenderSystem final : public System, public Singleton<DlssRenderSystem>
 {

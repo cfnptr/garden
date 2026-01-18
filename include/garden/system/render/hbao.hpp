@@ -26,6 +26,15 @@ namespace garden
 
 /**
  * @brief Screen space horizon-based ambient occlusion rendering system. (HBAO)
+ *
+ * @details
+ * Horizon based ambient occlusion is a modern screen-space rendering technique used to simulate realistic global 
+ * illumination by calculating how much light is blocked by nearby geometry. Unlike standard SSAO, which uses a 
+ * simple sphere-based sampling method, HBAO uses a more physically accurate algorithm that integrates over the 
+ * "horizon" of the depth buffer to determine the visibility of the hemisphere at each pixel. This results in much 
+ * richer, more defined contact shadows in creases, corners, and areas with fine geometric detail, effectively 
+ * reducing the "flat" look of 3D scenes while minimizing the halo artifacts often associated with older 
+ * ambient occlusion methods.
  */
 class HbaoRenderSystem final : public System, public Singleton<HbaoRenderSystem>
 {

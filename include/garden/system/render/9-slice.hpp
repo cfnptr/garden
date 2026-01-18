@@ -54,6 +54,13 @@ struct NineSliceFrame : public SpriteAnimFrame
 
 /***********************************************************************************************************************
  * @brief 9-slice sprite rendering system. (Scale 9 grid, 9-patch)
+ *
+ * @details
+ * 9-slice scaling is a 2D texture resizing technique used to ensure that UI elements, such as buttons and panels, 
+ * maintain their visual integrity regardless of their dimensions. The source image is divided into a 3x3 grid 
+ * consisting of four corners, four edges, and a center. When the element is resized, the corners remain static in 
+ * scale to prevent distortion of rounded or decorative details, while the edges are either stretched or tiled along a 
+ * single axis, and the center fills the remaining area in both directions.
  */
 class NineSliceRenderSystem : public SpriteRenderSystem
 {

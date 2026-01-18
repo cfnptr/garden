@@ -34,6 +34,13 @@ namespace garden
 
 /**
  * @brief Automatic exposure (AE) rendering system. (Eye light adaptation)
+ *
+ * @details
+ * Automatic Exposure (also known as Eye Adaptation) is a post-processing effect that dynamically simulates how the 
+ * human eye or a physical camera lens adjusts to varying light intensities within a scene. By analyzing the average 
+ * luminance of the current frame the engine automatically calculates and applies a compensation factor to the 
+ * final render. This ensures that details remain visible when transitioning between dimly lit interiors and bright 
+ * outdoor environments, preventing the image from becoming "blown out" or too dark.
  */
 class AutoExposureSystem final : public System, public Singleton<AutoExposureSystem>
 {
