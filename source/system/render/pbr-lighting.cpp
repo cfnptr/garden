@@ -1631,14 +1631,14 @@ void PbrLightingSystem::generateIblSH(const float4* const* skyboxFaces, uint32 s
 }
 
 //**********************************************************************************************************************
-void PbrLightingSystem::loadCubemap(const fs::path& path, Ref<Image>& cubemap,
+void PbrLightingSystem::loadCubemap(const fs::path& path, Image::Format format, Ref<Image>& cubemap,
 	Ref<Buffer>& sh, Ref<Image>& specular, Memory::Strategy strategy, vector<f32x4>* shBuffer)
 {
 	GARDEN_ASSERT(!path.empty());
 	SET_CPU_ZONE_SCOPED("PBR Cubemap Load");
 	
 	vector<uint8> left, right, bottom, top, back, front; uint2 size;
-	ResourceSystem::Instance::get()->loadCubemapData(path, left, right, bottom, top, back, front, size, true);
+	ResourceSystem::Instance::get()->loadCubemapData(path, format, left, right, bottom, top, back, front, size, true);
 	auto cubemapSize = size.x;
 
 	auto mipCount = calcMipCount(cubemapSize);

@@ -18,8 +18,8 @@
  */
 
 #pragma once
-#include "garden/defines.hpp"
-#include "math/vector.hpp"
+#include "garden/graphics/image.hpp"
+#include "math/ibl.hpp"
 
 namespace garden::graphics
 {
@@ -30,8 +30,37 @@ namespace garden::graphics
 class Equi2Cube final
 {
 public:
+	static f32x4 filterCubeMap(float2 coords, const f32x4* pixels, uint2 sizeMinus1, uint32 sizeX) noexcept;
+	static Color filterCubeMap(float2 coords, const Color* pixels, uint2 sizeMinus1, uint32 sizeX) noexcept;
+
+	template<class T>
 	static void convert(uint3 coords, uint32 cubemapSize, uint2 equiSize,
-		uint2 equiSizeMinus1, const f32x4* equiPixels, f32x4* cubePixels, float invDim) noexcept;
+		uint2 equiSizeMinus1, const T* equiPixels, T* cubePixels, float invDim) noexcept
+	{
+		auto dir = ibl::coordsToDir(coords, invDim); auto uv = ibl::toSphericalMapUV(dir);
+		cubePixels[coords.y * cubemapSize + coords.x] = filterCubeMap(
+			uv * equiSize, equiPixels, equiSizeMinus1, equiSize.x);
+	}
+	template<class T>
+	static void convert(T** cubeFaces, uint32 cubemapSize, uint2 equiSize,
+		uint2 equiSizeMinus1, const T* equiPixels, float invDim) noexcept
+	{
+		for (uint32 face = 0; face < Image::cubemapFaceCount; face++)
+		{
+			auto cubePixels = cubeFaces[face];
+			for (uint32 y = 0; y < cubemapSize; y++)
+			{
+				for (uint32 x = 0; x < cubemapSize; x++)
+				{
+					convert(uint3(x, y, face), cubemapSize, equiSize,
+						equiSizeMinus1, equiPixels, cubePixels, invDim);
+				}
+			}
+		}
+	}
+
+	static void writeExrImageData(const fs::path& filePath, uint32 size, 
+		const vector<uint8>& data, Image::Format imageForamt, bool saveAs16);
 
 	#if GARDEN_DEBUG || defined(EQUI2CUBE)
 	/**

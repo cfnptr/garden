@@ -141,6 +141,7 @@ public:
 
 		SrgbR8G8B8A8,       /**< 8-bit sRGB color space (red, green, blue, alpha channel) format. */
 		SrgbB8G8R8A8,       /**< 8-bit sRGB color space (blue, green, red, alpha channel) format. */
+		SrgbA8B8G8R8,       /**< 8-bit sRGB color space (alpha channel, blue, green, red) format. */
 
 		UnormD16,           /**< 16-bit normalized uint as float depth format. */
 		SfloatD32,          /**< 32-bit signed floating point depth format. */
@@ -968,7 +969,7 @@ static constexpr bool isFormatFloat(Image::Format formatType)
  */
 static constexpr bool isFormatSrgb(Image::Format formatType)
 {
-	return Image::Format::SrgbR8G8B8A8 <= formatType && formatType <= Image::Format::SrgbB8G8R8A8;
+	return Image::Format::SrgbR8G8B8A8 <= formatType && formatType <= Image::Format::SrgbA8B8G8R8;
 }
 
 /***********************************************************************************************************************
@@ -1037,6 +1038,7 @@ static constexpr psize toBinarySize(Image::Format imageFormat) noexcept
 
 		case Image::Format::SrgbR8G8B8A8: return 4;
 		case Image::Format::SrgbB8G8R8A8: return 4;
+		case Image::Format::SrgbA8B8G8R8: return 4;
 		
 		case Image::Format::UnormD16: return 2;
 		case Image::Format::SfloatD32: return 4;
@@ -1044,6 +1046,79 @@ static constexpr psize toBinarySize(Image::Format imageFormat) noexcept
 		case Image::Format::UnormD24UintS8: return 4;
 		case Image::Format::SfloatD32UintS8: return 5;
 		
+		default: return 0;
+	}
+}
+
+/***********************************************************************************************************************
+ * @brief Returns image data format component count.
+ * @param imageFormat target image data format
+ */
+static constexpr psize toComponentCount(Image::Format imageFormat) noexcept
+{
+	switch (imageFormat)
+	{
+		case Image::Format::UintR8:
+		case Image::Format::UintR16:
+		case Image::Format::UintR32:
+		case Image::Format::SintR8:
+		case Image::Format::SintR16:
+		case Image::Format::SintR32:
+		case Image::Format::UnormR8:
+		case Image::Format::UnormR16:
+		case Image::Format::SnormR8:
+		case Image::Format::SnormR16:
+		case Image::Format::SfloatR16:
+		case Image::Format::SfloatR32:
+		case Image::Format::UnormD16:
+		case Image::Format::SfloatD32:
+		case Image::Format::UintS8:
+			return 1;
+		case Image::Format::UintR8G8:
+		case Image::Format::UintR16G16:
+		case Image::Format::UintR32G32:
+		case Image::Format::SintR8G8:
+		case Image::Format::SintR16G16:
+		case Image::Format::SintR32G32:
+		case Image::Format::UnormR8G8:
+		case Image::Format::UnormR16G16:
+		case Image::Format::SnormR8G8:
+		case Image::Format::SnormR16G16:
+		case Image::Format::SfloatR16G16:
+		case Image::Format::SfloatR32G32:
+		case Image::Format::UnormD24UintS8:
+		case Image::Format::SfloatD32UintS8:
+			return 2;
+		case Image::Format::UnormR5G6B5:
+		case Image::Format::UfloatB10G11R11:
+		case Image::Format::UfloatE5B9G9R9:
+			return 3;
+		case Image::Format::UintR8G8B8A8:
+		case Image::Format::UintR16G16B16A16:
+		case Image::Format::UintR32G32B32A32:
+		case Image::Format::UintA2R10G10B10:
+		case Image::Format::UintA2B10G10R10:
+		case Image::Format::SintR8G8B8A8:
+		case Image::Format::SintR16G16B16A16:
+		case Image::Format::SintR32G32B32A32:
+		case Image::Format::UnormR8G8B8A8:
+		case Image::Format::UnormB8G8R8A8:
+		case Image::Format::UnormR16G16B16A16:
+		case Image::Format::UnormA1R5G5B5:
+		case Image::Format::UnormR5G5B5A1:
+		case Image::Format::UnormB5G5R5A1:
+		case Image::Format::UnormR4G4B4A4:
+		case Image::Format::UnormB4G4R4A4:
+		case Image::Format::UnormA2R10G10B10:
+		case Image::Format::UnormA2B10G10R10:
+		case Image::Format::SnormR8G8B8A8:
+		case Image::Format::SnormR16G16B16A16:
+		case Image::Format::SfloatR16G16B16A16:
+		case Image::Format::SfloatR32G32B32A32:
+		case Image::Format::SrgbR8G8B8A8:
+		case Image::Format::SrgbB8G8R8A8:
+		case Image::Format::SrgbA8B8G8R8:
+			return 4;
 		default: return 0;
 	}
 }
@@ -1179,7 +1254,7 @@ constexpr const char* imageFormatNames[(psize)Image::Format::Count] =
 
 	"UfloatB10G11R11", "UfloatE5B9G9R9", 
 
-	"SrgbR8G8B8A8", "SrgbB8G8R8A8", 
+	"SrgbR8G8B8A8", "SrgbB8G8R8A8", "SrgbA8B8G8R8", 
 
 	"UnormD16", "SfloatD32", "UintS8", "UnormD24UintS8", "SfloatD32UintS8"
 };
@@ -1381,7 +1456,7 @@ static uint32 encodeB10G11R11(float value, uint32 bits, uint32 mask) noexcept
  */
 static uint32 encodeB10G11R11(f32x4 rgb) noexcept
 {
-	rgb = clamp(rgb, f32x4::zero, f32x4(65504.0f));
+	rgb = clamp(rgb, f32x4::zero, f32x4(FLOAT_BIG_16));
 	auto r = encodeB10G11R11(rgb.getX(), 6, 0b111111);
 	auto g = encodeB10G11R11(rgb.getY(), 6, 0b111111);
 	auto b = encodeB10G11R11(rgb.getZ(), 5, 0b11111);

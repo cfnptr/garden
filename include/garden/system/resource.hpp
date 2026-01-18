@@ -61,7 +61,6 @@ enum class ImageLoadFlags : uint8
 	TypeArray   = 0x10, /**< Load with array image type. (Texture2DArray) */
 	Type3D      = 0x20, /**< Load with 3D image type. (Texture3D) */
 	TypeCubemap = 0x40, /**< Load with cubemap image type. (Cubemap) */
-	LinearData  = 0x80  /**< Load image data as linear color space. */
 };
 
 DECLARE_ENUM_CLASS_FLAG_OPERATORS(ImageLoadFlags)
@@ -231,19 +230,20 @@ public:
 	 * @note Loads from the images directory in debug build.
 	 * 
 	 * @param[in] path target image resource path
+	 * @param format required image data format
 	 * @param[out] data image pixel data container
 	 * @param[out] size loaded image size in pixels
-	 * @param[out] format loaded image data format
 	 * @param threadIndex thread index in the pool (-1 = single threaded)
 	 */
-	void loadImageData(const fs::path& path, vector<uint8>& data,
-		uint2& size, Image::Format& format, int32 threadIndex = -1) const;
+	void loadImageData(const fs::path& path, Image::Format format, 
+		vector<uint8>& data, uint2& size, int32 threadIndex = -1) const;
 
 	/**
 	 * @brief Loads cubemap image data (pixels) the resource pack.
 	 * @note Loads from the images directory in debug build.
 	 * 
 	 * @param[in] path target cubemap image resource path
+	 * @param format required image data format
 	 * @param[out] left left cubemap image pixel data container
 	 * @param[out] right right cubemap image pixel data container
 	 * @param[out] bottom bottom cubemap image pixel data container
@@ -254,37 +254,36 @@ public:
 	 * @param clamp16 clamp color values to a 16-bit range
 	 * @param threadIndex thread index the pool (-1 = single threaded)
 	 */
-	void loadCubemapData(const fs::path& path, vector<uint8>& left, vector<uint8>& right,
-		vector<uint8>& bottom, vector<uint8>& top, vector<uint8>& back, vector<uint8>& front, 
-		uint2& size, bool clamp16 = false, int32 threadIndex = -1) const;
-
-	// TODO: maybe support loading as non float cubemaps?
+	void loadCubemapData(const fs::path& path, Image::Format format, vector<uint8>& left, 
+		vector<uint8>& right, vector<uint8>& bottom, vector<uint8>& top, vector<uint8>& back, 
+		vector<uint8>& front, uint2& size, bool clamp16 = false, int32 threadIndex = -1) const;
 	
 	/**
 	 * @brief Loads image data (pixels) from the memory file. (MT-Safe)
 	 * 
 	 * @param[in] data image file data 
 	 * @param dataSize image file data size in bytes
-	 * @param fileType image file data type
+	 * @param fileType image file data type (container)
+	 * @param imageFormat required image data format
 	 * @param[out] pixels image pixel data container
 	 * @param[out] imageSize loaded image size in pixels
-	 * @param[out] format loaded image data format
 	 */
 	static void loadImageData(const uint8* data, psize dataSize, ImageFileType fileType,
-		vector<uint8>& pixels, uint2& imageSize, Image::Format& format);
+		Image::Format imageFormat, vector<uint8>& pixels, uint2& imageSize);
 
 	/*******************************************************************************************************************
 	 * @brief Loads image from the resource pack.
 	 * @note Loads from the images directory in debug build.
 	 *
 	 * @param[in] paths target image resource path array
+	 * @param format required image data format
 	 * @param usage image usage flags (affects driver optimization)
 	 * @param maxMipCount maximum mipmap level count (0 = unlimited)
 	 * @param strategy image memory allocation strategy
 	 * @param flags additional image load flags
 	 * @param taskPriority thread pool image load task priority
 	 */
-	Ref<Image> loadImageArray(const vector<fs::path>& paths, Image::Usage usage, 
+	Ref<Image> loadImageArray(const vector<fs::path>& paths, Image::Format format, Image::Usage usage, 
 		uint8 maxMipCount = 1, Image::Strategy strategy = Buffer::Strategy::Default, 
 		ImageLoadFlags flags = ImageLoadFlags::None, float taskPriority = 0.0f);
 
@@ -293,30 +292,41 @@ public:
 	 * @note Loads from the images directory in debug build.
 	 *
 	 * @param[in] path target image resource path
+	 * @param format required image data format
 	 * @param usage image usage flags (affects driver optimization)
 	 * @param maxMipCount maximum mipmap level count (0 = unlimited)
 	 * @param strategy image memory allocation strategy
 	 * @param flags additional image load flags
 	 * @param taskPriority thread pool image load task priority
 	 */
-	Ref<Image> loadImage(const fs::path& path, Image::Usage usage, 
+	Ref<Image> loadImage(const fs::path& path, Image::Format format, Image::Usage usage, 
 		uint8 maxMipCount = 1, Image::Strategy strategy = Buffer::Strategy::Default, 
 		ImageLoadFlags flags = ImageLoadFlags::None, float taskPriority = 0.0f)
 	{
-		return loadImageArray({ path }, usage, maxMipCount, strategy, flags, taskPriority);
+		return loadImageArray({ path }, format, usage, maxMipCount, strategy, flags, taskPriority);
 	}
 
 	/**
 	 * @brief Stores specified image to the images directory.
 	 * 
 	 * @param[in] path target image resource path
-	 * @param[in] daat image pixel data container
+	 * @param[in] data image pixel data container
 	 * @param size image size in pixels
+	 * @param fileType image file type (container)
+	 * @param imageFormat required image data format
 	 * @param quality image quality (0.0 - 1.0)
-	 * @param fileType image file type
+	 * @param[in] directory scene resource directory
 	 */
-	void storeImage(const fs::path& path, const void* data, uint2 size, 
-		float quality = 1.0f, ImageFileType fileType = ImageFileType::Png);
+	void storeImage(const fs::path& path, const void* data, uint2 size, ImageFileType fileType, 
+		Image::Format imageFormat, float quality = 1.0f, const fs::path& directory = "");
+	/**
+	 * @brief Renormalizes specified normal map image.
+	 *
+	 * @param[in] path target image resource path
+	 * @param fileType image file type (container)
+	 * @param threadIndex thread index in the pool (-1 = single threaded)
+	 */
+	void renormalizeImage(const fs::path& path, ImageFileType fileType, int32 threadIndex = -1);
 
 	/**
 	 * @brief Destroys shared image if it's the last one.

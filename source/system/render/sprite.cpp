@@ -238,7 +238,7 @@ void SpriteRenderSystem::deserialize(IDeserializer& deserializer, View<Component
 		auto flags = imageFlags; if (componentView->isArray) flags |= ImageLoadFlags::LoadArray;
 		auto usage = imageUsage; if (maxMipCount == 0) usage |= Image::Usage::TransferSrc;
 		componentView->colorMap = ResourceSystem::Instance::get()->loadImage(valueStringCache, 
-			usage, maxMipCount, Image::Strategy::Default, flags, taskPriority);
+			Image::Format::SrgbR8G8B8A8, usage, maxMipCount, Image::Strategy::Default, flags, taskPriority);
 	}
 }
 
@@ -306,8 +306,9 @@ void SpriteRenderSystem::deserializeAnimation(IDeserializer& deserializer, View<
 		auto maxMipCount = frameView->useMipmap ? 0 : 1;
 		auto flags = imageFlags; if (frameView->isArray) flags |= ImageLoadFlags::LoadArray;
 		auto usage = imageUsage; if (maxMipCount == 0) usage |= Image::Usage::TransferSrc;
-		frameView->colorMap = ResourceSystem::Instance::get()->loadImage(colorMapPath, 
-			usage, maxMipCount, Image::Strategy::Default, flags, taskPriority);
+		frameView->colorMap = ResourceSystem::Instance::get()->loadImage(
+			colorMapPath, Image::Format::SrgbR8G8B8A8, usage, maxMipCount, 
+			Image::Strategy::Default, flags, taskPriority);
 		frameView->descriptorSet = {}; // Note: See the imageLoaded()
 		frameView->animateColorMap = true;
 	}

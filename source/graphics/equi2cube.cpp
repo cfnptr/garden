@@ -15,7 +15,7 @@
 #include "garden/graphics/equi2cube.hpp"
 #include "garden/thread-pool.hpp"
 #include "garden/file.hpp"
-#include "math/ibl.hpp"
+#include "png.h"
 
 #define TINYEXR_IMPLEMENTATION
 #include "garden/graphics/exr.hpp"
@@ -34,58 +34,51 @@ using namespace garden::graphics;
 using namespace math::ibl;
 
 #if GARDEN_DEBUG || defined(EQUI2CUBE)
-//******************************************************************************************************************
-// x = 1.0 / (Pi * 2), y =  1.0 / Pi
-constexpr float2 INV_ATAN = float2(0.15915494309189533576f, 0.318309886183790671538f);
-
-static float2 toSphericalMapUV(float3 v) noexcept
-{
-	auto st = float2(atan2(v.x, v.z), asin(-v.y));
-	return fma(float2(st.x, st.y), INV_ATAN, float2(0.5f));
-}
-static f32x4 filterCubeMap(float2 coords, const f32x4* pixels, uint2 sizeMinus1, uint32 sizeX) noexcept
+f32x4 Equi2Cube::filterCubeMap(float2 coords, const f32x4* pixels, uint2 sizeMinus1, uint32 sizeX) noexcept
 {
 	auto coords0 = min((uint2)coords, sizeMinus1);
 	auto coords1 = min(coords0 + uint2::one, sizeMinus1);
-	auto uv = coords - coords0;
-	auto invUV = 1.0f - uv;
+	auto uv = coords - coords0, invUV = 1.0f - uv;
 
 	auto s0 = pixels[coords0.y * sizeX + coords0.x];
 	auto s1 = pixels[coords0.y * sizeX + coords1.x];
 	auto s2 = pixels[coords1.y * sizeX + coords0.x];
 	auto s3 = pixels[coords1.y * sizeX + coords1.x];
 
-	return s0 * (invUV.x * invUV.y) + s1 * (uv.x * invUV.y) +
-		s2 * (invUV.x * uv.y) + s3 * (uv.x * uv.y);
+	return fma(s0, f32x4(invUV.x * invUV.y), fma(s1, f32x4(uv.x * invUV.y),
+		fma(s2, f32x4(invUV.x * uv.y), s3 * (uv.x * uv.y))));
+}
+Color Equi2Cube::filterCubeMap(float2 coords, const Color* pixels, uint2 sizeMinus1, uint32 sizeX) noexcept
+{
+	auto coords0 = min((uint2)coords, sizeMinus1);
+	auto coords1 = min(coords0 + uint2::one, sizeMinus1);
+	auto uv = coords - coords0, invUV = 1.0f - uv;
+
+	auto s0 = srgbToRgb((f32x4)pixels[coords0.y * sizeX + coords0.x]);
+	auto s1 = srgbToRgb((f32x4)pixels[coords0.y * sizeX + coords1.x]);
+	auto s2 = srgbToRgb((f32x4)pixels[coords1.y * sizeX + coords0.x]);
+	auto s3 = srgbToRgb((f32x4)pixels[coords1.y * sizeX + coords1.x]);
+
+	return (Color)rgbToSrgb(fma(s0, f32x4(invUV.x * invUV.y), fma(s1, 
+		f32x4(uv.x * invUV.y), fma(s2, f32x4(invUV.x * uv.y), s3 * (uv.x * uv.y)))));
 }
 
-void Equi2Cube::convert(uint3 coords, uint32 cubemapSize, uint2 equiSize,
-	uint2 equiSizeMinus1, const f32x4* equiPixels, f32x4* cubePixels, float invDim) noexcept
+void Equi2Cube::writeExrImageData(const fs::path& filePath, uint32 size, 
+	const vector<uint8>& data, Image::Format imageForamt, bool saveAs16)
 {
-	auto dir = coordsToDir(coords, invDim);
-	auto uv = toSphericalMapUV(dir);
-
-	cubePixels[coords.y * cubemapSize + coords.x] = filterCubeMap(
-		uv * equiSize, equiPixels, equiSizeMinus1, equiSize.x);
-}
-
-static void writeExrImageData(const fs::path& filePath, uint32 size, const vector<uint8>& data)
-{
-	auto directory = filePath.parent_path();
-	if (!fs::exists(directory))
-		fs::create_directories(directory);
+	auto formatBinarySize = toBinarySize(imageForamt);
+	if (formatBinarySize % 4 != 0)
+		throw GardenError("Unsupported EXR image format for writing.");
 
 	const char* error = nullptr;
-	auto result = SaveEXR((const float*)data.data(), size, size, 
-		4, true, filePath.generic_string().c_str(), &error);
+	auto result = SaveEXR((const float*)data.data(), size, size,
+		formatBinarySize / 4, saveAs16, filePath.generic_string().c_str(), &error);
 
 	if (result != TINYEXR_SUCCESS)
 	{
-		auto errorString = string(error);
-		FreeEXRErrorMessage(error);
+		auto errorString = string(error); FreeEXRErrorMessage(error);
 		throw GardenError("Failed to store EXR image. ("
-			"path: " + filePath.generic_string() + ", "
-			"error: " + errorString + ")");
+			"path: " + filePath.generic_string() + ", error: " + errorString + ")");
 	}
 }
 
@@ -98,8 +91,8 @@ bool Equi2Cube::convertImage(const fs::path& filePath, const fs::path& inputPath
 
 	auto path = inputPath / filePath;
 	vector<uint8> dataBuffer, equiData; uint2 equiSize;
-	float* pixels = nullptr; // Note: width * height * RGBA
-	int sizeX = 0, sizeY = 0;
+	uint8* pixels = nullptr; // Note: width * height * RGBA
+	int sizeX = 0, sizeY = 0, binarySize = 0;
 
 	if (!File::tryLoadBinary(path, dataBuffer))
 		return false;
@@ -108,38 +101,33 @@ bool Equi2Cube::convertImage(const fs::path& filePath, const fs::path& inputPath
 	if (extension == ".exr")
 	{
 		const char* error = nullptr;
-		auto result = LoadEXRFromMemory(&pixels, &sizeX, &sizeY, dataBuffer.data(), dataBuffer.size(), &error);
-		if (result == TINYEXR_ERROR_CANT_OPEN_FILE)
+		if (LoadEXRFromMemory((float**)&pixels, &sizeX, &sizeY, dataBuffer.data(), 
+			dataBuffer.size(), &error) != TINYEXR_SUCCESS)
 		{
-			FreeEXRErrorMessage(error);
-			return false;
+			auto errorString = string(error); FreeEXRErrorMessage(error);
+			throw GardenError("Failed to load EXR image. (path: " + 
+				filePath.generic_string() + ", error: " + errorString + ")");
 		}
-
-		if (result != TINYEXR_SUCCESS)
-		{
-			auto errorString = string(error);
-			FreeEXRErrorMessage(error);
-			throw GardenError("Failed to load EXR image. ("
-				"path: " + filePath.generic_string() + ", "
-				"error: " + errorString + ")");
-		}
+		binarySize = 16;
 	}
 	else if (extension == ".hdr")
 	{
-		pixels = stbi_loadf_from_memory(dataBuffer.data(),
+		pixels = (uint8*)stbi_loadf_from_memory(dataBuffer.data(),
 			(int)dataBuffer.size(), &sizeX, &sizeY, nullptr, 4);
 		if (!pixels)
 			throw GardenError("Failed to load HDR image. (path: " + filePath.generic_string() + ")");
+		binarySize = 16;
 	}
 	else
 	{
 		throw GardenError("Unsupported image file extension. ("
 			"path: " + filePath.generic_string() + ")");
 	}
+	// TODO: also convert png/jpg cubemaps.
 
 	equiSize = uint2((uint32)sizeX, (uint32)sizeY);
 	equiData.assign((const uint8*)pixels, (const uint8*)pixels + 
-		sizeof(float4) * equiSize.x * equiSize.y);
+		equiSize.x * equiSize.y * binarySize);
 	free(pixels);
 
 	auto cubemapSize = equiSize.x / 4;
@@ -149,39 +137,27 @@ bool Equi2Cube::convertImage(const fs::path& filePath, const fs::path& inputPath
 	auto invDim = 1.0f / cubemapSize;
 	auto equiSizeMinus1 = equiSize - 1u;
 	auto equiPixels = (f32x4*)equiData.data();
-	auto pixelsSize = sizeof(float4) * cubemapSize * cubemapSize;
+	auto pixelsSize = cubemapSize * cubemapSize * binarySize;
 
 	vector<uint8> left(pixelsSize), right(pixelsSize), bottom(pixelsSize),
 		top(pixelsSize), back(pixelsSize), front(pixelsSize);
 
 	f32x4* cubeFaces[6] =
 	{
-		(f32x4*)left.data(), (f32x4*)right.data(),
-		(f32x4*)bottom.data(), (f32x4*)top.data(),
-		(f32x4*)back.data(), (f32x4*)front.data(),
+		(f32x4*)left.data(), (f32x4*)right.data(), (f32x4*)bottom.data(), 
+		(f32x4*)top.data(), (f32x4*)back.data(), (f32x4*)front.data(),
 	};
+	convert(cubeFaces, cubemapSize, equiSize, equiSizeMinus1, equiPixels, invDim);
 
-	for (uint32 face = 0; face < 6; face++)
-	{
-		auto cubePixels = cubeFaces[face];
-		for (uint32 y = 0; y < cubemapSize; y++)
-		{
-			for (uint32 x = 0; x < cubemapSize; x++)
-			{
-				convert(uint3(x, y, face), cubemapSize, equiSize,
-					equiSizeMinus1, equiPixels, cubePixels, invDim);
-			}
-		}
-	}
-
+	constexpr auto imageFormat = Image::Format::SfloatR16G16B16A16;
 	auto cacheFilePath = (outputPath / filePath).generic_string();
 	cacheFilePath.resize(cacheFilePath.length() - 4);
-	writeExrImageData(cacheFilePath + "-nx.exr", cubemapSize, left);
-	writeExrImageData(cacheFilePath + "-px.exr", cubemapSize, right);
-	writeExrImageData(cacheFilePath + "-ny.exr", cubemapSize, bottom);
-	writeExrImageData(cacheFilePath + "-py.exr", cubemapSize, top);
-	writeExrImageData(cacheFilePath + "-nz.exr", cubemapSize, back);
-	writeExrImageData(cacheFilePath + "-pz.exr", cubemapSize, front);
+	writeExrImageData(cacheFilePath + "-nx.exr", cubemapSize, left, imageFormat, true);
+	writeExrImageData(cacheFilePath + "-px.exr", cubemapSize, right, imageFormat, true);
+	writeExrImageData(cacheFilePath + "-ny.exr", cubemapSize, bottom, imageFormat, true);
+	writeExrImageData(cacheFilePath + "-py.exr", cubemapSize, top, imageFormat, true);
+	writeExrImageData(cacheFilePath + "-nz.exr", cubemapSize, back, imageFormat, true);
+	writeExrImageData(cacheFilePath + "-pz.exr", cubemapSize, front, imageFormat, true);
 	return true;
 }
 #endif

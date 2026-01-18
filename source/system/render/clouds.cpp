@@ -50,15 +50,15 @@ static ID<Framebuffer> createFramebuffer(GraphicsSystem* graphicsSystem, ID<Imag
 
 static Ref<Image> createNoiseShape()
 {
-	return ResourceSystem::Instance::get()->loadImage(
-		"clouds/noise-shape", Image::Usage::Sampled | Image::Usage::TransferDst | Image::Usage::TransferQ, 1, 
-		Image::Strategy::Size, ImageLoadFlags::LoadShared | ImageLoadFlags::Load3D | ImageLoadFlags::LinearData, 9.0f);
+	return ResourceSystem::Instance::get()->loadImage("clouds/noise-shape", Image::Format::UnormR8G8B8A8,
+		Image::Usage::Sampled | Image::Usage::TransferDst | Image::Usage::TransferQ, 1, 
+		Image::Strategy::Size, ImageLoadFlags::LoadShared | ImageLoadFlags::Load3D, 9.0f);
 }
 static Ref<Image> createNoiseErosion()
 {
-	return ResourceSystem::Instance::get()->loadImage(
-		"clouds/noise-erosion", Image::Usage::Sampled | Image::Usage::TransferDst | Image::Usage::TransferQ, 1, 
-		Image::Strategy::Size, ImageLoadFlags::LoadShared | ImageLoadFlags::Load3D | ImageLoadFlags::LinearData, 9.0f);
+	return ResourceSystem::Instance::get()->loadImage("clouds/noise-erosion", Image::Format::UnormR8G8B8A8, 
+		Image::Usage::Sampled | Image::Usage::TransferDst | Image::Usage::TransferQ, 1, 
+		Image::Strategy::Size, ImageLoadFlags::LoadShared | ImageLoadFlags::Load3D, 9.0f);
 }
 static ID<GraphicsPipeline> createCloudsPipeline(ID<Framebuffer> framebuffer, GraphicsQuality quality)
 {
