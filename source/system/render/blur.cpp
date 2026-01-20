@@ -19,6 +19,14 @@
 
 using namespace garden;
 
+static ID<ImageView> getLdrGgxView(GraphicsSystem* graphicsSystem, DeferredRenderSystem* deferredSystem)
+{
+	auto gBuffer = deferredSystem->getGBuffers()[DeferredRenderSystem::gBufferBaseColor]; 
+	auto gBufferView = graphicsSystem->get(gBuffer)->getDefaultView(); // Note: Reusing G-Buffer memory.
+	GARDEN_ASSERT(graphicsSystem->get(gBuffer)->getFormat() == DeferredRenderSystem::ldrBufferFormat);
+	return gBufferView;
+}
+
 //**********************************************************************************************************************
 BlurRenderSystem::BlurRenderSystem(bool setSingleton) : Singleton(setSingleton)
 {
@@ -83,10 +91,8 @@ void BlurRenderSystem::preDepthLdrRender()
 		ldrGgxFramebuffers[0] = graphicsSystem->createFramebuffer(framebufferSize, std::move(colorAttachments));
 		SET_RESOURCE_DEBUG_NAME(ldrGgxFramebuffers[0], "framebuffer.ldrGgxBlur0");
 
-		auto gBuffer = deferredSystem->getGBuffers()[DeferredRenderSystem::gBufferBaseColor]; 
-		auto gBufferView = graphicsSystem->get(gBuffer)->getDefaultView(); // Note: Reusing G-Buffer memory.
-		GARDEN_ASSERT(graphicsSystem->get(gBuffer)->getFormat() == DeferredRenderSystem::ldrBufferFormat);
-		colorAttachments = { Framebuffer::OutputAttachment(gBufferView, framebufferFlags) };
+		colorAttachments = { Framebuffer::OutputAttachment(
+			getLdrGgxView(graphicsSystem, deferredSystem), framebufferFlags) };
 		ldrGgxFramebuffers[1] = graphicsSystem->createFramebuffer(framebufferSize, std::move(colorAttachments));
 		SET_RESOURCE_DEBUG_NAME(ldrGgxFramebuffers[1], "framebuffer.ldrGgxBlur1");
 	}
@@ -118,11 +124,9 @@ void BlurRenderSystem::gBufferRecreate()
 		{ Framebuffer::OutputAttachment(ldrBufferView, framebufferFlags) };
 		framebufferView->update(framebufferSize, std::move(colorAttachments));
 
-		auto gBuffer = deferredSystem->getGBuffers()[DeferredRenderSystem::gBufferBaseColor]; 
-		auto gBufferView = graphicsSystem->get(gBuffer)->getDefaultView(); // Note: Reusing G-Buffer memory.
-		GARDEN_ASSERT(graphicsSystem->get(gBuffer)->getFormat() == DeferredRenderSystem::ldrBufferFormat);
 		framebufferView = graphicsSystem->get(ldrGgxFramebuffers[1]);
-		colorAttachments = { Framebuffer::OutputAttachment(gBufferView, framebufferFlags) };
+		colorAttachments = { Framebuffer::OutputAttachment(
+			getLdrGgxView(graphicsSystem, deferredSystem), framebufferFlags) };
 		framebufferView->update(framebufferSize, std::move(colorAttachments));
 	}
 }

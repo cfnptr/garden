@@ -14,13 +14,15 @@
 
 /***********************************************************************************************************************
  * @file
- * @brief Entity animation functions.
+ * @brief Common text rendering functions.
  */
 
 #pragma once
 #include "garden/utf.hpp"
 #include "garden/font.hpp"
 #include "garden/graphics/image.hpp"
+
+// TODO: implement font atlas tight glyphs packing. 
 
 namespace garden
 {

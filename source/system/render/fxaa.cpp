@@ -20,7 +20,7 @@
 
 using namespace garden;
 
-static ID<ImageView> getGBufferView(GraphicsSystem* graphicsSystem, DeferredRenderSystem* deferredSystem)
+static ID<ImageView> getLdrCopyView(GraphicsSystem* graphicsSystem, DeferredRenderSystem* deferredSystem)
 {
 	auto gBuffer = deferredSystem->getGBuffers()[DeferredRenderSystem::gBufferBaseColor];
 	auto gBufferView = graphicsSystem->get(gBuffer)->getDefaultView(); // Note: Reusing G-Buffer memory.
@@ -67,7 +67,7 @@ static ID<GraphicsPipeline> createPipeline(ID<Framebuffer> framebuffer, Graphics
 static DescriptorSet::Uniforms getUniforms(GraphicsSystem* graphicsSystem)
 {
 	// TODO: Support forward rendering too.
-	auto ldrBufferView = getGBufferView(graphicsSystem, DeferredRenderSystem::Instance::get()); 
+	auto ldrBufferView = getLdrCopyView(graphicsSystem, DeferredRenderSystem::Instance::get()); 
 	return { { "ldrBuffer", DescriptorSet::Uniform(ldrBufferView) } };
 }
 
@@ -95,6 +95,7 @@ void FxaaRenderSystem::init()
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("PreUiRender", FxaaRenderSystem::preUiRender);
 	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", FxaaRenderSystem::gBufferRecreate);
+	ECSM_SUBSCRIBE_TO_EVENT("QualityChange", FxaaRenderSystem::qualityChange);
 
 	auto settingsSystem = SettingsSystem::Instance::tryGet();
 	if (settingsSystem)
@@ -116,6 +117,7 @@ void FxaaRenderSystem::deinit()
 		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PreUiRender", FxaaRenderSystem::preUiRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("GBufferRecreate", FxaaRenderSystem::gBufferRecreate);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("QualityChange", FxaaRenderSystem::qualityChange);
 	}
 }
 
@@ -150,7 +152,7 @@ void FxaaRenderSystem::preUiRender()
 
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	auto framebufferView = graphicsSystem->get(framebuffer);
-	auto gBufferView = graphicsSystem->get(getGBufferView(graphicsSystem, deferredSystem));
+	auto ldrCopyView = graphicsSystem->get(getLdrCopyView(graphicsSystem, deferredSystem));
 
 	PushConstants pc;
 	pc.invFrameSize = float2::one / framebufferView->getSize();
@@ -158,7 +160,7 @@ void FxaaRenderSystem::preUiRender()
 	graphicsSystem->startRecording(CommandBufferType::Frame);
 	{
 		SET_GPU_DEBUG_LABEL("FXAA");
-		Image::copy(deferredSystem->getLdrBuffer(), gBufferView->getImage());
+		Image::copy(deferredSystem->getLdrBuffer(), ldrCopyView->getImage());
 
 		#if GARDEN_DEBUG || GARDEN_EDITOR
 		if (visualize)
