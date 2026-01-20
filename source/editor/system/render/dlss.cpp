@@ -59,10 +59,10 @@ void DlssRenderEditorSystem::editorSettings()
 	auto dlssSystem = DlssRenderSystem::Instance::get();
 	ImGui::BeginDisabled(!dlssSystem->isInitialized());
 
-	auto quality = (int)dlssSystem->getQuality();
+	auto quality = dlssSystem->getQuality();
 	if (ImGui::Combo("DLSS Quality", &quality, dlssQualityNames, (int)DlssQuality::Count))
 	{
-		dlssSystem->setQuality((DlssQuality)quality);
+		dlssSystem->setQuality(quality);
 		auto settingsSystem = SettingsSystem::Instance::tryGet();
 		if (settingsSystem)
 			settingsSystem->setString("dlss.quality", toString((DlssQuality)quality));

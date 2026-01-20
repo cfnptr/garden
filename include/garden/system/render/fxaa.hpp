@@ -47,6 +47,8 @@ private:
 	ID<Framebuffer> framebuffer = {};
 	ID<GraphicsPipeline> pipeline = {};
 	ID<DescriptorSet> descriptorSet = {};
+	float subpixelQuality = 0.75f;
+	GraphicsQuality quality = GraphicsQuality::High;
 	bool isInitialized = false;
 
 	/**
@@ -63,10 +65,31 @@ private:
 	void deinit();
 	void preUiRender();
 	void gBufferRecreate();
+	void qualityChange();
 
 	friend class ecsm::Manager;
 public:
 	bool isEnabled = true; /**< Is fast approximate anti-aliasing rendering enabled. */
+
+	#if GARDEN_DEBUG || GARDEN_EDITOR
+	bool visualize = false; /**< Visualize FXAA detected pixels. (Debug only!) */
+	#endif
+
+	/**
+	 * @brief Returns FXAA rendering graphics quality.
+	 */
+	GraphicsQuality getQuality() const noexcept { return quality; }
+	/**
+	 * @brief Returns FXAA amount of sub-pixel aliasing removal.
+	 */
+	float getSubpixelQuality() const noexcept { return subpixelQuality; }
+	/**
+	 * @brief Sets FXAA rendering graphics quality.
+	 *
+	 * @param quality target graphics quality level
+	 * @param subpixelQuality amount of sub-pixel aliasing removal (0.0 - 1.0)
+	 */
+	void setQuality(GraphicsQuality quality, float subpixelQuality);
 
 	/**
 	 * @brief Returns fast approximate anti-aliasing framebuffer.

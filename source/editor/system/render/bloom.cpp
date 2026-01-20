@@ -90,10 +90,10 @@ void BloomRenderEditorSystem::preUiRender()
 				settingsSystem->setBool("bloom.enabled", bloomSystem->isEnabled);
 		}
 
-		auto quality = (int)bloomSystem->getQuality();
+		auto quality = bloomSystem->getQuality();
 		if (ImGui::Combo("Quality", &quality, graphicsQualityNames, (int)GraphicsQuality::Count))
 		{
-			bloomSystem->setQuality((GraphicsQuality)quality);
+			bloomSystem->setQuality(quality);
 			auto settingsSystem = SettingsSystem::Instance::tryGet();
 			if (settingsSystem)
 				settingsSystem->setString("bloom.quality", toString((GraphicsQuality)quality));
