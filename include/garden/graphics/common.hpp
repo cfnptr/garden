@@ -376,6 +376,12 @@ public:
  * @note Do not forget to end all debug labels!
  */
 #define END_GPU_DEBUG_LABEL() DebugLabel::end()
+/**
+ * @brief Ends command buffer label region. (Debug Only)
+ * @note Do not forget to end all debug labels!
+ * @param threadIndex current thread index
+ */
+#define END_GPU_DEBUG_LABEL_ASYNC(threadIndex) DebugLabel::end(threadIndex)
 #else
 /***********************************************************************************************************************
  * @brief Creates and begins command buffer label region. (Debug Only)
@@ -469,6 +475,12 @@ public:
  * @note Do not forget to end all debug labels!
  */
 #define END_GPU_DEBUG_LABEL() (void)0
+/**
+ * @brief Ends command buffer label region. (Debug Only)
+ * @note Do not forget to end all debug labels!
+ * @param threadIndex current thread index
+ */
+#define END_GPU_DEBUG_LABEL_ASYNC(threadIndex) (void)0
 #endif
 
 } // namespace garden::graphics

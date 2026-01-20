@@ -42,7 +42,7 @@ public:
 		float2 invFrameSize;
 	};
 
-	static constexpr Framebuffer::OutputAttachment::Flags framebufferFlags = { false, false, true };
+	static constexpr Framebuffer::OutputAttachment::Flags framebufferFlags = { false, true, true };
 private:
 	ID<Framebuffer> framebuffer = {};
 	ID<GraphicsPipeline> pipeline = {};
@@ -69,7 +69,7 @@ private:
 
 	friend class ecsm::Manager;
 public:
-	bool isEnabled = true; /**< Is fast approximate anti-aliasing rendering enabled. */
+	bool isEnabled = false; /**< Is fast approximate anti-aliasing rendering enabled. */
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	bool visualize = false; /**< Visualize FXAA detected pixels. (Debug only!) */
@@ -89,7 +89,7 @@ public:
 	 * @param quality target graphics quality level
 	 * @param subpixelQuality amount of sub-pixel aliasing removal (0.0 - 1.0)
 	 */
-	void setQuality(GraphicsQuality quality, float subpixelQuality);
+	void setQuality(GraphicsQuality quality, float subpixelQuality = 0.75f);
 
 	/**
 	 * @brief Returns fast approximate anti-aliasing framebuffer.

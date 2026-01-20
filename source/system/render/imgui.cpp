@@ -773,14 +773,14 @@ void ImGuiRenderSystem::uiRender()
 
 	if (isCurrentRenderPassAsync)
 	{
-		SET_GPU_DEBUG_LABEL_ASYNC("ImGui", INT32_MAX);
+		BEGIN_GPU_DEBUG_LABEL_ASYNC("ImGui", INT32_MAX);
 		pipelineView->bindAsync(0, INT32_MAX);
 		pipelineView->setViewportAsync(float4::zero, INT32_MAX);
 		pipelineView->pushConstantsAsync(&pc, INT32_MAX);
 	}
 	else
 	{
-		SET_GPU_DEBUG_LABEL("ImGui");
+		BEGIN_GPU_DEBUG_LABEL("ImGui");
 		pipelineView->bind();
 		pipelineView->setViewport();
 		pipelineView->pushConstants(&pc);
@@ -852,6 +852,10 @@ void ImGuiRenderSystem::uiRender()
 		globalVtxOffset += cmdList->VtxBuffer.Size;
 	}
 
+	if (isCurrentRenderPassAsync)
+		END_GPU_DEBUG_LABEL_ASYNC(INT32_MAX);
+	else END_GPU_DEBUG_LABEL();
+	
 	isRendered = true;
 }
 

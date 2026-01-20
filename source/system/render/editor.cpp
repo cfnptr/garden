@@ -651,7 +651,7 @@ static bool renderInspectorComponentPopup(ID<Entity>& selectedEntity,
 		if (ImGui::MenuItem("Paste Component Data", nullptr, false, serializableSystem))
 		{
 			auto manager = Manager::Instance::get();
-			manager->resetComponents(selectedEntity, true);
+			manager->reset(selectedEntity, componentType, true);
 			try
 			{
 				JsonDeserializer jsonDeserializer = JsonDeserializer(string_view(ImGui::GetClipboardText()));
