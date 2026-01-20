@@ -20,43 +20,55 @@
 
 using namespace garden;
 
-static ID<Framebuffer> createFramebuffer(GraphicsSystem* graphicsSystem)
+static ID<ImageView> getGBufferView(GraphicsSystem* graphicsSystem, DeferredRenderSystem* deferredSystem)
 {
-	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	auto gBuffer = deferredSystem->getGBuffers()[DeferredRenderSystem::gBufferBaseColor];
 	auto gBufferView = graphicsSystem->get(gBuffer)->getDefaultView(); // Note: Reusing G-Buffer memory.
 	GARDEN_ASSERT(graphicsSystem->get(gBuffer)->getFormat() == DeferredRenderSystem::ldrBufferFormat);
-
+	return gBufferView;
+}
+static ID<Framebuffer> createFramebuffer(GraphicsSystem* graphicsSystem)
+{
+	auto ldrBuffer = DeferredRenderSystem::Instance::get()->getLdrBuffer();
+	auto ldrBufferView = graphicsSystem->get(ldrBuffer)->getDefaultView();
 	vector<Framebuffer::OutputAttachment> colorAttachments =
-	{ Framebuffer::OutputAttachment(gBufferView, FxaaRenderSystem::framebufferFlags) };
+	{ Framebuffer::OutputAttachment(ldrBufferView, FxaaRenderSystem::framebufferFlags) };
 
 	auto framebuffer = graphicsSystem->createFramebuffer(
 		graphicsSystem->getScaledFrameSize(), std::move(colorAttachments));
 	SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.fxaa");
 	return framebuffer;
 }
-static ID<GraphicsPipeline> createPipeline(ID<Framebuffer> framebuffer)
+static ID<GraphicsPipeline> createPipeline(ID<Framebuffer> framebuffer, GraphicsQuality quality, float subpixelQuality)
 {
+	float edgeThrMax, edgeThrMin;
+	switch (quality)
+	{
+		case GraphicsQuality::PotatoPC: edgeThrMax = 0.333f; edgeThrMin = 0.0833f; break;
+		case GraphicsQuality::Low: edgeThrMax = 0.25f; edgeThrMin = 0.0625f; break;
+		case GraphicsQuality::Medium: edgeThrMax = 0.166; edgeThrMin = 0.0625f; break;
+		case GraphicsQuality::High: edgeThrMax = 0.125f; edgeThrMin = 0.0312f; break;
+		case GraphicsQuality::Ultra: edgeThrMax = 0.063f; edgeThrMin = 0.0312f; break;
+		default: abort();
+	}
+
+	Pipeline::SpecConstValues specConstValues =
+	{
+		{ "EDGE_THRESHOLD_MIN", Pipeline::SpecConstValue(edgeThrMin) },
+		{ "EDGE_THRESHOLD_MAX", Pipeline::SpecConstValue(edgeThrMax) },
+		{ "SUBPIXEL_QUALITY", Pipeline::SpecConstValue(subpixelQuality) }
+	};
+
 	ResourceSystem::GraphicsOptions options;
+	options.specConstValues = &specConstValues;
 	return ResourceSystem::Instance::get()->loadGraphicsPipeline("fxaa", framebuffer, options);
 }
 
 static DescriptorSet::Uniforms getUniforms(GraphicsSystem* graphicsSystem)
 {
-	auto deferredSystem = DeferredRenderSystem::Instance::get();
-	auto hdrFramebufferView = graphicsSystem->get(deferredSystem->getHdrFramebuffer());
-	auto ldrFramebufferView = graphicsSystem->get(deferredSystem->getLdrFramebuffer());
-	auto hdrBufferView = hdrFramebufferView->getColorAttachments()[0].imageView;
-	auto ldrBufferView = ldrFramebufferView->getColorAttachments()[0].imageView;
-
-	// TODO: support forward rendering too
-
-	DescriptorSet::Uniforms uniforms =
-	{ 
-		{ "hdrBuffer", DescriptorSet::Uniform(hdrBufferView) },
-		{ "ldrBuffer", DescriptorSet::Uniform(ldrBufferView) }
-	};
-	return uniforms;
+	// TODO: Support forward rendering too.
+	auto ldrBufferView = getGBufferView(graphicsSystem, DeferredRenderSystem::Instance::get()); 
+	return { { "ldrBuffer", DescriptorSet::Uniform(ldrBufferView) } };
 }
 
 //**********************************************************************************************************************
@@ -86,7 +98,11 @@ void FxaaRenderSystem::init()
 
 	auto settingsSystem = SettingsSystem::Instance::tryGet();
 	if (settingsSystem)
+	{
 		settingsSystem->getBool("fxaa.enabled", isEnabled);
+		settingsSystem->getType("fxaa.quality", quality, graphicsQualityNames, (uint32)GraphicsQuality::Count);
+		settingsSystem->getFloat("fxaa.subpixelQuality", subpixelQuality);
+	}
 }
 void FxaaRenderSystem::deinit()
 {
@@ -108,7 +124,7 @@ void FxaaRenderSystem::preUiRender()
 {
 	SET_CPU_ZONE_SCOPED("FXAA Pre UI Render");
 
-	if (!isEnabled)
+	if (!isEnabled || subpixelQuality <= 0.0f)
 		return;
 	
 	auto graphicsSystem = GraphicsSystem::Instance::get();
@@ -117,7 +133,7 @@ void FxaaRenderSystem::preUiRender()
 		if (!framebuffer)
 			framebuffer = createFramebuffer(graphicsSystem);
 		if (!pipeline)
-			pipeline = createPipeline(framebuffer);
+			pipeline = createPipeline(framebuffer, quality, subpixelQuality);
 		isInitialized = true;
 	}
 
@@ -134,7 +150,7 @@ void FxaaRenderSystem::preUiRender()
 
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	auto framebufferView = graphicsSystem->get(framebuffer);
-	auto fxaaBufferView = graphicsSystem->get(framebufferView->getColorAttachments()[0].imageView);
+	auto gBufferView = graphicsSystem->get(getGBufferView(graphicsSystem, deferredSystem));
 
 	PushConstants pc;
 	pc.invFrameSize = float2::one / framebufferView->getSize();
@@ -142,6 +158,13 @@ void FxaaRenderSystem::preUiRender()
 	graphicsSystem->startRecording(CommandBufferType::Frame);
 	{
 		SET_GPU_DEBUG_LABEL("FXAA");
+		Image::copy(deferredSystem->getLdrBuffer(), gBufferView->getImage());
+
+		#if GARDEN_DEBUG || GARDEN_EDITOR
+		if (visualize)
+			graphicsSystem->get(deferredSystem->getLdrBuffer())->clear(float4::zero);
+		#endif
+
 		{
 			RenderPass renderPass(framebuffer, float4::zero);
 			pipelineView->bind();
@@ -150,7 +173,6 @@ void FxaaRenderSystem::preUiRender()
 			pipelineView->pushConstants(&pc);
 			pipelineView->drawFullscreen();
 		}
-		Image::copy(fxaaBufferView->getImage(), deferredSystem->getLdrBuffer());
 	}
 	graphicsSystem->stopRecording();
 }
@@ -160,13 +182,10 @@ void FxaaRenderSystem::gBufferRecreate()
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	if (framebuffer)
 	{
-		auto deferredSystem = DeferredRenderSystem::Instance::get();
-		auto gBuffer = deferredSystem->getGBuffers()[DeferredRenderSystem::gBufferBaseColor];
-		auto gBufferView = graphicsSystem->get(gBuffer)->getDefaultView(); // Note: Reusing G-Buffer memory.
-		GARDEN_ASSERT(graphicsSystem->get(gBuffer)->getFormat() == DeferredRenderSystem::ldrBufferFormat);
-
 		auto framebufferView = graphicsSystem->get(framebuffer);
-		Framebuffer::OutputAttachment colorAttachment(gBufferView, FxaaRenderSystem::framebufferFlags);
+		auto ldrBuffer = DeferredRenderSystem::Instance::get()->getLdrBuffer();
+		auto ldrBufferView = graphicsSystem->get(ldrBuffer)->getDefaultView();
+		Framebuffer::OutputAttachment colorAttachment(ldrBufferView, FxaaRenderSystem::framebufferFlags);
 		framebufferView->update(graphicsSystem->getScaledFrameSize(), &colorAttachment, 1);
 	}
 	if (descriptorSet)
@@ -174,6 +193,34 @@ void FxaaRenderSystem::gBufferRecreate()
 		graphicsSystem->destroy(descriptorSet);
 		descriptorSet = {};
 	}
+}
+void FxaaRenderSystem::qualityChange()
+{
+	setQuality(GraphicsSystem::Instance::get()->quality, subpixelQuality);
+}
+
+void FxaaRenderSystem::setQuality(GraphicsQuality quality, float subpixelQuality)
+{
+	GARDEN_ASSERT(subpixelQuality >= 0.0f);
+	GARDEN_ASSERT(subpixelQuality <= 1.0f);
+
+	if (this->quality == quality && this->subpixelQuality == subpixelQuality)
+		return;
+
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	if (descriptorSet)
+	{
+		graphicsSystem->destroy(descriptorSet);
+		descriptorSet = {};
+	}
+	if (pipeline)
+	{
+		graphicsSystem->destroy(pipeline);
+		pipeline = createPipeline(framebuffer, quality, subpixelQuality);
+	}
+
+	this->quality = quality;
+	this->subpixelQuality = subpixelQuality;
 }
 
 ID<Framebuffer> FxaaRenderSystem::getFramebuffer()
@@ -185,6 +232,6 @@ ID<Framebuffer> FxaaRenderSystem::getFramebuffer()
 ID<GraphicsPipeline> FxaaRenderSystem::getPipeline()
 {
 	if (!pipeline)
-		pipeline = createPipeline(getFramebuffer());
+		pipeline = createPipeline(getFramebuffer(), quality, subpixelQuality);
 	return pipeline;
 }

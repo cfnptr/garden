@@ -64,10 +64,10 @@ void AtmosphereEditorSystem::preUiRender()
 		auto atmosphereSystem = AtmosphereRenderSystem::Instance::get();
 		ImGui::Checkbox("Enabled", &atmosphereSystem->isEnabled);
 
-		auto quality = (int)atmosphereSystem->getQuality();
+		auto quality = atmosphereSystem->getQuality();
 		if (ImGui::Combo("Quality", &quality, graphicsQualityNames, (int)GraphicsQuality::Count))
 		{
-			atmosphereSystem->setQuality((GraphicsQuality)quality);
+			atmosphereSystem->setQuality(quality);
 			auto settingsSystem = SettingsSystem::Instance::tryGet();
 			if (settingsSystem)
 				settingsSystem->setString("atmosphere.quality", toString((GraphicsQuality)quality));

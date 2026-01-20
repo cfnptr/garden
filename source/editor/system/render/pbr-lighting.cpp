@@ -71,10 +71,10 @@ void PbrLightingEditorSystem::preUiRender()
 	{
 		auto pbrLightingSystem = PbrLightingSystem::Instance::get();
 
-		auto quality = (int)pbrLightingSystem->getQuality();
+		auto quality = pbrLightingSystem->getQuality();
 		if (ImGui::Combo("Quality", &quality, graphicsQualityNames, (int)GraphicsQuality::Count))
 		{
-			pbrLightingSystem->setQuality((GraphicsQuality)quality);
+			pbrLightingSystem->setQuality(quality);
 			auto settingsSystem = SettingsSystem::Instance::tryGet();
 			if (settingsSystem)
 				settingsSystem->setString("pbrLighting.quality", toString((GraphicsQuality)quality));

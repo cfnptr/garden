@@ -53,15 +53,41 @@ void FxaaRenderEditorSystem::deinit()
 
 void FxaaRenderEditorSystem::editorSettings()
 {
-	ImGui::Spacing();
-	ImGui::PushID("fxaa");
-	auto fxaaSystem = FxaaRenderSystem::Instance::get();
-	if (ImGui::Checkbox("FXAA Enabled (Anti-aliasing)", &fxaaSystem->isEnabled))
+	if (ImGui::CollapsingHeader("FXAA (Anti-aliasing)"))
 	{
-		auto settingsSystem = SettingsSystem::Instance::tryGet();
-		if (settingsSystem)
-			settingsSystem->setBool("fxaa.enabled", fxaaSystem->isEnabled);
+		ImGui::Indent();
+		ImGui::PushID("fxaa");
+
+		auto fxaaSystem = FxaaRenderSystem::Instance::get();
+		if (ImGui::Checkbox("Enabled", &fxaaSystem->isEnabled))
+		{
+			auto settingsSystem = SettingsSystem::Instance::tryGet();
+			if (settingsSystem)
+				settingsSystem->setBool("fxaa.enabled", fxaaSystem->isEnabled);
+		}
+
+		auto quality = fxaaSystem->getQuality();
+		auto subpixelQualit = fxaaSystem->getSubpixelQuality();
+
+		if (ImGui::Combo("Quality", &quality, graphicsQualityNames, (int)GraphicsQuality::Count))
+		{
+			fxaaSystem->setQuality(quality, subpixelQualit);
+			auto settingsSystem = SettingsSystem::Instance::tryGet();
+			if (settingsSystem)
+				settingsSystem->setString("fxaa.quality", toString((GraphicsQuality)quality));
+		}
+		if (ImGui::SliderFloat("Subpixel Quality", &subpixelQualit, 0.0f, 1.0f))
+		{
+			fxaaSystem->setQuality(quality, subpixelQualit);
+			auto settingsSystem = SettingsSystem::Instance::tryGet();
+			if (settingsSystem)
+				settingsSystem->setFloat("fxaa.subpixelQuality", subpixelQualit);
+		}
+		ImGui::Checkbox("Visualize", &fxaaSystem->visualize);
+
+		ImGui::PopID();
+		ImGui::Unindent();
+		ImGui::Spacing();
 	}
-	ImGui::PopID();
 }
 #endif
