@@ -289,7 +289,7 @@ void MeshGizmosEditorSystem::render()
 		for (uint32 i = 0; i < 4; i++)
 		{
 			auto modelInverse = inverse4x4(gizmosMeshes[i].model);
-			auto ray = Ray(modelInverse * f32x4(globalOrigin, 1.0f), multiply3x3(modelInverse, globalDirection));
+			auto ray = Ray(modelInverse * f32x4(globalOrigin, 1.0f), dot3x3(modelInverse, globalDirection));
 			if (!raycast(Aabb::two, ray))
 				continue;
 
@@ -327,8 +327,8 @@ void MeshGizmosEditorSystem::render()
 		if (dragMode != 1)
 		{
 			auto invModel = inverseTransRot(calcModel(translation, rotation));
-			globalLastPos = multiply3x3(invModel, globalLastPos);
-			globalNewPos = multiply3x3(invModel, globalNewPos);
+			globalLastPos = dot3x3(invModel, globalLastPos);
+			globalNewPos = dot3x3(invModel, globalNewPos);
 		}
 
 		auto cursorTrans = (globalNewPos - globalLastPos); 
@@ -342,7 +342,7 @@ void MeshGizmosEditorSystem::render()
 		if (dragMode != 1 && !inputSystem->getKeyboardState(KeyboardButton::LeftShift) &&
 			!inputSystem->getKeyboardState(KeyboardButton::RightShift))
 		{
-			cursorTrans = multiply3x3(rotate(transformView->getRotation()), cursorTrans);
+			cursorTrans = dot3x3(rotate(transformView->getRotation()), cursorTrans);
 		}
 
 		// TODO: Fix non-uniform transformation in perspective projection,

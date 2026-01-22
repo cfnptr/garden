@@ -187,7 +187,7 @@ private:
 	Ref<Image> lastSkybox = {}, lastSpecular = {};
 	ID<ImageView> lastSkyboxShView = {};
 	float3 sunDir = float3::zero;
-	uint32 lastSkyboxSize = 0, shInFlightIndex = 0;
+	uint32 shInFlightIndex = 0;
 	GraphicsQuality quality = GraphicsQuality::High;
 	bool isInitialized = false;
 	uint8 updatePhase = 0;

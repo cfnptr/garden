@@ -477,9 +477,9 @@ static uint32 getCubemapSize(GraphicsQuality quality) noexcept
 {
 	switch (quality)
 	{
-		case GraphicsQuality::PotatoPC: return 32;
-		case GraphicsQuality::Low: return 64;
-		case GraphicsQuality::Medium: return 128;
+		case GraphicsQuality::PotatoPC: return 128;
+		case GraphicsQuality::Low: return 128;
+		case GraphicsQuality::Medium: return 256;
 		case GraphicsQuality::High: return 256;
 		case GraphicsQuality::Ultra: return 512;
 		default: abort();
@@ -1055,7 +1055,13 @@ void PbrLightingSystem::gBufferRecreate()
 
 void PbrLightingSystem::qualityChange()
 {
-	setQuality(GraphicsSystem::Instance::get()->quality);
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	for (auto& component : components)
+	{
+		graphicsSystem->destroy(component.descriptorSet);
+		component.descriptorSet = {};
+	}
+	setQuality(graphicsSystem->quality);
 }
 
 //**********************************************************************************************************************
@@ -1185,7 +1191,7 @@ void PbrLightingSystem::setQuality(GraphicsQuality quality)
 	if (dfgLUT)
 	{
 		auto dfgLutView = graphicsSystem->get(dfgLUT);
-		if (dfgLutView->getSize() != getDfgLutSize(quality))
+		if (dfgLutView->getSize().getX() != getDfgLutSize(quality))
 		{
 			graphicsSystem->destroy(lightingDS); lightingDS = {};
 			graphicsSystem->destroy(dfgLUT);

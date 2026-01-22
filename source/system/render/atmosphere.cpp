@@ -380,6 +380,7 @@ void AtmosphereRenderSystem::deinit()
 	if (Manager::Instance::get()->isRunning)
 	{
 		auto graphicsSystem = GraphicsSystem::Instance::get();
+		graphicsSystem->destroy(iblDescriptorSets);
 		graphicsSystem->destroy(shReduceDS);
 		graphicsSystem->destroy(shGenerateDS);
 		graphicsSystem->destroy(skyboxDS);
@@ -402,6 +403,7 @@ void AtmosphereRenderSystem::deinit()
 		graphicsSystem->destroy(shStagings);
 		graphicsSystem->destroy(shCaches);
 		graphicsSystem->destroy(specularCache);
+		graphicsSystem->destroy(specularViews);
 		graphicsSystem->destroy(lastSkyboxShView);
 		graphicsSystem->destroy(lastSpecular);
 		graphicsSystem->destroy(lastSkybox);
@@ -641,18 +643,26 @@ void AtmosphereRenderSystem::updateSkybox()
 	auto pbrLightingSystem = PbrLightingSystem::Instance::get();
 	auto pbrLightingView = manager->tryGet<PbrLightingComponent>(graphicsSystem->camera);
 
-	if (pbrLightingView && pbrLightingView->skybox && pbrLightingView->specular)
+	if (!pbrLightingView)
+		return;
+
+	if (lastSkybox != pbrLightingView->skybox || lastSpecular != pbrLightingView->specular)
 	{
-		if (lastSkybox != pbrLightingView->skybox || lastSpecular != pbrLightingView->specular)
+		graphicsSystem->destroy(shReduceDS); graphicsSystem->destroy(shGenerateDS); 
+		graphicsSystem->destroy(lastSkyboxShView); graphicsSystem->destroy(shCaches);
+		graphicsSystem->destroy(lastSpecular); graphicsSystem->destroy(lastSkybox);
+		shGenerateDS = {}; shReduceDS = {}; lastSkyboxShView = {}; lastSpecular = {}; lastSkybox = {};
+		destroySkyboxViews(graphicsSystem, skyboxViews); shCaches.clear();
+
+		graphicsSystem->destroy(iblDescriptorSets); graphicsSystem->destroy(specularViews);
+		graphicsSystem->destroy(specularCache); specularCache = {};
+		iblDescriptorSets.clear(); specularViews.clear();
+
+		if (pbrLightingView->skybox && pbrLightingView->specular)
 		{
-			graphicsSystem->destroy(shReduceDS); graphicsSystem->destroy(shGenerateDS); 
-			graphicsSystem->destroy(lastSkyboxShView); graphicsSystem->destroy(shCaches);
-			graphicsSystem->destroy(lastSpecular); graphicsSystem->destroy(lastSkybox);
 			lastSkybox = pbrLightingView->skybox; lastSpecular = pbrLightingView->specular;
-			destroySkyboxViews(graphicsSystem, skyboxViews);
 			createSkyboxViews(graphicsSystem, ID<Image>(lastSkybox), skyboxViews);
-			shGenerateDS = {}; shReduceDS = {}; lastSkyboxShView = {}; shCaches.clear();
-			
+
 			auto skyboxView = graphicsSystem->get(lastSkybox);
 			auto framebufferSize = (uint2)skyboxView->getSize();
 			Framebuffer::OutputAttachment colorAttachment = Framebuffer::OutputAttachment(
@@ -665,170 +675,181 @@ void AtmosphereRenderSystem::updateSkybox()
 				framebufferView->update(framebufferSize, &colorAttachment, 1);
 			}
 
-			if (lastSkyboxSize != skyboxView->getSize().getX())
+			graphicsSystem->startRecording(CommandBufferType::Frame);
+			specularCache = pbrLightingSystem->createSpecularCache(
+				skyboxView->getSize().getX(), iblWeightBuffer, iblCountBuffer);
+			SET_RESOURCE_DEBUG_NAME(specularCache, "buffer.storage.atmosphere.specularCache");
+			graphicsSystem->stopRecording();
+
+			pbrLightingSystem->createIblSpecularViews(ID<Image>(lastSpecular), specularViews);
+			pbrLightingSystem->createIblDescriptorSets(ID<Image>(lastSkybox), 
+				specularCache, specularViews, iblDescriptorSets);
+		}
+		else if (skyboxFramebuffers[0])
+		{
+			auto framebufferSize = graphicsSystem->get(skyboxFramebuffers[0])->getSize();
+			Framebuffer::OutputAttachment colorAttachment = Framebuffer::OutputAttachment(
+				{}, AtmosphereRenderSystem::framebufferFlags);
+			for (uint8 i = 0; i < Image::cubemapFaceCount; i++)
 			{
-				lastSkyboxSize = skyboxView->getSize().getX();
-				graphicsSystem->destroy(specularCache);
-
-				graphicsSystem->startRecording(CommandBufferType::Frame);
-				specularCache = pbrLightingSystem->createSpecularCache(lastSkyboxSize, iblWeightBuffer, iblCountBuffer);
-				SET_RESOURCE_DEBUG_NAME(specularCache, "buffer.storage.atmosphere.specularCache");
-				graphicsSystem->stopRecording();
-
-				pbrLightingSystem->createIblSpecularViews(
-					ID<Image>(pbrLightingView->specular), specularViews);
-				pbrLightingSystem->createIblDescriptorSets(ID<Image>(lastSkybox), 
-					specularCache, specularViews, iblDescriptorSets);
+				auto framebufferView = graphicsSystem->get(skyboxFramebuffers[i]);
+				colorAttachment.imageView = skyboxViews[i];
+				framebufferView->update(framebufferSize, &colorAttachment, 1);
 			}
 		}
+	}
 
-		graphicsSystem->startRecording(CommandBufferType::Frame);
-		if (updatePhase < Image::cubemapFaceCount)
+	if (!lastSkybox)
+		return;
+
+	graphicsSystem->startRecording(CommandBufferType::Frame);
+	if (updatePhase < Image::cubemapFaceCount)
+	{
+		auto framebuffer = skyboxFramebuffers[updatePhase];
+		if (!skyboxPipeline)
+			skyboxPipeline = createSkyboxPipeline(framebuffer, quality);
+
+		auto pipelineView = graphicsSystem->get(skyboxPipeline);		
+		if (pipelineView->isReady())
 		{
-			auto framebuffer = skyboxFramebuffers[updatePhase];
-			if (!skyboxPipeline)
-				skyboxPipeline = createSkyboxPipeline(framebuffer, quality);
-
-			auto pipelineView = graphicsSystem->get(skyboxPipeline);		
-			if (pipelineView->isReady())
+			if (!skyboxDS)
 			{
-				if (!skyboxDS)
-				{
-					auto uniforms = getSkyUniforms(graphicsSystem, transLUT, skyViewLUT);
-					skyboxDS = graphicsSystem->createDescriptorSet(skyboxPipeline, std::move(uniforms));
-					SET_RESOURCE_DEBUG_NAME(skyboxDS, "descriptorSet.atmosphere.skybox");
-				}
-
-				auto& cc = graphicsSystem->getCommonConstants();
-				auto cameraHeight = calcCameraHeight(cc.cameraPos.y, groundRadius);
-				auto viewProj = (f32x4x4)calcPerspProjInfRevZ(
-					radians(90.0f), 1.0f, defaultHmdDepth) * sideLookAts[updatePhase];
-				pipelineView->updateFramebuffer(framebuffer);
-
-				SkyPushConstants pc;
-				pc.invViewProj = (float4x4)inverse4x4(viewProj);
-				pc.cameraPos = float3(0.0f, cameraHeight, 0.0f);
-				pc.bottomRadius = groundRadius;
-				pc.sunDir = sunDir;
-				pc.topRadius = groundRadius + atmosphereHeight;
-				pc.sunColor = (float3)sunColor * sunColor.w;
-				pc.sunSize = calcSunSize(sunAngularSize * 2.0f);
-
-				SET_GPU_DEBUG_LABEL("Skybox");
-				{
-					RenderPass renderPass(framebuffer, float4::zero);
-					pipelineView->bind();
-					pipelineView->setViewportScissor();
-					pipelineView->bindDescriptorSet(skyboxDS);
-					pipelineView->pushConstants(&pc);
-					pipelineView->drawFullscreen();
-				}
-			}
-
-			pbrLightingSystem->dispatchIblSpecular(ID<Image>(lastSkybox), ID<Image>(lastSpecular), 
-				iblWeightBuffer, iblCountBuffer, iblDescriptorSets, updatePhase);
-		}
-		else
-		{
-			auto skyboxView = graphicsSystem->get(lastSkybox);
-			skyboxView->generateMips(Sampler::Filter::Linear);
-
-			if (!shGeneratePipeline)
-				shGeneratePipeline = createShGeneratePipeline();
-			if (!shReducePipeline)
-				shReducePipeline = createShReducePipeline();
-
-			auto shGenPipelineView = graphicsSystem->get(shGeneratePipeline);
-			auto shRedPipelineView = graphicsSystem->get(shReducePipeline);
-			if (pbrLightingView->sh && shGenPipelineView->isReady() && shRedPipelineView->isReady())
-			{
-				auto isFirstSH = false;
-				if (shCaches.empty())
-				{
-					createShCaches(graphicsSystem, lastSkyboxSize, shGenPipelineView, shCaches);
-					isFirstSH = true;
-				}
-
-				if (!lastSkyboxShView)
-					lastSkyboxShView = createSkyboxShView(graphicsSystem, ID<Image>(lastSkybox));
-				if (shStagings.empty())
-					createShStagings(graphicsSystem, shStagings);
-
-				if (!shGenerateDS)
-				{
-					auto uniforms = getShGenerateUniforms(graphicsSystem, lastSkyboxShView, shCaches);
-					shGenerateDS = graphicsSystem->createDescriptorSet(shGeneratePipeline, std::move(uniforms));
-					SET_RESOURCE_DEBUG_NAME(shGenerateDS, "descriptorSet.atmosphere.shGenerate");
-				}
-				if (!shReduceDS)
-				{
-					auto uniforms = getShReduceUniforms(graphicsSystem, shCaches);
-					shReduceDS = graphicsSystem->createDescriptorSet(shReducePipeline, std::move(uniforms));
-					SET_RESOURCE_DEBUG_NAME(shReduceDS, "descriptorSet.atmosphere.shReduce");
-				}
-
-				SET_GPU_DEBUG_LABEL("Generate SH");
-				auto shCacheView = graphicsSystem->get(shCaches[shInFlightIndex][0]);
-				shCacheView->fill(0, sizeof(uint32));
-
-				shGenPipelineView->bind();
-				shGenPipelineView->bindDescriptorSet(shGenerateDS, shInFlightIndex);
-				shGenPipelineView->dispatch(uint3(lastSkyboxSize, lastSkyboxSize, Image::cubemapFaceCount));
-
-				auto localSize = shGenPipelineView->getLocalSize().x;
-				GARDEN_ASSERT(shRedPipelineView->getLocalSize().x == localSize * localSize);
-				uint64 reducedSize = lastSkyboxSize / localSize;
-				reducedSize = reducedSize * reducedSize * Image::cubemapFaceCount;
-				localSize = localSize * localSize;
-
-				ShReducePC pc;
-				pc.offset = 0;
-
-				shRedPipelineView->bind();
-				// Note: do not move bindDescriptorSet, due to memory barriers.
-
-				for (float i = reducedSize; i > 1.001f; i = ceil(i / localSize))
-				{ 
-					shRedPipelineView->bindDescriptorSet(shReduceDS, shInFlightIndex);
-					shRedPipelineView->pushConstants(&pc);
-					shRedPipelineView->dispatch((uint32)i);
-					pc.offset += (uint32)i;
-				}
-
-				auto inFlightCount = graphicsSystem->getInFlightCount();
-				shInFlightIndex = (shInFlightIndex + 1) % inFlightCount;
-
-				if (!isFirstSH)
-				{
-					f32x4 shCacheBuffer[ibl::shCoeffCount];
-					shCacheView = graphicsSystem->get(shCaches[shInFlightIndex][0]);
-					auto mapOffset = shCacheView->getBinarySize() - shCacheBinarySize;
-					shCacheView->invalidate(shCacheBinarySize, mapOffset);
-					memcpy(shCacheBuffer, shCacheView->getMap() + mapOffset, shCacheBinarySize);
-					for (auto& sh : shCacheBuffer) sh *= giFactor;
-					PbrLightingSystem::processIblSH(shCacheBuffer);
-
-					f16x4 shBuffer[ibl::shCoeffCount];
-					for (uint8 i = 0; i < ibl::shCoeffCount; i++)
-						shBuffer[i] = (f16x4)min(shCacheBuffer[i], f32x4(65504.0f));
-
-					auto shStaging = shStagings[shInFlightIndex][0];
-					auto shStagingView = graphicsSystem->get(shStaging);
-					memcpy(shStagingView->getMap(), shBuffer, shBinarySize);
-					shStagingView->flush();
-					Buffer::copy(shStaging, ID<Buffer>(pbrLightingView->sh));
-
-					graphicsSystem->setSkyColor((float3)brdf::diffuseIrradiance(float3::top, shCacheBuffer));
-				}
+				auto uniforms = getSkyUniforms(graphicsSystem, transLUT, skyViewLUT);
+				skyboxDS = graphicsSystem->createDescriptorSet(skyboxPipeline, std::move(uniforms));
+				SET_RESOURCE_DEBUG_NAME(skyboxDS, "descriptorSet.atmosphere.skybox");
 			}
 
 			auto& cc = graphicsSystem->getCommonConstants();
-			sunDir = (float3)-cc.lightDir;
-		}
-		graphicsSystem->stopRecording();
+			auto cameraHeight = calcCameraHeight(cc.cameraPos.y, groundRadius);
+			auto viewProj = (f32x4x4)calcPerspProjInfRevZ(
+				radians(90.0f), 1.0f, defaultHmdDepth) * sideLookAts[updatePhase];
+			pipelineView->updateFramebuffer(framebuffer);
 
-		updatePhase = (updatePhase + 1) % (Image::cubemapFaceCount + 1);
+			SkyPushConstants pc;
+			pc.invViewProj = (float4x4)inverse4x4(viewProj);
+			pc.cameraPos = float3(0.0f, cameraHeight, 0.0f);
+			pc.bottomRadius = groundRadius;
+			pc.sunDir = sunDir;
+			pc.topRadius = groundRadius + atmosphereHeight;
+			pc.sunColor = (float3)sunColor * sunColor.w;
+			pc.sunSize = calcSunSize(sunAngularSize * 2.0f);
+
+			SET_GPU_DEBUG_LABEL("Skybox");
+			{
+				RenderPass renderPass(framebuffer, float4::zero);
+				pipelineView->bind();
+				pipelineView->setViewportScissor();
+				pipelineView->bindDescriptorSet(skyboxDS);
+				pipelineView->pushConstants(&pc);
+				pipelineView->drawFullscreen();
+			}
+		}
+
+		pbrLightingSystem->dispatchIblSpecular(ID<Image>(lastSkybox), ID<Image>(lastSpecular), 
+			iblWeightBuffer, iblCountBuffer, iblDescriptorSets, updatePhase);
 	}
+	else
+	{
+		auto skyboxView = graphicsSystem->get(lastSkybox);
+		skyboxView->generateMips(Sampler::Filter::Linear);
+
+		if (!shGeneratePipeline)
+			shGeneratePipeline = createShGeneratePipeline();
+		if (!shReducePipeline)
+			shReducePipeline = createShReducePipeline();
+
+		auto shGenPipelineView = graphicsSystem->get(shGeneratePipeline);
+		auto shRedPipelineView = graphicsSystem->get(shReducePipeline);
+		if (pbrLightingView->sh && shGenPipelineView->isReady() && shRedPipelineView->isReady())
+		{
+			auto skyboxSize = skyboxView->getSize().getX();
+
+			auto isFirstSH = false;
+			if (shCaches.empty())
+			{
+				createShCaches(graphicsSystem, skyboxSize, shGenPipelineView, shCaches);
+				isFirstSH = true;
+			}
+
+			if (!lastSkyboxShView)
+				lastSkyboxShView = createSkyboxShView(graphicsSystem, ID<Image>(lastSkybox));
+			if (shStagings.empty())
+				createShStagings(graphicsSystem, shStagings);
+
+			if (!shGenerateDS)
+			{
+				auto uniforms = getShGenerateUniforms(graphicsSystem, lastSkyboxShView, shCaches);
+				shGenerateDS = graphicsSystem->createDescriptorSet(shGeneratePipeline, std::move(uniforms));
+				SET_RESOURCE_DEBUG_NAME(shGenerateDS, "descriptorSet.atmosphere.shGenerate");
+			}
+			if (!shReduceDS)
+			{
+				auto uniforms = getShReduceUniforms(graphicsSystem, shCaches);
+				shReduceDS = graphicsSystem->createDescriptorSet(shReducePipeline, std::move(uniforms));
+				SET_RESOURCE_DEBUG_NAME(shReduceDS, "descriptorSet.atmosphere.shReduce");
+			}
+
+			SET_GPU_DEBUG_LABEL("Generate SH");
+			auto shCacheView = graphicsSystem->get(shCaches[shInFlightIndex][0]);
+			shCacheView->fill(0, sizeof(uint32));
+
+			shGenPipelineView->bind();
+			shGenPipelineView->bindDescriptorSet(shGenerateDS, shInFlightIndex);
+			shGenPipelineView->dispatch(uint3(skyboxSize, skyboxSize, Image::cubemapFaceCount));
+
+			auto localSize = shGenPipelineView->getLocalSize().x;
+			GARDEN_ASSERT(shRedPipelineView->getLocalSize().x == localSize * localSize);
+			auto reducedSize = skyboxSize / localSize;
+			reducedSize = reducedSize * reducedSize * Image::cubemapFaceCount;
+			localSize = localSize * localSize;
+
+			ShReducePC pc;
+			pc.offset = 0;
+
+			shRedPipelineView->bind();
+			// Note: do not move bindDescriptorSet, due to memory barriers.
+
+			for (float i = reducedSize; i > 1.001f; i = ceil(i / localSize))
+			{ 
+				shRedPipelineView->bindDescriptorSet(shReduceDS, shInFlightIndex);
+				shRedPipelineView->pushConstants(&pc);
+				shRedPipelineView->dispatch((uint32)i);
+				pc.offset += (uint32)i;
+			}
+
+			auto inFlightCount = graphicsSystem->getInFlightCount();
+			shInFlightIndex = (shInFlightIndex + 1) % inFlightCount;
+
+			if (!isFirstSH)
+			{
+				f32x4 shCacheBuffer[ibl::shCoeffCount];
+				shCacheView = graphicsSystem->get(shCaches[shInFlightIndex][0]);
+				auto mapOffset = shCacheView->getBinarySize() - shCacheBinarySize;
+				shCacheView->invalidate(shCacheBinarySize, mapOffset);
+				memcpy(shCacheBuffer, shCacheView->getMap() + mapOffset, shCacheBinarySize);
+				for (auto& sh : shCacheBuffer) sh *= giFactor;
+				PbrLightingSystem::processIblSH(shCacheBuffer);
+
+				f16x4 shBuffer[ibl::shCoeffCount];
+				for (uint8 i = 0; i < ibl::shCoeffCount; i++)
+					shBuffer[i] = (f16x4)min(shCacheBuffer[i], f32x4(65504.0f));
+
+				auto shStaging = shStagings[shInFlightIndex][0];
+				auto shStagingView = graphicsSystem->get(shStaging);
+				memcpy(shStagingView->getMap(), shBuffer, shBinarySize);
+				shStagingView->flush();
+				Buffer::copy(shStaging, ID<Buffer>(pbrLightingView->sh));
+
+				graphicsSystem->setSkyColor((float3)brdf::diffuseIrradiance(float3::top, shCacheBuffer));
+			}
+		}
+
+		auto& cc = graphicsSystem->getCommonConstants();
+		sunDir = (float3)-cc.lightDir;
+	}
+	graphicsSystem->stopRecording();
+
+	updatePhase = (updatePhase + 1) % (Image::cubemapFaceCount + 1);
 }
 
 //**********************************************************************************************************************

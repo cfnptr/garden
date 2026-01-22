@@ -199,6 +199,7 @@ void GraphicsSystem::preInit()
 		settingsSystem->getBool("render.useVsync", useVsync);
 		settingsSystem->getBool("render.useLowLatency", useLowLatency);
 		settingsSystem->getInt("render.maxFrameRate", maxFrameRate);
+		settingsSystem->getType("render.quality", quality, graphicsQualityNames, (uint32)GraphicsQuality::Count);
 	}
 }
 void GraphicsSystem::preDeinit()
@@ -451,6 +452,7 @@ void GraphicsSystem::update()
 
 	if (lastQuality != quality)
 	{
+		GARDEN_LOG_INFO("Changed quality level: " + string(toString(quality)));
 		Manager::Instance::get()->runEvent("QualityChange");
 		lastQuality = quality;
 	}
