@@ -126,7 +126,7 @@ void MeshSelectorEditorSystem::render()
 
 				auto model = transformView ? transformView->calcModel(cameraPosition) : f32x4x4::identity;
 				auto modelInverse = inverse4x4(model);
-				auto ray = Ray(modelInverse * f32x4(globalOrigin, 1.0f), multiply3x3(modelInverse, globalDirection));
+				auto ray = Ray(modelInverse * f32x4(globalOrigin, 1.0f), dot3x3(modelInverse, globalDirection));
 				auto points = raycast2(meshRenderView->aabb, ray);
 				if (points.x < 0.0f || !isIntersected(points))
 					continue;

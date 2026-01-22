@@ -381,12 +381,22 @@ void EditorRenderSystem::showOptionsWindow()
 			if (ImGui::DragFloat("UI Scale", &uiTransformSystem->uiScale, 0.01f, 0.001f, FLT_MAX))
 				uiTransformSystem->uiScale = max(uiTransformSystem->uiScale, 0.001f);
 		}
-
-		if (ImGui::DragFloat("Unit Scale", &unitScale, 0.01f, 0.001f, FLT_MAX, "%.4f"))
+		if (ImGui::DragFloat("Editor Unit Scale", &unitScale, 0.01f, 0.001f, FLT_MAX, "%.4f"))
 		{
 			unitScale = max(unitScale, 0.001f);
 			if (settingsSystem)
 				settingsSystem->setFloat("editor.unitScale", unitScale);
+		}
+
+		if (ImGui::Combo("Quality", &graphicsSystem->quality, graphicsQualityNames, (int)GraphicsQuality::Count))
+		{
+			if (settingsSystem)
+				settingsSystem->setString("render.quality", toString((GraphicsQuality)graphicsSystem->quality));
+		}
+		if (ImGui::BeginItemTooltip())
+		{
+			ImGui::Text("Global render systems quality.");
+			ImGui::EndTooltip();
 		}
 
 		auto localeSystem = LocaleSystem::Instance::tryGet();
@@ -594,6 +604,7 @@ static bool renderInspectorWindowPopup(const EditorRenderSystem::EntityInspector
 			}
 			ImGui::EndMenu();
 		}
+	
 		auto transformView = manager->tryGet<TransformComponent>(selectedEntity);
 		if (ImGui::MenuItem("Select Parent", nullptr, false, transformView && transformView->getParent()))
 		{
@@ -608,6 +619,34 @@ static bool renderInspectorWindowPopup(const EditorRenderSystem::EntityInspector
 			ImGui::EndPopup();
 			return false;
 		}
+
+		try
+		{
+			auto manager = Manager::Instance::get();
+			auto& componentNames = manager->getComponentNames();
+			JsonDeserializer jsonDeserializer = JsonDeserializer(string_view(ImGui::GetClipboardText()));
+			string jsonComponentName; jsonDeserializer.read(".type", jsonComponentName);
+			auto componentName = componentNames.find(jsonComponentName);
+
+			if (componentName != componentNames.end())
+			{
+				auto itemName = "Paste " + jsonComponentName + " Component";
+				auto componentType = componentName->second->getComponentType();
+				auto serializableSystem = dynamic_cast<ISerializable*>(componentName->second);
+
+				if (ImGui::MenuItem(itemName.c_str(), nullptr, false, 
+					serializableSystem && !manager->has(selectedEntity, componentType)))
+				{
+					serializableSystem->preDeserialize(jsonDeserializer);
+					auto componentView = manager->add(selectedEntity, componentType);
+					serializableSystem->deserialize(jsonDeserializer, componentView);
+					serializableSystem->postDeserialize(jsonDeserializer);
+				}
+			}
+			
+		}
+		catch (exception&) { }
+	
 		ImGui::EndPopup();
 	}
 
@@ -642,29 +681,32 @@ static bool renderInspectorComponentPopup(ID<Entity>& selectedEntity,
 		{
 			auto manager = Manager::Instance::get();
 			JsonSerializer jsonSerializer;
+			jsonSerializer.write(".type", componentName);
 			serializableSystem->preSerialize(jsonSerializer);
 			auto componentView = manager->get(selectedEntity, componentType);
 			serializableSystem->serialize(jsonSerializer, componentView);
 			serializableSystem->postSerialize(jsonSerializer);
 			ImGui::SetClipboardText(jsonSerializer.toString().c_str());
 		}
-		if (ImGui::MenuItem("Paste Component Data", nullptr, false, serializableSystem))
+
+		try
 		{
-			auto manager = Manager::Instance::get();
-			manager->reset(selectedEntity, componentType, true);
-			try
+			JsonDeserializer jsonDeserializer = JsonDeserializer(string_view(ImGui::GetClipboardText()));
+			string jsonComponentName; jsonDeserializer.read(".type", jsonComponentName);
+
+			auto itemName = "Paste " + jsonComponentName + " Data";
+			if (ImGui::MenuItem(itemName.c_str(), nullptr, false, 
+				serializableSystem && componentName == jsonComponentName))
 			{
-				JsonDeserializer jsonDeserializer = JsonDeserializer(string_view(ImGui::GetClipboardText()));
+				auto manager = Manager::Instance::get();
+				manager->reset(selectedEntity, componentType, true);
 				serializableSystem->preDeserialize(jsonDeserializer);
 				auto componentView = manager->get(selectedEntity, componentType);
 				serializableSystem->deserialize(jsonDeserializer, componentView);
 				serializableSystem->postDeserialize(jsonDeserializer);
 			}
-			catch (exception& e)
-			{
-				GARDEN_LOG_ERROR("Failed to deserialize component data on paste. (error: " + string(e.what()) + ")");
-			}
 		}
+		catch (exception&) { }
 
 		ImGui::EndPopup();
 	}

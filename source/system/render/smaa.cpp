@@ -102,7 +102,7 @@ static ID<GraphicsPipeline> createEdgesPipeline(ID<Framebuffer> edgesFramebuffer
 		case GraphicsQuality::Low: threshold = 0.1f; break;
 		case GraphicsQuality::Medium: threshold = 0.1; break;
 		case GraphicsQuality::High: threshold = 0.05f; break;
-		case GraphicsQuality::Ultra: threshold = 0.05f; break;
+		case GraphicsQuality::Ultra: threshold = 0.025f; break;
 		default: abort();
 	}
 	Pipeline::SpecConstValues specConstValues = { { "THRESHOLD", Pipeline::SpecConstValue(threshold) } };

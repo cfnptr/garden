@@ -60,13 +60,13 @@ public:
 	 */
 	enum class Type : uint8
 	{
-		Blas,  /**< Bottom level acceleration structure type. (Ray Tracing) */
-		Tlas,  /**< Top level acceleration structure type. (Ray Tracing) */
-		Count, /**< Acceleration structure type count. (Ray Tracing) */
+		Blas,  /**< Bottom level acceleration structure type. */
+		Tlas,  /**< Top level acceleration structure type. */
+		Count, /**< Acceleration structure type count. */
 	};
 
 	/**
-	 * @brief Acceleration structure compact data.
+	 * @brief Acceleration structure compaction data.
 	 */
 	struct CompactData final
 	{

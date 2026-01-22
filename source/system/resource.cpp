@@ -633,7 +633,7 @@ static void collectGslHeaderUsers(const fs::path& appResourcesPath,
 
 		while (!gslHeaders.empty() && checkCount < 1000)
 		{
-			string_view resourcePath = gslHeaders.back(); gslHeaders.pop_back();
+			auto resourcePath = gslHeaders.back(); gslHeaders.pop_back();
 			collectGslHeaderUsers(GARDEN_RESOURCES_PATH, appCachePath, resourcePath, gslHeaders, 
 				checkedPaths, graphicsPipelines, computePipelines, rayTracingPipelines);
 			collectGslHeaderUsers(appResourcesPath, appCachePath, resourcePath, gslHeaders, 
