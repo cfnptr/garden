@@ -103,7 +103,8 @@ GraphicsSystem::GraphicsSystem(uint2 windowSize, bool isFullscreen, bool isDecor
 	SET_RESOURCE_DEBUG_NAME(swapchainFramebuffer, "framebuffer.swapchain");
 
 	setShadowColor(float3::one);
-	setSkyColor(float3::one);
+	setSunLight(float3::one);
+	setAmbientLight(float3(0.5f));
 	setEmissiveCoeff(100.0f);
 
 	commonConstantsBuffers.resize(inFlightCount);
@@ -248,82 +249,83 @@ static void updateCurrentFramebuffer(GraphicsAPI* graphicsAPI,
 }
 
 //**********************************************************************************************************************
-static void prepareCommonConstants(ID<Entity> camera, ID<Entity> directionalLight, uint2 scaledFramebufferSize, 
-	CommonConstants& cc, const vector<float2>& jitterOffsets, uint64 frameIndex, bool useJittering)
+void GraphicsSystem::prepareCommonConstants()
 {
 	auto manager = Manager::Instance::get();
-	auto inputSystem = InputSystem::Instance::get();
-	cc.currentTime = inputSystem->getCurrentTime();
-	cc.deltaTime = inputSystem->getDeltaTime();
+	auto scaledFrameSize = getScaledFrameSize();
 
 	auto transformView = manager->tryGet<TransformComponent>(camera);
 	if (transformView)
 	{
-		cc.view = calcRelativeView(*transformView);
-		setTranslation(cc.view, f32x4::zero);
-		cc.cameraPos = (float3)transformView->getPosition();
+		commonConstants.view = calcRelativeView(*transformView);
+		setTranslation(commonConstants.view, f32x4::zero);
+		commonConstants.cameraPos = (float3)transformView->getPosition();
 	}
 	else
 	{
-		cc.view = f32x4x4::identity;
-		cc.cameraPos = float3::zero;
+		commonConstants.view = f32x4x4::identity;
+		commonConstants.cameraPos = float3::zero;
 	}
 
 	auto cameraView = manager->tryGet<CameraComponent>(camera);
 	if (cameraView)
 	{
-		cc.projection = cameraView->calcProjection();
-		cc.nearPlane = cameraView->getNearPlane();
+		commonConstants.projection = cameraView->calcProjection();
+		commonConstants.nearPlane = cameraView->getNearPlane();
 
 		if (cameraView->type == ProjectionType::Perspective)
 		{
-			cc.anglePerPixel = calcAnglePerPixel(cameraView->p.perspective.fieldOfView, scaledFramebufferSize.y);
-			cc.ggxLodOffset = brdf::calcGgxLodOffset(scaledFramebufferSize, cameraView->p.perspective.fieldOfView);
+			commonConstants.anglePerPixel = calcAnglePerPixel(
+				cameraView->p.perspective.fieldOfView, scaledFrameSize.y);
+			commonConstants.ggxLodOffset = brdf::calcGgxLodOffset(
+				scaledFrameSize, cameraView->p.perspective.fieldOfView);
 		}
-		else cc.anglePerPixel = cc.ggxLodOffset = 0.0f;
+		else commonConstants.anglePerPixel = commonConstants.ggxLodOffset = 0.0f;
 	}
 	else
 	{
-		cc.projection = f32x4x4::identity;
-		cc.nearPlane = defaultHmdDepth;
-		cc.anglePerPixel = 0.0f;
+		commonConstants.projection = f32x4x4::identity;
+		commonConstants.nearPlane = defaultHmdDepth;
+		commonConstants.anglePerPixel = 0.0f;
 	}
 
-	auto hasPrevVP = cc.prevViewProj.c0.getX() != 0.0f;
+	auto hasPrevVP = commonConstants.prevViewProj.c0.getX() != 0.0f;
 	if (useJittering)
 	{
-		auto jitterOffset = jitterOffsets[frameIndex % jitterOffsets.size()] / scaledFramebufferSize;
-		cc.projection.c2.setX(cc.projection.c2.getX() + jitterOffset.x);
-		cc.projection.c2.setY(cc.projection.c2.getY() + jitterOffset.y);
-		cc.prevJitterOffset = hasPrevVP ? cc.jitterOffset : jitterOffset;
-		cc.jitterOffset = jitterOffset;
+		auto jitterOffset = jitterOffsets[frameIndex % jitterOffsets.size()] / scaledFrameSize;
+		commonConstants.projection.c2.setX(commonConstants.projection.c2.getX() + jitterOffset.x);
+		commonConstants.projection.c2.setY(commonConstants.projection.c2.getY() + jitterOffset.y);
+		commonConstants.prevJitterOffset = hasPrevVP ? commonConstants.jitterOffset : jitterOffset;
+		commonConstants.jitterOffset = jitterOffset;
 	}
-	else cc.jitterOffset = cc.prevJitterOffset = float2::zero;
+	else commonConstants.jitterOffset = commonConstants.prevJitterOffset = float2::zero;
 
-	auto viewProj = cc.projection * cc.view;
-	cc.prevViewProj = hasPrevVP ? cc.viewProj : viewProj;
+	auto viewProj = commonConstants.projection * commonConstants.view;
+	commonConstants.prevViewProj = hasPrevVP ? commonConstants.viewProj : viewProj;
 
-	cc.viewProj = viewProj;
-	cc.inverseView = inverse4x4(cc.view);
-	cc.inverseProj = inverse4x4(cc.projection);
-	cc.invViewProj = inverse4x4(cc.viewProj);
-	cc.viewDir = (float3)normalize3(cc.inverseView * f32x4(f32x4::front, 1.0f));
+	commonConstants.viewProj = viewProj;
+	commonConstants.inverseView = inverse4x4(commonConstants.view);
+	commonConstants.inverseProj = inverse4x4(commonConstants.projection);
+	commonConstants.invViewProj = inverse4x4(commonConstants.viewProj);
+	commonConstants.viewDir = (float3)normalize3(commonConstants.inverseView * f32x4(f32x4::front, 1.0f));
 
 	if (directionalLight)
 	{
 		auto lightTransformView = manager->tryGet<TransformComponent>(directionalLight);
 		if (lightTransformView)
-			cc.lightDir = (float3)normalize3(lightTransformView->getRotation() * f32x4::front);
-		else cc.lightDir = float3::bottom;
+			commonConstants.lightDir = (float3)normalize3(lightTransformView->getRotation() * f32x4::front);
+		else commonConstants.lightDir = float3::bottom;
 	}
-	else
-	{
-		cc.lightDir = float3::bottom;
-	}
+	else commonConstants.lightDir = float3::bottom;
 
-	cc.frameSize = scaledFramebufferSize;
-	cc.invFrameSize = 1.0f / (float2)scaledFramebufferSize;
-	cc.invFrameSizeSq = cc.invFrameSize * 2.0f;
+	auto inputSystem = InputSystem::Instance::get();
+	commonConstants.currentTime = inputSystem->getCurrentTime();
+	commonConstants.deltaTime = inputSystem->getDeltaTime();
+	commonConstants.frameSize = scaledFrameSize;
+	commonConstants.invFrameSize = 1.0f / (float2)scaledFrameSize;
+	commonConstants.invFrameSizeSq = commonConstants.invFrameSize * 2.0f;
+	commonConstants.upDir = normalize(upDirection);
+	commonConstants.windDir = normalize(windDirection);
 }
 
 static void limitFrameRate(double beginSleepClock, uint16 maxFrameRate)
@@ -444,10 +446,9 @@ void GraphicsSystem::update()
 
 	if (camera && isFramebufferSizeValid)
 	{
-		prepareCommonConstants(camera, directionalLight, getScaledFrameSize(), 
-			currentCommonConstants, jitterOffsets, frameIndex, useJittering);
+		prepareCommonConstants();
 		auto cameraBuffer = graphicsAPI->bufferPool.get(commonConstantsBuffers[swapchain->getInFlightIndex()][0]);
-		cameraBuffer->writeData(&currentCommonConstants);
+		cameraBuffer->writeData(&commonConstants);
 	}
 
 	if (lastQuality != quality)

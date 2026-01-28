@@ -38,7 +38,7 @@ namespace garden
 class HizRenderSystem final : public System, public Singleton<HizRenderSystem>
 {
 public:
-	static constexpr Image::Format bufferFormat = Image::Format::SfloatR16;
+	static constexpr Image::Format bufferFormat = Image::Format::SfloatR16G16;
 private:
 	ID<GraphicsPipeline> pipeline = {};
 	ID<Image> hizBuffer = {};

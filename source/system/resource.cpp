@@ -1497,7 +1497,6 @@ static void loadImageArrayData(ResourceSystem* resourceSystem, const vector<fs::
 static void copyLoadedImageData(const vector<vector<uint8>>& pixelArrays, uint8* stagingMap,
 	uint2 realSize, uint2 imageSize, psize formatBinarySize, ImageLoadFlags flags) noexcept
 {
-	psize mapOffset = 0;
 	if (hasAnyFlag(flags, ImageLoadFlags::LoadArray | ImageLoadFlags::Load3D) && realSize.x > realSize.y)
 	{
 		auto pixels = pixelArrays[0].data();
@@ -1510,8 +1509,8 @@ static void copyLoadedImageData(const vector<vector<uint8>>& pixelArrays, uint8*
 			for (uint32 y = 0; y < imageSize.y; y++)
 			{
 				auto pixelsOffset = formatBinarySize * (y * realSize.x + offsetX);
-				memcpy(stagingMap + mapOffset, pixels + pixelsOffset, lineSize);
-				mapOffset += lineSize;
+				memcpy(stagingMap, pixels + pixelsOffset, lineSize);
+				stagingMap += lineSize;
 			}
 			offsetX += imageSize.x;
 		}
@@ -1520,8 +1519,8 @@ static void copyLoadedImageData(const vector<vector<uint8>>& pixelArrays, uint8*
 	{
 		for (auto& pixels : pixelArrays)
 		{
-			memcpy(stagingMap + mapOffset, pixels.data(), pixels.size());
-			mapOffset += pixels.size();
+			memcpy(stagingMap, pixels.data(), pixels.size());
+			stagingMap += pixels.size();
 		}
 	}
 }
@@ -1847,9 +1846,51 @@ void ResourceSystem::storeImage(const fs::path& path, const void* data, uint2 si
 			throw GardenError("Failed to write TGA image. (path: " + path.generic_string() + ")");
 	}
 	else abort();
+
+	GARDEN_LOG_DEBUG("Stored image. (path: " + path.generic_string() + ")");
 }
 
 //**********************************************************************************************************************
+void ResourceSystem::combineImages(const vector<fs::path>& inputPaths, const fs::path& outputPath, 
+	ImageFileType fileType, Image::Format imageFormat, int32 threadIndex)
+{
+	GARDEN_ASSERT(!inputPaths.empty());
+	GARDEN_ASSERT(!inputPaths[0].empty());
+	GARDEN_ASSERT(!outputPath.empty());
+
+	vector<uint8> inBuffer; uint2 inSize;
+	loadImageData(inputPaths[0], imageFormat, inBuffer, inSize, threadIndex);
+
+	auto formatBinarySize = toBinarySize(imageFormat);
+	auto inBinSizeX = formatBinarySize * inSize.x, inBinSizeY = formatBinarySize * inSize.y;
+	auto outBinSizeY = formatBinarySize * inSize.y * inputPaths.size();
+	vector<uint8> outBuffer(inSize.x * outBinSizeY);
+
+	auto inData = inBuffer.data(), outData = outBuffer.data();
+	for (uint32 y = 0; y < inSize.y; y++)
+	{
+		memcpy(outData, inData, inBinSizeX);
+		inData += inBinSizeY; outData += outBinSizeY;
+	}
+
+	for (uint32 i = 1; i < (uint32)inputPaths.size(); i++)
+	{
+		uint2 otherSize;
+		loadImageData(inputPaths[i], imageFormat, inBuffer, otherSize, threadIndex);
+
+		if (inSize != otherSize)
+			throw GardenError("Failed to combine images, different sizes.");
+
+		inData = inBuffer.data(); outData = outBuffer.data() + inBinSizeX * i;
+		for (uint32 y = 0; y < inSize.y; y++)
+		{
+			memcpy(outData, inData, inBinSizeX);
+			inData += inBinSizeY; outData += outBinSizeY;
+		}
+	}
+
+	storeImage(outputPath, outBuffer.data(), uint2(inSize.x * inputPaths.size(), inSize.y), fileType, imageFormat);
+}
 void ResourceSystem::renormalizeImage(const fs::path& path, ImageFileType fileType, int32 threadIndex)
 {
 	GARDEN_ASSERT(!path.empty());

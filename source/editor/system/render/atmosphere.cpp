@@ -59,7 +59,7 @@ void AtmosphereEditorSystem::preUiRender()
 	if (!showWindow)
 		return;
 
-	if (ImGui::Begin("Atmosphere (Sky)", &showWindow, ImGuiWindowFlags_AlwaysAutoResize))
+	if (ImGui::Begin("Sky Atmosphere", &showWindow, ImGuiWindowFlags_AlwaysAutoResize))
 	{
 		auto atmosphereSystem = AtmosphereRenderSystem::Instance::get();
 		ImGui::Checkbox("Enabled", &atmosphereSystem->isEnabled);
@@ -76,20 +76,19 @@ void AtmosphereEditorSystem::preUiRender()
 
 		if (ImGui::CollapsingHeader("Planet"))
 		{
-			ImGui::DragFloat("Atmosphere Height", 
-				(float*)&atmosphereSystem->atmosphereHeight, 0.1f, 0.001f, FLT_MAX, "%.3f km");
-			ImGui::DragFloat("Ground Radius", 
-				(float*)&atmosphereSystem->groundRadius, 10.0f, 0.001f, FLT_MAX, "%.3f km");
+			ImGui::DragFloat("Atmosphere Height", &atmosphereSystem->atmosphereHeight, 
+				0.1f, 0.001f, FLT_MAX, "%.3f km");
+			ImGui::DragFloat("Ground Radius", &atmosphereSystem->groundRadius, 10.0f, 0.001f, FLT_MAX, "%.3f km");
 			ImGui::SliderFloat3("Ground Albedo", (float*)&atmosphereSystem->groundAlbedo, 0.0f, 1.0f);
 			ImGui::Spacing();
 		}
 		if (ImGui::CollapsingHeader("Sun"))
 		{
 			ImGui::PushID("sun");
-			ImGui::DragFloat("Angular Size", (float*)&atmosphereSystem->sunAngularSize, 0.01f, 0.0f, 360.0f, "%.3f°");
+			ImGui::DragFloat("Angular Size", &atmosphereSystem->sunAngularSize, 0.01f, 0.0f, 360.0f, "%.3f°");
 			ImGui::ColorEdit3("Color", (float*)&atmosphereSystem->sunColor);
-			ImGui::DragFloat("Luminance", (float*)&atmosphereSystem->sunColor.w, 100.0f, 0.0f, FLT_MAX);
-			ImGui::DragFloat("GI Factor", (float*)&atmosphereSystem->giFactor, 0.01f, 0.0f, FLT_MAX);
+			ImGui::DragFloat("Luminance", &atmosphereSystem->sunColor.w, 100.0f, 0.0f, FLT_MAX);
+			ImGui::DragFloat("GI Factor", &atmosphereSystem->giFactor, 0.01f, 0.0f, FLT_MAX);
 			ImGui::PopID(); ImGui::Spacing();
 		}
 		if (ImGui::CollapsingHeader("Rayleigh"))
@@ -99,9 +98,9 @@ void AtmosphereEditorSystem::preUiRender()
 			auto scattering = atmosphereSystem->rayleighScattering / (density == 0.0f ? 1.0f : density);
 			ImGui::ColorEdit3("Scattering", (float*)&scattering, 
 				ImGuiColorEditFlags_Float | ImGuiColorEditFlags_PickerHueWheel);
-			ImGui::DragFloat("Density", (float*)&density, 0.001f, 0.0f, FLT_MAX, "%.4f");
-			ImGui::DragFloat("Layer Height", 
-				(float*)&atmosphereSystem->rayleightScaleHeight, 0.01f, 0.001f, FLT_MAX, "%.3f km");
+			ImGui::DragFloat("Density", &density, 0.001f, 0.0f, FLT_MAX, "%.4f");
+			ImGui::DragFloat("Layer Height", &atmosphereSystem->rayleightScaleHeight, 
+				0.01f, 0.001f, FLT_MAX, "%.3f km");
 			atmosphereSystem->rayleighScattering = scattering * max(density, 0.000001f);
 			ImGui::PopID(); ImGui::Spacing();
 		}
@@ -114,13 +113,12 @@ void AtmosphereEditorSystem::preUiRender()
 			auto absorption = atmosphereSystem->mieAbsorption / (factor == 0.0f ? 1.0f : factor);
 			ImGui::ColorEdit3("Scattering", (float*)&scattering, 
 				ImGuiColorEditFlags_Float | ImGuiColorEditFlags_PickerHueWheel);
-			ImGui::DragFloat("Density", (float*)&density, 0.001f, 0.0f, FLT_MAX, "%.4f");
+			ImGui::DragFloat("Density", &density, 0.001f, 0.0f, FLT_MAX, "%.4f");
 			ImGui::ColorEdit3("Absorption", (float*)&absorption, 
 				ImGuiColorEditFlags_Float | ImGuiColorEditFlags_PickerHueWheel);
-			ImGui::DragFloat("Factor", (float*)&factor, 0.001f, 0.0f, FLT_MAX, "%.4f");
-			ImGui::DragFloat("Layer Height", 
-				(float*)&atmosphereSystem->mieScaleHeight, 0.01f, 0.001f, FLT_MAX, "%.3f km");
-			ImGui::SliderFloat("Phase G", (float*)&atmosphereSystem->miePhaseG, 0.0f, 1.0f);
+			ImGui::DragFloat("Factor", &factor, 0.001f, 0.0f, FLT_MAX, "%.4f");
+			ImGui::DragFloat("Layer Height", &atmosphereSystem->mieScaleHeight, 0.01f, 0.001f, FLT_MAX, "%.3f km");
+			ImGui::SliderFloat("Phase G", &atmosphereSystem->miePhaseG, 0.0f, 1.0f);
 			atmosphereSystem->mieScattering = scattering * max(density, 0.000001f);
 			atmosphereSystem->mieAbsorption = absorption * max(factor, 0.000001f);
 			ImGui::PopID(); ImGui::Spacing();
@@ -130,18 +128,17 @@ void AtmosphereEditorSystem::preUiRender()
 			ImGui::PushID("ozone");
 			auto factor = length(atmosphereSystem->ozoneAbsorption);
 			auto absorption = atmosphereSystem->ozoneAbsorption / (factor == 0.0f ? 1.0f : factor);
-			ImGui::ColorEdit3("Absorption", 
-				(float*)&absorption, ImGuiColorEditFlags_Float | ImGuiColorEditFlags_PickerHueWheel);
-			ImGui::DragFloat("Factor", (float*)&factor, 0.001f, 0.0f, FLT_MAX, "%.4f");
-			ImGui::DragFloat("Layer Height", 
-				(float*)&atmosphereSystem->ozoneLayerWidth, 0.01f, 0.0f, FLT_MAX, "%.3f km");
-			ImGui::DragFloat("Layer Slope", (float*)&atmosphereSystem->ozoneLayerSlope, 0.01f, 0.0f, FLT_MAX);
-			ImGui::DragFloat("Layer Tip", (float*)&atmosphereSystem->ozoneLayerTip, 0.01f, 0.0f, FLT_MAX);
+			ImGui::ColorEdit3("Absorption", (float*)&absorption, 
+				ImGuiColorEditFlags_Float | ImGuiColorEditFlags_PickerHueWheel);
+			ImGui::DragFloat("Factor", &factor, 0.001f, 0.0f, FLT_MAX, "%.4f");
+			ImGui::DragFloat("Layer Height", &atmosphereSystem->ozoneLayerWidth, 0.01f, 0.0f, FLT_MAX, "%.3f km");
+			ImGui::DragFloat("Layer Slope", &atmosphereSystem->ozoneLayerSlope, 0.01f, 0.0f, FLT_MAX);
+			ImGui::DragFloat("Layer Tip", &atmosphereSystem->ozoneLayerTip, 0.01f, 0.0f, FLT_MAX);
 			atmosphereSystem->ozoneAbsorption = absorption * max(factor, 0.000001f);
 			ImGui::PopID(); ImGui::Spacing();
 		}
 
-		ImGui::DragFloat("Multi Scattering", (float*)&atmosphereSystem->multiScatFactor, 0.01f, 0.0f, FLT_MAX);
+		ImGui::DragFloat("Multi Scattering", &atmosphereSystem->multiScatFactor, 0.01f, 0.0f, FLT_MAX);
 
 		if (ImGui::Button("Set Mars"))
 		{
@@ -163,7 +160,7 @@ void AtmosphereEditorSystem::preUiRender()
 
 void AtmosphereEditorSystem::editorBarToolPP()
 {
-	if (ImGui::MenuItem("Atmosphere (Sky)"))
+	if (ImGui::MenuItem("Sky Atmosphere"))
 		showWindow = true;
 }
 #endif

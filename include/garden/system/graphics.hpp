@@ -79,7 +79,7 @@ struct SwapchainChanges final
 class GraphicsSystem final : public System, public Singleton<GraphicsSystem>
 {
 	DescriptorSet::Buffers commonConstantsBuffers;
-	CommonConstants currentCommonConstants = {};
+	CommonConstants commonConstants = {};
 	vector<float2> jitterOffsets;
 	vector<ID<Buffer>> barrierBuffers;
 	uint64 frameIndex = 0, tickIndex = 0;
@@ -133,16 +133,19 @@ class GraphicsSystem final : public System, public Singleton<GraphicsSystem>
 	void update();
 	void present();
 
+	void prepareCommonConstants();
 	friend class ecsm::Manager;
 public:
-	ID<Entity> camera = {};           /**< Current main render camera. */
-	ID<Entity> directionalLight = {}; /**< Current main directional light. (Sun) */
-	uint16 maxFrameRate = 60;         /**< Maximum frames per second count. (FPS) */
-	bool useVsync = false;            /**< Vertical synchronization state. (V-Sync) */
-	bool useTripleBuffering = false;  /**< Swapchain triple buffering state. */
-	bool useUpscaling = false;        /**< Use image upscaling. (DLSS, FSR, XeSS, etc.) */
-	bool useJittering = false;        /**< Use sub pixel jittering. (Temporal anti aliasing) */
-	bool useLowLatency = false;       /**< Use low input latency feature. (Reflex, Anti-lag) */
+	float3 upDirection = float3::top;     /**< World up direction. (Inversed gravityDir) */
+	float3 windDirection = float3::right; /**< Direction of the wind. (Vector) */
+	ID<Entity> camera = {};               /**< Current main render camera. */
+	ID<Entity> directionalLight = {};     /**< Current main directional light. (Sun) */
+	uint16 maxFrameRate = 60;             /**< Maximum frames per second count. (FPS) */
+	bool useVsync = false;                /**< Vertical synchronization state. (V-Sync) */
+	bool useTripleBuffering = false;      /**< Swapchain triple buffering state. */
+	bool useUpscaling = false;            /**< Use image upscaling. (DLSS, FSR, XeSS, etc.) */
+	bool useJittering = false;            /**< Use sub pixel jittering. (Temporal anti aliasing) */
+	bool useLowLatency = false;           /**< Use low input latency feature. (Reflex, Anti-lag) */
 	GraphicsQuality quality = GraphicsQuality::High;
 
 	/*******************************************************************************************************************
@@ -177,10 +180,7 @@ public:
 	 * @details See the @ref getCommonConstants().
 	 * @param giBufferPos target GI buffer position
 	 */
-	void setGiBufferPos(float3 giBufferPos) noexcept
-	{
-		currentCommonConstants.giBufferPos = giBufferPos;
-	}
+	void setGiBufferPos(float3 giBufferPos) noexcept { commonConstants.giBufferPos = giBufferPos; }
 	/**
 	 * @brief Sets shadow color and intensity
 	 * @details See the @ref getCommonConstants().
@@ -190,29 +190,32 @@ public:
 	 */
 	void setShadowColor(float3 shadowColor, float intensity = 1.0f) noexcept
 	{
-		currentCommonConstants.shadowColor = (f32x4)float4(shadowColor, intensity);
+		commonConstants.shadowColor = (f32x4)float4(shadowColor, intensity);
 	}
 	/**
-	 * @brief Sets sky color and intensity.
+	 * @brief Sets sun light color. (Energy)
 	 * @details See the @ref getCommonConstants().
-	 * @param skyColor target sky color value
+	 * @param sunLight target sun light color value
 	 */
-	void setSkyColor(float3 skyColor) noexcept
-	{
-		currentCommonConstants.skyColor = skyColor;
-	}
+	void setSunLight(float3 sunLight) noexcept { commonConstants.sunLight = sunLight; }
+	/**
+	 * @brief Sets ambient light color. (Energy)
+	 * @details See the @ref getCommonConstants().
+	 * @param ambientLight target ambient light color value
+	 */
+	void setAmbientLight(float3 ambientLight) noexcept { commonConstants.ambientLight = ambientLight; }
 	/**
 	 * @brief Sets emissive coefficient. (Produces maximum brightness)
 	 * @details See the @ref getCommonConstants().
 	 * @param emissiveCoeff target emissive coefficient
 	 */
-	void setEmissiveCoeff(float emissiveCoeff) noexcept { currentCommonConstants.emissiveCoeff = emissiveCoeff; }
+	void setEmissiveCoeff(float emissiveCoeff) noexcept { commonConstants.emissiveCoeff = emissiveCoeff; }
 	/**
 	 * @brief Sets mip-map LOD bias. (Useful for upscaling)
 	 * @details See the @ref getCommonConstants().
 	 * @param mipLodBias target mip LOD bias
 	 */
-	void setMipLodBias(float mipLodBias) noexcept { currentCommonConstants.mipLodBias = mipLodBias; }
+	void setMipLodBias(float mipLodBias) noexcept { commonConstants.mipLodBias = mipLodBias; }
 
 	/*******************************************************************************************************************
 	 * @brief Returns swapchain framebuffer size.
@@ -348,7 +351,7 @@ public:
 	 * @brief Returns current render common constants.
 	 * @details Useful for transformation matrices.
 	 */
-	const CommonConstants& getCommonConstants() const noexcept { return currentCommonConstants; }
+	const CommonConstants& getCommonConstants() const noexcept { return commonConstants; }
 
 	/**
 	 * @brief Manually signal swapchain changes.

@@ -30,7 +30,6 @@ static DescriptorSet::Uniforms getBufferUniforms(GraphicsSystem* graphicsSystem,
 	auto ldrFramebufferView = graphicsSystem->get(deferredSystem->getLdrFramebuffer());
 	auto oitFramebufferView = graphicsSystem->get(deferredSystem->getOitFramebuffer());
 	auto hdrBufferView = hdrFramebufferView->getColorAttachments()[0].imageView;
-	auto ldrBufferView = ldrFramebufferView->getColorAttachments()[0].imageView;
 	auto oitAccumBufferView = oitFramebufferView->getColorAttachments()[0].imageView;
 	auto oitRevealBufferView = oitFramebufferView->getColorAttachments()[1].imageView;
 	auto depthBufferView = deferredSystem->getDepthImageView();
@@ -67,7 +66,6 @@ static DescriptorSet::Uniforms getBufferUniforms(GraphicsSystem* graphicsSystem,
 	DescriptorSet::Uniforms uniforms =
 	{ 
 		{ "hdrBuffer", DescriptorSet::Uniform(hdrBufferView) },
-		{ "ldrBuffer", DescriptorSet::Uniform(ldrBufferView) },
 		{ "oitAccumBuffer", DescriptorSet::Uniform(oitAccumBufferView) },
 		{ "oitRevealBuffer", DescriptorSet::Uniform(oitRevealBufferView) },
 		{ "depthBuffer", DescriptorSet::Uniform(depthBufferView) },

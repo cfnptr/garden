@@ -771,9 +771,8 @@ void PbrLightingSystem::preHdrRender()
 		if (!hasAnyGI)
 		{
 			auto& cc = graphicsSystem->getCommonConstants();
-			auto skyColor = (float3)cc.skyColor;
 			auto imageView = graphicsSystem->get(giBuffer);
-			imageView->clear(float4(skyColor, 1.0f));
+			imageView->clear(float4(cc.ambientLight, 1.0f));
 		}
 	}
 	if (options.useReflBuffer)
@@ -856,13 +855,13 @@ void PbrLightingSystem::hdrRender()
 
 	if (pbrLightingView->mode == PbrCubemapMode::Static)
 	{
-		if (!pbrLightingView->skybox || !pbrLightingView->sh || !pbrLightingView->specular)
+		if (!pbrLightingView->skybox || !pbrLightingView->shBuffer || !pbrLightingView->specular)
 			return;
 
 		auto cubemapView = graphicsSystem->get(pbrLightingView->skybox);
-		auto shView = graphicsSystem->get(pbrLightingView->sh);
+		auto shBufferView = graphicsSystem->get(pbrLightingView->shBuffer);
 		auto specularView = graphicsSystem->get(pbrLightingView->specular);
-		if (!cubemapView->isReady() || !shView->isReady() || !specularView->isReady())
+		if (!cubemapView->isReady() || !shBufferView->isReady() || !specularView->isReady())
 			return;
 	}
 
@@ -880,12 +879,13 @@ void PbrLightingSystem::hdrRender()
 		SET_RESOURCE_DEBUG_NAME(pbrLightingView->skybox, 
 			"image.pbrLighting.skybox" + to_string(*pbrLightingView->skybox));
 	}
-	if (!pbrLightingView->sh)
+	if (!pbrLightingView->shBuffer)
 	{
-		pbrLightingView->sh = Ref<Buffer>(graphicsSystem->createBuffer(
+		pbrLightingView->shBuffer = Ref<Buffer>(graphicsSystem->createBuffer(
 			Buffer::Usage::Uniform | Buffer::Usage::TransferDst, Buffer::CpuAccess::None, 
 			ibl::shCoeffCount * sizeof(f16x4), Buffer::Location::PreferGPU, Buffer::Strategy::Size));
-		SET_RESOURCE_DEBUG_NAME(pbrLightingView->sh, "buffer.uniform.sh" + to_string(*pbrLightingView->sh));
+		SET_RESOURCE_DEBUG_NAME(pbrLightingView->shBuffer, 
+			"buffer.uniform.sh" + to_string(*pbrLightingView->shBuffer));
 	}
 	if (!pbrLightingView->specular)
 	{
@@ -1070,11 +1070,11 @@ void PbrLightingSystem::resetComponent(View<Component> component, bool full)
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto componentView = View<PbrLightingComponent>(component);
 	graphicsSystem->destroy(componentView->skybox);
-	graphicsSystem->destroy(componentView->sh);
+	graphicsSystem->destroy(componentView->shBuffer);
 	graphicsSystem->destroy(componentView->specular);
 	graphicsSystem->destroy(componentView->descriptorSet);
 	componentView->skybox = {};
-	componentView->sh = {};
+	componentView->shBuffer = {};
 	componentView->specular = {};
 	componentView->descriptorSet = {};
 }
@@ -1083,7 +1083,7 @@ void PbrLightingSystem::copyComponent(View<Component> source, View<Component> de
 	auto destinationView = View<PbrLightingComponent>(destination);
 	const auto sourceView = View<PbrLightingComponent>(source);
 	destinationView->skybox = sourceView->skybox;
-	destinationView->sh = sourceView->sh;
+	destinationView->shBuffer = sourceView->shBuffer;
 	destinationView->specular = sourceView->specular;
 	destinationView->descriptorSet = sourceView->descriptorSet;
 }
@@ -1708,18 +1708,18 @@ Ref<DescriptorSet> PbrLightingSystem::createDescriptorSet(ID<Entity> entity,
 	GARDEN_ASSERT(entity);
 
 	auto pbrLightingView = Manager::Instance::get()->tryGet<PbrLightingComponent>(entity);
-	if (!lightingDS || !pbrLightingView || !pbrLightingView->sh || !pbrLightingView->specular)
+	if (!lightingDS || !pbrLightingView || !pbrLightingView->shBuffer || !pbrLightingView->specular)
 		return {};
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto shView = graphicsSystem->get(pbrLightingView->sh);
+	auto shBufferView = graphicsSystem->get(pbrLightingView->shBuffer);
 	auto specularView = graphicsSystem->get(pbrLightingView->specular);
-	if (!shView->isReady() || !specularView->isReady())
+	if (!shBufferView->isReady() || !specularView->isReady())
 		return {};
 
 	DescriptorSet::Uniforms iblUniforms =
 	{ 
-		{ "sh", DescriptorSet::Uniform(ID<Buffer>(pbrLightingView->sh)) },
+		{ "sh", DescriptorSet::Uniform(ID<Buffer>(pbrLightingView->shBuffer)) },
 		{ "specular", DescriptorSet::Uniform(specularView->getDefaultView()) }
 	};
 
