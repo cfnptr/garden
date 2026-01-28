@@ -19,6 +19,7 @@
 
 #pragma once
 #include "garden/system/graphics.hpp"
+#include "math/ibl.hpp"
 
 namespace garden
 {
@@ -49,10 +50,11 @@ enum class PbrCubemapMode
  */
 struct PbrLightingComponent final : public Component
 {
-	Ref<Image> skybox = {};                /**< PBR lighting skybox cubemap. */
-	Ref<Buffer> sh = {};                   /**< PBR lighting spherical harmonics buffer. */
-	Ref<Image> specular = {};              /**< PBR lighting specular cubemap. */
+	Ref<Image> skybox = {};                /**< Skybox cubemap image. */
+	Ref<Buffer> shBuffer = {};             /**< Spherical harmonics buffer. */
+	Ref<Image> specular = {};              /**< Specular cubemap image. */
 	Ref<DescriptorSet> descriptorSet = {}; /**< PBR lighting descriptor set. */
+	f32x4 shCoeffs[ibl::shCoeffCount];     /**< Spherical harmonics coefficients. */
 private:
 	PbrCubemapMode mode = PbrCubemapMode::Static;
 	friend class PbrLightingSystem;

@@ -41,15 +41,18 @@ struct CommonConstants final
 	float deltaTime = 0.0f;                 /**< Time elapsed between two previous frames. (In seconds) */
 	float3 lightDir = float3::zero;         /**< Light direction in world space. (From sun to world) */
 	float emissiveCoeff = 0.0f;             /**< Maximum brightness coefficient. */
-	float3 skyColor = float3::zero;         /**< Sky color and intensity.*/
+	float3 sunLight = float3::zero;         /**< Sun light color. (Energy) */
 	float anglePerPixel = 0.0f;             /**< Vertical field-of-view per pixel. */
+	float3 ambientLight = float3::zero;     /**< Ambient light color. (Energy) */
+	float mipLodBias = 0.0f;                /**< Preferred mip-map LOD bias. */
+	float3 upDir = float3::zero;            /**< World up direction. (Inversed gravityDir) */
+	float ggxLodOffset = 0.0f;              /**< Spherical GGX distribution blur LOD offset. */
 	float2 frameSize = float2::zero;        /**< Frame size in pixels. */
 	float2 invFrameSize = float2::zero;     /**< Inverse frame size in pixels. */
 	float2 invFrameSizeSq = float2::zero;   /**< Inverse frame size * 2 in pixels. */
 	float2 jitterOffset = float2::zero;     /**< Frame sub-pixel jittering offsets. */
 	float2 prevJitterOffset = float2::zero; /**< Previous frame sub-pixel jittering offsets. */
-	float mipLodBias = 0.0f;                /**< Preferred mip-map LOD bias. */
-	float ggxLodOffset = 0.0f;              /**< Spherical GGX distribution blur LOD offset. */
+	float3 windDir = float3::zero;          /**< Direction of the wind. (Vector) */
 };
 
 } // namespace garden::graphics

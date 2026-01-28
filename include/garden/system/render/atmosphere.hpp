@@ -226,10 +226,10 @@ public:
 	float3 groundAlbedo = earthGroundAlbedo;
 	float groundRadius = earthGroundRadius; /**< (km) */
 	float atmosphereHeight = earthAtmosphereHeight; /**< (km) */
-	float4 sunColor = float4(float3(1.0f), 64000.0f);
+	float4 sunColor = float4(float3(1.0f), 10000.0f);
 	float sunAngularSize = earthSunAngularSize; /**< (degrees) */
-	float giFactor = 0.25f;
-	float multiScatFactor = 1.0f;
+	float giFactor = 1.0f;        /**< Global illumination factor. */
+	float multiScatFactor = 1.0f; /**< Light multi-scattering factor. */
 
 	/**
 	 * @brief Returns atmosphere rendering graphics quality.

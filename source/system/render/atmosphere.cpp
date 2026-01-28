@@ -22,9 +22,12 @@
 
 #include "atmosphere/constants.h"
 #include "math/matrix/transform.hpp"
+#include "math/normal-mapping.hpp"
+#include "math/cone-tracing.hpp"
 #include "math/angles.hpp"
 #include "math/brdf.hpp"
-#include "math/ibl.hpp"
+
+// TOOD: !!! Take into account planet position for an atmosphere!!!
 
 using namespace garden;
 
@@ -424,9 +427,27 @@ static float calcCameraHeight(float cameraPosY, float groundRadius) noexcept
 {
 	return fma(max(cameraPosY, 0.0f), 0.001f, groundRadius + PLANET_RADIUS_OFFSET);
 }
-static float calcSunSize(float sunAngularSize) noexcept
+static float calcSunSize(float sunAngularSize, float sunDirY) noexcept
 {
-	return cos(radians(sunAngularSize * 0.5f));
+	auto horizonMul = fma(pow(saturate(1.0f - sunDirY), 8.0f), 2.0, 1.0f);
+	return cos(radians(sunAngularSize * horizonMul * 0.5f));
+}
+
+static f32x4 calcAmbientLight(float3 upDir, float3 sunDir, f32x4* shBuffer)
+{
+	auto tbn = (f32x4x4)approximateTBN(normalize(upDir));
+	auto lightDir = -f32x4(sunDir), amientLight = f32x4::zero;
+	auto totalWeight = 0.0f;
+
+	for (uint8 i = 0; i < diffuseConeCount; i++)
+	{
+		auto sampleDir = normalize3(tbn * f32x4(diffuseConeDirs[i]));
+		auto weight = diffuseConeWeights[i] * saturate(dot3(lightDir, sampleDir) + 0.5f);
+		amientLight += brdf::diffuseIrradiance(sampleDir, shBuffer) * weight;
+		totalWeight += weight;
+	}
+
+	return totalWeight > 0.0f ? amientLight / totalWeight : f32x4::zero;
 }
 
 //**********************************************************************************************************************
@@ -508,7 +529,7 @@ void AtmosphereRenderSystem::preDeferredRender()
 	auto absDensity1ConstantTerm = ozoneLayerTip - ozoneLayerWidth * -ozoneLayerSlope;
 
 	if (sunDir == float3::zero)
-		sunDir = (float3)-cc.lightDir;
+		sunDir = -cc.lightDir;
 
 	graphicsSystem->startRecording(CommandBufferType::Frame);
 	BEGIN_GPU_DEBUG_LABEL("Atmosphere");
@@ -547,7 +568,7 @@ void AtmosphereRenderSystem::preDeferredRender()
 		pc.mieExtinction = mieExtinction;
 		pc.mieDensityExpScale = mieDensityExpScale;
 		pc.absorptionExtinction = ozoneAbsorption;
-		pc.miePhaseG = miePhaseG;
+		pc.miePhaseG = saturate(miePhaseG);
 		pc.mieScattering = mieScattering;
 		pc.absDensity0LayerWidth = ozoneLayerWidth;
 		pc.groundAlbedo = groundAlbedo;
@@ -574,7 +595,7 @@ void AtmosphereRenderSystem::preDeferredRender()
 		pc.mieExtinction = mieExtinction;
 		pc.mieDensityExpScale = mieDensityExpScale;
 		pc.absorptionExtinction = ozoneAbsorption;
-		pc.miePhaseG = miePhaseG;
+		pc.miePhaseG = saturate(miePhaseG);
 		pc.mieScattering = mieScattering;
 		pc.absDensity0LayerWidth = ozoneLayerWidth;
 		pc.sunDir = sunDir;
@@ -603,7 +624,7 @@ void AtmosphereRenderSystem::preDeferredRender()
 		pc.mieExtinction = mieExtinction;
 		pc.mieDensityExpScale = mieDensityExpScale;
 		pc.absorptionExtinction = ozoneAbsorption;
-		pc.miePhaseG = miePhaseG;
+		pc.miePhaseG = saturate(miePhaseG);
 		pc.mieScattering = mieScattering;
 		pc.absDensity0LayerWidth = ozoneLayerWidth;
 		pc.sunDir = sunDir;
@@ -732,7 +753,7 @@ void AtmosphereRenderSystem::updateSkybox()
 			pc.sunDir = sunDir;
 			pc.topRadius = groundRadius + atmosphereHeight;
 			pc.sunColor = (float3)sunColor * sunColor.w;
-			pc.sunSize = calcSunSize(sunAngularSize * 2.0f);
+			pc.sunSize = calcSunSize(sunAngularSize * 2.0f, sunDir.y);
 
 			SET_GPU_DEBUG_LABEL("Skybox");
 			{
@@ -760,7 +781,7 @@ void AtmosphereRenderSystem::updateSkybox()
 
 		auto shGenPipelineView = graphicsSystem->get(shGeneratePipeline);
 		auto shRedPipelineView = graphicsSystem->get(shReducePipeline);
-		if (pbrLightingView->sh && shGenPipelineView->isReady() && shRedPipelineView->isReady())
+		if (pbrLightingView->shBuffer && shGenPipelineView->isReady() && shRedPipelineView->isReady())
 		{
 			auto skyboxSize = skyboxView->getSize().getX();
 
@@ -822,30 +843,33 @@ void AtmosphereRenderSystem::updateSkybox()
 
 			if (!isFirstSH)
 			{
-				f32x4 shCacheBuffer[ibl::shCoeffCount];
 				shCacheView = graphicsSystem->get(shCaches[shInFlightIndex][0]);
 				auto mapOffset = shCacheView->getBinarySize() - shCacheBinarySize;
 				shCacheView->invalidate(shCacheBinarySize, mapOffset);
-				memcpy(shCacheBuffer, shCacheView->getMap() + mapOffset, shCacheBinarySize);
-				for (auto& sh : shCacheBuffer) sh *= giFactor;
-				PbrLightingSystem::processIblSH(shCacheBuffer);
+				auto shCoeffs = pbrLightingView->shCoeffs;
+				memcpy(shCoeffs, shCacheView->getMap() + mapOffset, shCacheBinarySize);
+				for (uint8 i = 0; i < ibl::shCoeffCount; i++) shCoeffs[i] *= giFactor;
+				PbrLightingSystem::processIblSH(shCoeffs);
 
 				f16x4 shBuffer[ibl::shCoeffCount];
 				for (uint8 i = 0; i < ibl::shCoeffCount; i++)
-					shBuffer[i] = (f16x4)min(shCacheBuffer[i], f32x4(65504.0f));
+					shBuffer[i] = (f16x4)min(shCoeffs[i], f32x4(65504.0f));
 
 				auto shStaging = shStagings[shInFlightIndex][0];
 				auto shStagingView = graphicsSystem->get(shStaging);
 				memcpy(shStagingView->getMap(), shBuffer, shBinarySize);
 				shStagingView->flush();
-				Buffer::copy(shStaging, ID<Buffer>(pbrLightingView->sh));
+				Buffer::copy(shStaging, ID<Buffer>(pbrLightingView->shBuffer));
 
-				graphicsSystem->setSkyColor((float3)brdf::diffuseIrradiance(float3::top, shCacheBuffer));
+				auto light = brdf::diffuseIrradiance(f32x4(sunDir), shCoeffs);
+				graphicsSystem->setSunLight((float3)light);
+				light = calcAmbientLight(graphicsSystem->upDirection, sunDir, shCoeffs);
+				graphicsSystem->setAmbientLight((float3)light);
 			}
 		}
 
 		auto& cc = graphicsSystem->getCommonConstants();
-		sunDir = (float3)-cc.lightDir;
+		sunDir = -cc.lightDir;
 	}
 	graphicsSystem->stopRecording();
 
@@ -883,7 +907,7 @@ void AtmosphereRenderSystem::hdrRender()
 	pc.sunDir = sunDir;
 	pc.topRadius = groundRadius + atmosphereHeight;
 	pc.sunColor = (float3)sunColor * sunColor.w;
-	pc.sunSize = calcSunSize(sunAngularSize);
+	pc.sunSize = calcSunSize(sunAngularSize, sunDir.y);
 
 	SET_GPU_DEBUG_LABEL("Atmosphere Skybox");
 	pipelineView->bind();

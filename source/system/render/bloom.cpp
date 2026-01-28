@@ -245,7 +245,7 @@ void BloomRenderSystem::preLdrRender()
 			SET_GPU_DEBUG_LABEL("Downsample");
 
 			PushConstants pc;
-			pc.threshold = threshold;
+			pc.threshold = saturate(threshold);
 			downsamplePipelineView->pushConstants(&pc);
 			{
 				RenderPass renderPass(framebuffers[0], float4::zero);

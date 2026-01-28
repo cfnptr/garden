@@ -100,7 +100,7 @@ void PbrLightingEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened
 	auto pbrLightingView = Manager::Instance::get()->get<PbrLightingComponent>(entity);
 	auto editorSystem = EditorRenderSystem::Instance::get();
 	editorSystem->drawResource(pbrLightingView->skybox, "Skybox");
-	editorSystem->drawResource(pbrLightingView->sh, "SH");
+	editorSystem->drawResource(pbrLightingView->shBuffer, "SH Buffer");
 	editorSystem->drawResource(pbrLightingView->specular, "Specular");
 	editorSystem->drawResource(pbrLightingView->descriptorSet);
 
