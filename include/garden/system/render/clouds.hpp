@@ -15,13 +15,17 @@
 /***********************************************************************************************************************
  * @file
  * @brief Physically based volumetric clouds rendering functions.
- * @details Based on this: https://www.researchgate.net/publication/345694869_Physically_Based_Sky_Atmosphere_Cloud_Rendering_in_Frostbite
+ *
+ * @details
+ * Based on these: 
+ * https://advances.realtimerendering.com/s2015/The%20Real-time%20Volumetric%20Cloudscapes%20of%20Horizon%20-%20Zero%20Dawn%20-%20ARTR.pdf
+ * https://advances.realtimerendering.com/s2017/Nubis%20-%20Authoring%20Realtime%20Volumetric%20Cloudscapes%20with%20the%20Decima%20Engine%20-%20Final%20.pdf
+ * https://advances.realtimerendering.com/s2022/SIGGRAPH2022-Advances-NubisEvolved-NoVideos.pdf
+ * https://advances.realtimerendering.com/s2023/Nubis%20Cubed%20(Advances%202023).pdf
  */
 
 #pragma once
 #include "garden/system/graphics.hpp"
-
-#pragma message("THIS IS UNFINISHED SYSTEM! WIP")
 
 namespace garden
 {
@@ -44,34 +48,35 @@ class CloudsRenderSystem final : public System, public Singleton<CloudsRenderSys
 public:
 	struct PushConstants final
 	{
-		float4x4 invViewProj;
 		float3 cameraPos;
 		float bottomRadius;
 		float topRadius;
 		float minDistance;
 		float maxDistance;
+		float coverage;
+		float temperature;
 	};
 
 	static constexpr Framebuffer::OutputAttachment::Flags framebufferFlags = { false, false, true };
 private:
-	Ref<Image> noiseShape = {}, noiseErosion = {};
+	Ref<Image> dataFields = {}, verticalProfile = {}, noiseShape = {};
 	ID<Image> cloudsView = {}, cloudsCube = {};
 	ID<Framebuffer> viewFramebuffer = {};
 	ID<Framebuffer> cubeFramebuffer = {};
 	ID<GraphicsPipeline> cloudsPipeline = {};
 	ID<GraphicsPipeline> blendPipeline = {};
-	ID<DescriptorSet> cloudsDS = {}, viewBlendDS = {}, cubeBlendDS;
+	ID<DescriptorSet> cloudsDS = {}, viewBlendDS = {}, cubeBlendDS = {};
 	GraphicsQuality quality = GraphicsQuality::High;
 	bool isInitialized = false;
 	uint8 _alignment = 0;
 
 	/**
-	 * @brief Creates a new physically based volumetric clouds rendering system instance. (FXAA)
+	 * @brief Creates a new physically based volumetric clouds rendering system instance.
 	 * @param setSingleton set system singleton instance
 	 */
 	CloudsRenderSystem(bool setSingleton = true);
 	/**
-	 * @brief Destroys physically based volumetric clouds rendering system instance. (FXAA)
+	 * @brief Destroys physically based volumetric clouds rendering system instance.
 	 */
 	~CloudsRenderSystem() final;
 
@@ -81,37 +86,54 @@ private:
 	void preHdrRender();
 	void hdrRender();
 	void gBufferRecreate();
+	void qualityChange();
 
 	friend class ecsm::Manager;
 public:
-	bool isEnabled = true;     /**< Is physically based volumetric clouds rendering enabled. */
-	float bottomRadius = 1.5f; /**< Stratus and cumulus clouds start height. (km) */
-	float topRadius = 4.0f;    /**< Stratus and cumulus clouds end height. (km) */
-	float minDistance = 0.01f; /**< Clouds volume offset in front of camera. (km) */
-	float maxDistance = 35.0f; /**< Maximum clouds volume tracing distance. (km) */
+	bool isEnabled = true;      /**< Is physically based volumetric clouds rendering enabled. */
+	float bottomRadius = 1.5f;  /**< Stratus and cumulus clouds start height. (km) */
+	float topRadius = 4.0f;     /**< Stratus and cumulus clouds end height. (km) */
+	float minDistance = 0.2f;   /**< Clouds volume tracing offset in front of camera. (km) */
+	float maxDistance = 200.0f; /**< Maximum clouds volume tracing distance. (km) */
+	float coverage = 0.4f;      /**< Ammount of clouds. (Clear or cloudy weather) */
+	float temperature = 0.7f;   /**< Temperature difference between layers. (Storm clouds) */
 
 	/**
-	 * @brief Returns physically based volumetric clouds noise shape image.
+	 * @brief Returns volumetric clouds rendering graphics quality.
+	 */
+	GraphicsQuality getQuality() const noexcept { return quality; }
+	/**
+	 * @brief Sets volumetric clouds rendering graphics quality.
+	 * @param quality target graphics quality level
+	 */
+	void setQuality(GraphicsQuality quality);
+
+	/**
+	 * @brief Returns volumetric clouds data fields image.
+	 */
+	Ref<Image> getDataFields();
+	/**
+	 * @brief Returns volumetric clouds vertical profile image.
+	 */
+	Ref<Image> getVerticalProfile();
+	/**
+	 * @brief Returns volumetric clouds noise shape image.
 	 */
 	Ref<Image> getNoiseShape();
 	/**
-	 * @brief Returns physically based volumetric clouds noise erosion image.
-	 */
-	Ref<Image> getNoiseErosion();
-	/**
-	 * @brief Returns physically based volumetric clouds view image.
+	 * @brief Returns volumetric clouds view image.
 	 */
 	ID<Image> getCloudsView();
 	/**
-	 * @brief Returns physically based volumetric clouds view framebuffer.
+	 * @brief Returns volumetric clouds view framebuffer.
 	 */
 	ID<Framebuffer> getViewFramebuffer();
 	/**
-	 * @brief Returns physically based volumetric clouds graphics pipeline.
+	 * @brief Returns volumetric clouds graphics pipeline.
 	 */
 	ID<GraphicsPipeline> getCloudsPipeline();
 	/**
-	 * @brief Returns physically based volumetric clouds blend graphics pipeline.
+	 * @brief Returns volumetric clouds blend graphics pipeline.
 	 */
 	ID<GraphicsPipeline> getBlendPipeline();
 };

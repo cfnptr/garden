@@ -13,9 +13,11 @@
 // limitations under the License.
 
 #include "garden/system/render/clouds.hpp"
+#include "garden/system/render/atmosphere.hpp"
 #include "garden/system/render/deferred.hpp"
 #include "garden/system/resource.hpp"
 #include "garden/profiler.hpp"
+#include "math/metric.hpp"
 
 using namespace garden;
 
@@ -48,31 +50,46 @@ static ID<Framebuffer> createFramebuffer(GraphicsSystem* graphicsSystem, ID<Imag
 	return framebuffer;
 }
 
+static Ref<Image> createDataFields()
+{
+	return ResourceSystem::Instance::get()->loadImage("clouds/data-fields", Image::Format::UnormR8G8B8A8,
+		Image::Usage::Sampled | Image::Usage::TransferSrc | Image::Usage::TransferDst | 
+		Image::Usage::TransferQ, 0, Image::Strategy::Size, ImageLoadFlags::LoadShared, 9.0f);
+}
+static Ref<Image> createVerticalProfile()
+{
+	return ResourceSystem::Instance::get()->loadImage("clouds/vertical-profile", 
+		Image::Format::UnormR8G8, Image::Usage::Sampled | Image::Usage::TransferDst | 
+		Image::Usage::TransferQ, 1, Image::Strategy::Size, ImageLoadFlags::LoadShared, 9.0f);
+}
 static Ref<Image> createNoiseShape()
 {
 	return ResourceSystem::Instance::get()->loadImage("clouds/noise-shape", Image::Format::UnormR8G8B8A8,
-		Image::Usage::Sampled | Image::Usage::TransferDst | Image::Usage::TransferQ, 1, 
-		Image::Strategy::Size, ImageLoadFlags::LoadShared | ImageLoadFlags::Load3D, 9.0f);
+		Image::Usage::Sampled | Image::Usage::TransferSrc | Image::Usage::TransferDst | Image::Usage::TransferQ, 
+		0, Image::Strategy::Size, ImageLoadFlags::LoadShared | ImageLoadFlags::Load3D, 9.0f);
 }
-static Ref<Image> createNoiseErosion()
-{
-	return ResourceSystem::Instance::get()->loadImage("clouds/noise-erosion", Image::Format::UnormR8G8B8A8, 
-		Image::Usage::Sampled | Image::Usage::TransferDst | Image::Usage::TransferQ, 1, 
-		Image::Strategy::Size, ImageLoadFlags::LoadShared | ImageLoadFlags::Load3D, 9.0f);
-}
+
 static ID<GraphicsPipeline> createCloudsPipeline(ID<Framebuffer> framebuffer, GraphicsQuality quality)
 {
-	float sampleCount;
+	float stepAdjDist;
 	switch (quality)
 	{
-		// TODO: case GraphicsQuality::Ultra: sampleCount = 30.0f; break;
-		default: sampleCount = 0.1f; break;
+		case GraphicsQuality::PotatoPC: stepAdjDist = 2.048f; break;
+		case GraphicsQuality::Low: stepAdjDist = 4.096f; break;
+		case GraphicsQuality::Medium: stepAdjDist = 8.192f; break;
+		case GraphicsQuality::High: stepAdjDist = 16.384f; break;
+		case GraphicsQuality::Ultra: stepAdjDist = 32.768f; break;
+		default: abort();
 	}
-	Pipeline::SpecConstValues specConstValues = { { "SAMPLE_COUNT", Pipeline::SpecConstValue(sampleCount) } };
-	
+
+	Pipeline::SpecConstValues specConstValues =
+	{
+		{ "STEP_ADJ_DIST", Pipeline::SpecConstValue(1.0f / stepAdjDist) }
+	};
+
 	ResourceSystem::GraphicsOptions options;
 	options.specConstValues = &specConstValues;
-	return ResourceSystem::Instance::get()->loadGraphicsPipeline("atmosphere/volumetric-clouds", framebuffer, options);
+	return ResourceSystem::Instance::get()->loadGraphicsPipeline("clouds/compute", framebuffer, options);
 }
 static ID<GraphicsPipeline> createBlendPipeline()
 {
@@ -82,15 +99,19 @@ static ID<GraphicsPipeline> createBlendPipeline()
 }
 
 static DescriptorSet::Uniforms getCloudsUniforms(GraphicsSystem* graphicsSystem, 
-	ID<Image> noiseShape, ID<Image> noiseErosion)
+	ID<Image> dataFields, ID<Image> verticalProfile, ID<Image> noiseShape)
 {
+	auto dataFieldsView = graphicsSystem->get(dataFields)->getDefaultView();
+	auto verticalProfileView = graphicsSystem->get(verticalProfile)->getDefaultView();
 	auto noiseShapeView = graphicsSystem->get(noiseShape)->getDefaultView();
-	auto noiseErosionView = graphicsSystem->get(noiseErosion)->getDefaultView();
+	auto inFlightCount = graphicsSystem->getInFlightCount();
 
 	DescriptorSet::Uniforms uniforms =
 	{ 
-		{ "noiseShape", DescriptorSet::Uniform(noiseShapeView) },
-		{ "noiseErosion", DescriptorSet::Uniform(noiseErosionView) }
+		{ "dataFields", DescriptorSet::Uniform(dataFieldsView, 1, inFlightCount) },
+		{ "verticalProfile", DescriptorSet::Uniform(verticalProfileView, 1, inFlightCount) },
+		{ "noiseShape", DescriptorSet::Uniform(noiseShapeView, 1, inFlightCount) },
+		{ "cc", DescriptorSet::Uniform(graphicsSystem->getCommonConstantsBuffers()) }
 	};
 	return uniforms;
 }
@@ -127,6 +148,7 @@ void CloudsRenderSystem::init()
 	ECSM_SUBSCRIBE_TO_EVENT("PreHdrRender", CloudsRenderSystem::preHdrRender);
 	ECSM_SUBSCRIBE_TO_EVENT("HdrRender", CloudsRenderSystem::hdrRender);
 	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", CloudsRenderSystem::gBufferRecreate);
+	ECSM_SUBSCRIBE_TO_EVENT("QualityChange", CloudsRenderSystem::qualityChange);
 }
 void CloudsRenderSystem::deinit()
 {
@@ -140,8 +162,9 @@ void CloudsRenderSystem::deinit()
 		graphicsSystem->destroy(viewFramebuffer);
 		graphicsSystem->destroy(cloudsCube);
 		graphicsSystem->destroy(cloudsView);
-		graphicsSystem->destroy(noiseErosion);
 		graphicsSystem->destroy(noiseShape);
+		graphicsSystem->destroy(verticalProfile);
+		graphicsSystem->destroy(dataFields);
 		graphicsSystem->destroy(blendPipeline);
 		graphicsSystem->destroy(cloudsPipeline);
 
@@ -150,6 +173,7 @@ void CloudsRenderSystem::deinit()
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PreHdrRender", CloudsRenderSystem::preHdrRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("HdrRender", CloudsRenderSystem::hdrRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("GBufferRecreate", CloudsRenderSystem::gBufferRecreate);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("QualityChange", CloudsRenderSystem::qualityChange);
 	}
 }
 
@@ -164,10 +188,12 @@ void CloudsRenderSystem::preDeferredRender()
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	if (!isInitialized)
 	{
+		if (!dataFields)
+			dataFields = createDataFields();
+		if (!verticalProfile)
+			verticalProfile = createVerticalProfile();
 		if (!noiseShape)
 			noiseShape = createNoiseShape();
-		if (!noiseErosion)
-			noiseErosion = createNoiseErosion();
 		if (!cloudsView)
 			cloudsView = createCloudsView(graphicsSystem);
 		if (!cloudsCube)
@@ -184,14 +210,20 @@ void CloudsRenderSystem::preDeferredRender()
 	}
 
 	auto pipelineView = graphicsSystem->get(cloudsPipeline);
+	auto dataFieldsView = graphicsSystem->get(dataFields);
+	auto verticalProfileView = graphicsSystem->get(verticalProfile);
 	auto noiseShapeView = graphicsSystem->get(noiseShape);
-	auto noiseErosionView = graphicsSystem->get(noiseErosion);
-	if (!pipelineView->isReady() || !noiseShapeView->isReady() || !noiseErosionView->isReady())
+
+	if (!pipelineView->isReady() || !dataFieldsView->isReady() || 
+		!verticalProfileView->isReady() || !noiseShapeView->isReady())
+	{
 		return;
+	}
 
 	if (!cloudsDS)
 	{
-		auto uniforms = getCloudsUniforms(graphicsSystem, ID<Image>(noiseShape), ID<Image>(noiseErosion));
+		auto uniforms = getCloudsUniforms(graphicsSystem, ID<Image>(dataFields),
+			ID<Image>(verticalProfile), ID<Image>(noiseShape));
 		cloudsDS = graphicsSystem->createDescriptorSet(cloudsPipeline, std::move(uniforms));
 		SET_RESOURCE_DEBUG_NAME(cloudsDS, "descriptorSet.clouds");
 	}
@@ -224,35 +256,26 @@ void CloudsRenderSystem::preHdrRender()
 {
 	SET_CPU_ZONE_SCOPED("Clouds HDR Render");
 
-	if (!isEnabled)
+	if (!isEnabled || !cloudsDS)
 		return;
-	
+
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto pipelineView = graphicsSystem->get(cloudsPipeline);
-	auto noiseShapeView = graphicsSystem->get(noiseShape);
-	auto noiseErosionView = graphicsSystem->get(noiseErosion);
-	if (!pipelineView->isReady() || !noiseShapeView->isReady() || !noiseErosionView->isReady())
-		return;
-
-	if (!cloudsDS)
-	{
-		auto uniforms = getCloudsUniforms(graphicsSystem, ID<Image>(noiseShape), ID<Image>(noiseErosion));
-		cloudsDS = graphicsSystem->createDescriptorSet(cloudsPipeline, std::move(uniforms));
-		SET_RESOURCE_DEBUG_NAME(cloudsDS, "descriptorSet.clouds");
-	}
-
+	auto atmosphereSystem = AtmosphereRenderSystem::Instance::get();
+	auto groundRadius = atmosphereSystem->groundRadius;
 	auto& cc = graphicsSystem->getCommonConstants();
-	auto cameraHeight =  max(cc.cameraPos.y, 0.0f) * 0.001f;
+	auto pipelineView = graphicsSystem->get(cloudsPipeline);
 	auto framebufferView = graphicsSystem->get(viewFramebuffer);
 	pipelineView->updateFramebuffer(viewFramebuffer);
 
 	PushConstants pc;
-	pc.invViewProj = (float4x4)cc.invViewProj;
-	pc.cameraPos = float3(0.0f, cameraHeight, 0.0f);
-	pc.bottomRadius = bottomRadius;
-	pc.topRadius = topRadius;
+	pc.cameraPos = mToKm(cc.cameraPos);
+	pc.bottomRadius = groundRadius + bottomRadius;
+	pc.topRadius = groundRadius + topRadius;
 	pc.minDistance = minDistance;
 	pc.maxDistance = maxDistance;
+	pc.coverage = 1.0f - pow(saturate(coverage), 2.0f);
+	pc.temperature = pow(saturate(temperature), 2.0f);
+	pc.cameraPos.y += groundRadius;
 
 	graphicsSystem->startRecording(CommandBufferType::Frame);
 	{
@@ -319,18 +342,45 @@ void CloudsRenderSystem::gBufferRecreate()
 	}
 }
 
+void CloudsRenderSystem::qualityChange()
+{
+	setQuality(GraphicsSystem::Instance::get()->quality);
+}
+void CloudsRenderSystem::setQuality(GraphicsQuality quality)
+{
+	if (this->quality == quality)
+		return;
+
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	graphicsSystem->destroy(cloudsDS); cloudsDS = {};
+
+	if (cloudsPipeline)
+	{
+		graphicsSystem->destroy(cloudsPipeline);
+		cloudsPipeline = createCloudsPipeline(viewFramebuffer, quality);
+	}
+
+	this->quality = quality;
+}
+
 //**********************************************************************************************************************
+Ref<Image> CloudsRenderSystem::getDataFields()
+{
+	if (!dataFields)
+		dataFields = createDataFields();
+	return dataFields;
+}
+Ref<Image> CloudsRenderSystem::getVerticalProfile()
+{
+	if (!verticalProfile)
+		verticalProfile = createVerticalProfile();
+	return verticalProfile;
+}
 Ref<Image> CloudsRenderSystem::getNoiseShape()
 {
 	if (!noiseShape)
 		noiseShape = createNoiseShape();
 	return noiseShape;
-}
-Ref<Image> CloudsRenderSystem::getNoiseErosion()
-{
-	if (!noiseErosion)
-		noiseErosion = createNoiseErosion();
-	return noiseErosion;
 }
 ID<Image> CloudsRenderSystem::getCloudsView()
 {
