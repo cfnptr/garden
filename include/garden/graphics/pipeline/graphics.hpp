@@ -202,6 +202,7 @@ public:
 		BlendFactor dstAlphaFactor = BlendFactor::Zero;             /**< Destination alpha blending factor. */
 		BlendOperation alphaOperation = BlendOperation::Add;        /**< Alpha component (A) blending operation. */
 		ColorComponent colorMask = ColorComponent::All;             /**< Bitmask of the color components to write. */
+		BlendState(bool blending = false) : blending(blending) { }
 	};
 	/**
 	 * @brief Graphics pipeline state.

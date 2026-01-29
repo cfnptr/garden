@@ -62,6 +62,8 @@ Use building [instructions](BUILDING.md) to install all required tools and libra
 | GARDEN_BUILD_EQUI2CUBE      | Build equirectangular to cubemap converter       | `ON`          |
 | GARDEN_RELEASE_EDITOR       | Build Garden editor in the release build         | `OFF`         |
 | GARDEN_RELEASE_DEBUGGING    | Build Garden debugging code in the release build | `OFF`         |
+| GARDEN_DEBUG_SHADERS        | Compile GSL shaders with no optimzations         | `OFF`         |
+| GARDEN_DEBUG_BUILD_TOOLS    | Build Garden tools in the debug build            | `OFF`         |
 | GARDEN_DEBUG_PACK_RESOURCES | Pack and load resources in the debug build       | `OFF`         |
 | GARDEN_USE_GAPI_VALIDATIONS | Use graphics API validation layers               | `ON`          |
 | GARDEN_USE_TRACY_PROFILER   | Use Tracy frame profiler                         | `OFF`         |
@@ -90,6 +92,12 @@ Use building [instructions](BUILDING.md) to install all required tools and libra
 | GARDEN_STEAMWORKS_SDK_DIR     | Valve Steamworks SDK directory     | `libraries/steamworks-sdk`             |
 | GARDEN_NVIDIA_DLSS_APP_ID     | Nvidia DLSS application ID         |                                        |
 | GARDEN_NVIDIA_DLSS_PROJECT_ID | Nvidia DLSS project ID (GUID)      | `5df9fb9c-bec4-4cf0-99c4-27b54fd7237e` |
+
+### Environment variable
+
+| Name                          | Description                        |
+|-------------------------------|------------------------------------|
+| GLFW_PLATFORM                 | Force specific window system (x11) |
 
 ### CMake targets
 

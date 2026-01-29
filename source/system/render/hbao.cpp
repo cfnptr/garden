@@ -60,8 +60,7 @@ static ID<GraphicsPipeline> createPipeline(uint32 stepCount)
 }
 static DescriptorSet::Uniforms getUniforms(GraphicsSystem* graphicsSystem, ID<Image> noiseImage)
 {
-	auto hizSystem = HizRenderSystem::Instance::get();
-	auto hizBufferView = hizSystem->getImageViews()[1];
+	auto hizBufferView = HizRenderSystem::Instance::get()->getImageViews().at(1);
 	auto noiseView = graphicsSystem->get(noiseImage)->getDefaultView();
 
 	DescriptorSet::Uniforms uniforms =

@@ -293,7 +293,7 @@ void GpuProcessSystem::bilateralBlurD(ID<ImageView> srcBuffer,
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	if (!descriptorSet)
 	{
-		auto hizBuffer = HizRenderSystem::Instance::get()->getImageViews()[0];
+		auto hizBuffer = HizRenderSystem::Instance::get()->getImageViews().at(0);
 		auto tmpFramebufferView = graphicsSystem->get(tmpFramebuffer);
 		auto tmpcBufferView = tmpFramebufferView->getColorAttachments()[0].imageView;
 		DescriptorSet::Uniforms uniforms
