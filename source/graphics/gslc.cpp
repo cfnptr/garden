@@ -1224,7 +1224,13 @@ static bool openShaderFileStream(const fs::path& inputFilePath,
 static void compileShaderFile(const fs::path& filePath, const vector<fs::path>& includePaths)
 {
 	auto command = "glslc --target-env=" GARDEN_VULKAN_SHADER_VERSION_STRING 
-		" -c -O \"" + filePath.generic_string() + "\" -o \"" + filePath.generic_string() + ".spv\"";
+	#if GARDEN_DEBUG_GSL_SHADERS
+		" -g -O0 "
+	#else
+		" -O "
+	#endif
+		"-c \"" + filePath.generic_string() + "\" -o \"" + filePath.generic_string() + ".spv\"";
+	
 	for (auto& path : includePaths)
 		command += " -I \"" + path.generic_string() + "\"";
 
