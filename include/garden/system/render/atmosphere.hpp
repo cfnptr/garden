@@ -161,6 +161,7 @@ public:
 
 	static constexpr Framebuffer::OutputAttachment::Flags framebufferFlags = { false, false, true };
 private:
+	//******************************************************************************************************************
 	vector<float> iblWeightBuffer;
 	vector<uint32> iblCountBuffer;
 	vector<ID<ImageView>> specularViews;
@@ -231,7 +232,7 @@ public:
 	float giFactor = 1.0f;        /**< Global illumination factor. */
 	float multiScatFactor = 1.0f; /**< Light multi-scattering factor. */
 
-	/**
+	/*******************************************************************************************************************
 	 * @brief Returns atmosphere rendering graphics quality.
 	 */
 	GraphicsQuality getQuality() const noexcept { return quality; }
