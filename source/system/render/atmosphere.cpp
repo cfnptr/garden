@@ -164,6 +164,16 @@ static void destroySkyboxFramebuffers(GraphicsSystem* graphicsSystem, ID<Framebu
 	}
 }
 
+static void getSliceQuality(GraphicsQuality quality, float& sliceCount, float& kmPerSlice)
+{
+	switch (quality)
+	{
+		case GraphicsQuality::PotatoPC: sliceCount = 8.0f; kmPerSlice = 12.0f; break;
+		case GraphicsQuality::Ultra: sliceCount = 32.0f; kmPerSlice = 3.0f; break;
+		default: sliceCount = 16.0f; kmPerSlice = 6.0f; break;
+	}
+}
+
 //**********************************************************************************************************************
 static ID<GraphicsPipeline> createTransLutPipeline(ID<Framebuffer> transLutFramebuffer, GraphicsQuality quality)
 {
@@ -199,12 +209,7 @@ static ID<ComputePipeline> createMultiScatLutPipeline(GraphicsQuality quality)
 static ID<ComputePipeline> createCameraVolumePipeline(GraphicsQuality quality)
 {
 	float sliceCount, kmPerSlice;
-	switch (quality)
-	{
-		case GraphicsQuality::PotatoPC: sliceCount = 8.0f; kmPerSlice = 12.0f; break;
-		case GraphicsQuality::Ultra: sliceCount = 32.0f; kmPerSlice = 3.0f; break;
-		default: sliceCount = 16.0f; kmPerSlice = 6.0f; break;
-	}
+	getSliceQuality(quality, sliceCount, kmPerSlice);
 
 	Pipeline::SpecConstValues specConstValues =
 	{
@@ -245,24 +250,35 @@ static ID<GraphicsPipeline> createSkyViewLutPipeline(ID<Framebuffer> skyViewFram
 }
 static ID<GraphicsPipeline> createHdrSkyPipeline(GraphicsQuality quality)
 {
-	// TODO: slice count based on quality
+	float sliceCount, kmPerSlice;
+	getSliceQuality(quality, sliceCount, kmPerSlice);
+
 	Pipeline::SpecConstValues specConstValues =
 	{
 		{ "USE_CUBEMAP_ONLY", Pipeline::SpecConstValue(false) },
+		{ "SLICE_COUNT", Pipeline::SpecConstValue(sliceCount) },
+		{ "KM_PER_SLICE", Pipeline::SpecConstValue(kmPerSlice) }
 	};
-	auto deferredSystem = DeferredRenderSystem::Instance::get();
+	GraphicsPipeline::BlendStates blendStates { { 0, { GraphicsPipeline::BlendState(true) } } };
 
 	ResourceSystem::GraphicsOptions options;
 	options.specConstValues = &specConstValues;
+	options.blendStateOverrides = &blendStates;
+
+	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	return ResourceSystem::Instance::get()->loadGraphicsPipeline(
 		"atmosphere/skybox", deferredSystem->getHdrFramebuffer(), options);
 }
 static ID<GraphicsPipeline> createSkyboxPipeline(ID<Framebuffer> framebuffer, GraphicsQuality quality)
 {
-	// TODO: slice count based on quality
+	float sliceCount, kmPerSlice;
+	getSliceQuality(quality, sliceCount, kmPerSlice);
+
 	Pipeline::SpecConstValues specConstValues =
 	{
 		{ "USE_CUBEMAP_ONLY", Pipeline::SpecConstValue(true) },
+		{ "SLICE_COUNT", Pipeline::SpecConstValue(sliceCount) },
+		{ "KM_PER_SLICE", Pipeline::SpecConstValue(kmPerSlice) }
 	};
 
 	ResourceSystem::GraphicsOptions options;
@@ -312,19 +328,22 @@ static DescriptorSet::Uniforms getCameraVolumeUniforms(GraphicsSystem* graphicsS
 	};
 	return uniforms;
 }
-static DescriptorSet::Uniforms getSkyUniforms(GraphicsSystem* graphicsSystem, ID<Image> transLUT, ID<Image> skyViewLUT)
+static DescriptorSet::Uniforms getSkyUniforms(GraphicsSystem* graphicsSystem, 
+	ID<Image> transLUT, ID<Image> skyViewLUT, ID<Image> cameraVolume)
 {
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	auto depthBufferView = deferredSystem->getDepthImageView();
 	auto gFramebufferView = graphicsSystem->get(deferredSystem->getGFramebuffer());
 	auto transLutView = graphicsSystem->get(transLUT)->getDefaultView();
 	auto skyViewLutView = graphicsSystem->get(skyViewLUT)->getDefaultView();
+	auto cameraVolumeView = graphicsSystem->get(cameraVolume)->getDefaultView();
 
 	DescriptorSet::Uniforms uniforms =
 	{
+		{ "depthBuffer", DescriptorSet::Uniform(depthBufferView) },
 		{ "transLUT", DescriptorSet::Uniform(transLutView) },
 		{ "skyViewLUT", DescriptorSet::Uniform(skyViewLutView) },
-		{ "depthBuffer", DescriptorSet::Uniform(depthBufferView) }
+		{ "cameraVolume", DescriptorSet::Uniform(cameraVolumeView) }
 	};
 	return uniforms;
 }
@@ -735,7 +754,7 @@ void AtmosphereRenderSystem::updateSkybox()
 		{
 			if (!skyboxDS)
 			{
-				auto uniforms = getSkyUniforms(graphicsSystem, transLUT, skyViewLUT);
+				auto uniforms = getSkyUniforms(graphicsSystem, transLUT, skyViewLUT, cameraVolume);
 				skyboxDS = graphicsSystem->createDescriptorSet(skyboxPipeline, std::move(uniforms));
 				SET_RESOURCE_DEBUG_NAME(skyboxDS, "descriptorSet.atmosphere.skybox");
 			}
@@ -891,7 +910,7 @@ void AtmosphereRenderSystem::hdrRender()
 
 	if (!hdrSkyDS)
 	{
-		auto uniforms = getSkyUniforms(graphicsSystem, transLUT, skyViewLUT);
+		auto uniforms = getSkyUniforms(graphicsSystem, transLUT, skyViewLUT, cameraVolume);
 		hdrSkyDS = graphicsSystem->createDescriptorSet(hdrSkyPipeline, std::move(uniforms));
 		SET_RESOURCE_DEBUG_NAME(hdrSkyDS, "descriptorSet.atmosphere.hdrSky");
 	}
