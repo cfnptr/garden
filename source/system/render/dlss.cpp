@@ -389,7 +389,7 @@ void DlssRenderSystem::evaluateDlssCommand(void* commandBuffer, void* argument)
 			gFramebufferView->getDepthStencilAttachment().imageView);
 		auto velocityResource = imageToNgxResource(vulkanAPI, vkCommandBuffer, 
 			gFramebufferView->getColorAttachments()[DeferredRenderSystem::gBufferVelocity].imageView);
-		vkCommandBuffer->processPipelineBarriers(vulkanAPI);
+		vkCommandBuffer->processPipelineBarriers();
 
 		evalParams.Feature.pInColor = &inputResource;
 		evalParams.Feature.pInOutput = &outputResource;
