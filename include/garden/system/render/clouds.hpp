@@ -53,19 +53,22 @@ public:
 		float topRadius;
 		float minDistance;
 		float maxDistance;
+		float currentTime;
 		float coverage;
 		float temperature;
 	};
 
+	static constexpr Image::Format cloudsColorFormat = Image::Format::SfloatR16G16B16A16;
+	static constexpr Image::Format cloudsDepthFormat = Image::Format::SfloatR16;
 	static constexpr Framebuffer::OutputAttachment::Flags framebufferFlags = { false, false, true };
 private:
 	Ref<Image> dataFields = {}, verticalProfile = {}, noiseShape = {};
-	ID<Image> cloudsView = {}, cloudsCube = {};
-	ID<Framebuffer> viewFramebuffer = {};
-	ID<Framebuffer> cubeFramebuffer = {};
-	ID<GraphicsPipeline> cloudsPipeline = {};
-	ID<GraphicsPipeline> blendPipeline = {};
-	ID<DescriptorSet> cloudsDS = {}, viewBlendDS = {}, cubeBlendDS = {};
+	ID<Image> cloudsView = {}, cloudsViewDepth = {};
+	ID<Image> cloudsCube = {}, lastCameraVolume = {};
+	ID<Framebuffer> viewFramebuffer = {}, cubeFramebuffer = {};
+	ID<GraphicsPipeline> computePipeline = {};
+	ID<GraphicsPipeline> viewBlendPipeline = {};
+	ID<DescriptorSet> computeDS = {}, viewBlendDS = {}, cubeBlendDS = {};
 	GraphicsQuality quality = GraphicsQuality::High;
 	bool isInitialized = false;
 	uint8 _alignment = 0;
@@ -84,7 +87,7 @@ private:
 	void deinit();
 	void preDeferredRender();
 	void preHdrRender();
-	void hdrRender();
+	void depthHdrRender();
 	void gBufferRecreate();
 	void qualityChange();
 
@@ -97,6 +100,7 @@ public:
 	float maxDistance = 200.0f; /**< Maximum clouds volume tracing distance. (km) */
 	float coverage = 0.4f;      /**< Ammount of clouds. (Clear or cloudy weather) */
 	float temperature = 0.7f;   /**< Temperature difference between layers. (Storm clouds) */
+	float currentTime = 0.0f;   /**< Custom current time value. (For a multiplayer sync) */
 
 	/**
 	 * @brief Returns volumetric clouds rendering graphics quality.
@@ -125,17 +129,23 @@ public:
 	 */
 	ID<Image> getCloudsView();
 	/**
+	 * @brief Returns volumetric clouds view depth image.
+	 */
+	ID<Image> getCloudsViewDepth();
+
+	/**
 	 * @brief Returns volumetric clouds view framebuffer.
 	 */
 	ID<Framebuffer> getViewFramebuffer();
+
 	/**
-	 * @brief Returns volumetric clouds graphics pipeline.
+	 * @brief Returns volumetric clouds compute pipeline.
 	 */
-	ID<GraphicsPipeline> getCloudsPipeline();
+	ID<GraphicsPipeline> getComputePipeline();
 	/**
-	 * @brief Returns volumetric clouds blend graphics pipeline.
+	 * @brief Returns volumetric clouds view blend graphics pipeline.
 	 */
-	ID<GraphicsPipeline> getBlendPipeline();
+	ID<GraphicsPipeline> getViewBlendPipeline();
 };
 
 } // namespace garden

@@ -164,16 +164,6 @@ static void destroySkyboxFramebuffers(GraphicsSystem* graphicsSystem, ID<Framebu
 	}
 }
 
-static void getSliceQuality(GraphicsQuality quality, float& sliceCount, float& kmPerSlice)
-{
-	switch (quality)
-	{
-		case GraphicsQuality::PotatoPC: sliceCount = 8.0f; kmPerSlice = 12.0f; break;
-		case GraphicsQuality::Ultra: sliceCount = 32.0f; kmPerSlice = 3.0f; break;
-		default: sliceCount = 16.0f; kmPerSlice = 6.0f; break;
-	}
-}
-
 //**********************************************************************************************************************
 static ID<GraphicsPipeline> createTransLutPipeline(ID<Framebuffer> transLutFramebuffer, GraphicsQuality quality)
 {
@@ -208,13 +198,21 @@ static ID<ComputePipeline> createMultiScatLutPipeline(GraphicsQuality quality)
 }
 static ID<ComputePipeline> createCameraVolumePipeline(GraphicsQuality quality)
 {
-	float sliceCount, kmPerSlice;
-	getSliceQuality(quality, sliceCount, kmPerSlice);
+	float sliceCount, kmPerSlice; float samplesPerSlice;
+	AtmosphereRenderSystem::getSliceQuality(quality, sliceCount, kmPerSlice);
+
+	switch (quality)
+	{
+		case GraphicsQuality::PotatoPC: samplesPerSlice = 1.0f; break;
+		case GraphicsQuality::Ultra: samplesPerSlice = 4.0f; break;
+		default: samplesPerSlice = 2.0f; break;
+	}
 
 	Pipeline::SpecConstValues specConstValues =
 	{
 		{ "SLICE_COUNT", Pipeline::SpecConstValue(sliceCount) },
-		{ "KM_PER_SLICE", Pipeline::SpecConstValue(kmPerSlice) }
+		{ "KM_PER_SLICE", Pipeline::SpecConstValue(kmPerSlice) },
+		{ "SAMPLES_PER_SLICE", Pipeline::SpecConstValue(kmPerSlice) }
 	};
 
 	ResourceSystem::ComputeOptions options;
@@ -251,7 +249,7 @@ static ID<GraphicsPipeline> createSkyViewLutPipeline(ID<Framebuffer> skyViewFram
 static ID<GraphicsPipeline> createHdrSkyPipeline(GraphicsQuality quality)
 {
 	float sliceCount, kmPerSlice;
-	getSliceQuality(quality, sliceCount, kmPerSlice);
+	AtmosphereRenderSystem::getSliceQuality(quality, sliceCount, kmPerSlice);
 
 	Pipeline::SpecConstValues specConstValues =
 	{
@@ -272,7 +270,7 @@ static ID<GraphicsPipeline> createHdrSkyPipeline(GraphicsQuality quality)
 static ID<GraphicsPipeline> createSkyboxPipeline(ID<Framebuffer> framebuffer, GraphicsQuality quality)
 {
 	float sliceCount, kmPerSlice;
-	getSliceQuality(quality, sliceCount, kmPerSlice);
+	AtmosphereRenderSystem::getSliceQuality(quality, sliceCount, kmPerSlice);
 
 	Pipeline::SpecConstValues specConstValues =
 	{
@@ -1056,4 +1054,14 @@ ID<Image> AtmosphereRenderSystem::getSkyViewLUT()
 	if (!skyViewLUT)
 		skyViewLUT = createSkyViewLUT(GraphicsSystem::Instance::get());
 	return skyViewLUT;
+}
+
+void AtmosphereRenderSystem::getSliceQuality(GraphicsQuality quality, float& sliceCount, float& kmPerSlice) noexcept
+{
+	switch (quality)
+	{
+		case GraphicsQuality::PotatoPC: sliceCount = 8.0f; kmPerSlice = 12.0f; break;
+		case GraphicsQuality::Ultra: sliceCount = 32.0f; kmPerSlice = 3.0f; break;
+		default: sliceCount = 16.0f; kmPerSlice = 6.0f; break;
+	}
 }

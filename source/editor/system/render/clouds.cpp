@@ -112,6 +112,13 @@ void CloudsEditorSystem::preUiRender()
 			ImGui::Text("Temperature difference between layers. (Storm clouds)");
 			ImGui::EndTooltip();
 		}
+
+		ImGui::DragFloat("Current Time", &cloudsSystem->currentTime, 0.1f, 0.0, 0.0f, "%.3f s");
+		if (ImGui::BeginItemTooltip())
+		{
+			ImGui::Text("Custom current time value. (For a multiplayer sync)");
+			ImGui::EndTooltip();
+		}
 	}
 	ImGui::End();
 }
