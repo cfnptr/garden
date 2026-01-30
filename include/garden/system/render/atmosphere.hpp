@@ -258,6 +258,15 @@ public:
 	 * @brief Returns atmosphere sky view LUT. (Look Up Table)
 	 */
 	ID<Image> getSkyViewLUT();
+
+	/**
+	 * @brief Returns camera volume slice constants at the specified graphics quality.
+	 *
+	 * @param quality target graphics quality level
+	 * @param[out] sliceCount camera volume slice count
+	 * @param[out] kmPerSlice camera volume kilometres per slice
+	 */
+	static void getSliceQuality(GraphicsQuality quality, float& sliceCount, float& kmPerSlice) noexcept;
 };
 
 } // namespace garden
