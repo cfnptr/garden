@@ -103,7 +103,7 @@ GraphicsSystem::GraphicsSystem(uint2 windowSize, bool isFullscreen, bool isDecor
 	SET_RESOURCE_DEBUG_NAME(swapchainFramebuffer, "framebuffer.swapchain");
 
 	setShadowColor(float3::one);
-	setSunLight(float3::one);
+	setStarLight(float3::one);
 	setAmbientLight(float3(0.5f));
 	setEmissiveCoeff(100.0f);
 

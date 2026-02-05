@@ -193,11 +193,11 @@ public:
 		commonConstants.shadowColor = (f32x4)float4(shadowColor, intensity);
 	}
 	/**
-	 * @brief Sets sun light color. (Energy)
+	 * @brief Sets nearby star (Sun) light color. (Energy)
 	 * @details See the @ref getCommonConstants().
-	 * @param sunLight target sun light color value
+	 * @param starLight target star light color value
 	 */
-	void setSunLight(float3 sunLight) noexcept { commonConstants.sunLight = sunLight; }
+	void setStarLight(float3 starLight) noexcept { commonConstants.starLight = starLight; }
 	/**
 	 * @brief Sets ambient light color. (Energy)
 	 * @details See the @ref getCommonConstants().

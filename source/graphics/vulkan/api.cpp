@@ -55,6 +55,11 @@ static vk::Bool32 VKAPI_PTR vkDebugMessengerCallback(
 	{
 		return VK_FALSE; // Skipping Steam layers API version 1.3 warnings.
 	}
+	if (messageSeverity & vk::DebugUtilsMessageSeverityFlagBitsEXT::eError &&
+		string_view(callbackData->pMessage).find("query not reset") != string::npos)
+	{
+		return VK_FALSE; // TODO: fix query reset in the MESA_anti_lag.
+	}
 
 	const char* severity;
 	if (messageSeverity & vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose)

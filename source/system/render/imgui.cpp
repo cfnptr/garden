@@ -277,9 +277,7 @@ void ImGuiRenderSystem::preInit()
 	::SetWindowLongPtrW((HWND)mainViewport->PlatformHandleRaw, GWLP_WNDPROC, (LONG_PTR)imGuiWndProc);
 	#endif
 
-	auto contentScale = inputSystem->getContentScale();
-	auto fontSize = 14.0f * std::max(contentScale.x, contentScale.y);
-
+	constexpr auto fontSize = 14.0f;
 	#if GARDEN_DEBUG
 	auto fontString = (GARDEN_RESOURCES_PATH / fontPath).generic_string();
 	auto fontResult = io.Fonts->AddFontFromFileTTF(fontString.c_str(), fontSize);

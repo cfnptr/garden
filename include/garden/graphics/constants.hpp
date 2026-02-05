@@ -39,11 +39,11 @@ struct CommonConstants final
 	float currentTime = 0.0f;               /**< Time since start of the program. (In seconds) */
 	float3 viewDir = float3::zero;          /**< Camera view direction in world space. */
 	float deltaTime = 0.0f;                 /**< Time elapsed between two previous frames. (In seconds) */
-	float3 lightDir = float3::zero;         /**< Light direction in world space. (From sun to world) */
+	float3 lightDir = float3::zero;         /**< Light direction in world space. (From star to world) */
 	float emissiveCoeff = 0.0f;             /**< Maximum brightness coefficient. */
-	float3 sunLight = float3::zero;         /**< Sun light color. (Energy) */
+	float3 starLight = float3::zero;        /**< Nearby star (Sun) light color. (Energy) */
 	float anglePerPixel = 0.0f;             /**< Vertical field-of-view per pixel. */
-	float3 ambientLight = float3::zero;     /**< Ambient light color. (Energy) */
+	float3 ambientLight = float3::zero;     /**< World ambient light color. (Energy) */
 	float mipLodBias = 0.0f;                /**< Preferred mip-map LOD bias. */
 	float3 upDir = float3::zero;            /**< World up direction. (Inversed gravityDir) */
 	float ggxLodOffset = 0.0f;              /**< Spherical GGX distribution blur LOD offset. */

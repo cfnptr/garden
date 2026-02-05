@@ -191,7 +191,6 @@ void InfiniteGridEditorSystem::render()
 
 	auto inFlightIndex = graphicsSystem->getInFlightIndex();
 
-	
 	if (graphicsSystem->isCurrentRenderPassAsync())
 	{
 		SET_GPU_DEBUG_LABEL_ASYNC("Infinite Grid", 0);

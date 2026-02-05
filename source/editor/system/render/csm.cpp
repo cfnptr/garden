@@ -105,6 +105,11 @@ void CsmRenderEditorSystem::preUiRender()
 	{
 		ImGui::Checkbox("Enabled", &csmSystem->isEnabled); ImGui::SameLine();
 		ImGui::Checkbox("Render Tranlucent", &csmSystem->renderTranslucent);
+		if (ImGui::BeginItemTooltip())
+		{
+			ImGui::Text("Render translucent shadows. (Colored glass, etc.)");
+			ImGui::EndTooltip();
+		}
 
 		auto graphicsSystem = GraphicsSystem::Instance::get();
 		const auto& cc = graphicsSystem->getCommonConstants();
