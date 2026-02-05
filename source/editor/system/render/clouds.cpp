@@ -100,10 +100,16 @@ void CloudsEditorSystem::preUiRender()
 			ImGui::EndTooltip();
 		}
 
-		ImGui::SliderFloat("Coverage", &cloudsSystem->coverage, 0.0f, 1.0f);
+		ImGui::SliderFloat("Cumulus Coverage", &cloudsSystem->cumulusCoverage, 0.0f, 1.0f);
 		if (ImGui::BeginItemTooltip())
 		{
-			ImGui::Text("Ammount of clouds. (Clear or cloudy weather)");
+			ImGui::Text("Ammount of cumulus clouds. (Clear or cloudy weather)");
+			ImGui::EndTooltip();
+		}
+		ImGui::SliderFloat("Cirrus Coverage", &cloudsSystem->cirrusCoverage, 0.0f, 1.0f);
+		if (ImGui::BeginItemTooltip())
+		{
+			ImGui::Text("Ammount of cirrus clouds. (Clear or cloudy weather)");
 			ImGui::EndTooltip();
 		}
 		ImGui::SliderFloat("Temperature", &cloudsSystem->temperature, 0.0f, 1.0f);

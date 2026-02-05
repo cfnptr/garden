@@ -46,7 +46,7 @@ namespace garden
 class CloudsRenderSystem final : public System, public Singleton<CloudsRenderSystem>
 {
 public:
-	struct PushConstants final
+	struct ComputePC final
 	{
 		float3 cameraPos;
 		float bottomRadius;
@@ -54,7 +54,19 @@ public:
 		float minDistance;
 		float maxDistance;
 		float currentTime;
-		float coverage;
+		float cumulusCoverage;
+		float cirrusCoverage;
+		float temperature;
+	};
+	struct ShadowsPC final
+	{
+		float4x4 invViewProj;
+		float3 cameraPos;
+		float bottomRadius;
+		float3 starDir;
+		float currentTime;
+		float3 windDir;
+		float cumulusCoverage;
 		float temperature;
 	};
 
@@ -62,16 +74,15 @@ public:
 	static constexpr Image::Format cloudsDepthFormat = Image::Format::SfloatR16;
 	static constexpr Framebuffer::OutputAttachment::Flags framebufferFlags = { false, false, true };
 private:
-	Ref<Image> dataFields = {}, verticalProfile = {}, noiseShape = {};
-	ID<Image> cloudsView = {}, cloudsViewDepth = {};
-	ID<Image> cloudsCube = {}, lastCameraVolume = {};
+	Ref<Image> dataFields = {}, verticalProfile = {}, noiseShape = {}, cirrusShape = {};
+	ID<Image> cloudsView = {}, cloudsViewDepth = {}, cloudsCube = {}, lastCameraVolume = {};
 	ID<Framebuffer> viewFramebuffer = {}, cubeFramebuffer = {};
 	ID<GraphicsPipeline> computePipeline = {};
-	ID<GraphicsPipeline> viewBlendPipeline = {};
-	ID<DescriptorSet> computeDS = {}, viewBlendDS = {}, cubeBlendDS = {};
+	ID<GraphicsPipeline> viewBlendPipeline = {}, shadowPipeline = {};
+	ID<DescriptorSet> computeDS = {}, viewBlendDS = {}, cubeBlendDS = {}, shadowDS = {};
 	GraphicsQuality quality = GraphicsQuality::High;
 	bool isInitialized = false;
-	uint8 _alignment = 0;
+	bool hasShadows = false;
 
 	/**
 	 * @brief Creates a new physically based volumetric clouds rendering system instance.
@@ -87,20 +98,24 @@ private:
 	void deinit();
 	void preDeferredRender();
 	void preHdrRender();
-	void depthHdrRender();
+	void hdrRender();
+	void preShadowRender();
+	void shadowRender();
 	void gBufferRecreate();
 	void qualityChange();
 
 	friend class ecsm::Manager;
 public:
-	bool isEnabled = true;      /**< Is physically based volumetric clouds rendering enabled. */
-	float bottomRadius = 1.5f;  /**< Stratus and cumulus clouds start height. (km) */
-	float topRadius = 4.0f;     /**< Stratus and cumulus clouds end height. (km) */
-	float minDistance = 0.2f;   /**< Clouds volume tracing offset in front of camera. (km) */
-	float maxDistance = 200.0f; /**< Maximum clouds volume tracing distance. (km) */
-	float coverage = 0.4f;      /**< Ammount of clouds. (Clear or cloudy weather) */
-	float temperature = 0.7f;   /**< Temperature difference between layers. (Storm clouds) */
-	float currentTime = 0.0f;   /**< Custom current time value. (For a multiplayer sync) */
+	bool isEnabled = true;        /**< Is physically based volumetric clouds rendering enabled. */
+	bool renderShadows = true;    /**< Render cloud shadows to the shadow buffer. */
+	float bottomRadius = 1.5f;    /**< Stratus and cumulus clouds start height. (km) */
+	float topRadius = 4.0f;       /**< Stratus and cumulus clouds end height. (km) */
+	float minDistance = 0.2f;     /**< Clouds volume tracing offset in front of camera. (km) */
+	float maxDistance = 200.0f;   /**< Maximum clouds volume tracing distance. (km) */
+	float cumulusCoverage = 0.4f; /**< Ammount of cumulus clouds. (Clear or cloudy weather) */
+	float cirrusCoverage = 0.2f;  /**< Ammount of cirrus clouds. (Clear or cloudy weather) */
+	float temperature = 0.7f;     /**< Temperature difference between layers. (Storm clouds) */
+	float currentTime = 0.0f;     /**< Custom current time value. (For a multiplayer sync) */
 
 	/**
 	 * @brief Returns volumetric clouds rendering graphics quality.
