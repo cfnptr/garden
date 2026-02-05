@@ -51,9 +51,10 @@ public:
 
 	struct ShadowData final
 	{
+		float4x4 viewProj[cascadeCount];
 		float4x4 uvToLight[cascadeCount];
 		float4 farPlanes;
-		float3 sunDir;
+		float3 starDir;
 		float normBias;
 	};
 private:
@@ -68,7 +69,8 @@ private:
 	ID<GraphicsPipeline> pipeline = {};
 	ID<DescriptorSet> descriptorSet = {};
 	uint32 shadowMapSize = 2048;
-	uint16 _alignment = 0;
+	bool isInitialized = false;
+	bool hasShadows = false;
 
 	/**
 	 * @brief Creates a new cascade shadow maps rendering system instance.
@@ -93,8 +95,8 @@ private:
 	
 	friend class ecsm::Manager;
 public:
-	bool isEnabled = true; /**< Is cascade shadow maps rendering enabled. */
-	bool renderTranslucent = true;
+	bool isEnabled = true;         /**< Is cascade shadow maps rendering enabled. */
+	bool renderTranslucent = true; /**< Render translucent shadows. (Colored glass, etc.) */
 	float2 cascadeSplits = float2(0.1f, 0.25f);
 	float distance = 100.0f;
 	float biasConstantFactor = -1.25f;

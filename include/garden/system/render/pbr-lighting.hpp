@@ -118,14 +118,28 @@ public:
 		float weight;
 	};
 
+	static constexpr uint8 baseShadowIndex = 0;
+	static constexpr uint8 tempShadowIndex = 1;
+	static constexpr uint8 blurShadowIndex = 0;
 	static constexpr uint8 shadowBufferCount = 2;
+	static constexpr uint8 baseAoIndex = 2;
+	static constexpr uint8 tempAoIndex = 1;
+	static constexpr uint8 blurAoIndex = 0;
 	static constexpr uint8 aoBufferCount = 3;
-	static constexpr Framebuffer::OutputAttachment::Flags framebufferFlags = { false, false, true };
+	static constexpr uint8 baseReflIndex = 0;
+	static constexpr uint8 baseGiIndex = 0;
+
+	static constexpr Framebuffer::OutputAttachment::Flags baseFbFlags = { false, true, true };
+	static constexpr Framebuffer::OutputAttachment::Flags tempFbFlags = { false, false, true };
+
 	static constexpr Image::Format shadowBufferFormat = Image::Format::UnormR8G8B8A8;
 	static constexpr Image::Format aoBufferFormat = Image::Format::UnormR8;
 	static constexpr Image::Format reflBufferFormat = Image::Format::SfloatR16G16B16A16;
 	static constexpr Image::Format giBufferFormat = Image::Format::SfloatR16G16B16A16;
 private:
+	vector<ID<ImageView>> reflImageViews;
+	vector<ID<Framebuffer>> reflFramebuffers;
+	vector<ID<DescriptorSet>> reflBlurDSes;
 	ID<Image> dfgLUT = {};
 	ID<Image> shadowBuffer = {};
 	ID<Image> shadowBlurBuffer = {};
@@ -133,15 +147,11 @@ private:
 	ID<Image> aoBlurBuffer = {};
 	ID<Image> reflBuffer = {};
 	ID<Image> giBuffer = {};
-	ID<Framebuffer> giFramebuffer = {};
+	ID<Framebuffer> reflFramebuffer = {}, giFramebuffer = {};
 	ID<ImageView> shadowImageViews[shadowBufferCount] = {};
 	ID<Framebuffer> shadowFramebuffers[shadowBufferCount + 1] = {};
 	ID<ImageView> aoImageViews[aoBufferCount] = {};
 	ID<Framebuffer> aoFramebuffers[aoBufferCount] = {};
-	vector<ID<ImageView>> reflImageViews;
-	vector<ID<Framebuffer>> reflFramebuffers;
-	vector<ID<DescriptorSet>> reflBlurDSes;
-	ID<ImageView> reflBufferView = {};
 	ID<GraphicsPipeline> lightingPipeline = {};
 	ID<ComputePipeline> iblSpecularPipeline = {};
 	ID<GraphicsPipeline> shadowBlurPipeline = {};
@@ -226,9 +236,13 @@ public:
 	 */
 	const ID<Framebuffer>* getAoFramebuffers();
 	/**
-	 * @brief Returns PBR lighting reflection framebuffer array.
+	 * @brief Returns PBR lighting blur reflection framebuffer array.
 	 */
 	const vector<ID<Framebuffer>>& getReflFramebuffers();
+	/**
+	 * @brief Returns PBR lighting reflection framebuffer.
+	 */
+	ID<Framebuffer> getReflFramebuffer();
 	/**
 	 * @brief Returns PBR lighting global illumination framebuffer.
 	 */
@@ -237,27 +251,34 @@ public:
 	/**
 	 * @brief Returns PBR lighting shadow base framebuffer.
 	 */
-	ID<Framebuffer> getShadowBaseFB() { return getShadowFramebuffers()[0]; }
+	ID<Framebuffer> getShadowBaseFB() { return getShadowFramebuffers()[baseShadowIndex]; }
 	/**
 	 * @brief Returns PBR lighting shadow temporary framebuffer.
 	 */
-	ID<Framebuffer> getShadowTempFB() { return getShadowFramebuffers()[1]; }
+	ID<Framebuffer> getShadowTempFB() { return getShadowFramebuffers()[tempShadowIndex]; }
+	/**
+	 * @brief Returns PBR lighting shadow blur framebuffer.
+	 */
+	ID<Framebuffer> getShadowBlurFB() { return getShadowFramebuffers()[blurShadowIndex]; }
 	/**
 	 * @brief Returns PBR lighting AO base framebuffer. (Ambient Occlusion)
 	 */
-	ID<Framebuffer> getAoBaseFB() { return getAoFramebuffers()[2]; }
+	ID<Framebuffer> getAoBaseFB() { return getAoFramebuffers()[baseAoIndex]; }
 	/**
 	 * @brief Returns PBR lighting AO temporary framebuffer. (Ambient Occlusion)
 	 */
-	ID<Framebuffer> getAoTempFB() { return getAoFramebuffers()[1]; }
+	ID<Framebuffer> getAoTempFB() { return getAoFramebuffers()[tempAoIndex]; }
 	/**
 	 * @brief Returns PBR lighting AO blur framebuffer. (Ambient Occlusion)
 	 */
-	ID<Framebuffer> getAoBlurFB() { return getAoFramebuffers()[0]; }
+	ID<Framebuffer> getAoBlurFB() { return getAoFramebuffers()[blurAoIndex]; }
 	/**
-	 * @brief Returns PBR lighting reflection base framebuffer.
+	 * @brief Returns PBR lighting AO blur framebuffer. (Ambient Occlusion)
 	 */
-	ID<Framebuffer> getReflBaseFB() { return getReflFramebuffers()[0]; }
+	ID<Framebuffer> getReflBaseFB()
+	{
+		return options.useReflBlur ? getReflFramebuffers()[baseReflIndex] : getReflFramebuffer();
+	}
 
 	/*******************************************************************************************************************
 	 * @brief Returns PBR lighting DFG LUT image. (DFG Look Up Table)
@@ -302,38 +323,42 @@ public:
 	 */
 	const ID<ImageView>* getAoImageViews();
 	/**
-	 * @brief Returns PBR lighting reflection image view array.
+	 * @brief Returns PBR lighting blur reflection image view array.
 	 */
 	const vector<ID<ImageView>>& getReflImageViews();
-	/**
-	 * @brief Returns PBR lighting reflection buffer image view.
-	 */
-	ID<ImageView> getReflBufferView();
 
 	/**
 	 * @brief Returns PBR lighting shadow base image view.
 	 */
-	ID<ImageView> getShadowBaseView() { return getShadowImageViews()[0]; }
+	ID<ImageView> getShadowBaseView() { return getShadowImageViews()[baseShadowIndex]; }
 	/**
 	 * @brief Returns PBR lighting shadow temporary image view.
 	 */
-	ID<ImageView> getShadowTempView() { return getShadowImageViews()[1]; }
+	ID<ImageView> getShadowTempView() { return getShadowImageViews()[tempShadowIndex]; }
+	/**
+	 * @brief Returns PBR lighting shadow temporary image view.
+	 */
+	ID<ImageView> getShadowBlurView() { return getShadowImageViews()[blurShadowIndex]; }
 	/**
 	 * @brief Returns PBR lighting AO base image view. (Ambient Occlusion)
 	 */
-	ID<ImageView> getAoBaseView() { return getAoImageViews()[2]; }
+	ID<ImageView> getAoBaseView() { return getAoImageViews()[baseAoIndex]; }
 	/**
 	 * @brief Returns PBR lighting AO temporary image view. (Ambient Occlusion)
 	 */
-	ID<ImageView> getAoTempView() { return getAoImageViews()[1]; }
+	ID<ImageView> getAoTempView() { return getAoImageViews()[tempAoIndex]; }
 	/**
 	 * @brief Returns PBR lighting AO blur image view. (Ambient Occlusion)
 	 */
-	ID<ImageView> getAoBlurView() { return getAoImageViews()[0]; }
+	ID<ImageView> getAoBlurView() { return getAoImageViews()[blurAoIndex]; }
 	/**
 	 * @brief Returns PBR lighting reflection base image view.
 	 */
-	ID<ImageView> getReflBaseView() { return getReflImageViews()[0]; }
+	ID<ImageView> getReflBaseView()
+	{
+		return options.useReflBlur ? getReflImageViews()[0] : 
+			GraphicsSystem::Instance::get()->get(reflBuffer)->getDefaultView();
+	}
 
 	/*******************************************************************************************************************
 	 * @brief Calculates specular cubemap mip level count.
@@ -462,7 +487,7 @@ public:
 	}
 
 	/**
-	 * @brief Returns true there is rendered framebuffer shadow data on the current frame.
+	 * @brief Returns true if there is rendered framebuffer shadow data on the current frame.
 	 */
 	bool isFbShadow() const noexcept { return hasFbShadow; }
 

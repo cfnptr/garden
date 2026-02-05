@@ -50,7 +50,7 @@ public:
 		float mieDensityExpScale;
 		float3 absorptionExtinction;
 		float absDensity0LayerWidth;
-		float3 sunDir;
+		float3 starDir;
 		float absDensity0ConstantTerm;
 		float absDensity0LinearTerm;
 		float absDensity1ConstantTerm;
@@ -87,7 +87,7 @@ public:
 		float miePhaseG;
 		float3 mieScattering;
 		float absDensity0LayerWidth;
-		float3 sunDir;
+		float3 starDir;
 		float absDensity0ConstantTerm;
 		float3 cameraPos;
 		float absDensity0LinearTerm;
@@ -106,7 +106,7 @@ public:
 		float miePhaseG;
 		float3 mieScattering;
 		float absDensity0LayerWidth;
-		float3 sunDir;
+		float3 starDir;
 		float absDensity0ConstantTerm;
 		float3 cameraPos;
 		float absDensity0LinearTerm;
@@ -121,23 +121,23 @@ public:
 		float4x4 invViewProj;
 		float3 cameraPos;
 		float bottomRadius;
-		float3 sunDir;
+		float3 starDir;
 		float topRadius;
-		float3 sunColor;
-		float sunSize;
+		float3 starColor;
+		float starSize;
 	};
 	struct ShReducePC final
 	{
 		uint32 offset;
 	};
 
-	static constexpr float3 earthRayleighScattering = float3(0.005802f, 0.013558f, 0.033100f);
+	static constexpr float3 earthRayleighScattering = float3(0.005802f, 0.013558f, 0.0331f);
 	static constexpr float earthRayleightScaleHeight = 8.0f;
 	static constexpr float3 earthMieScattering = float3(0.003996f);
 	static constexpr float earthMieScaleHeight = 1.2f;
 	static constexpr float3 earthMieAbsorption = float3(0.000444f);
 	static constexpr float earthMiePhaseG = 0.8f;
-	static constexpr float3 earthOzoneAbsorption = float3(0.000650f, 0.001881f, 0.000085f);
+	static constexpr float3 earthOzoneAbsorption = float3(0.00065f, 0.001881f, 0.000085f);
 	static constexpr float earthOzoneLayerWidth = 25.0f;
 	static constexpr float earthOzoneLayerSlope = 1.0f / 15.0f;
 	static constexpr float earthOzoneLayerTip = 1.0f;
@@ -146,17 +146,26 @@ public:
 	static constexpr float earthAtmosphereHeight = 60.0f;
 	static constexpr float earthSunAngularSize = 0.53f;
 
-	// TOOD: visually adjust values or use better source
-	static constexpr float3 marsRayleighScattering = float3(0.00008703f, 0.00020337f, 0.00049650f);
+	// Mars has a very thin atmosphere (CO2), so Rayleigh is weak.
+	// However, the sky is bright due to suspended dust (Mie).
+	static constexpr float3 marsRayleighScattering = float3(0.000087f, 0.000203f, 0.000496f);
 	static constexpr float marsRayleightScaleHeight = 11.1f;
-	static constexpr float3 marsMieScattering = float3(0.0120f, 0.01f, 0.007f);
-	static constexpr float marsMieScaleHeight = 10.0f;
-	static constexpr float3 marsMieAbsorption = float3(0.0008f, 0.0006f, 0.0004f);
-	static constexpr float marsMiePhaseG = 0.7f;
+
+	// Mie (Dust) is the dominant factor on Mars.
+	static constexpr float3 marsMieScattering = float3(0.08f, 0.06f, 0.04f);
+	static constexpr float marsMieScaleHeight = 11.1f;
+	static constexpr float3 marsMieAbsorption = float3(0.001f, 0.004f, 0.012f);
+	static constexpr float marsMiePhaseG = 0.75f;
+
+	// Mars has negligible Ozone.
 	static constexpr float3 marsOzoneAbsorption = float3(0.0f);
-	static constexpr float3 marsGroundAlbedo = float3(0.16f);
+	static constexpr float marsOzoneLayerWidth = 0.0f;
+	static constexpr float marsOzoneLayerSlope = 0.0f;
+	static constexpr float marsOzoneLayerTip = 0.0f;
+
+	static constexpr float3 marsGroundAlbedo = float3(0.25f, 0.15f, 0.1f);
 	static constexpr float marsGroundRadius = 3389.5f;
-	static constexpr float marsAtmosphereHeight = 80.0f;
+	static constexpr float marsAtmosphereHeight = 100.0f;
 	static constexpr float marsSunAngularSize = 0.35f;
 
 	static constexpr Framebuffer::OutputAttachment::Flags framebufferFlags = { false, false, true };
@@ -187,7 +196,6 @@ private:
 	ID<Framebuffer> skyboxFramebuffers[Image::cubemapFaceCount] = {};
 	Ref<Image> lastSkybox = {}, lastSpecular = {};
 	ID<ImageView> lastSkyboxShView = {};
-	float3 sunDir = float3::zero;
 	uint32 shInFlightIndex = 0;
 	GraphicsQuality quality = GraphicsQuality::High;
 	bool isInitialized = false;
@@ -209,7 +217,10 @@ private:
 	void hdrRender();
 	void gBufferRecreate();
 	void qualityChange();
+
 	void updateSkybox();
+	void renderSkyboxFaces();
+	void generateSkySH(ID<Buffer> shBuffer, f32x4* shCoeffs);
 
 	friend class ecsm::Manager;
 public:
@@ -227,10 +238,11 @@ public:
 	float3 groundAlbedo = earthGroundAlbedo;
 	float groundRadius = earthGroundRadius; /**< (km) */
 	float atmosphereHeight = earthAtmosphereHeight; /**< (km) */
-	float4 sunColor = float4(float3(1.0f), 10000.0f);
-	float sunAngularSize = earthSunAngularSize; /**< (degrees) */
+	float4 starColor = float4(float3(1.0f), 10000.0f);
+	float starAngularSize = earthSunAngularSize; /**< (degrees) */
 	float giFactor = 1.0f;        /**< Global illumination factor. */
 	float multiScatFactor = 1.0f; /**< Light multi-scattering factor. */
+	bool noDelay = false;         /**< Make all computation in one fram. (Expnesive!) */
 
 	/*******************************************************************************************************************
 	 * @brief Returns atmosphere rendering graphics quality.

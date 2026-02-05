@@ -82,11 +82,11 @@ pipelineState
 
 > Where [X] is index of the framebuffer attachment.
 
-**add** - Adds the source to the destination. [O = dS + sD]
-**sub** - Subtracts the destination from the source. [O = dS - sD].
-**revSub** - Subtracts the source from the destination. [O = dD - sS].
-**min** - Minimum of the source and destination values per component. [O = min(dS, sD)]
-**max** - Maximum of the source and destination values per component. [O = max(dS, sD)]
+* **add** - Adds the source to the destination. [O = dS + sD]
+* **sub** - Subtracts the destination from the source. [O = dS - sD].
+* **revSub** - Subtracts the source from the destination. [O = dD - sS].
+* **min** - Minimum of the source and destination values per component. [O = min(dS, sD)]
+* **max** - Maximum of the source and destination values per component. [O = max(dS, sD)]
 
 **Blending scale factors**: [ zero | one | srcColor | oneMinusSrcColor | dstColor | oneMinusDstColor | srcAlpha | 
     oneMinusSrcAlpha | dstAlpha | oneMinusDstAlpha | constColor | oneMinusConstColor | constAlpha | 

@@ -30,7 +30,8 @@ static void createDataBuffers(GraphicsSystem* graphicsSystem, DescriptorSet::Buf
 
 	for (uint32 i = 0; i < inFlightCount; i++)
 	{
-		auto buffer = graphicsSystem->createBuffer(Buffer::Usage::Uniform, Buffer::CpuAccess::SequentialWrite, 
+		// Note: we are not writing data in sequence due to shadow passes!
+		auto buffer = graphicsSystem->createBuffer(Buffer::Usage::Uniform, Buffer::CpuAccess::RandomReadWrite, 
 			sizeof(CsmRenderSystem::ShadowData), Buffer::Location::Auto, Buffer::Strategy::Size);
 		SET_RESOURCE_DEBUG_NAME(buffer, "buffer.uniform.csm.data" + to_string(i));
 		dataBuffers[i].resize(1); dataBuffers[i][0] = buffer;
@@ -81,34 +82,66 @@ static ID<Image> createTransparentData(GraphicsSystem* graphicsSystem,
 static void createShadowFramebuffers(GraphicsSystem* graphicsSystem, 
 	const vector<ID<ImageView>>& imageViews, vector<ID<Framebuffer>>& framebuffers, uint32 shadowMapSize)
 {
-	framebuffers.resize(CsmRenderSystem::cascadeCount);
 	Framebuffer::OutputAttachment depthStencilAttachment({}, CsmRenderSystem::shadowFlags);
+	auto size = uint2(shadowMapSize);
 
+	framebuffers.resize(CsmRenderSystem::cascadeCount);
 	for (uint8 i = 0; i < CsmRenderSystem::cascadeCount; i++)
 	{
 		vector<Framebuffer::OutputAttachment> colorAttachments;
 		depthStencilAttachment.imageView = imageViews[i];
-		auto framebuffer = graphicsSystem->createFramebuffer(uint2(shadowMapSize), 
+		auto framebuffer = graphicsSystem->createFramebuffer(size, 
 			std::move(colorAttachments), depthStencilAttachment);
 		SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.csm.shadowCascade" + to_string(i));
 		framebuffers[i] = framebuffer;
 	}
 }
+static void updateShadowFramebuffers(GraphicsSystem* graphicsSystem, 
+	const vector<ID<ImageView>>& imageViews, vector<ID<Framebuffer>>& framebuffers, uint32 shadowMapSize)
+{
+	Framebuffer::OutputAttachment depthStencilAttachment({}, CsmRenderSystem::shadowFlags);
+	auto size = uint2(shadowMapSize);
+
+	for (uint8 i = 0; i < CsmRenderSystem::cascadeCount; i++)
+	{
+		vector<Framebuffer::OutputAttachment> colorAttachments;
+		depthStencilAttachment.imageView = imageViews[i];
+		auto framebufferView = graphicsSystem->get(framebuffers[i]);
+		framebufferView->update(size, std::move(colorAttachments), depthStencilAttachment);
+	}
+}
+
 static void createTransparentFramebuffers(GraphicsSystem* graphicsSystem, const vector<ID<ImageView>>& transImageViews,
 	const vector<ID<ImageView>>& shadowImageViews, vector<ID<Framebuffer>>& framebuffers, uint32 shadowMapSize)
 {
-	framebuffers.resize(CsmRenderSystem::cascadeCount);
 	Framebuffer::OutputAttachment depthStencilAttachment({}, CsmRenderSystem::transDepthFlags);
+	auto size = uint2(shadowMapSize);
+
+	framebuffers.resize(CsmRenderSystem::cascadeCount);
+	for (uint8 i = 0; i < CsmRenderSystem::cascadeCount; i++)
+	{
+		vector<Framebuffer::OutputAttachment> colorAttachments =
+		{ Framebuffer::OutputAttachment(transImageViews[i], CsmRenderSystem::transColorFlags) };
+		depthStencilAttachment.imageView = shadowImageViews[i];
+		auto framebuffer = graphicsSystem->createFramebuffer(size, 
+			std::move(colorAttachments), depthStencilAttachment);
+		SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.csm.transparentCascade" + to_string(i));
+		framebuffers[i] = framebuffer;
+	}
+}
+static void updateTransparentFramebuffers(GraphicsSystem* graphicsSystem, const vector<ID<ImageView>>& transImageViews,
+	const vector<ID<ImageView>>& shadowImageViews, vector<ID<Framebuffer>>& framebuffers, uint32 shadowMapSize)
+{
+	Framebuffer::OutputAttachment depthStencilAttachment({}, CsmRenderSystem::transDepthFlags);
+	auto size = uint2(shadowMapSize);
 
 	for (uint8 i = 0; i < CsmRenderSystem::cascadeCount; i++)
 	{
 		vector<Framebuffer::OutputAttachment> colorAttachments =
 		{ Framebuffer::OutputAttachment(transImageViews[i], CsmRenderSystem::transColorFlags) };
 		depthStencilAttachment.imageView = shadowImageViews[i];
-		auto framebuffer = graphicsSystem->createFramebuffer(uint2(shadowMapSize), 
-			std::move(colorAttachments), depthStencilAttachment);
-		SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.csm.transparentCascade" + to_string(i));
-		framebuffers[i] = framebuffer;
+		auto framebufferView = graphicsSystem->get(framebuffers[i]);
+		framebufferView->update(size, std::move(colorAttachments), depthStencilAttachment);
 	}
 }
 
@@ -203,27 +236,49 @@ void CsmRenderSystem::deinit()
 //**********************************************************************************************************************
 void CsmRenderSystem::preShadowRender()
 {
-	if (isEnabled && depthMap && transparentMap && !dataBuffers.empty())
-		PbrLightingSystem::Instance::get()->markFbShadow();
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	const auto& cc = graphicsSystem->getCommonConstants();
+	hasShadows = false;
+
+	if (!isEnabled || cc.shadowColor.getW() <= 0.0f || !graphicsSystem->directionalLight)
+		return;
+
+	if (!isInitialized)
+	{
+		if (!pipeline)
+			pipeline = createPipeline();
+		if (dataBuffers.empty())
+			createDataBuffers(graphicsSystem, dataBuffers);
+		if (!depthMap)
+			depthMap = createDepthData(graphicsSystem, shadowImageViews, shadowMapSize);
+		if (!transparentMap)
+			transparentMap = createTransparentData(graphicsSystem, transImageViews, shadowMapSize);
+		if (shadowFramebuffers.empty())
+			createShadowFramebuffers(graphicsSystem, shadowImageViews, shadowFramebuffers, shadowMapSize);
+		if (transFramebuffers.empty())
+		{
+			createTransparentFramebuffers(graphicsSystem, transImageViews, 
+				shadowImageViews, transFramebuffers, shadowMapSize);
+		}
+		isInitialized = true;
+	}	
+
+	auto pipelineView = graphicsSystem->get(pipeline);
+	if (!pipelineView->isReady())
+		return;
+
+	PbrLightingSystem::Instance::get()->markFbShadow();
+	hasShadows = true;
 }
 void CsmRenderSystem::shadowRender()
 {
 	SET_CPU_ZONE_SCOPED("Cascade Shadow Mapping");
 
-	if (!PbrLightingSystem::Instance::get()->isFbShadow())
-		return;
-
-	if (!pipeline)
-		pipeline = createPipeline();
-
-	auto graphicsSystem = GraphicsSystem::Instance::get();
-	const auto& cc = graphicsSystem->getCommonConstants();
-	if (cc.shadowColor.getW() <= 0.0f)
+	if (!hasShadows)
 		return;
 	
+	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto pipelineView = graphicsSystem->get(pipeline);
-	if (!pipelineView->isReady())
-		return;
 
 	if (!descriptorSet)
 	{
@@ -313,28 +368,10 @@ static f32x4x4 calcLightViewProj(const f32x4x4& view, f32x4 lightDir, f32x4& cam
 //**********************************************************************************************************************
 bool CsmRenderSystem::prepareShadowRender(uint32 passIndex, f32x4x4& viewProj, f32x4& cameraOffset)
 {
-	if (!isEnabled)
+	if (!hasShadows)
 		return false;
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	if (dataBuffers.empty())
-		createDataBuffers(graphicsSystem, dataBuffers);
-	if (!depthMap)
-		depthMap = createDepthData(graphicsSystem, shadowImageViews, shadowMapSize);
-	if (!transparentMap)
-		transparentMap = createTransparentData(graphicsSystem, transImageViews, shadowMapSize);
-	if (shadowFramebuffers.empty())
-		createShadowFramebuffers(graphicsSystem, shadowImageViews, shadowFramebuffers, shadowMapSize);
-	if (transFramebuffers.empty())
-	{
-		createTransparentFramebuffers(graphicsSystem, transImageViews, 
-			shadowImageViews, transFramebuffers, shadowMapSize);
-	}
-
-	const auto& cc = graphicsSystem->getCommonConstants();
-	if (cc.shadowColor.getW() <= 0.0f || !graphicsSystem->directionalLight)
-		return false;
-
 	auto cameraView = Manager::Instance::get()->get<CameraComponent>(graphicsSystem->camera);
 	auto nearPlane = cameraView->p.perspective.nearPlane;
 	if (passIndex > 0)
@@ -344,16 +381,22 @@ bool CsmRenderSystem::prepareShadowRender(uint32 passIndex, f32x4x4& viewProj, f
 		farPlane *= cascadeSplits[passIndex];
 	farPlanes[passIndex] = farPlane;
 
+	const auto& cc = graphicsSystem->getCommonConstants();
 	viewProj = calcLightViewProj(cc.view, (f32x4)cc.lightDir, cameraOffset, cameraView->p.perspective.fieldOfView, 
 		cameraView->p.perspective.aspectRatio, nearPlane, farPlane, zCoeff, shadowMapSize);
 
 	auto inFlightIndex = graphicsSystem->getInFlightIndex();
 	auto dataBufferView = graphicsSystem->get(dataBuffers[inFlightIndex][0]);
 	auto data = (ShadowData*)dataBufferView->getMap();
+	data->viewProj[passIndex] = (float4x4)viewProj;
 	data->uvToLight[passIndex] = (float4x4)(f32x4x4::ndcToUV * viewProj * cc.invViewProj * f32x4x4::uvToNDC);
-	data->farPlanes = float4((float3)(cc.nearPlane / farPlanes), 0.0f);
-	data->sunDir = -cc.lightDir;
-	data->normBias = biasNormalFactor;
+
+	if (passIndex == cascadeCount - 1)
+	{
+		data->farPlanes = float4((float3)(cc.nearPlane / farPlanes), 0.0f);
+		data->starDir = -cc.lightDir;
+		data->normBias = biasNormalFactor;
+	}
 	return true;
 }
 
@@ -412,27 +455,15 @@ void CsmRenderSystem::setShadowMapSize(uint32 size)
 
 	if (depthMap)
 	{
-		graphicsSystem->destroy(shadowImageViews);
-		graphicsSystem->destroy(depthMap);
-		depthMap = {}; shadowImageViews.clear();
-
-		if (!shadowFramebuffers.empty())
-		{
-			graphicsSystem->destroy(shadowFramebuffers);
-			shadowFramebuffers.clear();
-		}
+		graphicsSystem->destroy(shadowImageViews); graphicsSystem->destroy(depthMap);
+		depthMap = createDepthData(graphicsSystem, shadowImageViews, size);
+		updateShadowFramebuffers(graphicsSystem,shadowImageViews, shadowFramebuffers, size);
 	}
 	if (transparentMap)
 	{
-		graphicsSystem->destroy(transImageViews);
-		graphicsSystem->destroy(transparentMap);
-		transparentMap = {}; transImageViews.clear();
-
-		if (!transFramebuffers.empty())
-		{
-			graphicsSystem->destroy(transFramebuffers);
-			transFramebuffers.clear();
-		}
+		graphicsSystem->destroy(transImageViews); graphicsSystem->destroy(transparentMap);
+		transparentMap = createTransparentData(graphicsSystem, transImageViews, size);
+		updateTransparentFramebuffers(graphicsSystem, transImageViews, shadowImageViews, transFramebuffers, size);
 	}
 
 	shadowMapSize = size;
