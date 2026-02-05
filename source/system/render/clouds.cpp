@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "garden/system/render/clouds.hpp"
+#include "garden/system/render/pbr-lighting.hpp"
 #include "garden/system/render/atmosphere.hpp"
 #include "garden/system/render/deferred.hpp"
 #include "garden/system/render/hiz.hpp"
@@ -84,6 +85,12 @@ static Ref<Image> createNoiseShape()
 		Image::Usage::Sampled | Image::Usage::TransferSrc | Image::Usage::TransferDst | Image::Usage::TransferQ, 
 		0, Image::Strategy::Size, ImageLoadFlags::LoadShared | ImageLoadFlags::Load3D, 9.0f);
 }
+static Ref<Image> createCirrusShape()
+{
+	return ResourceSystem::Instance::get()->loadImage("clouds/cirrus-shape", Image::Format::UnormR8G8B8A8,
+		Image::Usage::Sampled | Image::Usage::TransferSrc | Image::Usage::TransferDst | 
+		Image::Usage::TransferQ, 0, Image::Strategy::Size, ImageLoadFlags::LoadShared, 9.0f);
+}
 
 static ID<GraphicsPipeline> createComputePipeline(ID<Framebuffer> framebuffer, GraphicsQuality quality)
 {
@@ -93,7 +100,7 @@ static ID<GraphicsPipeline> createComputePipeline(ID<Framebuffer> framebuffer, G
 
 	switch (quality)
 	{
-		case GraphicsQuality::PotatoPC: stepAdjDist = 2.048f; break;
+		case GraphicsQuality::PotatoPC: stepAdjDist = 3.072f; break;
 		case GraphicsQuality::Low: stepAdjDist = 4.096f; break;
 		case GraphicsQuality::Medium: stepAdjDist = 8.192f; break;
 		case GraphicsQuality::High: stepAdjDist = 16.384f; break;
@@ -118,12 +125,19 @@ static ID<GraphicsPipeline> createViewBlendPipeline()
 	ResourceSystem::GraphicsOptions options;
 	options.useAsyncRecording = deferredSystem->getOptions().useAsyncRecording;
 	return ResourceSystem::Instance::get()->loadGraphicsPipeline(
-		"clouds/view-blend", deferredSystem->getDepthHdrFramebuffer(), options);
+		"clouds/view-blend", deferredSystem->getHdrFramebuffer(), options);
+}
+static ID<GraphicsPipeline> createShadowPipeline()
+{
+	auto pbrLightingSystem = PbrLightingSystem::Instance::get();
+	ResourceSystem::GraphicsOptions options;
+	return ResourceSystem::Instance::get()->loadGraphicsPipeline(
+		"clouds/shadow", pbrLightingSystem->getShadowBaseFB(), options);
 }
 
 //**********************************************************************************************************************
 static DescriptorSet::Uniforms getCloudsUniforms(GraphicsSystem* graphicsSystem, 
-	ID<Image> dataFields, ID<Image> verticalProfile, ID<Image> noiseShape)
+	ID<Image> dataFields, ID<Image> verticalProfile, ID<Image> noiseShape, ID<Image> cirrusShape)
 {
 	auto hizBufferView = HizRenderSystem::Instance::get()->getImageViews().at(1);
 	auto cameraVolume = AtmosphereRenderSystem::Instance::get()->getCameraVolume();
@@ -131,6 +145,7 @@ static DescriptorSet::Uniforms getCloudsUniforms(GraphicsSystem* graphicsSystem,
 	auto dataFieldsView = graphicsSystem->get(dataFields)->getDefaultView();
 	auto verticalProfileView = graphicsSystem->get(verticalProfile)->getDefaultView();
 	auto noiseShapeView = graphicsSystem->get(noiseShape)->getDefaultView();
+	auto cirrusShapeView = graphicsSystem->get(cirrusShape)->getDefaultView();
 	auto inFlightCount = graphicsSystem->getInFlightCount();
 
 	DescriptorSet::Uniforms uniforms =
@@ -140,6 +155,7 @@ static DescriptorSet::Uniforms getCloudsUniforms(GraphicsSystem* graphicsSystem,
 		{ "dataFields", DescriptorSet::Uniform(dataFieldsView, 1, inFlightCount) },
 		{ "verticalProfile", DescriptorSet::Uniform(verticalProfileView, 1, inFlightCount) },
 		{ "noiseShape", DescriptorSet::Uniform(noiseShapeView, 1, inFlightCount) },
+		{ "cirrusShape", DescriptorSet::Uniform(cirrusShapeView, 1, inFlightCount) },
 		{ "cc", DescriptorSet::Uniform(graphicsSystem->getCommonConstantsBuffers()) }
 	};
 	return uniforms;
@@ -147,13 +163,27 @@ static DescriptorSet::Uniforms getCloudsUniforms(GraphicsSystem* graphicsSystem,
 static DescriptorSet::Uniforms getViewBlendUniforms(GraphicsSystem* graphicsSystem, 
 	ID<Image> cloudsView, ID<Image> cloudsViewDepth)
 {
+	auto depthBufferView = DeferredRenderSystem::Instance::get()->getDepthImageView();
 	auto cloudsViewView = graphicsSystem->get(cloudsView)->getDefaultView();
 	auto cloudsViewDepthView = graphicsSystem->get(cloudsViewDepth)->getDefaultView();
 
 	DescriptorSet::Uniforms uniforms =
 	{
+		{ "depthBuffer", DescriptorSet::Uniform(depthBufferView) },
 		{ "cloudsBuffer", DescriptorSet::Uniform(cloudsViewView) },
-		{ "depthBuffer", DescriptorSet::Uniform(cloudsViewDepthView) },
+		{ "cloudsDepth", DescriptorSet::Uniform(cloudsViewDepthView) }
+	};
+	return uniforms;
+}
+static DescriptorSet::Uniforms getShadowUniforms(GraphicsSystem* graphicsSystem, ID<Image> dataFields)
+{
+	auto depthBufferView = DeferredRenderSystem::Instance::get()->getDepthImageView();
+	auto dataFieldsView = graphicsSystem->get(dataFields)->getDefaultView();
+
+	DescriptorSet::Uniforms uniforms =
+	{ 
+		{ "depthBuffer", DescriptorSet::Uniform(depthBufferView) },
+		{ "dataFields", DescriptorSet::Uniform(dataFieldsView) }
 	};
 	return uniforms;
 }
@@ -182,7 +212,9 @@ void CloudsRenderSystem::init()
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("PreDeferredRender", CloudsRenderSystem::preDeferredRender);
 	ECSM_SUBSCRIBE_TO_EVENT("PreHdrRender", CloudsRenderSystem::preHdrRender);
-	ECSM_SUBSCRIBE_TO_EVENT("DepthHdrRender", CloudsRenderSystem::depthHdrRender);
+	ECSM_SUBSCRIBE_TO_EVENT("HdrRender", CloudsRenderSystem::hdrRender);
+	ECSM_SUBSCRIBE_TO_EVENT("PreShadowRender", CloudsRenderSystem::preShadowRender);
+	ECSM_SUBSCRIBE_TO_EVENT("ShadowRender", CloudsRenderSystem::shadowRender);
 	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", CloudsRenderSystem::gBufferRecreate);
 	ECSM_SUBSCRIBE_TO_EVENT("QualityChange", CloudsRenderSystem::qualityChange);
 }
@@ -191,6 +223,7 @@ void CloudsRenderSystem::deinit()
 	if (Manager::Instance::get()->isRunning)
 	{
 		auto graphicsSystem = GraphicsSystem::Instance::get();
+		graphicsSystem->destroy(shadowDS);
 		graphicsSystem->destroy(cubeBlendDS);
 		graphicsSystem->destroy(viewBlendDS);
 		graphicsSystem->destroy(computeDS);
@@ -199,16 +232,20 @@ void CloudsRenderSystem::deinit()
 		graphicsSystem->destroy(cloudsCube);
 		graphicsSystem->destroy(cloudsViewDepth);
 		graphicsSystem->destroy(cloudsView);
+		graphicsSystem->destroy(cirrusShape);
 		graphicsSystem->destroy(noiseShape);
 		graphicsSystem->destroy(verticalProfile);
 		graphicsSystem->destroy(dataFields);
+		graphicsSystem->destroy(shadowPipeline);
 		graphicsSystem->destroy(viewBlendPipeline);
 		graphicsSystem->destroy(computePipeline);
 
 		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PreDeferredRender", CloudsRenderSystem::preDeferredRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PreHdrRender", CloudsRenderSystem::preHdrRender);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("DepthHdrRender", CloudsRenderSystem::depthHdrRender);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("HdrRender", CloudsRenderSystem::hdrRender);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("PreShadowRender", CloudsRenderSystem::preShadowRender);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("ShadowRender", CloudsRenderSystem::shadowRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("GBufferRecreate", CloudsRenderSystem::gBufferRecreate);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("QualityChange", CloudsRenderSystem::qualityChange);
 	}
@@ -231,6 +268,8 @@ void CloudsRenderSystem::preDeferredRender()
 			verticalProfile = createVerticalProfile();
 		if (!noiseShape)
 			noiseShape = createNoiseShape();
+		if (!cirrusShape)
+			cirrusShape = createCirrusShape();
 		if (!cloudsView)
 			cloudsView = createCloudsView(graphicsSystem);
 		if (!cloudsViewDepth)
@@ -262,7 +301,7 @@ void CloudsRenderSystem::preDeferredRender()
 	if (!computeDS)
 	{
 		auto uniforms = getCloudsUniforms(graphicsSystem, ID<Image>(dataFields),
-			ID<Image>(verticalProfile), ID<Image>(noiseShape));
+			ID<Image>(verticalProfile), ID<Image>(noiseShape), ID<Image>(cirrusShape));
 		computeDS = graphicsSystem->createDescriptorSet(computePipeline, std::move(uniforms));
 		SET_RESOURCE_DEBUG_NAME(computeDS, "descriptorSet.clouds.compute");
 	}
@@ -290,6 +329,19 @@ void CloudsRenderSystem::preDeferredRender()
 	*/
 }
 
+static float3 calcCameraPos(const CommonConstants& cc, float groundRadius)
+{
+	auto cameraPos = mToKm(cc.cameraPos); cameraPos.y += groundRadius;
+	return cameraPos;
+}
+static float calcCurrentTime(const CommonConstants& cc, float currentTime) noexcept
+{
+	return currentTime != 0.0f ? currentTime : cc.currentTime;
+}
+
+static float calcCoverage(float coverage) noexcept { return 1.0f - pow(saturate(coverage), 2.0f); }
+static float calcTemperature(float temperature) noexcept { return pow(saturate(temperature), 2.0f); }
+
 //**********************************************************************************************************************
 void CloudsRenderSystem::preHdrRender()
 {
@@ -300,22 +352,23 @@ void CloudsRenderSystem::preHdrRender()
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto atmosphereSystem = AtmosphereRenderSystem::Instance::get();
+	auto inFlightIndex = graphicsSystem->getInFlightIndex();
 	auto groundRadius = atmosphereSystem->groundRadius;
 	auto& cc = graphicsSystem->getCommonConstants();
 	auto pipelineView = graphicsSystem->get(computePipeline);
 	auto framebufferView = graphicsSystem->get(viewFramebuffer);
 	pipelineView->updateFramebuffer(viewFramebuffer);
 
-	PushConstants pc;
-	pc.cameraPos = mToKm(cc.cameraPos);
+	ComputePC pc;
+	pc.cameraPos = calcCameraPos(cc, groundRadius);
 	pc.bottomRadius = groundRadius + bottomRadius;
 	pc.topRadius = groundRadius + topRadius;
 	pc.minDistance = minDistance;
 	pc.maxDistance = maxDistance;
-	pc.currentTime = currentTime != 0.0f ? currentTime : cc.currentTime;
-	pc.coverage = 1.0f - pow(saturate(coverage), 2.0f);
-	pc.temperature = pow(saturate(temperature), 2.0f);
-	pc.cameraPos.y += groundRadius;
+	pc.currentTime = calcCurrentTime(cc, currentTime);
+	pc.cumulusCoverage = calcCoverage(cumulusCoverage);
+	pc.cirrusCoverage = 1.0f - saturate(cirrusCoverage);
+	pc.temperature = calcTemperature(temperature);
 
 	graphicsSystem->startRecording(CommandBufferType::Frame);
 	{
@@ -325,7 +378,7 @@ void CloudsRenderSystem::preHdrRender()
 			RenderPass renderPass(viewFramebuffer, clearColors, 2);
 			pipelineView->bind();
 			pipelineView->setViewportScissor();
-			pipelineView->bindDescriptorSet(computeDS);
+			pipelineView->bindDescriptorSet(computeDS, inFlightIndex);
 			pipelineView->pushConstants(&pc);
 			pipelineView->drawFullscreen();
 		}
@@ -334,7 +387,7 @@ void CloudsRenderSystem::preHdrRender()
 }
 
 //**********************************************************************************************************************
-void CloudsRenderSystem::depthHdrRender()
+void CloudsRenderSystem::hdrRender()
 {
 	SET_CPU_ZONE_SCOPED("Clouds Depth HDR Render");
 
@@ -353,24 +406,71 @@ void CloudsRenderSystem::depthHdrRender()
 		SET_RESOURCE_DEBUG_NAME(viewBlendDS, "descriptorSet.clouds.viewBlend");
 	}
 
-	if (graphicsSystem->isCurrentRenderPassAsync())
-	{
-		SET_GPU_DEBUG_LABEL_ASYNC("Blend Clouds", 0);
-		pipelineView->bindAsync(0, 0);
-		pipelineView->setViewportScissorAsync(float4::zero, 0);
-		pipelineView->bindDescriptorSetAsync(viewBlendDS, 0, 0);
-		pipelineView->drawFullscreenAsync(0);
-	}
-	else
-	{
-		SET_GPU_DEBUG_LABEL("Blend Clouds");
-		pipelineView->bind();
-		pipelineView->setViewportScissor();
-		pipelineView->bindDescriptorSet(viewBlendDS);
-		pipelineView->drawFullscreen();
-	}
+	SET_GPU_DEBUG_LABEL("Blend Clouds");
+	pipelineView->bind();
+	pipelineView->setViewportScissor();
+	pipelineView->bindDescriptorSet(viewBlendDS);
+	pipelineView->drawFullscreen();
 }
 
+void CloudsRenderSystem::preShadowRender()
+{
+	hasShadows = false;
+	if (!isEnabled || !renderShadows)
+		return;
+
+	if (!shadowPipeline)
+		shadowPipeline = createShadowPipeline();
+
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto pipelineView = graphicsSystem->get(shadowPipeline);
+	auto dataFieldsView = graphicsSystem->get(dataFields);
+	auto verticalProfileView = graphicsSystem->get(verticalProfile);
+	if (!pipelineView->isReady() || !dataFieldsView->isReady() || !verticalProfileView->isReady())
+		return;
+
+	if (!shadowDS)
+	{
+		auto uniforms = getShadowUniforms(graphicsSystem, ID<Image>(dataFields));
+		shadowDS = graphicsSystem->createDescriptorSet(shadowPipeline, std::move(uniforms));
+		SET_RESOURCE_DEBUG_NAME(shadowDS, "descriptorSet.clouds.shadow");
+	}
+
+	PbrLightingSystem::Instance::get()->markFbShadow();
+	hasShadows = true;
+}
+void CloudsRenderSystem::shadowRender()
+{
+	SET_CPU_ZONE_SCOPED("Cloud Shadows");
+
+	if (!hasShadows)
+		return;
+
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto atmosphereSystem = AtmosphereRenderSystem::Instance::get();
+	auto groundRadius = atmosphereSystem->groundRadius;
+	auto& cc = graphicsSystem->getCommonConstants();
+	auto pipelineView = graphicsSystem->get(shadowPipeline);
+
+	ShadowsPC pc;
+	pc.invViewProj = (float4x4)cc.invViewProj;
+	pc.cameraPos = calcCameraPos(cc, groundRadius);
+	pc.bottomRadius = groundRadius + bottomRadius;
+	pc.starDir = -cc.lightDir;
+	pc.currentTime = calcCurrentTime(cc, currentTime);
+	pc.windDir = cc.windDir;
+	pc.cumulusCoverage = calcCoverage(cumulusCoverage);
+	pc.temperature = calcTemperature(temperature);
+
+	SET_GPU_DEBUG_LABEL("Clouds Shadow");
+	pipelineView->bind();
+	pipelineView->setViewportScissor();
+	pipelineView->bindDescriptorSet(shadowDS);
+	pipelineView->pushConstants(&pc);
+	pipelineView->drawFullscreen();
+}
+
+//**********************************************************************************************************************
 void CloudsRenderSystem::gBufferRecreate()
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
@@ -400,13 +500,19 @@ void CloudsRenderSystem::gBufferRecreate()
 
 	if (computeDS)
 	{
-		graphicsSystem->destroy(computeDS);
-		computeDS = {};
+		graphicsSystem->destroy(computeDS); computeDS = {};
 	}
 	if (viewBlendDS)
 	{
-		graphicsSystem->destroy(viewBlendDS);
-		viewBlendDS = {};
+		graphicsSystem->destroy(viewBlendDS); viewBlendDS = {};
+	}
+	if (cubeBlendDS)
+	{
+		graphicsSystem->destroy(cubeBlendDS); cubeBlendDS = {};
+	}
+	if (shadowDS)
+	{
+		graphicsSystem->destroy(shadowDS); shadowDS = {};
 	}
 }
 
