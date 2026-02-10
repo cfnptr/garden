@@ -315,19 +315,8 @@ uniform pushConstants
 } pc;
 ```
 
-## Subgroup Vote
+## Extensions
 
-TODO:
-
-## Extension / Feature
-
-To enable specific GLSL extensions use this shorting:
-
-```
-#feature ext.debugPrintf
-```
-
-**Features**:
-
-* ext.debugPrintf - [GLSL_EXT_debug_printf](https://github.com/KhronosGroup/GLSL/blob/main/extensions/ext/GLSL_EXT_debug_printf.txt)
-* ext.rayQuery - [GL_EXT_ray_query](https://github.com/KhronosGroup/GLSL/blob/main/extensions/ext/GLSL_EXT_ray_query.txt)
+* [GLSL_EXT_debug_printf](https://github.com/KhronosGroup/GLSL/blob/main/extensions/ext/GLSL_EXT_debug_printf.txt)
+* [GL_KHR_shader_subgroup](https://github.com/KhronosGroup/GLSL/blob/main/extensions/khr/GL_KHR_shader_subgroup.txt)
+* [GL_EXT_ray_query](https://github.com/KhronosGroup/GLSL/blob/main/extensions/ext/GLSL_EXT_ray_query.txt)

@@ -543,19 +543,11 @@ bool GraphicsSystem::isCurrentRenderPassAsync() const noexcept
 	return GraphicsAPI::get()->isCurrentRenderPassAsync;
 }
 
-bool GraphicsSystem::hasRayTracing() const noexcept
-{
-	return GraphicsAPI::get()->hasRayTracing();
-}
-bool GraphicsSystem::hasRayQuery() const noexcept
-{
-	return GraphicsAPI::get()->hasRayQuery();
-}
+bool GraphicsSystem::hasRayTracing() const { return GraphicsAPI::get()->hasRayTracing(); }
+bool GraphicsSystem::hasRayQuery() const { return GraphicsAPI::get()->hasRayQuery(); }
+uint32 GraphicsSystem::getSubgroupSize() const { return GraphicsAPI::get()->getSubgroupSize(); }
 
-uint32 GraphicsSystem::getInFlightCount() const noexcept
-{
-	return inFlightCount;
-}
+uint32 GraphicsSystem::getInFlightCount() const noexcept { return inFlightCount; }
 uint32 GraphicsSystem::getInFlightIndex() const noexcept
 {
 	return GraphicsAPI::get()->getSwapchain()->getInFlightIndex();

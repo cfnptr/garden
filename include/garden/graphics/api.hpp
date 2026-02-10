@@ -285,11 +285,15 @@ public:
 	static void terminate();
 
 	/**
-	 * @brief Returns true if ray tracing is supported.
+	 * @brief Returns shader subgroup size. (Warp or wavefront size)
+	 */
+	virtual uint32 getSubgroupSize() const { return 0; }
+	/**
+	 * @brief Returns true if hardware ray tracing is supported.
 	 */
 	virtual bool hasRayTracing() const { return false; }
 	/**
-	 * @brief Returns true if ray query is supported.
+	 * @brief Returns true if hardware ray query is supported.
 	 */
 	virtual bool hasRayQuery() const { return false; }
 	/**

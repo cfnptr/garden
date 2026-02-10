@@ -116,6 +116,7 @@ public:
 	vector<vk::AccelerationStructureBuildGeometryInfoKHR> asGeometryInfos;
 	vector<const vk::AccelerationStructureBuildRangeInfoKHR*> asRangeInfos;
 	vector<vk::AccelerationStructureKHR> asWriteProperties;
+	vk::PhysicalDeviceSubgroupProperties subgroupProperties;
 	vk::PhysicalDeviceRayTracingPipelinePropertiesKHR rtProperties;
 	vk::PhysicalDeviceAccelerationStructurePropertiesKHR asProperties;
 	vk::PhysicalDeviceProperties2 deviceProperties;
@@ -145,15 +146,19 @@ public:
 	void waitIdle() final;
 
 	/**
-	 * @brief Returns true if ray tracing supported.
+	 * @brief Returns shader subgroup size. (Warp or wavefront size)
+	 */
+	uint32 getSubgroupSize() const final { return subgroupProperties.subgroupSize; }
+	/**
+	 * @brief Returns true if hardware ray tracing is supported.
 	 */
 	bool hasRayTracing() const final { return features.rayTracing; }
 	/**
-	 * @brief Returns true if ray query supported.
+	 * @brief Returns true if hardware ray query is supported.
 	 */
 	bool hasRayQuery() const final { return features.rayQuery; }
 	/**
-	 * @brief Returns true if low latency input supported.
+	 * @brief Returns true if low latency input is supported.
 	 */
 	bool hasLowLatency() const final { return features.nvLowLatency || features.amdAntiLag; }
 

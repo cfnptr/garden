@@ -16,6 +16,7 @@
 #include "garden/system/render/tone-mapping.hpp"
 #include "garden/system/render/deferred.hpp"
 #include "garden/system/resource.hpp"
+#include "auto-exposure/constants.h"
 #include "garden/profiler.hpp"
 
 using namespace garden;
@@ -63,9 +64,12 @@ static ID<ComputePipeline> createHistogramPipeline()
 	ResourceSystem::ComputeOptions options;
 	return ResourceSystem::Instance::get()->loadComputePipeline("auto-exposure/histogram", options);
 }
-static ID<ComputePipeline> createAveragePipeline()
+static ID<ComputePipeline> createAveragePipeline(GraphicsSystem* graphicsSystem)
 {
+	Pipeline::SpecConstValues specConstValues =
+	{ { "SG_SHARED_SIZE", Pipeline::SpecConstValue(graphicsSystem->calcSubgroupSize(WG_LOCAL_SIZE)) } };
 	ResourceSystem::ComputeOptions options;
+	options.specConstValues = &specConstValues;
 	return ResourceSystem::Instance::get()->loadComputePipeline("auto-exposure/average", options);
 }
 
@@ -131,7 +135,7 @@ void AutoExposureSystem::render()
 		if (!histogramPipeline)
 			histogramPipeline = createHistogramPipeline();
 		if (!averagePipeline)
-			averagePipeline = createAveragePipeline();
+			averagePipeline = createAveragePipeline(graphicsSystem);
 		isInitialized = true;
 	}
 
@@ -213,7 +217,7 @@ ID<ComputePipeline> AutoExposureSystem::getHistogramPipeline()
 ID<ComputePipeline> AutoExposureSystem::getAveragePipeline()
 {
 	if (!averagePipeline)
-		averagePipeline = createAveragePipeline();
+		averagePipeline = createAveragePipeline(GraphicsSystem::Instance::get());
 	return averagePipeline;
 }
 

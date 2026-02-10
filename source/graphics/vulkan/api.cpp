@@ -1032,7 +1032,8 @@ VulkanAPI::VulkanAPI(const string& appName, const string& appDataName, Version a
 	#endif
 	
 	physicalDevice = getBestPhysicalDevice(instance);
-	deviceProperties = physicalDevice.getProperties2();
+	deviceProperties.pNext = &subgroupProperties;
+	physicalDevice.getProperties2(&deviceProperties);
 	deviceFeatures = physicalDevice.getFeatures2();
 	versionMajor = VK_API_VERSION_MAJOR(deviceProperties.properties.apiVersion);
 	versionMinor = VK_API_VERSION_MINOR(deviceProperties.properties.apiVersion);

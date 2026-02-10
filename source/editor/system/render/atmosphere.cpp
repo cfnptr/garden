@@ -246,7 +246,7 @@ void AtmosphereEditorSystem::preUiRender()
 			ImGui::PopID(); ImGui::Spacing();
 		}
 
-		ImGui::DragFloat("Multi-Scattering", &atmosphereSystem->multiScatFactor, 0.01f, 0.0f, FLT_MAX);
+		ImGui::DragFloat("Multi-Scattering", &atmosphereSystem->multiScattFactor, 0.01f, 0.0f, FLT_MAX);
 		if (ImGui::BeginItemTooltip())
 		{
 			ImGui::Text("Atmosphere multi-scattering strength.");

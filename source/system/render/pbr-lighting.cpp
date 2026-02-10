@@ -39,6 +39,8 @@ namespace garden::graphics
 }
 
 #if 0 // Note: Used to precompute Ki coeffs.
+#include <iostream>
+
 //**********************************************************************************************************************
 static uint32 factorial(uint32 x) noexcept
 {
@@ -66,38 +68,35 @@ static double factorial(int32 n, int32 d) noexcept
 }
 static double computeKml(int32 m, int32 l) noexcept
 {
-	auto k = (2 * l + 1) * factorial(l - m, l + m);
+	auto k = (l * 2 + 1) * factorial(l - m, l + m);
 	return sqrt(k) * (M_2_SQRTPI * 0.25);
 }
 static double computeTruncatedCosSh(uint32 l) noexcept
 {
-	if (l == 0)
-		return M_PI;
-	else if (l == 1)
-		return 2.0 * M_PI / 3.0;
-	else if (l & 1u)
-		return 0.0;
+	if (l == 0) return M_PI;
+	else if (l == 1) return 2.0 * M_PI / 3.0;
+	else if (l & 1u) return 0.0;
 
 	auto l2 = l / 2;
 	auto a0 = ((l2 & 1u) ? 1.0 : -1.0) / ((l + 2) * (l - 1));
 	auto a1 = factorial(l, l2) / (factorial(l2) * (1u << l));
-	return 2.0 * M_PI * a0 * a1;
+	return a0 * a1 * (M_PI * 2.0);
 }
 
 //**********************************************************************************************************************
-static void computeKi() noexcept
+static void computeKi(int32 bandCount) noexcept
 {
-	double ki[shCoeffCount];
+	vector<double> ki(bandCount * bandCount);
 
-	for (uint32 l = 0; l < shBandCount; l++)
+	for (uint32 l = 0; l < bandCount; l++)
 	{
 		ki[shIndex(0, l)] = computeKml(0, l);
 
 		for (uint32 m = 1; m <= l; m++)
-			ki[shIndex(m, l)] = ki[shIndex(-m, l)] = M_SQRT2 * computeKml(m, l);
+			ki[shIndex(m, l)] = ki[shIndex(-m, l)] = computeKml(m, l) * M_SQRT2;
 	}
 
-	for (uint32 l = 0; l < shBandCount; l++)
+	for (uint32 l = 0; l < bandCount; l++)
 	{
 		auto truncatedCosSh = computeTruncatedCosSh(l);
 		ki[shIndex(0, l)] *= truncatedCosSh;
@@ -109,7 +108,7 @@ static void computeKi() noexcept
 		}
 	}
 
-	for (uint32 i = 0; i < shCoeffCount; i++)
+	for (uint32 i = 0; i < sh3Count; i++)
 		cout << i << ". " << setprecision(36) << ki[i] << "\n";
 }
 #endif
@@ -858,13 +857,13 @@ void PbrLightingSystem::hdrRender()
 
 	if (pbrLightingView->mode == PbrCubemapMode::Static)
 	{
-		if (!pbrLightingView->skybox || !pbrLightingView->shBuffer || !pbrLightingView->specular)
+		if (!pbrLightingView->skybox || !pbrLightingView->shDiffuse || !pbrLightingView->specular)
 			return;
 
 		auto cubemapView = graphicsSystem->get(pbrLightingView->skybox);
-		auto shBufferView = graphicsSystem->get(pbrLightingView->shBuffer);
+		auto shDiffuseView = graphicsSystem->get(pbrLightingView->shDiffuse);
 		auto specularView = graphicsSystem->get(pbrLightingView->specular);
-		if (!cubemapView->isReady() || !shBufferView->isReady() || !specularView->isReady())
+		if (!cubemapView->isReady() || !shDiffuseView->isReady() || !specularView->isReady())
 			return;
 	}
 
@@ -882,13 +881,13 @@ void PbrLightingSystem::hdrRender()
 		SET_RESOURCE_DEBUG_NAME(pbrLightingView->skybox, 
 			"image.pbrLighting.skybox" + to_string(*pbrLightingView->skybox));
 	}
-	if (!pbrLightingView->shBuffer)
+	if (!pbrLightingView->shDiffuse)
 	{
-		pbrLightingView->shBuffer = Ref<Buffer>(graphicsSystem->createBuffer(
+		pbrLightingView->shDiffuse = Ref<Buffer>(graphicsSystem->createBuffer(
 			Buffer::Usage::Uniform | Buffer::Usage::TransferDst, Buffer::CpuAccess::None, 
-			ibl::shCoeffCount * sizeof(f16x4), Buffer::Location::PreferGPU, Buffer::Strategy::Size));
-		SET_RESOURCE_DEBUG_NAME(pbrLightingView->shBuffer, 
-			"buffer.uniform.sh" + to_string(*pbrLightingView->shBuffer));
+			3 * 4 * sizeof(f16x4), Buffer::Location::PreferGPU, Buffer::Strategy::Size));
+		SET_RESOURCE_DEBUG_NAME(pbrLightingView->shDiffuse, 
+			"buffer.uniform.shDiffuse" + to_string(*pbrLightingView->shDiffuse));
 	}
 	if (!pbrLightingView->specular)
 	{
@@ -1064,11 +1063,11 @@ void PbrLightingSystem::resetComponent(View<Component> component, bool full)
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto componentView = View<PbrLightingComponent>(component);
 	graphicsSystem->destroy(componentView->skybox);
-	graphicsSystem->destroy(componentView->shBuffer);
+	graphicsSystem->destroy(componentView->shDiffuse);
 	graphicsSystem->destroy(componentView->specular);
 	graphicsSystem->destroy(componentView->descriptorSet);
 	componentView->skybox = {};
-	componentView->shBuffer = {};
+	componentView->shDiffuse = {};
 	componentView->specular = {};
 	componentView->descriptorSet = {};
 }
@@ -1077,7 +1076,7 @@ void PbrLightingSystem::copyComponent(View<Component> source, View<Component> de
 	auto destinationView = View<PbrLightingComponent>(destination);
 	const auto sourceView = View<PbrLightingComponent>(source);
 	destinationView->skybox = sourceView->skybox;
-	destinationView->shBuffer = sourceView->shBuffer;
+	destinationView->shDiffuse = sourceView->shDiffuse;
 	destinationView->specular = sourceView->specular;
 	destinationView->descriptorSet = sourceView->descriptorSet;
 }
@@ -1321,12 +1320,12 @@ const vector<ID<ImageView>>& PbrLightingSystem::getReflImageViews()
 }
 
 //**********************************************************************************************************************
-static void calcIblSH(f32x4* shBufferData, const float4* const* faces, 
+static void calcShDiffuse(f32x4* shBufferData, const float4* const* faces, 
 	uint32 cubemapSize, uint32 taskIndex, uint32 itemOffset, uint32 itemCount)
 {
-	auto sh = shBufferData + taskIndex * shCoeffCount;
-	auto invDim = 1.0f / cubemapSize;
-	float shb[shCoeffCount];
+	auto sh = shBufferData + taskIndex * sh3Count;
+	auto invDim = 1.0f / cubemapSize, saArea = invDim * invDim * 4.0f;
+	float shb[sh3Count];
 
 	for (uint32 face = 0; face < Image::cubemapFaceCount; face++)
 	{
@@ -1336,12 +1335,12 @@ static void calcIblSH(f32x4* shBufferData, const float4* const* faces,
 			auto y = i / cubemapSize, x = i - y * cubemapSize;
 			auto st = coordsToST(uint2(x, y), invDim);
 			auto dir = stToDir(st, face);
-			auto color = pixels[y * cubemapSize + x];
-			color *= calcSolidAngle(st, invDim);
-			computeShBasis(dir, shb);
+			auto color = f32x4(pixels[y * cubemapSize + x]);
+			color *= calcSolidAngleFastA(st, saArea);
+			computeSh3Basis(dir, shb);
 
-			for (uint32 j = 0; j < shCoeffCount; j++)
-				sh[j] += f32x4(color) * shb[j];
+			for (uint32 j = 0; j < sh3Count; j++)
+				sh[j] += color * shb[j];
 		}
 	}
 }
@@ -1556,7 +1555,7 @@ void PbrLightingSystem::dispatchIblSpecular(ID<Image> skybox, ID<Image> specular
 		pipelineView->bindDescriptorSet(iblDescriptorSets[i]);
 
 		pc.imageSize = cubemapSize;
-		pc.sampleCount = iblCountBuffer[i];
+		pc.sampleCount = pc.sampleOffset + iblCountBuffer[i];
 		pc.weight = iblWeightBuffer[i];
 		pipelineView->pushConstants(&pc);
 
@@ -1567,16 +1566,17 @@ void PbrLightingSystem::dispatchIblSpecular(ID<Image> skybox, ID<Image> specular
 }
 
 //**********************************************************************************************************************
-void PbrLightingSystem::processIblSH(f32x4* shBuffer) noexcept
+void PbrLightingSystem::processShDiffuse(f32x4* shBuffer, bool dering) noexcept
 {
 	GARDEN_ASSERT(shBuffer);
-	applyShKi(shBuffer);
-	deringSH(shBuffer);
-	shaderPreprocessSH(shBuffer);
+	applyKiSh3(shBuffer);
+	if (dering) deringSh3(shBuffer);
+	preprocessSh3(shBuffer);
 }
 
 //**********************************************************************************************************************
-void PbrLightingSystem::generateIblSH(const float4* const* skyboxFaces, uint32 skyboxSize, vector<f32x4>& shBuffer)
+void PbrLightingSystem::generateShDiffuse(const float4* const* skyboxFaces, 
+	uint32 skyboxSize, vector<f32x4>& shCache, bool dering)
 {
 	GARDEN_ASSERT(skyboxFaces);
 	GARDEN_ASSERT(skyboxSize > 0);
@@ -1588,13 +1588,13 @@ void PbrLightingSystem::generateIblSH(const float4* const* skyboxFaces, uint32 s
 	{
 		auto& threadPool = threadSystem->getForegroundPool();
 		bufferCount = threadPool.getThreadCount();
-		shBuffer.resize(bufferCount * shCoeffCount);
-		auto shBufferData = shBuffer.data();
+		shCache.resize(bufferCount * sh3Count);
+		auto shCacheData = shCache.data();
 
-		threadPool.addItems([shBufferData, skyboxFaces, skyboxSize](const ThreadPool::Task& task)
+		threadPool.addItems([shCacheData, skyboxFaces, skyboxSize](const ThreadPool::Task& task)
 		{
 			SET_CPU_ZONE_SCOPED("IBL SH Generate");
-			calcIblSH(shBufferData, skyboxFaces, skyboxSize, 
+			calcShDiffuse(shCacheData, skyboxFaces, skyboxSize, 
 				task.getTaskIndex(), task.getItemOffset(), task.getItemCount());
 		},
 		skyboxSize * skyboxSize);
@@ -1603,28 +1603,28 @@ void PbrLightingSystem::generateIblSH(const float4* const* skyboxFaces, uint32 s
 	else
 	{
 		SET_CPU_ZONE_SCOPED("IBL SH Generate");
-		bufferCount = 1; shBuffer.resize(shCoeffCount);
-		calcIblSH(shBuffer.data(), skyboxFaces, skyboxSize, 0, 0, skyboxSize * skyboxSize);
+		bufferCount = 1; shCache.resize(sh3Count);
+		calcShDiffuse(shCache.data(), skyboxFaces, skyboxSize, 0, 0, skyboxSize * skyboxSize);
 	}
 
-	auto shBufferData = shBuffer.data();
+	auto shCacheData = shCache.data();
 	if (bufferCount > 1)
 	{
 		for (uint32 i = 1; i < bufferCount; i++)
 		{
-			auto data = shBufferData + i * shCoeffCount;
-			for (uint32 j = 0; j < shCoeffCount; j++)
-				shBufferData[j] += data[j];
+			auto data = shCacheData + i * sh3Count;
+			for (uint32 j = 0; j < sh3Count; j++)
+				shCacheData[j] += data[j];
 		}
-		shBuffer.resize(shCoeffCount);
+		shCache.resize(sh3Count);
 	}
 
-	processIblSH(shBufferData);
+	processShDiffuse(shCacheData, dering);
 }
 
 //**********************************************************************************************************************
 void PbrLightingSystem::loadCubemap(const fs::path& path, Image::Format format, Ref<Image>& cubemap,
-	Ref<Buffer>& sh, Ref<Image>& specular, Memory::Strategy strategy, vector<f32x4>* shBuffer)
+	Ref<Buffer>& shDiffuse, Ref<Image>& specular, Memory::Strategy strategy, f32x4x4* shCoeffs, vector<f32x4>* shCache)
 {
 	GARDEN_ASSERT(!path.empty());
 	SET_CPU_ZONE_SCOPED("PBR Cubemap Load");
@@ -1645,14 +1645,31 @@ void PbrLightingSystem::loadCubemap(const fs::path& path, Image::Format format, 
 	{
 		SET_GPU_DEBUG_LABEL("Load Cubemap PBR");
 
-		vector<f32x4> localSH;
-		if (!shBuffer) shBuffer = &localSH;
-		generateIblSH((const float4* const*)mips[0].data(), cubemapSize, *shBuffer);
+		vector<f32x4> localShCache; if (!shCache) shCache = &localShCache;
+		generateShDiffuse((const float4* const*)mips[0].data(), cubemapSize, *shCache);
+		auto shCacheData = shCache->data();
 
-		sh = Ref<Buffer>(graphicsSystem->createBuffer(Buffer::Usage::Uniform | 
-			Buffer::Usage::TransferDst, Buffer::CpuAccess::None, shBuffer->data(), 
-			ibl::shCoeffCount * sizeof(f16x4), Buffer::Location::PreferGPU, strategy));
-		SET_RESOURCE_DEBUG_NAME(sh, "buffer.uniform.sh." + path.generic_string());
+		if (shCoeffs)
+		{
+			shCoeffs[0] = f32x4x4(shCacheData[0], shCacheData[1], shCacheData[2], f32x4::zero);
+			shCoeffs[1] = f32x4x4(shCacheData[3], shCacheData[4], shCacheData[5], f32x4::zero);
+			shCoeffs[2] = f32x4x4(shCacheData[6], shCacheData[7], shCacheData[8], f32x4::zero);
+		}
+
+		for (uint8 i = 0; i < sh3Count; i++)
+			shCacheData[i] = min(shCacheData[i], f32x4(65504.0f));
+
+		f16x4 shCoeffs16[3 * 4] =
+		{
+			(f16x4)shCacheData[0], (f16x4)shCacheData[1], (f16x4)shCacheData[2], f16x4(f32x4::zero),
+			(f16x4)shCacheData[3], (f16x4)shCacheData[4], (f16x4)shCacheData[5], f16x4(f32x4::zero),
+			(f16x4)shCacheData[6], (f16x4)shCacheData[7], (f16x4)shCacheData[8], f16x4(f32x4::zero)
+		};
+
+		shDiffuse = Ref<Buffer>(graphicsSystem->createBuffer(Buffer::Usage::Uniform | 
+			Buffer::Usage::TransferDst, Buffer::CpuAccess::None, shCoeffs16, 
+			3 * 4 * sizeof(f16x4), Buffer::Location::PreferGPU, strategy));
+		SET_RESOURCE_DEBUG_NAME(shDiffuse, "buffer.uniform.shBuffer." + path.generic_string());
 
 		vector<float> iblWeightBuffer; vector<uint32> iblCountBuffer;
 		auto specularCache = createSpecularCache(cubemapSize, iblWeightBuffer, iblCountBuffer);
@@ -1694,18 +1711,18 @@ Ref<DescriptorSet> PbrLightingSystem::createDescriptorSet(ID<Entity> entity,
 	GARDEN_ASSERT(entity);
 
 	auto pbrLightingView = Manager::Instance::get()->tryGet<PbrLightingComponent>(entity);
-	if (!lightingDS || !pbrLightingView || !pbrLightingView->shBuffer || !pbrLightingView->specular)
+	if (!lightingDS || !pbrLightingView || !pbrLightingView->shDiffuse || !pbrLightingView->specular)
 		return {};
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto shBufferView = graphicsSystem->get(pbrLightingView->shBuffer);
+	auto shDiffuseView = graphicsSystem->get(pbrLightingView->shDiffuse);
 	auto specularView = graphicsSystem->get(pbrLightingView->specular);
-	if (!shBufferView->isReady() || !specularView->isReady())
+	if (!shDiffuseView->isReady() || !specularView->isReady())
 		return {};
 
 	DescriptorSet::Uniforms iblUniforms =
 	{ 
-		{ "sh", DescriptorSet::Uniform(ID<Buffer>(pbrLightingView->shBuffer)) },
+		{ "sh", DescriptorSet::Uniform(ID<Buffer>(pbrLightingView->shDiffuse)) },
 		{ "specular", DescriptorSet::Uniform(specularView->getDefaultView()) }
 	};
 

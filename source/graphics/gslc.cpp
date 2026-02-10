@@ -35,14 +35,16 @@ using namespace garden::graphics;
 
 constexpr uint8 gslHeader[] = { 1, 0, 0, GARDEN_LITTLE_ENDIAN, };
 
-#define REQUIRED_GLSL_EXTENSIONS ""                                         \
-	"#extension GL_EXT_nonuniform_qualifier : enable\n"                     \
+#define COMMON_GLSL_EXTENSIONS ""                                           \
 	"#extension GL_EXT_scalar_block_layout : require\n"                     \
+	"#extension GL_KHR_shader_subgroup_basic : require\n"                   \
+	"#extension GL_EXT_nonuniform_qualifier : enable\n"                     \
 	"#extension GL_EXT_buffer_reference2 : enable\n"                        \
 	"#extension GL_EXT_shader_8bit_storage : enable\n"                      \
 	"#extension GL_EXT_shader_16bit_storage : enable\n"                     \
 	"#extension GL_EXT_shader_explicit_arithmetic_types : enable\n"         \
 	"#extension GL_EXT_shader_explicit_arithmetic_types_float16 : enable\n" \
+	""
 
 namespace garden::graphics
 {
@@ -118,7 +120,7 @@ namespace garden::graphics
 			isUnnormCoords = false, isMipLodBias = false, isMinLod = false, isMaxLod = false, isFilter = false, 
 			isFilterMin = false, isFilterMag = false, isFilterMipmap = false, isBorderColor = false, 
 			isAddressMode = false, isAddressModeX = false, isAddressModeY = false, isAddressModeZ = false,
-			isFeature = false, isVariantCount = false, isReference = false;
+			isVariantCount = false, isReference = false;
 		uint8 arraySize = 1;
 		GslDataType dataType = {}; Image::Format imageFormat = {};
 		bool isNewLine = true;
@@ -1145,21 +1147,6 @@ static void onSpecConst(FileData& fileData, LineData& lineData,
 	lineData.isSpecConst = 0;
 }
 
-//******************************************************************************************************************
-static void onShaderFeature(FileData& fileData, LineData& lineData)
-{
-	if (lineData.word == "ext.debugPrintf")
-		fileData.outputFileStream << "#extension GL_EXT_debug_printf : require";
-	else if (lineData.word == "ext.subgroupBasic")
-		fileData.outputFileStream << "#extension GL_KHR_shader_subgroup_basic : require";
-	else if (lineData.word == "ext.subgroupVote")
-		fileData.outputFileStream << "#extension GL_KHR_shader_subgroup_vote : require";
-	else if (lineData.word == "ext.rayQuery")
-		fileData.outputFileStream << "#extension GL_EXT_ray_query : require\n#include \"ray-query.gsl\"";
-	else throw CompileError("unknown GSL feature", fileData.lineIndex, lineData.word);
-	lineData.isFeature = false;
-}
-
 static void onShaderVariantCount(FileData& fileData, LineData& lineData, uint8& variantCount)
 {
 	auto count = strtoul(lineData.word.c_str(), nullptr, 10);
@@ -1218,7 +1205,7 @@ static bool openShaderFileStream(const fs::path& inputFilePath,
 		throw CompileError("failed to open output shader file");
 	outputFileStream.exceptions(ios::failbit | ios::badbit);
 
-	outputFileStream << "#version 460\n" REQUIRED_GLSL_EXTENSIONS "#include \"types.gsl\"\n";
+	outputFileStream << "#version 460\n" COMMON_GLSL_EXTENSIONS "#include \"types.gsl\"\n";
 	return true;
 }
 static void compileShaderFile(const fs::path& filePath, const vector<fs::path>& includePaths)
@@ -1302,11 +1289,6 @@ static bool processCommonKeywords(Pipeline::CreateData& data, FileData& fileData
 		onSpecConst(fileData, lineData, data.specConsts, pipelineStage);
 		overrideOutput = true; return true;
 	}
-	if (lineData.isFeature)
-	{
-		onShaderFeature(fileData, lineData);
-		overrideOutput = true; return true;
-	}
 	if (lineData.isVariantCount)
 	{
 		onShaderVariantCount(fileData, lineData, variantCount);
@@ -1320,7 +1302,6 @@ static bool setCommonKeywords(FileData& fileData, LineData& lineData, bool& over
 	if (lineData.word == "uniform") { fileData.isUniform = 1; return true; }
 	if (lineData.word == "buffer") { fileData.isUniform = fileData.isBuffer = 1; return true; }
 	if (lineData.word == "spec") { lineData.isSpecConst = 1; return true; }
-	if (lineData.word == "#feature") { lineData.isFeature = true; return true; }
 	if (lineData.word == "#variantCount") { lineData.isVariantCount = true; return true; }
 	if (lineData.word == "pushConstants") throw CompileError("missing 'uniform' keyword", fileData.lineIndex);
 	overrideOutput = false;
