@@ -58,7 +58,7 @@ public:
 		float bottomRadius;
 		float topRadius;
 	};
-	struct MultiScatPC final
+	struct MultiScattPC final
 	{
 		float3 rayleighScattering;
 		float rayDensityExpScale;
@@ -75,7 +75,7 @@ public:
 		float absDensity1LinearTerm;
 		float bottomRadius;
 		float topRadius;
-		float multiScatFactor;
+		float multiScattFactor;
 	};
 	struct CameraVolumePC final
 	{
@@ -176,20 +176,20 @@ private:
 	vector<ID<ImageView>> specularViews;
 	vector<ID<DescriptorSet>> iblDescriptorSets;
 	DescriptorSet::Buffers shCaches, shStagings;
-	ID<Image> transLUT = {}, multiScatLUT = {};
+	ID<Image> transLUT = {}, multiScattLUT = {};
 	ID<Image> cameraVolume = {}, skyViewLUT = {};
 	ID<Buffer> specularCache = {};
 	ID<Framebuffer> transLutFramebuffer = {};
 	ID<Framebuffer> skyViewLutFramebuffer = {};
 	ID<GraphicsPipeline> transLutPipeline = {};
-	ID<ComputePipeline> multiScatLutPipeline = {};
+	ID<ComputePipeline> multiScattLutPipeline = {};
 	ID<ComputePipeline> cameraVolumePipeline = {};
 	ID<GraphicsPipeline> skyViewLutPipeline = {};
 	ID<GraphicsPipeline> hdrSkyPipeline = {};
 	ID<GraphicsPipeline> skyboxPipeline = {};
 	ID<ComputePipeline> shGeneratePipeline = {};
 	ID<ComputePipeline> shReducePipeline = {};
-	ID<DescriptorSet> multiScatLutDS = {}, cameraVolumeDS = {};
+	ID<DescriptorSet> multiScattLutDS = {}, cameraVolumeDS = {};
 	ID<DescriptorSet> skyViewLutDS = {}, hdrSkyDS = {}, skyboxDS = {};
 	ID<DescriptorSet> shGenerateDS = {}, shReduceDS = {};
 	ID<ImageView> skyboxViews[Image::cubemapFaceCount] = {};
@@ -220,7 +220,7 @@ private:
 
 	void updateSkybox();
 	void renderSkyboxFaces();
-	void generateSkySH(ID<Buffer> shBuffer, f32x4* shCoeffs);
+	void generateSkyShDiffuse(ID<Buffer> shDiffuse, f32x4x4* shCoeffs);
 
 	friend class ecsm::Manager;
 public:
@@ -241,7 +241,7 @@ public:
 	float4 starColor = float4(float3(1.0f), 10000.0f);
 	float starAngularSize = earthSunAngularSize; /**< (degrees) */
 	float giFactor = 1.0f;        /**< Global illumination factor. */
-	float multiScatFactor = 1.0f; /**< Light multi-scattering factor. */
+	float multiScattFactor = 1.0f; /**< Light multi-scattering factor. */
 	bool noDelay = false;         /**< Make all computation in one fram. (Expnesive!) */
 
 	/*******************************************************************************************************************
@@ -261,7 +261,7 @@ public:
 	/**
 	 * @brief Returns atmosphere multiple scattering LUT. (Look Up Table)
 	 */
-	ID<Image> getMultiScatLUT();
+	ID<Image> getMultiScattLUT();
 	/**
 	 * @brief Returns atmosphere camera volume scattering LUT. (Look Up Table)
 	 */
@@ -270,6 +270,56 @@ public:
 	 * @brief Returns atmosphere sky view LUT. (Look Up Table)
 	 */
 	ID<Image> getSkyViewLUT();
+	/**
+	 * @brief Returns atmosphere specular cache buffer.
+	 */
+	ID<Buffer> getSpecularCache() const noexcept { return specularCache; }
+
+	/**
+	 * @brief Returns atmosphere transmittance LUT framebuffer.
+	 */
+	ID<Framebuffer> getTransLutFramebuffer();
+	/**
+	 * @brief Returns atmosphere sky view LUT framebuffer.
+	 */
+	ID<Framebuffer> getSkyViewLutFramebuffer();
+	/**
+	 * @brief Returns atmosphere skybox framebuffers.
+	 */
+	const ID<Framebuffer>* getSkyboxFramebuffers();
+
+	/*******************************************************************************************************************
+	 * @brief Returns atmosphere transmittance LUT graphics pipeline.
+	 */
+	ID<GraphicsPipeline> getTransLutPipeline();
+	/**
+	 * @brief Returns atmosphere multi-scattering LUT compute pipeline.
+	 */
+	ID<ComputePipeline> getMultiScattLutPipeline();
+	/**
+	 * @brief Returns atmosphere camera volume compute pipeline.
+	 */
+	ID<ComputePipeline> getCameraVolumePipeline();
+	/**
+	 * @brief Returns atmosphere sky view LUT graphics pipeline.
+	 */
+	ID<GraphicsPipeline> getSkyViewLutPipeline();
+	/**
+	 * @brief Returns atmosphere HDR sky graphics pipeline.
+	 */
+	ID<GraphicsPipeline> getHdrSkyPipeline();
+	/**
+	 * @brief Returns atmosphere skybox graphics pipeline.
+	 */
+	ID<GraphicsPipeline> getSkyboxPipeline();
+	/**
+	 * @brief Returns spherical harmonics generate compute pipeline.
+	 */
+	ID<ComputePipeline> getShGeneratePipeline();
+	/**
+	 * @brief Returns spherical harmonics reduce compute pipeline.
+	 */
+	ID<ComputePipeline> getShReducePipeline();
 
 	/**
 	 * @brief Returns camera volume slice constants at the specified graphics quality.

@@ -23,7 +23,7 @@
 #include "garden/graphics/pipeline/compute.hpp"
 #include "garden/graphics/pipeline/graphics.hpp"
 #include "garden/graphics/pipeline/ray-tracing.hpp"
-#include "garden/graphics/acceleration-structure/tlas.hpp" // TODO: move somewhere?
+#include "garden/graphics/acceleration-structure/tlas.hpp"
 
 namespace garden
 {
@@ -272,15 +272,42 @@ public:
 	bool useAsyncRecording() const noexcept { return asyncRecording; }
 
 	/**
-	 * @brief Returns true if target GPU has ray tracing support.
+	 * @brief Returns true if current GPU has ray tracing support.
 	 * @note Without hardware support we can't use ray tracing pipelines.
 	 */
-	bool hasRayTracing() const noexcept;
+	bool hasRayTracing() const;
 	/**
-	 * @brief Returns true if target GPU has ray query support.
+	 * @brief Returns true if current GPU has ray query support.
 	 * @note Without hardware support we can't use ray query in shaders.
 	 */
-	bool hasRayQuery() const noexcept;
+	bool hasRayQuery() const;
+	/**
+	 * @brief Returns shader subgroup size. (Warp or wavefront size)
+	 * @details Typically 32 or 64 threads on moder desktop GPUs. (But may be 4, 8, 16, etc.)
+	 */
+	uint32 getSubgroupSize() const;
+
+	/**
+	 * @brief Calculates shared variables size based on the local workgroup and subgroup sizes.
+	 * @param localSize target local workgroup size 
+	 */
+	uint32 calcSubgroupSize(uint32 localSize) const { return max(localSize / getSubgroupSize(), 1u); }
+	/**
+	 * @brief Calculates shared variables size based on the local workgroup and subgroup sizes.
+	 * @param localSize target local workgroup 2D size 
+	 */
+	uint32 calcSubgroupSize(uint2 localSize) const
+	{
+		return max((localSize.x * localSize.y) / getSubgroupSize(), 1u);
+	}
+	/**
+	 * @brief Calculates shared variables size based on the local workgroup and subgroup sizes.
+	 * @param localSize target local workgroup 3D size 
+	 */
+	uint32 calcSubgroupSize(uint3 localSize) const
+	{
+		return max((localSize.x * localSize.y * localSize.z) / getSubgroupSize(), 1u);
+	}
 
 	/**
 	 * @brief Returns current swapchain changes.

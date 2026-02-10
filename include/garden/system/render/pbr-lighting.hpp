@@ -51,14 +51,15 @@ enum class PbrCubemapMode
 struct PbrLightingComponent final : public Component
 {
 	Ref<Image> skybox = {};                /**< Skybox cubemap image. */
-	Ref<Buffer> shBuffer = {};             /**< Spherical harmonics buffer. */
+	Ref<Buffer> shDiffuse = {};            /**< Diffuse irradiance SH buffer. */
 	Ref<Image> specular = {};              /**< Specular cubemap image. */
 	Ref<DescriptorSet> descriptorSet = {}; /**< PBR lighting descriptor set. */
-	f32x4 shCoeffs[ibl::shCoeffCount];     /**< Spherical harmonics coefficients. */
 private:
 	PbrCubemapMode mode = PbrCubemapMode::Static;
 	friend class PbrLightingSystem;
 public:
+	f32x4x4 shCoeffs[3]; /**< Diffuse irradiance SH coefficients. */
+
 	/**
 	 * @brief Returns PBR lighting cubemap rendering mode.
 	 */
@@ -411,18 +412,22 @@ public:
 		const vector<uint32>& iblCountBuffer, const vector<ID<DescriptorSet>>& iblDescriptorSets, int8 face = -1);
 
 	/**
-	 * @brief Process IBL spherical harmonics global illumination. (Image Based Lighting)
-	 * @param[in,out] shBuffer spherical harmonics coefficients buffer (SH)
+	 * @brief Processes diffuse irradiance spherical harmonics. (Image Based Lighting)
+	 *
+	 * @param[in,out] shCoeffs spherical harmonics coefficients (SH)
+	 * @param dering apply spherical harmonics deringing
 	 */
-	static void processIblSH(f32x4* shBuffer) noexcept;
+	static void processShDiffuse(f32x4* shCoeffs, bool dering = false) noexcept;
 	/**
-	 * @brief Generates IBL spherical harmonics global illumination. (Image Based Lighting)
+	 * @brief Generates diffuse irradiance spherical harmonics global. (Image Based Lighting)
 	 * 
 	 * @param[in] skyboxFaces skybox face array
 	 * @param skyboxSize skybox face size along one axis in pixels
-	 * @param[out] shBuffer spherical harmonics coefficients buffer (SH)
+	 * @param[out] shCache spherical harmonics cache buffer (SH)
+	 * @param dering apply spherical harmonics deringing
 	 */
-	static void generateIblSH(const float4* const* skyboxFaces, uint32 skyboxSize, vector<f32x4>& shBuffer);
+	static void generateShDiffuse(const float4* const* skyboxFaces, 
+		uint32 skyboxSize, vector<f32x4>& shCache, bool dering = false);
 
 	/**
 	 * @brief Loads cubemap rendering data from the resource pack.
@@ -431,13 +436,15 @@ public:
 	 * @param[in] path target cubemap resource path
 	 * @param format required image data format
 	 * @param[out] cubemap cubemap image instance
-	 * @param[out] sh spherical harmonics buffer instance
+	 * @param[out] shDiffuse diffuse irradiance buffer instance
 	 * @param[out] specular specular cubemap instance
 	 * @param strategy graphics memory allocation strategy
-	 * @param[out] shBuffer spherical harmonics data buffer or null
+	 * @param[out] shCoeffs diffuse SH coefficients or null (SH)
+	 * @param[out] shCache spherical harmonics cache or null
 	 */
-	void loadCubemap(const fs::path& path, Image::Format format, Ref<Image>& cubemap, Ref<Buffer>& sh, 
-		Ref<Image>& specular, Memory::Strategy strategy = Memory::Strategy::Size, vector<f32x4>* shBuffer = nullptr);
+	void loadCubemap(const fs::path& path, Image::Format format, Ref<Image>& cubemap, 
+		Ref<Buffer>& shDiffuse, Ref<Image>& specular, Memory::Strategy strategy = Memory::Strategy::Size, 
+		f32x4x4* shCoeffs = nullptr, vector<f32x4>* shCache = nullptr);
 
 	/*******************************************************************************************************************
 	 * @brief Creates PBR lighting descriptor set.
