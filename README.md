@@ -62,7 +62,6 @@ Use building [instructions](BUILDING.md) to install all required tools and libra
 | GARDEN_BUILD_EQUI2CUBE      | Build equirectangular to cubemap converter       | `ON`          |
 | GARDEN_RELEASE_EDITOR       | Build Garden editor in the release build         | `OFF`         |
 | GARDEN_RELEASE_DEBUGGING    | Build Garden debugging code in the release build | `OFF`         |
-| GARDEN_DEBUG_SHADERS        | Compile GSL shaders with no optimzations         | `OFF`         |
 | GARDEN_DEBUG_BUILD_TOOLS    | Build Garden tools in the debug build            | `OFF`         |
 | GARDEN_DEBUG_PACK_RESOURCES | Pack and load resources in the debug build       | `OFF`         |
 | GARDEN_USE_GAPI_VALIDATIONS | Use graphics API validation layers               | `ON`          |

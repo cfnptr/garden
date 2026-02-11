@@ -23,32 +23,32 @@
 
 using namespace garden;
 
-static ID<Image> createCloudsView(GraphicsSystem* graphicsSystem)
+static ID<Image> createCloudsCamView(GraphicsSystem* graphicsSystem)
 {
 	auto size = max(graphicsSystem->getScaledFrameSize() / 2, uint2::one);
-	auto cloudsView = graphicsSystem->createImage(CloudsRenderSystem::cloudsColorFormat, 
-		Image::Usage::Sampled | Image::Usage::ColorAttachment, { { nullptr } }, size, Image::Strategy::Size);
-	SET_RESOURCE_DEBUG_NAME(cloudsView, "image.clouds.view");
+	auto cloudsView = graphicsSystem->createImage(CloudsRenderSystem::cloudsColorFormat, Image::Usage::Sampled | 
+		Image::Usage::ColorAttachment, { { nullptr } }, size, Image::Strategy::Size);
+	SET_RESOURCE_DEBUG_NAME(cloudsView, "image.clouds.camView");
 	return cloudsView;
 }
-static ID<Image> createCloudsViewDepth(GraphicsSystem* graphicsSystem)
+static ID<Image> createCloudsSkybox(GraphicsSystem* graphicsSystem, ID<Image> skybox)
+{
+	auto cubemapSize = max(graphicsSystem->get(skybox)->getSize().getX() / 2, 1u);
+	auto cloudsSkybox = graphicsSystem->createImage(CloudsRenderSystem::cloudsColorFormat, Image::Usage::Sampled | 
+		Image::Usage::ColorAttachment, { { nullptr } }, uint2(cubemapSize), Image::Strategy::Size);
+	SET_RESOURCE_DEBUG_NAME(cloudsSkybox, "image.clouds.skybox");
+	return cloudsSkybox;
+}
+static ID<Image> createCloudsCamViewDepth(GraphicsSystem* graphicsSystem)
 {
 	auto size = max(graphicsSystem->getScaledFrameSize() / 2, uint2::one);
 	auto cloudsViewDepth = graphicsSystem->createImage(CloudsRenderSystem::cloudsDepthFormat, 
 		Image::Usage::Sampled | Image::Usage::ColorAttachment, { { nullptr } }, size, Image::Strategy::Size);
-	SET_RESOURCE_DEBUG_NAME(cloudsViewDepth, "image.clouds.viewDepth");
+	SET_RESOURCE_DEBUG_NAME(cloudsViewDepth, "image.clouds.camViewDepth");
 	return cloudsViewDepth;
 }
-static ID<Image> createCloudsCube(GraphicsSystem* graphicsSystem, uint32 skyboxSize)
-{
-	auto size = max(skyboxSize / 2, 1u);
-	auto cloudsView = graphicsSystem->createImage(CloudsRenderSystem::cloudsColorFormat, Image::Usage::Sampled | 
-		Image::Usage::ColorAttachment, { { nullptr } }, uint2(size), Image::Strategy::Size);
-	SET_RESOURCE_DEBUG_NAME(cloudsView, "image.clouds.cube");
-	return cloudsView;
-}
 
-static ID<Framebuffer> createViewFramebuffer(GraphicsSystem* graphicsSystem, 
+static ID<Framebuffer> createCamViewFramebuffer(GraphicsSystem* graphicsSystem, 
 	ID<Image> cloudsView, ID<Image> cloudsViewDepth)
 {
 	auto cloudsViewView = graphicsSystem->get(cloudsView);
@@ -60,9 +60,17 @@ static ID<Framebuffer> createViewFramebuffer(GraphicsSystem* graphicsSystem,
 		Framebuffer::OutputAttachment(cloudsViewDepthView->getDefaultView(), CloudsRenderSystem::framebufferFlags),
 	};
 
-	auto framebuffer = graphicsSystem->createFramebuffer(
-		(uint2)cloudsViewView->getSize(), std::move(colorAttachments));
-	SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.cloudsView");
+	auto framebuffer = graphicsSystem->createFramebuffer((uint2)cloudsViewView->getSize(), std::move(colorAttachments));
+	SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.clouds.camView");
+	return framebuffer;
+}
+static ID<Framebuffer> createSkyboxFramebuffer(GraphicsSystem* graphicsSystem, ID<Image> cloudsSkybox)
+{
+	auto cloudsSkyboxView = graphicsSystem->get(cloudsSkybox);
+	vector<Framebuffer::OutputAttachment> colorAttachments =
+	{ Framebuffer::OutputAttachment(cloudsSkyboxView->getDefaultView(), CloudsRenderSystem::framebufferFlags) };
+	auto framebuffer = graphicsSystem->createFramebuffer((uint2)cloudsSkyboxView->getSize(), std::move(colorAttachments));
+	SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.clouds.skybox");
 	return framebuffer;
 }
 
@@ -73,9 +81,9 @@ static Ref<Image> createDataFields()
 		Image::Usage::Sampled | Image::Usage::TransferSrc | Image::Usage::TransferDst | 
 		Image::Usage::TransferQ, 0, Image::Strategy::Size, ImageLoadFlags::LoadShared, 9.0f);
 }
-static Ref<Image> createVerticalProfile()
+static Ref<Image> createVertProfile()
 {
-	return ResourceSystem::Instance::get()->loadImage("clouds/vertical-profile", 
+	return ResourceSystem::Instance::get()->loadImage("clouds/vert-profile", 
 		Image::Format::UnormR8G8, Image::Usage::Sampled | Image::Usage::TransferDst | 
 		Image::Usage::TransferQ, 1, Image::Strategy::Size, ImageLoadFlags::LoadShared, 9.0f);
 }
@@ -92,13 +100,12 @@ static Ref<Image> createCirrusShape()
 		Image::Usage::TransferQ, 0, Image::Strategy::Size, ImageLoadFlags::LoadShared, 9.0f);
 }
 
-static ID<GraphicsPipeline> createComputePipeline(ID<Framebuffer> framebuffer, GraphicsQuality quality)
+static void getCloudsQuality(GraphicsQuality cloudsQuality, float& stepAdjDist, float& sliceCount, float& kmPerSlice)
 {
-	float sliceCount, kmPerSlice; float stepAdjDist;
 	auto atmosphereQuality = AtmosphereRenderSystem::Instance::get()->getQuality();
 	AtmosphereRenderSystem::getSliceQuality(atmosphereQuality, sliceCount, kmPerSlice);
 
-	switch (quality)
+	switch (cloudsQuality)
 	{
 		case GraphicsQuality::PotatoPC: stepAdjDist = 3.072f; break;
 		case GraphicsQuality::Low: stepAdjDist = 4.096f; break;
@@ -107,18 +114,41 @@ static ID<GraphicsPipeline> createComputePipeline(ID<Framebuffer> framebuffer, G
 		case GraphicsQuality::Ultra: stepAdjDist = 32.768f; break;
 		default: abort();
 	}
+	stepAdjDist = 1.0f / stepAdjDist;
+}
+static ID<GraphicsPipeline> createCamViewPipeline(ID<Framebuffer> framebuffer, GraphicsQuality quality)
+{
+	float stepAdjDist, sliceCount, kmPerSlice;
+	getCloudsQuality(quality, stepAdjDist, sliceCount, kmPerSlice);
 
 	Pipeline::SpecConstValues specConstValues =
 	{
-		{ "STEP_ADJ_DIST", Pipeline::SpecConstValue(1.0f / stepAdjDist) },
+		{ "STEP_ADJ_DIST", Pipeline::SpecConstValue(stepAdjDist) },
 		{ "SLICE_COUNT", Pipeline::SpecConstValue(sliceCount) },
 		{ "KM_PER_SLICE", Pipeline::SpecConstValue(kmPerSlice) }
 	};
 
 	ResourceSystem::GraphicsOptions options;
 	options.specConstValues = &specConstValues;
-	return ResourceSystem::Instance::get()->loadGraphicsPipeline("clouds/compute", framebuffer, options);
+	return ResourceSystem::Instance::get()->loadGraphicsPipeline("clouds/cam-view", framebuffer, options);
 }
+static ID<GraphicsPipeline> createSkyboxPipeline(ID<Framebuffer> framebuffer, GraphicsQuality quality)
+{
+	float stepAdjDist, sliceCount, kmPerSlice;
+	getCloudsQuality(quality, stepAdjDist, sliceCount, kmPerSlice);
+
+	Pipeline::SpecConstValues specConstValues =
+	{
+		{ "STEP_ADJ_DIST", Pipeline::SpecConstValue(stepAdjDist) },
+		{ "SLICE_COUNT", Pipeline::SpecConstValue(sliceCount) },
+		{ "KM_PER_SLICE", Pipeline::SpecConstValue(kmPerSlice) }
+	};
+
+	ResourceSystem::GraphicsOptions options;
+	options.specConstValues = &specConstValues;
+	return ResourceSystem::Instance::get()->loadGraphicsPipeline("clouds/skybox", framebuffer, options);
+}
+
 static ID<GraphicsPipeline> createViewBlendPipeline()
 {
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
@@ -126,6 +156,11 @@ static ID<GraphicsPipeline> createViewBlendPipeline()
 	options.useAsyncRecording = deferredSystem->getOptions().useAsyncRecording;
 	return ResourceSystem::Instance::get()->loadGraphicsPipeline(
 		"clouds/view-blend", deferredSystem->getHdrFramebuffer(), options);
+}
+static ID<GraphicsPipeline> createSkyBlendPipeline(ID<Framebuffer> framebuffer)
+{
+	ResourceSystem::GraphicsOptions options;
+	return ResourceSystem::Instance::get()->loadGraphicsPipeline("process/alpha-blend", framebuffer, options);
 }
 static ID<GraphicsPipeline> createShadowPipeline()
 {
@@ -136,14 +171,14 @@ static ID<GraphicsPipeline> createShadowPipeline()
 }
 
 //**********************************************************************************************************************
-static DescriptorSet::Uniforms getCloudsUniforms(GraphicsSystem* graphicsSystem, 
-	ID<Image> dataFields, ID<Image> verticalProfile, ID<Image> noiseShape, ID<Image> cirrusShape)
+static DescriptorSet::Uniforms getCamViewUniforms(GraphicsSystem* graphicsSystem, 
+	ID<Image> dataFields, ID<Image> vertProfile, ID<Image> noiseShape, ID<Image> cirrusShape)
 {
-	auto hizBufferView = HizRenderSystem::Instance::get()->getImageViews().at(1);
+	auto hizBufferView = HizRenderSystem::Instance::get()->getImageViews().at(2);
 	auto cameraVolume = AtmosphereRenderSystem::Instance::get()->getCameraVolume();
 	auto cameraVolumeView = graphicsSystem->get(cameraVolume)->getDefaultView();
 	auto dataFieldsView = graphicsSystem->get(dataFields)->getDefaultView();
-	auto verticalProfileView = graphicsSystem->get(verticalProfile)->getDefaultView();
+	auto vertProfileView = graphicsSystem->get(vertProfile)->getDefaultView();
 	auto noiseShapeView = graphicsSystem->get(noiseShape)->getDefaultView();
 	auto cirrusShapeView = graphicsSystem->get(cirrusShape)->getDefaultView();
 	auto inFlightCount = graphicsSystem->getInFlightCount();
@@ -153,7 +188,29 @@ static DescriptorSet::Uniforms getCloudsUniforms(GraphicsSystem* graphicsSystem,
 		{ "hizBuffer", DescriptorSet::Uniform(hizBufferView, 1, inFlightCount) },
 		{ "cameraVolume", DescriptorSet::Uniform(cameraVolumeView, 1, inFlightCount) },
 		{ "dataFields", DescriptorSet::Uniform(dataFieldsView, 1, inFlightCount) },
-		{ "verticalProfile", DescriptorSet::Uniform(verticalProfileView, 1, inFlightCount) },
+		{ "vertProfile", DescriptorSet::Uniform(vertProfileView, 1, inFlightCount) },
+		{ "noiseShape", DescriptorSet::Uniform(noiseShapeView, 1, inFlightCount) },
+		{ "cirrusShape", DescriptorSet::Uniform(cirrusShapeView, 1, inFlightCount) },
+		{ "cc", DescriptorSet::Uniform(graphicsSystem->getCommonConstantsBuffers()) }
+	};
+	return uniforms;
+}
+static DescriptorSet::Uniforms getSkyboxUniforms(GraphicsSystem* graphicsSystem, 
+	ID<Image> dataFields, ID<Image> vertProfile, ID<Image> noiseShape, ID<Image> cirrusShape)
+{
+	auto cameraVolume = AtmosphereRenderSystem::Instance::get()->getCameraVolume();
+	auto cameraVolumeView = graphicsSystem->get(cameraVolume)->getDefaultView();
+	auto dataFieldsView = graphicsSystem->get(dataFields)->getDefaultView();
+	auto vertProfileView = graphicsSystem->get(vertProfile)->getDefaultView();
+	auto noiseShapeView = graphicsSystem->get(noiseShape)->getDefaultView();
+	auto cirrusShapeView = graphicsSystem->get(cirrusShape)->getDefaultView();
+	auto inFlightCount = graphicsSystem->getInFlightCount();
+
+	DescriptorSet::Uniforms uniforms =
+	{ 
+		{ "cameraVolume", DescriptorSet::Uniform(cameraVolumeView, 1, inFlightCount) },
+		{ "dataFields", DescriptorSet::Uniform(dataFieldsView, 1, inFlightCount) },
+		{ "vertProfile", DescriptorSet::Uniform(vertProfileView, 1, inFlightCount) },
 		{ "noiseShape", DescriptorSet::Uniform(noiseShapeView, 1, inFlightCount) },
 		{ "cirrusShape", DescriptorSet::Uniform(cirrusShapeView, 1, inFlightCount) },
 		{ "cc", DescriptorSet::Uniform(graphicsSystem->getCommonConstantsBuffers()) }
@@ -174,6 +231,11 @@ static DescriptorSet::Uniforms getViewBlendUniforms(GraphicsSystem* graphicsSyst
 		{ "cloudsDepth", DescriptorSet::Uniform(cloudsViewDepthView) }
 	};
 	return uniforms;
+}
+static DescriptorSet::Uniforms getSkyBlendUniforms(GraphicsSystem* graphicsSystem, ID<Image> cloudsSkybox)
+{
+	auto cloudsSkyboxView = graphicsSystem->get(cloudsSkybox)->getDefaultView();
+	return { { "srcBuffer", DescriptorSet::Uniform(cloudsSkyboxView) } };
 }
 static DescriptorSet::Uniforms getShadowUniforms(GraphicsSystem* graphicsSystem, ID<Image> dataFields)
 {
@@ -211,6 +273,8 @@ void CloudsRenderSystem::init()
 {
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("PreDeferredRender", CloudsRenderSystem::preDeferredRender);
+	ECSM_SUBSCRIBE_TO_EVENT("PreSkyFaceRender", CloudsRenderSystem::preSkyFaceRender);
+	ECSM_SUBSCRIBE_TO_EVENT("SkyFaceRender", CloudsRenderSystem::skyFaceRender);
 	ECSM_SUBSCRIBE_TO_EVENT("PreHdrRender", CloudsRenderSystem::preHdrRender);
 	ECSM_SUBSCRIBE_TO_EVENT("HdrRender", CloudsRenderSystem::hdrRender);
 	ECSM_SUBSCRIBE_TO_EVENT("PreShadowRender", CloudsRenderSystem::preShadowRender);
@@ -224,24 +288,29 @@ void CloudsRenderSystem::deinit()
 	{
 		auto graphicsSystem = GraphicsSystem::Instance::get();
 		graphicsSystem->destroy(shadowDS);
-		graphicsSystem->destroy(cubeBlendDS);
+		graphicsSystem->destroy(skyBlendDS);
 		graphicsSystem->destroy(viewBlendDS);
-		graphicsSystem->destroy(computeDS);
-		graphicsSystem->destroy(cubeFramebuffer);
-		graphicsSystem->destroy(viewFramebuffer);
-		graphicsSystem->destroy(cloudsCube);
-		graphicsSystem->destroy(cloudsViewDepth);
-		graphicsSystem->destroy(cloudsView);
+		graphicsSystem->destroy(skyboxDS);
+		graphicsSystem->destroy(camViewDS);
+		graphicsSystem->destroy(skyboxFramebuffer);
+		graphicsSystem->destroy(camViewFramebuffer);
+		graphicsSystem->destroy(cloudsSkybox);
+		graphicsSystem->destroy(cloudsCamViewDepth);
+		graphicsSystem->destroy(cloudsCamView);
 		graphicsSystem->destroy(cirrusShape);
 		graphicsSystem->destroy(noiseShape);
-		graphicsSystem->destroy(verticalProfile);
+		graphicsSystem->destroy(vertProfile);
 		graphicsSystem->destroy(dataFields);
 		graphicsSystem->destroy(shadowPipeline);
+		graphicsSystem->destroy(skyBlendPipeline);
 		graphicsSystem->destroy(viewBlendPipeline);
-		graphicsSystem->destroy(computePipeline);
+		graphicsSystem->destroy(skyboxPipeline);
+		graphicsSystem->destroy(camViewPipeline);
 
 		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PreDeferredRender", CloudsRenderSystem::preDeferredRender);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("PreSkyFaceRender", CloudsRenderSystem::preSkyFaceRender);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("SkyFaceRender", CloudsRenderSystem::skyFaceRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PreHdrRender", CloudsRenderSystem::preHdrRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("HdrRender", CloudsRenderSystem::hdrRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PreShadowRender", CloudsRenderSystem::preShadowRender);
@@ -250,6 +319,19 @@ void CloudsRenderSystem::deinit()
 		ECSM_UNSUBSCRIBE_FROM_EVENT("QualityChange", CloudsRenderSystem::qualityChange);
 	}
 }
+
+static float3 calcCameraPos(const CommonConstants& cc, float groundRadius)
+{
+	auto cameraPos = mToKm(cc.cameraPos); cameraPos.y += groundRadius;
+	return cameraPos;
+}
+static float calcCurrentTime(const CommonConstants& cc, float currentTime) noexcept
+{
+	return currentTime != 0.0f ? currentTime : cc.currentTime;
+}
+
+static float calcCoverage(float coverage) noexcept { return 1.0f - pow(saturate(coverage), 2.0f); }
+static float calcTemperatureDiff(float temperatureDiff) noexcept { return pow(saturate(temperatureDiff), 2.0f); }
 
 //**********************************************************************************************************************
 void CloudsRenderSystem::preDeferredRender()
@@ -264,102 +346,108 @@ void CloudsRenderSystem::preDeferredRender()
 	{
 		if (!dataFields)
 			dataFields = createDataFields();
-		if (!verticalProfile)
-			verticalProfile = createVerticalProfile();
+		if (!vertProfile)
+			vertProfile = createVertProfile();
 		if (!noiseShape)
 			noiseShape = createNoiseShape();
 		if (!cirrusShape)
 			cirrusShape = createCirrusShape();
-		if (!cloudsView)
-			cloudsView = createCloudsView(graphicsSystem);
-		if (!cloudsViewDepth)
-			cloudsViewDepth = createCloudsViewDepth(graphicsSystem);
-		// if (!cloudsCube)
-		//	cloudsCube = createCloudsView(graphicsSystem);
-		if (!viewFramebuffer)
-			viewFramebuffer = createViewFramebuffer(graphicsSystem, cloudsView, cloudsViewDepth);
-		// if (!cubeFramebuffer)
-		// 	cubeFramebuffer = createFramebuffer(graphicsSystem, cloudsCube);
-		if (!computePipeline)
-			computePipeline = createComputePipeline(viewFramebuffer, quality);
+		if (!cloudsCamView)
+			cloudsCamView = createCloudsCamView(graphicsSystem);
+		if (!cloudsCamViewDepth)
+			cloudsCamViewDepth = createCloudsCamViewDepth(graphicsSystem);
+		if (!camViewFramebuffer)
+			camViewFramebuffer = createCamViewFramebuffer(graphicsSystem, cloudsCamView, cloudsCamViewDepth);
+		if (!camViewPipeline)
+			camViewPipeline = createCamViewPipeline(camViewFramebuffer, quality);
 		if (!viewBlendPipeline)
 			viewBlendPipeline = createViewBlendPipeline();
 		isInitialized = true;
 	}
 
-	auto pipelineView = graphicsSystem->get(computePipeline);
+	auto pipelineView = graphicsSystem->get(camViewPipeline);
 	auto dataFieldsView = graphicsSystem->get(dataFields);
-	auto verticalProfileView = graphicsSystem->get(verticalProfile);
+	auto vertProfileView = graphicsSystem->get(vertProfile);
 	auto noiseShapeView = graphicsSystem->get(noiseShape);
 
 	if (!pipelineView->isReady() || !dataFieldsView->isReady() || 
-		!verticalProfileView->isReady() || !noiseShapeView->isReady())
+		!vertProfileView->isReady() || !noiseShapeView->isReady())
 	{
 		return;
 	}
 
-	if (!computeDS)
+	if (!camViewDS)
 	{
-		auto uniforms = getCloudsUniforms(graphicsSystem, ID<Image>(dataFields),
-			ID<Image>(verticalProfile), ID<Image>(noiseShape), ID<Image>(cirrusShape));
-		computeDS = graphicsSystem->createDescriptorSet(computePipeline, std::move(uniforms));
-		SET_RESOURCE_DEBUG_NAME(computeDS, "descriptorSet.clouds.compute");
+		auto uniforms = getCamViewUniforms(graphicsSystem, ID<Image>(dataFields),
+			ID<Image>(vertProfile), ID<Image>(noiseShape), ID<Image>(cirrusShape));
+		camViewDS = graphicsSystem->createDescriptorSet(camViewPipeline, std::move(uniforms));
+		SET_RESOURCE_DEBUG_NAME(camViewDS, "descriptorSet.clouds.camView");
 	}
-
-	/* TODO:
-	auto framebufferView = graphicsSystem->get(cubeFramebuffer);
-	pipelineView->updateFramebuffer(cubeFramebuffer);
-
-	PushConstants pc;
-	pc.invFrameSize = float2::one / framebufferView->getSize();
-
-	graphicsSystem->startRecording(CommandBufferType::Frame);
-	{
-		SET_GPU_DEBUG_LABEL("Cube Clouds");
-		{
-			RenderPass renderPass(cubeFramebuffer, float4::zero);
-			pipelineView->bind();
-			pipelineView->setViewportScissor();
-			pipelineView->bindDescriptorSet(descriptorSet);
-			pipelineView->pushConstants(&pc);
-			pipelineView->drawFullscreen();
-		}
-	}
-	graphicsSystem->stopRecording();
-	*/
 }
-
-static float3 calcCameraPos(const CommonConstants& cc, float groundRadius)
-{
-	auto cameraPos = mToKm(cc.cameraPos); cameraPos.y += groundRadius;
-	return cameraPos;
-}
-static float calcCurrentTime(const CommonConstants& cc, float currentTime) noexcept
-{
-	return currentTime != 0.0f ? currentTime : cc.currentTime;
-}
-
-static float calcCoverage(float coverage) noexcept { return 1.0f - pow(saturate(coverage), 2.0f); }
-static float calcTemperature(float temperature) noexcept { return pow(saturate(temperature), 2.0f); }
 
 //**********************************************************************************************************************
-void CloudsRenderSystem::preHdrRender()
+void CloudsRenderSystem::preSkyFaceRender()
 {
-	SET_CPU_ZONE_SCOPED("Clouds HDR Render");
+	SET_CPU_ZONE_SCOPED("Clouds Pre Sky Face Render");
 
-	if (!isEnabled || !computeDS)
+	if (!isEnabled || !camViewDS)
 		return;
 
+	auto manager = Manager::Instance::get();
 	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto pbrLightingView = manager->tryGet<PbrLightingComponent>(graphicsSystem->camera);
+	if (!pbrLightingView || !pbrLightingView->skybox)
+		return;
+
+	auto updateSkyboxFB = false;
+	if (cloudsSkybox)
+	{
+		auto cloudsSkyboxView = graphicsSystem->get(cloudsSkybox);
+		auto skyboxView = graphicsSystem->get(pbrLightingView->skybox);
+		if (cloudsSkyboxView->getSize().getX() * 2 != skyboxView->getSize().getX())
+		{
+			graphicsSystem->destroy(cloudsSkybox); cloudsSkybox = {};
+			graphicsSystem->destroy(skyBlendDS); skyBlendDS = {};
+			updateSkyboxFB = true;
+		}
+	}
+
+	if (!cloudsSkybox)
+		cloudsSkybox = createCloudsSkybox(graphicsSystem, ID<Image>(pbrLightingView->skybox));
+	if (!skyboxFramebuffer)
+		skyboxFramebuffer = createSkyboxFramebuffer(graphicsSystem, cloudsSkybox);
+
+	auto framebufferView = graphicsSystem->get(skyboxFramebuffer);
+	if (updateSkyboxFB)
+	{
+		auto cloudsSkyboxView = graphicsSystem->get(cloudsSkybox);
+		Framebuffer::OutputAttachment colorAttachment(cloudsSkyboxView->getDefaultView(), framebufferFlags);
+		framebufferView->update((uint2)cloudsSkyboxView->getSize(), &colorAttachment, 1);
+	}
+
+	if (!skyboxPipeline)
+		skyboxPipeline = createSkyboxPipeline(skyboxFramebuffer, quality);
+
+	auto pipelineView = graphicsSystem->get(skyboxPipeline);
+	if (!pipelineView->isReady())
+		return;
+	
+	if (!skyboxDS)
+	{
+		auto uniforms = getSkyboxUniforms(graphicsSystem, ID<Image>(dataFields),
+			ID<Image>(vertProfile), ID<Image>(noiseShape), ID<Image>(cirrusShape));
+		skyboxDS = graphicsSystem->createDescriptorSet(skyboxPipeline, std::move(uniforms));
+		SET_RESOURCE_DEBUG_NAME(skyboxDS, "descriptorSet.clouds.skybox");
+	}
+
 	auto atmosphereSystem = AtmosphereRenderSystem::Instance::get();
 	auto inFlightIndex = graphicsSystem->getInFlightIndex();
 	auto groundRadius = atmosphereSystem->groundRadius;
 	auto& cc = graphicsSystem->getCommonConstants();
-	auto pipelineView = graphicsSystem->get(computePipeline);
-	auto framebufferView = graphicsSystem->get(viewFramebuffer);
-	pipelineView->updateFramebuffer(viewFramebuffer);
+	pipelineView->updateFramebuffer(skyboxFramebuffer);
 
-	ComputePC pc;
+	SkyboxPC pc;
+	pc.invViewProj = atmosphereSystem->getCurrentInvViewProj();
 	pc.cameraPos = calcCameraPos(cc, groundRadius);
 	pc.bottomRadius = groundRadius + bottomRadius;
 	pc.topRadius = groundRadius + topRadius;
@@ -368,17 +456,84 @@ void CloudsRenderSystem::preHdrRender()
 	pc.currentTime = calcCurrentTime(cc, currentTime);
 	pc.cumulusCoverage = calcCoverage(cumulusCoverage);
 	pc.cirrusCoverage = 1.0f - saturate(cirrusCoverage);
-	pc.temperature = calcTemperature(temperature);
+	pc.temperatureDiff = calcTemperatureDiff(temperatureDiff);
+
+	SET_GPU_DEBUG_LABEL("Skybox Clouds");
+	{
+		RenderPass renderPass(skyboxFramebuffer, float4::zero);
+		pipelineView->bind();
+		pipelineView->setViewportScissor();
+		pipelineView->bindDescriptorSet(skyboxDS, inFlightIndex);
+		pipelineView->pushConstants(&pc);
+		pipelineView->drawFullscreen();
+	}
+}
+void CloudsRenderSystem::skyFaceRender()
+{
+	if (!isEnabled || !cloudsSkybox)
+		return;
+
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto skyboxFramebuffer = graphicsSystem->getCurrentFramebuffer();
+	if (!skyBlendPipeline)
+		skyBlendPipeline = createSkyBlendPipeline(skyboxFramebuffer);
+
+	auto pipelineView = graphicsSystem->get(skyBlendPipeline);
+	if (!pipelineView->isReady())
+		return;
+
+	if (!skyBlendDS)
+	{
+		auto uniforms = getSkyBlendUniforms(graphicsSystem, cloudsSkybox);
+		skyBlendDS = graphicsSystem->createDescriptorSet(skyBlendPipeline, std::move(uniforms));
+		SET_RESOURCE_DEBUG_NAME(skyBlendDS, "descriptorSet.clouds.skyBlend");
+	}
+
+	SET_GPU_DEBUG_LABEL("Sky Face Clouds");
+	pipelineView->updateFramebuffer(skyboxFramebuffer);
+	pipelineView->bind();
+	pipelineView->setViewportScissor();
+	pipelineView->bindDescriptorSet(skyBlendDS);
+	pipelineView->drawFullscreen();
+}
+
+//**********************************************************************************************************************
+void CloudsRenderSystem::preHdrRender()
+{
+	SET_CPU_ZONE_SCOPED("Clouds HDR Render");
+
+	if (!isEnabled || !camViewDS)
+		return;
+
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto atmosphereSystem = AtmosphereRenderSystem::Instance::get();
+	auto inFlightIndex = graphicsSystem->getInFlightIndex();
+	auto groundRadius = atmosphereSystem->groundRadius;
+	auto& cc = graphicsSystem->getCommonConstants();
+	auto pipelineView = graphicsSystem->get(camViewPipeline);
+	auto framebufferView = graphicsSystem->get(camViewFramebuffer);
+	pipelineView->updateFramebuffer(camViewFramebuffer);
+
+	CamViewPC pc;
+	pc.cameraPos = calcCameraPos(cc, groundRadius);
+	pc.bottomRadius = groundRadius + bottomRadius;
+	pc.topRadius = groundRadius + topRadius;
+	pc.minDistance = minDistance;
+	pc.maxDistance = maxDistance;
+	pc.currentTime = calcCurrentTime(cc, currentTime);
+	pc.cumulusCoverage = calcCoverage(cumulusCoverage);
+	pc.cirrusCoverage = 1.0f - saturate(cirrusCoverage);
+	pc.temperatureDiff = calcTemperatureDiff(temperatureDiff);
 
 	graphicsSystem->startRecording(CommandBufferType::Frame);
 	{
-		SET_GPU_DEBUG_LABEL("View Clouds");
+		SET_GPU_DEBUG_LABEL("Camera View Clouds");
 		{
 			constexpr const float4 clearColors[2] = { float4(0.0f), float4(0.0f) };
-			RenderPass renderPass(viewFramebuffer, clearColors, 2);
+			RenderPass renderPass(camViewFramebuffer, clearColors, 2);
 			pipelineView->bind();
 			pipelineView->setViewportScissor();
-			pipelineView->bindDescriptorSet(computeDS, inFlightIndex);
+			pipelineView->bindDescriptorSet(camViewDS, inFlightIndex);
 			pipelineView->pushConstants(&pc);
 			pipelineView->drawFullscreen();
 		}
@@ -401,12 +556,12 @@ void CloudsRenderSystem::hdrRender()
 
 	if (!viewBlendDS)
 	{
-		auto uniforms = getViewBlendUniforms(graphicsSystem, cloudsView, cloudsViewDepth);
+		auto uniforms = getViewBlendUniforms(graphicsSystem, cloudsCamView, cloudsCamViewDepth);
 		viewBlendDS = graphicsSystem->createDescriptorSet(viewBlendPipeline, std::move(uniforms));
 		SET_RESOURCE_DEBUG_NAME(viewBlendDS, "descriptorSet.clouds.viewBlend");
 	}
 
-	SET_GPU_DEBUG_LABEL("Blend Clouds");
+	SET_GPU_DEBUG_LABEL("View Clouds Blend");
 	pipelineView->bind();
 	pipelineView->setViewportScissor();
 	pipelineView->bindDescriptorSet(viewBlendDS);
@@ -425,8 +580,8 @@ void CloudsRenderSystem::preShadowRender()
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto pipelineView = graphicsSystem->get(shadowPipeline);
 	auto dataFieldsView = graphicsSystem->get(dataFields);
-	auto verticalProfileView = graphicsSystem->get(verticalProfile);
-	if (!pipelineView->isReady() || !dataFieldsView->isReady() || !verticalProfileView->isReady())
+	auto vertProfileView = graphicsSystem->get(vertProfile);
+	if (!pipelineView->isReady() || !dataFieldsView->isReady() || !vertProfileView->isReady())
 		return;
 
 	if (!shadowDS)
@@ -460,9 +615,9 @@ void CloudsRenderSystem::shadowRender()
 	pc.currentTime = calcCurrentTime(cc, currentTime);
 	pc.windDir = cc.windDir;
 	pc.cumulusCoverage = calcCoverage(cumulusCoverage);
-	pc.temperature = calcTemperature(temperature);
+	pc.temperatureDiff = calcTemperatureDiff(temperatureDiff);
 
-	SET_GPU_DEBUG_LABEL("Clouds Shadow");
+	SET_GPU_DEBUG_LABEL("Cloud Shadows");
 	pipelineView->bind();
 	pipelineView->setViewportScissor();
 	pipelineView->bindDescriptorSet(shadowDS);
@@ -474,22 +629,22 @@ void CloudsRenderSystem::shadowRender()
 void CloudsRenderSystem::gBufferRecreate()
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	if (cloudsView)
+	if (cloudsCamView)
 	{
-		graphicsSystem->destroy(cloudsView);
-		cloudsView = createCloudsView(graphicsSystem);
+		graphicsSystem->destroy(cloudsCamView);
+		cloudsCamView = createCloudsCamView(graphicsSystem);
 	}
-	if (cloudsViewDepth)
+	if (cloudsCamViewDepth)
 	{
-		graphicsSystem->destroy(cloudsViewDepth);
-		cloudsViewDepth = createCloudsViewDepth(graphicsSystem);
+		graphicsSystem->destroy(cloudsCamViewDepth);
+		cloudsCamViewDepth = createCloudsCamViewDepth(graphicsSystem);
 	}
 
-	if (viewFramebuffer)
+	if (camViewFramebuffer)
 	{
-		auto framebufferView = graphicsSystem->get(viewFramebuffer);
-		auto cloudsViewView = graphicsSystem->get(cloudsView);
-		auto cloudsViewDepthView = graphicsSystem->get(cloudsViewDepth);
+		auto framebufferView = graphicsSystem->get(camViewFramebuffer);
+		auto cloudsViewView = graphicsSystem->get(cloudsCamView);
+		auto cloudsViewDepthView = graphicsSystem->get(cloudsCamViewDepth);
 		Framebuffer::OutputAttachment colorAttachment[2] =
 		{
 			{ cloudsViewView->getDefaultView(), CloudsRenderSystem::framebufferFlags },
@@ -498,22 +653,9 @@ void CloudsRenderSystem::gBufferRecreate()
 		framebufferView->update((uint2)cloudsViewView->getSize(), colorAttachment, 2);
 	}
 
-	if (computeDS)
-	{
-		graphicsSystem->destroy(computeDS); computeDS = {};
-	}
-	if (viewBlendDS)
-	{
-		graphicsSystem->destroy(viewBlendDS); viewBlendDS = {};
-	}
-	if (cubeBlendDS)
-	{
-		graphicsSystem->destroy(cubeBlendDS); cubeBlendDS = {};
-	}
-	if (shadowDS)
-	{
-		graphicsSystem->destroy(shadowDS); shadowDS = {};
-	}
+	graphicsSystem->destroy(camViewDS); camViewDS = {};
+	graphicsSystem->destroy(viewBlendDS); viewBlendDS = {};
+	graphicsSystem->destroy(shadowDS); shadowDS = {};
 }
 
 void CloudsRenderSystem::qualityChange()
@@ -526,12 +668,18 @@ void CloudsRenderSystem::setQuality(GraphicsQuality quality)
 		return;
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	graphicsSystem->destroy(computeDS); computeDS = {};
+	graphicsSystem->destroy(camViewDS); camViewDS = {};
+	graphicsSystem->destroy(skyboxDS); skyboxDS = {};
 
-	if (computePipeline)
+	if (camViewPipeline)
 	{
-		graphicsSystem->destroy(computePipeline);
-		computePipeline = createComputePipeline(viewFramebuffer, quality);
+		graphicsSystem->destroy(camViewPipeline);
+		camViewPipeline = createCamViewPipeline(camViewFramebuffer, quality);
+	}
+	if (skyboxPipeline)
+	{
+		graphicsSystem->destroy(skyboxPipeline);
+		skyboxPipeline = createSkyboxPipeline(camViewFramebuffer, quality);
 	}
 
 	this->quality = quality;
@@ -544,11 +692,11 @@ Ref<Image> CloudsRenderSystem::getDataFields()
 		dataFields = createDataFields();
 	return dataFields;
 }
-Ref<Image> CloudsRenderSystem::getVerticalProfile()
+Ref<Image> CloudsRenderSystem::getVertProfile()
 {
-	if (!verticalProfile)
-		verticalProfile = createVerticalProfile();
-	return verticalProfile;
+	if (!vertProfile)
+		vertProfile = createVertProfile();
+	return vertProfile;
 }
 Ref<Image> CloudsRenderSystem::getNoiseShape()
 {
@@ -556,36 +704,44 @@ Ref<Image> CloudsRenderSystem::getNoiseShape()
 		noiseShape = createNoiseShape();
 	return noiseShape;
 }
-ID<Image> CloudsRenderSystem::getCloudsView()
+ID<Image> CloudsRenderSystem::getCloudsCamView()
 {
-	if (!cloudsView)
-		cloudsView = createCloudsView(GraphicsSystem::Instance::get());
-	return cloudsView;
+	if (!cloudsCamView)
+		cloudsCamView = createCloudsCamView(GraphicsSystem::Instance::get());
+	return cloudsCamView;
 }
-ID<Image> CloudsRenderSystem::getCloudsViewDepth()
+ID<Image> CloudsRenderSystem::getCloudsCamViewDepth()
 {
-	if (!cloudsViewDepth)
-		cloudsViewDepth = createCloudsViewDepth(GraphicsSystem::Instance::get());
-	return cloudsViewDepth;
+	if (!cloudsCamViewDepth)
+		cloudsCamViewDepth = createCloudsCamViewDepth(GraphicsSystem::Instance::get());
+	return cloudsCamViewDepth;
 }
-ID<Framebuffer> CloudsRenderSystem::getViewFramebuffer()
+
+ID<Framebuffer> CloudsRenderSystem::getCamViewFramebuffer()
 {
-	if (!viewFramebuffer)
+	if (!camViewFramebuffer)
 	{
-		viewFramebuffer = createViewFramebuffer(GraphicsSystem::Instance::get(), 
-			getCloudsView(), getCloudsViewDepth());
+		camViewFramebuffer = createCamViewFramebuffer(GraphicsSystem::Instance::get(), 
+			getCloudsCamView(), getCloudsCamViewDepth());
 	}
-	return viewFramebuffer;
+	return camViewFramebuffer;
 }
-ID<GraphicsPipeline> CloudsRenderSystem::getComputePipeline()
+
+ID<GraphicsPipeline> CloudsRenderSystem::getCamViewPipeline()
 {
-	if (!computePipeline)
-		computePipeline = createComputePipeline(getViewFramebuffer(), quality);
-	return computePipeline;
+	if (!camViewPipeline)
+		camViewPipeline = createCamViewPipeline(getCamViewFramebuffer(), quality);
+	return camViewPipeline;
 }
 ID<GraphicsPipeline> CloudsRenderSystem::getViewBlendPipeline()
 {
 	if (!viewBlendPipeline)
 		viewBlendPipeline = createViewBlendPipeline();
 	return viewBlendPipeline;
+}
+ID<GraphicsPipeline> CloudsRenderSystem::getShadowPipeline()
+{
+	if (!shadowPipeline)
+		shadowPipeline = createShadowPipeline();
+	return shadowPipeline;
 }

@@ -112,7 +112,7 @@ void CloudsEditorSystem::preUiRender()
 			ImGui::Text("Ammount of cirrus clouds. (Clear or cloudy weather)");
 			ImGui::EndTooltip();
 		}
-		ImGui::SliderFloat("Temperature", &cloudsSystem->temperature, 0.0f, 1.0f);
+		ImGui::SliderFloat("Temperature Diff", &cloudsSystem->temperatureDiff, 0.0f, 1.0f);
 		if (ImGui::BeginItemTooltip())
 		{
 			ImGui::Text("Temperature difference between layers. (Storm clouds)");

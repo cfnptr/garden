@@ -21,6 +21,8 @@
 #pragma once
 #include "garden/system/graphics.hpp"
 
+// TODO: we can remove flickering using temporal accumulation.
+
 namespace garden
 {
 
@@ -53,16 +55,14 @@ private:
 	GraphicsQuality quality = GraphicsQuality::High;
 	bool isInitialized = false;
 	bool useThreshold = false;
-	bool useAntiFlickering = false;
 
 	/**
 	 * @brief Creates a new bloom (light glow) rendering system instance.
 	 *
 	 * @param useThreshold use bloom color threshold for rendering
-	 * @param useAntiFlickering use anti flickering algorithm for rendering (anti fireflies)
 	 * @param setSingleton set system singleton instance
 	 */
-	BloomRenderSystem(bool useThreshold = false, bool useAntiFlickering = true, bool setSingleton = true);
+	BloomRenderSystem(bool useThreshold = false, bool setSingleton = true);
 	/**
 	 * @brief Destroys bloom (light glow) rendering system instance.
 	 */
@@ -85,16 +85,10 @@ public:
 	 */
 	bool getUseThreshold() const noexcept { return useThreshold; }
 	/**
-	 * @brief Use anti flickering algorithm for bloom rendering. (Anti fireflies)
-	 */
-	bool getUseAntiFlickering() const noexcept { return useAntiFlickering; }
-	/**
 	 * @brief Sets bloom pipeline constants. (Recreates pipeline!).
-	 *
 	 * @param useThreshold use shadow buffer for rendering
-	 * @param useAntiFlickering use anti flickering algorithm for rendering (anti fireflies)
 	 */
-	void setConsts(bool useThreshold, bool useAntiFlickering);
+	void setConsts(bool useThreshold);
 
 	/**
 	 * @brief Returns bloom rendering graphics quality.

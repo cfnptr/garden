@@ -1033,6 +1033,7 @@ static void renderPipelineDetails(const Pipeline& pipeline, ID<Pipeline> instanc
 			auto readAccess = uniform.readAccess;
 			auto writeAccess = uniform.writeAccess;
 			auto isMutable = uniform.isMutable;
+			auto isNoncoherent = uniform.isNoncoherent;
 
 			ImGui::SeparatorText(pair.first.c_str());
 			ImGui::TextWrapped("Type: %s", toString(uniform.type).data());
@@ -1045,7 +1046,8 @@ static void renderPipelineDetails(const Pipeline& pipeline, ID<Pipeline> instanc
 			ImGui::Text("Access:"); ImGui::SameLine();
 			ImGui::Checkbox("Read", &readAccess); ImGui::SameLine();
 			ImGui::Checkbox("Write", &writeAccess);
-			ImGui::Checkbox("Mutable", &isMutable);
+			ImGui::Checkbox("Mutable", &isMutable); ImGui::SameLine();
+			ImGui::Checkbox("Noncoherent", &isNoncoherent); ImGui::SameLine();
 			ImGui::PopID();
 		}
 

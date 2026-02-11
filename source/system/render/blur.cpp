@@ -120,13 +120,12 @@ void BlurRenderSystem::gBufferRecreate()
 		auto ldrBuffer = deferredSystem->getLdrBuffer();
 		auto ldrBufferView = graphicsSystem->get(ldrBuffer)->getDefaultView();
 		auto framebufferView = graphicsSystem->get(ldrGgxFramebuffers[0]);
-		vector<Framebuffer::OutputAttachment> colorAttachments =
-		{ Framebuffer::OutputAttachment(ldrBufferView, framebufferFlags) };
-		framebufferView->update(framebufferSize, std::move(colorAttachments));
+		Framebuffer::OutputAttachment colorAttachment(ldrBufferView, framebufferFlags);
+		framebufferView->update(framebufferSize, &colorAttachment, 1);
 
 		framebufferView = graphicsSystem->get(ldrGgxFramebuffers[1]);
-		colorAttachments = { Framebuffer::OutputAttachment(
-			getLdrGgxView(graphicsSystem, deferredSystem), framebufferFlags) };
-		framebufferView->update(framebufferSize, std::move(colorAttachments));
+		colorAttachment = Framebuffer::OutputAttachment(
+			getLdrGgxView(graphicsSystem, deferredSystem), framebufferFlags);
+		framebufferView->update(framebufferSize, &colorAttachment, 1);
 	}
 }

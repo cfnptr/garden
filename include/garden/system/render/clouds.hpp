@@ -46,7 +46,7 @@ namespace garden
 class CloudsRenderSystem final : public System, public Singleton<CloudsRenderSystem>
 {
 public:
-	struct ComputePC final
+	struct CamViewPC final
 	{
 		float3 cameraPos;
 		float bottomRadius;
@@ -56,7 +56,20 @@ public:
 		float currentTime;
 		float cumulusCoverage;
 		float cirrusCoverage;
-		float temperature;
+		float temperatureDiff;
+	};
+	struct SkyboxPC final
+	{
+		float4x4 invViewProj;
+		float3 cameraPos;
+		float bottomRadius;
+		float topRadius;
+		float minDistance;
+		float maxDistance;
+		float currentTime;
+		float cumulusCoverage;
+		float cirrusCoverage;
+		float temperatureDiff;
 	};
 	struct ShadowsPC final
 	{
@@ -67,24 +80,23 @@ public:
 		float currentTime;
 		float3 windDir;
 		float cumulusCoverage;
-		float temperature;
+		float temperatureDiff;
 	};
 
 	static constexpr Image::Format cloudsColorFormat = Image::Format::SfloatR16G16B16A16;
 	static constexpr Image::Format cloudsDepthFormat = Image::Format::SfloatR16;
 	static constexpr Framebuffer::OutputAttachment::Flags framebufferFlags = { false, false, true };
 private:
-	Ref<Image> dataFields = {}, verticalProfile = {}, noiseShape = {}, cirrusShape = {};
-	ID<Image> cloudsView = {}, cloudsViewDepth = {}, cloudsCube = {}, lastCameraVolume = {};
-	ID<Framebuffer> viewFramebuffer = {}, cubeFramebuffer = {};
-	ID<GraphicsPipeline> computePipeline = {};
-	ID<GraphicsPipeline> viewBlendPipeline = {}, shadowPipeline = {};
-	ID<DescriptorSet> computeDS = {}, viewBlendDS = {}, cubeBlendDS = {}, shadowDS = {};
+	Ref<Image> dataFields = {}, vertProfile = {}, noiseShape = {}, cirrusShape = {};
+	ID<Image> cloudsCamView = {}, cloudsCamViewDepth = {}, cloudsSkybox = {};
+	ID<Framebuffer> camViewFramebuffer = {}, skyboxFramebuffer = {};
+	ID<GraphicsPipeline> camViewPipeline = {}, skyboxPipeline = {}, 
+		viewBlendPipeline = {}, skyBlendPipeline = {}, shadowPipeline = {};
+	ID<DescriptorSet> camViewDS = {}, skyboxDS = {}, viewBlendDS = {}, skyBlendDS = {}, shadowDS = {};
 	GraphicsQuality quality = GraphicsQuality::High;
-	bool isInitialized = false;
-	bool hasShadows = false;
+	bool isInitialized = false, hasShadows = false;
 
-	/**
+	/*******************************************************************************************************************
 	 * @brief Creates a new physically based volumetric clouds rendering system instance.
 	 * @param setSingleton set system singleton instance
 	 */
@@ -97,6 +109,8 @@ private:
 	void init();
 	void deinit();
 	void preDeferredRender();
+	void preSkyFaceRender();
+	void skyFaceRender();
 	void preHdrRender();
 	void hdrRender();
 	void preShadowRender();
@@ -114,7 +128,7 @@ public:
 	float maxDistance = 200.0f;   /**< Maximum clouds volume tracing distance. (km) */
 	float cumulusCoverage = 0.4f; /**< Ammount of cumulus clouds. (Clear or cloudy weather) */
 	float cirrusCoverage = 0.2f;  /**< Ammount of cirrus clouds. (Clear or cloudy weather) */
-	float temperature = 0.7f;     /**< Temperature difference between layers. (Storm clouds) */
+	float temperatureDiff = 0.7f; /**< Temperature difference between layers. (Storm clouds) */
 	float currentTime = 0.0f;     /**< Custom current time value. (For a multiplayer sync) */
 
 	/**
@@ -134,33 +148,49 @@ public:
 	/**
 	 * @brief Returns volumetric clouds vertical profile image.
 	 */
-	Ref<Image> getVerticalProfile();
+	Ref<Image> getVertProfile();
 	/**
 	 * @brief Returns volumetric clouds noise shape image.
 	 */
 	Ref<Image> getNoiseShape();
 	/**
-	 * @brief Returns volumetric clouds view image.
+	 * @brief Returns volumetric clouds camera view image.
 	 */
-	ID<Image> getCloudsView();
+	ID<Image> getCloudsCamView();
 	/**
-	 * @brief Returns volumetric clouds view depth image.
+	 * @brief Returns volumetric clouds camera view depth image.
 	 */
-	ID<Image> getCloudsViewDepth();
+	ID<Image> getCloudsCamViewDepth();
+	/**
+	 * @brief Returns volumetric clouds skybox image.
+	 */
+	ID<Image> getCloudsSkybox() const noexcept { return cloudsSkybox; }
 
 	/**
-	 * @brief Returns volumetric clouds view framebuffer.
+	 * @brief Returns volumetric clouds camera view framebuffer.
 	 */
-	ID<Framebuffer> getViewFramebuffer();
+	ID<Framebuffer> getCamViewFramebuffer();
+	/**
+	 * @brief Returns volumetric clouds camera view framebuffer.
+	 */
+	ID<Framebuffer> getSkyboxFramebuffer() const noexcept { return skyboxFramebuffer; }
 
 	/**
-	 * @brief Returns volumetric clouds compute pipeline.
+	 * @brief Returns volumetric clouds camera view graphics pipeline.
 	 */
-	ID<GraphicsPipeline> getComputePipeline();
+	ID<GraphicsPipeline> getCamViewPipeline();
 	/**
-	 * @brief Returns volumetric clouds view blend graphics pipeline.
+	 * @brief Returns volumetric clouds skybox graphics pipeline.
+	 */
+	ID<GraphicsPipeline> getSkyboxPipeline() const noexcept { return skyboxPipeline; }
+	/**
+	 * @brief Returns volumetric clouds camera view blend graphics pipeline.
 	 */
 	ID<GraphicsPipeline> getViewBlendPipeline();
+	/**
+	 * @brief Returns volumetric clouds shadow graphics pipeline.
+	 */
+	ID<GraphicsPipeline> getShadowPipeline();
 };
 
 } // namespace garden

@@ -57,7 +57,7 @@ public:
 		bool readAccess = true;            /**< Is variable read access allowed. */
 		bool writeAccess = true;           /**< Is variable write access allowed. */
 		bool isMutable = false;            /**< Is uniform resource can be assigned dynamically. */
-		uint8 _alignment = 0;              // Note: Should be aligned.
+		bool isNoncoherent = false;        /**< Does shaders access different memory parts. */
 	};
 
 	/*******************************************************************************************************************
