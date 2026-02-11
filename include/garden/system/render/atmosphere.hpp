@@ -130,6 +130,15 @@ public:
 	{
 		uint32 offset;
 	};
+	struct SkyLightPC final
+	{
+		float3 cameraPos;
+		float bottomRadius;
+		float3 starDir;
+		float topRadius;
+		float3 starColor;
+		uint32 dataOffset;
+	};
 
 	static constexpr float3 earthRayleighScattering = float3(0.005802f, 0.013558f, 0.0331f);
 	static constexpr float earthRayleightScaleHeight = 8.0f;
@@ -176,30 +185,25 @@ private:
 	vector<ID<ImageView>> specularViews;
 	vector<ID<DescriptorSet>> iblDescriptorSets;
 	DescriptorSet::Buffers shCaches, shStagings;
-	ID<Image> transLUT = {}, multiScattLUT = {};
-	ID<Image> cameraVolume = {}, skyViewLUT = {};
 	ID<Buffer> specularCache = {};
-	ID<Framebuffer> transLutFramebuffer = {};
-	ID<Framebuffer> skyViewLutFramebuffer = {};
-	ID<GraphicsPipeline> transLutPipeline = {};
-	ID<ComputePipeline> multiScattLutPipeline = {};
-	ID<ComputePipeline> cameraVolumePipeline = {};
-	ID<GraphicsPipeline> skyViewLutPipeline = {};
-	ID<GraphicsPipeline> hdrSkyPipeline = {};
-	ID<GraphicsPipeline> skyboxPipeline = {};
-	ID<ComputePipeline> shGeneratePipeline = {};
-	ID<ComputePipeline> shReducePipeline = {};
+	ID<Image> transLUT = {}, multiScattLUT = {}, cameraVolume = {}, skyViewLUT = {};
+	ID<Framebuffer> transLutFramebuffer = {}, skyViewLutFramebuffer = {};
+	ID<GraphicsPipeline> transLutPipeline = {}, skyViewLutPipeline = {};
+	ID<ComputePipeline> multiScattLutPipeline = {}, cameraVolumePipeline = {};
+	ID<GraphicsPipeline> hdrSkyPipeline = {}, skyboxPipeline = {};
+	ID<ComputePipeline> shGeneratePipeline = {}, shReducePipeline = {}, skyLightPipeline = {};
 	ID<DescriptorSet> multiScattLutDS = {}, cameraVolumeDS = {};
 	ID<DescriptorSet> skyViewLutDS = {}, hdrSkyDS = {}, skyboxDS = {};
-	ID<DescriptorSet> shGenerateDS = {}, shReduceDS = {};
+	ID<DescriptorSet> shGenerateDS = {}, shReduceDS = {}, skyLightDS = {};
 	ID<ImageView> skyboxViews[Image::cubemapFaceCount] = {};
 	ID<Framebuffer> skyboxFramebuffers[Image::cubemapFaceCount] = {};
 	Ref<Image> lastSkybox = {}, lastSpecular = {};
 	ID<ImageView> lastSkyboxShView = {};
+	float4x4 currInvViewProj = float4x4::zero;
 	uint32 shInFlightIndex = 0;
 	GraphicsQuality quality = GraphicsQuality::High;
 	bool isInitialized = false;
-	uint8 updatePhase = 0;
+	uint8 updatePhase = 0, currFaceIndex = 0;
 
 	/**
 	 * @brief Creates a new physically based atmosphere rendering system instance. (Sky)
@@ -240,9 +244,9 @@ public:
 	float atmosphereHeight = earthAtmosphereHeight; /**< (km) */
 	float4 starColor = float4(float3(1.0f), 10000.0f);
 	float starAngularSize = earthSunAngularSize; /**< (degrees) */
-	float giFactor = 1.0f;        /**< Global illumination factor. */
+	float giFactor = 1.0f;         /**< Global illumination factor. */
 	float multiScattFactor = 1.0f; /**< Light multi-scattering factor. */
-	bool noDelay = false;         /**< Make all computation in one fram. (Expnesive!) */
+	bool noDelay = false;          /**< Make all computation in one fram. (Expnesive!) */
 
 	/*******************************************************************************************************************
 	 * @brief Returns atmosphere rendering graphics quality.
@@ -253,6 +257,15 @@ public:
 	 * @param quality target graphics quality level
 	 */
 	void setQuality(GraphicsQuality quality);
+
+	/**
+	 * @brief Returns currently rendering atmosphere skybox face index.
+	 */
+	uint8 getCurrentFaceIndex() const noexcept { return currFaceIndex; }
+	/**
+	 * @brief Returns currently rendering atmosphere skybox inverse view projection matrix.
+	 */
+	const float4x4& getCurrentInvViewProj() const noexcept { return currInvViewProj; }
 
 	/**
 	 * @brief Returns atmosphere transmittance LUT. (Look Up Table)
@@ -320,6 +333,10 @@ public:
 	 * @brief Returns spherical harmonics reduce compute pipeline.
 	 */
 	ID<ComputePipeline> getShReducePipeline();
+	/**
+	 * @brief Returns sky light compute pipeline.
+	 */
+	ID<ComputePipeline> getSkyLightPipeline();
 
 	/**
 	 * @brief Returns camera volume slice constants at the specified graphics quality.

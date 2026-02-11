@@ -81,7 +81,6 @@ void BloomRenderEditorSystem::preUiRender()
 	{
 		auto bloomSystem = BloomRenderSystem::Instance::get();
 		auto useThreshold = bloomSystem->getUseThreshold();
-		auto useAntiFlickering = bloomSystem->getUseAntiFlickering();
 
 		if (ImGui::Checkbox("Enabled", &bloomSystem->isEnabled))
 		{
@@ -101,13 +100,10 @@ void BloomRenderEditorSystem::preUiRender()
 
 		ImGui::SliderFloat("Intensity", &bloomSystem->intensity, 0.0f, 1.0f);
 
-		if (ImGui::Checkbox("Use Anti Flickering", &useAntiFlickering) ||
-			ImGui::Checkbox("Use Threshold", &useThreshold))
-		{
-			bloomSystem->setConsts(useThreshold, useAntiFlickering);
-		}
+		if (ImGui::Checkbox("Use Threshold", &useThreshold))
+			bloomSystem->setConsts(useThreshold);
 			
-		ImGui::DragFloat("Threshold", &bloomSystem->threshold, 0.01f, 0.0f, FLT_MAX);
+		ImGui::DragFloat("Threshold", &bloomSystem->threshold, 0.001f, 0.0f, FLT_MAX);
 		ImGui::Spacing();
 
 		ImGui::Checkbox("Visualize Threshold", &visualizeThreshold);

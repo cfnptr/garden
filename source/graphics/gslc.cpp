@@ -92,8 +92,8 @@ namespace garden::graphics
 		istringstream inputStream; ostringstream outputStream;
 		string line; uint32 lineIndex = 1;
 		int8 isUniform = 0, isBuffer = 0, isPushConstants = 0, isSamplerState = 0;
-		bool isSkipMode = false, isReadonly = false, isWriteonly = false, isMutable = false, 
-			isRestrict = false, isVolatile = false, isCoherent = false, isStd430 = false;
+		bool isSkipMode = false, isReadonly = false, isWriteonly = false, isMutable = false, isRestrict = false, 
+			isVolatile = false, isCoherent = false, isNoncoherent = false, isStd430 = false;
 		uint8 attachmentIndex = 0, descriptorSetIndex = 0, specConstIndex = 1;
 		GslUniformType uniformType = {};
 		Sampler::State samplerState;
@@ -308,7 +308,7 @@ static string_view toGlslString(Image::Format imageFormat)
 static void endShaderUniform(FileData& fileData)
 {
 	fileData.isReadonly = fileData.isWriteonly = fileData.isMutable = fileData.isRestrict = 
-		fileData.isVolatile = fileData.isCoherent = fileData.isStd430 = false;
+		fileData.isVolatile = fileData.isCoherent = fileData.isNoncoherent = fileData.isStd430 = false;
 	fileData.isUniform = fileData.descriptorSetIndex = 0;
 }
 
@@ -323,6 +323,7 @@ static void onShaderUniform(FileData& fileData, LineData& lineData, PipelineStag
 		else if (lineData.word == "restrict") fileData.isRestrict = true;
 		else if (lineData.word == "volatile") fileData.isVolatile = true;
 		else if (lineData.word == "coherent") fileData.isCoherent = true;
+		else if (lineData.word == "noncoherent") fileData.isNoncoherent = true;
 		else if (lineData.word == "std430") fileData.isStd430 = true;
 		else if (lineData.word == "reference") lineData.isReference = true;
 		else if (lineData.word.length() > 3 && memcmp(lineData.word.data(), "set", 3) == 0) // Note: Do not move down.
@@ -497,6 +498,7 @@ static void onShaderUniform(FileData& fileData, LineData& lineData, PipelineStag
 		uniform.readAccess = readAccess;
 		uniform.writeAccess = writeAccess;
 		uniform.isMutable = fileData.isMutable;
+		uniform.isNoncoherent = fileData.isNoncoherent;
 
 		if (!uniforms.emplace(lineData.uniformName, uniform).second)
 			throw GardenError("Failed to emplace uniform.");
@@ -527,6 +529,11 @@ static void onShaderUniform(FileData& fileData, LineData& lineData, PipelineStag
 		if (fileData.isMutable != uniform.isMutable)
 		{
 			throw CompileError("different mutable state between "
+				"stages is not supported yet", fileData.lineIndex); // TODO: add support
+		}
+		if (fileData.isNoncoherent != uniform.isNoncoherent)
+		{
+			throw CompileError("different noncoherent state between "
 				"stages is not supported yet", fileData.lineIndex); // TODO: add support
 		}
 		uniform.pipelineStages |= pipelineStage; binding = uniform.bindingIndex;
@@ -1211,7 +1218,7 @@ static bool openShaderFileStream(const fs::path& inputFilePath,
 static void compileShaderFile(const fs::path& filePath, const vector<fs::path>& includePaths)
 {
 	auto command = "glslc --target-env=" GARDEN_VULKAN_SHADER_VERSION_STRING 
-	#if GARDEN_DEBUG_GSL_SHADERS
+	#if GARDEN_DEBUG
 		" -g -O0 "
 	#else
 		" -O "

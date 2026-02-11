@@ -187,7 +187,7 @@ void FxaaRenderSystem::gBufferRecreate()
 		auto framebufferView = graphicsSystem->get(framebuffer);
 		auto ldrBuffer = DeferredRenderSystem::Instance::get()->getLdrBuffer();
 		auto ldrBufferView = graphicsSystem->get(ldrBuffer)->getDefaultView();
-		Framebuffer::OutputAttachment colorAttachment(ldrBufferView, FxaaRenderSystem::framebufferFlags);
+		Framebuffer::OutputAttachment colorAttachment(ldrBufferView, framebufferFlags);
 		framebufferView->update(graphicsSystem->getScaledFrameSize(), &colorAttachment, 1);
 	}
 	if (descriptorSet)

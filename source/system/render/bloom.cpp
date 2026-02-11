@@ -115,23 +115,17 @@ static uint8 getMaxMipCount(GraphicsQuality quality) noexcept
 	}
 }
 
-static ID<GraphicsPipeline> createDownsamplePipeline(
-	ID<Framebuffer> framebuffer, bool useThreshold, bool useAntiFlickering)
+static ID<GraphicsPipeline> createDownsamplePipeline(ID<Framebuffer> framebuffer, bool useThreshold)
 {
 	auto toneMappingSystem = ToneMappingSystem::Instance::get();
 	auto tmOptions = toneMappingSystem->getOptions();
 	tmOptions.useBloomBuffer = true;
 	toneMappingSystem->setOptions(tmOptions);
 
-	Pipeline::SpecConstValues specConsts =
-	{
-		{ "USE_THRESHOLD", Pipeline::SpecConstValue(useThreshold) },
-		{ "USE_ANTI_FLICKERING", Pipeline::SpecConstValue(useAntiFlickering) }
-	};
+	Pipeline::SpecConstValues specConsts = { { "USE_THRESHOLD", Pipeline::SpecConstValue(useThreshold) } };
 
 	ResourceSystem::GraphicsOptions options;
 	options.specConstValues = &specConsts;
-
 	return ResourceSystem::Instance::get()->loadGraphicsPipeline("bloom/downsample", framebuffer, options);
 }
 static ID<GraphicsPipeline> createUpsamplePipeline(ID<Framebuffer> framebuffer)
@@ -141,8 +135,8 @@ static ID<GraphicsPipeline> createUpsamplePipeline(ID<Framebuffer> framebuffer)
 }
 
 //**********************************************************************************************************************
-BloomRenderSystem::BloomRenderSystem(bool useThreshold, bool useAntiFlickering, bool setSingleton) :
-	Singleton(setSingleton), useThreshold(useThreshold), useAntiFlickering(useAntiFlickering)
+BloomRenderSystem::BloomRenderSystem(bool useThreshold, bool setSingleton) :
+	Singleton(setSingleton), useThreshold(useThreshold)
 {
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", BloomRenderSystem::init);
@@ -221,7 +215,7 @@ void BloomRenderSystem::preLdrRender()
 		if (framebuffers.empty())
 			createBloomFramebuffers(graphicsSystem, imageViews, framebuffers);
 		if (!downsamplePipeline)
-			downsamplePipeline = createDownsamplePipeline(framebuffers[0], useThreshold, useAntiFlickering);
+			downsamplePipeline = createDownsamplePipeline(framebuffers[0], useThreshold);
 		if (!upsamplePipeline)
 			upsamplePipeline = createUpsamplePipeline(framebuffers[0]);
 		isInitialized = true;
@@ -236,8 +230,7 @@ void BloomRenderSystem::preLdrRender()
 		createBloomDescriptorSets(graphicsSystem, downsamplePipeline, upsamplePipeline, imageViews, descriptorSets);
 	
 	auto mipCount = (uint8)imageViews.size();
-	downsamplePipelineView->updateFramebuffer(framebuffers[0]);
-
+	
 	graphicsSystem->startRecording(CommandBufferType::Frame);
 	{
 		SET_GPU_DEBUG_LABEL("Bloom");
@@ -248,8 +241,13 @@ void BloomRenderSystem::preLdrRender()
 			pc.threshold = saturate(threshold);
 			downsamplePipelineView->pushConstants(&pc);
 			{
+				auto framebufferView = graphicsSystem->get(framebuffers[0]);
+				auto framebufferSize = framebufferView->getSize();
+				downsamplePipelineView->updateFramebuffer(framebuffers[0]);
+
 				RenderPass renderPass(framebuffers[0], float4::zero);
-				downsamplePipelineView->bind(BLOOM_DOWNSAMPLE_FIRST);
+				downsamplePipelineView->bind(framebufferSize.x & 1 || framebufferSize.y & 1 ? 
+					BLOOM_DOWNSAMPLE_BASE : BLOOM_DOWNSAMPLE_6X6);
 				downsamplePipelineView->setViewportScissor();
 				downsamplePipelineView->bindDescriptorSet(descriptorSets[0]);
 				downsamplePipelineView->drawFullscreen();
@@ -324,13 +322,10 @@ void BloomRenderSystem::qualityChange()
 	setQuality(GraphicsSystem::Instance::get()->quality);
 }
 
-void BloomRenderSystem::setConsts(bool useThreshold, bool useAntiFlickering)
+void BloomRenderSystem::setConsts(bool useThreshold)
 {
-	if (this->useThreshold == useThreshold && this->useAntiFlickering == useAntiFlickering)
+	if (this->useThreshold == useThreshold)
 		return;
-
-	this->useThreshold = useThreshold;
-	this->useAntiFlickering = useAntiFlickering;
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	graphicsSystem->destroy(descriptorSets);
@@ -339,8 +334,10 @@ void BloomRenderSystem::setConsts(bool useThreshold, bool useAntiFlickering)
 	if (downsamplePipeline)
 	{
 		graphicsSystem->destroy(downsamplePipeline);
-		downsamplePipeline = createDownsamplePipeline(getFramebuffers()[0], useThreshold, useAntiFlickering);
+		downsamplePipeline = createDownsamplePipeline(getFramebuffers()[0], useThreshold);
 	}
+
+	this->useThreshold = useThreshold;
 }
 
 void BloomRenderSystem::setQuality(GraphicsQuality quality)
@@ -358,7 +355,7 @@ void BloomRenderSystem::setQuality(GraphicsQuality quality)
 ID<GraphicsPipeline> BloomRenderSystem::getDownsamplePipeline()
 {
 	if (!downsamplePipeline)
-		downsamplePipeline = createDownsamplePipeline(getFramebuffers()[0], useThreshold, useAntiFlickering);
+		downsamplePipeline = createDownsamplePipeline(getFramebuffers()[0], useThreshold);
 	return downsamplePipeline;
 }
 ID<GraphicsPipeline> BloomRenderSystem::getUpsamplePipeline()

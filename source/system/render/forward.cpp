@@ -293,17 +293,17 @@ void ForwardRenderSystem::swapchainRecreate()
 		if (fullFramebuffer)
 		{
 			auto framebufferView = graphicsSystem->get(fullFramebuffer);
-			colorAttachment = Framebuffer::OutputAttachment(graphicsSystem->get(
-				getColorBuffer())->getDefaultView(), ForwardRenderSystem::colorBufferFlags);
+			colorAttachment = Framebuffer::OutputAttachment(
+				graphicsSystem->get(getColorBuffer())->getDefaultView(), colorBufferFlags);
 			Framebuffer::OutputAttachment depthStencilAttachment;
 			depthStencilAttachment.imageView = graphicsSystem->get(getDepthStencilBuffer())->getDefaultView();
-			depthStencilAttachment.setFlags(ForwardRenderSystem::depthBufferFlags);
+			depthStencilAttachment.setFlags(depthBufferFlags);
 			framebufferView->update(framebufferSize, &colorAttachment, 1, depthStencilAttachment);
 		}
 		if (colorFramebuffer)
 		{
-			colorAttachment = Framebuffer::OutputAttachment(graphicsSystem->get(
-				getColorBuffer())->getDefaultView(), ForwardRenderSystem::colorBufferFlags);
+			colorAttachment = Framebuffer::OutputAttachment(
+				graphicsSystem->get(getColorBuffer())->getDefaultView(), colorBufferFlags);
 			auto framebufferView = graphicsSystem->get(colorFramebuffer);
 			framebufferView->update(framebufferSize, &colorAttachment, 1);
 		}

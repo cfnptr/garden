@@ -104,10 +104,9 @@ static void updateShadowFramebuffers(GraphicsSystem* graphicsSystem,
 
 	for (uint8 i = 0; i < CsmRenderSystem::cascadeCount; i++)
 	{
-		vector<Framebuffer::OutputAttachment> colorAttachments;
 		depthStencilAttachment.imageView = imageViews[i];
 		auto framebufferView = graphicsSystem->get(framebuffers[i]);
-		framebufferView->update(size, std::move(colorAttachments), depthStencilAttachment);
+		framebufferView->update(size, nullptr, 0, depthStencilAttachment);
 	}
 }
 

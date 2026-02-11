@@ -368,14 +368,14 @@ void SmaaRenderSystem::gBufferRecreate()
 	{
 		auto framebufferView = graphicsSystem->get(edgesFramebuffer);
 		auto edgesView = graphicsSystem->get(edgesBuffer)->getDefaultView();
-		Framebuffer::OutputAttachment colorAttachment(edgesView, SmaaRenderSystem::processFbFlags);
+		Framebuffer::OutputAttachment colorAttachment(edgesView, processFbFlags);
 		framebufferView->update(graphicsSystem->getScaledFrameSize(), &colorAttachment, 1);
 	}
 	if (weightsFramebuffer)
 	{
 		auto framebufferView = graphicsSystem->get(weightsFramebuffer);
 		auto weightsView = getWeightsView(graphicsSystem, DeferredRenderSystem::Instance::get());
-		Framebuffer::OutputAttachment colorAttachment(weightsView, SmaaRenderSystem::processFbFlags);
+		Framebuffer::OutputAttachment colorAttachment(weightsView, processFbFlags);
 		framebufferView->update(graphicsSystem->getScaledFrameSize(), &colorAttachment, 1);
 	}
 	if (blendFramebuffer)
@@ -383,7 +383,7 @@ void SmaaRenderSystem::gBufferRecreate()
 		auto framebufferView = graphicsSystem->get(blendFramebuffer);
 		auto ldrBuffer = DeferredRenderSystem::Instance::get()->getLdrBuffer();
 		auto ldrBufferView = graphicsSystem->get(ldrBuffer)->getDefaultView();
-		Framebuffer::OutputAttachment colorAttachment(ldrBufferView, SmaaRenderSystem::blendFbFlags);
+		Framebuffer::OutputAttachment colorAttachment(ldrBufferView, blendFbFlags);
 		framebufferView->update(graphicsSystem->getScaledFrameSize(), &colorAttachment, 1);
 	}
 

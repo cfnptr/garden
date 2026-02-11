@@ -519,8 +519,13 @@ void Framebuffer::update(uint2 size, const OutputAttachment* colorAttachments,
 
 	if (this->colorAttachments.size() != colorAttachmentCount)
 		this->colorAttachments.resize(colorAttachmentCount);
-	memcpy(this->colorAttachments.data(), colorAttachments,
+
+	if (colorAttachmentCount > 0)
+	{
+		memcpy(this->colorAttachments.data(), colorAttachments,
 		colorAttachmentCount * sizeof(Framebuffer::OutputAttachment));
+	}
+
 	this->depthStencilAttachment = depthStencilAttachment;
 	this->size = size;
 }

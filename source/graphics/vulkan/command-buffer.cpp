@@ -211,7 +211,6 @@ void VulkanCommandBuffer::addDescriptorSetBarriers(VulkanAPI* vulkanAPI,
 	const DescriptorSet::Range* descriptorSetRange, uint32 rangeCount)
 {
 	SET_CPU_ZONE_SCOPED("Descriptor Set Barriers Add");
-	// also add to the shaders noncoherent tag to skip sync if different buffer or image parts.
 
 	for (uint8 i = 0; i < rangeCount; i++)
 	{
@@ -225,7 +224,7 @@ void VulkanCommandBuffer::addDescriptorSetBarriers(VulkanAPI* vulkanAPI,
 		for (const auto& pipelineUniform : pipelineUniforms)
 		{
 			auto uniform = pipelineUniform.second;
-			if (uniform.descriptorSetIndex != i)
+			if (uniform.descriptorSetIndex != i || uniform.isNoncoherent)
 				continue;
 
 			auto setCount = descriptor.offset + descriptor.count;

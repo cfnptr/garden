@@ -144,7 +144,7 @@ static float2 dfvMultiscatter(uint32 x, uint32 y, uint32 dfgSize, uint32 sampleC
 	{
 		auto u = hammersley(i, invSampleCount);
 		auto h = importanceSamplingNdfDggx(u, linearRoughness);
-		auto voh = dot3(v, h); auto l = 2.0f * voh * h - v; voh = saturate(voh);
+		auto voh = dot3(v, h); auto l = voh * h * 2.0f - v; voh = saturate(voh);
 		auto nol = saturate(l.getZ()), noh = saturate(h.getZ());
 
 		if (nol > 0.0f)
@@ -1356,14 +1356,14 @@ static void calcIblSpecular(SpecularData* specularMap, float* weightBufferData, 
 	auto iblSampleCount = calcIblSampleCount(mipIndex, sampleCount);
 	auto invIblSampleCount = 1.0f / iblSampleCount;
 	auto linearRoughness = mipToLinearRoughness(specularMipCount, mipIndex);
-	auto logOmegaP = log4(float(4.0 * M_PI) / (6.0f * cubemapSize * cubemapSize));
+	auto logOmegaP = log4(float(M_PI * 4.0) / (cubemapSize * cubemapSize * 6.0f));
 	float weight = 0.0f; uint32 count = 0;
 
 	for (uint32 i = 0; i < iblSampleCount; i++)
 	{
 		auto u = hammersley(i, invIblSampleCount);
 		auto h = importanceSamplingNdfDggx(u, linearRoughness);
-		auto noh = h.getZ(), noh2 = noh * noh, nol = fma(noh2, 2.0f, -1.0f);
+		auto noh = h.getZ(), noh2 = noh * noh; auto nol = fma(noh2, 2.0f, -1.0f);
 
 		if (nol > 0.0f)
 		{
@@ -1372,7 +1372,7 @@ static void calcIblSpecular(SpecularData* specularMap, float* weightBufferData, 
 			auto omegaS = 1.0f / (iblSampleCount * pdf);
 			auto level = log4(omegaS) - logOmegaP + k;
 			auto mip = clamp(level, 0.0f, (float)(skyboxMipCount - 1));
-			auto l = float3(2.0f * noh * h.getX(), 2.0f * noh * h.getY(), nol);
+			auto l = float3(noh * h.getX() * 2.0f, noh * h.getY() * 2.0f, nol);
 			map[count++] = SpecularData(l, mip); weight += nol;
 		}
 	}
