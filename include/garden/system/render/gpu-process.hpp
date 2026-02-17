@@ -119,36 +119,37 @@ public:
 	/**
 	 * @brief Records bilateral blur command. (Depth aware)
 	 *
-	 * @param srcBuffer source data buffer
+	 * @param srcBuffer source data buffer instance
+	 * @param depthBuffer depth buffer instance
 	 * @param dstFramebuffer destination framebuffer
 	 * @param tmpFramebuffer temporary framebuffer
 	 * @param sharpness blur sharpness
 	 * @param[in,out] pipeline bilateral blur graphics pipeline
 	 * @param[in,out] descriptorSet bilateral blur descriptor set
 	 * @param kernelRadius radius of the blur kernel
+	 * @param useDstSize use destination buffer size for blur
 	 */
-	void bilateralBlurD(ID<ImageView> srcBuffer, ID<Framebuffer> dstFramebuffer,  ID<Framebuffer> tmpFramebuffer, 
-		float sharpness, ID<GraphicsPipeline>& pipeline, ID<DescriptorSet>& descriptorSet, uint8 kernelRadius = 3);
+	void bilateralBlurD(ID<ImageView> srcBuffer, ID<ImageView> depthBuffer, ID<Framebuffer> dstFramebuffer, 
+		ID<Framebuffer> tmpFramebuffer, float sharpness, ID<GraphicsPipeline>& pipeline, 
+		ID<DescriptorSet>& descriptorSet, uint8 kernelRadius = 3, bool useDstSize = false);
 
 	/**
 	 * @brief Prepares spherical GGX distribution blur data.
 	 * 
 	 * @param buffer target blur buffer
-	 * @param[in,out] imageViews GGX blur image views
 	 * @param[in,out] framebuffers GGX blur framebuffers
 	 */
-	void prepareGgxBlur(ID<Image> buffer, vector<ID<ImageView>>& imageViews, vector<ID<Framebuffer>>& framebuffers);
+	void prepareGgxBlur(ID<Image> buffer, vector<ID<Framebuffer>>& framebuffers);
 	/**
 	 * @brief Records spherical GGX distribution blur command.
 	 * @return True if all resources are ready and blur command has been recorder.
 	 * 
 	 * @param buffer target blur buffer
-	 * @param[in] imageViews GGX blur image views
 	 * @param[in] framebuffers GGX blur framebuffers
 	 * @param[in,out] pipeline GGX blur graphics pipeline
 	 * @param[in,out] descriptorSets GGX blur descriptor sets
 	 */
-	bool ggxBlur(ID<Image> buffer, const vector<ID<ImageView>>& imageViews, const vector<ID<Framebuffer>>& framebuffers, 
+	bool ggxBlur(ID<Image> buffer, const vector<ID<Framebuffer>>& framebuffers, 
 		ID<GraphicsPipeline>& pipeline, vector<ID<DescriptorSet>>& descriptorSets);
 
 	static const uint8 ggxCoeffCount; /** GGX kernel coefficient count. */

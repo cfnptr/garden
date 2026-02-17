@@ -146,7 +146,6 @@ private:
 	ID<GraphicsPipeline> velocityPipeline = {};
 	ID<GraphicsPipeline> hdrCopyBlurPipeline = {};
 	ID<DescriptorSet> velocityDS = {};
-	vector<ID<ImageView>> hdrCopyBlurViews;
 	vector<ID<Framebuffer>> hdrCopyBlurFBs;
 	vector<ID<DescriptorSet>> hdrCopyBlurDSes;
 	Options options = {};
@@ -277,10 +276,6 @@ public:
 	 * @brief Returns deferred HDR copy buffer image view.
 	 */
 	ID<ImageView> getHdrCopyIV();
-	/**
-	 * @brief Returns deferred HDR copy blur image views
-	 */
-	const vector<ID<ImageView>>& getHdrCopyBlurViews();
 
 	/**
 	 * @brief Returns deferred G-Buffer framebuffer.

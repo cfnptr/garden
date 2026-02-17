@@ -22,7 +22,7 @@ using namespace garden;
 static ID<ImageView> getLdrGgxView(GraphicsSystem* graphicsSystem, DeferredRenderSystem* deferredSystem)
 {
 	auto gBuffer = deferredSystem->getGBuffers()[DeferredRenderSystem::gBufferBaseColor]; 
-	auto gBufferView = graphicsSystem->get(gBuffer)->getDefaultView(); // Note: Reusing G-Buffer memory.
+	auto gBufferView = graphicsSystem->get(gBuffer)->getView(); // Note: Reusing G-Buffer memory.
 	GARDEN_ASSERT(graphicsSystem->get(gBuffer)->getFormat() == DeferredRenderSystem::ldrBufferFormat);
 	return gBufferView;
 }
@@ -82,7 +82,7 @@ void BlurRenderSystem::preDepthLdrRender()
 	auto framebufferSize = graphicsSystem->getScaledFrameSize();
 	auto kernelBuffer = gpuProcessSystem->getGgxBlurKernel();
 	auto ldrBuffer = deferredSystem->getLdrBuffer();
-	auto ldrBufferView = graphicsSystem->get(ldrBuffer)->getDefaultView();
+	auto ldrBufferView = graphicsSystem->get(ldrBuffer)->getView();
 
 	if (!ldrGgxFramebuffers[0])
 	{
@@ -107,18 +107,14 @@ void BlurRenderSystem::preDepthLdrRender()
 void BlurRenderSystem::gBufferRecreate()
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto framebufferSize = graphicsSystem->getScaledFrameSize();
+	graphicsSystem->destroy(ldrGgxDS);
 
-	if (ldrGgxDS)
-	{
-		graphicsSystem->destroy(ldrGgxDS);
-		ldrGgxDS = {};
-	}
 	if (ldrGgxFramebuffers[0])
 	{
 		auto deferredSystem = DeferredRenderSystem::Instance::get();
 		auto ldrBuffer = deferredSystem->getLdrBuffer();
-		auto ldrBufferView = graphicsSystem->get(ldrBuffer)->getDefaultView();
+		auto ldrBufferView = graphicsSystem->get(ldrBuffer)->getView();
+		auto framebufferSize = graphicsSystem->getScaledFrameSize();
 		auto framebufferView = graphicsSystem->get(ldrGgxFramebuffers[0]);
 		Framebuffer::OutputAttachment colorAttachment(ldrBufferView, framebufferFlags);
 		framebufferView->update(framebufferSize, &colorAttachment, 1);

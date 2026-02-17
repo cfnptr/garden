@@ -230,11 +230,7 @@ void AutoExposureEditorSystem::uiRender()
 //**********************************************************************************************************************
 void AutoExposureEditorSystem::gBufferRecreate()
 {
-	if (limitsDS)
-	{
-		GraphicsSystem::Instance::get()->destroy(limitsDS);
-		limitsDS = {};
-	}
+	GraphicsSystem::Instance::get()->destroy(limitsDS);
 }
 
 void AutoExposureEditorSystem::editorBarToolPP()

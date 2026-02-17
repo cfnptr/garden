@@ -25,11 +25,10 @@
 
 using namespace garden;
 
-static ID<Image> createBloomBuffer(GraphicsSystem* graphicsSystem, vector<ID<ImageView>>& imageViews, uint8 maxMipCount)
+static ID<Image> createBloomBuffer(GraphicsSystem* graphicsSystem, uint8 maxMipCount)
 {
 	auto bloomBufferSize = max(graphicsSystem->getFramebufferSize() / 2u, uint2::one);
 	auto mipCount = std::min(calcMipCount(bloomBufferSize), maxMipCount);
-	imageViews.resize(mipCount);
 
 	Image::Mips mips(mipCount);
 	for (uint8 i = 0; i < mipCount; i++)
@@ -38,30 +37,24 @@ static ID<Image> createBloomBuffer(GraphicsSystem* graphicsSystem, vector<ID<Ima
 	auto image = graphicsSystem->createImage(BloomRenderSystem::bufferFormat, Image::Usage::ColorAttachment | 
 		Image::Usage::Sampled | Image::Usage::TransferDst, mips, bloomBufferSize, Image::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(image, "image.bloom.buffer");
-
-	for (uint8 i = 0; i < mipCount; i++)
-	{
-		auto imageView = graphicsSystem->createImageView(image, 
-			Image::Type::Texture2D, BloomRenderSystem::bufferFormat, i, 1, 0, 1);
-		SET_RESOURCE_DEBUG_NAME(imageView, "imageView.bloom.buffer" + to_string(i));
-		imageViews[i] = imageView;
-	}
 	return image;
 }
 
 static void createBloomFramebuffers(GraphicsSystem* graphicsSystem, 
-	const vector<ID<ImageView>>& imageViews, vector<ID<Framebuffer>>& framebuffers)
+	ID<Image> bloomBuffer, vector<ID<Framebuffer>>& framebuffers)
 {
 	auto framebufferSize = max(graphicsSystem->getFramebufferSize() / 2u, uint2::one);
-	auto mipCount = (uint8)imageViews.size();
+	auto bloomBufferView = graphicsSystem->get(bloomBuffer);
+	auto mipCount = bloomBufferView->getMipCount();
 	framebuffers.resize(mipCount);
 
 	for (uint8 i = 0; i < mipCount; i++)
 	{
 		vector<Framebuffer::OutputAttachment> colorAttachments =
-		{ Framebuffer::OutputAttachment(imageViews[i], { false, true, true }) };
+		{ Framebuffer::OutputAttachment(bloomBufferView->getView(0, i), { false, true, true }) };
 		auto framebuffer = graphicsSystem->createFramebuffer(framebufferSize, std::move(colorAttachments));
 		SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.bloom" + to_string(i));
+	
 		framebuffers[i] = framebuffer;
 		framebufferSize = max(framebufferSize / 2u, uint2::one);
 	}
@@ -75,11 +68,12 @@ static DescriptorSet::Uniforms getUniforms(ID<ImageView> srcBuffer)
 
 static void createBloomDescriptorSets(GraphicsSystem* graphicsSystem, 
 	ID<GraphicsPipeline> downsamplePipeline, ID<GraphicsPipeline> upsamplePipeline, 
-	const vector<ID<ImageView>>& imageViews, vector<ID<DescriptorSet>>& descriptorSets)
+	ID<Image> bloomBuffer, vector<ID<DescriptorSet>>& descriptorSets)
 {
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	auto upscaledHdrFramebufferView = graphicsSystem->get(deferredSystem->getUpscaleHdrFramebuffer());
-	auto mipCount = (uint8)imageViews.size();
+	auto bloomBufferView = graphicsSystem->get(bloomBuffer);
+	auto mipCount = bloomBufferView->getMipCount();
 	descriptorSets.resize(mipCount + (mipCount - 1));
 
 	auto uniforms = getUniforms(upscaledHdrFramebufferView->getColorAttachments()[0].imageView);
@@ -90,12 +84,12 @@ static void createBloomDescriptorSets(GraphicsSystem* graphicsSystem,
 	auto mipCountMinOne = mipCount - 1;
 	for (uint8 i = 1; i < mipCount; i++)
 	{
-		uniforms = getUniforms(imageViews[i - 1]);
+		uniforms = getUniforms(bloomBufferView->getView(0, i - 1));
 		descriptorSet = graphicsSystem->createDescriptorSet(downsamplePipeline, std::move(uniforms));
 		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.bloom.downsample" + to_string(i));
 		descriptorSets[i] = descriptorSet;
 
-		uniforms = getUniforms(imageViews[mipCount - i]);
+		uniforms = getUniforms(bloomBufferView->getView(0, mipCount - i));
 		auto index = mipCount + (mipCountMinOne - i);
 		descriptorSet = graphicsSystem->createDescriptorSet(upsamplePipeline, std::move(uniforms));
 		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.bloom.upsample" + to_string(i));
@@ -180,7 +174,6 @@ void BloomRenderSystem::deinit()
 		graphicsSystem->destroy(upsamplePipeline);
 		graphicsSystem->destroy(downsamplePipeline);
 		graphicsSystem->destroy(framebuffers);
-		graphicsSystem->destroy(imageViews);
 		graphicsSystem->destroy(bloomBuffer);
 
 		auto manager = Manager::Instance::get();
@@ -211,9 +204,9 @@ void BloomRenderSystem::preLdrRender()
 	if (!isInitialized)
 	{
 		if (!bloomBuffer)
-			bloomBuffer = createBloomBuffer(graphicsSystem, imageViews, getMaxMipCount(quality));
+			bloomBuffer = createBloomBuffer(graphicsSystem, getMaxMipCount(quality));
 		if (framebuffers.empty())
-			createBloomFramebuffers(graphicsSystem, imageViews, framebuffers);
+			createBloomFramebuffers(graphicsSystem, bloomBuffer, framebuffers);
 		if (!downsamplePipeline)
 			downsamplePipeline = createDownsamplePipeline(framebuffers[0], useThreshold);
 		if (!upsamplePipeline)
@@ -227,9 +220,9 @@ void BloomRenderSystem::preLdrRender()
 		return;
 
 	if (descriptorSets.empty())
-		createBloomDescriptorSets(graphicsSystem, downsamplePipeline, upsamplePipeline, imageViews, descriptorSets);
+		createBloomDescriptorSets(graphicsSystem, downsamplePipeline, upsamplePipeline, bloomBuffer, descriptorSets);
 	
-	auto mipCount = (uint8)imageViews.size();
+	auto mipCount = (uint8)framebuffers.size();
 	
 	graphicsSystem->startRecording(CommandBufferType::Frame);
 	{
@@ -289,19 +282,17 @@ void BloomRenderSystem::preLdrRender()
 void BloomRenderSystem::gBufferRecreate()
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	graphicsSystem->destroy(descriptorSets);
-	descriptorSets.clear();
+	graphicsSystem->destroy(descriptorSets); descriptorSets.clear();
 
 	if (bloomBuffer)
 	{
 		graphicsSystem->destroy(bloomBuffer);
-		graphicsSystem->destroy(imageViews);
-		bloomBuffer = createBloomBuffer(graphicsSystem, imageViews, getMaxMipCount(quality));
+		bloomBuffer = createBloomBuffer(graphicsSystem, getMaxMipCount(quality));
 	}
 	if (!framebuffers.empty())
 	{
 		graphicsSystem->destroy(framebuffers);
-		createBloomFramebuffers(graphicsSystem, imageViews, framebuffers);
+		createBloomFramebuffers(graphicsSystem, bloomBuffer, framebuffers);
 
 		if (downsamplePipeline)
 		{
@@ -328,8 +319,7 @@ void BloomRenderSystem::setConsts(bool useThreshold)
 		return;
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	graphicsSystem->destroy(descriptorSets);
-	descriptorSets.clear();
+	graphicsSystem->destroy(descriptorSets); descriptorSets.clear();
 	
 	if (downsamplePipeline)
 	{
@@ -368,18 +358,12 @@ ID<GraphicsPipeline> BloomRenderSystem::getUpsamplePipeline()
 ID<Image> BloomRenderSystem::getBloomBuffer()
 {
 	if (!bloomBuffer)
-		bloomBuffer = createBloomBuffer(GraphicsSystem::Instance::get(), imageViews, getMaxMipCount(quality));
+		bloomBuffer = createBloomBuffer(GraphicsSystem::Instance::get(), getMaxMipCount(quality));
 	return bloomBuffer;
-}
-const vector<ID<ImageView>>& BloomRenderSystem::getImageViews()
-{
-	if (!bloomBuffer)
-		bloomBuffer = createBloomBuffer(GraphicsSystem::Instance::get(), imageViews, getMaxMipCount(quality));
-	return imageViews;
 }
 const vector<ID<Framebuffer>>& BloomRenderSystem::getFramebuffers()
 {
 	if (framebuffers.empty())
-		createBloomFramebuffers(GraphicsSystem::Instance::get(), imageViews, framebuffers);
+		createBloomFramebuffers(GraphicsSystem::Instance::get(), getBloomBuffer(), framebuffers);
 	return framebuffers;
 }

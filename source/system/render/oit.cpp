@@ -125,11 +125,7 @@ void OitRenderSystem::preLdrRender()
 
 void OitRenderSystem::gBufferRecreate()
 {
-	if (descriptorSet)
-	{
-		GraphicsSystem::Instance::get()->destroy(descriptorSet);
-		descriptorSet = {};
-	}
+	GraphicsSystem::Instance::get()->destroy(descriptorSet);
 }
 
 ID<GraphicsPipeline> OitRenderSystem::getPipeline()

@@ -1906,7 +1906,7 @@ void ResourceSystem::renormalizeImage(const fs::path& path, ImageFileType fileTy
 	storeImage(path, dataBuffer.data(), size, fileType, Image::Format::UnormR8G8B8A8);
 }
 
-void ResourceSystem::destroyShared(const Ref<Image>& image)
+void ResourceSystem::destroyShared(Ref<Image>& image)
 {
 	if (!image || image.getRefCount() > 2)
 		return;
@@ -1929,7 +1929,7 @@ Ref<Buffer> ResourceSystem::loadBuffer(const vector<fs::path>& path,
 	GARDEN_ASSERT(!path.empty());
 	abort(); // TODO: load plain buffer binary data.
 }
-void ResourceSystem::destroyShared(const Ref<Buffer>& buffer)
+void ResourceSystem::destroyShared(Ref<Buffer>& buffer)
 {
 	if (!buffer || buffer.getRefCount() > 2)
 		return;
@@ -1987,7 +1987,7 @@ Ref<DescriptorSet> ResourceSystem::createSharedDS(const Hash128& hash,
 	return sharedDescriptorSet;
 }
 
-void ResourceSystem::destroyShared(const Ref<DescriptorSet>& descriptorSet)
+void ResourceSystem::destroyShared(Ref<DescriptorSet>& descriptorSet)
 {
 	if (!descriptorSet || descriptorSet.getRefCount() > 2)
 		return;
@@ -3186,7 +3186,7 @@ Ref<Animation> ResourceSystem::loadAnimation(const fs::path& path, bool loadShar
 	return animationRef;
 }
 
-void ResourceSystem::destroyShared(const Ref<Animation>& animation)
+void ResourceSystem::destroyShared(Ref<Animation>& animation)
 {
 	if (!animation || animation.getRefCount() > 2)
 		return;
@@ -3401,7 +3401,7 @@ FontArray ResourceSystem::loadFonts(const vector<fs::path>& paths, int32 faceInd
 	return fonts;
 }
 
-void ResourceSystem::destroyShared(const Ref<Font>& font)
+void ResourceSystem::destroyShared(Ref<Font>& font)
 {
 	if (!font || font.getRefCount() > 2)
 		return;
@@ -3414,13 +3414,14 @@ void ResourceSystem::destroyShared(const Ref<Font>& font)
 		break;
 	}
 
-	TextSystem::Instance::get()->fonts.destroy(ID<Font>(font));
+	auto item = ID<Font>(font); font = {};
+	TextSystem::Instance::get()->fonts.destroy(item);
 }
-void ResourceSystem::destroyShared(const FontArray& fonts)
+void ResourceSystem::destroyShared(FontArray& fonts)
 {
-	for (const auto& variants : fonts)
+	for (auto& variants : fonts)
 	{
-		for (const auto& font : variants)
+		for (auto& font : variants)
 			destroyShared(font);
 	}
 }

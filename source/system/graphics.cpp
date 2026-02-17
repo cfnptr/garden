@@ -95,11 +95,10 @@ GraphicsSystem::GraphicsSystem(uint2 windowSize, bool isFullscreen, bool isDecor
 
 	auto graphicsAPI = GraphicsAPI::get();
 	auto swapchainImage = graphicsAPI->imagePool.get(graphicsAPI->getSwapchain()->getCurrentImage());
-	auto swapchainImageView = swapchainImage->getDefaultView();
 	auto framebufferSize = (uint2)swapchainImage->getSize();
 	calcJitterOffsets(jitterOffsets, framebufferSize, framebufferSize);
 
-	swapchainFramebuffer = graphicsAPI->framebufferPool.create(framebufferSize, swapchainImageView);
+	swapchainFramebuffer = graphicsAPI->framebufferPool.create(framebufferSize, swapchainImage->getView());
 	SET_RESOURCE_DEBUG_NAME(swapchainFramebuffer, "framebuffer.swapchain");
 
 	setShadowColor(float3::one);
@@ -245,7 +244,7 @@ static void updateCurrentFramebuffer(GraphicsAPI* graphicsAPI,
 	auto framebufferView = graphicsAPI->framebufferPool.get(swapchainFramebuffer);
 	auto swapchainView = graphicsAPI->imagePool.get(graphicsAPI->getSwapchain()->getCurrentImage());
 	FramebufferExt::getSize(**framebufferView) = framebufferSize;
-	FramebufferExt::getColorAttachments(**framebufferView)[0].imageView = swapchainView->getDefaultView();
+	FramebufferExt::getColorAttachments(**framebufferView)[0].imageView = swapchainView->getView();
 }
 
 //**********************************************************************************************************************
@@ -583,7 +582,7 @@ ID<ImageView> GraphicsSystem::getEmptyTexture()
 		auto texture = createImage(Image::Format::UnormR8G8B8A8, Image::Usage::Sampled | 
 			Image::Usage::TransferDst | Image::Usage::TransferQ, { { data } }, uint2::one);
 		SET_RESOURCE_DEBUG_NAME(texture, "image.emptyTexture");
-		emptyTexture = GraphicsAPI::get()->imagePool.get(texture)->getDefaultView();
+		emptyTexture = GraphicsAPI::get()->imagePool.get(texture)->getView();
 	}
 	return emptyTexture;
 }
@@ -595,7 +594,7 @@ ID<ImageView> GraphicsSystem::getWhiteTexture()
 		auto texture = createImage(Image::Format::UnormR8G8B8A8, Image::Usage::Sampled | 
 			Image::Usage::TransferDst | Image::Usage::TransferQ, { { data } }, uint2::one);
 		SET_RESOURCE_DEBUG_NAME(texture, "image.whiteTexture");
-		whiteTexture = GraphicsAPI::get()->imagePool.get(texture)->getDefaultView();
+		whiteTexture = GraphicsAPI::get()->imagePool.get(texture)->getView();
 	}
 	return whiteTexture;
 }
@@ -607,7 +606,7 @@ ID<ImageView> GraphicsSystem::getGreenTexture()
 		auto texture = createImage(Image::Format::UnormR8G8B8A8, Image::Usage::Sampled | 
 			Image::Usage::TransferDst | Image::Usage::TransferQ, { { data } }, uint2::one);
 		SET_RESOURCE_DEBUG_NAME(texture, "image.greenTexture");
-		greenTexture = GraphicsAPI::get()->imagePool.get(texture)->getDefaultView();
+		greenTexture = GraphicsAPI::get()->imagePool.get(texture)->getView();
 	}
 	return greenTexture;
 }
@@ -619,7 +618,7 @@ ID<ImageView> GraphicsSystem::getNormalMapTexture()
 		auto texture = createImage(Image::Format::UnormR8G8B8A8, Image::Usage::Sampled | 
 			Image::Usage::TransferDst | Image::Usage::TransferQ, { { data } }, uint2::one);
 		SET_RESOURCE_DEBUG_NAME(texture, "image.normalMapTexture");
-		normalMapTexture = GraphicsAPI::get()->imagePool.get(texture)->getDefaultView();
+		normalMapTexture = GraphicsAPI::get()->imagePool.get(texture)->getView();
 	}
 	return normalMapTexture;
 }
@@ -693,7 +692,7 @@ ID<Buffer> GraphicsSystem::createStagingBuffer(Buffer::CpuAccess cpuAccess, uint
 	return stagingBuffer;
 }
 
-void GraphicsSystem::destroy(ID<Buffer> buffer)
+void GraphicsSystem::destroy(ID<Buffer>& buffer)
 {
 	GraphicsAPI::get()->bufferPool.destroy(buffer);
 }
@@ -899,18 +898,15 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 
 	return image;
 }
-void GraphicsSystem::destroy(ID<Image> image)
+void GraphicsSystem::destroy(ID<Image>& image)
 {
 	auto graphicsAPI = GraphicsAPI::get();
 	if (image)
 	{
 		auto imageView = graphicsAPI->imagePool.get(image);
 		GARDEN_ASSERT_MSG(!imageView->isSwapchain(), "Can not destroy swapchain image");
-
-		if (imageView->hasDefaultView() && !graphicsAPI->forceResourceDestroy)
-			graphicsAPI->imageViewPool.destroy(imageView->getDefaultView());
+		imageView->freeAllViews();
 	}
-	
 	graphicsAPI->imagePool.destroy(image);
 }
 View<Image> GraphicsSystem::get(ID<Image> image) const noexcept
@@ -920,7 +916,7 @@ View<Image> GraphicsSystem::get(ID<Image> image) const noexcept
 
 //**********************************************************************************************************************
 ID<ImageView> GraphicsSystem::createImageView(ID<Image> image, Image::Type type,
-	Image::Format format, uint8 baseMip, uint8 mipCount, uint32 baseLayer, uint32 layerCount)
+	Image::Format format, uint32 baseLayer, uint32 layerCount, uint8 baseMip, uint8 mipCount)
 {
 	GARDEN_ASSERT(image);
 
@@ -928,15 +924,15 @@ ID<ImageView> GraphicsSystem::createImageView(ID<Image> image, Image::Type type,
 	auto _image = graphicsAPI->imagePool.get(image);
 	GARDEN_ASSERT_MSG(ResourceExt::getInstance(**_image), 
 		"Image [" + _image->getDebugName() + "] is not ready");
-	GARDEN_ASSERT(mipCount + baseMip <= _image->getMipCount());
 	GARDEN_ASSERT(layerCount + baseLayer <= _image->getLayerCount());
+	GARDEN_ASSERT(mipCount + baseMip <= _image->getMipCount());
 
 	if (format == Image::Format::Undefined)
 		format = _image->getFormat();
-	if (mipCount == 0)
-		mipCount = _image->getMipCount();
 	if (layerCount == 0)
 		layerCount = _image->getLayerCount();
+	if (mipCount == 0)
+		mipCount = _image->getMipCount();
 
 	if (type != Image::Type::Texture1DArray && type != Image::Type::Texture2DArray)
 		GARDEN_ASSERT_MSG(layerCount == 1, "Texture array can not have layers");
@@ -946,11 +942,15 @@ ID<ImageView> GraphicsSystem::createImageView(ID<Image> image, Image::Type type,
 	SET_RESOURCE_DEBUG_NAME(imageView, "imageView" + to_string(*imageView));
 	return imageView;
 }
-void GraphicsSystem::destroy(ID<ImageView> imageView)
+void GraphicsSystem::destroy(ID<ImageView>& imageView)
 {
 	#if GARDEN_DEBUG
 	if (imageView)
-		GARDEN_ASSERT(!GraphicsAPI::get()->imageViewPool.get(imageView)->isDefault());
+	{
+		auto imageViewView = GraphicsAPI::get()->imageViewPool.get(imageView);
+		GARDEN_ASSERT_MSG(!imageViewView->isDefault(), "Can not destroy "
+			"default image view [" + imageViewView->getDebugName() + "]");
+	}
 	#endif
 	GraphicsAPI::get()->imageViewPool.destroy(imageView);
 }
@@ -1075,11 +1075,14 @@ ID<Framebuffer> GraphicsSystem::createFramebuffer(uint2 size, vector<Framebuffer
 	SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer" + to_string(*framebuffer));
 	return framebuffer;
 }
-void GraphicsSystem::destroy(ID<Framebuffer> framebuffer)
+void GraphicsSystem::destroy(ID<Framebuffer>& framebuffer)
 {
 	#if GARDEN_DEBUG
 	if (framebuffer)
-		GARDEN_ASSERT(!GraphicsAPI::get()->framebufferPool.get(framebuffer)->isSwapchainFramebuffer());
+	{
+		auto framebufferView = GraphicsAPI::get()->framebufferPool.get(framebuffer);
+		GARDEN_ASSERT_MSG(!framebufferView->isSwapchainFramebuffer(), "Can not destroy swapchain framebuffer");
+	}
 	#endif
 	GraphicsAPI::get()->framebufferPool.destroy(framebuffer);
 }
@@ -1096,7 +1099,7 @@ ID<Sampler> GraphicsSystem::createSampler(const Sampler::State& state)
 	SET_RESOURCE_DEBUG_NAME(sampler, "sampler" + to_string(*sampler));
 	return sampler;
 }
-void GraphicsSystem::destroy(ID<Sampler> sampler)
+void GraphicsSystem::destroy(ID<Sampler>& sampler)
 {
 	GraphicsAPI::get()->samplerPool.destroy(sampler);
 }
@@ -1106,7 +1109,7 @@ View<Sampler> GraphicsSystem::get(ID<Sampler> sampler) const noexcept
 	return GraphicsAPI::get()->samplerPool.get(sampler);
 }
 
-void GraphicsSystem::destroy(ID<GraphicsPipeline> graphicsPipeline)
+void GraphicsSystem::destroy(ID<GraphicsPipeline>& graphicsPipeline)
 {
 	GraphicsAPI::get()->graphicsPipelinePool.destroy(graphicsPipeline);
 }
@@ -1115,7 +1118,7 @@ View<GraphicsPipeline> GraphicsSystem::get(ID<GraphicsPipeline> graphicsPipeline
 	return GraphicsAPI::get()->graphicsPipelinePool.get(graphicsPipeline);
 }
 
-void GraphicsSystem::destroy(ID<ComputePipeline> computePipeline)
+void GraphicsSystem::destroy(ID<ComputePipeline>& computePipeline)
 {
 	GraphicsAPI::get()->computePipelinePool.destroy(computePipeline);
 }
@@ -1124,7 +1127,7 @@ View<ComputePipeline> GraphicsSystem::get(ID<ComputePipeline> computePipeline) c
 	return GraphicsAPI::get()->computePipelinePool.get(computePipeline);
 }
 
-void GraphicsSystem::destroy(ID<RayTracingPipeline> rayTracingPipeline)
+void GraphicsSystem::destroy(ID<RayTracingPipeline>& rayTracingPipeline)
 {
 	GraphicsAPI::get()->rayTracingPipelinePool.destroy(rayTracingPipeline);
 }
@@ -1197,7 +1200,7 @@ ID<DescriptorSet> GraphicsSystem::createDescriptorSet(ID<RayTracingPipeline> ray
 	SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet" + to_string(*descriptorSet));
 	return descriptorSet;
 }
-void GraphicsSystem::destroy(ID<DescriptorSet> descriptorSet)
+void GraphicsSystem::destroy(ID<DescriptorSet>& descriptorSet)
 {
 	GraphicsAPI::get()->descriptorSetPool.destroy(descriptorSet);
 }
@@ -1229,7 +1232,7 @@ ID<Blas> GraphicsSystem::createBlas(const Blas::AabbsBuffer* geometryArray,
 	SET_RESOURCE_DEBUG_NAME(blas, "blas" + to_string(*blas));
 	return blas;
 }
-void GraphicsSystem::destroy(ID<Blas> blas)
+void GraphicsSystem::destroy(ID<Blas>& blas)
 {
 	GraphicsAPI::get()->blasPool.destroy(blas);
 }
@@ -1249,7 +1252,7 @@ ID<Tlas> GraphicsSystem::createTlas(vector<Tlas::InstanceData>&& instances,
 	SET_RESOURCE_DEBUG_NAME(tlas, "tlas" + to_string(*tlas));
 	return tlas;
 }
-void GraphicsSystem::destroy(ID<Tlas> tlas)
+void GraphicsSystem::destroy(ID<Tlas>& tlas)
 {
 	return GraphicsAPI::get()->tlasPool.destroy(tlas);
 }

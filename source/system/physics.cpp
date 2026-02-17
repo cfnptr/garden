@@ -2014,7 +2014,7 @@ ID<Shape> PhysicsSystem::createSharedCustomShape(void* shapeInstance)
 }
 
 //**********************************************************************************************************************
-void PhysicsSystem::destroyShared(ID<Shape> shape)
+void PhysicsSystem::destroyShared(ID<Shape>& shape)
 {
 	if (!shape)
 		return;
@@ -2086,7 +2086,7 @@ void PhysicsSystem::destroyShared(ID<Shape> shape)
 	}
 
 	if (shapeView->isLastRef())
-		destroy(ID<Shape>(shape));
+		destroy(shape);
 }
 
 void PhysicsSystem::optimizeBroadPhase()

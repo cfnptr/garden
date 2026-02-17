@@ -179,15 +179,16 @@ void UiTriggerSystem::update()
 //**********************************************************************************************************************
 void UiTriggerSystem::destroyComponent(ID<Component> instance)
 {
-	auto component = components.get(ID<UiTriggerComponent>(instance));
-	if (currElement == component->getEntity())
+	auto uiTrigger = ID<UiTriggerComponent>(instance);
+	auto uiTriggerView = components.get(uiTrigger);
+	if (currElement == uiTriggerView->getEntity())
 	{
-		if (!component->onExit.empty())
-			Manager::Instance::get()->tryRunEvent(component->onExit);
+		if (!uiTriggerView->onExit.empty())
+			Manager::Instance::get()->tryRunEvent(uiTriggerView->onExit);
 		currElement = {};
 	}
-	resetComponent(View<Component>(component), false);
-	components.destroy(ID<UiTriggerComponent>(instance));
+	resetComponent(View<Component>(uiTriggerView), false);
+	components.destroy(uiTrigger);
 }
 string_view UiTriggerSystem::getComponentName() const
 {

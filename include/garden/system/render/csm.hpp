@@ -59,13 +59,10 @@ public:
 	};
 private:
 	f32x4 farPlanes = f32x4::zero;
-	vector<ID<ImageView>> shadowImageViews;
-	vector<ID<ImageView>> transImageViews;
 	vector<ID<Framebuffer>> shadowFramebuffers;
 	vector<ID<Framebuffer>> transFramebuffers;
 	DescriptorSet::Buffers dataBuffers;
-	ID<Image> depthMap = {};
-	ID<Image> transparentMap = {};
+	ID<Image> depthMap = {}, transMap = {};
 	ID<GraphicsPipeline> pipeline = {};
 	ID<DescriptorSet> descriptorSet = {};
 	uint32 shadowMapSize = 2048;
@@ -134,7 +131,7 @@ public:
 	/**
 	 * @brief Returns cascade shadow mapping transparent map buffer.
 	 */
-	ID<Image> getTransparentMap();
+	ID<Image> getTransMap();
 	
 	/**
 	 * @brief Returns cascade shadow mapping framebuffers

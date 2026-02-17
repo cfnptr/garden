@@ -130,15 +130,6 @@ public:
 	{
 		uint32 offset;
 	};
-	struct SkyLightPC final
-	{
-		float3 cameraPos;
-		float bottomRadius;
-		float3 starDir;
-		float topRadius;
-		float3 starColor;
-		uint32 dataOffset;
-	};
 
 	static constexpr float3 earthRayleighScattering = float3(0.005802f, 0.013558f, 0.0331f);
 	static constexpr float earthRayleightScaleHeight = 8.0f;
@@ -191,11 +182,10 @@ private:
 	ID<GraphicsPipeline> transLutPipeline = {}, skyViewLutPipeline = {};
 	ID<ComputePipeline> multiScattLutPipeline = {}, cameraVolumePipeline = {};
 	ID<GraphicsPipeline> hdrSkyPipeline = {}, skyboxPipeline = {};
-	ID<ComputePipeline> shGeneratePipeline = {}, shReducePipeline = {}, skyLightPipeline = {};
+	ID<ComputePipeline> shGeneratePipeline = {}, shReducePipeline = {};
 	ID<DescriptorSet> multiScattLutDS = {}, cameraVolumeDS = {};
 	ID<DescriptorSet> skyViewLutDS = {}, hdrSkyDS = {}, skyboxDS = {};
-	ID<DescriptorSet> shGenerateDS = {}, shReduceDS = {}, skyLightDS = {};
-	ID<ImageView> skyboxViews[Image::cubemapFaceCount] = {};
+	ID<DescriptorSet> shGenerateDS = {}, shReduceDS = {};
 	ID<Framebuffer> skyboxFramebuffers[Image::cubemapFaceCount] = {};
 	Ref<Image> lastSkybox = {}, lastSpecular = {};
 	ID<ImageView> lastSkyboxShView = {};
@@ -333,10 +323,6 @@ public:
 	 * @brief Returns spherical harmonics reduce compute pipeline.
 	 */
 	ID<ComputePipeline> getShReducePipeline();
-	/**
-	 * @brief Returns sky light compute pipeline.
-	 */
-	ID<ComputePipeline> getSkyLightPipeline();
 
 	/**
 	 * @brief Returns camera volume slice constants at the specified graphics quality.

@@ -220,9 +220,9 @@ static void renderEmptyShape(View<RigidbodyComponent> rigidbodyView,
 	if (isChanged)
 	{
 		auto isKinematicVsStatic = rigidbodyView->isKinematicVsStatic();
-		physicsSystem->destroyShared(rigidbodyView->getShape());
+		auto shape = rigidbodyView->getShape();
+		physicsSystem->destroyShared(shape);
 
-		ID<Shape> shape;
 		if (cache.shapePosition != f32x4::zero)
 		{
 			auto innerShape = physicsSystem->createSharedEmptyShape(cache.centerOfMass);
@@ -292,9 +292,9 @@ static void renderBoxShape(View<RigidbodyComponent> rigidbodyView,
 		cache.halfExtent = max(cache.halfExtent, f32x4(cache.convexRadius));
 		cache.density = max(cache.density, 0.001f);
 		auto isKinematicVsStatic = rigidbodyView->isKinematicVsStatic();
-		physicsSystem->destroyShared(rigidbodyView->getShape());
+		auto shape = rigidbodyView->getShape();
+		physicsSystem->destroyShared(shape);
 
-		ID<Shape> shape;
 		if (cache.shapePosition != f32x4::zero)
 		{
 			auto innerShape = physicsSystem->createSharedBoxShape(cache.halfExtent, cache.convexRadius, cache.density);
@@ -350,9 +350,9 @@ static void renderSphereShape(View<RigidbodyComponent> rigidbodyView,
 		cache.shapeRadius = max(cache.shapeRadius, 0.001f);
 		cache.density = max(cache.density, 0.001f);
 		auto isKinematicVsStatic = rigidbodyView->isKinematicVsStatic();
-		physicsSystem->destroyShared(rigidbodyView->getShape());
+		auto shape = rigidbodyView->getShape();
+		physicsSystem->destroyShared(shape);
 
-		ID<Shape> shape;
 		if (cache.shapePosition != f32x4::zero)
 		{
 			auto innerShape = physicsSystem->createSharedSphereShape(cache.shapeRadius, cache.density);
@@ -422,9 +422,9 @@ static void renderCapsuleShape(View<RigidbodyComponent> rigidbodyView,
 		cache.shapeRadius = max(cache.shapeRadius, 0.001f);
 		cache.density = max(cache.density, 0.001f);
 		auto isKinematicVsStatic = rigidbodyView->isKinematicVsStatic();
-		physicsSystem->destroyShared(rigidbodyView->getShape());
+		auto shape = rigidbodyView->getShape();
+		physicsSystem->destroyShared(shape);
 
-		ID<Shape> shape;
 		if (cache.shapePosition != f32x4::zero)
 		{
 			auto innerShape = physicsSystem->createSharedCapsuleShape(cache.halfHeight, cache.shapeRadius, cache.density);

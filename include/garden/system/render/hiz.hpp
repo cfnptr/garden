@@ -42,7 +42,6 @@ public:
 private:
 	ID<GraphicsPipeline> pipeline = {};
 	ID<Image> hizBuffer = {};
-	vector<ID<ImageView>> imageViews;
 	vector<ID<Framebuffer>> framebuffers;
 	vector<ID<DescriptorSet>> descriptorSets;
 	bool isInitialized = false;
@@ -62,10 +61,20 @@ private:
 	void preHdrRender();
 	void gBufferRecreate();
 
-	void downsampleHiz(uint8 levelCount);
+	void downsampleHiz(uint8 mipCount);
 	friend class ecsm::Manager;
 public:
 	bool isEnabled = true; /**< Is hierarchical depth (Z) buffer rendering enabled. */
+
+	/**
+	 * @brief Returns hierarchical depth (Z) buffer image view at specified mip level.
+	 * @param mip target Hi-Z image view mip level
+	 */
+	ID<ImageView> getView(uint8 mip)
+	{
+		auto hizBufferView = GraphicsSystem::Instance::get()->get(getHizBuffer());
+		return hizBufferView->getView(0, mip);
+	}
 
 	/**
 	 * @brief Returns hierarchical depth (Z) buffer graphics pipeline.
@@ -75,10 +84,6 @@ public:
 	 * @brief Returns hierarchical depth (Z) buffer.
 	 */
 	ID<Image> getHizBuffer();
-	/**
-	 * @brief Returns hierarchical depth (Z) buffer image views.
-	 */
-	const vector<ID<ImageView>>& getImageViews();
 	/**
 	 * @brief Returns hierarchical depth (Z) buffer framebuffer.
 	 */

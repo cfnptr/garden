@@ -33,7 +33,6 @@
 using namespace garden;
 
 static constexpr int32 shCacheBinarySize = sh3Count * sizeof(f32x4);
-static constexpr int32 skyCacheBinarySize = sizeof(f32x4) * 2;
 static constexpr int32 shBinarySize = 3 * 4 * sizeof(f16x4);
 
 static ID<Image> createTransLUT(GraphicsSystem* graphicsSystem, Image::Format format)
@@ -70,7 +69,7 @@ static ID<ImageView> createSkyboxShView(GraphicsSystem* graphicsSystem, ID<Image
 {
 	auto skyboxView = graphicsSystem->get(skybox);
 	auto skyboxShView = graphicsSystem->createImageView(skybox, 
-		Image::Type::Texture2DArray, Image::Format::Undefined, 0, 1, 0, 0);
+		Image::Type::Texture2DArray, Image::Format::Undefined, 0, 0, 0, 1);
 	SET_RESOURCE_DEBUG_NAME(skyboxShView, "imageView.atmosphere.skyboxSH");
 	return skyboxShView;
 }
@@ -80,16 +79,14 @@ static void createShCaches(GraphicsSystem* graphicsSystem, uint32 skyboxSize,
 	GARDEN_ASSERT(shGenPipelineView->getLocalSize().x == shGenPipelineView->getLocalSize().y);
 	auto localSize = shGenPipelineView->getLocalSize().x;
 	auto inFlightCount = graphicsSystem->getInFlightCount();
-	shCaches.resize(inFlightCount);
-
 	uint64 reducedSize = skyboxSize / localSize;
 	reducedSize = reducedSize * reducedSize * Image::cubemapFaceCount;
-	uint64 cacheSize = sizeof(uint4) + reducedSize * 
-		shCacheBinarySize + (shCacheBinarySize + skyCacheBinarySize);
+	uint64 cacheSize = sizeof(uint4) + reducedSize * shCacheBinarySize + shCacheBinarySize;
 
 	localSize = localSize * localSize;
 	for (float i = ceil((float)reducedSize / localSize); i > 1.001f; i = ceil(i / localSize))
 		cacheSize += (uint64)i * shCacheBinarySize;
+	shCaches.resize(inFlightCount);
 
 	for (uint32 i = 0; i < inFlightCount; i++)
 	{
@@ -122,29 +119,10 @@ static ID<Framebuffer> createLutFramebuffer(GraphicsSystem* graphicsSystem, ID<I
 {
 	auto lutView = graphicsSystem->get(lut);
 	vector<Framebuffer::OutputAttachment> colorAttachments =
-	{ Framebuffer::OutputAttachment(lutView->getDefaultView(), AtmosphereRenderSystem::framebufferFlags) };
+	{ Framebuffer::OutputAttachment(lutView->getView(), AtmosphereRenderSystem::framebufferFlags) };
 	auto framebuffer = graphicsSystem->createFramebuffer((uint2)lutView->getSize(), std::move(colorAttachments));
 	SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.atmosphere." + string(debugName));
 	return framebuffer;
-}
-
-static void createSkyboxViews(GraphicsSystem* graphicsSystem, ID<Image> skybox, ID<ImageView>* imageViews)
-{
-	for (uint8 i = 0; i < Image::cubemapFaceCount; i++)
-	{
-		auto imageView = graphicsSystem->createImageView(skybox, 
-			Image::Type::Texture2D, Image::Format::Undefined, 0, 1, i, 1);
-		SET_RESOURCE_DEBUG_NAME(imageView, "imageView.atmosphere.skybox" + to_string(i));
-		imageViews[i] = imageView;
-	}
-}
-static void destroySkyboxViews(GraphicsSystem* graphicsSystem, ID<ImageView>* imageViews)
-{
-	for (uint8 i = 0; i < Image::cubemapFaceCount; i++)
-	{
-		graphicsSystem->destroy(imageViews[i]);
-		imageViews[i] = {};
-	}
 }
 
 static void createSkyboxFramebuffers(GraphicsSystem* graphicsSystem, ID<Framebuffer>* framebuffers)
@@ -156,14 +134,6 @@ static void createSkyboxFramebuffers(GraphicsSystem* graphicsSystem, ID<Framebuf
 		auto framebuffer = graphicsSystem->createFramebuffer(uint2(16), std::move(colorAttachments));
 		SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.atmosphere.skybox" + to_string(i));
 		framebuffers[i] = framebuffer;
-	}
-}
-static void destroySkyboxFramebuffers(GraphicsSystem* graphicsSystem, ID<Framebuffer>* framebuffers)
-{
-	for (uint8 i = 0; i < Image::cubemapFaceCount; i++)
-	{
-		graphicsSystem->destroy(framebuffers[i]);
-		framebuffers[i] = {};
 	}
 }
 
@@ -307,21 +277,13 @@ static ID<ComputePipeline> createShReducePipeline(GraphicsSystem* graphicsSystem
 	options.specConstValues = &specConstValues;
 	return ResourceSystem::Instance::get()->loadComputePipeline("atmosphere/sh-reduce", options);
 }
-static ID<ComputePipeline> createSkyLightPipeline(GraphicsSystem* graphicsSystem)
-{
-	Pipeline::SpecConstValues specConstValues =
-	{ { "SG_SHARED_SIZE", Pipeline::SpecConstValue(graphicsSystem->calcSubgroupSize(AL_WG_LOCAL_SIZE)) } };
-	ResourceSystem::ComputeOptions options;
-	options.specConstValues = &specConstValues;
-	return ResourceSystem::Instance::get()->loadComputePipeline("atmosphere/sky-light", options);
-}
 
 //**********************************************************************************************************************
 static DescriptorSet::Uniforms getScattLutUniforms(
 	GraphicsSystem* graphicsSystem, ID<Image> transLUT, ID<Image> multiScattLUT)
 {
-	auto transLutView = graphicsSystem->get(transLUT)->getDefaultView();
-	auto multiScattLutView = graphicsSystem->get(multiScattLUT)->getDefaultView();
+	auto transLutView = graphicsSystem->get(transLUT)->getView();
+	auto multiScattLutView = graphicsSystem->get(multiScattLUT)->getView();
 
 	DescriptorSet::Uniforms uniforms =
 	{
@@ -333,9 +295,9 @@ static DescriptorSet::Uniforms getScattLutUniforms(
 static DescriptorSet::Uniforms getCameraVolumeUniforms(GraphicsSystem* graphicsSystem, 
 	ID<Image> transLUT, ID<Image> multiScattLUT, ID<Image> cameraVolume)
 {
-	auto transLutView = graphicsSystem->get(transLUT)->getDefaultView();
-	auto multiScattLutView = graphicsSystem->get(multiScattLUT)->getDefaultView();
-	auto cameraVolumeView = graphicsSystem->get(cameraVolume)->getDefaultView();
+	auto transLutView = graphicsSystem->get(transLUT)->getView();
+	auto multiScattLutView = graphicsSystem->get(multiScattLUT)->getView();
+	auto cameraVolumeView = graphicsSystem->get(cameraVolume)->getView();
 	auto inFlightCount = graphicsSystem->getInFlightCount();
 
 	DescriptorSet::Uniforms uniforms =
@@ -353,9 +315,9 @@ static DescriptorSet::Uniforms getSkyUniforms(GraphicsSystem* graphicsSystem,
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	auto depthBufferView = deferredSystem->getDepthImageView();
 	auto gFramebufferView = graphicsSystem->get(deferredSystem->getGFramebuffer());
-	auto transLutView = graphicsSystem->get(transLUT)->getDefaultView();
-	auto skyViewLutView = graphicsSystem->get(skyViewLUT)->getDefaultView();
-	auto cameraVolumeView = graphicsSystem->get(cameraVolume)->getDefaultView();
+	auto transLutView = graphicsSystem->get(transLUT)->getView();
+	auto skyViewLutView = graphicsSystem->get(skyViewLUT)->getView();
+	auto cameraVolumeView = graphicsSystem->get(cameraVolume)->getView();
 
 	DescriptorSet::Uniforms uniforms =
 	{
@@ -382,21 +344,6 @@ static DescriptorSet::Uniforms getShReduceUniforms(
 	GraphicsSystem* graphicsSystem, const DescriptorSet::Buffers& shCaches)
 {
 	return { { "sh", DescriptorSet::Uniform(shCaches) } };
-}
-static DescriptorSet::Uniforms getSkyLightUniforms(GraphicsSystem* graphicsSystem, 
-	const DescriptorSet::Buffers& shCaches, ID<Image> transLUT, ID<Image> skyViewLUT)
-{
-	auto transLutView = graphicsSystem->get(transLUT)->getDefaultView();
-	auto skyViewLutView = graphicsSystem->get(skyViewLUT)->getDefaultView();
-	auto inFlightCount = graphicsSystem->getInFlightCount();
-
-	DescriptorSet::Uniforms uniforms =
-	{
-		{ "transLUT", DescriptorSet::Uniform(transLutView, 1, inFlightCount) },
-		{ "skyViewLUT", DescriptorSet::Uniform(skyViewLutView, 1, inFlightCount) },
-		{ "sky", DescriptorSet::Uniform(shCaches) }
-	};
-	return uniforms;
 }
 
 //**********************************************************************************************************************
@@ -442,7 +389,6 @@ void AtmosphereRenderSystem::deinit()
 	{
 		auto graphicsSystem = GraphicsSystem::Instance::get();
 		graphicsSystem->destroy(iblDescriptorSets);
-		graphicsSystem->destroy(skyLightDS);
 		graphicsSystem->destroy(shReduceDS);
 		graphicsSystem->destroy(shGenerateDS);
 		graphicsSystem->destroy(skyboxDS);
@@ -450,7 +396,6 @@ void AtmosphereRenderSystem::deinit()
 		graphicsSystem->destroy(skyViewLutDS);
 		graphicsSystem->destroy(cameraVolumeDS);
 		graphicsSystem->destroy(multiScattLutDS);
-		graphicsSystem->destroy(skyLightPipeline);
 		graphicsSystem->destroy(shReducePipeline);
 		graphicsSystem->destroy(shGeneratePipeline);
 		graphicsSystem->destroy(skyboxPipeline);
@@ -459,8 +404,7 @@ void AtmosphereRenderSystem::deinit()
 		graphicsSystem->destroy(cameraVolumePipeline);
 		graphicsSystem->destroy(multiScattLutPipeline);
 		graphicsSystem->destroy(transLutPipeline);
-		destroySkyboxFramebuffers(graphicsSystem, skyboxFramebuffers);
-		destroySkyboxViews(graphicsSystem, skyboxViews);
+		graphicsSystem->destroy(skyboxFramebuffers, Image::cubemapFaceCount);
 		graphicsSystem->destroy(skyViewLutFramebuffer);
 		graphicsSystem->destroy(transLutFramebuffer);
 		graphicsSystem->destroy(shStagings);
@@ -723,20 +667,19 @@ void AtmosphereRenderSystem::updateSkybox()
 
 	if (lastSkybox != pbrLightingView->skybox || lastSpecular != pbrLightingView->specular)
 	{
-		graphicsSystem->destroy(shReduceDS); graphicsSystem->destroy(shGenerateDS); 
-		graphicsSystem->destroy(lastSkyboxShView); graphicsSystem->destroy(shCaches);
-		graphicsSystem->destroy(lastSpecular); graphicsSystem->destroy(lastSkybox);
-		shGenerateDS = {}; shReduceDS = {}; lastSkyboxShView = {}; lastSpecular = {}; lastSkybox = {};
-		destroySkyboxViews(graphicsSystem, skyboxViews); shCaches.clear();
-
-		graphicsSystem->destroy(iblDescriptorSets); graphicsSystem->destroy(specularViews);
-		graphicsSystem->destroy(specularCache); specularCache = {};
-		iblDescriptorSets.clear(); specularViews.clear();
+		graphicsSystem->destroy(shReduceDS);
+		graphicsSystem->destroy(shGenerateDS);
+		graphicsSystem->destroy(lastSkyboxShView);
+		graphicsSystem->destroy(shCaches); shCaches.clear();
+		graphicsSystem->destroy(lastSpecular);
+		graphicsSystem->destroy(lastSkybox); 
+		graphicsSystem->destroy(iblDescriptorSets);
+		graphicsSystem->destroy(specularViews);
+		graphicsSystem->destroy(specularCache);
 
 		if (pbrLightingView->skybox && pbrLightingView->specular)
 		{
 			lastSkybox = pbrLightingView->skybox; lastSpecular = pbrLightingView->specular;
-			createSkyboxViews(graphicsSystem, ID<Image>(lastSkybox), skyboxViews);
 
 			auto skyboxView = graphicsSystem->get(lastSkybox);
 			auto framebufferSize = (uint2)skyboxView->getSize();
@@ -745,7 +688,7 @@ void AtmosphereRenderSystem::updateSkybox()
 			for (uint8 i = 0; i < Image::cubemapFaceCount; i++)
 			{
 				auto framebufferView = graphicsSystem->get(skyboxFramebuffers[i]);
-				colorAttachment.imageView = skyboxViews[i];
+				colorAttachment.imageView = skyboxView->getView(i, 0);
 				framebufferView->update(framebufferSize, &colorAttachment, 1);
 			}
 
@@ -767,7 +710,6 @@ void AtmosphereRenderSystem::updateSkybox()
 			for (uint8 i = 0; i < Image::cubemapFaceCount; i++)
 			{
 				auto framebufferView = graphicsSystem->get(skyboxFramebuffers[i]);
-				colorAttachment.imageView = skyboxViews[i];
 				framebufferView->update(framebufferSize, &colorAttachment, 1);
 			}
 		}
@@ -825,7 +767,7 @@ void AtmosphereRenderSystem::renderSkyboxFaces()
 	pc.starDir = -cc.lightDir;
 	pc.topRadius = groundRadius + atmosphereHeight;
 	pc.starColor = (float3)starColor * starColor.w;
-	pc.starSize = calcStarSize(starAngularSize * 2.0f, pc.starDir.y);
+	pc.starSize = calcStarSize(starAngularSize * 2.0f, 1.0f);
 
 	while (faceIndex < faceCount)
 	{
@@ -866,17 +808,11 @@ void AtmosphereRenderSystem::generateSkyShDiffuse(ID<Buffer> shDiffuse, f32x4x4*
 		shGeneratePipeline = createShGeneratePipeline(graphicsSystem);
 	if (!shReducePipeline)
 		shReducePipeline = createShReducePipeline(graphicsSystem);
-	if (!skyLightPipeline)
-		skyLightPipeline = createSkyLightPipeline(graphicsSystem);
 
 	auto shGenPipelineView = graphicsSystem->get(shGeneratePipeline);
 	auto shRedPipelineView = graphicsSystem->get(shReducePipeline);
-	auto skyLightPipelineView = graphicsSystem->get(skyLightPipeline);
-	if (!shDiffuse || !shGenPipelineView->isReady() || 
-		!shRedPipelineView->isReady() || !skyLightPipelineView->isReady())
-	{
+	if (!shDiffuse || !shGenPipelineView->isReady() || !shRedPipelineView->isReady())
 		return;
-	}
 
 	auto skyboxView = graphicsSystem->get(lastSkybox);
 	auto skyboxSize = skyboxView->getSize().getX();
@@ -906,16 +842,10 @@ void AtmosphereRenderSystem::generateSkyShDiffuse(ID<Buffer> shDiffuse, f32x4x4*
 		shReduceDS = graphicsSystem->createDescriptorSet(shReducePipeline, std::move(uniforms));
 		SET_RESOURCE_DEBUG_NAME(shReduceDS, "descriptorSet.atmosphere.shReduce");
 	}
-	if (!skyLightDS)
-	{
-		auto uniforms = getSkyLightUniforms(graphicsSystem, shCaches, transLUT, skyViewLUT);
-		skyLightDS = graphicsSystem->createDescriptorSet(skyLightPipeline, std::move(uniforms));
-		SET_RESOURCE_DEBUG_NAME(skyLightDS, "descriptorSet.atmosphere.skyLight");
-	}
 
 	SET_GPU_DEBUG_LABEL("Generate SH");
 	auto shCacheView = graphicsSystem->get(shCaches[shInFlightIndex][0]);
-	shCacheView->fill(0);//, sizeof(uint32));
+	shCacheView->fill(0, sizeof(uint32));
 
 	shGenPipelineView->bind();
 	shGenPipelineView->bindDescriptorSet(shGenerateDS, shInFlightIndex);
@@ -941,32 +871,14 @@ void AtmosphereRenderSystem::generateSkyShDiffuse(ID<Buffer> shDiffuse, f32x4x4*
 		shReducePC.offset += (uint32)i;
 	}
 
-	auto& cc = graphicsSystem->getCommonConstants();
-	auto cameraHeight = calcCameraHeight(cc.cameraPos.y, groundRadius);
-
-	SkyLightPC skyLightPC;
-	skyLightPC.cameraPos = float3(0.0f, cameraHeight, 0.0f);
-	skyLightPC.bottomRadius = groundRadius;
-	skyLightPC.starDir = -cc.lightDir;
-	skyLightPC.topRadius = groundRadius + atmosphereHeight;
-	skyLightPC.starColor = (float3)starColor;
-	skyLightPC.dataOffset = (shCacheView->getBinarySize() - 
-		skyCacheBinarySize) / sizeof(float4);
-
-	skyLightPipelineView->bind();
-	skyLightPipelineView->bindDescriptorSet(skyLightDS, shInFlightIndex);
-	skyLightPipelineView->pushConstants(&skyLightPC);
-	skyLightPipelineView->dispatch(1);
-
 	auto inFlightCount = graphicsSystem->getInFlightCount();
 	shInFlightIndex = (shInFlightIndex + 1) % inFlightCount;
 
 	if (!isFirstSH)
 	{
 		shCacheView = graphicsSystem->get(shCaches[shInFlightIndex][0]);
-		constexpr int32 combCacheBinarySize = shCacheBinarySize + skyCacheBinarySize;
-		auto shCacheOffset = shCacheView->getBinarySize() - combCacheBinarySize;
-		shCacheView->invalidate(combCacheBinarySize, shCacheOffset);
+		auto shCacheOffset = shCacheView->getBinarySize() - shCacheBinarySize;
+		shCacheView->invalidate(shCacheBinarySize, shCacheOffset);
 		
 		f32x4 shCache[sh3Count];
 		memcpy(shCache, shCacheView->getMap() + shCacheOffset, shCacheBinarySize);
@@ -992,12 +904,11 @@ void AtmosphereRenderSystem::generateSkyShDiffuse(ID<Buffer> shDiffuse, f32x4x4*
 		shStagingView->flush();
 		Buffer::copy(shStaging, shDiffuse);
 
-		auto skyCacheOffset = shCacheView->getBinarySize() - skyCacheBinarySize;
-		auto skyLightMap = (float4*)(shCacheView->getMap() + skyCacheOffset);
-		auto ambientLight = calcAmbientLight(f32x4(skyLightPC.starDir), shCoeffs) * 0.5f;
-		ambientLight = fma(f32x4(skyLightMap[0]), f32x4(2.0f), ambientLight);
+		auto starDir = -f32x4(graphicsSystem->getCommonConstants().lightDir);
+		auto starLight = brdf::diffuseIrradiance(starDir, shCoeffs);
+		graphicsSystem->setStarLight((float3)starLight);
+		auto ambientLight = calcAmbientLight(starDir, shCoeffs);
 		graphicsSystem->setAmbientLight(float3(ambientLight * giFactor));
-		graphicsSystem->setStarLight((float3)skyLightMap[1]);
 	}
 }
 
@@ -1047,7 +958,6 @@ void AtmosphereRenderSystem::gBufferRecreate()
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	graphicsSystem->destroy(skyboxDS); skyboxDS = {};
 	graphicsSystem->destroy(hdrSkyDS); hdrSkyDS = {};
-	graphicsSystem->destroy(skyLightDS); skyLightDS = {};
 
 	if (skyViewLUT)
 	{
@@ -1058,7 +968,7 @@ void AtmosphereRenderSystem::gBufferRecreate()
 	{
 		auto skyViewLutView = graphicsSystem->get(skyViewLUT);
 		auto framebufferView = graphicsSystem->get(skyViewLutFramebuffer);
-		Framebuffer::OutputAttachment colorAttachment(skyViewLutView->getDefaultView(), framebufferFlags);
+		Framebuffer::OutputAttachment colorAttachment(skyViewLutView->getView(), framebufferFlags);
 		framebufferView->update((uint2)skyViewLutView->getSize(), &colorAttachment, 1);
 	}
 }
@@ -1075,12 +985,12 @@ void AtmosphereRenderSystem::setQuality(GraphicsQuality quality)
 		return;
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	graphicsSystem->destroy(skyboxDS); skyboxDS = {};
-	graphicsSystem->destroy(hdrSkyDS); hdrSkyDS = {};
-	graphicsSystem->destroy(skyViewLutDS); skyViewLutDS = {};
-	graphicsSystem->destroy(cameraVolumeDS); cameraVolumeDS = {};
-	graphicsSystem->destroy(multiScattLutDS); multiScattLutDS = {};
-	graphicsSystem->destroy(skyboxPipeline); skyboxPipeline = {};
+	graphicsSystem->destroy(skyboxDS);
+	graphicsSystem->destroy(hdrSkyDS);
+	graphicsSystem->destroy(skyViewLutDS);
+	graphicsSystem->destroy(cameraVolumeDS);
+	graphicsSystem->destroy(multiScattLutDS);
+	graphicsSystem->destroy(skyboxPipeline);
 
 	if (transLUT)
 	{
@@ -1222,12 +1132,6 @@ ID<ComputePipeline> AtmosphereRenderSystem::getShReducePipeline()
 	if (!shReducePipeline)
 		shReducePipeline = createShReducePipeline(GraphicsSystem::Instance::get());
 	return shReducePipeline;
-}
-ID<ComputePipeline> AtmosphereRenderSystem::getSkyLightPipeline()
-{
-	if (!skyLightPipeline)
-		skyLightPipeline = createSkyLightPipeline(GraphicsSystem::Instance::get());
-	return skyLightPipeline;
 }
 
 void AtmosphereRenderSystem::getSliceQuality(GraphicsQuality quality, float& sliceCount, float& kmPerSlice) noexcept

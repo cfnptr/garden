@@ -81,7 +81,7 @@ void PbrLightingEditorSystem::preUiRender()
 		}
 
 		ImGui::DragFloat("Reflectance Coeff", &pbrLightingSystem->reflectanceCoeff, 0.1f, 0.0f, FLT_MAX);
-		ImGui::DragFloat("Blur Sharpness", &pbrLightingSystem->blurSharpness, 0.1f, 0.0f, FLT_MAX);
+		ImGui::DragFloat("Blur Sharpness", &pbrLightingSystem->blurSharpness, 0.1f, 0.001f, FLT_MAX);
 	}
 	ImGui::End();
 }

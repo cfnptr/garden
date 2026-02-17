@@ -490,34 +490,49 @@ public:
 	 * @brief Destroys buffer instance.
 	 * @param buffer target buffer instance or null
 	 */
-	void destroy(ID<Buffer> buffer);
+	void destroy(ID<Buffer>& buffer);
 	/**
 	 * @brief Destroys shared buffer instance.
 	 * @param[in] buffer target buffer reference or null
 	 */
-	void destroy(const Ref<Buffer>& buffer)
+	void destroy(Ref<Buffer>& buffer)
 	{
 		if (buffer.isLastRef())
-			destroy(ID<Buffer>(buffer));
+		{
+			auto item = ID<Buffer>(buffer);
+			destroy(item); buffer = {};
+		}
+	}
+	/**
+	 * @brief Destroys array of buffer instances. (Does not free pointer!)
+	 *
+	 * @param[in] buffers array with buffer instances or/and nulls
+	 * @param count size of the buffers array
+	 */
+	void destroy(ID<Buffer>* buffers, uint32 count)
+	{
+		GARDEN_ASSERT(buffers);
+		for (uint32 i = 0; i < count; i++)
+			destroy(buffers[i]);
 	}
 	/**
 	 * @brief Destroys vector with buffer instances.
 	 * @param[in] buffers target vector with buffer instances or/and nulls
 	 */
-	void destroy(const vector<ID<Buffer>>& buffers)
+	void destroy(vector<ID<Buffer>>& buffers)
 	{
-		for (auto buffer : buffers)
+		for (auto& buffer : buffers)
 			destroy(buffer);
 	}
 	/**
 	 * @brief Destroys descriptor set buffer instances for each swapchain.
 	 * @param[in] dsBuffer target descriptor set buffer instances or/and nulls
 	 */
-	void destroy(const DescriptorSet::Buffers& dsBuffer)
+	void destroy(DescriptorSet::Buffers& dsBuffer)
 	{
-		for (const auto& buffers : dsBuffer)
+		for (auto& buffers : dsBuffer)
 		{
-			for (auto buffer : buffers)
+			for (auto& buffer : buffers)
 				destroy(buffer);
 		}
 	}
@@ -639,23 +654,38 @@ public:
 	 * @brief Destroys image instance.
 	 * @param image target image instance or null
 	 */
-	void destroy(ID<Image> image);
+	void destroy(ID<Image>& image);
 	/**
 	 * @brief Destroys shared image instance.
 	 * @param[in] image target image reference or null
 	 */
-	void destroy(const Ref<Image>& image)
+	void destroy(Ref<Image>& image)
 	{
 		if (image.isLastRef())
-			destroy(ID<Image>(image));
+		{
+			auto item = ID<Image>(image);
+			destroy(item); image = {};
+		}
+	}
+	/**
+	 * @brief Destroys array of image instances. (Does not free pointer!)
+	 *
+	 * @param[in] buffers array with image instances or/and nulls
+	 * @param count size of the images array
+	 */
+	void destroy(ID<Image>* images, uint32 count)
+	{
+		GARDEN_ASSERT(images);
+		for (uint32 i = 0; i < count; i++)
+			destroy(images[i]);
 	}
 	/**
 	 * @brief Destroys vector with image instances.
 	 * @param[in] images target vector with image instances or/and nulls
 	 */
-	void destroy(const vector<ID<Image>>& images)
+	void destroy(vector<ID<Image>>& images)
 	{
-		for (auto image : images)
+		for (auto& image : images)
 			destroy(image);
 	}
 
@@ -676,35 +706,50 @@ public:
 	 * @param image target image instance
 	 * @param type image view dimensionality
 	 * @param format image view data format (undefined = image format)
-	 * @param baseMip image view base mip index
-	 * @param mipCount image view mip count (0 = image mip count)
 	 * @param baseLayer image view base layer index
-	 * @param layerCount image view layer count (0 = image layer count)
+	 * @param layerCount image view layer count (0 = all image layers)
+	 * @param baseMip image view base mip index
+	 * @param mipCount image view mip count (0 = all image mips)
 	 */
 	ID<ImageView> createImageView(ID<Image> image, Image::Type type, Image::Format format = Image::Format::Undefined,
-		uint8 baseMip = 0, uint8 mipCount = 0, uint32 baseLayer = 0, uint32 layerCount = 0);
+		uint32 baseLayer = 0, uint32 layerCount = 0, uint8 baseMip = 0, uint8 mipCount = 0);
 
 	/**
 	 * @brief Destroys image view instance.
 	 * @param imageView target image view instance or null
 	 */
-	void destroy(ID<ImageView> imageView);
+	void destroy(ID<ImageView>& imageView);
 	/**
 	 * @brief Destroys shared image view instance.
 	 * @param[in] imageView target image view reference or null
 	 */
-	void destroy(const Ref<ImageView>& imageView)
+	void destroy(Ref<ImageView>& imageView)
 	{
 		if (imageView.isLastRef())
-			destroy(ID<ImageView>(imageView));
+		{
+			auto item = ID<ImageView>(imageView);
+			destroy(item); imageView = {};
+		}
+	}
+	/**
+	 * @brief Destroys array of image view instances. (Does not free pointer!)
+	 *
+	 * @param[in] buffers array with image view instances or/and nulls
+	 * @param count size of the image views array
+	 */
+	void destroy(ID<ImageView>* imageViews, uint32 count)
+	{
+		GARDEN_ASSERT(imageViews);
+		for (uint32 i = 0; i < count; i++)
+			destroy(imageViews[i]);
 	}
 	/**
 	 * @brief Destroys vector with image view instances.
 	 * @param[in] imageViews target vector with image view instances or/and nulls
 	 */
-	void destroy(const vector<ID<ImageView>>& imageViews)
+	void destroy(vector<ID<ImageView>>& imageViews)
 	{
-		for (auto imageView : imageViews)
+		for (auto& imageView : imageViews)
 			destroy(imageView);
 	}
 
@@ -740,23 +785,38 @@ public:
 	 * @brief Destroys framebuffer instance.
 	 * @param framebuffer target framebuffer instance or null
 	 */
-	void destroy(ID<Framebuffer> framebuffer);
+	void destroy(ID<Framebuffer>& framebuffer);
 	/**
 	 * @brief Destroys shared framebuffer instance.
 	 * @param[in] framebuffer target framebuffer reference or null
 	 */
-	void destroy(const Ref<Framebuffer>& framebuffer)
+	void destroy(Ref<Framebuffer>& framebuffer)
 	{
 		if (framebuffer.isLastRef())
-			destroy(ID<Framebuffer>(framebuffer));
+		{
+			auto item = ID<Framebuffer>(framebuffer);
+			destroy(item); framebuffer = {};
+		}
+	}
+	/**
+	 * @brief Destroys array of framebuffer instances. (Does not free pointer!)
+	 *
+	 * @param[in] framebuffers array with framebuffer instances or/and nulls
+	 * @param count size of the framebuffers array
+	 */
+	void destroy(ID<Framebuffer>* framebuffers, uint32 count)
+	{
+		GARDEN_ASSERT(framebuffers);
+		for (uint32 i = 0; i < count; i++)
+			destroy(framebuffers[i]);
 	}
 	/**
 	 * @brief Destroys vector with framebuffer instances.
 	 * @param[in] framebuffers target vector with framebuffer instances or/and nulls
 	 */
-	void destroy(const vector<ID<Framebuffer>>& framebuffers)
+	void destroy(vector<ID<Framebuffer>>& framebuffers)
 	{
-		for (auto framebuffer : framebuffers)
+		for (auto& framebuffer : framebuffers)
 			destroy(framebuffer);
 	}
 
@@ -783,23 +843,38 @@ public:
 	 * @brief Destroys sampler instance.
 	 * @param sampler target sampler instance or null
 	 */
-	void destroy(ID<Sampler> sampler);
+	void destroy(ID<Sampler>& sampler);
 	/**
 	 * @brief Destroys shared sampler instance.
 	 * @param[in] sampler target sampler reference or null
 	 */
-	void destroy(const Ref<Sampler>& sampler)
+	void destroy(Ref<Sampler>& sampler)
 	{
 		if (sampler.isLastRef())
-			destroy(ID<Sampler>(sampler));
+		{
+			auto item = ID<Sampler>(sampler);
+			destroy(item); sampler = {};
+		}
+	}
+	/**
+	 * @brief Destroys array of sampler instances. (Does not free pointer!)
+	 *
+	 * @param[in] buffers array with sampler instances or/and nulls
+	 * @param count size of the samplers array
+	 */
+	void destroy(ID<Sampler>* samplers, uint32 count)
+	{
+		GARDEN_ASSERT(samplers);
+		for (uint32 i = 0; i < count; i++)
+			destroy(samplers[i]);
 	}
 	/**
 	 * @brief Destroys vector with sampler instances.
 	 * @param[in] samplers target vector with sampler instances or/and nulls
 	 */
-	void destroy(const vector<ID<Sampler>>& samplers)
+	void destroy(vector<ID<Sampler>>& samplers)
 	{
-		for (auto sampler : samplers)
+		for (auto& sampler : samplers)
 			destroy(sampler);
 	}
 
@@ -818,23 +893,38 @@ public:
 	 * @brief Destroys graphics pipeline instance.
 	 * @param graphicsPipeline target graphics pipeline instance or null
 	 */
-	void destroy(ID<GraphicsPipeline> graphicsPipeline);
+	void destroy(ID<GraphicsPipeline>& graphicsPipeline);
 	/**
 	 * @brief Destroys shared graphics pipeline instance.
 	 * @param[in] graphicsPipeline target graphics pipeline reference or null
 	 */
-	void destroy(const Ref<GraphicsPipeline>& graphicsPipeline)
+	void destroy(Ref<GraphicsPipeline>& graphicsPipeline)
 	{
 		if (graphicsPipeline.isLastRef())
-			destroy(ID<GraphicsPipeline>(graphicsPipeline));
+		{
+			auto item = ID<GraphicsPipeline>(graphicsPipeline);
+			destroy(item); graphicsPipeline = {};
+		}
+	}
+	/**
+	 * @brief Destroys array of graphics pipeline instances. (Does not free pointer!)
+	 *
+	 * @param[in] buffers array with graphics pipeline instances or/and nulls
+	 * @param count size of the graphics pipelines array
+	 */
+	void destroy(ID<GraphicsPipeline>* graphicsPipelines, uint32 count)
+	{
+		GARDEN_ASSERT(graphicsPipelines);
+		for (uint32 i = 0; i < count; i++)
+			destroy(graphicsPipelines[i]);
 	}
 	/**
 	 * @brief Destroys vector with graphics pipeline instances.
 	 * @param[in] graphicsPipelines target vector with graphics pipeline instances or/and nulls
 	 */
-	void destroy(const vector<ID<GraphicsPipeline>>& graphicsPipelines)
+	void destroy(vector<ID<GraphicsPipeline>>& graphicsPipelines)
 	{
-		for (auto graphicsPipeline : graphicsPipelines)
+		for (auto& graphicsPipeline : graphicsPipelines)
 			destroy(graphicsPipeline);
 	}
 
@@ -847,7 +937,7 @@ public:
 	 * @brief Returns graphics pipeline data accessor.
 	 * @param graphicsPipeline target graphics pipeline instance
 	 */
-	View<GraphicsPipeline> get(const Ref<GraphicsPipeline>& graphicsPipeline) const noexcept
+	View<GraphicsPipeline> get( Ref<GraphicsPipeline>& graphicsPipeline) const noexcept
 	{
 		return get(ID<GraphicsPipeline>(graphicsPipeline));
 	}
@@ -856,23 +946,38 @@ public:
 	 * @brief Destroys compute pipeline instance.
 	 * @param computePipeline target compute pipeline instance or null
 	 */
-	void destroy(ID<ComputePipeline> computePipeline);
+	void destroy(ID<ComputePipeline>& computePipeline);
 	/**
 	 * @brief Destroys shared compute pipeline instance.
 	 * @param[in] computePipeline target compute pipeline reference or null
 	 */
-	void destroy(const Ref<ComputePipeline>& computePipeline)
+	void destroy(Ref<ComputePipeline>& computePipeline)
 	{
 		if (computePipeline.isLastRef())
-			destroy(ID<ComputePipeline>(computePipeline));
+		{
+			auto item = ID<ComputePipeline>(computePipeline);
+			destroy(item); commonConstants = {};
+		}
+	}
+	/**
+	 * @brief Destroys array of compute pipeline instances. (Does not free pointer!)
+	 *
+	 * @param[in] buffers array with compute pipeline instances or/and nulls
+	 * @param count size of the compute pipelines array
+	 */
+	void destroy(ID<ComputePipeline>* computePipelines, uint32 count)
+	{
+		GARDEN_ASSERT(computePipelines);
+		for (uint32 i = 0; i < count; i++)
+			destroy(computePipelines[i]);
 	}
 	/**
 	 * @brief Destroys vector with compute pipeline instances.
 	 * @param[in] computePipelines target vector with compute pipeline instances or/and nulls
 	 */
-	void destroy(const vector<ID<ComputePipeline>>& computePipelines)
+	void destroy(vector<ID<ComputePipeline>>& computePipelines)
 	{
-		for (auto computePipeline : computePipelines)
+		for (auto& computePipeline : computePipelines)
 			destroy(computePipeline);
 	}
 
@@ -894,23 +999,38 @@ public:
 	 * @brief Destroys ray tracing pipeline instance.
 	 * @param rayTracingPipeline target ray tracing pipeline instance or null
 	 */
-	void destroy(ID<RayTracingPipeline> rayTracingPipeline);
+	void destroy(ID<RayTracingPipeline>& rayTracingPipeline);
 	/**
 	 * @brief Destroys shared ray tracing pipeline instance.
 	 * @param[in] rayTracingPipeline target ray tracing pipeline reference or null
 	 */
-	void destroy(const Ref<RayTracingPipeline>& rayTracingPipeline)
+	void destroy(Ref<RayTracingPipeline>& rayTracingPipeline)
 	{
 		if (rayTracingPipeline.isLastRef())
-			destroy(ID<RayTracingPipeline>(rayTracingPipeline));
+		{
+			auto item = ID<RayTracingPipeline>(rayTracingPipeline);
+			destroy(item); rayTracingPipeline = {};
+		}
+	}
+	/**
+	 * @brief Destroys array of ray tracing pipeline instances. (Does not free pointer!)
+	 *
+	 * @param[in] buffers array with ray tracing pipeline instances or/and nulls
+	 * @param count size of the ray tracing pipelines array
+	 */
+	void destroy(ID<RayTracingPipeline>* rayTracingPipelines, uint32 count)
+	{
+		GARDEN_ASSERT(rayTracingPipelines);
+		for (uint32 i = 0; i < count; i++)
+			destroy(rayTracingPipelines[i]);
 	}
 	/**
 	 * @brief Destroys vector with ray tracing pipeline instances.
 	 * @param[in] rayTracingPipelines target vector with ray tracing pipeline instances or/and nulls
 	 */
-	void destroy(const vector<ID<RayTracingPipeline>>& rayTracingPipelines)
+	void destroy(vector<ID<RayTracingPipeline>>& rayTracingPipelines)
 	{
-		for (auto rayTracingPipeline : rayTracingPipelines)
+		for (auto& rayTracingPipeline : rayTracingPipelines)
 			destroy(rayTracingPipeline);
 	}
 
@@ -963,23 +1083,38 @@ public:
 	 * @brief Destroys descriptor set instance.
 	 * @param descriptorSet target descriptor set instance or null
 	 */
-	void destroy(ID<DescriptorSet> descriptorSet);
+	void destroy(ID<DescriptorSet>& descriptorSet);
 	/**
 	 * @brief Destroys shared descriptor set instance.
 	 * @param[in] descriptorSet target descriptor set reference or null
 	 */
-	void destroy(const Ref<DescriptorSet>& descriptorSet)
+	void destroy(Ref<DescriptorSet>& descriptorSet)
 	{
 		if (descriptorSet.isLastRef())
-			destroy(ID<DescriptorSet>(descriptorSet));
+		{
+			auto item = ID<DescriptorSet>(descriptorSet);
+			destroy(item); descriptorSet = {};
+		}
+	}
+	/**
+	 * @brief Destroys array of descriptor set instances. (Does not free pointer!)
+	 *
+	 * @param[in] buffers array with descriptor set instances or/and nulls
+	 * @param count size of the descriptor sets array
+	 */
+	void destroy(ID<DescriptorSet>* descriptorSets, uint32 count)
+	{
+		GARDEN_ASSERT(descriptorSets);
+		for (uint32 i = 0; i < count; i++)
+			destroy(descriptorSets[i]);
 	}
 	/**
 	 * @brief Destroys vector with descriptor set instances.
 	 * @param[in] descriptorSets target vector with descriptor set instances or/and nulls
 	 */
-	void destroy(const vector<ID<DescriptorSet>>& descriptorSets)
+	void destroy(vector<ID<DescriptorSet>>& descriptorSets)
 	{
-		for (auto descriptorSet : descriptorSets)
+		for (auto& descriptorSet : descriptorSets)
 			destroy(descriptorSet);
 	}
 
@@ -1018,23 +1153,38 @@ public:
 	 * @brief Destroys bottom level acceleration structure instance. (BLAS)
 	 * @param blas target BLAS instance or null
 	 */
-	void destroy(ID<Blas> blas);
+	void destroy(ID<Blas>& blas);
 	/**
 	 * @brief Destroys shared bottom level acceleration structure instance.
 	 * @param[in] blas target BLAS reference or null
 	 */
-	void destroy(const Ref<Blas>& blas)
+	void destroy(Ref<Blas>& blas)
 	{
 		if (blas.isLastRef())
-			destroy(ID<Blas>(blas));
+		{
+			auto item = ID<Blas>(blas);
+			destroy(item); blas = {};
+		}
+	}
+	/**
+	 * @brief Destroys array of BLAS instances. (Does not free pointer!)
+	 *
+	 * @param[in] buffers array with BLAS instances or/and nulls
+	 * @param count size of the BLASes array
+	 */
+	void destroy(ID<Blas>* blases, uint32 count)
+	{
+		GARDEN_ASSERT(blases);
+		for (uint32 i = 0; i < count; i++)
+			destroy(blases[i]);
 	}
 	/**
 	 * @brief Destroys vector with BLAS instances.
 	 * @param[in] samplers target vector with BLAS instances or/and nulls
 	 */
-	void destroy(const vector<ID<Blas>>& blases)
+	void destroy(vector<ID<Blas>>& blases)
 	{
-		for (auto blas : blases)
+		for (auto& blas : blases)
 			destroy(blas);
 	}
 
@@ -1062,23 +1212,38 @@ public:
 	 * @brief Destroys top level acceleration structure instance. (TLAS)
 	 * @param tlas target TLAS instance or null
 	 */
-	void destroy(ID<Tlas> tlas);
+	void destroy(ID<Tlas>& tlas);
 	/**
 	 * @brief Destroys shared top level acceleration structure instance.
 	 * @param[in] tlas target TLAS reference or null
 	 */
-	void destroy(const Ref<Tlas>& tlas)
+	void destroy(Ref<Tlas>& tlas)
 	{
 		if (tlas.isLastRef())
-			destroy(ID<Tlas>(tlas));
+		{
+			auto item = ID<Tlas>(tlas);
+			destroy(item); tlas = {};
+		}
+	}
+	/**
+	 * @brief Destroys array of TLAS instances. (Does not free pointer!)
+	 *
+	 * @param[in] buffers array with TLAS instances or/and nulls
+	 * @param count size of the TLASes array
+	 */
+	void destroy(ID<Tlas>* tlases, uint32 count)
+	{
+		GARDEN_ASSERT(tlases);
+		for (uint32 i = 0; i < count; i++)
+			destroy(tlases[i]);
 	}
 	/**
 	 * @brief Destroys vector with TLAS instances.
 	 * @param[in] samplers target vector with TLAS instances or/and nulls
 	 */
-	void destroy(const vector<ID<Tlas>>& tlases)
+	void destroy(vector<ID<Tlas>>& tlases)
 	{
-		for (auto tlas : tlases)
+		for (auto& tlas : tlases)
 			destroy(tlas);
 	}
 

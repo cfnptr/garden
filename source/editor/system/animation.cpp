@@ -159,7 +159,10 @@ void AnimationEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 			if (ImGui::MenuItem("Remove All Animation"))
 			{
 				for (auto& pair : animations)
-					resourceSystem->destroyShared(pair.second);
+				{
+					auto animation = pair.second;
+					resourceSystem->destroyShared(animation);
+				}
 				animationView->clearAnimations();
 			}
 			ImGui::EndPopup();
@@ -180,8 +183,8 @@ void AnimationEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 
 				if (ImGui::MenuItem("Reload Animation"))
 				{
-					auto animationPath = i->first;
-					resourceSystem->destroyShared(i->second); animationView->eraseAnimation(i);
+					auto animationPath = i->first; auto animation = i->second;
+					resourceSystem->destroyShared(animation); animationView->eraseAnimation(i);
 					auto newAnimation = resourceSystem->loadAnimation(animationPath, true);
 					animationView->emplaceAnimation(std::move(animationPath), std::move(newAnimation));
 					ImGui::EndPopup();
@@ -189,7 +192,8 @@ void AnimationEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 				}
 				if (ImGui::MenuItem("Remove Animation"))
 				{
-					resourceSystem->destroyShared(i->second);
+					auto animation = i->second;
+					resourceSystem->destroyShared(animation);
 					i = animationView->eraseAnimation(i);
 
 					if (i == animations.end())

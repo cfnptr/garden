@@ -852,7 +852,7 @@ ID<FontAtlas> TextSystem::createFontAtlas(u32string_view chars,
 		graphicsSystem->stopRecording();
 	return fontAtlas;
 }
-void TextSystem::destroy(ID<FontAtlas> fontAtlas)
+void TextSystem::destroy(ID<FontAtlas>& fontAtlas)
 {
 	if (!fontAtlas)
 		return;
@@ -891,7 +891,7 @@ ID<Text> TextSystem::createText(u32string_view value, const Ref<FontAtlas>& font
 		graphicsSystem->stopRecording();
 	return text;
 }
-void TextSystem::destroy(ID<Text> text)
+void TextSystem::destroy(ID<Text>& text)
 {
 	if (!text)
 		return;

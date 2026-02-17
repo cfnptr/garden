@@ -201,11 +201,7 @@ void AutoExposureSystem::render()
 //**********************************************************************************************************************
 void AutoExposureSystem::gBufferRecreate()
 {
-	if (histogramDS)
-	{
-		GraphicsSystem::Instance::get()->destroy(histogramDS);
-		histogramDS = {};
-	}
+	GraphicsSystem::Instance::get()->destroy(histogramDS);
 }
 
 ID<ComputePipeline> AutoExposureSystem::getHistogramPipeline()

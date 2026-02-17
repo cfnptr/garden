@@ -387,7 +387,7 @@ Ref<DescriptorSet> SpriteRenderSystem::createSharedDS(string_view path, ID<Image
 	Hash128::updateState(hashState, &imageSize.y, sizeof(uint32));
 	Hash128::updateState(hashState, &imageType, sizeof(Image::Type));
 
-	auto uniforms = getSpriteUniforms(colorMapView->getDefaultView());
+	auto uniforms = getSpriteUniforms(colorMapView->getView());
 	auto descriptorSet = ResourceSystem::Instance::get()->createSharedDS(
 		Hash128::digestState(hashState), getBasePipeline(), std::move(uniforms), 1);
 	SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.shared." + string(path));

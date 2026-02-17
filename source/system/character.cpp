@@ -413,7 +413,8 @@ void CharacterSystem::destroyComponent(ID<Component> instance)
 	auto rigidbodyView = manager->tryGet<RigidbodyComponent>(componentView->getEntity());
 	if (transformView && rigidbodyView)
 		transformView->modelWithAncestors = rigidbodyView->getMotionType() == MotionType::Static;
-	components.destroy(ID<CharacterComponent>(instance));
+	auto character = ID<CharacterComponent>(instance);
+	components.destroy(character);
 }
 void CharacterSystem::resetComponent(View<Component> component, bool full)
 {

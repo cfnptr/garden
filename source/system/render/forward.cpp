@@ -55,7 +55,7 @@ static ID<Image> createDepthStencilBuffer(GraphicsSystem* graphicsSystem)
 
 static ID<Framebuffer> createColorFramebuffer(GraphicsSystem* graphicsSystem, ID<Image> colorBuffer)
 {
-	auto colorBufferView = graphicsSystem->get(colorBuffer)->getDefaultView();
+	auto colorBufferView = graphicsSystem->get(colorBuffer)->getView();
 	vector<Framebuffer::OutputAttachment> colorAttachments =
 	{ Framebuffer::OutputAttachment(colorBufferView, ForwardRenderSystem::colorBufferFlags), };
 
@@ -67,8 +67,8 @@ static ID<Framebuffer> createColorFramebuffer(GraphicsSystem* graphicsSystem, ID
 static ID<Framebuffer> createFullFramebuffer(GraphicsSystem* graphicsSystem, 
 	ID<Image> colorBuffer, ID<Image> depthStencilBuffer)
 {
-	auto colorBufferView = graphicsSystem->get(colorBuffer)->getDefaultView();
-	auto depthStencilBufferView = graphicsSystem->get(depthStencilBuffer)->getDefaultView();
+	auto colorBufferView = graphicsSystem->get(colorBuffer)->getView();
+	auto depthStencilBufferView = graphicsSystem->get(depthStencilBuffer)->getView();
 
 	vector<Framebuffer::OutputAttachment> colorAttachments =
 	{ Framebuffer::OutputAttachment(colorBufferView, ForwardRenderSystem::colorBufferFlags), };
@@ -82,7 +82,7 @@ static ID<Framebuffer> createFullFramebuffer(GraphicsSystem* graphicsSystem,
 }
 static ID<Framebuffer> createUiFramebuffer(GraphicsSystem* graphicsSystem, ID<Image> uiBuffer)
 {
-	auto uiBufferView = graphicsSystem->get(uiBuffer)->getDefaultView();
+	auto uiBufferView = graphicsSystem->get(uiBuffer)->getView();
 	vector<Framebuffer::OutputAttachment> colorAttachments =
 	{ Framebuffer::OutputAttachment(uiBufferView, ForwardRenderSystem::uiBufferFlags) };
 
@@ -281,11 +281,9 @@ void ForwardRenderSystem::swapchainRecreate()
 	{
 		if (uiBuffer != colorBuffer)
 			graphicsSystem->destroy(uiBuffer);
-
 		graphicsSystem->destroy(uiFramebuffer);
 		graphicsSystem->destroy(depthStencilBuffer);
 		graphicsSystem->destroy(colorBuffer);
-		uiFramebuffer = {}; colorBuffer = uiBuffer = depthStencilBuffer = {};
 
 		auto framebufferSize = graphicsSystem->getScaledFrameSize();
 		Framebuffer::OutputAttachment colorAttachment;
@@ -294,16 +292,16 @@ void ForwardRenderSystem::swapchainRecreate()
 		{
 			auto framebufferView = graphicsSystem->get(fullFramebuffer);
 			colorAttachment = Framebuffer::OutputAttachment(
-				graphicsSystem->get(getColorBuffer())->getDefaultView(), colorBufferFlags);
+				graphicsSystem->get(getColorBuffer())->getView(), colorBufferFlags);
 			Framebuffer::OutputAttachment depthStencilAttachment;
-			depthStencilAttachment.imageView = graphicsSystem->get(getDepthStencilBuffer())->getDefaultView();
+			depthStencilAttachment.imageView = graphicsSystem->get(getDepthStencilBuffer())->getView();
 			depthStencilAttachment.setFlags(depthBufferFlags);
 			framebufferView->update(framebufferSize, &colorAttachment, 1, depthStencilAttachment);
 		}
 		if (colorFramebuffer)
 		{
 			colorAttachment = Framebuffer::OutputAttachment(
-				graphicsSystem->get(getColorBuffer())->getDefaultView(), colorBufferFlags);
+				graphicsSystem->get(getColorBuffer())->getView(), colorBufferFlags);
 			auto framebufferView = graphicsSystem->get(colorFramebuffer);
 			framebufferView->update(framebufferSize, &colorAttachment, 1);
 		}

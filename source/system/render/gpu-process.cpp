@@ -130,19 +130,19 @@ void GpuProcessSystem::generateMips(ID<Image> image, ID<ComputePipeline> pipelin
 
 	auto imageType = baseImageView->getType();
 	auto layerCount = baseImageView->getLayerCount();
-	vector<ID<ImageView>> imageViews(mipCount);
 	auto imageSize = max((uint2)baseImageView->getSize() / 2, uint2(1));
 	auto pipelineView = graphicsSystem->get(pipeline);
 	pipelineView->bind();
 
+	vector<ID<ImageView>> imageViews(mipCount);
 	imageViews[0] = graphicsSystem->createImageView(
-		image, imageType, Image::Format::Undefined, 0, 1);
+		image, imageType, Image::Format::Undefined, 0, 0, 0, 1);
 	SET_RESOURCE_DEBUG_NAME(imageViews[0], "imageView.normalMap.mip0");
 
 	for (uint8 i = 1; i < mipCount; i++)
 	{
 		imageViews[i] = graphicsSystem->createImageView(
-			image, imageType, Image::Format::Undefined, i, 1);
+			image, imageType, Image::Format::Undefined, 0, 0, i, 1);
 		SET_RESOURCE_DEBUG_NAME(imageViews[0], "imageView.normalMap.mip" + to_string(i));
 
 		DescriptorSet::Uniforms uniforms
@@ -276,11 +276,12 @@ void GpuProcessSystem::gaussianBlur(ID<ImageView> srcBuffer, ID<Framebuffer> dst
 }
 
 //**********************************************************************************************************************
-void GpuProcessSystem::bilateralBlurD(ID<ImageView> srcBuffer, 
-	ID<Framebuffer> dstFramebuffer, ID<Framebuffer> tmpFramebuffer, float sharpness, 
-	ID<GraphicsPipeline>& pipeline, ID<DescriptorSet>& descriptorSet, uint8 kernelRadius)
+void GpuProcessSystem::bilateralBlurD(ID<ImageView> srcBuffer, ID<ImageView> depthBuffer,
+	ID<Framebuffer> dstFramebuffer, ID<Framebuffer> tmpFramebuffer, float sharpness, ID<GraphicsPipeline>& pipeline, 
+	ID<DescriptorSet>& descriptorSet, uint8 kernelRadius, bool useDstSize)
 {
 	GARDEN_ASSERT(srcBuffer);
+	GARDEN_ASSERT(depthBuffer);
 	GARDEN_ASSERT(dstFramebuffer);
 	GARDEN_ASSERT(tmpFramebuffer);
 	GARDEN_ASSERT(sharpness > 0.0f);
@@ -293,24 +294,23 @@ void GpuProcessSystem::bilateralBlurD(ID<ImageView> srcBuffer,
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	if (!descriptorSet)
 	{
-		auto hizBuffer = HizRenderSystem::Instance::get()->getImageViews().at(0);
 		auto tmpFramebufferView = graphicsSystem->get(tmpFramebuffer);
-		auto tmpcBufferView = tmpFramebufferView->getColorAttachments()[0].imageView;
+		auto tmpBufferView = tmpFramebufferView->getColorAttachments()[0].imageView;
 		DescriptorSet::Uniforms uniforms
 		{
-			{ "srcBuffer", DescriptorSet::Uniform({ { srcBuffer }, { tmpcBufferView } }) },
-			{ "hizBuffer", DescriptorSet::Uniform(hizBuffer, 1, 2) }
+			{ "srcBuffer", DescriptorSet::Uniform({ { srcBuffer }, { tmpBufferView } }) },
+			{ "depthBuffer", DescriptorSet::Uniform(depthBuffer, 1, 2) }
 		};
 		descriptorSet = graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms));
 		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.bilateralBlurD" + to_string(*descriptorSet));
 	}
 
 	auto& cc = graphicsSystem->getCommonConstants();
-	auto texelSize = float2(1.0f) / graphicsSystem->get(srcBuffer)->calcSize();
+	auto texelSize = float2(1.0f) / graphicsSystem->get(useDstSize ? depthBuffer : srcBuffer)->calcSize();
 
 	BilateralBlurPC pc;
 	pc.nearPlane = cc.nearPlane;
-	pc.sharpness = sharpness;
+	pc.sharpness = -sharpness;
 
 	auto pipelineView = graphicsSystem->get(pipeline);
 	pipelineView->updateFramebuffer(tmpFramebuffer);
@@ -339,10 +339,52 @@ void GpuProcessSystem::bilateralBlurD(ID<ImageView> srcBuffer,
 }
 
 //**********************************************************************************************************************
-void GpuProcessSystem::prepareGgxBlur(ID<Image> buffer, 
-	vector<ID<ImageView>>& imageViews, vector<ID<Framebuffer>>& framebuffers)
+void GpuProcessSystem::prepareGgxBlur(ID<Image> buffer, vector<ID<Framebuffer>>& framebuffers)
 {
 	GARDEN_ASSERT(buffer);
+
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto bufferView = graphicsSystem->get(buffer);
+	auto roughnessLodCount = bufferView->getMipCount();
+	auto framebufferSize = (uint2)bufferView->getSize();
+	GARDEN_ASSERT(bufferView->getLayerCount() >= 2);
+	GARDEN_ASSERT(bufferView->getMipCount() > 1);
+
+	if (framebuffers.size() < roughnessLodCount * 2)
+		framebuffers.resize(roughnessLodCount * 2);
+	auto framebufferData = framebuffers.data();
+
+	for (uint8 mip = 0; mip < roughnessLodCount; mip++)
+	{
+		for (uint8 layer = 0; layer < 2; layer++)
+		{
+			auto index = layer * roughnessLodCount + mip;
+			auto framebuffer = framebufferData[index];
+			auto colorView = bufferView->getView(layer, mip);
+
+			if (framebuffer)
+			{
+				Framebuffer::OutputAttachment colorAttachment(colorView, { false, false, true });
+				auto framebufferView = graphicsSystem->get(framebuffer);
+				framebufferView->update(framebufferSize, &colorAttachment, 1);
+			}
+			else
+			{
+				vector<Framebuffer::OutputAttachment> colorAttachments =
+				{ Framebuffer::OutputAttachment(colorView, { false, false, true }) };
+				framebuffer = graphicsSystem->createFramebuffer(framebufferSize, std::move(colorAttachments));
+				SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.ggxBlur" + to_string(index));
+				framebufferData[index] = framebuffer;
+			}
+		}
+		framebufferSize = max(framebufferSize / 2u, uint2::one);
+	}
+}
+bool GpuProcessSystem::ggxBlur(ID<Image> buffer, const vector<ID<Framebuffer>>& framebuffers, 
+	ID<GraphicsPipeline>& pipeline, vector<ID<DescriptorSet>>& descriptorSets)
+{
+	GARDEN_ASSERT(buffer);
+	GARDEN_ASSERT(framebuffers.size() > 2);
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto bufferView = graphicsSystem->get(buffer);
@@ -350,83 +392,32 @@ void GpuProcessSystem::prepareGgxBlur(ID<Image> buffer,
 	GARDEN_ASSERT(bufferView->getLayerCount() >= 2);
 	GARDEN_ASSERT(bufferView->getMipCount() > 1);
 
-	if (imageViews.empty())
-	{
-		auto bufferFormat = bufferView->getFormat();
-		imageViews.resize(roughnessLodCount * 2);
-		auto imageViewData = imageViews.data();
-
-		for (uint8 layer = 0; layer < 2; layer++)
-		{
-			for (uint8 mip = 0; mip < roughnessLodCount; mip++)
-			{
-				auto index = layer * roughnessLodCount + mip;
-				auto imageView = graphicsSystem->createImageView(buffer, 
-					Image::Type::Texture2D, bufferFormat, mip, 1, layer, 1);
-				SET_RESOURCE_DEBUG_NAME(imageView, "imageView.ggxBlur.buffer" + to_string(index));
-				imageViewData[index] = imageView;
-			}
-		}
-	}
-	if (framebuffers.empty())
-	{
-		framebuffers.resize(roughnessLodCount * 2);
-		auto framebufferData = framebuffers.data();
-		auto imageViewData = imageViews.data();
-
-		for (uint8 layer = 0; layer < 2; layer++)
-		{
-			auto framebufferSize = (uint2)bufferView->getSize();
-			for (uint8 mip = 0; mip < roughnessLodCount; mip++)
-			{
-				auto index = layer * roughnessLodCount + mip;
-				vector<Framebuffer::OutputAttachment> colorAttachments =
-				{ Framebuffer::OutputAttachment(imageViewData[index], { false, false, true }) };
-				auto framebuffer = graphicsSystem->createFramebuffer(framebufferSize, std::move(colorAttachments));
-				SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.ggxBlur" + to_string(index));
-				framebufferData[index] = framebuffer;
-				framebufferSize = max(framebufferSize / 2u, uint2::one);
-			}
-		}
-	}
-}
-bool GpuProcessSystem::ggxBlur(ID<Image> buffer, 
-	const vector<ID<ImageView>>& imageViews, const vector<ID<Framebuffer>>& framebuffers, 
-	ID<GraphicsPipeline>& pipeline, vector<ID<DescriptorSet>>& descriptorSets)
-{
-	GARDEN_ASSERT(buffer);
-	GARDEN_ASSERT(imageViews.size() > 2);
-	GARDEN_ASSERT(framebuffers.size() > 2);
-
-	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto blurKernel = getGgxBlurKernel();
 	if (!graphicsSystem->get(blurKernel)->isReady())
 		return false;
 
-	auto roughnessLodCount = imageViews.size() / 2;
 	if (descriptorSets.size() < roughnessLodCount)
 		descriptorSets.resize(roughnessLodCount);
 
 	Image::BlitRegion blitRegion;
 	blitRegion.layerCount = 1;
 
-	auto imageViewData = imageViews.data();
 	auto framebufferData = framebuffers.data();
 	auto reinhard = true;
 
 	SET_GPU_DEBUG_LABEL("GGX Blur");
 	
-	for (uint8 i = 1; i < roughnessLodCount; i++)
+	for (uint8 mip = 1; mip < roughnessLodCount; mip++)
 	{
-		blitRegion.srcMipLevel = i - 1;
-		blitRegion.dstMipLevel = i;
+		blitRegion.srcMipLevel = mip - 1;
+		blitRegion.dstMipLevel = mip;
 		Image::blit(buffer, buffer, blitRegion, Sampler::Filter::Linear);
 
-		gaussianBlur(imageViewData[i], framebufferData[i], framebufferData[roughnessLodCount + i], 
-			ggxBlurKernel, 1.0f, reinhard, pipeline, descriptorSets[i]);
+		gaussianBlur(bufferView->getView(0, mip), framebufferData[mip], 
+			framebufferData[roughnessLodCount + mip], ggxBlurKernel, 1.0f, 
+			reinhard, pipeline, descriptorSets[mip]);
 		reinhard = false;
 	}
-
 	return true;
 }
 

@@ -50,7 +50,7 @@ static DescriptorSet::Uniforms getUniforms(GraphicsSystem* graphicsSystem,
 	if (bloomSystem && useBloomBuffer)
 	{
 		auto bloomBuffer = bloomSystem->getBloomBuffer();
-		bloomBufferView = graphicsSystem->get(bloomBuffer)->getDefaultView();
+		bloomBufferView = graphicsSystem->get(bloomBuffer)->getView();
 	}
 	else bloomBufferView = graphicsSystem->getEmptyTexture();
 
@@ -148,7 +148,7 @@ void ToneMappingSystem::preLdrRender()
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	if (lastUpscaleState != graphicsSystem->useUpscaling)
 	{
-		graphicsSystem->destroy(descriptorSet); descriptorSet = {}; 
+		graphicsSystem->destroy(descriptorSet);
 		lastUpscaleState = graphicsSystem->useUpscaling;
 	}
 
@@ -196,11 +196,7 @@ void ToneMappingSystem::ldrRender()
 //**********************************************************************************************************************
 void ToneMappingSystem::dsRecreate()
 {
-	if (descriptorSet)
-	{
-		GraphicsSystem::Instance::get()->destroy(descriptorSet);
-		descriptorSet = {};
-	}
+	GraphicsSystem::Instance::get()->destroy(descriptorSet);
 }
 
 void ToneMappingSystem::setOptions(Options options)
@@ -210,7 +206,7 @@ void ToneMappingSystem::setOptions(Options options)
 		return;
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	graphicsSystem->destroy(descriptorSet); descriptorSet = {};
+	graphicsSystem->destroy(descriptorSet);
 
 	if (pipeline)
 	{

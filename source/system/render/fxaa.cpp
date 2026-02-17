@@ -23,14 +23,14 @@ using namespace garden;
 static ID<ImageView> getLdrCopyView(GraphicsSystem* graphicsSystem, DeferredRenderSystem* deferredSystem)
 {
 	auto gBuffer = deferredSystem->getGBuffers()[DeferredRenderSystem::gBufferBaseColor];
-	auto gBufferView = graphicsSystem->get(gBuffer)->getDefaultView(); // Note: Reusing G-Buffer memory.
+	auto gBufferView = graphicsSystem->get(gBuffer)->getView(); // Note: Reusing G-Buffer memory.
 	GARDEN_ASSERT(graphicsSystem->get(gBuffer)->getFormat() == DeferredRenderSystem::ldrBufferFormat);
 	return gBufferView;
 }
 static ID<Framebuffer> createFramebuffer(GraphicsSystem* graphicsSystem)
 {
 	auto ldrBuffer = DeferredRenderSystem::Instance::get()->getLdrBuffer();
-	auto ldrBufferView = graphicsSystem->get(ldrBuffer)->getDefaultView();
+	auto ldrBufferView = graphicsSystem->get(ldrBuffer)->getView();
 	vector<Framebuffer::OutputAttachment> colorAttachments =
 	{ Framebuffer::OutputAttachment(ldrBufferView, FxaaRenderSystem::framebufferFlags) };
 
@@ -182,18 +182,15 @@ void FxaaRenderSystem::preUiRender()
 void FxaaRenderSystem::gBufferRecreate()
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
+	graphicsSystem->destroy(descriptorSet);
+
 	if (framebuffer)
 	{
 		auto framebufferView = graphicsSystem->get(framebuffer);
 		auto ldrBuffer = DeferredRenderSystem::Instance::get()->getLdrBuffer();
-		auto ldrBufferView = graphicsSystem->get(ldrBuffer)->getDefaultView();
+		auto ldrBufferView = graphicsSystem->get(ldrBuffer)->getView();
 		Framebuffer::OutputAttachment colorAttachment(ldrBufferView, framebufferFlags);
 		framebufferView->update(graphicsSystem->getScaledFrameSize(), &colorAttachment, 1);
-	}
-	if (descriptorSet)
-	{
-		graphicsSystem->destroy(descriptorSet);
-		descriptorSet = {};
 	}
 }
 void FxaaRenderSystem::qualityChange()
@@ -210,11 +207,8 @@ void FxaaRenderSystem::setQuality(GraphicsQuality quality, float subpixelQuality
 		return;
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	if (descriptorSet)
-	{
-		graphicsSystem->destroy(descriptorSet);
-		descriptorSet = {};
-	}
+	graphicsSystem->destroy(descriptorSet);
+
 	if (pipeline)
 	{
 		graphicsSystem->destroy(pipeline);

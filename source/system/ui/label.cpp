@@ -43,7 +43,7 @@ static DescriptorSet::Uniforms getUniforms(ID<Text> text)
 
 	DescriptorSet::Uniforms uniforms =
 	{ 
-		{ "fontAtlas", DescriptorSet::Uniform(fontAtlas->getDefaultView()) },
+		{ "fontAtlas", DescriptorSet::Uniform(fontAtlas->getView()) },
 		{ "instance", DescriptorSet::Uniform(textView->getInstanceBuffer()) }
 	};
 	return uniforms;
@@ -81,7 +81,6 @@ bool UiLabelComponent::updateText(bool shrink)
 	{
 		graphicsSystem->destroy(descriptorSet);
 		textSystem->destroy(textData);
-		textData = {}; descriptorSet = {}; 
 	}
 
 	auto totalFontSize = calcTotalFontSize(fontSize, adjustCJK);
@@ -220,13 +219,7 @@ void UiLabelSystem::resetComponent(View<Component> component, bool full)
 	TextSystem::Instance::get()->destroy(componentView->textData);
 
 	if (full)
-	{
 		**componentView = {};
-	}
-	else
-	{
-		componentView->textData = {}; componentView->descriptorSet = {};
-	}
 }
 void UiLabelSystem::copyComponent(View<Component> source, View<Component> destination)
 {
@@ -635,13 +628,7 @@ void UiLabelSystem::resetAnimation(View<AnimationFrame> frame, bool full)
 	TextSystem::Instance::get()->destroy(frameView->textData);
 
 	if (full)
-	{
 		**frameView = {};
-	}
-	else
-	{
-		frameView->textData = {}; frameView->descriptorSet = {};
-	}
 }
 
 ID<GraphicsPipeline> UiLabelSystem::getPipeline()

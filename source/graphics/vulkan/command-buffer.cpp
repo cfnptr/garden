@@ -155,7 +155,10 @@ void VulkanCommandBuffer::addImageBarrier(VulkanAPI* vulkanAPI,
 			view->getBaseMip(), 1, view->getBaseLayer(), 1, toVkImageAspectFlags(view->getFormat()));
 		vulkanAPI->oldPipelineStage |= oldImageState.stage; vulkanAPI->newPipelineStage |= newImageState.stage;
 	}
+
+	imageView = oldImageState.view;
 	oldImageState = newImageState;
+	oldImageState.view = imageView;
 
 	ImageExt::isFullBarrier(**image) = image->getMipCount() == 1 && image->getLayerCount() == 1;
 }
@@ -182,7 +185,11 @@ static void addImageBarriers(VulkanAPI* vulkanAPI, Image::LayoutState newImageSt
 
 		auto& barrierStates = ImageExt::getBarrierStates(**imageView);
 		for (auto& oldBarrierState : barrierStates)
+		{
+			auto imageView = oldBarrierState.view;
 			oldBarrierState = newImageState;
+			oldBarrierState.view = imageView;
+		}
 	}
 	else
 	{
@@ -199,7 +206,10 @@ static void addImageBarriers(VulkanAPI* vulkanAPI, Image::LayoutState newImageSt
 					vulkanAPI->oldPipelineStage |= oldImageState.stage;
 					vulkanAPI->newPipelineStage |= newImageState.stage;
 				}
+
+				auto imageView = oldImageState.view;
 				oldImageState = newImageState;
+				oldImageState.view = imageView;
 			}
 		}
 	}
@@ -456,7 +466,10 @@ void VulkanCommandBuffer::submit()
 				vkImage, vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1));
 			instance.pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe,
 				vk::PipelineStageFlags(newImageState.stage), {}, {}, {}, imageMemoryBarrier);
+
+			auto imageView = oldImageState.view;
 			oldImageState = newImageState;
+			oldImageState.view = imageView;
 
 			array<float, 4> clearColor = {0.0f, 0.0f, 0.0f, 1.0f};
 			instance.clearColorImage(vkImage, vk::ImageLayout::eTransferDstOptimal, vk::ClearColorValue(clearColor),

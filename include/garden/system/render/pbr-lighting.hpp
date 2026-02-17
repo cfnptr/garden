@@ -94,11 +94,12 @@ public:
 	 */
 	struct Options final
 	{
-		bool useShadowBuffer = true; /**< Create and use shadow buffer for rendering. */
-		bool useAoBuffer = true;     /**< Create and use ambient occlusion buffer for rendering. */
-		bool useReflBuffer = true;   /**< Create and use reflection buffer for rendering. */
-		bool useGiBuffer = true;     /**< Create and use global illumination buffer for rendering. */
-		bool useReflBlur = true;     /**< Create and use reflection buffer blur chain. */
+		bool useShadBuffer = true; /**< Create and use shadow buffer for rendering. */
+		bool useAoBuffer = true;   /**< Create and use ambient occlusion buffer for rendering. */
+		bool useReflBuffer = true; /**< Create and use reflection buffer for rendering. */
+		bool useGiBuffer = true;   /**< Create and use global illumination buffer for rendering. */
+		bool useReflBlur = true;   /**< Create and use reflection buffer blur chain. */
+		bool useDisocclMap = true; /**< Create and use disocclusion map for rendering. */
 		Options() noexcept { }
 	};
 
@@ -119,52 +120,39 @@ public:
 		float weight;
 	};
 
-	static constexpr uint8 baseShadowIndex = 0;
-	static constexpr uint8 tempShadowIndex = 1;
-	static constexpr uint8 blurShadowIndex = 0;
-	static constexpr uint8 shadowBufferCount = 2;
-	static constexpr uint8 baseAoIndex = 2;
-	static constexpr uint8 tempAoIndex = 1;
-	static constexpr uint8 blurAoIndex = 0;
-	static constexpr uint8 aoBufferCount = 3;
+	static constexpr uint8 baseProcIndex = 2;
+	static constexpr uint8 tempProcIndex = 1;
+	static constexpr uint8 blurProcIndex = 0;
+	static constexpr uint8 procBufferCount = 3;
 	static constexpr uint8 baseReflIndex = 0;
 	static constexpr uint8 baseGiIndex = 0;
 
-	static constexpr Framebuffer::OutputAttachment::Flags baseFbFlags = { false, true, true };
-	static constexpr Framebuffer::OutputAttachment::Flags tempFbFlags = { false, false, true };
-
-	static constexpr Image::Format shadowBufferFormat = Image::Format::UnormR8G8B8A8;
+	static constexpr Framebuffer::OutputAttachment::Flags procFbFlags = { false, true, true };
+	static constexpr Image::Format shadBufferFormat = Image::Format::UnormR8G8B8A8;
 	static constexpr Image::Format aoBufferFormat = Image::Format::UnormR8;
 	static constexpr Image::Format reflBufferFormat = Image::Format::SfloatR16G16B16A16;
 	static constexpr Image::Format giBufferFormat = Image::Format::SfloatR16G16B16A16;
 private:
-	vector<ID<ImageView>> reflImageViews;
 	vector<ID<Framebuffer>> reflFramebuffers;
 	vector<ID<DescriptorSet>> reflBlurDSes;
 	ID<Image> dfgLUT = {};
-	ID<Image> shadowBuffer = {};
-	ID<Image> shadowBlurBuffer = {};
-	ID<Image> aoBuffer = {};
-	ID<Image> aoBlurBuffer = {};
-	ID<Image> reflBuffer = {};
-	ID<Image> giBuffer = {};
+	ID<Image> shadBaseBuffer = {}, shadBlurBuffer = {};
+	ID<Image> aoBaseBuffer = {}, aoBlurBuffer = {};
+	ID<Image> reflBuffer = {}, giBuffer = {}, disocclMap = {};
 	ID<Framebuffer> reflFramebuffer = {}, giFramebuffer = {};
-	ID<ImageView> shadowImageViews[shadowBufferCount] = {};
-	ID<Framebuffer> shadowFramebuffers[shadowBufferCount + 1] = {};
-	ID<ImageView> aoImageViews[aoBufferCount] = {};
-	ID<Framebuffer> aoFramebuffers[aoBufferCount] = {};
+	ID<Framebuffer> shadFramebuffers[procBufferCount] = {};
+	ID<Framebuffer> aoFramebuffers[procBufferCount] = {};
 	ID<GraphicsPipeline> lightingPipeline = {};
 	ID<ComputePipeline> iblSpecularPipeline = {};
-	ID<GraphicsPipeline> shadowBlurPipeline = {};
+	ID<ComputePipeline> disocclPipeline = {};
+	ID<GraphicsPipeline> shadBlurPipeline = {};
 	ID<GraphicsPipeline> aoBlurPipeline = {};
 	ID<GraphicsPipeline> reflBlurPipeline = {};
-	ID<DescriptorSet> lightingDS = {};
-	ID<DescriptorSet> shadowBlurDS = {};
-	ID<DescriptorSet> aoBlurDS = {};
+	ID<DescriptorSet> lightingDS = {}, shadBlurDS = {}, aoBlurDS = {}, disocclDS = {};
 	Options options = {};
 	GraphicsQuality quality = GraphicsQuality::High;
-	bool hasFbShadow = false;
-	bool hasAnyShadow = false;
+	bool hasFbShad = false;
+	bool hasAnyShad = false;
 	bool hasAnyAO = false;
 	bool hasAnyRefl = false;
 	bool hasAnyGI = false;
@@ -196,7 +184,7 @@ private:
 	friend class ecsm::Manager;
 public:
 	float reflectanceCoeff = 1.0f;
-	float blurSharpness = 50.0f;
+	float blurSharpness = 100.0f;
 
 	/*******************************************************************************************************************
 	 * @brief Returns PBR lighting rendering system options.
@@ -224,14 +212,18 @@ public:
 	 */
 	ID<GraphicsPipeline> getLightingPipeline();
 	/**
-	 * @brief Returns PBR lighting IBL specular graphics pipeline. (Image Based Lighting)
+	 * @brief Returns PBR lighting IBL specular compute pipeline. (Image Based Lighting)
 	 */
 	ID<ComputePipeline> getIblSpecularPipeline();
+	/**
+	 * @brief Returns PBR lighting disocclusion compute pipeline.
+	 */
+	ID<ComputePipeline> getDisocclPipeline();
 
 	/**
 	 * @brief Returns PBR lighting shadow framebuffer array.
 	 */
-	const ID<Framebuffer>* getShadowFramebuffers();
+	const ID<Framebuffer>* getShadFramebuffers();
 	/**
 	 * @brief Returns PBR lighting AO framebuffer array. (Ambient Occlusion)
 	 */
@@ -252,27 +244,27 @@ public:
 	/**
 	 * @brief Returns PBR lighting shadow base framebuffer.
 	 */
-	ID<Framebuffer> getShadowBaseFB() { return getShadowFramebuffers()[baseShadowIndex]; }
+	ID<Framebuffer> getShadBaseFB() { return getShadFramebuffers()[baseProcIndex]; }
 	/**
 	 * @brief Returns PBR lighting shadow temporary framebuffer.
 	 */
-	ID<Framebuffer> getShadowTempFB() { return getShadowFramebuffers()[tempShadowIndex]; }
+	ID<Framebuffer> getShadTempFB() { return getShadFramebuffers()[tempProcIndex]; }
 	/**
 	 * @brief Returns PBR lighting shadow blur framebuffer.
 	 */
-	ID<Framebuffer> getShadowBlurFB() { return getShadowFramebuffers()[blurShadowIndex]; }
+	ID<Framebuffer> getShadBlurFB() { return getShadFramebuffers()[blurProcIndex]; }
 	/**
 	 * @brief Returns PBR lighting AO base framebuffer. (Ambient Occlusion)
 	 */
-	ID<Framebuffer> getAoBaseFB() { return getAoFramebuffers()[baseAoIndex]; }
+	ID<Framebuffer> getAoBaseFB() { return getAoFramebuffers()[baseProcIndex]; }
 	/**
 	 * @brief Returns PBR lighting AO temporary framebuffer. (Ambient Occlusion)
 	 */
-	ID<Framebuffer> getAoTempFB() { return getAoFramebuffers()[tempAoIndex]; }
+	ID<Framebuffer> getAoTempFB() { return getAoFramebuffers()[tempProcIndex]; }
 	/**
 	 * @brief Returns PBR lighting AO blur framebuffer. (Ambient Occlusion)
 	 */
-	ID<Framebuffer> getAoBlurFB() { return getAoFramebuffers()[blurAoIndex]; }
+	ID<Framebuffer> getAoBlurFB() { return getAoFramebuffers()[blurProcIndex]; }
 	/**
 	 * @brief Returns PBR lighting AO blur framebuffer. (Ambient Occlusion)
 	 */
@@ -285,23 +277,19 @@ public:
 	 * @brief Returns PBR lighting DFG LUT image. (DFG Look Up Table)
 	 */
 	ID<Image> getDfgLUT();
-	/**
-	 * @brief Returns PBR lighting spherical GGX distribution blur kernel.
-	 */
-	ID<Buffer> getGgxKernel();
 
 	/**
-	 * @brief Returns PBR lighting shadow buffer.
+	 * @brief Returns PBR lighting shadow base buffer.
 	 */
-	ID<Image> getShadowBuffer();
+	ID<Image> getShadBaseBuffer();
 	/**
-	 * @brief Returns PBR lighting shadow buffer.
+	 * @brief Returns PBR lighting shadow blur buffer.
 	 */
 	ID<Image> getShadBlurBuffer();
 	/**
-	 * @brief Returns PBR lighting AO buffer. (Ambient Occlusion)
+	 * @brief Returns PBR lighting AO base buffer. (Ambient Occlusion)
 	 */
-	ID<Image> getAoBuffer();
+	ID<Image> getAoBaseBuffer();
 	/**
 	 * @brief Returns PBR lighting AO blur buffer. (Ambient Occlusion)
 	 */
@@ -316,50 +304,33 @@ public:
 	ID<Image> getGiBuffer();
 
 	/**
-	 * @brief Returns PBR lighting shadow image view array.
-	 */
-	const ID<ImageView>* getShadowImageViews();
-	/**
-	 * @brief Returns PBR lighting AO image view array. (Ambient Occlusion)
-	 */
-	const ID<ImageView>* getAoImageViews();
-	/**
-	 * @brief Returns PBR lighting blur reflection image view array.
-	 */
-	const vector<ID<ImageView>>& getReflImageViews();
-
-	/**
 	 * @brief Returns PBR lighting shadow base image view.
 	 */
-	ID<ImageView> getShadowBaseView() { return getShadowImageViews()[baseShadowIndex]; }
+	ID<ImageView> getShadBaseView();
 	/**
 	 * @brief Returns PBR lighting shadow temporary image view.
 	 */
-	ID<ImageView> getShadowTempView() { return getShadowImageViews()[tempShadowIndex]; }
+	ID<ImageView> getShadTempView();
 	/**
 	 * @brief Returns PBR lighting shadow temporary image view.
 	 */
-	ID<ImageView> getShadowBlurView() { return getShadowImageViews()[blurShadowIndex]; }
+	ID<ImageView> getShadBlurView();
 	/**
 	 * @brief Returns PBR lighting AO base image view. (Ambient Occlusion)
 	 */
-	ID<ImageView> getAoBaseView() { return getAoImageViews()[baseAoIndex]; }
+	ID<ImageView> getAoBaseView();
 	/**
 	 * @brief Returns PBR lighting AO temporary image view. (Ambient Occlusion)
 	 */
-	ID<ImageView> getAoTempView() { return getAoImageViews()[tempAoIndex]; }
+	ID<ImageView> getAoTempView();
 	/**
 	 * @brief Returns PBR lighting AO blur image view. (Ambient Occlusion)
 	 */
-	ID<ImageView> getAoBlurView() { return getAoImageViews()[blurAoIndex]; }
+	ID<ImageView> getAoBlurView();
 	/**
 	 * @brief Returns PBR lighting reflection base image view.
 	 */
-	ID<ImageView> getReflBaseView()
-	{
-		return options.useReflBlur ? getReflImageViews()[0] : 
-			GraphicsSystem::Instance::get()->get(reflBuffer)->getDefaultView();
-	}
+	ID<ImageView> getReflBaseView();
 
 	/*******************************************************************************************************************
 	 * @brief Calculates specular cubemap mip level count.
@@ -496,31 +467,31 @@ public:
 	/**
 	 * @brief Returns true if there is rendered framebuffer shadow data on the current frame.
 	 */
-	bool isFbShadow() const noexcept { return hasFbShadow; }
+	bool isFbShadow() const noexcept { return hasFbShad; }
 
 	/**
 	 * @brief Marks that there is rendered framebuffer shadow data on the current frame.
-	 * @details See the @ref useShadowBuffer().
+	 * @details See the @ref Options::useShadBuffer.
 	 */
-	void markFbShadow() noexcept { hasFbShadow = true; }
+	void markFbShadow() noexcept { hasFbShad = true; }
 	/**
 	 * @brief Marks that there is rendered shadow data on the current frame.
-	 * @details See the @ref useShadowBuffer().
+	 * @details See the @ref Options::useShadBuffer.
 	 */
-	void markAnyShadow() noexcept { hasAnyShadow = true; }
+	void markAnyShadow() noexcept { hasAnyShad = true; }
 	/**
 	 * @brief Marks that there is rendered AO data on the current frame.
-	 * @details See the @ref useAoBuffer().
+	 * @details See the @ref Options::useAoBuffer.
 	 */
 	void markAnyAO() noexcept { hasAnyAO = true; }
 	/**
 	 * @brief Marks that there is rendered reflection data on the current frame.
-	 * @details See the @ref useReflBuffer().
+	 * @details See the @ref Options::useReflBuffer.
 	 */
 	void markAnyReflection() noexcept { hasAnyRefl = true; }
 	/**
 	 * @brief Marks that there is rendered global illumination data on the current frame.
-	 * @details See the @ref useGiBuffer().
+	 * @details See the @ref Options::useGiBuffer.
 	 */
 	void markAnyGI() noexcept { hasAnyGI = true; }
 };

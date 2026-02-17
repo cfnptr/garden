@@ -428,15 +428,16 @@ TransformSystem::~TransformSystem()
 //**********************************************************************************************************************
 void TransformSystem::destroyComponent(ID<Component> instance)
 {
+	auto transform = ID<TransformComponent>(instance);
 	#if GARDEN_EDITOR
 	auto transformEditor = TransformEditorSystem::Instance::tryGet();
 	if (transformEditor)
 	{
-		auto componentView = components.get(ID<TransformComponent>(instance));
+		auto componentView = components.get(transform);
 		transformEditor->onEntityDestroy(componentView->entity);
 	}
 	#endif
-	components.destroy(ID<TransformComponent>(instance));
+	components.destroy(transform);
 }
 void TransformSystem::resetComponent(View<Component> component, bool full)
 {

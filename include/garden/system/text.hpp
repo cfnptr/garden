@@ -389,15 +389,18 @@ public:
 	 * @brief Destroys font texture atlas instance.
 	 * @param fontAtlas target font atlas instance or null
 	 */
-	void destroy(ID<FontAtlas> fontAtlas);
+	void destroy(ID<FontAtlas>& fontAtlas);
 	/**
 	 * @brief Destroys shared font texture atlas instance.
 	 * @param fontAtlas target font atlas reference or null
 	 */
-	void destroy(const Ref<FontAtlas>& fontAtlas)
+	void destroy(Ref<FontAtlas>& fontAtlas)
 	{
 		if (fontAtlas.isLastRef())
-			destroy(ID<FontAtlas>(fontAtlas));
+		{
+			auto item = ID<FontAtlas>(fontAtlas);
+			destroy(item); fontAtlas = {};
+		}
 	}
 	
 	/*******************************************************************************************************************
@@ -481,15 +484,18 @@ public:
 	 * @brief Destroys text instance.
 	 * @param text target text instance or null
 	 */
-	void destroy(ID<Text> text);
+	void destroy(ID<Text>& text);
 	/**
 	 * @brief Destroys shared text instance.
 	 * @param text target text reference or null
 	 */
-	void destroy(const Ref<Text>& text)
+	void destroy(Ref<Text>& text)
 	{
 		if (text.isLastRef())
-			texts.destroy(ID<Text>(text));
+		{
+			auto item = ID<Text>(text);
+			destroy(item); text = {};
+		}
 	}
 };
 

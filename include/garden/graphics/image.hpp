@@ -239,7 +239,8 @@ public:
 	 */
 	struct LayoutState final : BarrierState
 	{
-		uint32 layout = 0; /**< Image data layout type. (Internal API format) */
+		uint32 layout = 0;       /**< Image data layout type. (Internal API format) */
+		ID<ImageView> view = {}; /**< Specific image layer/mip image view. */
 	};
 
 	static constexpr uint8 cubemapFaceCount = 6; /**< Cubemap image layer count. */
@@ -253,8 +254,8 @@ private:
 	bool swapchain = false;
 	bool fullBarrier = true;
 	Usage usage = {};
+	ID<ImageView> imageView = {};
 	u32x4 size = u32x4::zero;
-	ID<ImageView> defaultView = {};
 	vector<LayoutState> barrierStates;
 
 	Image(Type type, Format format, Usage usage, Strategy strategy, u32x4 size, uint64 version);
@@ -273,12 +274,12 @@ public:
 	Image() noexcept = default;
 
 	/**
-	 * @brief Returns image size in texels.
+	 * @brief Returns image size in texels. (3D size + mip level)
 	 * @note Unused image size dimensions always have size of 1.
 	 */
 	u32x4 getSize() const noexcept { return size; }
 	/**
-	 * @brief Returns image dimensionality type.
+	 * @brief Returns image dimensionality type. (1D, 2D, 3D, etc.)
 	 * @details Informs the API about how to interpret the image data in memory.
 	 */
 	Type getType() const noexcept { return type; }
@@ -309,15 +310,65 @@ public:
 	bool isSwapchain() const noexcept { return swapchain; }
 
 	/**
-	 * @brief Returns image default view instance.
-	 * @note Creates a new image view on a first call.
+	 * @brief Returns entire image view instance. (All layers and mips)
+	 * @note Creates a new image view instance on a first call.
 	 */
-	ID<ImageView> getDefaultView();
+	ID<ImageView> getView();
 	/**
-	 * @brief Does image have a default view instance.
-	 * @note Default image view instance is created on a first getter call.
+	 * @brief Frees entire image view instance. (All layers and mips)
+	 * @return True if image view instance was destroyed.
 	 */
-	bool hasDefaultView() const noexcept { return (bool)defaultView; }
+	void freeView();
+	/**
+	 * @brief Does image have an entire view instance. (All layers and mips)
+	 * @note Entire image view instance is created on a first getter call.
+	 */
+	bool hasView() const noexcept { return (bool)imageView; }
+
+	/**
+	 * @brief Returns specific image mip/layer view instance.
+	 * @note Creates a new image view instance on a first call.
+	 *
+	 * @param mip image view mip level
+	 * @param layer image view layer index
+	 */
+	ID<ImageView> getView(uint32 layer, uint8 mip);
+	/**
+	 * @brief Frees specific image mip/layer view instance.
+	 * @return True if image view instance was destroyed.
+	 *
+	 * @param mip image view mip level
+	 * @param layer image view layer index
+	 */
+	void freeView(uint32 layer, uint8 mip);
+	/**
+	 * @brief Does image have a specific mip/layer view instance.
+	 * @note Image view instance is created on a first getter call.
+	 *
+	 * @param mip image view mip level
+	 * @param layer image view layer index
+	 */
+	bool hasView(uint32 layer, uint8 mip) const noexcept
+	{
+		GARDEN_ASSERT(layer < getLayerCount());
+		GARDEN_ASSERT(mip < getMipCount());
+		return (bool)barrierStates[getLayerCount() * mip + layer].view;
+	}
+
+	/**
+	 * @brief Frees specific image views. (Excluding entire image view)
+	 * @return True if any image view instance was destroyed.
+	 */
+	void freeSpecificViews();
+	/**
+	 * @brief Frees all image views. (Including entire image view)
+	 * @return True if any image view instance was destroyed.
+	 */
+	void freeAllViews()
+	{
+		freeView();
+		freeSpecificViews();
+	}
 
 	/**
 	 * @brief Are specified image properties supported by the GPU.
@@ -842,8 +893,8 @@ public:
 	 */
 	Image::Format getFormat() const noexcept { return format; }
 	/**
-	 * @brief Is image view default.
-	 * @details See the @ref Image.
+	 * @brief Is image view default. (Created by an image)
+	 * @details See the @ref Image::getView().
 	 */
 	bool isDefault() const noexcept { return _default; }
 
@@ -1286,7 +1337,7 @@ class ImageExt final
 {
 public:
 	/**
-	 * @brief Returns image dimensionality type.
+	 * @brief Returns image dimensionality type. (1D, 2D, 3D, etc.)
 	 * @warning In most cases you should use @ref Image functions.
 	 * @param[in] image target image instance
 	 */
@@ -1304,7 +1355,7 @@ public:
 	 */
 	static bool& isSwapchain(Image& image) noexcept { return image.swapchain; }
 	/**
-	 * @brief Is last image memory barrier was full.
+	 * @brief Is last image memory barrier was full. (All layers and mips)
 	 * @warning In most cases you should use @ref Image functions.
 	 * @param[in] image target image instance
 	 */
@@ -1316,17 +1367,17 @@ public:
 	 */
 	static Image::Usage& getUsage(Image& image) noexcept { return image.usage; }
 	/**
-	 * @brief Returns image size in texels.
+	 * @brief Returns image size in texels. (3D size + mip level)
 	 * @warning In most cases you should use @ref Image functions.
 	 * @param[in] image target image instance
 	 */
 	static u32x4& getSize(Image& image) noexcept { return image.size; }
 	/**
-	 * @brief Returns default image view.
+	 * @brief Returns entire image view instance. (All layers and mips)
 	 * @warning In most cases you should use @ref Image functions.
 	 * @param[in] image target image instance
 	 */
-	static ID<ImageView> getDefaultView(Image& image) noexcept { return image.defaultView; }
+	static ID<ImageView> getView(Image& image) noexcept { return image.imageView; }
 	/**
 	 * @brief Returns image memory barrier state array.
 	 * @warning In most cases you should use @ref Image functions.
