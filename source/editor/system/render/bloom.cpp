@@ -174,11 +174,7 @@ void BloomRenderEditorSystem::uiRender()
 //**********************************************************************************************************************
 void BloomRenderEditorSystem::gBufferRecreate()
 {
-	if (thresholdDS)
-	{
-		GraphicsSystem::Instance::get()->destroy(thresholdDS);
-		thresholdDS = {};
-	}
+	GraphicsSystem::Instance::get()->destroy(thresholdDS);
 }
 
 void BloomRenderEditorSystem::editorBarToolPP()

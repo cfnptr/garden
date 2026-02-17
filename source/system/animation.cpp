@@ -224,8 +224,13 @@ void AnimationSystem::resetComponent(View<Component> component, bool full)
 	if (!componentView->animations.empty())
 	{
 		auto resourceSystem = ResourceSystem::Instance::get();
-		for (const auto& pair : componentView->animations)
-			resourceSystem->destroyShared(pair.second);
+		auto animations = componentView->animations;
+		for (const auto& pair : animations)
+		{
+			auto animation = pair.second;
+			resourceSystem->destroyShared(animation);
+		}
+		animations.clear();
 	}
 
 	if (full)

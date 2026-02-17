@@ -45,21 +45,21 @@ static ID<Image> createEdgesBuffer(GraphicsSystem* graphicsSystem)
 static ID<ImageView> getLdrCopyView(GraphicsSystem* graphicsSystem, DeferredRenderSystem* deferredSystem)
 {
 	auto gBuffer = deferredSystem->getGBuffers()[DeferredRenderSystem::gBufferBaseColor]; 
-	auto gBufferView = graphicsSystem->get(gBuffer)->getDefaultView(); // Note: Reusing G-Buffer memory.
+	auto gBufferView = graphicsSystem->get(gBuffer)->getView(); // Note: Reusing G-Buffer memory.
 	GARDEN_ASSERT(graphicsSystem->get(gBuffer)->getFormat() == DeferredRenderSystem::ldrBufferFormat);
 	return gBufferView;
 }
 static ID<ImageView> getWeightsView(GraphicsSystem* graphicsSystem, DeferredRenderSystem* deferredSystem)
 {
 	auto gBuffer = deferredSystem->getGBuffers()[DeferredRenderSystem::gBufferMetallic]; 
-	auto gBufferView = graphicsSystem->get(gBuffer)->getDefaultView(); // Note: Reusing G-Buffer memory.
+	auto gBufferView = graphicsSystem->get(gBuffer)->getView(); // Note: Reusing G-Buffer memory.
 	GARDEN_ASSERT(graphicsSystem->get(gBuffer)->getFormat() == Image::Format::UnormR8G8B8A8);
 	return gBufferView;
 }
 
 static ID<Framebuffer> createEdgesFramebuffer(GraphicsSystem* graphicsSystem, ID<Image> edgesBuffer)
 {
-	auto edgesView = graphicsSystem->get(edgesBuffer)->getDefaultView();
+	auto edgesView = graphicsSystem->get(edgesBuffer)->getView();
 	vector<Framebuffer::OutputAttachment> colorAttachments =
 	{ Framebuffer::OutputAttachment(edgesView, SmaaRenderSystem::processFbFlags) };
 
@@ -82,7 +82,7 @@ static ID<Framebuffer> createWeightsFramebuffer(GraphicsSystem* graphicsSystem)
 static ID<Framebuffer> createBlendFramebuffer(GraphicsSystem* graphicsSystem)
 {
 	auto ldrBuffer = DeferredRenderSystem::Instance::get()->getLdrBuffer();
-	auto ldrBufferView = graphicsSystem->get(ldrBuffer)->getDefaultView();
+	auto ldrBufferView = graphicsSystem->get(ldrBuffer)->getView();
 	vector<Framebuffer::OutputAttachment> colorAttachments =
 	{ Framebuffer::OutputAttachment(ldrBufferView, SmaaRenderSystem::blendFbFlags) };
 
@@ -156,9 +156,9 @@ static DescriptorSet::Uniforms getWeightsUniforms(GraphicsSystem* graphicsSystem
 	ID<Image> areaLUT, ID<Image> searchLUT, ID<Image> edgesBuffer)
 {
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
-	auto areaLutView = graphicsSystem->get(areaLUT)->getDefaultView();
-	auto searchLutView = graphicsSystem->get(searchLUT)->getDefaultView();
-	auto edgesView = graphicsSystem->get(edgesBuffer)->getDefaultView();
+	auto areaLutView = graphicsSystem->get(areaLUT)->getView();
+	auto searchLutView = graphicsSystem->get(searchLUT)->getView();
+	auto edgesView = graphicsSystem->get(edgesBuffer)->getView();
 
 	DescriptorSet::Uniforms uniforms =
 	{ 
@@ -358,6 +358,10 @@ void SmaaRenderSystem::preUiRender()
 void SmaaRenderSystem::gBufferRecreate()
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
+	graphicsSystem->destroy(blendDS);
+	graphicsSystem->destroy(weightsDS);
+	graphicsSystem->destroy(edgesDS);
+
 	if (edgesBuffer)
 	{
 		graphicsSystem->destroy(edgesBuffer);
@@ -367,7 +371,7 @@ void SmaaRenderSystem::gBufferRecreate()
 	if (edgesFramebuffer)
 	{
 		auto framebufferView = graphicsSystem->get(edgesFramebuffer);
-		auto edgesView = graphicsSystem->get(edgesBuffer)->getDefaultView();
+		auto edgesView = graphicsSystem->get(edgesBuffer)->getView();
 		Framebuffer::OutputAttachment colorAttachment(edgesView, processFbFlags);
 		framebufferView->update(graphicsSystem->getScaledFrameSize(), &colorAttachment, 1);
 	}
@@ -382,22 +386,9 @@ void SmaaRenderSystem::gBufferRecreate()
 	{
 		auto framebufferView = graphicsSystem->get(blendFramebuffer);
 		auto ldrBuffer = DeferredRenderSystem::Instance::get()->getLdrBuffer();
-		auto ldrBufferView = graphicsSystem->get(ldrBuffer)->getDefaultView();
+		auto ldrBufferView = graphicsSystem->get(ldrBuffer)->getView();
 		Framebuffer::OutputAttachment colorAttachment(ldrBufferView, blendFbFlags);
 		framebufferView->update(graphicsSystem->getScaledFrameSize(), &colorAttachment, 1);
-	}
-
-	if (blendDS)
-	{
-		graphicsSystem->destroy(blendDS); blendDS = {};
-	}
-	if (weightsDS)
-	{
-		graphicsSystem->destroy(weightsDS); weightsDS = {};
-	}
-	if (edgesDS)
-	{
-		graphicsSystem->destroy(edgesDS); edgesDS = {};
 	}
 }
 
@@ -416,18 +407,9 @@ void SmaaRenderSystem::setQuality(GraphicsQuality quality, int cornerRounding)
 		return;
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	if (blendDS)
-	{
-		graphicsSystem->destroy(blendDS); blendDS = {};
-	}
-	if (weightsDS)
-	{
-		graphicsSystem->destroy(weightsDS); weightsDS = {};
-	}
-	if (edgesDS)
-	{
-		graphicsSystem->destroy(edgesDS); edgesDS = {};
-	}
+	graphicsSystem->destroy(blendDS);
+	graphicsSystem->destroy(weightsDS);
+	graphicsSystem->destroy(edgesDS);
 
 	if (blendPipeline)
 	{

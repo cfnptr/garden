@@ -628,7 +628,7 @@ static void updateImGuiTextures(ImVector<ImTextureData*>& textures,
 			SET_RESOURCE_DEBUG_NAME(image, "image.imgui" + to_string(*image));
 			texture->BackendUserData = (void*)(psize)*image;
 			
-			auto imageView = graphicsSystem->get(image)->getDefaultView();
+			auto imageView = graphicsSystem->get(image)->getView();
 			auto emplaceResult = dsCache.emplace(imageView, ID<DescriptorSet>());
 			GARDEN_ASSERT(emplaceResult.second);
 			texture->SetTexID(*imageView);
@@ -663,7 +663,8 @@ static void updateImGuiTextures(ImVector<ImTextureData*>& textures,
 			ID<ImageView> imageView; *imageView = (uint32)texture->GetTexID();
 			auto searchResult = dsCache.find(imageView);
 			GARDEN_ASSERT(searchResult != dsCache.end());
-			graphicsSystem->destroy(searchResult->second);
+			auto descriptorSet = searchResult->second;
+			graphicsSystem->destroy(descriptorSet);
 
 			ID<Image> image; *image = (uint32)(psize)texture->BackendUserData;
 			graphicsSystem->destroy(image);
@@ -675,6 +676,8 @@ static void updateImGuiTextures(ImVector<ImTextureData*>& textures,
 
 	graphicsSystem->stopRecording();
 }
+
+//**********************************************************************************************************************
 void ImGuiRenderSystem::postLdrToUI()
 {
 	SET_CPU_ZONE_SCOPED("ImGui Post LDR to UI");
@@ -822,15 +825,20 @@ void ImGuiRenderSystem::uiRender()
 
 			if (!descriptorSet)
 			{
-				auto uniforms = getUniforms(imageView);
-				auto samplers = getSamplers(nearestSampler);
-				descriptorSet = graphicsSystem->createDescriptorSet(
-					pipeline, std::move(uniforms), std::move(samplers));
-				SET_RESOURCE_DEBUG_NAME(descriptorSet, 
-					"descriptorSet.imgui.tmpImageView" + to_string(*imageView));
+				auto uniforms = getUniforms(imageView); auto samplers = getSamplers(nearestSampler);
+				descriptorSet = graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms), std::move(samplers));
+				SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.imgui.tmpImageView" + to_string(*imageView));
+
 				if (searchResult != dsCache.end())
+				{
 					searchResult.value() = descriptorSet;
-				else graphicsSystem->destroy(descriptorSet); // TODO: use here Vulkan extensions which allows to bind resources directly without DS
+				}
+				else
+				{
+					// TODO: use here Vulkan extensions which allows to bind resources directly without DS
+					auto tmpDescriptorSet = descriptorSet;
+					graphicsSystem->destroy(tmpDescriptorSet); 
+				}
 			}
 
 			if (isCurrentRenderPassAsync)

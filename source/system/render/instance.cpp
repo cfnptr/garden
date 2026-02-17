@@ -168,7 +168,6 @@ void InstanceRenderSystem::prepareDraw(const f32x4x4& viewProj, uint32 drawCount
 				if (baseDescriptorSet)
 				{
 					graphicsSystem->destroy(baseDescriptorSet);
-					baseDescriptorSet = {};
 
 					auto uniforms = getBaseUniforms();
 					if (!uniforms.empty())
@@ -203,7 +202,6 @@ void InstanceRenderSystem::prepareDraw(const f32x4x4& viewProj, uint32 drawCount
 				if (shadowDescriptorSet)
 				{
 					graphicsSystem->destroy(shadowDescriptorSet);
-					shadowDescriptorSet = {};
 
 					auto uniforms = getShadowUniforms();
 					if (!uniforms.empty())
@@ -265,16 +263,8 @@ void InstanceRenderSystem::renderCleanup()
 void InstanceRenderSystem::gBufferRecreate()
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	if (baseDescriptorSet)
-	{
-		graphicsSystem->destroy(baseDescriptorSet);
-		baseDescriptorSet = {};
-	}
-	if (shadowDescriptorSet)
-	{
-		graphicsSystem->destroy(shadowDescriptorSet);
-		shadowDescriptorSet = {};
-	}
+	graphicsSystem->destroy(baseDescriptorSet);
+	graphicsSystem->destroy(shadowDescriptorSet);
 }
 
 //**********************************************************************************************************************

@@ -36,20 +36,20 @@ static DescriptorSet::Uniforms getBufferUniforms(GraphicsSystem* graphicsSystem,
 	const auto& colorAttachments = gFramebufferView->getColorAttachments();
 	
 	auto pbrLightingSystem = PbrLightingSystem::Instance::tryGet();
-	ID<ImageView> shadowBuffer, shadowBlurBuffer, aoBuffer, aoBlurBuffer, reflBuffer, giBuffer;
+	ID<ImageView> shadBuffer, shadBlurBuffer, aoBuffer, aoBlurBuffer, reflBuffer, giBuffer;
 
 	if (pbrLightingSystem)
 	{
-		shadowBuffer = pbrLightingSystem->getShadowBaseView();
-		shadowBlurBuffer = pbrLightingSystem->getShadowTempView();
+		shadBuffer = pbrLightingSystem->getShadBaseView();
+		shadBlurBuffer = pbrLightingSystem->getShadBlurView();
 		aoBuffer = pbrLightingSystem->getAoBaseView();
 		aoBlurBuffer = pbrLightingSystem->getAoBlurView();
 		reflBuffer = pbrLightingSystem->getReflBaseView();
 		giBuffer = pbrLightingSystem->getGiBuffer() ? graphicsSystem->get(
-			pbrLightingSystem->getGiBuffer())->getDefaultView() : graphicsSystem->getEmptyTexture();
+			pbrLightingSystem->getGiBuffer())->getView() : graphicsSystem->getEmptyTexture();
 
-		if (!shadowBuffer)
-			shadowBuffer = shadowBlurBuffer = graphicsSystem->getEmptyTexture();
+		if (!shadBuffer)
+			shadBuffer = shadBlurBuffer = graphicsSystem->getEmptyTexture();
 		if (!aoBuffer)
 			aoBuffer = aoBlurBuffer = graphicsSystem->getEmptyTexture();
 		if (!reflBuffer)
@@ -58,7 +58,7 @@ static DescriptorSet::Uniforms getBufferUniforms(GraphicsSystem* graphicsSystem,
 	else
 	{
 		auto emptyTexture = graphicsSystem->getEmptyTexture();
-		shadowBuffer = shadowBlurBuffer = emptyTexture;
+		shadBuffer = shadBlurBuffer = emptyTexture;
 		aoBuffer = aoBlurBuffer = emptyTexture;
 		reflBuffer = emptyTexture; giBuffer = emptyTexture;
 	}
@@ -69,8 +69,8 @@ static DescriptorSet::Uniforms getBufferUniforms(GraphicsSystem* graphicsSystem,
 		{ "oitAccumBuffer", DescriptorSet::Uniform(oitAccumBufferView) },
 		{ "oitRevealBuffer", DescriptorSet::Uniform(oitRevealBufferView) },
 		{ "depthBuffer", DescriptorSet::Uniform(depthBufferView) },
-		{ "shadowBuffer", DescriptorSet::Uniform(shadowBuffer) },
-		{ "shadowBlurBuffer", DescriptorSet::Uniform(shadowBlurBuffer) },
+		{ "shadBuffer", DescriptorSet::Uniform(shadBuffer) },
+		{ "shadBlurBuffer", DescriptorSet::Uniform(shadBlurBuffer) },
 		{ "aoBuffer", DescriptorSet::Uniform(aoBuffer) },
 		{ "aoBlurBuffer", DescriptorSet::Uniform(aoBlurBuffer) },
 		{ "reflBuffer", DescriptorSet::Uniform(reflBuffer) },
@@ -307,11 +307,7 @@ void DeferredRenderEditorSystem::ldrRender()
 //**********************************************************************************************************************
 void DeferredRenderEditorSystem::gBufferRecreate()
 {
-	if (bufferDescriptorSet)
-	{
-		GraphicsSystem::Instance::get()->destroy(bufferDescriptorSet);
-		bufferDescriptorSet = {};
-	}
+	GraphicsSystem::Instance::get()->destroy(bufferDescriptorSet);
 }
 
 void DeferredRenderEditorSystem::editorBarTool()

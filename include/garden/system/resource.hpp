@@ -361,7 +361,7 @@ public:
 	 * @brief Destroys shared image if it's the last one.
 	 * @param[in] image target shared image reference
 	 */
-	void destroyShared(const Ref<Image>& image);
+	void destroyShared(Ref<Image>& image);
 
 	/**
 	 * @brief Returns current loaded image instance.
@@ -389,7 +389,7 @@ public:
 	 * @brief Destroys shared buffer if it's the last one.
 	 * @param[in] buffer target shared buffer reference
 	 */
-	void destroyShared(const Ref<Buffer>& buffer);
+	void destroyShared(Ref<Buffer>& buffer);
 
 	/**
 	 * @brief Returns current loaded buffer instance.
@@ -423,7 +423,7 @@ public:
 	 * @brief Destroys shared descriptor set if it's the last one.
 	 * @param[in] descriptorSet target shared descriptor set reference
 	 */
-	void destroyShared(const Ref<DescriptorSet>& descriptorSet);
+	void destroyShared(Ref<DescriptorSet>& descriptorSet);
 
 	/*******************************************************************************************************************
 	 * @brief Loads graphics pipeline from the resource pack shaders.
@@ -493,7 +493,7 @@ public:
 	 * @brief Destroys shared animation if it's the last one.
 	 * @param[in] animation target shared animation reference
 	 */
-	void destroyShared(const Ref<Animation>& animation);
+	void destroyShared(Ref<Animation>& animation);
 
 	/**
 	 * @brief Stores animation to the animations directory.
@@ -527,12 +527,12 @@ public:
 	 * @brief Destroys shared font if it's the last one.
 	 * @param[in] font target shared font reference
 	 */
-	void destroyShared(const Ref<Font>& font);
+	void destroyShared(Ref<Font>& font);
 	/**
 	 * @brief Destroys shared fonts if it's the last one.
 	 * @param[in] fonts target shared fonts array
 	 */
-	void destroyShared(const FontArray& fonts);
+	void destroyShared(FontArray& fonts);
 
 	/*******************************************************************************************************************
 	 * @brief Loads file data from the resource pack.

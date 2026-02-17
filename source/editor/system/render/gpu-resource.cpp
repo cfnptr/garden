@@ -314,13 +314,7 @@ static void renderImages(uint32& selectedItem, string& searchString, bool& searc
 	{
 		imageMip = std::min(imageMip, (int)image.getMipCount() - 1);
 		imageLayer = std::min(imageLayer, (int)image.getSize().getZ() - 1);
-
-		auto graphicsSystem = GraphicsSystem::Instance::get();
-		auto imageView = graphicsSystem->createImageView(
-			graphicsAPI->imagePool.getID(&image), Image::Type::Texture2D,
-			Image::Format::Undefined, imageMip, 1, imageLayer, 1);
-		SET_RESOURCE_DEBUG_NAME(imageView, "imageView.editor.gpuResource.tmp");
-		graphicsSystem->destroy(imageView); // TODO: suboptimal solution
+		auto imageView = image.getView(imageLayer, imageMip);
 
 		auto aspectRatio = (float)size.getY() / size.getX();
 		ImGui::Image(*imageView, ImVec2(256.0f, 256.0f * aspectRatio));

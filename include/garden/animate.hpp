@@ -219,9 +219,10 @@ protected:
 	 */
 	void destroyAnimation(ID<AnimationFrame> instance) override
 	{
-		auto frame = animationFrames.get(ID<F>(instance));
-		resetAnimation(View<AnimationFrame>(frame), false);
-		animationFrames.destroy(ID<F>(instance));
+		auto frame = ID<F>(instance);
+		auto frameView = animationFrames.get(frame);
+		resetAnimation(View<AnimationFrame>(frameView), false);
+		animationFrames.destroy(frame);
 	}
 	/**
 	 * @brief Resets system animation frame data.

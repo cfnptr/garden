@@ -49,6 +49,9 @@ public:
 	struct CamViewPC final
 	{
 		float3 cameraPos;
+		float groundRadius;
+		uint2 bayerPos;
+		float atmTopRadius;
 		float bottomRadius;
 		float topRadius;
 		float minDistance;
@@ -62,6 +65,8 @@ public:
 	{
 		float4x4 invViewProj;
 		float3 cameraPos;
+		float groundRadius;
+		float atmTopRadius;
 		float bottomRadius;
 		float topRadius;
 		float minDistance;

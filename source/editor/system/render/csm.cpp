@@ -17,6 +17,7 @@
 #if GARDEN_EDITOR
 #include "garden/system/render/csm.hpp"
 #include "garden/system/render/deferred.hpp"
+#include "garden/system/render/hiz.hpp"
 #include "garden/system/settings.hpp"
 #include "garden/system/resource.hpp"
 
@@ -24,8 +25,8 @@ using namespace garden;
 
 static DescriptorSet::Uniforms getCascadesUniforms()
 {
-	auto depthBufferView = DeferredRenderSystem::Instance::get()->getDepthImageView();
-	return { { "depthBuffer", DescriptorSet::Uniform(depthBufferView) } };
+	auto hizBufferView = HizRenderSystem::Instance::get()->getView(1);
+	return { { "hizBuffer", DescriptorSet::Uniform(hizBufferView) } };
 }
 
 //**********************************************************************************************************************
@@ -236,11 +237,7 @@ void CsmRenderEditorSystem::uiRender()
 //**********************************************************************************************************************
 void CsmRenderEditorSystem::gBufferRecreate()
 {
-	if (cascadesDS)
-	{
-		GraphicsSystem::Instance::get()->destroy(cascadesDS);
-		cascadesDS = {};
-	}
+	GraphicsSystem::Instance::get()->destroy(cascadesDS);
 }
 
 void CsmRenderEditorSystem::editorBarToolPP()

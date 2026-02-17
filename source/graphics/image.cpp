@@ -262,27 +262,77 @@ bool Image::destroy()
 }
 
 //**********************************************************************************************************************
-ID<ImageView> Image::getDefaultView()
+ID<ImageView> Image::getView()
 {
-	if (!defaultView)
+	if (!imageView)
 	{
-		GARDEN_ASSERT_MSG(instance, "Image [" + debugName + "] is not ready");
-		GARDEN_ASSERT_MSG(!isFormatDepthAndStencil(format), "Can't create default view for depth/stencil format");
+		GARDEN_ASSERT_MSG(instance, "Image [" + debugName + "] is not ready yet");
+		GARDEN_ASSERT_MSG(!isFormatDepthAndStencil(format), "Can't create image view for a depth/stencil format");
 
 		auto graphicsAPI = GraphicsAPI::get();
 		auto image = graphicsAPI->imagePool.getID(this);
-		defaultView = graphicsAPI->imageViewPool.create(true, image, 
+		imageView = graphicsAPI->imageViewPool.create(true, image, 
 			type, format, 0, getLayerCount(), 0, getMipCount());
 
 		#if GARDEN_DEBUG || GARDEN_EDITOR
-		auto view = graphicsAPI->imageViewPool.get(defaultView);
-		view->setDebugName(debugName + ".defaultView");
+		auto view = graphicsAPI->imageViewPool.get(imageView);
+		view->setDebugName(debugName + ".view");
 		#endif
 	}
-
-	return defaultView;
+	return imageView;
+}
+void Image::freeView()
+{
+	GraphicsAPI::get()->imageViewPool.destroy(imageView);
 }
 
+ID<ImageView> Image::getView(uint32 layer, uint8 mip)
+{
+	GARDEN_ASSERT(layer < getLayerCount());
+	GARDEN_ASSERT(mip < getMipCount());
+
+	auto index = getLayerCount() * mip + layer;
+	auto view = barrierStates[index].view;
+	if (!view)
+	{
+		GARDEN_ASSERT_MSG(instance, "Image [" + debugName + "] is not ready yet");
+		GARDEN_ASSERT_MSG(!isFormatDepthAndStencil(format), "Can't create image view for a depth/stencil format");
+
+		Image::Type viewType;
+		if (type == Image::Type::Texture2DArray || type == Image::Type::Texture3D || type == Image::Type::Cubemap)
+			viewType = Image::Type::Texture2D;
+		else if (type == Image::Type::Texture1DArray)
+			viewType = Image::Type::Texture1D;
+		else viewType = type;
+
+		auto graphicsAPI = GraphicsAPI::get();
+		auto image = graphicsAPI->imagePool.getID(this);
+		view = graphicsAPI->imageViewPool.create(true, image, viewType, format, layer, 1, mip, 1);
+		barrierStates[index].view = view;
+
+		#if GARDEN_DEBUG || GARDEN_EDITOR
+		auto viewView = graphicsAPI->imageViewPool.get(view);
+		viewView->setDebugName(debugName + ".view_" + to_string(layer) + "_" + to_string(mip));
+		#endif
+	}
+	return view;
+}
+void Image::freeView(uint32 layer, uint8 mip)
+{
+	GARDEN_ASSERT(layer < getLayerCount());
+	GARDEN_ASSERT(mip < getMipCount());
+	auto index = getLayerCount() * mip + layer;
+	GraphicsAPI::get()->imageViewPool.destroy(barrierStates[index].view);
+}
+
+void Image::freeSpecificViews()
+{
+	auto graphicsAPI = GraphicsAPI::get();
+	for (auto& barrierState : barrierStates)
+		graphicsAPI->imageViewPool.destroy(barrierState.view);
+}
+
+//**********************************************************************************************************************
 bool Image::isSupported(Type type, Format format, Usage usage, uint3 size, uint8 mipCount, uint32 layerCount) noexcept
 {
 	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
@@ -861,7 +911,7 @@ void Image::setDebugName(const string& name)
 
 //**********************************************************************************************************************
 static void* createVkImageView(View<Image> imageView, Image::Type type, Image::Format format, 
-	uint8 baseMip, uint8 mipCount, uint32 baseLayer, uint32 layerCount)
+	uint32 baseLayer, uint32 layerCount, uint8 baseMip, uint8 mipCount)
 {
 	vk::ImageViewCreateInfo imageViewInfo({}, (VkImage)ResourceExt::getInstance(**imageView),
 		toVkImageViewType(type), toVkFormat(format), vk::ComponentMapping(
@@ -895,7 +945,7 @@ ImageView::ImageView(bool isDefault, ID<Image> image, Image::Type type,
 			}
 		}
 
-		this->instance = createVkImageView(imageView, type, format, baseMip, mipCount, baseLayer, layerCount);
+		this->instance = createVkImageView(imageView, type, format, baseLayer, layerCount, baseMip, mipCount);
 	}
 	else abort();
 

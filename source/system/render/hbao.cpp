@@ -60,8 +60,8 @@ static ID<GraphicsPipeline> createPipeline(uint32 stepCount)
 }
 static DescriptorSet::Uniforms getUniforms(GraphicsSystem* graphicsSystem, ID<Image> noiseImage)
 {
-	auto hizBufferView = HizRenderSystem::Instance::get()->getImageViews().at(1);
-	auto noiseView = graphicsSystem->get(noiseImage)->getDefaultView();
+	auto hizBufferView = HizRenderSystem::Instance::get()->getView(1);
+	auto noiseView = graphicsSystem->get(noiseImage)->getView();
 
 	DescriptorSet::Uniforms uniforms =
 	{ 
@@ -213,11 +213,7 @@ void HbaoRenderSystem::aoRender()
 
 void HbaoRenderSystem::gBufferRecreate()
 {
-	if (descriptorSet)
-	{
-		GraphicsSystem::Instance::get()->destroy(descriptorSet);
-		descriptorSet = {};
-	}
+	GraphicsSystem::Instance::get()->destroy(descriptorSet);
 }
 
 //**********************************************************************************************************************
@@ -230,7 +226,6 @@ void HbaoRenderSystem::setConsts(uint32 stepCount)
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	graphicsSystem->destroy(descriptorSet);
-	descriptorSet = {};
 
 	if (pipeline)
 	{

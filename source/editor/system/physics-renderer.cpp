@@ -76,7 +76,6 @@ void PhysicsDebugRenderer::drawLines(const f32x4x4& viewProj)
 	pipelineView->pushConstants(&pc);
 	pipelineView->draw(linesBuffer, (uint32)lines.size() * 2);
 	graphicsSystem->destroy(linesBuffer);
-	linesBuffer = {};
 	lines.clear();
 }
 void PhysicsDebugRenderer::drawTriangles(const f32x4x4& viewProj)
@@ -105,7 +104,6 @@ void PhysicsDebugRenderer::drawTriangles(const f32x4x4& viewProj)
 	pipelineView->pushConstants(&pc);
 	pipelineView->draw(trianglesBuffer, (uint32)triangles.size());
 	graphicsSystem->destroy(trianglesBuffer);
-	trianglesBuffer = {};
 	triangles.clear();
 }
 

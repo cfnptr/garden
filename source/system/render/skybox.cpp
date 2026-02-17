@@ -33,7 +33,7 @@ static ID<GraphicsPipeline> createPipeline()
 }
 static DescriptorSet::Uniforms getUniforms(GraphicsSystem* graphicsSystem, ID<Image> cubemap)
 {
-	auto cubemapView = graphicsSystem->get(cubemap)->getDefaultView();
+	auto cubemapView = graphicsSystem->get(cubemap)->getView();
 	return { { "cubemap", DescriptorSet::Uniform(cubemapView) } };
 }
 

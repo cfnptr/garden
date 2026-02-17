@@ -968,15 +968,15 @@ public:
 	View<Shape> get(ID<Shape> shape) const noexcept { return shapes.get(shape); }
 
 	/**
-	 * Destroys shape instance.
+	 * @brief Destroys shape instance.
 	 * @param shape target shape instance or null
 	 */
-	void destroy(ID<Shape> shape) { shapes.destroy(shape); }
+	void destroy(ID<Shape>& shape) { shapes.destroy(shape); }
 	/**
-	 * Destroys shared shape if it's the last one.
+	 * @brief Destroys shared shape if it's the last one.
 	 * @param shape target shape instance or null
 	 */
-	void destroyShared(ID<Shape> shape);
+	void destroyShared(ID<Shape>& shape);
 
 	/*******************************************************************************************************************
 	 * @brief Improves collision detection performance. (Expensive operation!)

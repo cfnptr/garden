@@ -49,7 +49,6 @@ private:
 	ID<GraphicsPipeline> downsamplePipeline = {};
 	ID<GraphicsPipeline> upsamplePipeline = {};
 	ID<Image> bloomBuffer = {};
-	vector<ID<ImageView>> imageViews;
 	vector<ID<Framebuffer>> framebuffers;
 	vector<ID<DescriptorSet>> descriptorSets;
 	GraphicsQuality quality = GraphicsQuality::High;
@@ -112,10 +111,6 @@ public:
 	 * @brief Returns bloom buffer.
 	 */
 	ID<Image> getBloomBuffer();
-	/**
-	 * @brief Returns bloom buffer image views.
-	 */
-	const vector<ID<ImageView>>& getImageViews();
 	/**
 	 * @brief Returns bloom framebuffer array.
 	 */

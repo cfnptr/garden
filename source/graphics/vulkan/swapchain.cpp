@@ -205,8 +205,7 @@ static void destroyVkSwapchainImages(VulkanAPI* vulkanAPI, const vector<ID<Image
 	for (auto image : images)
 	{
 		auto imageView = vulkanAPI->imagePool.get(image);
-		if (imageView->hasDefaultView())
-			vulkanAPI->imageViewPool.destroy(imageView->getDefaultView());
+		imageView->freeAllViews();
 		vulkanAPI->imagePool.destroy(image);
 	}
 }
