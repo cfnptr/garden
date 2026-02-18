@@ -135,6 +135,7 @@ public:
 	float cirrusCoverage = 0.2f;  /**< Ammount of cirrus clouds. (Clear or cloudy weather) */
 	float temperatureDiff = 0.7f; /**< Temperature difference between layers. (Storm clouds) */
 	float currentTime = 0.0f;     /**< Custom current time value. (For a multiplayer sync) */
+	bool noDelay = false;         /**< Make all computation in one fram. (Expnesive!) */
 
 	/**
 	 * @brief Returns volumetric clouds rendering graphics quality.

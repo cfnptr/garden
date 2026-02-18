@@ -29,7 +29,7 @@ static ID<GraphicsPipeline> createPipeline()
 	options.loadAsync = false; // We can't load async due to imageLoaded() usage.
 
 	return ResourceSystem::Instance::get()->loadGraphicsPipeline(
-		"skybox", deferredSystem->getDepthHdrFramebuffer(), options);
+		"skybox", deferredSystem->getDepthHdrFB(), options);
 }
 static DescriptorSet::Uniforms getUniforms(GraphicsSystem* graphicsSystem, ID<Image> cubemap)
 {

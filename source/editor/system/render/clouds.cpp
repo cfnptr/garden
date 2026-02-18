@@ -62,7 +62,14 @@ void CloudsEditorSystem::preUiRender()
 	if (ImGui::Begin("Volumetric Clouds", &showWindow, ImGuiWindowFlags_AlwaysAutoResize))
 	{
 		auto cloudsSystem = CloudsRenderSystem::Instance::get();
-		ImGui::Checkbox("Enabled", &cloudsSystem->isEnabled);
+		ImGui::Checkbox("Enabled", &cloudsSystem->isEnabled); ImGui::SameLine();
+
+		ImGui::Checkbox("No-Delay Mode", &cloudsSystem->noDelay);
+		if (ImGui::BeginItemTooltip())
+		{
+			ImGui::Text("Render all cloud pixels in one frame. (Expensive!)");
+			ImGui::EndTooltip();
+		}
 
 		auto quality = cloudsSystem->getQuality();
 		if (ImGui::Combo("Quality", &quality, graphicsQualityNames, (int)GraphicsQuality::Count))

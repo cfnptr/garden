@@ -24,7 +24,7 @@ static ID<GraphicsPipeline> createPipeline()
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	ResourceSystem::GraphicsOptions options;
 	return ResourceSystem::Instance::get()->loadGraphicsPipeline(
-		"oit", deferredSystem->getUpscaleHdrFramebuffer(), options);
+		"oit", deferredSystem->getUpscaleHdrFB(), options);
 }
 static DescriptorSet::Uniforms getUniforms(GraphicsSystem* graphicsSystem)
 {
@@ -106,7 +106,7 @@ void OitRenderSystem::preLdrRender()
 		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.oit");
 	}
 
-	auto upscaledHdrFramebuffer = deferredSystem->getUpscaleHdrFramebuffer();
+	auto upscaledHdrFramebuffer = deferredSystem->getUpscaleHdrFB();
 	pipelineView->updateFramebuffer(upscaledHdrFramebuffer);
 
 	graphicsSystem->startRecording(CommandBufferType::Frame);

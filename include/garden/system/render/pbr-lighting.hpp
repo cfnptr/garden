@@ -99,7 +99,6 @@ public:
 		bool useReflBuffer = true; /**< Create and use reflection buffer for rendering. */
 		bool useGiBuffer = true;   /**< Create and use global illumination buffer for rendering. */
 		bool useReflBlur = true;   /**< Create and use reflection buffer blur chain. */
-		bool useDisocclMap = true; /**< Create and use disocclusion map for rendering. */
 		Options() noexcept { }
 	};
 
@@ -138,17 +137,16 @@ private:
 	ID<Image> dfgLUT = {};
 	ID<Image> shadBaseBuffer = {}, shadBlurBuffer = {};
 	ID<Image> aoBaseBuffer = {}, aoBlurBuffer = {};
-	ID<Image> reflBuffer = {}, giBuffer = {}, disocclMap = {};
+	ID<Image> reflBuffer = {}, giBuffer = {};
 	ID<Framebuffer> reflFramebuffer = {}, giFramebuffer = {};
 	ID<Framebuffer> shadFramebuffers[procBufferCount] = {};
 	ID<Framebuffer> aoFramebuffers[procBufferCount] = {};
 	ID<GraphicsPipeline> lightingPipeline = {};
 	ID<ComputePipeline> iblSpecularPipeline = {};
-	ID<ComputePipeline> disocclPipeline = {};
 	ID<GraphicsPipeline> shadBlurPipeline = {};
 	ID<GraphicsPipeline> aoBlurPipeline = {};
 	ID<GraphicsPipeline> reflBlurPipeline = {};
-	ID<DescriptorSet> lightingDS = {}, shadBlurDS = {}, aoBlurDS = {}, disocclDS = {};
+	ID<DescriptorSet> lightingDS = {}, shadBlurDS = {}, aoBlurDS = {};
 	Options options = {};
 	GraphicsQuality quality = GraphicsQuality::High;
 	bool hasFbShad = false;
@@ -215,10 +213,6 @@ public:
 	 * @brief Returns PBR lighting IBL specular compute pipeline. (Image Based Lighting)
 	 */
 	ID<ComputePipeline> getIblSpecularPipeline();
-	/**
-	 * @brief Returns PBR lighting disocclusion compute pipeline.
-	 */
-	ID<ComputePipeline> getDisocclPipeline();
 
 	/**
 	 * @brief Returns PBR lighting shadow framebuffer array.

@@ -131,7 +131,7 @@ void InfiniteGridEditorSystem::preRender()
 			ID<Framebuffer> framebuffer; bool useAsyncRecording;
 			if (DeferredRenderSystem::Instance::has())
 			{
-				framebuffer = DeferredRenderSystem::Instance::get()->getDepthLdrFramebuffer();
+				framebuffer = DeferredRenderSystem::Instance::get()->getDepthLdrFB();
 				useAsyncRecording = false;
 			}
 			else

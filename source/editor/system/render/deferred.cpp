@@ -29,9 +29,11 @@ static DescriptorSet::Uniforms getBufferUniforms(GraphicsSystem* graphicsSystem,
 	auto hdrFramebufferView = graphicsSystem->get(deferredSystem->getHdrFramebuffer());
 	auto ldrFramebufferView = graphicsSystem->get(deferredSystem->getLdrFramebuffer());
 	auto oitFramebufferView = graphicsSystem->get(deferredSystem->getOitFramebuffer());
+	auto disocclusionFbView = graphicsSystem->get(deferredSystem->getDisocclusionFB());
 	auto hdrBufferView = hdrFramebufferView->getColorAttachments()[0].imageView;
 	auto oitAccumBufferView = oitFramebufferView->getColorAttachments()[0].imageView;
 	auto oitRevealBufferView = oitFramebufferView->getColorAttachments()[1].imageView;
+	auto disocclMapView = disocclusionFbView->getColorAttachments()[0].imageView;
 	auto depthBufferView = deferredSystem->getDepthImageView();
 	const auto& colorAttachments = gFramebufferView->getColorAttachments();
 	
@@ -66,15 +68,16 @@ static DescriptorSet::Uniforms getBufferUniforms(GraphicsSystem* graphicsSystem,
 	DescriptorSet::Uniforms uniforms =
 	{ 
 		{ "hdrBuffer", DescriptorSet::Uniform(hdrBufferView) },
-		{ "oitAccumBuffer", DescriptorSet::Uniform(oitAccumBufferView) },
-		{ "oitRevealBuffer", DescriptorSet::Uniform(oitRevealBufferView) },
 		{ "depthBuffer", DescriptorSet::Uniform(depthBufferView) },
+		{ "reflBuffer", DescriptorSet::Uniform(reflBuffer) },
 		{ "shadBuffer", DescriptorSet::Uniform(shadBuffer) },
 		{ "shadBlurBuffer", DescriptorSet::Uniform(shadBlurBuffer) },
 		{ "aoBuffer", DescriptorSet::Uniform(aoBuffer) },
 		{ "aoBlurBuffer", DescriptorSet::Uniform(aoBlurBuffer) },
-		{ "reflBuffer", DescriptorSet::Uniform(reflBuffer) },
-		{ "giBuffer", DescriptorSet::Uniform(giBuffer) }
+		{ "giBuffer", DescriptorSet::Uniform(giBuffer) },
+		{ "oitAccumBuffer", DescriptorSet::Uniform(oitAccumBufferView) },
+		{ "oitRevealBuffer", DescriptorSet::Uniform(oitRevealBufferView) },
+		{ "disocclMap", DescriptorSet::Uniform(disocclMapView) }
 	};
 
 	for (uint8 i = 0; i < DeferredRenderSystem::gBufferCount; i++)
@@ -224,6 +227,10 @@ void DeferredRenderEditorSystem::preLdrRender()
 		{
 			ImGui::TextDisabled("Velocity buffer is disabled in deferred system!");
 		}
+		else if (drawMode == G_BUFFER_DRAW_MODE_DISOCCLUSION && !deferredSystem->getOptions().useDisoccl)
+		{
+			ImGui::TextDisabled("Disocclusion buffer is disabled in deferred system!");
+		}
 		
 		else if (drawMode > G_BUFFER_DRAW_MODE_OFF)
 		{
@@ -291,7 +298,8 @@ void DeferredRenderEditorSystem::ldrRender()
 			G_BUFFER_DRAW_MODE_CC_ROUGHNESS) && !deferredSystem->getOptions().useClearCoat) || 
 		((drawMode == G_BUFFER_DRAW_MODE_EMISSIVE_COLOR || drawMode == 
 			G_BUFFER_DRAW_MODE_EMISSIVE_FACTOR) && !deferredSystem->getOptions().useEmission) ||
-		(drawMode == G_BUFFER_DRAW_MODE_VELOCITY && !deferredSystem->getOptions().useVelocity))
+		(drawMode == G_BUFFER_DRAW_MODE_VELOCITY && !deferredSystem->getOptions().useVelocity) ||
+		(drawMode == G_BUFFER_DRAW_MODE_DISOCCLUSION && !deferredSystem->getOptions().useDisoccl))
 	{
 		pc.drawMode = G_BUFFER_DRAW_MODE_OFF;
 	}

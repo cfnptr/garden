@@ -329,7 +329,7 @@ public:
 	 * @brief Returns specific image mip/layer view instance.
 	 * @note Creates a new image view instance on a first call.
 	 *
-	 * @param mip image view mip level
+	 * @param mip image view mipmap level
 	 * @param layer image view layer index
 	 */
 	ID<ImageView> getView(uint32 layer, uint8 mip);
@@ -337,7 +337,7 @@ public:
 	 * @brief Frees specific image mip/layer view instance.
 	 * @return True if image view instance was destroyed.
 	 *
-	 * @param mip image view mip level
+	 * @param mip image view mipmap level
 	 * @param layer image view layer index
 	 */
 	void freeView(uint32 layer, uint8 mip);
@@ -345,7 +345,7 @@ public:
 	 * @brief Does image have a specific mip/layer view instance.
 	 * @note Image view instance is created on a first getter call.
 	 *
-	 * @param mip image view mip level
+	 * @param mip image view mipmap level
 	 * @param layer image view layer index
 	 */
 	bool hasView(uint32 layer, uint8 mip) const noexcept
@@ -377,7 +377,7 @@ public:
 	 * @param format image data format
 	 * @param usage image usage flags
 	 * @param size image size in texels
-	 * @param mipCount image mip level count
+	 * @param mipCount image mipmap level count
 	 * @param layerCount image array layer count
 	 */
 	static bool isSupported(Type type, Format format, Usage usage, 
@@ -900,12 +900,12 @@ public:
 
 	/**
 	 * @brief Calculates size of the image at the view mip level.
-	 * @param mipOffset image view base mip offset
+	 * @param mipOffset image view base mipmap offset
 	 */
 	uint2 calcSize(uint8 mipOffset = 0) const noexcept;
 	/**
 	 * @brief Calculates size of the image at the view mip level.
-	 * @param mipOffset image view base mip offset
+	 * @param mipOffset image view base mipmap offset
 	 */
 	u32x4 calcSize3(uint8 mipOffset = 0) const noexcept;
 

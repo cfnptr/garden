@@ -43,7 +43,7 @@ static DescriptorSet::Uniforms getUniforms(GraphicsSystem* graphicsSystem,
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	auto bloomSystem = BloomRenderSystem::Instance::tryGet();
 	auto inFlightCount = graphicsSystem->getInFlightCount();
-	auto hdrFramebufferView = graphicsSystem->get(deferredSystem->getUpscaleHdrFramebuffer());
+	auto hdrFramebufferView = graphicsSystem->get(deferredSystem->getUpscaleHdrFB());
 	auto hdrBufferView = hdrFramebufferView->getColorAttachments()[0].imageView;
 
 	ID<ImageView> bloomBufferView;

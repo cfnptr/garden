@@ -213,7 +213,7 @@ public:
 	/**
 	 * @brief Sets mip-map LOD bias. (Useful for upscaling)
 	 * @details See the @ref getCommonConstants().
-	 * @param mipLodBias target mip LOD bias
+	 * @param mipLodBias target mipmap LOD bias
 	 */
 	void setMipLodBias(float mipLodBias) noexcept { commonConstants.mipLodBias = mipLodBias; }
 
@@ -706,9 +706,9 @@ public:
 	 * @param image target image instance
 	 * @param type image view dimensionality
 	 * @param format image view data format (undefined = image format)
-	 * @param baseLayer image view base layer index
+	 * @param baseLayer image view base array layer index
 	 * @param layerCount image view layer count (0 = all image layers)
-	 * @param baseMip image view base mip index
+	 * @param baseMip image view base mipmap level
 	 * @param mipCount image view mip count (0 = all image mips)
 	 */
 	ID<ImageView> createImageView(ID<Image> image, Image::Type type, Image::Format format = Image::Format::Undefined,
