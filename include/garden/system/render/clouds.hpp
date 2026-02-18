@@ -125,17 +125,17 @@ private:
 
 	friend class ecsm::Manager;
 public:
-	bool isEnabled = true;        /**< Is physically based volumetric clouds rendering enabled. */
-	bool renderShadows = true;    /**< Render cloud shadows to the shadow buffer. */
-	float bottomRadius = 1.5f;    /**< Stratus and cumulus clouds start height. (km) */
-	float topRadius = 4.0f;       /**< Stratus and cumulus clouds end height. (km) */
-	float minDistance = 0.2f;     /**< Clouds volume tracing offset in front of camera. (km) */
-	float maxDistance = 200.0f;   /**< Maximum clouds volume tracing distance. (km) */
-	float cumulusCoverage = 0.4f; /**< Ammount of cumulus clouds. (Clear or cloudy weather) */
-	float cirrusCoverage = 0.2f;  /**< Ammount of cirrus clouds. (Clear or cloudy weather) */
-	float temperatureDiff = 0.7f; /**< Temperature difference between layers. (Storm clouds) */
-	float currentTime = 0.0f;     /**< Custom current time value. (For a multiplayer sync) */
-	bool noDelay = false;         /**< Make all computation in one fram. (Expnesive!) */
+	bool isEnabled = true;         /**< Is physically based volumetric clouds rendering enabled. */
+	bool renderShadows = true;     /**< Render cloud shadows to the shadow buffer. */
+	float bottomRadius = 1.5f;     /**< Stratus and cumulus clouds start height. (km) */
+	float topRadius = 4.0f;        /**< Stratus and cumulus clouds end height. (km) */
+	float minDistance = 0.2f;      /**< Clouds volume tracing offset in front of camera. (km) */
+	float maxDistance = 200.0f;    /**< Maximum clouds volume tracing distance. (km) */
+	float cumulusCoverage = 0.4f;  /**< Ammount of cumulus clouds. (Clear or cloudy weather) */
+	float cirrusCoverage = 0.2f;   /**< Ammount of cirrus clouds. (Clear or cloudy weather) */
+	float temperatureDiff = 0.75f; /**< Temperature difference between layers. (Storm clouds) */
+	float currentTime = 0.0f;      /**< Custom current time value. (For a multiplayer sync) */
+	bool noDelay = false;          /**< Make all computation in one fram. (Expnesive!) */
 
 	/**
 	 * @brief Returns volumetric clouds rendering graphics quality.
