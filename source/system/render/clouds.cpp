@@ -131,9 +131,9 @@ static void getCloudsQuality(GraphicsQuality cloudsQuality, float& stepSizeFacto
 
 	switch (cloudsQuality)
 	{
-		case GraphicsQuality::PotatoPC: stepSizeFactor = 6.0f; break;
-		case GraphicsQuality::Low: stepSizeFactor = 4.0f; break;
-		case GraphicsQuality::Medium: stepSizeFactor = 2.0f; break;
+		case GraphicsQuality::PotatoPC: stepSizeFactor = 2.5f; break;
+		case GraphicsQuality::Low: stepSizeFactor = 2.0f; break;
+		case GraphicsQuality::Medium: stepSizeFactor = 1.5f; break;
 		case GraphicsQuality::High: stepSizeFactor = 1.0f; break;
 		case GraphicsQuality::Ultra: stepSizeFactor = 0.5f; break;
 		default: abort();
