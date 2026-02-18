@@ -124,30 +124,29 @@ static Ref<Image> createCirrusShape()
 		Image::Usage::TransferQ, 0, Image::Strategy::Size, ImageLoadFlags::LoadShared, 9.0f);
 }
 
-static void getCloudsQuality(GraphicsQuality cloudsQuality, float& stepAdjDist, float& sliceCount, float& kmPerSlice)
+static void getCloudsQuality(GraphicsQuality cloudsQuality, float& stepSizeFactor, float& sliceCount, float& kmPerSlice)
 {
 	auto atmosphereQuality = AtmosphereRenderSystem::Instance::get()->getQuality();
 	AtmosphereRenderSystem::getSliceQuality(atmosphereQuality, sliceCount, kmPerSlice);
 
 	switch (cloudsQuality)
 	{
-		case GraphicsQuality::PotatoPC: stepAdjDist = 3.072f; break;
-		case GraphicsQuality::Low: stepAdjDist = 4.096f; break;
-		case GraphicsQuality::Medium: stepAdjDist = 8.192f; break;
-		case GraphicsQuality::High: stepAdjDist = 16.384f; break;
-		case GraphicsQuality::Ultra: stepAdjDist = 32.768f; break;
+		case GraphicsQuality::PotatoPC: stepSizeFactor = 6.0f; break;
+		case GraphicsQuality::Low: stepSizeFactor = 4.0f; break;
+		case GraphicsQuality::Medium: stepSizeFactor = 2.0f; break;
+		case GraphicsQuality::High: stepSizeFactor = 1.0f; break;
+		case GraphicsQuality::Ultra: stepSizeFactor = 0.5f; break;
 		default: abort();
 	}
-	stepAdjDist = 1.0f / stepAdjDist;
 }
 static ID<GraphicsPipeline> createCamViewPipeline(ID<Framebuffer> framebuffer, GraphicsQuality quality)
 {
-	float stepAdjDist, sliceCount, kmPerSlice;
-	getCloudsQuality(quality, stepAdjDist, sliceCount, kmPerSlice);
+	float stepSizeFactor, sliceCount, kmPerSlice;
+	getCloudsQuality(quality, stepSizeFactor, sliceCount, kmPerSlice);
 
 	Pipeline::SpecConstValues specConstValues =
 	{
-		{ "STEP_ADJ_DIST", Pipeline::SpecConstValue(stepAdjDist) },
+		{ "STEP_SIZE_FACTOR", Pipeline::SpecConstValue(stepSizeFactor) },
 		{ "SLICE_COUNT", Pipeline::SpecConstValue(sliceCount) },
 		{ "KM_PER_SLICE", Pipeline::SpecConstValue(kmPerSlice) }
 	};
@@ -158,12 +157,12 @@ static ID<GraphicsPipeline> createCamViewPipeline(ID<Framebuffer> framebuffer, G
 }
 static ID<GraphicsPipeline> createSkyboxPipeline(ID<Framebuffer> framebuffer, GraphicsQuality quality)
 {
-	float stepAdjDist, sliceCount, kmPerSlice;
-	getCloudsQuality(quality, stepAdjDist, sliceCount, kmPerSlice);
+	float stepSizeFactor, sliceCount, kmPerSlice;
+	getCloudsQuality(quality, stepSizeFactor, sliceCount, kmPerSlice);
 
 	Pipeline::SpecConstValues specConstValues =
 	{
-		{ "STEP_ADJ_DIST", Pipeline::SpecConstValue(stepAdjDist) },
+		{ "STEP_SIZE_FACTOR", Pipeline::SpecConstValue(stepSizeFactor) },
 		{ "SLICE_COUNT", Pipeline::SpecConstValue(sliceCount) },
 		{ "KM_PER_SLICE", Pipeline::SpecConstValue(kmPerSlice) }
 	};
@@ -200,8 +199,7 @@ static DescriptorSet::Uniforms getCamViewUniforms(GraphicsSystem* graphicsSystem
 {
 	auto atmosphereSystem = AtmosphereRenderSystem::Instance::get();
 	auto hizBufferView = HizRenderSystem::Instance::get()->getView(2);
-	auto gFramebuffer = graphicsSystem->get(DeferredRenderSystem::Instance::get()->getGFramebuffer());
-	auto gVelocityView = gFramebuffer->getColorAttachments()[DeferredRenderSystem::gBufferVelocity].imageView;
+	auto disocclMapView = DeferredRenderSystem::Instance::get()->getDisocclView(2);
 	auto transLutView = graphicsSystem->get(atmosphereSystem->getTransLUT())->getView();
 	auto cameraVolumeView = graphicsSystem->get(atmosphereSystem->getCameraVolume())->getView();
 	auto dataFieldsView = graphicsSystem->get(dataFields)->getView();
@@ -218,7 +216,7 @@ static DescriptorSet::Uniforms getCamViewUniforms(GraphicsSystem* graphicsSystem
 	{ 
 		{ "camView", DescriptorSet::Uniform(camViews) },
 		{ "hizBuffer", DescriptorSet::Uniform(hizBufferView, 1, inFlightCount) },
-		{ "gVelocity", DescriptorSet::Uniform(gVelocityView, 1, inFlightCount) },
+		{ "disocclMap", DescriptorSet::Uniform(disocclMapView, 1, inFlightCount) },
 		{ "transLUT", DescriptorSet::Uniform(transLutView, 1, inFlightCount) },
 		{ "cameraVolume", DescriptorSet::Uniform(cameraVolumeView, 1, inFlightCount) },
 		{ "dataFields", DescriptorSet::Uniform(dataFieldsView, 1, inFlightCount) },
@@ -558,7 +556,7 @@ void CloudsRenderSystem::preHdrRender()
 
 	auto bayerIndex = bayerIndices4x4[currentFrameIndex % 16];
 	uint2 bayerPos; bayerPos.y = bayerIndex / 4;
-	bayerPos.x = bayerIndex - bayerPos.y * 4;
+	bayerPos.x = noDelay ? UINT32_MAX : bayerIndex - bayerPos.y * 4;
 
 	CamViewPC pc;
 	pc.cameraPos = calcCameraPos(cc, groundRadius);
@@ -714,16 +712,12 @@ void CloudsRenderSystem::setQuality(GraphicsQuality quality)
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	graphicsSystem->destroy(camViewDS);
 	graphicsSystem->destroy(skyboxDS);
+	graphicsSystem->destroy(skyboxPipeline);
 
 	if (camViewPipeline)
 	{
 		graphicsSystem->destroy(camViewPipeline);
 		camViewPipeline = createCamViewPipeline(camViewFramebuffer, quality);
-	}
-	if (skyboxPipeline)
-	{
-		graphicsSystem->destroy(skyboxPipeline);
-		skyboxPipeline = createSkyboxPipeline(camViewFramebuffer, quality);
 	}
 
 	this->quality = quality;

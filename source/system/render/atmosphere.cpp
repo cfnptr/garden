@@ -137,7 +137,6 @@ static void createSkyboxFramebuffers(GraphicsSystem* graphicsSystem, ID<Framebuf
 	}
 }
 
-//**********************************************************************************************************************
 static ID<GraphicsPipeline> createTransLutPipeline(ID<Framebuffer> transLutFramebuffer, GraphicsQuality quality)
 {
 	float sampleCount;

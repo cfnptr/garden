@@ -68,7 +68,7 @@ public:
 
 	/**
 	 * @brief Returns hierarchical depth (Z) buffer image view at specified mip level.
-	 * @param mip target Hi-Z image view mip level
+	 * @param mip target Hi-Z image view mipmap level
 	 */
 	ID<ImageView> getView(uint8 mip)
 	{

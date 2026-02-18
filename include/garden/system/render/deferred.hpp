@@ -70,8 +70,16 @@ public:
 		bool useClearCoat = true;      /**< Create and use clear coat buffer for rendering. */
 		bool useEmission = true;       /**< Create and use light emission buffer for rendering. */
 		bool useVelocity = true;       /**< Create and use reflection buffer for rendering. */
+		bool useDisoccl = true;        /**< Create and use disocclusion map for rendering. */
 		bool useAsyncRecording = true; /**< Use multithreaded render commands recording. */
 		Options() noexcept { }
+	};
+
+	struct DisocclPC final
+	{
+		float nearPlane;
+		float threshold;
+		float velFactor;
 	};
 
 	static constexpr uint8 gBufferBaseColor = 0;   /**< Index of the G-Buffer with encoded base color. */
@@ -104,6 +112,7 @@ public:
 	static constexpr Image::Format oitAccumBufferFormat = Image::Format::SfloatR16G16B16A16;
 	static constexpr Image::Format oitRevealBufferFormat = Image::Format::UnormR8;
 	static constexpr Image::Format transBufferFormat = Image::Format::UnormR8;
+	static constexpr Image::Format disocclMapFormat = Image::Format::UnormR8;
 
 	static constexpr Framebuffer::OutputAttachment::Flags gBufferFlags = { false, false, true };
 	static constexpr Framebuffer::OutputAttachment::Flags gBufferDepthFlags = { true, false, true };
@@ -117,18 +126,14 @@ public:
 	static constexpr Framebuffer::OutputAttachment::Flags normalsBufferFlags = { false, true, true };
 	static constexpr Framebuffer::OutputAttachment::Flags transBufferFlags = { true, false, true};
 	static constexpr Framebuffer::OutputAttachment::Flags transBufferDepthFlags = { false, true, true };
+	static constexpr Framebuffer::OutputAttachment::Flags disocclMapFlags = { false, false, true};
 private:
 	vector<ID<Image>> gBuffers;
-	ID<Image> hdrBuffer = {};
-	ID<Image> hdrCopyBuffer = {};
-	ID<Image> ldrBuffer = {};
-	ID<Image> uiBuffer = {};
-	ID<Image> oitAccumBuffer = {};
-	ID<Image> oitRevealBuffer = {};
-	ID<Image> depthStencilBuffer = {};
-	ID<Image> depthCopyBuffer = {};
-	ID<Image> transBuffer = {};
-	ID<Image> upscaleHdrBuffer = {};
+	ID<Image> hdrBuffer = {}, hdrCopyBuffer = {};
+	ID<Image> ldrBuffer = {}, uiBuffer = {}, disocclMap = {};
+	ID<Image> oitAccumBuffer = {}, oitRevealBuffer = {};
+	ID<Image> depthStencilBuffer = {}, depthCopyBuffer = {};
+	ID<Image> transBuffer = {}, upscaleHdrBuffer = {};
 	ID<ImageView> depthStencilIV = {};
 	ID<ImageView> depthCopyIV = {};
 	ID<ImageView> depthImageView = {};
@@ -136,16 +141,18 @@ private:
 	ID<ImageView> hdrCopyIV = {};
 	ID<Framebuffer> gFramebuffer = {};
 	ID<Framebuffer> hdrFramebuffer = {};
-	ID<Framebuffer> depthHdrFramebuffer = {};
+	ID<Framebuffer> depthHdrFB = {};
 	ID<Framebuffer> ldrFramebuffer = {};
-	ID<Framebuffer> depthLdrFramebuffer = {};
+	ID<Framebuffer> depthLdrFB = {};
 	ID<Framebuffer> uiFramebuffer = {};
 	ID<Framebuffer> oitFramebuffer = {};
-	ID<Framebuffer> transDepthFramebuffer = {};
-	ID<Framebuffer> upscaleHdrFramebuffer = {};
+	ID<Framebuffer> transDepthFB = {};
+	ID<Framebuffer> upscaleHdrFB = {};
+	ID<Framebuffer> disocclusionFB = {};
 	ID<GraphicsPipeline> velocityPipeline = {};
+	ID<GraphicsPipeline> disocclPipeline = {};
 	ID<GraphicsPipeline> hdrCopyBlurPipeline = {};
-	ID<DescriptorSet> velocityDS = {};
+	ID<DescriptorSet> velocityDS = {}, disocclDS = {};
 	vector<ID<Framebuffer>> hdrCopyBlurFBs;
 	vector<ID<DescriptorSet>> hdrCopyBlurDSes;
 	Options options = {};
@@ -172,7 +179,9 @@ private:
 
 	friend class ecsm::Manager;
 public:
-	bool isEnabled = true; /**< Is deferred rendering enabled. */
+	bool isEnabled = true;         /**< Is deferred rendering enabled. */
+	float disocclThreshold = 0.1f; /**< Disocclusion detection threshold. */
+	float disocclVelFactor = 2.0f; /**< Disocclusion velocity multiplier. */
 
 	/*******************************************************************************************************************
 	 * @brief Returns deferred rendering system options.
@@ -209,6 +218,15 @@ public:
 	 * @brief Returns if there is rendered translucent depth data on the current frame.
 	 */
 	bool hasAnyTransDepth() const noexcept { return hasAnyTD; }
+
+	/**
+	 * @brief Returns deferred camera velocity graphics pipeline.
+	 */
+	ID<GraphicsPipeline> getVelocityPipeline();
+	/**
+	 * @brief Returns deferred disocclusion graphics pipeline.
+	 */
+	ID<GraphicsPipeline> getDisocclPipeline();
 
 	/**
 	 * @brief Returns deferred G-Buffer array.
@@ -255,6 +273,10 @@ public:
 	 * @brief Returns deferred upscale HDR buffer.
 	 */
 	ID<Image> getUpscaleHdrBuffer();
+	/**
+	 * @brief Returns deferred disocclusion map.
+	 */
+	ID<Image> getDisocclMap();
 
 	/**
 	 * @brief Returns deferred depth/stencil buffer image view.
@@ -276,6 +298,11 @@ public:
 	 * @brief Returns deferred HDR copy buffer image view.
 	 */
 	ID<ImageView> getHdrCopyIV();
+	/**
+	 * @brief Returns deferred disocclusion map image view.
+	 * @param mip target image view mipmap level
+	 */
+	ID<ImageView> getDisocclView(uint8 mip);
 
 	/**
 	 * @brief Returns deferred G-Buffer framebuffer.
@@ -288,7 +315,7 @@ public:
 	/**
 	 * @brief Returns deferred depth HDR framebuffer. (HDR + Depth)
 	 */
-	ID<Framebuffer> getDepthHdrFramebuffer();
+	ID<Framebuffer> getDepthHdrFB();
 	/**
 	 * @brief Returns deferred LDR framebuffer. (Low Dynamic Range)
 	 */
@@ -296,7 +323,7 @@ public:
 	/**
 	 * @brief Returns deferred depth LDR framebuffer. (LDR + Depth)
 	 */
-	ID<Framebuffer> getDepthLdrFramebuffer();
+	ID<Framebuffer> getDepthLdrFB();
 	/**
 	 * @brief Returns deferred UI framebuffer. (User Interface)
 	 */
@@ -308,11 +335,15 @@ public:
 	/**
 	 * @brief Returns deferred transparent depth framebuffer.
 	 */
-	ID<Framebuffer> getTransDepthFramebuffer();
+	ID<Framebuffer> getTransDepthFB();
 	/**
 	 * @brief Returns deferred upscale HDR framebuffer.
 	 */
-	ID<Framebuffer> getUpscaleHdrFramebuffer();
+	ID<Framebuffer> getUpscaleHdrFB();
+	/**
+	 * @brief Returns deferred disocclusion framebuffer.
+	 */
+	ID<Framebuffer> getDisocclusionFB();
 	/**
 	 * @brief Returns deferred HDR copy blur framebuffers.
 	 */

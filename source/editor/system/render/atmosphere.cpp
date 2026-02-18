@@ -62,8 +62,7 @@ void AtmosphereEditorSystem::preUiRender()
 	if (ImGui::Begin("Sky Atmosphere", &showWindow, ImGuiWindowFlags_AlwaysAutoResize))
 	{
 		auto atmosphereSystem = AtmosphereRenderSystem::Instance::get();
-		ImGui::Checkbox("Enabled", &atmosphereSystem->isEnabled);
-		ImGui::SameLine();
+		ImGui::Checkbox("Enabled", &atmosphereSystem->isEnabled); ImGui::SameLine();
 
 		ImGui::Checkbox("No-Delay Mode", &atmosphereSystem->noDelay);
 		if (ImGui::BeginItemTooltip())

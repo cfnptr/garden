@@ -359,7 +359,7 @@ void DlssRenderSystem::evaluateDlssCommand(void* commandBuffer, void* argument)
 {
 	auto dlssSystem = (DlssRenderSystem*)argument;
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
-	if (!dlssSystem->feature || deferredSystem->getHdrFramebuffer() == deferredSystem->getUpscaleHdrFramebuffer())
+	if (!dlssSystem->feature || deferredSystem->getHdrFramebuffer() == deferredSystem->getUpscaleHdrFB())
 		return;
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
@@ -370,7 +370,7 @@ void DlssRenderSystem::evaluateDlssCommand(void* commandBuffer, void* argument)
 	auto& jitterOffsets = graphicsSystem->getJitterOffsets();
 	auto jitterOffset = jitterOffsets[graphicsSystem->getCurrentFrameIndex() % jitterOffsets.size()] * 0.5f;
 	auto hdrFramebufferView = graphicsSystem->get(deferredSystem->getHdrFramebuffer());
-	auto upscaleHdrFramebufferView = graphicsSystem->get(deferredSystem->getUpscaleHdrFramebuffer());
+	auto upscaleHdrFramebufferView = graphicsSystem->get(deferredSystem->getUpscaleHdrFB());
 	auto inputSize = hdrFramebufferView->getSize();
 
 	NVSDK_NGX_Result ngxResult;

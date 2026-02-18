@@ -60,7 +60,7 @@ void PhysicsDebugRenderer::drawLines(const f32x4x4& viewProj)
 	{
 		ResourceSystem::GraphicsOptions options;
 		linePipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline(
-			"editor/physics/lines", deferredSystem->getDepthLdrFramebuffer(), options);
+			"editor/physics/lines", deferredSystem->getDepthLdrFB(), options);
 	}
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
@@ -88,7 +88,7 @@ void PhysicsDebugRenderer::drawTriangles(const f32x4x4& viewProj)
 	{
 		ResourceSystem::GraphicsOptions options;
 		trianglePipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline(
-			"editor/physics/triangles", deferredSystem->getDepthLdrFramebuffer(), options);
+			"editor/physics/triangles", deferredSystem->getDepthLdrFB(), options);
 	}
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();

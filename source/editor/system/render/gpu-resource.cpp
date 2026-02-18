@@ -422,13 +422,13 @@ static void renderImageViews(uint32& selectedItem, string& searchString,
 	auto& imageView = imageViews[selectedItem];
 	auto isDefault = imageView.isDefault();
 
-	string imageName; u32x4 imageSize;
+	string imageName; u32x4 imageSize, imageViewSize;
 	if (imageView.getImage())
 	{
 		auto image = graphicsAPI->imagePool.get(imageView.getImage());
 		imageName = image->getDebugName().empty() ? "Image " +
 			to_string(*imageView.getImage()) : image->getDebugName();
-		imageSize = image->getSize();
+		imageSize = image->getSize(); imageViewSize = imageView.calcSize3();
 
 		if (image->isReady() && hasAnyFlag(image->getUsage(), Image::Usage::Sampled) && 
 			!isFormatInt(imageView.getFormat()) && imageView.getType() == Image::Type::Texture2D)
@@ -447,6 +447,8 @@ static void renderImageViews(uint32& selectedItem, string& searchString,
 	ImGui::TextWrapped("Format type: %s", toString(imageView.getFormat()).data());
 	ImGui::TextWrapped("Image size: %lux%lux%lu", (unsigned long)imageSize.getX(), 
 		(unsigned long)imageSize.getY(), (unsigned long)imageSize.getZ());
+	ImGui::TextWrapped("View size: %lux%lux%lu", (unsigned long)imageViewSize.getX(), 
+		(unsigned long)imageViewSize.getY(), (unsigned long)imageViewSize.getZ());
 	ImGui::TextWrapped("Base layer: %lu", (unsigned long)imageView.getBaseLayer());
 	ImGui::TextWrapped("Layer count: %lu", (unsigned long)imageView.getLayerCount());
 	ImGui::TextWrapped("Base mip: %lu", (unsigned long)imageView.getBaseMip());

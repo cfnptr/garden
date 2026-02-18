@@ -143,8 +143,8 @@ static DescriptorSet::Uniforms getUniforms(GraphicsSystem* graphicsSystem, ID<Im
 {
 	auto depthMapView = graphicsSystem->get(depthMap)->getView();
 	auto transMapView = graphicsSystem->get(transMap)->getView();
-	auto gFramebuffer = graphicsSystem->get(DeferredRenderSystem::Instance::get()->getGFramebuffer());
-	auto gNormalsView = gFramebuffer->getColorAttachments()[DeferredRenderSystem::gBufferNormals].imageView;
+	auto gFramebufferView = graphicsSystem->get(DeferredRenderSystem::Instance::get()->getGFramebuffer());
+	auto gNormalsView = gFramebufferView->getColorAttachments()[DeferredRenderSystem::gBufferNormals].imageView;
 	auto hizBufferView = HizRenderSystem::Instance::get()->getView(1);
 	auto inFlightCount = graphicsSystem->getInFlightCount();
 	

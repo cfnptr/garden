@@ -357,11 +357,6 @@ static ID<ComputePipeline> createIblSpecularPipeline()
 	options.loadAsync = false;
 	return ResourceSystem::Instance::get()->loadComputePipeline("ibl-specular", options);
 }
-static ID<ComputePipeline> createDisocclPipeline()
-{
-	ResourceSystem::ComputeOptions options;
-	return ResourceSystem::Instance::get()->loadComputePipeline("disocclusion", options);
-}
 
 //**********************************************************************************************************************
 static ID<Image> createDfgLUT(GraphicsSystem* graphicsSystem, uint32 dfgSize)
@@ -1100,12 +1095,6 @@ ID<ComputePipeline> PbrLightingSystem::getIblSpecularPipeline()
 	if (!iblSpecularPipeline)
 		iblSpecularPipeline = createIblSpecularPipeline();
 	return iblSpecularPipeline;
-}
-ID<ComputePipeline> PbrLightingSystem::getDisocclPipeline()
-{
-	if (!disocclPipeline)
-		disocclPipeline = createDisocclPipeline();
-	return disocclPipeline;
 }
 
 const ID<Framebuffer>* PbrLightingSystem::getShadFramebuffers()

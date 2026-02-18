@@ -203,8 +203,8 @@ public:
 	 * @brief Returns image memory barrier state.
 	 * 
 	 * @param image target image instance
-	 * @param mip image mip level
-	 * @param layer image layer index
+	 * @param mip image mipmap level
+	 * @param layer image array layer index
 	 */
 	Image::LayoutState& getImageState(ID<Image> image, uint8 mip, uint32 layer) noexcept
 	{

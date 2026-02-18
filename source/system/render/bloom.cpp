@@ -71,7 +71,7 @@ static void createBloomDescriptorSets(GraphicsSystem* graphicsSystem,
 	ID<Image> bloomBuffer, vector<ID<DescriptorSet>>& descriptorSets)
 {
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
-	auto upscaledHdrFramebufferView = graphicsSystem->get(deferredSystem->getUpscaleHdrFramebuffer());
+	auto upscaledHdrFramebufferView = graphicsSystem->get(deferredSystem->getUpscaleHdrFB());
 	auto bloomBufferView = graphicsSystem->get(bloomBuffer);
 	auto mipCount = bloomBufferView->getMipCount();
 	descriptorSets.resize(mipCount + (mipCount - 1));

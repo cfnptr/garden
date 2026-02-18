@@ -96,7 +96,7 @@ void MeshGizmosEditorSystem::init()
 
 	ID<Framebuffer> framebuffer;
 	if (DeferredRenderSystem::Instance::has())
-		framebuffer = DeferredRenderSystem::Instance::get()->getDepthLdrFramebuffer();
+		framebuffer = DeferredRenderSystem::Instance::get()->getDepthLdrFB();
 	else
 		framebuffer = ForwardRenderSystem::Instance::get()->getFullFramebuffer();
 
