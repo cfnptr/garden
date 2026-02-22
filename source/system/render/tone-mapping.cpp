@@ -42,25 +42,12 @@ static DescriptorSet::Uniforms getUniforms(GraphicsSystem* graphicsSystem,
 {
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	auto bloomSystem = BloomRenderSystem::Instance::tryGet();
+	auto hdrBufferView = deferredSystem->getHdrImageView();
+	auto bloomBufferView = bloomSystem && useBloomBuffer ? graphicsSystem->get(
+		bloomSystem->getBloomBuffer())->getView() : graphicsSystem->getEmptyTexture();
+	auto depthBufferView = useLightAbsorption ? 
+		deferredSystem->getDepthImageView() : graphicsSystem->getEmptyTexture();
 	auto inFlightCount = graphicsSystem->getInFlightCount();
-	auto hdrFramebufferView = graphicsSystem->get(deferredSystem->getUpscaleHdrFB());
-	auto hdrBufferView = hdrFramebufferView->getColorAttachments()[0].imageView;
-
-	ID<ImageView> bloomBufferView;
-	if (bloomSystem && useBloomBuffer)
-	{
-		auto bloomBuffer = bloomSystem->getBloomBuffer();
-		bloomBufferView = graphicsSystem->get(bloomBuffer)->getView();
-	}
-	else bloomBufferView = graphicsSystem->getEmptyTexture();
-
-	ID<ImageView> depthBufferView;
-	if (useLightAbsorption)
-	{
-		auto gFramebufferView = graphicsSystem->get(deferredSystem->getGFramebuffer());
-		depthBufferView = gFramebufferView->getDepthStencilAttachment().imageView;
-	}
-	else depthBufferView = graphicsSystem->getEmptyTexture();
 
 	DescriptorSet::Uniforms uniforms =
 	{ 

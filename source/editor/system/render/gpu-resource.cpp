@@ -195,9 +195,6 @@ static void renderBuffers(uint32& selectedItem, string& searchString,
 		getVkAllocationInfo(allocationInfo, memoryType, memoryHeap, buffer);
 		renderVkMemoryDetails(allocationInfo, memoryType, memoryHeap, buffer);
 	}
-
-	auto isMappable = buffer.isMappable();
-	ImGui::Checkbox("Mappable", &isMappable);
 	ImGui::Spacing();
 
 	if (ImGui::CollapsingHeader("Using Descriptor Sets"))
@@ -309,7 +306,8 @@ static void renderImages(uint32& selectedItem, string& searchString, bool& searc
 	auto& image = images[selectedItem];
 	auto size = image.getSize();
 
-	if (image.isReady() && hasAnyFlag(image.getUsage(), Image::Usage::Sampled) && !isFormatInt(image.getFormat()) && 
+	if (image.isReady() && hasAnyFlag(image.getUsage(), Image::Usage::Sampled) && 
+		!isFormatInt(image.getFormat()) && !isFormatDepthAndStencil(image.getFormat()) &&
 		(image.getType() == Image::Type::Texture2D || image.getType() == Image::Type::Texture2DArray))
 	{
 		imageMip = std::min(imageMip, (int)image.getMipCount() - 1);
@@ -431,7 +429,8 @@ static void renderImageViews(uint32& selectedItem, string& searchString,
 		imageSize = image->getSize(); imageViewSize = imageView.calcSize3();
 
 		if (image->isReady() && hasAnyFlag(image->getUsage(), Image::Usage::Sampled) && 
-			!isFormatInt(imageView.getFormat()) && imageView.getType() == Image::Type::Texture2D)
+			!isFormatInt(imageView.getFormat()) && !isFormatDepthAndStencil(imageView.getFormat()) &&
+			imageView.getType() == Image::Type::Texture2D)
 		{
 			auto size = image->getSize();
 			auto aspectRatio = (float)size.getY() / size.getX();
@@ -785,7 +784,7 @@ static void renderSamplers(uint32& selectedItem, string& searchString,
 	ImGui::TextWrapped("Address Mode Y: %s", toString(state.addressModeY).data());
 	ImGui::TextWrapped("Address Mode Z: %s", toString(state.addressModeZ).data());
 	ImGui::TextWrapped("Border Color: %s", toString(state.borderColor).data());
-	ImGui::TextWrapped("Compare Operation: %s", toString(state.compareOperation).data());
+	ImGui::TextWrapped("Compare Operator: %s", toString(state.compareOperator).data());
 	ImGui::TextWrapped("Maximum Anisotropy: %f", state.maxAnisotropy);
 	ImGui::TextWrapped("Mip LOD Bias: %f", state.mipLodBias);
 	ImGui::TextWrapped("Minimum LOD: %f", state.minLod);

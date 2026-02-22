@@ -1030,9 +1030,11 @@ VulkanAPI::VulkanAPI(const string& appName, const string& appDataName, Version a
 	if (features.debugUtils)
 		debugMessenger = createVkDebugMessenger(instance);
 	#endif
+
+	deviceProperties.pNext = &driverProperties;
+	driverProperties.pNext = &subgroupProperties;
 	
 	physicalDevice = getBestPhysicalDevice(instance);
-	deviceProperties.pNext = &subgroupProperties;
 	physicalDevice.getProperties2(&deviceProperties);
 	deviceFeatures = physicalDevice.getFeatures2();
 	versionMajor = VK_API_VERSION_MAJOR(deviceProperties.properties.apiVersion);

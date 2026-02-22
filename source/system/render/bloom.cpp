@@ -70,13 +70,11 @@ static void createBloomDescriptorSets(GraphicsSystem* graphicsSystem,
 	ID<GraphicsPipeline> downsamplePipeline, ID<GraphicsPipeline> upsamplePipeline, 
 	ID<Image> bloomBuffer, vector<ID<DescriptorSet>>& descriptorSets)
 {
-	auto deferredSystem = DeferredRenderSystem::Instance::get();
-	auto upscaledHdrFramebufferView = graphicsSystem->get(deferredSystem->getUpscaleHdrFB());
 	auto bloomBufferView = graphicsSystem->get(bloomBuffer);
 	auto mipCount = bloomBufferView->getMipCount();
 	descriptorSets.resize(mipCount + (mipCount - 1));
 
-	auto uniforms = getUniforms(upscaledHdrFramebufferView->getColorAttachments()[0].imageView);
+	auto uniforms = getUniforms(DeferredRenderSystem::Instance::get()->getUpscaleHdrIV());
 	auto descriptorSet = graphicsSystem->createDescriptorSet(downsamplePipeline, std::move(uniforms));
 	SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.bloom.downsample0");
 	descriptorSets[0] = descriptorSet;

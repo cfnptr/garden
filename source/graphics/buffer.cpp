@@ -232,24 +232,10 @@ bool Buffer::destroy()
 }
 
 //**********************************************************************************************************************
-bool Buffer::isMappable() const
-{
-	if (map)
-		return true;
-
-	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
-	{
-		VkMemoryPropertyFlags memoryPropertyFlags;
-		vmaGetAllocationMemoryProperties(VulkanAPI::get()->memoryAllocator,
-			(VmaAllocation)allocation, &memoryPropertyFlags);
-		return memoryPropertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
-	}
-	else abort();
-}
 void Buffer::invalidate(uint64 size, uint64 offset)
 {
 	GARDEN_ASSERT_MSG((size == 0 && offset == 0) || size + offset <= binarySize, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(isMappable(), "Buffer [" + debugName + "] is not mappable");
+	GARDEN_ASSERT_MSG(map, "Buffer [" + debugName + "] is not mappable");
 	GARDEN_ASSERT_MSG(instance, "Buffer [" + debugName + "] is not ready");
 
 	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
@@ -264,7 +250,7 @@ void Buffer::invalidate(uint64 size, uint64 offset)
 void Buffer::flush(uint64 size, uint64 offset)
 {
 	GARDEN_ASSERT_MSG((size == 0 && offset == 0) || size + offset <= binarySize, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(isMappable(), "Buffer [" + debugName + "] is not mappable");
+	GARDEN_ASSERT_MSG(map, "Buffer [" + debugName + "] is not mappable");
 	GARDEN_ASSERT_MSG(instance, "Buffer [" + debugName + "] is not ready");
 
 	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
@@ -280,7 +266,7 @@ void Buffer::writeData(const void* data, uint64 size, uint64 offset)
 {
 	GARDEN_ASSERT_MSG(data, "Assert " + debugName);
 	GARDEN_ASSERT_MSG((size == 0 && offset == 0) || size + offset <= binarySize, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(isMappable(), "Buffer [" + debugName + "] is not mappable");
+	GARDEN_ASSERT_MSG(map, "Buffer [" + debugName + "] is not mappable");
 	GARDEN_ASSERT_MSG(instance, "Buffer [" + debugName + "] is not ready");
 
 	if (map)

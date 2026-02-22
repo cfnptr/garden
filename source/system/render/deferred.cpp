@@ -19,6 +19,7 @@
 #include "garden/system/resource.hpp"
 #include "garden/system/camera.hpp"
 #include "garden/profiler.hpp"
+#include "common/gbuffer.h"
 #include "math/brdf.hpp"
 
 // TODO: allow to disable OIT and other buffers creation/usage.
@@ -31,21 +32,20 @@ static void createGBuffers(GraphicsSystem* graphicsSystem,
 	constexpr auto usage = Image::Usage::ColorAttachment | Image::Usage::Sampled | 
 		Image::Usage::TransferSrc | Image::Usage::TransferDst | Image::Usage::Fullscreen;
 	constexpr auto strategy = Image::Strategy::Size;
-	Image::Format formats[DeferredRenderSystem::gBufferCount]
+
+	Image::Format formats[G_BUFFER_COUNT]
 	{
 		DeferredRenderSystem::gBufferFormat0,
 		DeferredRenderSystem::gBufferFormat1,
 		DeferredRenderSystem::gBufferFormat2,
-		options.useClearCoat ? DeferredRenderSystem::gBufferFormat3 : Image::Format::Undefined,
-		options.useEmission ? DeferredRenderSystem::gBufferFormat4 : Image::Format::Undefined,
-		options.useVelocity ? DeferredRenderSystem::gBufferFormat5 : Image::Format::Undefined
+		options.useVelocity ? DeferredRenderSystem::gBufferFormat3 : Image::Format::Undefined
 	};
 
 	const Image::Mips mips = { { nullptr } };
 	auto framebufferSize = graphicsSystem->getScaledFrameSize();
-	gBuffers.resize(DeferredRenderSystem::gBufferCount);
+	gBuffers.resize(G_BUFFER_COUNT);
 
-	for (uint8 i = 0; i < DeferredRenderSystem::gBufferCount; i++)
+	for (uint8 i = 0; i < G_BUFFER_COUNT; i++)
 	{
 		if (formats[i] == Image::Format::Undefined)
 		{
@@ -199,8 +199,8 @@ static ID<ImageView> createHdrCopyIV(GraphicsSystem* graphicsSystem, ID<Image> h
 static ID<Framebuffer> createGFramebuffer(GraphicsSystem* graphicsSystem, 
 	const vector<ID<Image>> gBuffers, ID<ImageView> depthStencilIV)
 {
-	vector<Framebuffer::OutputAttachment> colorAttachments(DeferredRenderSystem::gBufferCount);
-	for (uint8 i = 0; i < DeferredRenderSystem::gBufferCount; i++)
+	vector<Framebuffer::OutputAttachment> colorAttachments(G_BUFFER_COUNT);
+	for (uint8 i = 0; i < G_BUFFER_COUNT; i++)
 	{
 		if (!gBuffers[i])
 		{
@@ -349,7 +349,7 @@ static DescriptorSet::Uniforms getDisocclUniforms(GraphicsSystem* graphicsSystem
 	ID<ImageView> depthBuffer, ID<ImageView> depthCopyIV, ID<Framebuffer> gFramebuffer)
 {
 	auto gFramebufferView = graphicsSystem->get(gFramebuffer);
-	auto gVelocityView = gFramebufferView->getColorAttachments()[DeferredRenderSystem::gBufferVelocity].imageView;	
+	auto gVelocityView = gFramebufferView->getColorAttachments()[G_BUFFER_VELOCITY].imageView;	
 
 	DescriptorSet::Uniforms uniforms =
 	{ 
@@ -371,9 +371,9 @@ DeferredRenderSystem::DeferredRenderSystem(Options options,
 	manager->registerEvent("HdrRender");
 	manager->registerEvent("PreDepthHdrRender");
 	manager->registerEvent("DepthHdrRender");
-	manager->registerEvent("PreRefractedRender");
+	manager->registerEvent("PreRefrRender");
 	manager->registerEvent("RefractedRender");
-	manager->registerEvent("PreTranslucentRender");
+	manager->registerEvent("PreTransRender");
 	manager->registerEvent("TranslucentRender");
 	manager->registerEvent("PreTransDepthRender");
 	manager->registerEvent("TransDepthRender");
@@ -405,9 +405,9 @@ DeferredRenderSystem::~DeferredRenderSystem()
 		manager->unregisterEvent("HdrRender");
 		manager->unregisterEvent("PreDepthHdrRender");
 		manager->unregisterEvent("DepthHdrRender");
-		manager->unregisterEvent("PreRefractedRender");
+		manager->unregisterEvent("PreRefrRender");
 		manager->unregisterEvent("RefractedRender");
-		manager->unregisterEvent("PreTranslucentRender");
+		manager->unregisterEvent("PreTransRender");
 		manager->unregisterEvent("TranslucentRender");
 		manager->unregisterEvent("PreTransDepthRender");
 		manager->unregisterEvent("TransDepthRender");
@@ -545,8 +545,8 @@ void DeferredRenderSystem::render()
 			SET_RESOURCE_DEBUG_NAME(velocityDS, "descriptorSet.deferred.velocity");
 		}
 
-		static const array<float4, gBufferCount> clearColors = 
-		{ float4::zero, float4::zero, float4::zero, float4::zero, float4::zero, float4::zero };
+		static const array<float4, G_BUFFER_COUNT> clearColors = 
+		{ float4::zero, float4::zero, float4::zero, float4::zero };
 		auto inFlightIndex = graphicsSystem->getInFlightIndex();
 
 		graphicsSystem->startRecording(CommandBufferType::Frame);
@@ -656,7 +656,7 @@ void DeferredRenderSystem::render()
 		graphicsSystem->stopRecording();
 	}
 
-	event = &manager->getEvent("PreRefractedRender");
+	event = &manager->getEvent("PreRefrRender");
 	if (event->hasSubscribers())
 	{
 		SET_CPU_ZONE_SCOPED("Pre Refracted Render");
@@ -689,7 +689,7 @@ void DeferredRenderSystem::render()
 		graphicsSystem->stopRecording();
 	}
 
-	event = &manager->getEvent("PreTranslucentRender");
+	event = &manager->getEvent("PreTransRender");
 	if (event->hasSubscribers())
 	{
 		SET_CPU_ZONE_SCOPED("Pre Translucent Render");
@@ -842,8 +842,8 @@ void DeferredRenderSystem::render()
 	}
 
 	auto framebufferView = graphicsSystem->get(graphicsSystem->getSwapchainFramebuffer());
-	const auto& colorAttachments = framebufferView->getColorAttachments();
-	auto swapchainImageView = graphicsSystem->get(colorAttachments[0].imageView);
+	const auto& colorAttachment = framebufferView->getColorAttachments()[0];
+	auto swapchainImageView = graphicsSystem->get(colorAttachment.imageView);
 
 	graphicsSystem->startRecording(CommandBufferType::Frame);
 	{
@@ -892,7 +892,7 @@ void DeferredRenderSystem::swapchainRecreate()
 		graphicsSystem->destroy(gBuffers); gBuffers.clear();
 
 		auto framebufferSize = graphicsSystem->getScaledFrameSize();
-		Framebuffer::OutputAttachment colorAttachments[gBufferCount];
+		Framebuffer::OutputAttachment colorAttachments[G_BUFFER_COUNT];
 		Framebuffer::OutputAttachment depthStencilAttachment;
 		depthStencilAttachment.imageView = getDepthStencilIV();
 
@@ -900,7 +900,7 @@ void DeferredRenderSystem::swapchainRecreate()
 		{
 			auto _gBuffers = getGBuffers();
 			auto framebufferView = graphicsSystem->get(gFramebuffer);
-			for (uint8 i = 0; i < gBufferCount; i++)
+			for (uint8 i = 0; i < G_BUFFER_COUNT; i++)
 			{
 				if (!_gBuffers[i])
 				{
@@ -912,7 +912,7 @@ void DeferredRenderSystem::swapchainRecreate()
 					graphicsSystem->get(_gBuffers[i])->getView(), gBufferFlags);
 			}
 			depthStencilAttachment.setFlags(gBufferDepthFlags);
-			framebufferView->update(framebufferSize, colorAttachments, gBufferCount, depthStencilAttachment);
+			framebufferView->update(framebufferSize, colorAttachments, G_BUFFER_COUNT, depthStencilAttachment);
 		}
 		if (hdrFramebuffer)
 		{
@@ -1093,6 +1093,32 @@ ID<Image> DeferredRenderSystem::getDisocclMap()
 }
 
 //**********************************************************************************************************************
+ID<ImageView> DeferredRenderSystem::getHdrImageView()
+{
+	return GraphicsSystem::Instance::get()->get(getHdrBuffer())->getView();
+}
+ID<ImageView> DeferredRenderSystem::getHdrCopyIV()
+{
+	if (!hdrCopyIV)
+		hdrCopyIV = createHdrCopyIV(GraphicsSystem::Instance::get(), getHdrCopyBuffer());
+	return hdrCopyIV;
+}
+ID<ImageView> DeferredRenderSystem::getLdrImageView()
+{
+	return GraphicsSystem::Instance::get()->get(getLdrBuffer())->getView();
+}
+ID<ImageView> DeferredRenderSystem::getUiImageView()
+{
+	return GraphicsSystem::Instance::get()->get(getUiBuffer())->getView();
+}
+ID<ImageView> DeferredRenderSystem::getOitAccumIV()
+{
+	return GraphicsSystem::Instance::get()->get(getOitAccumBuffer())->getView();
+}
+ID<ImageView> DeferredRenderSystem::getOitRevealIV()
+{
+	return GraphicsSystem::Instance::get()->get(getOitRevealBuffer())->getView();
+}
 ID<ImageView> DeferredRenderSystem::getDepthStencilIV()
 {
 	if (!depthStencilIV)
@@ -1120,11 +1146,13 @@ ID<ImageView> DeferredRenderSystem::getStencilImageView()
 		stencilImageView = createStencilImageView(GraphicsSystem::Instance::get(), getDepthStencilBuffer());
 	return stencilImageView;
 }
-ID<ImageView> DeferredRenderSystem::getHdrCopyIV()
+ID<ImageView> DeferredRenderSystem::getTransImageView()
 {
-	if (!hdrCopyIV)
-		hdrCopyIV = createHdrCopyIV(GraphicsSystem::Instance::get(), getHdrCopyBuffer());
-	return hdrCopyIV;
+	return GraphicsSystem::Instance::get()->get(getTransBuffer())->getView();
+}
+ID<ImageView> DeferredRenderSystem::getUpscaleHdrIV()
+{
+	return GraphicsSystem::Instance::get()->get(getUpscaleHdrBuffer())->getView();
 }
 ID<ImageView> DeferredRenderSystem::getDisocclView(uint8 mip)
 {

@@ -267,7 +267,6 @@ ID<ImageView> Image::getView()
 	if (!imageView)
 	{
 		GARDEN_ASSERT_MSG(instance, "Image [" + debugName + "] is not ready yet");
-		GARDEN_ASSERT_MSG(!isFormatDepthAndStencil(format), "Can't create image view for a depth/stencil format");
 
 		auto graphicsAPI = GraphicsAPI::get();
 		auto image = graphicsAPI->imagePool.getID(this);
@@ -296,7 +295,6 @@ ID<ImageView> Image::getView(uint32 layer, uint8 mip)
 	if (!view)
 	{
 		GARDEN_ASSERT_MSG(instance, "Image [" + debugName + "] is not ready yet");
-		GARDEN_ASSERT_MSG(!isFormatDepthAndStencil(format), "Can't create image view for a depth/stencil format");
 
 		Image::Type viewType;
 		if (type == Image::Type::Texture2DArray || type == Image::Type::Texture3D || type == Image::Type::Cubemap)
@@ -913,8 +911,9 @@ void Image::setDebugName(const string& name)
 static void* createVkImageView(View<Image> imageView, Image::Type type, Image::Format format, 
 	uint32 baseLayer, uint32 layerCount, uint8 baseMip, uint8 mipCount)
 {
+	auto imageFormat = isFormatDepthAndStencil(imageView->getFormat()) ? imageView->getFormat() : format;
 	vk::ImageViewCreateInfo imageViewInfo({}, (VkImage)ResourceExt::getInstance(**imageView),
-		toVkImageViewType(type), toVkFormat(format), vk::ComponentMapping(
+		toVkImageViewType(type), toVkFormat(imageFormat), vk::ComponentMapping(
 			vk::ComponentSwizzle::eIdentity, vk::ComponentSwizzle::eIdentity,
 			vk::ComponentSwizzle::eIdentity, vk::ComponentSwizzle::eIdentity),
 		// TODO: utilize component swizzle
@@ -928,9 +927,6 @@ ImageView::ImageView(bool isDefault, ID<Image> image, Image::Type type,
 	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
 		auto imageView = VulkanAPI::get()->imagePool.get(image);
-		if (isFormatDepthAndStencil(imageView->getFormat()))
-			format = imageView->getFormat();
-
 		if (imageView->getType() == Image::Type::Cubemap && layerCount == 1)
 		{
 			switch (baseLayer) // Note: remapping Vulkan API cubemap face indices.
@@ -944,7 +940,6 @@ ImageView::ImageView(bool isDefault, ID<Image> image, Image::Type type,
 			default: abort();
 			}
 		}
-
 		this->instance = createVkImageView(imageView, type, format, baseLayer, layerCount, baseMip, mipCount);
 	}
 	else abort();

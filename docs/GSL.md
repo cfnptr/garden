@@ -37,7 +37,7 @@ pipelineState
 {
     depthTesting = on;
     depthWriting = on;
-    faceCulling = off;
+    blending0 = on;
 }
 ```
 
@@ -57,13 +57,19 @@ pipelineState
 * **depthBiasing** [ on | off ] - Controls whether to bias fragment depth values. (off)
 * **depthCompare** [ never | less | equal | lessOrEqual | greater | notEqual | greaterOrEqual | always ] -
 	Specify the value used for depth buffer comparisons. (greater)
+* **depthBounding** [ on | off ] - If enabled, do depth bounds comparison and discard fragments. (off)
+* **depthBiasConst** - Scalar added to every fragment's depth. (0.0)
+* **depthBiasSlope** - Scales the bias based on the angle of the polygon. (0.0)
+* **depthBiasClamp** - Acts as a safety ceiling or floor for the total bias applied. (0.0)
+
+### Stencil
+
 * **stencilTesting** [ on | off ] - If enabled, do stencil comparisons and update the stencil buffer. (off)
-// TODO: depthBiasConstant, depthBiasSlope, depthBiasClamp.
+
 
 ### Culling
 
-* **faceCulling** [ on | off ] - If enabled, cull polygons based on their winding in window coordinates. (on)
-* **cullFace** [ front | back | frontAndBack ] - Specify whether front or back-facing facets can be culled. (back)
+* **cullFace** [ none, front | back | frontBack ] - Specify whether front or back-facing polygons can be culled. (back)
 * **frontFace** [ clockwise | counterClockwise ] - Define front and back-facing polygons. (counterClockwise)
 
 ### Blending

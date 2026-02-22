@@ -19,6 +19,7 @@
 #include "garden/system/settings.hpp"
 #include "garden/system/thread.hpp"
 #include "garden/profiler.hpp"
+#include "common/gbuffer.h"
 
 #include "math/brdf.hpp"
 #include "math/sh.hpp"
@@ -297,13 +298,13 @@ static DescriptorSet::Uniforms getLightingUniforms(GraphicsSystem* graphicsSyste
 	ID<Image> shadBlurBuffer, ID<Image> aoBlurBuffer, ID<Image> reflBuffer, ID<Image> giBuffer)
 {
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
-	auto gFramebufferView = graphicsSystem->get(deferredSystem->getGFramebuffer());
 	auto depthBufferView = deferredSystem->getDepthImageView();
 	auto shadBlurView = shadBlurBuffer ? graphicsSystem->get(shadBlurBuffer)->getView() : ID<ImageView>();
 	auto aoBlurView = aoBlurBuffer ? graphicsSystem->get(aoBlurBuffer)->getView() : ID<ImageView>();
 	auto reflBufferView = reflBuffer ? graphicsSystem->get(reflBuffer)->getView() : ID<ImageView>();
 	auto giBufferView = giBuffer ? graphicsSystem->get(giBuffer)->getView() : ID<ImageView>();
 	auto dfgLutView = graphicsSystem->get(dfgLUT)->getView();
+	auto gFramebufferView = graphicsSystem->get(deferredSystem->getGFramebuffer());
 	const auto& gColorAttachments = gFramebufferView->getColorAttachments();
 	
 	graphicsSystem->startRecording(CommandBufferType::Frame);
@@ -321,7 +322,7 @@ static DescriptorSet::Uniforms getLightingUniforms(GraphicsSystem* graphicsSyste
 		{ "dfgLUT", DescriptorSet::Uniform(dfgLutView) }
 	};
 
-	for (uint8 i = 0; i < DeferredRenderSystem::gBufferCount; i++)
+	for (uint8 i = 0; i < G_BUFFER_COUNT; i++)
 	{
 		uniforms.emplace("g" + to_string(i), DescriptorSet::Uniform(
 			gColorAttachments[i].imageView ? gColorAttachments[i].imageView : emptyView));
@@ -339,9 +340,7 @@ static ID<GraphicsPipeline> createLightingPipeline(PbrLightingSystem::Options pb
 		{ "USE_AO_BUFFER", Pipeline::SpecConstValue(pbrOptions.useAoBuffer) },
 		{ "USE_REFLECTION_BUFFER", Pipeline::SpecConstValue(pbrOptions.useReflBuffer) },
 		{ "USE_REFLECTION_BLUR", Pipeline::SpecConstValue(pbrOptions.useReflBlur) },
-		{ "USE_GI_BUFFER", Pipeline::SpecConstValue(pbrOptions.useGiBuffer) },
-		{ "USE_CLEAR_COAT_BUFFER", Pipeline::SpecConstValue(deferredSystem->getOptions().useClearCoat) },
-		{ "USE_EMISSION_BUFFER", Pipeline::SpecConstValue(deferredSystem->getOptions().useEmission) }
+		{ "USE_GI_BUFFER", Pipeline::SpecConstValue(pbrOptions.useGiBuffer) }
 	};
 
 	ResourceSystem::GraphicsOptions options;
@@ -1219,8 +1218,7 @@ ID<ImageView> PbrLightingSystem::getReflBaseView()
 {
 	if (!options.useReflBuffer)
 		return {};
-	auto reflBufferView = GraphicsSystem::Instance::get()->get(getReflBuffer());
-	return options.useReflBlur ? reflBufferView->getView(0, 0) : reflBufferView->getView();
+	return GraphicsSystem::Instance::get()->get(getReflBuffer())->getView(0, 0);
 }
 
 //**********************************************************************************************************************

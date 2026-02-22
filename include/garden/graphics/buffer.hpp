@@ -137,16 +137,15 @@ public:
 	 */
 	const uint8* getMap() const noexcept { return map; }
 	/**
+	 * @brief Returns true if buffer memory is mapped.
+	 */
+	bool isMapped() const noexcept { return map; }
+	/**
 	 * @brief Returns buffer device address which can be used inside shaders.
 	 * @warning Use it only according to the @ref Buffer::Usage!
 	 */
 	uint64 getDeviceAddress() const noexcept { return deviceAddress; }
 
-	/**
-	 * @brief Is buffer memory mapped. (Can be written or read)
-	 * @details Buffer memory can not be accessed if it is not mapped.
-	 */
-	bool isMappable() const;
 	/**
 	 * @brief Invalidates buffer memory. (Not MT-Safe!)
 	 * @warning Always invalidate buffer memory before reading!

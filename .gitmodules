@@ -54,7 +54,7 @@
 	url = https://github.com/pnggroup/libpng
 [submodule "libraries/tinyexr"]
 	path = libraries/tinyexr
-	url = https://github.com/syoyo/tinyexr
+	url = https://github.com/cfnptr/tinyexr
 [submodule "libraries/tracy"]
 	path = libraries/tracy
 	url = https://github.com/wolfpld/tracy
@@ -69,4 +69,4 @@
 	url = https://github.com/cfnptr/garden-resources
 [submodule "libraries/tinygltf"]
 	path = libraries/tinygltf
-	url = https://github.com/syoyo/tinygltf
+	url = https://github.com/cfnptr/tinygltf

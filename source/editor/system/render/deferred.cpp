@@ -25,17 +25,13 @@ using namespace garden;
 static DescriptorSet::Uniforms getBufferUniforms(GraphicsSystem* graphicsSystem, ID<Image>& blackPlaceholder)
 {
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
-	auto gFramebufferView = graphicsSystem->get(deferredSystem->getGFramebuffer());
-	auto hdrFramebufferView = graphicsSystem->get(deferredSystem->getHdrFramebuffer());
-	auto ldrFramebufferView = graphicsSystem->get(deferredSystem->getLdrFramebuffer());
-	auto oitFramebufferView = graphicsSystem->get(deferredSystem->getOitFramebuffer());
-	auto disocclusionFbView = graphicsSystem->get(deferredSystem->getDisocclusionFB());
-	auto hdrBufferView = hdrFramebufferView->getColorAttachments()[0].imageView;
-	auto oitAccumBufferView = oitFramebufferView->getColorAttachments()[0].imageView;
-	auto oitRevealBufferView = oitFramebufferView->getColorAttachments()[1].imageView;
-	auto disocclMapView = disocclusionFbView->getColorAttachments()[0].imageView;
+	auto hdrBufferView = deferredSystem->getHdrImageView();
+	auto oitAccumBufferView = deferredSystem->getOitAccumIV();
+	auto oitRevealBufferView = deferredSystem->getOitRevealIV();
+	auto disocclMapView = deferredSystem->getDisocclView(0);
 	auto depthBufferView = deferredSystem->getDepthImageView();
-	const auto& colorAttachments = gFramebufferView->getColorAttachments();
+	auto gFramebufferView = graphicsSystem->get(deferredSystem->getGFramebuffer());
+	const auto& gColorAttachments = gFramebufferView->getColorAttachments();
 	
 	auto pbrLightingSystem = PbrLightingSystem::Instance::tryGet();
 	ID<ImageView> shadBuffer, shadBlurBuffer, aoBuffer, aoBlurBuffer, reflBuffer, giBuffer;
@@ -80,10 +76,10 @@ static DescriptorSet::Uniforms getBufferUniforms(GraphicsSystem* graphicsSystem,
 		{ "disocclMap", DescriptorSet::Uniform(disocclMapView) }
 	};
 
-	for (uint8 i = 0; i < DeferredRenderSystem::gBufferCount; i++)
+	for (uint8 i = 0; i < G_BUFFER_COUNT; i++)
 	{
-		uniforms.emplace("g" + to_string(i), DescriptorSet::Uniform(colorAttachments[i].imageView ? 
-			colorAttachments[i].imageView : graphicsSystem->getEmptyTexture()));
+		uniforms.emplace("g" + to_string(i), DescriptorSet::Uniform(gColorAttachments[i].imageView ? 
+			gColorAttachments[i].imageView : graphicsSystem->getEmptyTexture()));
 	}
 
 	return uniforms;
@@ -143,16 +139,8 @@ void DeferredRenderEditorSystem::deferredRender()
 	if (!pbrLightingPipeline)
 	{
 		auto deferredSystem = DeferredRenderSystem::Instance::get();
-		Pipeline::SpecConstValues specConstValues =
-		{
-			{ "USE_CLEAR_COAT_BUFFER", Pipeline::SpecConstValue(deferredSystem->getOptions().useClearCoat) },
-			{ "USE_EMISSION_BUFFER", Pipeline::SpecConstValue(deferredSystem->getOptions().useEmission) }
-		};
-
 		ResourceSystem::GraphicsOptions options;
 		options.useAsyncRecording = deferredSystem->getOptions().useAsyncRecording;
-		options.specConstValues = &specConstValues;
-
 		pbrLightingPipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline(
 			"editor/pbr-lighting", deferredSystem->getGFramebuffer(), options);
 	}
@@ -195,33 +183,44 @@ void DeferredRenderEditorSystem::preLdrRender()
 		auto deferredSystem = DeferredRenderSystem::Instance::get();
 		if (drawMode == G_BUFFER_DRAW_MODE_LIGHTING_DEBUG)
 		{
+			auto isSpecular = bool(lightingPC.materialID & G_MATERIAL_SPECULAR);
+			auto isEmissive = bool(lightingPC.materialID & G_MATERIAL_EMISSIVE);
+			auto isClearCoat = bool(lightingPC.materialID & G_MATERIAL_CLEAR_COAT);
+			auto isSubsurface = bool(lightingPC.materialID & G_MATERIAL_SUBSURFACE);
+			auto isSheen = bool(lightingPC.materialID & G_MATERIAL_SHEEN);
+
 			ImGui::SeparatorText("Overrides");
+			ImGui::Checkbox("Specular", &isSpecular); ImGui::SameLine();
+			ImGui::Checkbox("Emissive", &isEmissive);
+			ImGui::Checkbox("ClearCoat", &isClearCoat); ImGui::SameLine();
+			ImGui::Checkbox("Subsurface", &isSubsurface);
+			ImGui::Spacing();
+			// TODO: sheen
+			
+			lightingPC.materialID = (isSpecular ? G_MATERIAL_SPECULAR : 0u) | 
+				(isEmissive ? G_MATERIAL_EMISSIVE : 0u) | (isClearCoat ? G_MATERIAL_CLEAR_COAT : 0u) |
+				(isSubsurface ? G_MATERIAL_SUBSURFACE : 0u) | (isSheen ? G_MATERIAL_SHEEN : 0u);
+
 			ImGui::ColorEdit3("Base Color", &lightingPC.baseColor);
-			ImGui::SliderFloat("Specular Factor", &lightingPC.specularFactor, 0.0f, 1.0f);
 			ImGui::SliderFloat("Metallic", &lightingPC.mraor.x, 0.0f, 1.0f);
 			ImGui::SliderFloat("Roughness", &lightingPC.mraor.y, 0.0f, 1.0f);
+			ImGui::BeginDisabled(isEmissive || isClearCoat);
 			ImGui::SliderFloat("Ambient Occlusion", &lightingPC.mraor.z, 0.0f, 1.0f);
+			ImGui::EndDisabled();
 			ImGui::SliderFloat("Reflectance", &lightingPC.mraor.w, 0.0f, 1.0f);
-			ImGui::SliderFloat("G-Buffer Shadows", &lightingPC.shadow, 0.0f, 1.0f);
+			ImGui::SliderFloat("Shadow Alpha", &lightingPC.shadowAlpha, 0.0f, 1.0f);
 
-			ImGui::BeginDisabled(!deferredSystem->getOptions().useClearCoat);
-			ImGui::SliderFloat("Clear Coat Roughness", &lightingPC.ccRoughness, 0.0f, 1.0f);
+			ImGui::BeginDisabled(!isSpecular);
+			ImGui::SliderFloat("Specular Factor", &lightingPC.specularFactor, 0.0f, 1.0f);
+			ImGui::EndDisabled();
+			ImGui::BeginDisabled(!isClearCoat);
+			ImGui::SliderFloat("Clear Coat Roughness", &lightingPC.mraor.z, 0.0f, 1.0f);
+			ImGui::EndDisabled();
+			ImGui::BeginDisabled(!isEmissive);
+			ImGui::SliderFloat("Emissive Factor", &lightingPC.mraor.z, 0.0f, 1.0f);
 			ImGui::EndDisabled();
 
-			ImGui::BeginDisabled(!deferredSystem->getOptions().useEmission);
-			ImGui::ColorEdit3("Emissive Color", &lightingPC.emissiveColor);
-			ImGui::SliderFloat("Emissive Factor", &lightingPC.emissiveFactor, 0.0f, 1.0f);
-			ImGui::EndDisabled();
-		}
-		else if ((drawMode == G_BUFFER_DRAW_MODE_CC_NORMAL || 
-			drawMode == G_BUFFER_DRAW_MODE_CC_ROUGHNESS) && !deferredSystem->getOptions().useClearCoat)
-		{
-			ImGui::TextDisabled("Clear coat buffer is disabled in deferred system!");
-		}
-		else if ((drawMode == G_BUFFER_DRAW_MODE_EMISSIVE_COLOR || 
-			drawMode == G_BUFFER_DRAW_MODE_EMISSIVE_FACTOR) && !deferredSystem->getOptions().useEmission)
-		{
-			ImGui::TextDisabled("Emission buffer is disabled in deferred system!");
+			// TODO: allow to select custom passed emissive or subsurface color via buffer to the pbr lighting shader.
 		}
 		else if (drawMode == G_BUFFER_DRAW_MODE_VELOCITY && !deferredSystem->getOptions().useVelocity)
 		{
@@ -269,6 +268,13 @@ void DeferredRenderEditorSystem::preLdrRender()
 //**********************************************************************************************************************
 void DeferredRenderEditorSystem::ldrRender()
 {
+	auto deferredSystem = DeferredRenderSystem::Instance::get();
+	if ((drawMode == G_BUFFER_DRAW_MODE_VELOCITY && !deferredSystem->getOptions().useVelocity) ||
+		(drawMode == G_BUFFER_DRAW_MODE_DISOCCLUSION && !deferredSystem->getOptions().useDisoccl))
+	{
+		drawMode = G_BUFFER_DRAW_MODE_OFF;
+	}
+
 	if (drawMode == G_BUFFER_DRAW_MODE_OFF || drawMode == G_BUFFER_DRAW_MODE_LIGHTING_DEBUG)
 		return;
 
@@ -288,24 +294,12 @@ void DeferredRenderEditorSystem::ldrRender()
 
 	BufferPC pc;
 	pc.invViewProj = (float4x4)cc.invViewProj;
-	pc.drawMode = (int32)drawMode;
 	pc.showChannelR = showChannelR ? 1.0f : 0.0f;
 	pc.showChannelG = showChannelG ? 1.0f : 0.0f;
 	pc.showChannelB = showChannelB ? 1.0f : 0.0f;
 
-	auto deferredSystem = DeferredRenderSystem::Instance::get();
-	if (((drawMode == G_BUFFER_DRAW_MODE_CC_NORMAL || drawMode == 
-			G_BUFFER_DRAW_MODE_CC_ROUGHNESS) && !deferredSystem->getOptions().useClearCoat) || 
-		((drawMode == G_BUFFER_DRAW_MODE_EMISSIVE_COLOR || drawMode == 
-			G_BUFFER_DRAW_MODE_EMISSIVE_FACTOR) && !deferredSystem->getOptions().useEmission) ||
-		(drawMode == G_BUFFER_DRAW_MODE_VELOCITY && !deferredSystem->getOptions().useVelocity) ||
-		(drawMode == G_BUFFER_DRAW_MODE_DISOCCLUSION && !deferredSystem->getOptions().useDisoccl))
-	{
-		pc.drawMode = G_BUFFER_DRAW_MODE_OFF;
-	}
-
 	SET_GPU_DEBUG_LABEL("G-Buffer Visualizer");
-	pipelineView->bind();
+	pipelineView->bind(drawMode);
 	pipelineView->setViewportScissor();
 	pipelineView->bindDescriptorSet(bufferDescriptorSet);
 	pipelineView->pushConstants(&pc);

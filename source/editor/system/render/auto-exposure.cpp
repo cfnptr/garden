@@ -34,11 +34,8 @@ static ID<Buffer> createReadbackBuffer(GraphicsSystem* graphicsSystem)
 
 static DescriptorSet::Uniforms getLimitsUniforms(GraphicsSystem* graphicsSystem)
 {
-	auto deferredSystem = DeferredRenderSystem::Instance::get();
-	auto toneMappingSystem = ToneMappingSystem::Instance::get();
-	auto hdrFramebufferView = graphicsSystem->get(deferredSystem->getHdrFramebuffer());
-	auto hdrBufferView = hdrFramebufferView->getColorAttachments()[0].imageView;
-	auto luminanceBuffer = toneMappingSystem->getLuminanceBuffer();
+	auto hdrBufferView = DeferredRenderSystem::Instance::get()->getHdrImageView();
+	auto luminanceBuffer = ToneMappingSystem::Instance::get()->getLuminanceBuffer();
 				
 	DescriptorSet::Uniforms uniforms =
 	{ 
@@ -119,15 +116,16 @@ void AutoExposureEditorSystem::preUiRender()
 		auto map = readbackBufferView->getMap() + offset;
 		auto luminance = (const ToneMappingSystem::LuminanceData*)map;
 		auto histogram = (const uint32*)(map + sizeof(ToneMappingSystem::LuminanceData));
-		uint32 maxHistogramValue = 0;
 
-		for (uint16 i = 0; i < AutoExposureSystem::histogramSize; i++)
+		uint32 maxHistogramValue = 0;
+		for (uint16 i = 1; i < AutoExposureSystem::histogramSize; i++)
 		{
 			if (histogram[i] > maxHistogramValue)
 				maxHistogramValue = histogram[i];
 		}
 
-		for (uint16 i = 0; i < AutoExposureSystem::histogramSize; i++)
+		histogramSamples[0] = 0.0f; // Note: Reserved for too dark.
+		for (uint16 i = 1; i < AutoExposureSystem::histogramSize; i++)
 			histogramSamples[i] = (float)histogram[i] / maxHistogramValue;
 
 		ImGui::SeparatorText("Visualizer");

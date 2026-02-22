@@ -116,6 +116,7 @@ public:
 	vector<vk::AccelerationStructureBuildGeometryInfoKHR> asGeometryInfos;
 	vector<const vk::AccelerationStructureBuildRangeInfoKHR*> asRangeInfos;
 	vector<vk::AccelerationStructureKHR> asWriteProperties;
+	vk::PhysicalDeviceDriverProperties driverProperties;
 	vk::PhysicalDeviceSubgroupProperties subgroupProperties;
 	vk::PhysicalDeviceRayTracingPipelinePropertiesKHR rtProperties;
 	vk::PhysicalDeviceAccelerationStructurePropertiesKHR asProperties;
@@ -447,7 +448,7 @@ static vk::SamplerAddressMode toVkSamplerAddressMode(Sampler::AddressMode addres
 }
 /**
  * @brief Returns Vulkan sampler border color.
- * @param compareOperation target sampler compare operation
+ * @param borderColor target sampler border color
  */
 static vk::BorderColor toVkBorderColor(Sampler::BorderColor borderColor) noexcept
 {
@@ -464,20 +465,20 @@ static vk::BorderColor toVkBorderColor(Sampler::BorderColor borderColor) noexcep
 }
 /**
  * @brief Returns Vulkan sampler comparison operation.
- * @param compareOperation target sampler compare operation
+ * @param compareOperator target sampler compare operator
  */
-static vk::CompareOp toVkCompareOp(Sampler::CompareOp compareOperation) noexcept
+static vk::CompareOp toVkCompareOp(CompareOp compareOperator) noexcept
 {
-	switch (compareOperation)
+	switch (compareOperator)
 	{
-		case Sampler::CompareOp::Never: return vk::CompareOp::eNever;
-		case Sampler::CompareOp::Less: return vk::CompareOp::eLess;
-		case Sampler::CompareOp::Equal: return vk::CompareOp::eEqual;
-		case Sampler::CompareOp::LessOrEqual: return  vk::CompareOp::eLessOrEqual;
-		case Sampler::CompareOp::Greater: return vk::CompareOp::eGreater;
-		case Sampler::CompareOp::NotEqual: return vk::CompareOp::eNotEqual;
-		case Sampler::CompareOp::GreaterOrEqual: return vk::CompareOp::eGreaterOrEqual;
-		case Sampler::CompareOp::Always: return vk::CompareOp::eAlways;
+		case CompareOp::Never: return vk::CompareOp::eNever;
+		case CompareOp::Less: return vk::CompareOp::eLess;
+		case CompareOp::Equal: return vk::CompareOp::eEqual;
+		case CompareOp::LessOrEqual: return  vk::CompareOp::eLessOrEqual;
+		case CompareOp::Greater: return vk::CompareOp::eGreater;
+		case CompareOp::NotEqual: return vk::CompareOp::eNotEqual;
+		case CompareOp::GreaterOrEqual: return vk::CompareOp::eGreaterOrEqual;
+		case CompareOp::Always: return vk::CompareOp::eAlways;
 		default: abort();
 	}
 }
@@ -710,7 +711,7 @@ static constexpr vk::BuildAccelerationStructureFlagsKHR toVkBuildFlagsAS(BuildFl
 
 /**
  * @brief Returns Vulkan sampler create info container.
- * @param state[in] target sampler state data
+ * @param[in] state target sampler state data
  */
 static vk::SamplerCreateInfo getVkSamplerCreateInfo(const Sampler::State& state) noexcept
 {
@@ -718,9 +719,43 @@ static vk::SamplerCreateInfo getVkSamplerCreateInfo(const Sampler::State& state)
 		toVkSamplerMipmapMode(state.mipmapFilter), toVkSamplerAddressMode(state.addressModeX), 
 		toVkSamplerAddressMode(state.addressModeY), toVkSamplerAddressMode(state.addressModeZ), 
 		state.mipLodBias, state.anisoFiltering, state.maxAnisotropy, 
-		state.comparison, toVkCompareOp(state.compareOperation), state.minLod, 
+		state.comparison, toVkCompareOp(state.compareOperator), state.minLod, 
 		state.maxLod == INFINITY ? VK_LOD_CLAMP_NONE : state.maxLod, 
 		toVkBorderColor(state.borderColor), state.unnormCoords);
+}
+
+/**
+ * @brief Returns device Vulkan API human-readable version string.
+ * @param[in] deviceProperties target physical device properties 
+ */
+static string getVkDeviceDriverVersion(const vk::PhysicalDeviceProperties2& deviceProperties)
+{
+	auto vendorID = deviceProperties.properties.vendorID;
+	auto version = deviceProperties.properties.driverVersion;
+
+	if (vendorID == 0x10DE) // Nvidia
+	{
+		return to_string((version >> 22u) & 0x3FFu) + "." + to_string((version >> 14u) & 0x0FFu) + "." +
+			to_string((version >> 6u) & 0x0ff) + "." + to_string(version & 0x003Fu);
+	}
+
+	#if GARDEN_OS_WINDOWS
+	if (vendorID == 0x8086) // Intel
+		return to_string(version >> 14u) + "." + to_string(version & 0x3FFFu);
+	#endif
+
+	if (vendorID == 0x14E4) // Broadcom
+		return to_string(version / 10000) + "." + to_string((version % 10000) / 100);
+
+	if (vendorID == 0x1010) // ImgTec
+	{
+		if (version > 500000000)
+			return "0.0." + to_string(version);
+		else return to_string(version);
+	}
+
+	return to_string(VK_API_VERSION_MAJOR(version)) + "." + to_string(VK_API_VERSION_MINOR(version)) + "." +
+		to_string(VK_API_VERSION_PATCH(version)) + "." + to_string(VK_API_VERSION_VARIANT(version));
 }
 
 } // namespace garden
