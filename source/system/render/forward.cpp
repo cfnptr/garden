@@ -259,8 +259,8 @@ void ForwardRenderSystem::render()
 		{
 			auto _uiBuffer = getUiBuffer();
 			auto framebufferView = graphicsSystem->get(graphicsSystem->getSwapchainFramebuffer());
-			const auto& colorAttachments = framebufferView->getColorAttachments();
-			auto swapchainImageView = graphicsSystem->get(colorAttachments[0].imageView);
+			const auto& colorAttachment = framebufferView->getColorAttachments()[0];
+			auto swapchainImageView = graphicsSystem->get(colorAttachment.imageView);
 
 			if (uiBufferFormat == swapchainImageView->getFormat())
 				Image::copy(_uiBuffer, swapchainImageView->getImage());

@@ -45,9 +45,10 @@ static vk::CullModeFlags toVkCullMode(GraphicsPipeline::CullFace cullFace) noexc
 {
 	switch (cullFace)
 	{
+		case GraphicsPipeline::CullFace::None: return vk::CullModeFlagBits::eNone;
 		case GraphicsPipeline::CullFace::Front: return vk::CullModeFlagBits::eFront;
 		case GraphicsPipeline::CullFace::Back: return vk::CullModeFlagBits::eBack;
-		case GraphicsPipeline::CullFace::FrontAndBack: return vk::CullModeFlagBits::eFrontAndBack;
+		case GraphicsPipeline::CullFace::FrontBack: return vk::CullModeFlagBits::eFrontAndBack;
 		default: abort();
 	}
 }
@@ -87,15 +88,15 @@ static vk::BlendFactor toVkBlendFactor(GraphicsPipeline::BlendFactor blendFactor
 		default: abort();
 	}
 }
-static vk::BlendOp toVkBlendOp(GraphicsPipeline::BlendOperation blendOperation) noexcept
+static vk::BlendOp toVkBlendOp(GraphicsPipeline::BlendOp blendOperation) noexcept
 {
 	switch (blendOperation)
 	{
-		case GraphicsPipeline::BlendOperation::Add: return vk::BlendOp::eAdd;
-		case GraphicsPipeline::BlendOperation::Subtract: return vk::BlendOp::eSubtract;
-		case GraphicsPipeline::BlendOperation::ReverseSubtract: return vk::BlendOp::eReverseSubtract;
-		case GraphicsPipeline::BlendOperation::Minimum: return vk::BlendOp::eMin;
-		case GraphicsPipeline::BlendOperation::Maximum: return vk::BlendOp::eMax;
+		case GraphicsPipeline::BlendOp::Add: return vk::BlendOp::eAdd;
+		case GraphicsPipeline::BlendOp::Subtract: return vk::BlendOp::eSubtract;
+		case GraphicsPipeline::BlendOp::RevSubtract: return vk::BlendOp::eReverseSubtract;
+		case GraphicsPipeline::BlendOp::Minimum: return vk::BlendOp::eMin;
+		case GraphicsPipeline::BlendOp::Maximum: return vk::BlendOp::eMax;
 		default: abort();
 	}
 }
@@ -268,11 +269,18 @@ void GraphicsPipeline::createVkInstance(GraphicsCreateData& createData)
 			createData.pipelineState : pipelineStateSearch->second;
 
 		#if GARDEN_DEBUG
-		if (pipelineState.depthTesting || pipelineState.depthWriting || pipelineState.stencilTesting)
+		if (pipelineState.depthTesting || pipelineState.depthWriting || 
+			pipelineState.depthBounding || pipelineState.stencilTesting)
 		{
 			GARDEN_ASSERT_MSG(createData.depthStencilFormat != Image::Format::Undefined, 
 				"No depth/stencil buffer in framebuffer for graphics pipeline [" + 
 				createData.shaderPath.generic_string() + "]");
+			if (pipelineState.stencilTesting)
+			{
+				GARDEN_ASSERT_MSG(isFormatDepthOnly(createData.depthStencilFormat), 
+					"No stencil buffer in framebuffer for graphics pipeline [" + 
+					createData.shaderPath.generic_string() + "]");	
+			}
 		}
 		#endif
 
@@ -281,9 +289,8 @@ void GraphicsPipeline::createVkInstance(GraphicsCreateData& createData)
 
 		vk::PipelineRasterizationStateCreateInfo rasterizationInfo({},
 			pipelineState.depthClamping, pipelineState.discarding, toVkPolygonMode(pipelineState.polygon),
-			pipelineState.faceCulling ? toVkCullMode(pipelineState.cullFace) : vk::CullModeFlagBits::eNone,
-			toVkFrontFace(pipelineState.frontFace), pipelineState.depthBiasing, pipelineState.depthBiasConstant,
-			pipelineState.depthBiasClamp, pipelineState.depthBiasSlope, 1.0f);
+			toVkCullMode(pipelineState.cullFace), toVkFrontFace(pipelineState.frontFace), pipelineState.depthBiasing, 
+			pipelineState.depthBiasConst, pipelineState.depthBiasClamp, pipelineState.depthBiasSlope, 1.0f);
 
 		vk::PipelineDepthStencilStateCreateInfo depthStencilInfo;
 		if (createData.depthStencilFormat != Image::Format::Undefined)
@@ -291,10 +298,11 @@ void GraphicsPipeline::createVkInstance(GraphicsCreateData& createData)
 			depthStencilInfo.depthTestEnable = pipelineState.depthTesting;
 			depthStencilInfo.depthWriteEnable = pipelineState.depthWriting;
 			depthStencilInfo.depthCompareOp = toVkCompareOp(pipelineState.depthCompare);
+			depthStencilInfo.depthBoundsTestEnable = pipelineState.depthBounding;
 			depthStencilInfo.stencilTestEnable = pipelineState.stencilTesting;
-			depthStencilInfo.minDepthBounds = 0.0f;
-			depthStencilInfo.maxDepthBounds = 1.0f;
-			// TODO: stencil testing, depth boundsTesting
+			depthStencilInfo.minDepthBounds = pipelineState.depthBounds.x;
+			depthStencilInfo.maxDepthBounds = pipelineState.depthBounds.y;
+			// TODO: stencil testing
 		}
 
 		auto blendStateSearch = blendStateOverrides.find(i);

@@ -15,48 +15,43 @@
 # Based on Steam survey CPU instruction set support.
 # https://store.steampowered.com/hwsurvey
 
+if(CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64" OR CMAKE_SYSTEM_PROCESSOR STREQUAL "AMD64")
+	set(GARDEN_ARCH_X86 TRUE)
+else()
+	set(GARDEN_ARCH_X86 FALSE)
+endif()
+
 if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
 	add_compile_options(/MP /nologo /utf-8)
-	if(GARDEN_USE_AVX2)
+	if(GARDEN_USE_AVX2 AND GARDEN_ARCH_X86)
 		add_compile_options(/arch:AVX2)
 	endif()
 	if(CMAKE_BUILD_TYPE STREQUAL "Release")
 		add_compile_options(/GL) # Use link time optimizations.
 	endif()
-elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64" OR CMAKE_SYSTEM_PROCESSOR STREQUAL "AMD64")
-	if(GARDEN_USE_AVX2)
+else() # Clang or GCC compiler
+	add_compile_options("-Wno-error")
+	if(GARDEN_USE_AVX2 AND GARDEN_ARCH_X86)
 		add_compile_options(-march=haswell)
 	endif()
 	if(CMAKE_BUILD_TYPE STREQUAL "Release")
 		add_compile_options(-flto) # Use link time optimizations.
 	endif()
-
-	add_compile_options(-Wno-unused-function -Wno-unused-private-field 
-		-Wno-reorder-ctor -Wno-switch-default -Wno-nan-infinity-disabled 
-		-Wno-misleading-indentation -Wno-unused-command-line-argument)
-
-	if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
-		if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+	if(CMAKE_CXX_COMPILER_ID MATCHES "Clang") # Note: Do not remove MATCHES!
+		if(NOT CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 			add_link_options(-fuse-ld=lld) # There is no lld in AppleClang.
-		else()
-			add_compile_options(-fno-fat-lto-objects)
 		endif()
-	endif()
-endif()
-
-if(CMAKE_CXX_COMPILER_ID MATCHES "Clang") # Note: Do not remove MATCHES!
-	if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
-		add_compile_options(-ffp-model=precise) # Disabling fast-math, it breaks math.
-	endif()
-	if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-		add_compile_options(-fstandalone-debug)
-	endif()
-	if(GARDEN_USE_ASAN)
-		add_compile_options(-fsanitize=address -fno-omit-frame-pointer -g)
-		add_link_options(-fsanitize=address)
-	endif()
-	if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Darwin")
-		# This warning is emmited due to Brew iclude directories.
-		add_compile_options(-Wno-poison-system-directories)
+		if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
+			add_compile_options(-ffp-model=precise) # Disabling fast-math, it breaks math.
+		endif()
+		if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+			add_compile_options(-fstandalone-debug)
+		endif()
+		if(GARDEN_USE_ASAN)
+			add_compile_options(-fsanitize=address -fno-omit-frame-pointer -g)
+			add_link_options(-fsanitize=address)
+		endif()
+	else()
+		add_compile_options(-fno-fat-lto-objects)
 	endif()
 endif()

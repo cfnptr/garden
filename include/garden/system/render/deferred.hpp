@@ -19,15 +19,11 @@
  * @details
  * 
  * G-Buffer structure:
- *   0. SrgbR8G8B8A8       (Base Color, Specular Factor)
- *   1. UnormR8G8B8A8      (Metallic, Roughness, Ambient Occlusion, Reflectance)
- *   2. UnormA2B10G10R10   (Encoded Normal, Shadow)
- *   3. UnormA2B10G10R10   (Clear Coat Normal and Roughness) [optional]
- *   4. SrgbR8G8B8A8       (Emissive Color and Factor) [optional]
- *   5. SfloatR16G16       (Velocity) [optional]
+ *   0. SrgbR8G8B8A8       (Base/Emissive Color, Material ID)
+ *   1. UnormR8G8B8A8      (Metallic, Roughness, AO/CC/Emissive, Shadow)
+ *   2. UnormA2B10G10R10   (Encoded Normal, Reflectance/Specular)
+ *   3. SfloatR16G16       (Velocity) [optional]
  */
-
-// TODO: Sheen rendering.
 
 #pragma once
 #include "garden/system/graphics.hpp"
@@ -49,8 +45,8 @@ namespace garden
  *   PreDeferredRender, DeferredRender, 
  *   PreHdrRender, HdrRender, 
  *   PreDepthHdrRender, DepthHdrRender, 
- *   PreRefractedRender, RefractedRender, 
- *   PreTranslucentRender, TranslucentRender, 
+ *   PreRefrRender, RefractedRender, 
+ *   PreTransRender, TranslucentRender, 
  *   PreTransDepthRender, TransDepthRender, 
  *   PreOitRender, OitRender, 
  *   PreLdrRender, LdrRender, 
@@ -66,9 +62,7 @@ public:
 	 */
 	struct Options final
 	{
-		bool useStencil = false;       /**< Create and use stencil buffer for rendering. */
-		bool useClearCoat = true;      /**< Create and use clear coat buffer for rendering. */
-		bool useEmission = true;       /**< Create and use light emission buffer for rendering. */
+		bool useStencil = true;        /**< Create and use stencil buffer for rendering. */
 		bool useVelocity = true;       /**< Create and use reflection buffer for rendering. */
 		bool useDisoccl = true;        /**< Create and use disocclusion map for rendering. */
 		bool useAsyncRecording = true; /**< Use multithreaded render commands recording. */
@@ -82,27 +76,10 @@ public:
 		float velFactor;
 	};
 
-	static constexpr uint8 gBufferBaseColor = 0;   /**< Index of the G-Buffer with encoded base color. */
-	static constexpr uint8 gBufferSpecFactor = 0;  /**< Index of the G-Buffer with encoded specular factor. */
-	static constexpr uint8 gBufferMetallic = 1;    /**< Index of the G-Buffer with encoded metallic. */
-	static constexpr uint8 gBufferRoughness = 1;   /**< Index of the G-Buffer with encoded roughness. */
-	static constexpr uint8 gBufferMaterialAO = 1;  /**< Index of the G-Buffer with encoded material ambient occlusion. */
-	static constexpr uint8 gBufferReflectance = 1; /**< Index of the G-Buffer with encoded reflectance. */
-	static constexpr uint8 gBufferNormals = 2;     /**< Index of the G-Buffer with encoded normals. */
-	static constexpr uint8 gBufferShadow = 2;      /**< Index of the G-Buffer with encoded shadow. */
-	static constexpr uint8 gBufferCcNormals = 3;   /**< Index of the G-Buffer with encoded clear coat normals. */
-	static constexpr uint8 gBufferCcRoughness = 3; /**< Index of the G-Buffer with encoded clear coat roughness. */
-	static constexpr uint8 gBufferEmColor = 4;     /**< Index of the G-Buffer with encoded emissive color. */
-	static constexpr uint8 gBufferEmFactor = 4;    /**< Index of the G-Buffer with encoded emissive factor. */
-	static constexpr uint8 gBufferVelocity = 5;    /**< Index of the G-Buffer with encoded velocity. */
-	static constexpr uint8 gBufferCount = 6;       /**< Deferred rendering G-Buffer count. */
-
 	static constexpr Image::Format gBufferFormat0 = Image::Format::SrgbR8G8B8A8;
 	static constexpr Image::Format gBufferFormat1 = Image::Format::UnormR8G8B8A8;
 	static constexpr Image::Format gBufferFormat2 = Image::Format::UnormA2B10G10R10;
-	static constexpr Image::Format gBufferFormat3 = Image::Format::UnormA2B10G10R10;
-	static constexpr Image::Format gBufferFormat4 = Image::Format::SrgbR8G8B8A8;
-	static constexpr Image::Format gBufferFormat5 = Image::Format::SfloatR16G16;
+	static constexpr Image::Format gBufferFormat3 = Image::Format::SfloatR16G16;
 	static constexpr Image::Format depthStencilFormat = Image::Format::SfloatD32UintS8;
 	static constexpr Image::Format depthFormat = Image::Format::SfloatD32;
 	static constexpr Image::Format stencilFormat = Image::Format::UintS8;
@@ -279,6 +256,30 @@ public:
 	ID<Image> getDisocclMap();
 
 	/**
+	 * @brief Returns deferred HDR buffer image view. (High Dynamic Range)
+	 */
+	ID<ImageView> getHdrImageView();
+	/**
+	 * @brief Returns deferred HDR copy buffer image view. (High Dynamic Range)
+	 */
+	ID<ImageView> getHdrCopyIV();
+	/**
+	 * @brief Returns deferred LDR buffer image view. (Low Dynamic Range)
+	 */
+	ID<ImageView> getLdrImageView();
+	/**
+	 * @brief Returns deferred UI buffer image view. (User Interface)
+	 */
+	ID<ImageView> getUiImageView();
+	/**
+	 * @brief Returns deferred OIT accumulation buffer image view. (Order Independent Transparency)
+	 */
+	ID<ImageView> getOitAccumIV();
+	/**
+	 * @brief Returns deferred OIT revealage buffer image view. (Order Independent Transparency)
+	 */
+	ID<ImageView> getOitRevealIV();
+	/**
 	 * @brief Returns deferred depth/stencil buffer image view.
 	 */
 	ID<ImageView> getDepthStencilIV();
@@ -295,9 +296,13 @@ public:
 	 */
 	ID<ImageView> getStencilImageView();
 	/**
-	 * @brief Returns deferred HDR copy buffer image view.
+	 * @brief Returns deferred transparent buffer image view.
 	 */
-	ID<ImageView> getHdrCopyIV();
+	ID<ImageView> getTransImageView();
+	/**
+	 * @brief Returns deferred upscale HDR buffer image view.
+	 */
+	ID<ImageView> getUpscaleHdrIV();
 	/**
 	 * @brief Returns deferred disocclusion map image view.
 	 * @param mip target image view mipmap level

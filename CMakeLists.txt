@@ -37,7 +37,7 @@ project(Garden VERSION 0.0.1 LANGUAGES CXX
 		written in C++ with Vulkan API rendering backend."
 	HOMEPAGE_URL "https://github.com/cfnptr/garden")
 
-option(GARDEN_USE_AVX2 "Use AVX2 instruction set." ON)
+option(GARDEN_USE_AVX2 "Use AVX2 instruction set on x86 architecture." ON)
 option(GARDEN_BUILD_GSLC "Build GSL shader compiler." ON)
 option(GARDEN_BUILD_MODELC "Build Garden model converter." ON)
 option(GARDEN_BUILD_JSON2BSON "Build JSON to binary JSON converter." ON)

@@ -14,9 +14,11 @@
 
 #pragma once
 #include "garden/system/render/editor.hpp"
-#include "editor/gbuffer-data.h"
 
 #if GARDEN_EDITOR
+#include "editor/gbuffer-data.h"
+#include "common/gbuffer.h"
+
 namespace garden
 {
 
@@ -25,7 +27,6 @@ class DeferredRenderEditorSystem final : public System
 	struct BufferPC final
 	{
 		float4x4 invViewProj;
-		int32 drawMode;
 		float showChannelR;
 		float showChannelG;
 		float showChannelB;
@@ -35,10 +36,8 @@ class DeferredRenderEditorSystem final : public System
 		float3 baseColor = float3::one;
 		float specularFactor = 1.0f;
 		float4 mraor = float4(0.0f, 1.0f, 1.0f, 0.5f);
-		float3 emissiveColor = float3::zero;
-		float emissiveFactor = 0.0f;
-		float shadow = 1.0f;
-		float ccRoughness = 0.0f;
+		float shadowAlpha = 1.0f;
+		uint32 materialID = G_MATERIAL_BASE;
 	};
 
 	ID<Image> blackPlaceholder = {};

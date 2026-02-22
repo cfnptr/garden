@@ -20,6 +20,8 @@
 #include "garden/system/resource.hpp"
 #include "garden/system/camera.hpp"
 #include "garden/profiler.hpp"
+#include "common/gbuffer.h"
+
 #include "math/matrix/transform.hpp"
 
 using namespace garden;
@@ -143,9 +145,9 @@ static DescriptorSet::Uniforms getUniforms(GraphicsSystem* graphicsSystem, ID<Im
 {
 	auto depthMapView = graphicsSystem->get(depthMap)->getView();
 	auto transMapView = graphicsSystem->get(transMap)->getView();
-	auto gFramebufferView = graphicsSystem->get(DeferredRenderSystem::Instance::get()->getGFramebuffer());
-	auto gNormalsView = gFramebufferView->getColorAttachments()[DeferredRenderSystem::gBufferNormals].imageView;
 	auto hizBufferView = HizRenderSystem::Instance::get()->getView(1);
+	auto gFramebufferView = graphicsSystem->get(DeferredRenderSystem::Instance::get()->getGFramebuffer());
+	auto gNormalsView = gFramebufferView->getColorAttachments()[G_BUFFER_NORMALS].imageView;
 	auto inFlightCount = graphicsSystem->getInFlightCount();
 	
 	DescriptorSet::Uniforms uniforms =

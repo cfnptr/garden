@@ -85,6 +85,27 @@ enum class IndexType : uint8
 };
 
 /**
+ * @brief Comparison operator for depth, stencil, and sampler operations
+ * 
+ * @details
+ * Used to compare two values against each other. These operators are fundamental in various graphics operations, 
+ * such as depth testing, stencil testing, and shadow mapping, where decisions are made based on comparing 
+ * values like depth (Z) values of fragments or stencil buffer values.
+ */
+enum class CompareOp : uint8
+{
+	Never,          /**< Comparison always evaluates false. */
+	Less,           /**< Comparison evaluates reference < test. */
+	Equal,          /**< Comparison evaluates reference == test. */
+	LessOrEqual,    /**< Comparison evaluates reference <= test. */
+	Greater,        /**< Comparison evaluates reference > test. */
+	NotEqual,       /**< Comparison evaluates reference != test. */
+	GreaterOrEqual, /**< Comparison evaluates reference >= test. */
+	Always,         /**< Comparison always evaluates true. */
+	Count           /**< Comparison operator type count. */
+};
+
+/**
  * @brief Rendering command buffer type.
  * 
  * @details 
@@ -126,7 +147,6 @@ constexpr const char* pipelineTypeNames[(psize)PipelineType::Count] =
 {
 	"Graphics", "Compute", "RayTracing"
 };
-
 /**
  * @brief Returns pipeline type.
  * @param pipelineType target pipeline type name (camelCase)
@@ -214,6 +234,40 @@ static string_view toPipelineStageExt(PipelineStage pipelineStage)
 		case PipelineStage::Task: return ".task";
 		default: throw GardenError("Invalid pipeline stage ext. (" + string(toString(pipelineStage)) + ")");
 	}
+}
+
+/**
+ * @brief Sampler compare operator name strings.
+ */
+constexpr const char* compareOperatorNames[(psize)CompareOp::Count] =
+{
+	"Never", "Less", "Equal", "LessOrEqual", "Greater", "NotEqual", "GreaterOrEqual", "Always"
+};
+/**
+ * @brief Returns comparison operator type.
+ * @param compareOperator target comparison operator name string (camelCase)
+ * @throw GardenError on unknown comparison operator type.
+ */
+static CompareOp toCompareOp(string_view compareOperator)
+{
+	if (compareOperator == "never") return CompareOp::Never;
+	if (compareOperator == "less") return CompareOp::Less;
+	if (compareOperator == "equal") return CompareOp::Equal;
+	if (compareOperator == "lessOrEqual") return CompareOp::LessOrEqual;
+	if (compareOperator == "greater") return CompareOp::Greater;
+	if (compareOperator == "notEqual") return CompareOp::NotEqual;
+	if (compareOperator == "greaterOrEqual") return CompareOp::GreaterOrEqual;
+	if (compareOperator == "always") return CompareOp::Always;
+	throw GardenError("Unknown compare operator type. (" + string(compareOperator) + ")");
+}
+/**
+ * @brief Returns comparison operator name string.
+ * @param compareOperator target comparison operator type
+ */
+static string_view toString(CompareOp compareOperator) noexcept
+{
+	GARDEN_ASSERT(compareOperator < CompareOp::Count);
+	return compareOperatorNames[(psize)compareOperator];
 }
 
 struct SvHash

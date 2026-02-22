@@ -369,9 +369,8 @@ void DlssRenderSystem::evaluateDlssCommand(void* commandBuffer, void* argument)
 
 	auto& jitterOffsets = graphicsSystem->getJitterOffsets();
 	auto jitterOffset = jitterOffsets[graphicsSystem->getCurrentFrameIndex() % jitterOffsets.size()] * 0.5f;
-	auto hdrFramebufferView = graphicsSystem->get(deferredSystem->getHdrFramebuffer());
-	auto upscaleHdrFramebufferView = graphicsSystem->get(deferredSystem->getUpscaleHdrFB());
-	auto inputSize = hdrFramebufferView->getSize();
+	auto velocityBufferView = gFramebufferView->getColorAttachments()[G_BUFFER_VELOCITY].imageView;
+	auto inputSize = gFramebufferView->getSize();
 
 	NVSDK_NGX_Result ngxResult;
 	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
@@ -381,14 +380,10 @@ void DlssRenderSystem::evaluateDlssCommand(void* commandBuffer, void* argument)
 
 		auto vulkanAPI = VulkanAPI::get();
 		auto vkCommandBuffer = (VulkanCommandBuffer*)commandBuffer;
-		auto inputResource = imageToNgxResource(vulkanAPI, vkCommandBuffer,	
-			hdrFramebufferView->getColorAttachments()[0].imageView);
-		auto outputResource = imageToNgxResource(vulkanAPI, vkCommandBuffer, 
-			upscaleHdrFramebufferView->getColorAttachments()[0].imageView);
-		auto depthResource = imageToNgxResource(vulkanAPI, vkCommandBuffer, 
-			gFramebufferView->getDepthStencilAttachment().imageView);
-		auto velocityResource = imageToNgxResource(vulkanAPI, vkCommandBuffer, 
-			gFramebufferView->getColorAttachments()[DeferredRenderSystem::gBufferVelocity].imageView);
+		auto inputResource = imageToNgxResource(vulkanAPI, vkCommandBuffer,	deferredSystem->getHdrImageView());
+		auto outputResource = imageToNgxResource(vulkanAPI, vkCommandBuffer, deferredSystem->getUpscaleHdrIV());
+		auto depthResource = imageToNgxResource(vulkanAPI, vkCommandBuffer, deferredSystem->getDepthStencilIV());
+		auto velocityResource = imageToNgxResource(vulkanAPI, vkCommandBuffer, velocityBufferView);
 		vkCommandBuffer->processPipelineBarriers();
 
 		evalParams.Feature.pInColor = &inputResource;

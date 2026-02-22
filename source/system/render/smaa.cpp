@@ -17,6 +17,7 @@
 #include "garden/system/resource.hpp"
 #include "garden/system/settings.hpp"
 #include "garden/profiler.hpp"
+#include "common/gbuffer.h"
 
 using namespace garden;
 
@@ -44,14 +45,14 @@ static ID<Image> createEdgesBuffer(GraphicsSystem* graphicsSystem)
 }
 static ID<ImageView> getLdrCopyView(GraphicsSystem* graphicsSystem, DeferredRenderSystem* deferredSystem)
 {
-	auto gBuffer = deferredSystem->getGBuffers()[DeferredRenderSystem::gBufferBaseColor]; 
+	auto gBuffer = deferredSystem->getGBuffers()[G_BUFFER_BASE_COLOR]; 
 	auto gBufferView = graphicsSystem->get(gBuffer)->getView(); // Note: Reusing G-Buffer memory.
 	GARDEN_ASSERT(graphicsSystem->get(gBuffer)->getFormat() == DeferredRenderSystem::ldrBufferFormat);
 	return gBufferView;
 }
 static ID<ImageView> getWeightsView(GraphicsSystem* graphicsSystem, DeferredRenderSystem* deferredSystem)
 {
-	auto gBuffer = deferredSystem->getGBuffers()[DeferredRenderSystem::gBufferMetallic]; 
+	auto gBuffer = deferredSystem->getGBuffers()[G_BUFFER_METALLIC]; 
 	auto gBufferView = graphicsSystem->get(gBuffer)->getView(); // Note: Reusing G-Buffer memory.
 	GARDEN_ASSERT(graphicsSystem->get(gBuffer)->getFormat() == Image::Format::UnormR8G8B8A8);
 	return gBufferView;
@@ -147,9 +148,8 @@ static ID<GraphicsPipeline> createBlendPipeline(ID<Framebuffer> blendFramebuffer
 
 static DescriptorSet::Uniforms getEdgesUniforms(GraphicsSystem* graphicsSystem)
 {
-	auto deferredSystem = DeferredRenderSystem::Instance::get();
-	auto ldrFramebufferView = graphicsSystem->get(deferredSystem->getLdrFramebuffer()); // TODO: support forward rendering too
-	auto ldrBufferView = ldrFramebufferView->getColorAttachments()[0].imageView;
+	// TODO: support forward rendering too
+	auto ldrBufferView = DeferredRenderSystem::Instance::get()->getLdrImageView();
 	return { { "ldrBuffer", DescriptorSet::Uniform(ldrBufferView) } };
 }
 static DescriptorSet::Uniforms getWeightsUniforms(GraphicsSystem* graphicsSystem, 

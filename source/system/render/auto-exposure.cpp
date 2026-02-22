@@ -37,10 +37,7 @@ static ID<Buffer> createHistogramBuffer(GraphicsSystem* graphicsSystem)
 //**********************************************************************************************************************
 static DescriptorSet::Uniforms getHistogramUniforms(GraphicsSystem* graphicsSystem, ID<Buffer> histogramBuffer)
 {
-	auto deferredSystem = DeferredRenderSystem::Instance::get();
-	auto hdrFramebufferView = graphicsSystem->get(deferredSystem->getHdrFramebuffer());
-	auto hdrBufferView = hdrFramebufferView->getColorAttachments()[0].imageView;
-
+	auto hdrBufferView = DeferredRenderSystem::Instance::get()->getHdrImageView();
 	DescriptorSet::Uniforms uniforms =
 	{ 
 		{ "hdrBuffer", DescriptorSet::Uniform(hdrBufferView) },

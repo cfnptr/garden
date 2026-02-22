@@ -127,14 +127,15 @@ namespace garden::graphics
 	};
 	struct GraphicsLineData final : public LineData
 	{
-		int8 isIn = 0, isOut = 0, isTopology = 0, isPolygon = 0, isDiscarding = 0,
-			isDepthTesting = 0, isDepthWriting = 0, isDepthClamping = 0,
-			isDepthBiasing = 0, isDepthCompare = 0, isDepthOverride = 0,
-			isStencilTesting = 0, isFaceCulling = 0, isCullFace = 0, isFrontFace = 0,
-			isBlending = 0, isColorMask = 0, isSrcBlendFactor = 0,
-			isDstBlendFactor = 0, isSrcColorFactor = 0,isDstColorFactor = 0,
-			isSrcAlphaFactor = 0, isDstAlphaFactor = 0, isBlendOperation = 0,
-			isColorOperation = 0, isAlphaOperation = 0,
+		int8 isIn = 0, isOut = 0, isTopology = 0, isPolygon = 0, isDiscarding = 0, 
+			isDepthTesting = 0, isDepthWriting = 0, isDepthClamping = 0, isDepthBiasing = 0, 
+			isDepthCompare = 0, isDepthOverride = 0, isDepthBounding = 0, 
+			isDepthBiasConst = 0, isDepthBiasSlope = 0, isDepthBiasClamp = 0, 
+			isStencilTesting = 0, isCullFace = 0, isFrontFace = 0, 
+			isBlending = 0, isColorMask = 0, isSrcBlendFactor = 0, 
+			isDstBlendFactor = 0, isSrcColorFactor = 0,isDstColorFactor = 0, 
+			isSrcAlphaFactor = 0, isDstAlphaFactor = 0, isBlendOperation = 0, 
+			isColorOperation = 0, isAlphaOperation = 0, 
 			isAttributeOffset = 0, isAttachmentOffset = 0;
 		bool isFlat = false, isNoperspective = false;
 	};
@@ -664,11 +665,11 @@ static Sampler::BorderColor toBorderColor(string_view name, uint32 lineIndex)
 	catch (const exception&)
 	{ throw CompileError("unrecognized border color type", lineIndex, string(name)); }
 }
-static Sampler::CompareOp toCompareOperation(string_view name, uint32 lineIndex)
+static CompareOp toCompareOp(string_view name, uint32 lineIndex)
 {
-	try { return toCompareOperation(name); }
+	try { return toCompareOp(name); }
 	catch (const exception&)
-	{ throw CompileError("unrecognized compare operation type", lineIndex, string(name)); }
+	{ throw CompileError("unrecognized compare operator type", lineIndex, string(name)); }
 }
 
 //******************************************************************************************************************
@@ -769,7 +770,7 @@ static void onShaderSamplerState(FileData& fileData, LineData& lineData)
 		}
 		else if (lineData.isCompareOperation)
 		{
-			fileData.samplerState.compareOperation = toCompareOperation(name, fileData.lineIndex);
+			fileData.samplerState.compareOperator = toCompareOp(name, fileData.lineIndex);
 			lineData.isCompareOperation = false;
 		}
 		else if (lineData.isAnisoFiltering)
@@ -815,9 +816,9 @@ static GraphicsPipeline::BlendFactor toBlendFactor(string_view name, uint32 line
 	catch (const exception&)
 	{ throw CompileError("unrecognized pipeline state blend factor type", lineIndex, string(name)); }
 }
-static GraphicsPipeline::BlendOperation toBlendOperation(string_view name, uint32 lineIndex)
+static GraphicsPipeline::BlendOp toBlendOperation(string_view name, uint32 lineIndex)
 {
-	try { return toBlendOperation(name); }
+	try { return toBlendOp(name); }
 	catch (const exception&)
 	{ throw CompileError("unrecognized pipeline state blend operation type", lineIndex, string(name)); }
 }
@@ -849,8 +850,11 @@ static void onShaderPipelineState(GraphicsFileData& fileData, GraphicsLineData& 
 			else if (lineData.word == "depthClamping") lineData.isDepthClamping = 1;
 			else if (lineData.word == "depthBiasing") lineData.isDepthBiasing = 1;
 			else if (lineData.word == "depthCompare") lineData.isDepthCompare = 1;
+			else if (lineData.word == "depthBounding") lineData.isDepthBounding = 1;
+			else if (lineData.word == "depthBiasConst") lineData.isDepthBiasConst = 1;
+			else if (lineData.word == "depthBiasSlope") lineData.isDepthBiasSlope = 1;
+			else if (lineData.word == "depthBiasClamp") lineData.isDepthBiasClamp = 1;
 			else if (lineData.word == "stencilTesting") lineData.isStencilTesting = 1;
-			else if (lineData.word == "faceCulling") lineData.isFaceCulling = 1;
 			else if (lineData.word == "cullFace") lineData.isCullFace = 1;
 			else if (lineData.word == "frontFace") lineData.isFrontFace = 1;
 			else if (lineData.word.length() >= 9 && memcmp(lineData.word.c_str(), "colorMask", 9) == 0)
@@ -984,11 +988,17 @@ static void onShaderPipelineState(GraphicsFileData& fileData, GraphicsLineData& 
 		else if (lineData.isDepthBiasing)
 		{ state.depthBiasing = toBoolState(name, fileData.lineIndex); lineData.isDepthBiasing = 0; }
 		else if (lineData.isDepthCompare)
-		{ state.depthCompare = toCompareOperation(name, fileData.lineIndex); lineData.isDepthCompare = 0; }
+		{ state.depthCompare = toCompareOp(name, fileData.lineIndex); lineData.isDepthCompare = 0; }
+		else if (lineData.isDepthBounding)
+		{ state.depthBounding = toBoolState(name, fileData.lineIndex); lineData.isDepthBounding = 0; }
+		else if (lineData.isDepthBiasConst)
+		{ state.depthBiasConst = toFloatValue(name, fileData.lineIndex); lineData.isDepthBiasConst = 0; }
+		else if (lineData.isDepthBiasSlope)
+		{ state.depthBiasSlope = toFloatValue(name, fileData.lineIndex); lineData.isDepthBiasSlope = 0; }
+		else if (lineData.isDepthBiasClamp)
+		{ state.depthBiasClamp = toFloatValue(name, fileData.lineIndex); lineData.isDepthBiasClamp = 0; }
 		else if (lineData.isStencilTesting)
 		{ state.stencilTesting = toBoolState(name, fileData.lineIndex); lineData.isStencilTesting = 0; }
-		else if (lineData.isFaceCulling)
-		{ state.faceCulling = toBoolState(name, fileData.lineIndex); lineData.isFaceCulling = 0; }
 		else if (lineData.isCullFace)
 		{
 			try { state.cullFace = toCullFace(name); }

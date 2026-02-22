@@ -19,6 +19,7 @@
 
 #pragma once
 #include "linear-pool.hpp"
+#include "garden/graphics/common.hpp"
 #include "garden/graphics/resource.hpp"
 #include <cmath>
 
@@ -93,26 +94,6 @@ public:
 		Count                  /**< Clamp to border sampling color count. */
 		// TODO: Support custom color extension?
 	};
-	/**
-	 * @brief Comparison operator for depth, stencil, and sampler operations
-	 * 
-	 * @details
-	 * Used to compare two values against each other. These operators are fundamental in various graphics operations, 
-	 * such as depth testing, stencil testing, and shadow mapping, where decisions are made based on comparing 
-	 * values like depth (Z) values of fragments or stencil buffer values.
-	 */
-	enum class CompareOp : uint8
-	{
-		Never,          /**< Comparison always evaluates false. */
-		Less,           /**< Comparison evaluates reference < test. */
-		Equal,          /**< Comparison evaluates reference == test. */
-		LessOrEqual,    /**< Comparison evaluates reference <= test. */
-		Greater,        /**< Comparison evaluates reference > test. */
-		NotEqual,       /**< Comparison evaluates reference != test. */
-		GreaterOrEqual, /**< Comparison evaluates reference >= test. */
-		Always,         /**< Comparison always evaluates true. */
-		Count           /**< Comparison operator type count. */
-	};
 
 	/*******************************************************************************************************************
 	 * @brief Sampler configuration.
@@ -131,10 +112,10 @@ public:
 		Filter minFilter = Filter::Nearest;                           /**< Minification filter to apply to lookups. */
 		Filter magFilter = Filter::Nearest;                           /**< Magnification filter to apply to lookups. */
 		Filter mipmapFilter = Filter::Nearest;                        /**< Mipmap filter to apply to lookups. */
-		AddressMode addressModeX = AddressMode::ClampToEdge;            /**< Addressing mode for U coordinates outside [0,1) */
-		AddressMode addressModeY = AddressMode::ClampToEdge;            /**< Addressing mode for V coordinates outside [0,1) */
-		AddressMode addressModeZ = AddressMode::ClampToEdge;            /**< Addressing mode for W coordinates outside [0,1) */
-		CompareOp compareOperation = CompareOp::Less;                 /**< Comparison operator to apply to fetched data/ */
+		AddressMode addressModeX = AddressMode::ClampToEdge;          /**< Addressing mode for U coordinates outside [0,1) */
+		AddressMode addressModeY = AddressMode::ClampToEdge;          /**< Addressing mode for V coordinates outside [0,1) */
+		AddressMode addressModeZ = AddressMode::ClampToEdge;          /**< Addressing mode for W coordinates outside [0,1) */
+		CompareOp compareOperator = CompareOp::Less;                  /**< Comparison operator to apply to fetched data/ */
 		float maxAnisotropy = 1.0f;                                   /**< Anisotropy value clamp used by the sampler. */
 		float mipLodBias = 0.0f;                                      /**< Bias to be added to mipmap LOD calculation. */
 		float minLod = 0.0f;                                          /**< Used to clamp the minimum of the computed LOD value. */
@@ -216,23 +197,6 @@ static Sampler::BorderColor toBorderColor(string_view borderColor)
 	if (borderColor == "intOpaqueWhite") return Sampler::BorderColor::IntOpaqueWhite;
 	throw GardenError("Unknown border color type. (" + string(borderColor) + ")");
 }
-/**
- * @brief Returns comparison operator type.
- * @param compareOperation target comparison operator name string (camelCase)
- * @throw GardenError on unknown comparison operator type.
- */
-static Sampler::CompareOp toCompareOperation(string_view compareOperation)
-{
-	if (compareOperation == "never") return Sampler::CompareOp::Never;
-	if (compareOperation == "less") return Sampler::CompareOp::Less;
-	if (compareOperation == "equal") return Sampler::CompareOp::Equal;
-	if (compareOperation == "lessOrEqual") return Sampler::CompareOp::LessOrEqual;
-	if (compareOperation == "greater") return Sampler::CompareOp::Greater;
-	if (compareOperation == "notEqual") return Sampler::CompareOp::NotEqual;
-	if (compareOperation == "greaterOrEqual") return Sampler::CompareOp::GreaterOrEqual;
-	if (compareOperation == "always") return Sampler::CompareOp::Always;
-	throw GardenError("Unknown compare operation type. (" + string(compareOperation) + ")");
-}
 
 /***********************************************************************************************************************
  * @brief Sampler filter name strings.
@@ -256,13 +220,7 @@ constexpr const char* borderColorNames[(psize)Sampler::BorderColor::Count] =
 	"FloatTransparentBlack", "IntTransparentBlack", "FloatOpaqueBlack",
 	"IntOpaqueBlack", "FloatOpaqueWhite", "IntOpaqueWhite"
 };
-/**
- * @brief Sampler compare operation name strings.
- */
-constexpr const char* compareOperationNames[(psize)Sampler::CompareOp::Count] =
-{
-	"Never", "Less", "Equal", "LessOrEqual", "Greater", "NotEqual", "GreaterOrEqual", "Always"
-};
+
 
 /**
  * @brief Returns sampler filter type.
@@ -301,15 +259,6 @@ static string_view toString(Sampler::BorderColor borderColor) noexcept
 {
 	GARDEN_ASSERT(borderColor < Sampler::BorderColor::Count);
 	return borderColorNames[(psize)borderColor];
-}
-/**
- * @brief Returns comparison operator name string.
- * @param memoryAccess target comparison operator type
- */
-static string_view toString(Sampler::CompareOp compareOperation) noexcept
-{
-	GARDEN_ASSERT(compareOperation < Sampler::CompareOp::Count);
-	return compareOperationNames[(psize)compareOperation];
 }
 
 /***********************************************************************************************************************

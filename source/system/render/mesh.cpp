@@ -59,7 +59,7 @@ void MeshRenderSystem::init()
 		ECSM_SUBSCRIBE_TO_EVENT("PreDeferredRender", MeshRenderSystem::preDeferredRender);
 		ECSM_SUBSCRIBE_TO_EVENT("DeferredRender", MeshRenderSystem::deferredRender);
 		ECSM_SUBSCRIBE_TO_EVENT("DepthHdrRender", MeshRenderSystem::depthHdrRender);
-		ECSM_SUBSCRIBE_TO_EVENT("PreRefractedRender", MeshRenderSystem::preRefractedRender);
+		ECSM_SUBSCRIBE_TO_EVENT("PreRefrRender", MeshRenderSystem::preRefrRender);
 		ECSM_SUBSCRIBE_TO_EVENT("RefractedRender", MeshRenderSystem::refractedRender);
 		ECSM_SUBSCRIBE_TO_EVENT("PreTransDepthRender", MeshRenderSystem::preTransDepthRender);
 		ECSM_SUBSCRIBE_TO_EVENT("TransDepthRender", MeshRenderSystem::transDepthRender);
@@ -91,7 +91,7 @@ void MeshRenderSystem::deinit()
 			ECSM_UNSUBSCRIBE_FROM_EVENT("PreDeferredRender", MeshRenderSystem::preDeferredRender);
 			ECSM_UNSUBSCRIBE_FROM_EVENT("DeferredRender", MeshRenderSystem::deferredRender);
 			ECSM_UNSUBSCRIBE_FROM_EVENT("DepthHdrRender", MeshRenderSystem::depthHdrRender);
-			ECSM_UNSUBSCRIBE_FROM_EVENT("PreRefractedRender", MeshRenderSystem::preRefractedRender);
+			ECSM_UNSUBSCRIBE_FROM_EVENT("PreRefrRender", MeshRenderSystem::preRefrRender);
 			ECSM_UNSUBSCRIBE_FROM_EVENT("RefractedRender", MeshRenderSystem::refractedRender);
 			ECSM_UNSUBSCRIBE_FROM_EVENT("PreTransDepthRender", MeshRenderSystem::preTransDepthRender);
 			ECSM_UNSUBSCRIBE_FROM_EVENT("TransDepthRender", MeshRenderSystem::transDepthRender);
@@ -973,7 +973,7 @@ void MeshRenderSystem::depthHdrRender()
 	const auto& cc = GraphicsSystem::Instance::get()->getCommonConstants();
 	renderUnsorted(cc.viewProj, MeshRenderType::Color, -1);
 }
-void MeshRenderSystem::preRefractedRender()
+void MeshRenderSystem::preRefrRender()
 {
 	SET_CPU_ZONE_SCOPED("Mesh Pre Refracted Render");
 

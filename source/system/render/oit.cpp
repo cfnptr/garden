@@ -29,13 +29,13 @@ static ID<GraphicsPipeline> createPipeline()
 static DescriptorSet::Uniforms getUniforms(GraphicsSystem* graphicsSystem)
 {
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
-	auto oitFramebufferView = graphicsSystem->get(deferredSystem->getOitFramebuffer());
-	const auto& colorAttachments = oitFramebufferView->getColorAttachments();
+	auto accumBufferView = deferredSystem->getOitAccumIV();
+	auto revealBufferView = deferredSystem->getOitRevealIV();
 
 	DescriptorSet::Uniforms uniforms =
 	{ 
-		{ "accumBuffer", DescriptorSet::Uniform(colorAttachments[0].imageView) },
-		{ "revealBuffer", DescriptorSet::Uniform(colorAttachments[1].imageView) },
+		{ "accumBuffer", DescriptorSet::Uniform(accumBufferView) },
+		{ "revealBuffer", DescriptorSet::Uniform(revealBufferView) },
 	};
 	return uniforms;
 }

@@ -264,7 +264,7 @@ private:
 	void preDeferredRender();
 	void deferredRender();
 	void depthHdrRender();
-	void preRefractedRender();
+	void preRefrRender();
 	void refractedRender();
 	void translucentRender();
 	void preTransDepthRender();

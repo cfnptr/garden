@@ -204,10 +204,10 @@ protected:
 	void dequeueBuffers();
 	void dequeueImages();
 
-	void init();
-	void deinit();
-	void input();
-	void fileChange();
+	virtual void init();
+	virtual void deinit();
+	virtual void input();
+	virtual void fileChange();
 	
 	friend class ecsm::Manager;
 public:

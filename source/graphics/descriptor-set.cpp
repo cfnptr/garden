@@ -603,6 +603,8 @@ void DescriptorSet::recreate(Uniforms&& uniforms, Samplers&& samplers)
 					auto imageView = graphicsAPI->imageViewPool.get(ID<ImageView>(resource));
 					GARDEN_ASSERT_MSG(toImageType(uniformType) == imageView->getType(), "Different descriptor set [" +
 						debugName + "] and pipeline uniform [" + pair.first + "] types");
+					GARDEN_ASSERT_MSG(!isFormatDepthAndStencil(imageView->getFormat()), "Image view is both depth and "
+						"stencil format [" + debugName + "] at pipeline uniform [" + pair.first + "]");
 
 					auto image = graphicsAPI->imagePool.get(imageView->getImage());
 					if (isSamplerType(uniformType))
