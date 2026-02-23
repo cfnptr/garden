@@ -37,6 +37,9 @@ class DeferredRenderEditorSystem final : public System
 		float specularFactor = 1.0f;
 		float4 mraor = float4(0.0f, 1.0f, 1.0f, 0.5f);
 		float shadowAlpha = 1.0f;
+		float emissiveFactor = 0.0f;
+		float clearCoat = 0.0f;
+		float clearCoatRoughness = 0.0f;
 		uint32 materialID = G_MATERIAL_BASE;
 	};
 
@@ -45,6 +48,7 @@ class DeferredRenderEditorSystem final : public System
 	ID<GraphicsPipeline> pbrLightingPipeline = {};
 	ID<DescriptorSet> bufferDescriptorSet = {};
 	LightingPC lightingPC = {};
+	float ambientOcclusion = 1.0f;
 	uint8 drawMode = G_BUFFER_DRAW_MODE_OFF;
 	bool showChannelR = true;
 	bool showChannelG = true;

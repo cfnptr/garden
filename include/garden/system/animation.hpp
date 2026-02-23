@@ -155,12 +155,12 @@ public:
 
 	/**
 	 * @brief Destroys animation instance.
-	 * @param animation target animation instance or null
+	 * @param[in,out] animation target animation instance or null
 	 */
 	void destroy(ID<Animation>& animation) { animations.destroy(animation); }
 	/**
 	 * @brief Destroys shared animation instance.
-	 * @param animation target animation reference or null
+	 * @param[in,out] animation target animation reference or null
 	 */
 	void destroy(Ref<Animation>& animation)
 	{

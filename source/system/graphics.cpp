@@ -145,8 +145,8 @@ static void logVkGpuInfo()
 	auto vulkanAPI = VulkanAPI::get();
 	GARDEN_LOG_INFO("GPU: " + string(vulkanAPI->deviceProperties.properties.deviceName.data()));
 	auto apiVersion = vulkanAPI->deviceProperties.properties.apiVersion;
-	GARDEN_LOG_INFO("GPU driver: " + string(vulkanAPI->driverProperties.driverName) + " (" + 
-		string(vulkanAPI->driverProperties.driverInfo) + ")");
+	GARDEN_LOG_INFO("GPU driver: " + string(vulkanAPI->driverProperties.driverName.data()) + " (" + 
+		string(vulkanAPI->driverProperties.driverInfo.data()) + ")");
 	GARDEN_LOG_INFO("GPU Vulkan API: " + to_string(VK_API_VERSION_MAJOR(apiVersion)) + "." +
 		to_string(VK_API_VERSION_MINOR(apiVersion)) + "." + to_string(VK_API_VERSION_PATCH(apiVersion)));
 	GARDEN_LOG_INFO(vulkanAPI->isCacheLoaded ? 

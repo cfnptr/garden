@@ -905,8 +905,9 @@ void AtmosphereRenderSystem::generateSkyShDiffuse(ID<Buffer> shDiffuse, f32x4x4*
 
 		auto starDir = -f32x4(graphicsSystem->getCommonConstants().lightDir);
 		auto starLight = brdf::diffuseIrradiance(starDir, shCoeffs);
+		auto starLightDiv = min(length3(starLight), 1.0f); // Cloudy light compensation.
 		graphicsSystem->setStarLight((float3)starLight);
-		auto ambientLight = calcAmbientLight(starDir, shCoeffs);
+		auto ambientLight = calcAmbientLight(starDir, shCoeffs) / starLightDiv;
 		graphicsSystem->setAmbientLight(float3(ambientLight * giFactor));
 	}
 }

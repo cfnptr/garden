@@ -213,11 +213,12 @@ void DeferredRenderEditorSystem::preLdrRender()
 			ImGui::BeginDisabled(!isSpecular);
 			ImGui::SliderFloat("Specular Factor", &lightingPC.specularFactor, 0.0f, 1.0f);
 			ImGui::EndDisabled();
-			ImGui::BeginDisabled(!isClearCoat);
-			ImGui::SliderFloat("Clear Coat Roughness", &lightingPC.mraor.z, 0.0f, 1.0f);
-			ImGui::EndDisabled();
 			ImGui::BeginDisabled(!isEmissive);
-			ImGui::SliderFloat("Emissive Factor", &lightingPC.mraor.z, 0.0f, 1.0f);
+			ImGui::SliderFloat("Emissive Factor", &lightingPC.emissiveFactor, 0.0f, 1.0f);
+			ImGui::EndDisabled();
+			ImGui::BeginDisabled(!isClearCoat);
+			ImGui::SliderFloat("Clear Coat", &lightingPC.clearCoat, 0.0f, 1.0f);
+			ImGui::SliderFloat("Clear Coat Roughness", &lightingPC.clearCoatRoughness, 0.0f, 1.0f);
 			ImGui::EndDisabled();
 
 			// TODO: allow to select custom passed emissive or subsurface color via buffer to the pbr lighting shader.

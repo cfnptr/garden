@@ -132,7 +132,7 @@ namespace garden::graphics
 			isDepthCompare = 0, isDepthOverride = 0, isDepthBounding = 0, 
 			isDepthBiasConst = 0, isDepthBiasSlope = 0, isDepthBiasClamp = 0, 
 			isStencilTesting = 0, isCullFace = 0, isFrontFace = 0, 
-			isBlending = 0, isColorMask = 0, isSrcBlendFactor = 0, 
+			isBlending = 0, isColorMask = 0, isBlendFactor = 0, isSrcBlendFactor = 0, 
 			isDstBlendFactor = 0, isSrcColorFactor = 0,isDstColorFactor = 0, 
 			isSrcAlphaFactor = 0, isDstAlphaFactor = 0, isBlendOperation = 0, 
 			isColorOperation = 0, isAlphaOperation = 0, 
@@ -861,88 +861,84 @@ static void onShaderPipelineState(GraphicsFileData& fileData, GraphicsLineData& 
 			{
 				if (lineData.word.length() > 9) // TODO: check strtoul for overflow
 					fileData.blendStateIndex = (uint8)strtoul(lineData.word.c_str() + 9, nullptr, 10);
-				else
-					throw CompileError("no colorMask blend state index", fileData.lineIndex);
+				else throw CompileError("no colorMask blend state index", fileData.lineIndex);
 				lineData.isColorMask = 1;
 			}
 			else if (lineData.word.length() >= 8 && memcmp(lineData.word.c_str(), "blending", 8) == 0)
 			{
 				if (lineData.word.length() > 8)
 					fileData.blendStateIndex = (uint8)strtoul(lineData.word.c_str() + 8, nullptr, 10);
-				else
-					throw CompileError("no blending blend state index", fileData.lineIndex);
+				else throw CompileError("no blending blend state index", fileData.lineIndex);
 				lineData.isBlending = 1;
+			}
+			else if (lineData.word.length() >= 11 && memcmp(lineData.word.c_str(), "blendFactor", 11) == 0)
+			{
+				if (lineData.word.length() > 11)
+					fileData.blendStateIndex = (uint8)strtoul(lineData.word.c_str() + 1, nullptr, 10);
+				else throw CompileError("no blend factor blend state index", fileData.lineIndex);
+				lineData.isBlendFactor = 1;
 			}
 			else if (lineData.word.length() >= 14 && memcmp(lineData.word.c_str(), "srcBlendFactor", 14) == 0)
 			{
 				if (lineData.word.length() > 14)
 					fileData.blendStateIndex = (uint8)strtoul(lineData.word.c_str() + 14, nullptr, 10);
-				else
-					throw CompileError("no src blend factor blend state index", fileData.lineIndex);
+				else throw CompileError("no source blend factor blend state index", fileData.lineIndex);
 				lineData.isSrcBlendFactor = 1;
 			}
 			else if (lineData.word.length() >= 14 && memcmp(lineData.word.c_str(), "dstBlendFactor", 14) == 0)
 			{
 				if (lineData.word.length() > 14)
 					fileData.blendStateIndex = (uint8)strtoul(lineData.word.c_str() + 14, nullptr, 10);
-				else
-					throw CompileError("no dst blend factor blend state index", fileData.lineIndex);
+				else throw CompileError("no destination blend factor blend state index", fileData.lineIndex);
 				lineData.isDstBlendFactor = 1;
 			}
 			else if (lineData.word.length() >= 14 && memcmp(lineData.word.c_str(), "srcColorFactor", 14) == 0)
 			{
 				if (lineData.word.length() > 14)
 					fileData.blendStateIndex = (uint8)strtoul(lineData.word.c_str() + 14, nullptr, 10);
-				else
-					throw CompileError("no src color factor blend state index", fileData.lineIndex);
+				else throw CompileError("no source color factor blend state index", fileData.lineIndex);
 				lineData.isSrcColorFactor = 1;
 			}
 			else if (lineData.word.length() >= 14 && memcmp(lineData.word.c_str(), "dstColorFactor", 14) == 0)
 			{
 				if (lineData.word.length() > 14)
 					fileData.blendStateIndex = (uint8)strtoul(lineData.word.c_str() + 14, nullptr, 10);
-				else
-					throw CompileError("no dst color factor blend state index", fileData.lineIndex);
+				else throw CompileError("no destination color factor blend state index", fileData.lineIndex);
 				lineData.isDstColorFactor = 1;
 			}
 			else if (lineData.word.length() >= 14 && memcmp(lineData.word.c_str(), "srcAlphaFactor", 14) == 0)
 			{
 				if (lineData.word.length() > 14)
 					fileData.blendStateIndex = (uint8)strtoul(lineData.word.c_str() + 14, nullptr, 10);
-				else
-					throw CompileError("no src alpha factor blend state index", fileData.lineIndex);
+				else throw CompileError("no source alpha factor blend state index", fileData.lineIndex);
 				lineData.isSrcAlphaFactor = 1;
 			}
 			else if (lineData.word.length() >= 14 && memcmp(lineData.word.c_str(), "dstAlphaFactor", 14) == 0)
 			{
 				if (lineData.word.length() > 14)
 					fileData.blendStateIndex = (uint8)strtoul(lineData.word.c_str() + 14, nullptr, 10);
-				else
-					throw CompileError("no dst alpha factor blend state index", fileData.lineIndex);
+				else throw CompileError("no destination alpha factor blend state index", fileData.lineIndex);
 				lineData.isDstAlphaFactor = 1;
 			}
 			else if (lineData.word.length() >= 14 && memcmp(lineData.word.c_str(), "blendOperation", 14) == 0)
 			{
 				if (lineData.word.length() > 14)
 					fileData.blendStateIndex = (uint8)strtoul(lineData.word.c_str() + 14, nullptr, 10);
-				else
-					throw CompileError("no blend operation blend state index", fileData.lineIndex);
+				else throw CompileError("no blend operation blend state index", fileData.lineIndex);
 				lineData.isBlendOperation = 1;
 			}
 			else if (lineData.word.length() >= 14 && memcmp(lineData.word.c_str(), "colorOperation", 14) == 0)
 			{
 				if (lineData.word.length() > 14)
 					fileData.blendStateIndex = (uint8)strtoul(lineData.word.c_str() + 14, nullptr, 10);
-				else
-					throw CompileError("no color operation blend state index", fileData.lineIndex);
+				else throw CompileError("no color operation blend state index", fileData.lineIndex);
 				lineData.isColorOperation = 1;
 			}
 			else if (lineData.word.length() >= 14 && memcmp(lineData.word.c_str(), "alphaOperation", 14) == 0)
 			{
 				if (lineData.word.length() > 14)
 					fileData.blendStateIndex = (uint8)strtoul(lineData.word.c_str() + 14, nullptr, 10);
-				else
-					throw CompileError("no alpha operation blend state index", fileData.lineIndex);
+				else throw CompileError("no alpha operation blend state index", fileData.lineIndex);
 				lineData.isAlphaOperation = 1;
 			}
 			else throw CompileError("unrecognized pipeline state property", fileData.lineIndex, lineData.word);
@@ -1027,20 +1023,29 @@ static void onShaderPipelineState(GraphicsFileData& fileData, GraphicsLineData& 
 			blendStates[fileData.blendStateIndex].blending = toBoolState(name, fileData.lineIndex);
 			lineData.isBlending = 0;
 		}
+		else if (lineData.isBlendFactor)
+		{
+			if (fileData.blendStateIndex + 1 > blendStates.size())
+				blendStates.resize(fileData.blendStateIndex + 1);
+			auto& blendState = blendStates[fileData.blendStateIndex];
+			blendState.srcColorFactor = blendState.dstColorFactor = blendState.srcAlphaFactor = 
+				blendState.dstAlphaFactor = toBlendFactor(name, fileData.lineIndex);
+			lineData.isBlendFactor = 0;
+		}
 		else if (lineData.isSrcBlendFactor)
 		{
 			if (fileData.blendStateIndex + 1 > blendStates.size())
 				blendStates.resize(fileData.blendStateIndex + 1);
-			blendStates[fileData.blendStateIndex].srcColorFactor =
-				blendStates[fileData.blendStateIndex].srcAlphaFactor = toBlendFactor(name, fileData.lineIndex);
+			auto& blendState = blendStates[fileData.blendStateIndex];
+			blendState.srcColorFactor = blendState.srcAlphaFactor = toBlendFactor(name, fileData.lineIndex);
 			lineData.isSrcBlendFactor = 0;
 		}
 		else if (lineData.isDstBlendFactor)
 		{
 			if (fileData.blendStateIndex + 1 > blendStates.size())
 				blendStates.resize(fileData.blendStateIndex + 1);
-			blendStates[fileData.blendStateIndex].dstColorFactor =
-				blendStates[fileData.blendStateIndex].dstAlphaFactor = toBlendFactor(name, fileData.lineIndex);
+			auto& blendState = blendStates[fileData.blendStateIndex];
+			blendState.dstColorFactor = blendState.dstAlphaFactor = toBlendFactor(name, fileData.lineIndex);
 			lineData.isDstBlendFactor = 0;
 		}
 		else if (lineData.isSrcColorFactor)
@@ -1075,9 +1080,8 @@ static void onShaderPipelineState(GraphicsFileData& fileData, GraphicsLineData& 
 		{
 			if (fileData.blendStateIndex + 1 > blendStates.size())
 				blendStates.resize(fileData.blendStateIndex + 1);
-			blendStates[fileData.blendStateIndex].colorOperation =
-				blendStates[fileData.blendStateIndex].alphaOperation =
-				toBlendOperation(name, fileData.lineIndex);
+			auto& blendState = blendStates[fileData.blendStateIndex];
+			blendState.colorOperation = blendState.alphaOperation = toBlendOperation(name, fileData.lineIndex);
 			lineData.isBlendOperation = 0;
 		}
 		else if (lineData.isColorOperation)
