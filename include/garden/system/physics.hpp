@@ -969,12 +969,12 @@ public:
 
 	/**
 	 * @brief Destroys shape instance.
-	 * @param shape target shape instance or null
+	 * @param[in,out] shape target shape instance or null
 	 */
 	void destroy(ID<Shape>& shape) { shapes.destroy(shape); }
 	/**
 	 * @brief Destroys shared shape if it's the last one.
-	 * @param shape target shape instance or null
+	 * @param[in,out] shape target shape instance or null
 	 */
 	void destroyShared(ID<Shape>& shape);
 

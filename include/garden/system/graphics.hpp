@@ -488,12 +488,12 @@ public:
 
 	/**
 	 * @brief Destroys buffer instance.
-	 * @param buffer target buffer instance or null
+	 * @param[in,out] buffer target buffer instance or null
 	 */
 	void destroy(ID<Buffer>& buffer);
 	/**
 	 * @brief Destroys shared buffer instance.
-	 * @param[in] buffer target buffer reference or null
+	 * @param[in,out] buffer target buffer reference or null
 	 */
 	void destroy(Ref<Buffer>& buffer)
 	{
@@ -506,7 +506,7 @@ public:
 	/**
 	 * @brief Destroys array of buffer instances. (Does not free pointer!)
 	 *
-	 * @param[in] buffers array with buffer instances or/and nulls
+	 * @param[in,out] buffers array with buffer instances or/and nulls
 	 * @param count size of the buffers array
 	 */
 	void destroy(ID<Buffer>* buffers, uint32 count)
@@ -517,7 +517,7 @@ public:
 	}
 	/**
 	 * @brief Destroys vector with buffer instances.
-	 * @param[in] buffers target vector with buffer instances or/and nulls
+	 * @param[in,out] buffers target vector with buffer instances or/and nulls
 	 */
 	void destroy(vector<ID<Buffer>>& buffers)
 	{
@@ -526,7 +526,7 @@ public:
 	}
 	/**
 	 * @brief Destroys descriptor set buffer instances for each swapchain.
-	 * @param[in] dsBuffer target descriptor set buffer instances or/and nulls
+	 * @param[in,out] dsBuffer target descriptor set buffer instances or/and nulls
 	 */
 	void destroy(DescriptorSet::Buffers& dsBuffer)
 	{
@@ -652,12 +652,12 @@ public:
 	
 	/**
 	 * @brief Destroys image instance.
-	 * @param image target image instance or null
+	 * @param[in,out] image target image instance or null
 	 */
 	void destroy(ID<Image>& image);
 	/**
 	 * @brief Destroys shared image instance.
-	 * @param[in] image target image reference or null
+	 * @param[in,out] image target image reference or null
 	 */
 	void destroy(Ref<Image>& image)
 	{
@@ -670,7 +670,7 @@ public:
 	/**
 	 * @brief Destroys array of image instances. (Does not free pointer!)
 	 *
-	 * @param[in] buffers array with image instances or/and nulls
+	 * @param[in,out] buffers array with image instances or/and nulls
 	 * @param count size of the images array
 	 */
 	void destroy(ID<Image>* images, uint32 count)
@@ -681,7 +681,7 @@ public:
 	}
 	/**
 	 * @brief Destroys vector with image instances.
-	 * @param[in] images target vector with image instances or/and nulls
+	 * @param[in,out] images target vector with image instances or/and nulls
 	 */
 	void destroy(vector<ID<Image>>& images)
 	{
@@ -716,12 +716,12 @@ public:
 
 	/**
 	 * @brief Destroys image view instance.
-	 * @param imageView target image view instance or null
+	 * @param[in,out] imageView target image view instance or null
 	 */
 	void destroy(ID<ImageView>& imageView);
 	/**
 	 * @brief Destroys shared image view instance.
-	 * @param[in] imageView target image view reference or null
+	 * @param[in,out] imageView target image view reference or null
 	 */
 	void destroy(Ref<ImageView>& imageView)
 	{
@@ -734,7 +734,7 @@ public:
 	/**
 	 * @brief Destroys array of image view instances. (Does not free pointer!)
 	 *
-	 * @param[in] buffers array with image view instances or/and nulls
+	 * @param[in,out] buffers array with image view instances or/and nulls
 	 * @param count size of the image views array
 	 */
 	void destroy(ID<ImageView>* imageViews, uint32 count)
@@ -745,7 +745,7 @@ public:
 	}
 	/**
 	 * @brief Destroys vector with image view instances.
-	 * @param[in] imageViews target vector with image view instances or/and nulls
+	 * @param[in,out] imageViews target vector with image view instances or/and nulls
 	 */
 	void destroy(vector<ID<ImageView>>& imageViews)
 	{
@@ -783,12 +783,12 @@ public:
 
 	/**
 	 * @brief Destroys framebuffer instance.
-	 * @param framebuffer target framebuffer instance or null
+	 * @param[in,out] framebuffer target framebuffer instance or null
 	 */
 	void destroy(ID<Framebuffer>& framebuffer);
 	/**
 	 * @brief Destroys shared framebuffer instance.
-	 * @param[in] framebuffer target framebuffer reference or null
+	 * @param[in,out] framebuffer target framebuffer reference or null
 	 */
 	void destroy(Ref<Framebuffer>& framebuffer)
 	{
@@ -801,7 +801,7 @@ public:
 	/**
 	 * @brief Destroys array of framebuffer instances. (Does not free pointer!)
 	 *
-	 * @param[in] framebuffers array with framebuffer instances or/and nulls
+	 * @param[in,out] framebuffers array with framebuffer instances or/and nulls
 	 * @param count size of the framebuffers array
 	 */
 	void destroy(ID<Framebuffer>* framebuffers, uint32 count)
@@ -812,7 +812,7 @@ public:
 	}
 	/**
 	 * @brief Destroys vector with framebuffer instances.
-	 * @param[in] framebuffers target vector with framebuffer instances or/and nulls
+	 * @param[in,out] framebuffers target vector with framebuffer instances or/and nulls
 	 */
 	void destroy(vector<ID<Framebuffer>>& framebuffers)
 	{
@@ -841,12 +841,12 @@ public:
 	ID<Sampler> createSampler(const Sampler::State& state);
 	 /**
 	 * @brief Destroys sampler instance.
-	 * @param sampler target sampler instance or null
+	 * @param[in,out] sampler target sampler instance or null
 	 */
 	void destroy(ID<Sampler>& sampler);
 	/**
 	 * @brief Destroys shared sampler instance.
-	 * @param[in] sampler target sampler reference or null
+	 * @param[in,out] sampler target sampler reference or null
 	 */
 	void destroy(Ref<Sampler>& sampler)
 	{
@@ -859,7 +859,7 @@ public:
 	/**
 	 * @brief Destroys array of sampler instances. (Does not free pointer!)
 	 *
-	 * @param[in] buffers array with sampler instances or/and nulls
+	 * @param[in,out] buffers array with sampler instances or/and nulls
 	 * @param count size of the samplers array
 	 */
 	void destroy(ID<Sampler>* samplers, uint32 count)
@@ -870,7 +870,7 @@ public:
 	}
 	/**
 	 * @brief Destroys vector with sampler instances.
-	 * @param[in] samplers target vector with sampler instances or/and nulls
+	 * @param[in,out] samplers target vector with sampler instances or/and nulls
 	 */
 	void destroy(vector<ID<Sampler>>& samplers)
 	{
@@ -891,12 +891,12 @@ public:
 
 	/*******************************************************************************************************************
 	 * @brief Destroys graphics pipeline instance.
-	 * @param graphicsPipeline target graphics pipeline instance or null
+	 * @param[in,out] graphicsPipeline target graphics pipeline instance or null
 	 */
 	void destroy(ID<GraphicsPipeline>& graphicsPipeline);
 	/**
 	 * @brief Destroys shared graphics pipeline instance.
-	 * @param[in] graphicsPipeline target graphics pipeline reference or null
+	 * @param[in,out] graphicsPipeline target graphics pipeline reference or null
 	 */
 	void destroy(Ref<GraphicsPipeline>& graphicsPipeline)
 	{
@@ -909,7 +909,7 @@ public:
 	/**
 	 * @brief Destroys array of graphics pipeline instances. (Does not free pointer!)
 	 *
-	 * @param[in] buffers array with graphics pipeline instances or/and nulls
+	 * @param[in,out] buffers array with graphics pipeline instances or/and nulls
 	 * @param count size of the graphics pipelines array
 	 */
 	void destroy(ID<GraphicsPipeline>* graphicsPipelines, uint32 count)
@@ -920,7 +920,7 @@ public:
 	}
 	/**
 	 * @brief Destroys vector with graphics pipeline instances.
-	 * @param[in] graphicsPipelines target vector with graphics pipeline instances or/and nulls
+	 * @param[in,out] graphicsPipelines target vector with graphics pipeline instances or/and nulls
 	 */
 	void destroy(vector<ID<GraphicsPipeline>>& graphicsPipelines)
 	{
@@ -944,12 +944,12 @@ public:
 
 	/**
 	 * @brief Destroys compute pipeline instance.
-	 * @param computePipeline target compute pipeline instance or null
+	 * @param[in,out] computePipeline target compute pipeline instance or null
 	 */
 	void destroy(ID<ComputePipeline>& computePipeline);
 	/**
 	 * @brief Destroys shared compute pipeline instance.
-	 * @param[in] computePipeline target compute pipeline reference or null
+	 * @param[in,out] computePipeline target compute pipeline reference or null
 	 */
 	void destroy(Ref<ComputePipeline>& computePipeline)
 	{
@@ -962,7 +962,7 @@ public:
 	/**
 	 * @brief Destroys array of compute pipeline instances. (Does not free pointer!)
 	 *
-	 * @param[in] buffers array with compute pipeline instances or/and nulls
+	 * @param[in,out] buffers array with compute pipeline instances or/and nulls
 	 * @param count size of the compute pipelines array
 	 */
 	void destroy(ID<ComputePipeline>* computePipelines, uint32 count)
@@ -973,7 +973,7 @@ public:
 	}
 	/**
 	 * @brief Destroys vector with compute pipeline instances.
-	 * @param[in] computePipelines target vector with compute pipeline instances or/and nulls
+	 * @param[in,out] computePipelines target vector with compute pipeline instances or/and nulls
 	 */
 	void destroy(vector<ID<ComputePipeline>>& computePipelines)
 	{
@@ -997,12 +997,12 @@ public:
 
 	/**
 	 * @brief Destroys ray tracing pipeline instance.
-	 * @param rayTracingPipeline target ray tracing pipeline instance or null
+	 * @param[in,out] rayTracingPipeline target ray tracing pipeline instance or null
 	 */
 	void destroy(ID<RayTracingPipeline>& rayTracingPipeline);
 	/**
 	 * @brief Destroys shared ray tracing pipeline instance.
-	 * @param[in] rayTracingPipeline target ray tracing pipeline reference or null
+	 * @param[in,out] rayTracingPipeline target ray tracing pipeline reference or null
 	 */
 	void destroy(Ref<RayTracingPipeline>& rayTracingPipeline)
 	{
@@ -1015,7 +1015,7 @@ public:
 	/**
 	 * @brief Destroys array of ray tracing pipeline instances. (Does not free pointer!)
 	 *
-	 * @param[in] buffers array with ray tracing pipeline instances or/and nulls
+	 * @param[in,out] buffers array with ray tracing pipeline instances or/and nulls
 	 * @param count size of the ray tracing pipelines array
 	 */
 	void destroy(ID<RayTracingPipeline>* rayTracingPipelines, uint32 count)
@@ -1026,7 +1026,7 @@ public:
 	}
 	/**
 	 * @brief Destroys vector with ray tracing pipeline instances.
-	 * @param[in] rayTracingPipelines target vector with ray tracing pipeline instances or/and nulls
+	 * @param[in,out] rayTracingPipelines target vector with ray tracing pipeline instances or/and nulls
 	 */
 	void destroy(vector<ID<RayTracingPipeline>>& rayTracingPipelines)
 	{
@@ -1081,12 +1081,12 @@ public:
 
 	/**
 	 * @brief Destroys descriptor set instance.
-	 * @param descriptorSet target descriptor set instance or null
+	 * @param[in,out] descriptorSet target descriptor set instance or null
 	 */
 	void destroy(ID<DescriptorSet>& descriptorSet);
 	/**
 	 * @brief Destroys shared descriptor set instance.
-	 * @param[in] descriptorSet target descriptor set reference or null
+	 * @param[in,out] descriptorSet target descriptor set reference or null
 	 */
 	void destroy(Ref<DescriptorSet>& descriptorSet)
 	{
@@ -1099,7 +1099,7 @@ public:
 	/**
 	 * @brief Destroys array of descriptor set instances. (Does not free pointer!)
 	 *
-	 * @param[in] buffers array with descriptor set instances or/and nulls
+	 * @param[in,out] buffers array with descriptor set instances or/and nulls
 	 * @param count size of the descriptor sets array
 	 */
 	void destroy(ID<DescriptorSet>* descriptorSets, uint32 count)
@@ -1110,7 +1110,7 @@ public:
 	}
 	/**
 	 * @brief Destroys vector with descriptor set instances.
-	 * @param[in] descriptorSets target vector with descriptor set instances or/and nulls
+	 * @param[in,out] descriptorSets target vector with descriptor set instances or/and nulls
 	 */
 	void destroy(vector<ID<DescriptorSet>>& descriptorSets)
 	{
@@ -1151,12 +1151,12 @@ public:
 
 	/**
 	 * @brief Destroys bottom level acceleration structure instance. (BLAS)
-	 * @param blas target BLAS instance or null
+	 * @param[in,out] blas target BLAS instance or null
 	 */
 	void destroy(ID<Blas>& blas);
 	/**
 	 * @brief Destroys shared bottom level acceleration structure instance.
-	 * @param[in] blas target BLAS reference or null
+	 * @param[in,out] blas target BLAS reference or null
 	 */
 	void destroy(Ref<Blas>& blas)
 	{
@@ -1169,7 +1169,7 @@ public:
 	/**
 	 * @brief Destroys array of BLAS instances. (Does not free pointer!)
 	 *
-	 * @param[in] buffers array with BLAS instances or/and nulls
+	 * @param[in,out] buffers array with BLAS instances or/and nulls
 	 * @param count size of the BLASes array
 	 */
 	void destroy(ID<Blas>* blases, uint32 count)
@@ -1180,7 +1180,7 @@ public:
 	}
 	/**
 	 * @brief Destroys vector with BLAS instances.
-	 * @param[in] samplers target vector with BLAS instances or/and nulls
+	 * @param[in,out] samplers target vector with BLAS instances or/and nulls
 	 */
 	void destroy(vector<ID<Blas>>& blases)
 	{
@@ -1202,7 +1202,7 @@ public:
 	/*******************************************************************************************************************
 	 * @brief Creates a new graphics top level acceleration structure instance. (TLAS)
 	 * 
-	 * @param instances TLAS instance array
+	 * @param[in] instances TLAS instance array
 	 * @param instanceBuffer target TLAS instance buffer
 	 * @param flags acceleration structure build flags
 	 */
@@ -1210,12 +1210,12 @@ public:
 
 	/**
 	 * @brief Destroys top level acceleration structure instance. (TLAS)
-	 * @param tlas target TLAS instance or null
+	 * @param[in,out] tlas target TLAS instance or null
 	 */
 	void destroy(ID<Tlas>& tlas);
 	/**
 	 * @brief Destroys shared top level acceleration structure instance.
-	 * @param[in] tlas target TLAS reference or null
+	 * @param[in,out] tlas target TLAS reference or null
 	 */
 	void destroy(Ref<Tlas>& tlas)
 	{
@@ -1228,7 +1228,7 @@ public:
 	/**
 	 * @brief Destroys array of TLAS instances. (Does not free pointer!)
 	 *
-	 * @param[in] buffers array with TLAS instances or/and nulls
+	 * @param[in,out] buffers array with TLAS instances or/and nulls
 	 * @param count size of the TLASes array
 	 */
 	void destroy(ID<Tlas>* tlases, uint32 count)
@@ -1239,7 +1239,7 @@ public:
 	}
 	/**
 	 * @brief Destroys vector with TLAS instances.
-	 * @param[in] samplers target vector with TLAS instances or/and nulls
+	 * @param[in,out] samplers target vector with TLAS instances or/and nulls
 	 */
 	void destroy(vector<ID<Tlas>>& tlases)
 	{

@@ -387,12 +387,12 @@ public:
 
 	/**
 	 * @brief Destroys font texture atlas instance.
-	 * @param fontAtlas target font atlas instance or null
+	 * @param[in,out] fontAtlas target font atlas instance or null
 	 */
 	void destroy(ID<FontAtlas>& fontAtlas);
 	/**
 	 * @brief Destroys shared font texture atlas instance.
-	 * @param fontAtlas target font atlas reference or null
+	 * @param[in,out] fontAtlas target font atlas reference or null
 	 */
 	void destroy(Ref<FontAtlas>& fontAtlas)
 	{

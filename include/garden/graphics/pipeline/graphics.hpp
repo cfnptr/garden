@@ -156,8 +156,8 @@ public:
 		Add,             /**< finalColor = (srcColor * srcBlendFactor) + (dstColor * dstBlendFactor) */
 		Subtract,        /**< finalColor = (srcColor * srcBlendFactor) - (dstColor * dstBlendFactor) */
 		RevSubtract,     /**< finalColor = (dstColor * dstBlendFactor) - (srcColor * srcBlendFactor) */
-		Minimum,         /**< finalColor = min(srcColor, dstColor) */
-		Maximum,         /**< finalColor = max(srcColor, dstColor) */
+		Minimum,         /**< finalColor = min(srcColor * srcBlendFactor, dstColor * dstBlendFactor) */
+		Maximum,         /**< finalColor = max(srcColor * srcBlendFactor, dstColor * dstBlendFactor) */
 		Count            /**< Framebuffer blending operation count. */
 	};
 
