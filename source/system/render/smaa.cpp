@@ -34,7 +34,6 @@ static Ref<Image> createAreaLUT()
 		Image::Strategy::Size, ImageLoadFlags::LoadShared, 9.0f);
 }
 
-
 static ID<Image> createEdgesBuffer(GraphicsSystem* graphicsSystem)
 {
 	auto framebufferSize = graphicsSystem->getScaledFrameSize();

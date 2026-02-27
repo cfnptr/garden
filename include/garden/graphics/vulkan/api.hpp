@@ -50,6 +50,7 @@ public:
 		bool memoryBudget = false;
 		bool memoryPriority = false;
 		bool pageableMemory = false;
+		bool synchronization2 = false;
 		bool dynamicRendering = false;
 		bool rayTracing = false;
 		bool rayQuery = false;
@@ -103,6 +104,9 @@ public:
 	vector<vk::MemoryBarrier> memoryBarriers;
 	vector<vk::ImageMemoryBarrier> imageMemoryBarriers;
 	vector<vk::BufferMemoryBarrier> bufferMemoryBarriers;
+	vector<vk::MemoryBarrier2> memoryBarriers2;
+	vector<vk::ImageMemoryBarrier2> imageMemoryBarriers2;
+	vector<vk::BufferMemoryBarrier2> bufferMemoryBarriers2;
 	vector<vk::RenderingAttachmentInfoKHR> colorAttachmentInfos;
 	vector<vk::ClearAttachment> clearAttachments;
 	vector<vk::ClearRect> clearAttachmentsRects;
@@ -548,26 +552,26 @@ static constexpr vk::ShaderStageFlags toVkShaderStages(PipelineStage pipelineSta
  * @brief Returns Vulkan pipeline stage flags from the pipeline stage.
  * @param pipelineStage target pipeline stage
  */
-static constexpr vk::PipelineStageFlags toVkPipelineStages(PipelineStage pipelineStage) noexcept
+static constexpr vk::PipelineStageFlags2 toVkPipelineStages(PipelineStage pipelineStage) noexcept
 {
-	vk::PipelineStageFlags flags;
+	vk::PipelineStageFlags2 flags;
 	if (hasAnyFlag(pipelineStage, PipelineStage::Transfer))
-		flags |= vk::PipelineStageFlagBits::eTransfer;
+		flags |= vk::PipelineStageFlagBits2::eTransfer;
 	if (hasAnyFlag(pipelineStage, PipelineStage::Vertex))
-		flags |= vk::PipelineStageFlagBits::eVertexShader;
+		flags |= vk::PipelineStageFlagBits2::eVertexShader;
 	if (hasAnyFlag(pipelineStage, PipelineStage::Fragment))
-		flags |= vk::PipelineStageFlagBits::eFragmentShader;
+		flags |= vk::PipelineStageFlagBits2::eFragmentShader;
 	if (hasAnyFlag(pipelineStage, PipelineStage::Compute))
-		flags |= vk::PipelineStageFlagBits::eComputeShader;
+		flags |= vk::PipelineStageFlagBits2::eComputeShader;
 	if (hasAnyFlag(pipelineStage, PipelineStage::RayGeneration | PipelineStage::Intersection | 
 		PipelineStage::AnyHit | PipelineStage::ClosestHit | PipelineStage::Miss | PipelineStage::Callable))
 	{
-		flags |= vk::PipelineStageFlagBits::eRayTracingShaderKHR;
+		flags |= vk::PipelineStageFlagBits2::eRayTracingShaderKHR;
 	}
 	if (hasAnyFlag(pipelineStage, PipelineStage::Mesh))
-		flags |= vk::PipelineStageFlagBits::eMeshShaderEXT;
+		flags |= vk::PipelineStageFlagBits2::eMeshShaderEXT;
 	if (hasAnyFlag(pipelineStage, PipelineStage::Task))
-		flags |= vk::PipelineStageFlagBits::eTaskShaderEXT;
+		flags |= vk::PipelineStageFlagBits2::eTaskShaderEXT;
 	return flags;
 }
 
@@ -599,16 +603,16 @@ static constexpr vk::ImageAspectFlags toVkImageAspectFlags(Image::Format imageFo
 }
 
 /**
- * @brief Returns Vulkanaccess flags from the memory access flags.
+ * @brief Returns Vulkan access flags from the memory access flags.
  * @param accessFlags target memory access flags
  */
-static vk::AccessFlags toVkAccessFlags(Memory::AccessFlags accessFlags) noexcept
+static vk::AccessFlags2 toVkAccessFlags(Memory::AccessFlags accessFlags) noexcept
 {
-	vk::AccessFlags flags;
+	vk::AccessFlags2 flags;
 	if (hasAnyFlag(accessFlags, Memory::AccessFlags::ShaderRead))
-		flags |= vk::AccessFlagBits::eShaderRead;
+		flags |= vk::AccessFlagBits2::eShaderRead;
 	if (hasAnyFlag(accessFlags, Memory::AccessFlags::ShaderWrite))
-		flags |= vk::AccessFlagBits::eShaderWrite;
+		flags |= vk::AccessFlagBits2::eShaderWrite;
 	return flags;
 }
 

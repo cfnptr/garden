@@ -34,12 +34,12 @@ public:
 	vk::CommandBuffer instance;
 	vk::Fence fence;
 
-	static void addBufferBarrier(VulkanAPI* vulkanAPI, Buffer::BarrierState newBufferState, 
+	static void addBufferBarrier(VulkanAPI* vulkanAPI, Buffer::BarrierState& newBufferState, 
 		ID<Buffer> buffer, uint64 size = VK_WHOLE_SIZE, uint64 offset = 0);
 	static void addImageBarrier(VulkanAPI* vulkanAPI, 
-		Image::LayoutState newImageState, ID<ImageView> imageView);
+		Image::LayoutState& newImageState, ID<ImageView> imageView);
 	static void addDescriptorSetBarriers(VulkanAPI* vulkanAPI, 
-		const DescriptorSet::Range* descriptorSetRange, uint32 rangeCount);
+		const DescriptorSet::Range* descriptorSetRanges, uint32 rangeCount);
 
 	void addRenderPassBarriers(const Command* command);
 	void addRenderPassBarriers(uint32 thisSize);
@@ -86,23 +86,27 @@ public:
 	void submit() final;
 	bool isBusy() final;
 
-	static constexpr uint32 writeAccessMask =
-		VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT |
-		VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_HOST_WRITE_BIT | VK_ACCESS_MEMORY_WRITE_BIT |
-		VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT | VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT |
-		VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR | VK_ACCESS_COMMAND_PREPROCESS_WRITE_BIT_EXT;
+	static constexpr uint64 writeAccessMask =
+		VK_ACCESS_2_SHADER_WRITE_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | 
+		VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_TRANSFER_WRITE_BIT | VK_ACCESS_2_HOST_WRITE_BIT | 
+		VK_ACCESS_2_MEMORY_WRITE_BIT | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT | VK_ACCESS_2_VIDEO_DECODE_WRITE_BIT_KHR | 
+		VK_ACCESS_2_VIDEO_ENCODE_WRITE_BIT_KHR | VK_ACCESS_2_SHADER_TILE_ATTACHMENT_WRITE_BIT_QCOM | 
+		VK_ACCESS_2_SHADER_WRITE_BIT_KHR | VK_ACCESS_2_TRANSFORM_FEEDBACK_WRITE_BIT_EXT | 
+		VK_ACCESS_2_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT | VK_ACCESS_2_COMMAND_PREPROCESS_WRITE_BIT_EXT | 
+		VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_KHR | VK_ACCESS_2_MICROMAP_WRITE_BIT_EXT | 
+		VK_ACCESS_2_OPTICAL_FLOW_WRITE_BIT_NV | VK_ACCESS_2_DATA_GRAPH_WRITE_BIT_ARM | 
+		VK_ACCESS_2_MEMORY_DECOMPRESSION_WRITE_BIT_EXT;
 
 	static constexpr bool isDifferentState(Image::LayoutState oldState, Image::LayoutState newState) noexcept
 	{
-		// TODO: Suboptimal, we can skip read after read barriers on the same stage.
-		//       But Vulkans needs to track transition for each stage separately.
-		return oldState.stage != newState.stage || 
-			oldState.layout != newState.layout || (oldState.access & writeAccessMask);
+		auto isWriteAccess = (oldState.access & writeAccessMask);
+		return (!isWriteAccess && oldState.stage != newState.stage) || 
+			oldState.layout != newState.layout || isWriteAccess;
 	}
 	static constexpr bool isDifferentState(Buffer::BarrierState oldState, Buffer::BarrierState newState) noexcept
 	{
-		// TODO: The same suboptimal stage transition as in the image barrier.
-		return oldState.stage != newState.stage || oldState.access & writeAccessMask;
+		auto isWriteAccess = (oldState.access & writeAccessMask);
+		return (!isWriteAccess && oldState.stage != newState.stage) || isWriteAccess;
 	}
 };
 

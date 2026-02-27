@@ -220,7 +220,7 @@ Image::Image(void* instance, Format format, Usage usage, Strategy strategy, uint
 	this->size = u32x4(size.x, size.y, 1, 1);
 
 	if ((GraphicsBackend)backend == GraphicsBackend::VulkanAPI) // Note: do not remove.
-		barrierStates[0].stage = (uint32)vk::PipelineStageFlagBits::eColorAttachmentOutput;
+		barrierStates[0].stage = (uint64)vk::PipelineStageFlagBits2::eColorAttachmentOutput;
 	else abort();
 }
 bool Image::destroy()

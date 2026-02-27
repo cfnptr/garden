@@ -497,8 +497,8 @@ void Pipeline::setVkVariantIndex(void* specInfo, uint8 variantIndex) noexcept
 }
 
 //**********************************************************************************************************************
-void Pipeline::updateDescriptorsLock(const DescriptorSet::Range* descriptorSetRange, 
-	uint8 rangeCount, int32 threadIndex)
+void Pipeline::updateDescriptorsLock(const DescriptorSet::Range* 
+	descriptorSetRanges, uint8 rangeCount, int32 threadIndex)
 {
 	auto graphicsAPI = GraphicsAPI::get();
 	if (graphicsAPI->currentCommandBuffer == graphicsAPI->frameCommandBuffer)
@@ -507,7 +507,7 @@ void Pipeline::updateDescriptorsLock(const DescriptorSet::Range* descriptorSetRa
 	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
 	for (uint8 i = 0; i < rangeCount; i++) // TODO: make non async variant woth busyLock++ or multithread this?
 	{
-		auto descriptorSet = descriptorSetRange[i].set;
+		auto descriptorSet = descriptorSetRanges[i].set;
 		auto dsView = graphicsAPI->descriptorSetPool.get(descriptorSet);
 		atomicFetchAdd32(&ResourceExt::getBusyLock(**dsView), 1);
 		currentCommandBuffer->addLockedResource(descriptorSet, threadIndex);
@@ -772,7 +772,7 @@ void Pipeline::bindDescriptorSetsAsync(const DescriptorSet::Range* descriptorSet
 	GARDEN_ASSERT_MSG(asyncRecording, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(descriptorSetRanges, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(rangeCount > 0, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(rangeCount <= 2, "Assert " + debugName); // TODO: do we need more than 2 for an async??
+	GARDEN_ASSERT_MSG(rangeCount <= 3, "Assert " + debugName); // TODO: do we need more than 3 for an async??
 	GARDEN_ASSERT_MSG(graphicsAPI->isCurrentRenderPassAsync, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(graphicsAPI->currentCommandBuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(instance, "Pipeline [" + debugName + "] is not ready");

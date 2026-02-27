@@ -22,8 +22,8 @@ Memory::BarrierState Memory::toBarrierState(AccessFlags accessFlags, PipelineSta
 	BarrierState state;
 	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
-		state.access = (uint32)toVkAccessFlags(accessFlags);
-		state.stage = (uint32)toVkPipelineStages(pipelineStages);
+		state.access = (uint64)toVkAccessFlags(accessFlags);
+		state.stage = (uint64)toVkPipelineStages(pipelineStages);
 	}
 	else abort();
 	return state;

@@ -520,7 +520,9 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 
 		if (versionMinor < 3)
 		{
-			if (extensionName == VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME)
+			if (extensionName == VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME)
+				features.synchronization2 = true;
+			else if (extensionName == VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME)
 				features.dynamicRendering = true;
 			else if (extensionName == VK_KHR_MAINTENANCE_4_EXTENSION_NAME)
 				features.maintenance4 = true;
@@ -542,18 +544,19 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 		vk::PhysicalDeviceMaintenance6Features maintenance6;
 		vk::PhysicalDevice16BitStorageFeatures _16BitStorage;
 		vk::PhysicalDevice8BitStorageFeatures _8BitStorage;
-		vk::PhysicalDeviceShaderFloat16Int8FeaturesKHR float16Int8;
+		vk::PhysicalDeviceShaderFloat16Int8Features float16Int8;
 		vk::PhysicalDeviceDescriptorIndexingFeatures descriptorIndexing;
 		vk::PhysicalDeviceScalarBlockLayoutFeatures scalarBlockLayout;
 		vk::PhysicalDeviceBufferDeviceAddressFeatures bufferDeviceAddress;
 		vk::PhysicalDeviceTimelineSemaphoreFeatures timelineSemaphore;
 		vk::PhysicalDeviceVulkanMemoryModelFeatures vulkanMemoryModel;
+		vk::PhysicalDeviceSynchronization2Features synchronization2;
 		vk::PhysicalDeviceDynamicRenderingFeatures dynamicRendering;
 		vk::PhysicalDevicePageableDeviceLocalMemoryFeaturesEXT pageableMemory;
 		vk::PhysicalDeviceAccelerationStructureFeaturesKHR accelerationStructure;
 		vk::PhysicalDeviceRayTracingPipelineFeaturesKHR rayTracingPipeline;
 		vk::PhysicalDeviceRayQueryFeaturesKHR rayQuery;
-		vk::PhysicalDeviceShaderDemoteToHelperInvocationFeaturesEXT demoteToHelper;
+		vk::PhysicalDeviceShaderDemoteToHelperInvocationFeatures demoteToHelper;
 		vk::PhysicalDeviceAntiLagFeaturesAMD amdAntiLag;
 		#if GARDEN_OS_MACOS
 		vk::PhysicalDevicePortabilitySubsetFeaturesKHR portability;
@@ -589,6 +592,14 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 
 	if (versionMinor < 3)
 	{
+		if (features.synchronization2)
+		{
+			vkFeatures->device.pNext = &vkFeatures->synchronization2;
+			physicalDevice.getFeatures2(&vkFeatures->device);
+			if (vkFeatures->synchronization2.synchronization2)
+				extensions.push_back(VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME);
+			else features.synchronization2 = false;
+		}
 		if (features.dynamicRendering)
 		{
 			vkFeatures->device.pNext = &vkFeatures->dynamicRendering;
@@ -608,8 +619,7 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 	}
 	else
 	{
-		features.dynamicRendering = true;
-		features.maintenance4 = true;
+		features.synchronization2 = features.dynamicRendering = features.maintenance4 = true;
 	}
 
 	if (versionMinor < 4)
@@ -785,6 +795,13 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 		vkFeatures->pageableMemory.pageableDeviceLocalMemory = VK_TRUE;
 		*lastPNext = &vkFeatures->pageableMemory;
 		lastPNext = &vkFeatures->pageableMemory.pNext;
+	}
+	if (features.synchronization2)
+	{
+		vkFeatures->synchronization2 = vk::PhysicalDeviceSynchronization2Features();
+		vkFeatures->synchronization2.synchronization2 = VK_TRUE;
+		*lastPNext = &vkFeatures->synchronization2;
+		lastPNext = &vkFeatures->synchronization2.pNext;
 	}
 	if (features.dynamicRendering)
 	{
