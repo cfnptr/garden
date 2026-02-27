@@ -62,10 +62,10 @@ static vk::RenderPass createVkRenderPass(VulkanAPI* vulkanAPI, uint2 size,
 		subpassDescription.pColorAttachments =
 			attachmentReferences.data() + referenceOffset + inputAttachments.size();
 
-		auto oldDependencyStage = (uint32)vk::PipelineStageFlagBits::eNone;
-		auto newDependencyStage = (uint32)vk::PipelineStageFlagBits::eNone;
-		auto oldDependencyAccess = (uint32)VK_ACCESS_NONE;
-		auto newDependencyAccess = (uint32)VK_ACCESS_NONE;
+		auto oldDependencyStage = (uint64)vk::PipelineStageFlagBits2::eNone;
+		auto newDependencyStage = (uint64)vk::PipelineStageFlagBits2::eNone;
+		auto oldDependencyAccess = (uint64)VK_ACCESS_NONE;
+		auto newDependencyAccess = (uint64)VK_ACCESS_NONE;
 
 		for (uint32 j = 0; j < (uint32)inputAttachments.size(); j++)
 		{
@@ -75,8 +75,8 @@ static vk::RenderPass createVkRenderPass(VulkanAPI* vulkanAPI, uint2 size,
 			attachmentReferences[j + referenceOffset] = vk::AttachmentReference(
 				result.index, vk::ImageLayout::eShaderReadOnlyOptimal);
 
-			auto newStage = (uint32)toVkPipelineStages(inputAttachment.pipelineStages);
-			auto newAccess = (uint32)vk::AccessFlagBits::eInputAttachmentRead;
+			auto newStage = (uint64)toVkPipelineStages(inputAttachment.pipelineStages);
+			auto newAccess = (uint64)vk::AccessFlagBits2::eInputAttachmentRead;
 			oldDependencyStage |= result.stage;
 			oldDependencyAccess |= result.access;
 			newDependencyStage |= newStage;
@@ -107,13 +107,13 @@ static vk::RenderPass createVkRenderPass(VulkanAPI* vulkanAPI, uint2 size,
 
 				if (isImageFormatColor)
 				{
-					newStage = (uint32)vk::PipelineStageFlagBits::eColorAttachmentOutput;
-					newAccess = (uint32)vk::AccessFlagBits::eColorAttachmentWrite;
+					newStage = (uint64)vk::PipelineStageFlagBits2::eColorAttachmentOutput;
+					newAccess = (uint64)vk::AccessFlagBits2::eColorAttachmentWrite;
 				}
 				else
 				{
-					newStage = (uint32)vk::PipelineStageFlagBits::eLateFragmentTests;
-					newAccess = (uint32)vk::AccessFlagBits::eDepthStencilAttachmentWrite;
+					newStage = (uint64)vk::PipelineStageFlagBits2::eLateFragmentTests;
+					newAccess = (uint64)vk::AccessFlagBits2::eDepthStencilAttachmentWrite;
 				}
 
 				auto& imageViewState = result.value();
@@ -245,13 +245,13 @@ static vk::RenderPass createVkRenderPass(VulkanAPI* vulkanAPI, uint2 size,
 
 			if (isImageFormatColor)
 			{
-				imageViewState.stage = (uint32)vk::PipelineStageFlagBits::eColorAttachmentOutput;
-				imageViewState.access = (uint32)vk::AccessFlagBits::eColorAttachmentWrite;
+				imageViewState.stage = (uint64)vk::PipelineStageFlagBits2::eColorAttachmentOutput;
+				imageViewState.access = (uint64)vk::AccessFlagBits2::eColorAttachmentWrite;
 			}
 			else
 			{
-				imageViewState.stage = (uint32)vk::PipelineStageFlagBits::eLateFragmentTests;
-				imageViewState.access = (uint32)vk::AccessFlagBits::eDepthStencilAttachmentWrite;
+				imageViewState.stage = (uint64)vk::PipelineStageFlagBits2::eLateFragmentTests;
+				imageViewState.access = (uint64)vk::AccessFlagBits2::eDepthStencilAttachmentWrite;
 			}
 			
 			imageViewStates.emplace(outputAttachment.imageView, imageViewState);

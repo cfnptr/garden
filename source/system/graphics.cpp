@@ -1121,13 +1121,16 @@ ID<DescriptorSet> GraphicsSystem::createDescriptorSet(ID<GraphicsPipeline> graph
 		pipelineView->getDebugName() + "] is not ready");
 	GARDEN_ASSERT_MSG(index < PipelineExt::getDescriptorSetLayouts(**pipelineView).size(),
 		"Out of pipeline [" + pipelineView->getDebugName() + "] descriptor set count bounds");
-
 	// TODO: check if all items initialized if not using bindless.
 	#endif
 
 	auto descriptorSet = GraphicsAPI::get()->descriptorSetPool.create(ID<Pipeline>(graphicsPipeline), 
 		PipelineType::Graphics, std::move(uniforms), std::move(samplers), index);
-	SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet" + to_string(*descriptorSet));
+
+	#if GARDEN_DEBUG
+	SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet." + 
+		pipelineView->getDebugName() + to_string(*descriptorSet));
+	#endif
 	return descriptorSet;
 }
 ID<DescriptorSet> GraphicsSystem::createDescriptorSet(ID<ComputePipeline> computePipeline,
@@ -1142,13 +1145,16 @@ ID<DescriptorSet> GraphicsSystem::createDescriptorSet(ID<ComputePipeline> comput
 		pipelineView->getDebugName() + "] is not ready");
 	GARDEN_ASSERT_MSG(index < PipelineExt::getDescriptorSetLayouts(**pipelineView).size(),
 		"Out of pipeline [" + pipelineView->getDebugName() + "] descriptor set count bounds");
-
 	// TODO: check if all items initialized if not using bindless.
 	#endif
 
 	auto descriptorSet = GraphicsAPI::get()->descriptorSetPool.create(ID<Pipeline>(computePipeline), 
 		PipelineType::Compute, std::move(uniforms), std::move(samplers), index);
-	SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet" + to_string(*descriptorSet));
+
+	#if GARDEN_DEBUG
+	SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet." + 
+		pipelineView->getDebugName() + to_string(*descriptorSet));
+	#endif
 	return descriptorSet;
 }
 ID<DescriptorSet> GraphicsSystem::createDescriptorSet(ID<RayTracingPipeline> rayTracingPipeline,
@@ -1163,13 +1169,16 @@ ID<DescriptorSet> GraphicsSystem::createDescriptorSet(ID<RayTracingPipeline> ray
 		pipelineView->getDebugName() + "] is not ready");
 	GARDEN_ASSERT_MSG(index < PipelineExt::getDescriptorSetLayouts(**pipelineView).size(),
 		"Out of pipeline [" + pipelineView->getDebugName() + "] descriptor set count bounds");
-
 	// TODO: check if all items initialized if not using bindless.
 	#endif
 
 	auto descriptorSet = GraphicsAPI::get()->descriptorSetPool.create(ID<Pipeline>(rayTracingPipeline), 
 		PipelineType::RayTracing, std::move(uniforms), std::move(samplers), index);
-	SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet" + to_string(*descriptorSet));
+
+	#if GARDEN_DEBUG
+	SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet." + 
+		pipelineView->getDebugName() + to_string(*descriptorSet));
+	#endif
 	return descriptorSet;
 }
 void GraphicsSystem::destroy(ID<DescriptorSet>& descriptorSet)

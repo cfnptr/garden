@@ -150,8 +150,8 @@ public:
 	struct Range final
 	{
 		ID<DescriptorSet> set; /**< Target descriptor set to bind. */
-		uint32 count = 0;      /**< Descriptor set count to bind. */
-		uint32 offset = 0;     /**< Descriptor set offset in the array. */
+		uint16 count = 0;      /**< Descriptor set count to bind. */
+		uint16 offset = 0;     /**< Descriptor set offset in the array. */
 
 		/**
 		 * @brief Creates a new descriptor set range description.
@@ -160,7 +160,7 @@ public:
 		 * @param count descriptor set count to bind
 		 * @param offset descriptor set offset in the array or 0
 		 */
-		constexpr Range(ID<DescriptorSet> set, uint32 count = 1, uint32 offset = 0) noexcept :
+		constexpr Range(ID<DescriptorSet> set, uint16 count = 1, uint16 offset = 0) noexcept :
 			set(set), count(count), offset(offset) { }
 		/**
 		 * @brief Creates a new empty descriptor set range description.

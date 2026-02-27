@@ -112,9 +112,9 @@ void SpriteRenderSystem::drawAsync(MeshRenderComponent* meshRenderView,
 {
 	auto spriteRenderView = (SpriteRenderComponent*)meshRenderView;
 
-	DescriptorSet::Range dsRange[2];
-	dsRange[0] = DescriptorSet::Range(descriptorSet, 1, inFlightIndex);
-	dsRange[1] = DescriptorSet::Range((ID<DescriptorSet>)spriteRenderView->descriptorSet);
+	DescriptorSet::Range dsRanges[2];
+	dsRanges[0] = DescriptorSet::Range(descriptorSet, 1, inFlightIndex);
+	dsRanges[1] = DescriptorSet::Range((ID<DescriptorSet>)spriteRenderView->descriptorSet);
 
 	auto instanceData = (BaseInstanceData*)(instanceMap + instanceIndex * getBaseInstanceDataSize());
 	setInstanceData(spriteRenderView, instanceData, viewProj, model, instanceIndex, taskIndex);
@@ -122,7 +122,7 @@ void SpriteRenderSystem::drawAsync(MeshRenderComponent* meshRenderView,
 	PushConstants pc;
 	setPushConstants(spriteRenderView, &pc, viewProj, model, instanceIndex, taskIndex);
 
-	pipelineView->bindDescriptorSetsAsync(dsRange, 2, taskIndex);
+	pipelineView->bindDescriptorSetsAsync(dsRanges, 2, taskIndex);
 	pipelineView->pushConstantsAsync(&pc, taskIndex);
 	pipelineView->drawAsync(taskIndex, {}, 6);
 }

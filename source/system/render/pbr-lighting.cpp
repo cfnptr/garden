@@ -852,9 +852,9 @@ void PbrLightingSystem::hdrRender()
 		pbrLightingView->descriptorSet = descriptorSet;
 	}
 
-	DescriptorSet::Range descriptorSetRange[2];
-	descriptorSetRange[0] = DescriptorSet::Range(lightingDS);
-	descriptorSetRange[1] = DescriptorSet::Range(ID<DescriptorSet>(pbrLightingView->descriptorSet));
+	DescriptorSet::Range descriptorSetRanges[2];
+	descriptorSetRanges[0] = DescriptorSet::Range(lightingDS);
+	descriptorSetRanges[1] = DescriptorSet::Range(ID<DescriptorSet>(pbrLightingView->descriptorSet));
 
 	auto pipelineView = graphicsSystem->get(lightingPipeline);
 	const auto& cc = graphicsSystem->getCommonConstants();
@@ -869,7 +869,7 @@ void PbrLightingSystem::hdrRender()
 	SET_GPU_DEBUG_LABEL("PBR Lighting");
 	pipelineView->bind();
 	pipelineView->setViewportScissor();
-	pipelineView->bindDescriptorSets(descriptorSetRange, 2);
+	pipelineView->bindDescriptorSets(descriptorSetRanges, 2);
 	pipelineView->pushConstants(&pc);
 	pipelineView->drawFullscreen();
 }

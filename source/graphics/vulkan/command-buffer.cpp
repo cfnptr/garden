@@ -78,44 +78,102 @@ VulkanCommandBuffer::~VulkanCommandBuffer()
 	vulkanAPI->device.destroyFence(fence);
 }
 
+static void fixupLegacyVkState(Memory::BarrierState& state) noexcept
+{
+	if (state.stage & (uint64)(vk::PipelineStageFlagBits2::eIndexInput |
+		vk::PipelineStageFlagBits2::eVertexAttributeInput))
+	{
+		state.stage |= (uint64)vk::PipelineStageFlagBits2::eVertexInput;
+	}
+	if (state.stage & (uint64)(vk::PipelineStageFlagBits2::eCopy | vk::PipelineStageFlagBits2::eResolve |
+		vk::PipelineStageFlagBits2::eBlit | vk::PipelineStageFlagBits2::eClear))
+	{
+		state.stage |= (uint64)vk::PipelineStageFlagBits2::eTransfer;
+	}
+	if (state.access & (uint64)(vk::AccessFlagBits2::eUniformRead | 
+		vk::AccessFlagBits2::eShaderSampledRead | vk::AccessFlagBits2::eShaderStorageRead))
+	{
+		state.access |= (uint64)vk::AccessFlagBits2::eShaderRead;
+	}
+	if (state.access & (uint64)vk::AccessFlagBits2::eShaderStorageWrite)
+	{
+		state.access |= (uint64)vk::AccessFlagBits2::eShaderWrite;
+	}
+}
+
 //**********************************************************************************************************************
-static void addMemoryBarrier(VulkanAPI* vulkanAPI, Buffer::BarrierState& oldState, Buffer::BarrierState newState)
+static void addMemoryBarrier(VulkanAPI* vulkanAPI, Buffer::BarrierState& oldState, Buffer::BarrierState& newState)
 {
 	if (VulkanCommandBuffer::isDifferentState(oldState, newState))
 	{
-		vk::MemoryBarrier memoryBarrier(vk::AccessFlags(oldState.access), vk::AccessFlags(newState.access));
-		vulkanAPI->memoryBarriers.push_back(memoryBarrier);
-		vulkanAPI->oldPipelineStage |= oldState.stage; vulkanAPI->newPipelineStage |= newState.stage;
+		if (vulkanAPI->features.synchronization2)
+		{
+			vulkanAPI->memoryBarriers2.push_back(vk::MemoryBarrier2(
+				vk::PipelineStageFlags2(oldState.stage), vk::AccessFlags2(oldState.access), 
+				vk::PipelineStageFlags2(newState.stage), vk::AccessFlags2(newState.access)));
+		}
+		else
+		{
+			fixupLegacyVkState(oldState); fixupLegacyVkState(newState);
+			vulkanAPI->memoryBarriers.push_back(vk::MemoryBarrier(
+				vk::AccessFlags((uint32)oldState.access), vk::AccessFlags((uint32)newState.access)));
+			vulkanAPI->oldPipelineStage |= (uint32)oldState.stage;
+			vulkanAPI->newPipelineStage |= (uint32)newState.stage;
+		}
 	}
 	oldState = newState;
 }
 static void addMemoryBarrier(VulkanAPI* vulkanAPI, Buffer::BarrierState& srcOldState, 
-	Buffer::BarrierState& dstOldState, Buffer::BarrierState srcNewState, Buffer::BarrierState dstNewState)
+	Buffer::BarrierState& dstOldState, Buffer::BarrierState& srcNewState, Buffer::BarrierState dstNewState)
 {
 	if (VulkanCommandBuffer::isDifferentState(srcOldState, srcNewState) || 
 		VulkanCommandBuffer::isDifferentState(dstOldState, dstNewState))
 	{
-		vk::MemoryBarrier memoryBarrier(vk::AccessFlags(srcOldState.access | dstOldState.access), 
-			vk::AccessFlags(srcNewState.access | dstNewState.access));
-		vulkanAPI->memoryBarriers.push_back(memoryBarrier);
-		vulkanAPI->oldPipelineStage |= srcOldState.stage | dstOldState.stage;
-		vulkanAPI->newPipelineStage |= srcNewState.stage | dstNewState.stage;
+		if (vulkanAPI->features.synchronization2)
+		{
+			vulkanAPI->memoryBarriers2.push_back(vk::MemoryBarrier2(
+				vk::PipelineStageFlags2(srcOldState.stage | dstOldState.stage), 
+				vk::AccessFlags2(srcOldState.access | dstOldState.access), 
+				vk::PipelineStageFlags2(srcNewState.stage | dstNewState.stage), 
+				vk::AccessFlags2(srcNewState.access | dstNewState.access)));
+		}
+		else
+		{
+			fixupLegacyVkState(srcOldState); fixupLegacyVkState(srcNewState);
+			vulkanAPI->memoryBarriers.push_back(vk::MemoryBarrier(
+				vk::AccessFlags((uint32)srcOldState.access | (uint32)dstOldState.access), 
+				vk::AccessFlags((uint32)srcNewState.access | (uint32)dstNewState.access)));
+			vulkanAPI->oldPipelineStage |= (uint32)srcOldState.stage | (uint32)dstOldState.stage;
+			vulkanAPI->newPipelineStage |= (uint32)srcNewState.stage | (uint32)dstNewState.stage;
+		}
 	}
 
 	srcOldState = srcNewState;
 	dstOldState = dstNewState;
 }
 
-static void addBufferBarrier(VulkanAPI* vulkanAPI, const Buffer::BarrierState& oldBufferState, 
-	const Buffer::BarrierState& newBufferState, VkBuffer vkBuffer, uint64 size, uint64 offset)
+static void addBufferBarrier(VulkanAPI* vulkanAPI, Buffer::BarrierState& oldState, 
+	Buffer::BarrierState& newState, VkBuffer vkBuffer, uint64 size, uint64 offset)
 {
-	vk::BufferMemoryBarrier bufferMemoryBarrier(
-		vk::AccessFlags(oldBufferState.access), vk::AccessFlags(newBufferState.access),
-		VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED, vkBuffer, offset, size);
-	vulkanAPI->bufferMemoryBarriers.push_back(bufferMemoryBarrier);
+	if (vulkanAPI->features.synchronization2)
+	{
+		vulkanAPI->bufferMemoryBarriers2.push_back(vk::BufferMemoryBarrier2(
+			vk::PipelineStageFlags2(oldState.stage), vk::AccessFlags2(oldState.access), 
+			vk::PipelineStageFlags2(newState.stage), vk::AccessFlags2(newState.access),
+			VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED, vkBuffer, offset, size));
+	}
+	else
+	{
+		fixupLegacyVkState(oldState); fixupLegacyVkState(newState);
+		vulkanAPI->bufferMemoryBarriers.push_back(vk::BufferMemoryBarrier(
+			vk::AccessFlags((uint32)oldState.access), vk::AccessFlags((uint32)newState.access),
+			VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED, vkBuffer, offset, size));
+		vulkanAPI->oldPipelineStage |= (uint32)oldState.stage;
+		vulkanAPI->newPipelineStage |= (uint32)newState.stage;
+	}
 }
 void VulkanCommandBuffer::addBufferBarrier(VulkanAPI* vulkanAPI, 
-	Buffer::BarrierState newBufferState, ID<Buffer> buffer, uint64 size, uint64 offset)
+	Buffer::BarrierState& newBufferState, ID<Buffer> buffer, uint64 size, uint64 offset)
 {
 	// TODO: we can specify only required buffer range, not full range.
 	auto& oldBufferState = vulkanAPI->getBufferState(buffer);
@@ -124,26 +182,37 @@ void VulkanCommandBuffer::addBufferBarrier(VulkanAPI* vulkanAPI,
 		auto bufferView = vulkanAPI->bufferPool.get(buffer);
 		::addBufferBarrier(vulkanAPI, oldBufferState, newBufferState, 
 			(VkBuffer)ResourceExt::getInstance(**bufferView), size, offset);
-		vulkanAPI->oldPipelineStage |= oldBufferState.stage;
-		vulkanAPI->newPipelineStage |= newBufferState.stage;
 	}
 	oldBufferState = newBufferState;
 }
 
 //**********************************************************************************************************************
-static void addImageBarrier(VulkanAPI* vulkanAPI, const Image::LayoutState& oldImageState, 
-	const Image::LayoutState& newImageState, VkImage vkImage, uint32 baseMip, uint32 mipCount, 
+static void addImageBarrier(VulkanAPI* vulkanAPI, Image::LayoutState& oldState, 
+	Image::LayoutState& newState, VkImage vkImage, uint32 baseMip, uint32 mipCount, 
 	uint32 baseLayer, uint32 layerCount, vk::ImageAspectFlags aspectFlags)
 {
-	vk::ImageMemoryBarrier imageMemoryBarrier(
-		vk::AccessFlags(oldImageState.access), vk::AccessFlags(newImageState.access),
-		vk::ImageLayout(oldImageState.layout), vk::ImageLayout(newImageState.layout),
-		VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED, vkImage, 
-		vk::ImageSubresourceRange(aspectFlags, baseMip, mipCount, baseLayer, layerCount));
-	vulkanAPI->imageMemoryBarriers.push_back(imageMemoryBarrier);
+	vk::ImageSubresourceRange subresourceRange(aspectFlags, baseMip, mipCount, baseLayer, layerCount);
+	if (vulkanAPI->features.synchronization2)
+	{
+		vulkanAPI->imageMemoryBarriers2.push_back(vk::ImageMemoryBarrier2(
+			vk::PipelineStageFlags2(oldState.stage), vk::AccessFlags2(oldState.access),
+			vk::PipelineStageFlags2(newState.stage), vk::AccessFlags2(newState.access),
+			vk::ImageLayout(oldState.layout), vk::ImageLayout(newState.layout),
+			VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED, vkImage, subresourceRange));
+	}
+	else
+	{
+		fixupLegacyVkState(oldState); fixupLegacyVkState(newState);
+		vulkanAPI->imageMemoryBarriers.push_back(vk::ImageMemoryBarrier(
+			vk::AccessFlags((uint32)oldState.access), vk::AccessFlags((uint32)newState.access),
+			vk::ImageLayout(oldState.layout), vk::ImageLayout(newState.layout),
+			VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED, vkImage, subresourceRange));
+		vulkanAPI->oldPipelineStage |= (uint32)oldState.stage;
+		vulkanAPI->newPipelineStage |= (uint32)newState.stage;
+	}
 }
 void VulkanCommandBuffer::addImageBarrier(VulkanAPI* vulkanAPI, 
-	Image::LayoutState newImageState, ID<ImageView> imageView)
+	Image::LayoutState& newImageState, ID<ImageView> imageView)
 {
 	auto view = vulkanAPI->imageViewPool.get(imageView);
 	auto image = vulkanAPI->imagePool.get(view->getImage());
@@ -153,7 +222,6 @@ void VulkanCommandBuffer::addImageBarrier(VulkanAPI* vulkanAPI,
 	{
 		::addImageBarrier(vulkanAPI, oldImageState, newImageState, (VkImage)ResourceExt::getInstance(**image), 
 			view->getBaseMip(), 1, view->getBaseLayer(), 1, toVkImageAspectFlags(view->getFormat()));
-		vulkanAPI->oldPipelineStage |= oldImageState.stage; vulkanAPI->newPipelineStage |= newImageState.stage;
 	}
 
 	imageView = oldImageState.view;
@@ -163,7 +231,7 @@ void VulkanCommandBuffer::addImageBarrier(VulkanAPI* vulkanAPI,
 	ImageExt::isFullBarrier(**image) = image->getMipCount() == 1 && image->getLayerCount() == 1;
 }
 
-static void addImageBarriers(VulkanAPI* vulkanAPI, Image::LayoutState newImageState, 
+static void addImageBarriers(VulkanAPI* vulkanAPI, Image::LayoutState& newImageState, 
 	ID<Image> image, uint8 baseMip, uint8 mipCount, uint32 baseLayer, uint32 layerCount)
 {
 	auto imageView = vulkanAPI->imagePool.get(image);
@@ -174,13 +242,11 @@ static void addImageBarriers(VulkanAPI* vulkanAPI, Image::LayoutState newImageSt
 		baseLayer == 0 && layerCount == imageView->getLayerCount();
 	if (ImageExt::isFullBarrier(**imageView) && newFullBarrier)
 	{
-		const auto& oldImageState = vulkanAPI->getImageState(image, 0, 0);
+		auto& oldImageState = vulkanAPI->getImageState(image, 0, 0);
 		if (VulkanCommandBuffer::isDifferentState(oldImageState, newImageState))
 		{
 			addImageBarrier(vulkanAPI, oldImageState, newImageState, 
 				vkImage, 0, mipCount, 0, layerCount, aspectFlags);
-			vulkanAPI->oldPipelineStage |= oldImageState.stage;
-			vulkanAPI->newPipelineStage |= newImageState.stage;
 		}
 
 		auto& barrierStates = ImageExt::getBarrierStates(**imageView);
@@ -203,8 +269,6 @@ static void addImageBarriers(VulkanAPI* vulkanAPI, Image::LayoutState newImageSt
 				{
 					addImageBarrier(vulkanAPI, oldImageState, newImageState, 
 						vkImage, mip, 1, layer, 1, aspectFlags);
-					vulkanAPI->oldPipelineStage |= oldImageState.stage;
-					vulkanAPI->newPipelineStage |= newImageState.stage;
 				}
 
 				auto imageView = oldImageState.view;
@@ -218,13 +282,13 @@ static void addImageBarriers(VulkanAPI* vulkanAPI, Image::LayoutState newImageSt
 
 //**********************************************************************************************************************
 void VulkanCommandBuffer::addDescriptorSetBarriers(VulkanAPI* vulkanAPI, 
-	const DescriptorSet::Range* descriptorSetRange, uint32 rangeCount)
+	const DescriptorSet::Range* descriptorSetRanges, uint32 rangeCount)
 {
 	SET_CPU_ZONE_SCOPED("Descriptor Set Barriers Add");
 
 	for (uint8 i = 0; i < rangeCount; i++)
 	{
-		auto descriptor = descriptorSetRange[i];
+		auto descriptor = descriptorSetRanges[i];
 		auto descriptorSet = vulkanAPI->descriptorSetPool.get(descriptor.set);
 		const auto& dsUniforms = descriptorSet->getUniforms();
 		auto pipelineView = vulkanAPI->getPipelineView(
@@ -245,19 +309,19 @@ void VulkanCommandBuffer::addDescriptorSetBarriers(VulkanAPI* vulkanAPI,
 				SET_CPU_ZONE_SCOPED("Image/Sampler Barriers Process");
 
 				Image::LayoutState newImageState;
-				newImageState.stage = (uint32)toVkPipelineStages(uniform.pipelineStages);
+				newImageState.stage = (uint64)toVkPipelineStages(uniform.pipelineStages);
 
 				if (isSamplerType(uniform.type))
 				{
-					newImageState.access = (uint32)vk::AccessFlagBits::eShaderRead;
+					newImageState.access = (uint64)vk::AccessFlagBits2::eShaderSampledRead;
 					newImageState.layout = (uint32)vk::ImageLayout::eShaderReadOnlyOptimal;
 				}
 				else
 				{
 					if (uniform.readAccess)
-						newImageState.access |= (uint32)vk::AccessFlagBits::eShaderRead;
+						newImageState.access = (uint64)vk::AccessFlagBits2::eShaderStorageRead;
 					if (uniform.writeAccess)
-						newImageState.access |= (uint32)vk::AccessFlagBits::eShaderWrite;
+						newImageState.access |= (uint64)vk::AccessFlagBits2::eShaderStorageWrite;
 					newImageState.layout = (uint32)vk::ImageLayout::eGeneral;
 				}
 
@@ -296,18 +360,18 @@ void VulkanCommandBuffer::addDescriptorSetBarriers(VulkanAPI* vulkanAPI,
 				SET_CPU_ZONE_SCOPED("Buffer Barriers Process");
 
 				Buffer::BarrierState newBufferState;
-				newBufferState.stage = (uint32)toVkPipelineStages(uniform.pipelineStages);
+				newBufferState.stage = (uint64)toVkPipelineStages(uniform.pipelineStages);
 
 				if (uniform.type == GslUniformType::UniformBuffer)
 				{
-					newBufferState.access = (uint32)vk::AccessFlagBits::eUniformRead;
+					newBufferState.access = (uint64)vk::AccessFlagBits2::eUniformRead;
 				}
 				else
 				{
 					if (uniform.readAccess)
-						newBufferState.access |= (uint32)vk::AccessFlagBits::eShaderRead;
+						newBufferState.access = (uint64)vk::AccessFlagBits2::eShaderStorageRead;
 					if (uniform.writeAccess)
-						newBufferState.access |= (uint32)vk::AccessFlagBits::eShaderWrite;
+						newBufferState.access |= (uint64)vk::AccessFlagBits2::eShaderStorageWrite;
 				}
 
 				if (pipelineView->isBindless())
@@ -336,8 +400,8 @@ void VulkanCommandBuffer::addDescriptorSetBarriers(VulkanAPI* vulkanAPI,
 			else if (uniform.type == GslUniformType::AccelerationStructure)
 			{
 				Buffer::BarrierState newAsState;
-				newAsState.access = (uint32)vk::AccessFlagBits::eAccelerationStructureReadKHR;
-				newAsState.stage = (uint32)vk::PipelineStageFlagBits::eRayTracingShaderKHR;
+				newAsState.access = (uint64)vk::AccessFlagBits2::eAccelerationStructureReadKHR;
+				newAsState.stage = (uint64)vk::PipelineStageFlagBits2::eRayTracingShaderKHR;
 
 				for (uint32 j = descriptor.offset; j < setCount; j++)
 				{
@@ -360,29 +424,52 @@ void VulkanCommandBuffer::processPipelineBarriers()
 {
 	SET_CPU_ZONE_SCOPED("Pipeline Barriers Process");
 
-	if (vulkanAPI->imageMemoryBarriers.empty() && 
-		vulkanAPI->bufferMemoryBarriers.empty() && 
-		vulkanAPI->memoryBarriers.empty())
-	{
-		return;
-	}
-
-	auto oldPipelineStage = (vk::PipelineStageFlagBits)vulkanAPI->oldPipelineStage;
-	auto newPipelineStage = (vk::PipelineStageFlagBits)vulkanAPI->newPipelineStage;
-
-	if (oldPipelineStage == vk::PipelineStageFlagBits::eNone)
-		oldPipelineStage = vk::PipelineStageFlagBits::eTopOfPipe;
-
 	// TODO: combine overlapping barriers.
-	// TODO: use dependency flags
 
-	instance.pipelineBarrier(oldPipelineStage, newPipelineStage, {}, 
-		(uint32)vulkanAPI->memoryBarriers.size(), vulkanAPI->memoryBarriers.data(),
-		(uint32)vulkanAPI->bufferMemoryBarriers.size(), vulkanAPI->bufferMemoryBarriers.data(),
-		(uint32)vulkanAPI->imageMemoryBarriers.size(), vulkanAPI->imageMemoryBarriers.data());
+	if (vulkanAPI->features.synchronization2)
+	{
+		if (vulkanAPI->imageMemoryBarriers2.empty() && 
+			vulkanAPI->bufferMemoryBarriers2.empty() && 
+			vulkanAPI->memoryBarriers2.empty())
+		{
+			return;
+		}
 
-	vulkanAPI->memoryBarriers.clear(); vulkanAPI->imageMemoryBarriers.clear(); vulkanAPI->bufferMemoryBarriers.clear();
-	vulkanAPI->oldPipelineStage = vulkanAPI->newPipelineStage = 0;
+		vk::DependencyInfo dependencyInfo(vk::DependencyFlagBits::eByRegion, 
+			(uint32)vulkanAPI->memoryBarriers2.size(), vulkanAPI->memoryBarriers2.data(),
+			(uint32)vulkanAPI->bufferMemoryBarriers2.size(), vulkanAPI->bufferMemoryBarriers2.data(),
+			(uint32)vulkanAPI->imageMemoryBarriers2.size(), vulkanAPI->imageMemoryBarriers2.data());
+		instance.pipelineBarrier2(dependencyInfo);
+
+		vulkanAPI->memoryBarriers2.clear();
+		vulkanAPI->imageMemoryBarriers2.clear();
+		vulkanAPI->bufferMemoryBarriers2.clear();
+	}
+	else
+	{
+		if (vulkanAPI->imageMemoryBarriers.empty() && 
+			vulkanAPI->bufferMemoryBarriers.empty() && 
+			vulkanAPI->memoryBarriers.empty())
+		{
+			return;
+		}
+
+		auto oldPipelineStage = (vk::PipelineStageFlagBits)vulkanAPI->oldPipelineStage;
+		auto newPipelineStage = (vk::PipelineStageFlagBits)vulkanAPI->newPipelineStage;
+
+		if (oldPipelineStage == vk::PipelineStageFlagBits::eNone)
+			oldPipelineStage = vk::PipelineStageFlagBits::eTopOfPipe;
+
+		instance.pipelineBarrier(oldPipelineStage, newPipelineStage, vk::DependencyFlagBits::eByRegion, 
+			(uint32)vulkanAPI->memoryBarriers.size(), vulkanAPI->memoryBarriers.data(),
+			(uint32)vulkanAPI->bufferMemoryBarriers.size(), vulkanAPI->bufferMemoryBarriers.data(),
+			(uint32)vulkanAPI->imageMemoryBarriers.size(), vulkanAPI->imageMemoryBarriers.data());
+
+		vulkanAPI->memoryBarriers.clear();
+		vulkanAPI->imageMemoryBarriers.clear();
+		vulkanAPI->bufferMemoryBarriers.clear();
+		vulkanAPI->oldPipelineStage = vulkanAPI->newPipelineStage = 0;
+	}	
 }
 
 //**********************************************************************************************************************
@@ -436,8 +523,11 @@ void VulkanCommandBuffer::submit()
 	if (type == CommandBufferType::Frame && vulkanAPI->recordGpuTime)
 	{
 		auto& inFlightFrame = swapchain->getInFlightFrame();
-		instance.resetQueryPool(inFlightFrame.queryPool, 0, 2);
-		instance.writeTimestamp(vk::PipelineStageFlagBits::eTopOfPipe, inFlightFrame.queryPool, 0);
+		auto queryPool = inFlightFrame.queryPool;
+		instance.resetQueryPool(queryPool, 0, 2);
+		if (vulkanAPI->features.synchronization2)
+			instance.writeTimestamp2(vk::PipelineStageFlagBits2::eNone, queryPool, 0);
+		else instance.writeTimestamp(vk::PipelineStageFlagBits::eTopOfPipe, queryPool, 0);
 		inFlightFrame.isPoolClean = true;
 		// TODO: record transfer and compute command buffer perf.
 	}
@@ -455,17 +545,32 @@ void VulkanCommandBuffer::submit()
 		if (!hasAnyCommand)
 		{
 			Image::LayoutState newImageState;
-			newImageState.access = (uint32)vk::AccessFlagBits::eTransferWrite;
-			newImageState.stage = (uint32)vk::PipelineStageFlagBits::eTransfer;
+			newImageState.access = (uint64)vk::AccessFlagBits2::eTransferWrite;
 			newImageState.layout = (uint32)vk::ImageLayout::eTransferDstOptimal;
 
-			vk::ImageMemoryBarrier imageMemoryBarrier(
-				vk::AccessFlags(oldImageState.access), vk::AccessFlags(newImageState.access),
-				(vk::ImageLayout)oldImageState.layout, (vk::ImageLayout)newImageState.layout,
-				VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED,
-				vkImage, vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1));
-			instance.pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe,
-				vk::PipelineStageFlags(newImageState.stage), {}, {}, {}, imageMemoryBarrier);
+			vk::ImageSubresourceRange subresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1);
+			if (vulkanAPI->features.synchronization2)
+			{
+				newImageState.stage = (uint64)vk::PipelineStageFlagBits2::eClear;
+				vk::ImageMemoryBarrier2 imageMemoryBarrier(
+					vk::PipelineStageFlagBits2::eNone, vk::AccessFlags2(oldImageState.access), 
+					vk::PipelineStageFlags2(newImageState.stage), vk::AccessFlags2(newImageState.access),
+					(vk::ImageLayout)oldImageState.layout, (vk::ImageLayout)newImageState.layout,
+					VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED, vkImage, subresourceRange);
+				vk::DependencyInfo dependencyInfo(vk::DependencyFlagBits::eByRegion, 
+					0, nullptr, 0, nullptr, 1, &imageMemoryBarrier);
+				instance.pipelineBarrier2(dependencyInfo);
+			}
+			else
+			{
+				newImageState.stage = (uint64)vk::PipelineStageFlagBits2::eTransfer;
+				vk::ImageMemoryBarrier imageMemoryBarrier(
+					vk::AccessFlags(oldImageState.access), vk::AccessFlags(newImageState.access),
+					(vk::ImageLayout)oldImageState.layout, (vk::ImageLayout)newImageState.layout,
+					VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED, vkImage, subresourceRange);
+				instance.pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlags(
+					newImageState.stage), vk::DependencyFlagBits::eByRegion, {}, {}, imageMemoryBarrier);
+			}
 
 			auto imageView = oldImageState.view;
 			oldImageState = newImageState;
@@ -477,24 +582,42 @@ void VulkanCommandBuffer::submit()
 		}
 
 		Image::LayoutState newImageState;
-		newImageState.access = (uint32)vk::AccessFlagBits::eNone;
-		newImageState.stage = (uint32)vk::PipelineStageFlagBits::eBottomOfPipe;
+		newImageState.access = (uint64)vk::AccessFlagBits2::eNone;
+		newImageState.stage = (uint64)vk::PipelineStageFlagBits2::eBottomOfPipe;
 		newImageState.layout = (uint32)vk::ImageLayout::ePresentSrcKHR;
-		vk::ImageMemoryBarrier imageMemoryBarrier(
-			vk::AccessFlags(oldImageState.access), vk::AccessFlags(newImageState.access),
-			(vk::ImageLayout)oldImageState.layout, (vk::ImageLayout)newImageState.layout,
-			VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED,
-			vkImage, vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1));
-		instance.pipelineBarrier(oldImageState.stage == (uint32)vk::PipelineStageFlagBits::eNone ?
-			vk::PipelineStageFlagBits::eTopOfPipe : (vk::PipelineStageFlagBits)oldImageState.stage,
-			vk::PipelineStageFlags(newImageState.stage), {}, {}, {}, imageMemoryBarrier);
+
+		vk::ImageSubresourceRange subresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1);
+		if (vulkanAPI->features.synchronization2)
+		{
+			vk::ImageMemoryBarrier2 imageMemoryBarrier(
+				vk::PipelineStageFlags2(oldImageState.stage), vk::AccessFlags2(oldImageState.access), 
+				vk::PipelineStageFlags2(newImageState.stage), vk::AccessFlags2(newImageState.access),
+				(vk::ImageLayout)oldImageState.layout, (vk::ImageLayout)newImageState.layout,
+				VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED, vkImage, subresourceRange);
+			vk::DependencyInfo dependencyInfo(vk::DependencyFlagBits::eByRegion, 
+				0, nullptr, 0, nullptr, 1, &imageMemoryBarrier);
+			instance.pipelineBarrier2(dependencyInfo);
+		}
+		else
+		{
+			auto oldImageStage = oldImageState.stage == (uint64)vk::PipelineStageFlagBits2::eNone ?
+				(uint64)vk::PipelineStageFlagBits2::eTopOfPipe : oldImageState.stage;
+			vk::ImageMemoryBarrier imageMemoryBarrier(
+				vk::AccessFlags(oldImageState.access), vk::AccessFlags(newImageState.access),
+				(vk::ImageLayout)oldImageState.layout, (vk::ImageLayout)newImageState.layout,
+				VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED, vkImage, subresourceRange);
+			instance.pipelineBarrier(vk::PipelineStageFlagBits(oldImageStage), vk::PipelineStageFlags(
+				newImageState.stage), vk::DependencyFlagBits::eByRegion, {}, {}, imageMemoryBarrier);
+		}
 		oldImageState = newImageState;
 
 		#if GARDEN_DEBUG || GARDEN_EDITOR
 		if (vulkanAPI->recordGpuTime)
 		{
-			auto& inFlightFrame = swapchain->getInFlightFrame();
-			instance.writeTimestamp(vk::PipelineStageFlagBits::eBottomOfPipe, inFlightFrame.queryPool, 1);
+			auto queryPool = swapchain->getInFlightFrame().queryPool;
+			if (vulkanAPI->features.synchronization2)
+				instance.writeTimestamp2(vk::PipelineStageFlagBits2::eAllCommands, queryPool, 1);
+			else instance.writeTimestamp(vk::PipelineStageFlagBits::eBottomOfPipe, queryPool, 1);
 		}
 		#endif
 	}
@@ -549,8 +672,8 @@ void VulkanCommandBuffer::addRenderPassBarriers(const Command* command)
 			return;
 
 		Buffer::BarrierState newBufferState;
-		newBufferState.access |= (uint32)vk::AccessFlagBits::eVertexAttributeRead;
-		newBufferState.stage = (uint32)vk::PipelineStageFlagBits::eVertexInput;
+		newBufferState.access = (uint64)vk::AccessFlagBits2::eVertexAttributeRead;
+		newBufferState.stage = (uint64)vk::PipelineStageFlagBits2::eVertexAttributeInput;
 		addBufferBarrier(vulkanAPI, newBufferState, drawCommand->vertexBuffer);
 		return;
 	}
@@ -559,12 +682,12 @@ void VulkanCommandBuffer::addRenderPassBarriers(const Command* command)
 		auto drawIndexedCommand = (const DrawIndexedCommand*)command;
 			
 		Buffer::BarrierState newBufferState;
-		newBufferState.access |= (uint32)vk::AccessFlagBits::eVertexAttributeRead;
-		newBufferState.stage = (uint32)vk::PipelineStageFlagBits::eVertexInput;
+		newBufferState.access = (uint64)vk::AccessFlagBits2::eVertexAttributeRead;
+		newBufferState.stage = (uint64)vk::PipelineStageFlagBits2::eVertexAttributeInput;
 		addBufferBarrier(vulkanAPI, newBufferState, drawIndexedCommand->vertexBuffer);
 
-		newBufferState.access |= (uint32)vk::AccessFlagBits::eIndexRead;
-		newBufferState.stage = (uint32)vk::PipelineStageFlagBits::eVertexInput;
+		newBufferState.access = (uint64)vk::AccessFlagBits2::eIndexRead;
+		newBufferState.stage = (uint64)vk::PipelineStageFlagBits2::eIndexInput;
 		addBufferBarrier(vulkanAPI, newBufferState, drawIndexedCommand->indexBuffer);
 		return;
 	}
@@ -619,6 +742,7 @@ void VulkanCommandBuffer::addRenderPassBarriersAsync(uint32 thisSize)
 				i * asyncCommandSize) - asyncCommandOffset);
 			addRenderPassBarriers(&asyncCommand->base);
 		}
+		dataIter += command->thisSize;
 	}
 }
 
@@ -690,10 +814,10 @@ void VulkanCommandBuffer::processCommand(const BeginRenderPassCommand& command)
 		}
 
 		Image::LayoutState newImageState;
-		newImageState.access = (uint32)vk::AccessFlagBits::eColorAttachmentWrite;
+		newImageState.access = (uint64)vk::AccessFlagBits2::eColorAttachmentWrite;
 		if (colorAttachment.flags.load)
-			newImageState.access |= (uint32)vk::AccessFlagBits::eColorAttachmentRead;
-		newImageState.stage = (uint32)vk::PipelineStageFlagBits::eColorAttachmentOutput;
+			newImageState.access |= (uint64)vk::AccessFlagBits2::eColorAttachmentRead;
+		newImageState.stage = (uint64)vk::PipelineStageFlagBits2::eColorAttachmentOutput;
 		newImageState.layout = (uint32)vk::ImageLayout::eColorAttachmentOptimal;
 		addImageBarrier(vulkanAPI, newImageState, colorAttachment.imageView);
 
@@ -745,13 +869,13 @@ void VulkanCommandBuffer::processCommand(const BeginRenderPassCommand& command)
 
 		Image::LayoutState newImageState;
 		if (depthStencilAttachment.flags.load)
-			newImageState.access |= (uint32)vk::AccessFlagBits::eDepthStencilAttachmentRead;
+			newImageState.access = (uint64)vk::AccessFlagBits2::eDepthStencilAttachmentRead;
 		if (depthStencilAttachment.flags.clear || depthStencilAttachment.flags.load)
-			newImageState.stage |= (uint32)vk::PipelineStageFlagBits::eEarlyFragmentTests;
+			newImageState.stage = (uint64)vk::PipelineStageFlagBits2::eEarlyFragmentTests;
 		if (depthStencilAttachment.flags.store)
 		{
-			newImageState.access |= (uint32)vk::AccessFlagBits::eDepthStencilAttachmentWrite;
-			newImageState.stage |= (uint32)vk::PipelineStageFlagBits::eLateFragmentTests;
+			newImageState.access |= (uint64)vk::AccessFlagBits2::eDepthStencilAttachmentWrite;
+			newImageState.stage |= (uint64)vk::PipelineStageFlagBits2::eLateFragmentTests;
 		}
 
 		auto imageView = vulkanAPI->imageViewPool.get(depthStencilAttachment.imageView);
@@ -857,13 +981,13 @@ void VulkanCommandBuffer::processCommand(const BeginRenderPassCommand& command)
 
 			if (isLastInput)
 			{
-				imageState.access = (uint32)vk::AccessFlagBits::eShaderRead;
-				imageState.stage = (uint32)toVkPipelineStages(pipelineStages);
+				imageState.access = (uint64)vk::AccessFlagBits2::eShaderRead;
+				imageState.stage = (uint64)toVkPipelineStages(pipelineStages);
 			}
 			else
 			{
-				imageState.access = (uint32)vk::AccessFlagBits::eColorAttachmentWrite;
-				imageState.stage = (uint32)vk::PipelineStageFlagBits::eColorAttachmentOutput;
+				imageState.access = (uint64)vk::AccessFlagBits2::eColorAttachmentWrite;
+				imageState.stage = (uint64)vk::PipelineStageFlagBits2::eColorAttachmentOutput;
 			}
 		}
 
@@ -880,13 +1004,13 @@ void VulkanCommandBuffer::processCommand(const BeginRenderPassCommand& command)
 
 			if (isLastInput)
 			{
-				imageState.access = (uint32)vk::AccessFlagBits::eShaderRead;
-				imageState.stage = (uint32)toVkPipelineStages(pipelineStages);
+				imageState.access = (uint64)vk::AccessFlagBits2::eShaderRead;
+				imageState.stage = (uint64)toVkPipelineStages(pipelineStages);
 			}
 			else
 			{
-				imageState.access = (uint32)vk::AccessFlagBits::eDepthStencilAttachmentWrite;
-				imageState.stage = (uint32)vk::PipelineStageFlagBits::eEarlyFragmentTests;
+				imageState.access = (uint64)vk::AccessFlagBits2::eDepthStencilAttachmentWrite;
+				imageState.stage = (uint64)vk::PipelineStageFlagBits2::eEarlyFragmentTests;
 			}
 		}
 	}
@@ -1020,14 +1144,14 @@ void VulkanCommandBuffer::processCommand(const BindDescriptorSetsCommand& comman
 	SET_CPU_ZONE_SCOPED("BindDescriptorSets Command Process");
 
 	auto rangeCount = command.rangeCount;
-	auto descriptorSetRange = (const DescriptorSet::Range*)(
+	auto descriptorSetRanges = (const DescriptorSet::Range*)(
 		(const uint8*)&command + sizeof(BindDescriptorSetsCommandBase));
 	auto& descriptorSets = vulkanAPI->bindDescriptorSets[0];
 	// TODO: maybe detect already bound descriptor sets?
 
 	for (uint8 i = 0; i < rangeCount; i++)
 	{
-		auto descriptor = descriptorSetRange[i];
+		auto descriptor = descriptorSetRanges[i];
 		auto descriptorSet = vulkanAPI->descriptorSetPool.get(descriptor.set);
 		auto instance = (vk::DescriptorSet*)ResourceExt::getInstance(**descriptorSet);
 
@@ -1040,7 +1164,7 @@ void VulkanCommandBuffer::processCommand(const BindDescriptorSetsCommand& comman
 		else descriptorSets.push_back((VkDescriptorSet)instance);
 	}
 
-	auto descriptorSet = vulkanAPI->descriptorSetPool.get(descriptorSetRange[0].set);
+	auto descriptorSet = vulkanAPI->descriptorSetPool.get(descriptorSetRanges[0].set);
 	auto pipelineView = vulkanAPI->getPipelineView(descriptorSet->getPipelineType(), descriptorSet->getPipeline());
 	auto pipelineLayout = (VkPipelineLayout)PipelineExt::getLayout(**pipelineView);
 
@@ -1188,8 +1312,8 @@ void VulkanCommandBuffer::processCommand(const FillBufferCommand& command)
 	if (size == 0) size = VK_WHOLE_SIZE;
 
 	Buffer::BarrierState newBufferState;
-	newBufferState.access = (uint32)vk::AccessFlagBits::eTransferWrite;
-	newBufferState.stage = (uint32)vk::PipelineStageFlagBits::eTransfer;
+	newBufferState.access = (uint64)vk::AccessFlagBits2::eTransferWrite;
+	newBufferState.stage = (uint64)vk::PipelineStageFlagBits2::eClear;
 	addBufferBarrier(vulkanAPI, newBufferState, buffer, size, offset);
 	processPipelineBarriers();
 
@@ -1213,12 +1337,12 @@ void VulkanCommandBuffer::processCommand(const CopyBufferCommand& command)
 		vulkanAPI->bufferCopies.resize(regionCount);
 
 	Buffer::BarrierState newSrcBufferState;
-	newSrcBufferState.access = (uint32)vk::AccessFlagBits::eTransferRead;
-	newSrcBufferState.stage = (uint32)vk::PipelineStageFlagBits::eTransfer;
+	newSrcBufferState.access = (uint64)vk::AccessFlagBits2::eTransferRead;
+	newSrcBufferState.stage = (uint64)vk::PipelineStageFlagBits2::eCopy;
 
 	Buffer::BarrierState newDstBufferState;
-	newDstBufferState.access = (uint32)vk::AccessFlagBits::eTransferWrite;
-	newDstBufferState.stage = (uint32)vk::PipelineStageFlagBits::eTransfer;
+	newDstBufferState.access = (uint64)vk::AccessFlagBits2::eTransferWrite;
+	newDstBufferState.stage = (uint64)vk::PipelineStageFlagBits2::eCopy;
 
 	for (uint32 i = 0; i < regionCount; i++)
 	{
@@ -1248,8 +1372,8 @@ void VulkanCommandBuffer::processCommand(const ClearImageCommand& command)
 		vulkanAPI->imageClears.resize(regionCount);
 
 	Image::LayoutState newImageState;
-	newImageState.access = (uint32)vk::AccessFlagBits::eTransferWrite;
-	newImageState.stage = (uint32)vk::PipelineStageFlagBits::eTransfer;
+	newImageState.access = (uint64)vk::AccessFlagBits2::eTransferWrite;
+	newImageState.stage = (uint64)vk::PipelineStageFlagBits2::eClear;
 	newImageState.layout = (uint32)vk::ImageLayout::eTransferDstOptimal;
 
 	for (uint32 i = 0; i < regionCount; i++)
@@ -1306,13 +1430,13 @@ void VulkanCommandBuffer::processCommand(const CopyImageCommand& command)
 		vulkanAPI->imageCopies.resize(regionCount);
 
 	Image::LayoutState newSrcImageState;
-	newSrcImageState.access = (uint32)vk::AccessFlagBits::eTransferRead;
-	newSrcImageState.stage = (uint32)vk::PipelineStageFlagBits::eTransfer;
+	newSrcImageState.access = (uint64)vk::AccessFlagBits2::eTransferRead;
+	newSrcImageState.stage = (uint64)vk::PipelineStageFlagBits2::eCopy;
 	newSrcImageState.layout = (uint32)vk::ImageLayout::eTransferSrcOptimal;
 
 	Image::LayoutState newDstImageState;
-	newDstImageState.access = (uint32)vk::AccessFlagBits::eTransferWrite;
-	newDstImageState.stage = (uint32)vk::PipelineStageFlagBits::eTransfer;
+	newDstImageState.access = (uint64)vk::AccessFlagBits2::eTransferWrite;
+	newDstImageState.stage = (uint64)vk::PipelineStageFlagBits2::eCopy;
 	newDstImageState.layout = (uint32)vk::ImageLayout::eTransferDstOptimal;
 
 	for (uint32 i = 0; i < regionCount; i++)
@@ -1364,16 +1488,16 @@ void VulkanCommandBuffer::processCommand(const CopyBufferImageCommand& command)
 		vulkanAPI->bufferImageCopies.resize(regionCount);
 
 	Buffer::BarrierState newBufferState;
-	newBufferState.access = toBuffer ?
-		(uint32)vk::AccessFlagBits::eTransferWrite : (uint32)vk::AccessFlagBits::eTransferRead;
-	newBufferState.stage = (uint32)vk::PipelineStageFlagBits::eTransfer;
+	newBufferState.access = toBuffer ? (uint64)vk::AccessFlagBits2::eTransferWrite : 
+		(uint64)vk::AccessFlagBits2::eTransferRead;
+	newBufferState.stage = (uint64)vk::PipelineStageFlagBits2::eCopy;
 
 	Image::LayoutState newImageState;
-	newImageState.access = toBuffer ?
-		(uint32)vk::AccessFlagBits::eTransferRead : (uint32)vk::AccessFlagBits::eTransferWrite;
-	newImageState.layout = toBuffer ?
-		(uint32)vk::ImageLayout::eTransferSrcOptimal : (uint32)vk::ImageLayout::eTransferDstOptimal;
-	newImageState.stage = (uint32)vk::PipelineStageFlagBits::eTransfer;
+	newImageState.access = toBuffer ? (uint64)vk::AccessFlagBits2::eTransferRead : 
+		(uint64)vk::AccessFlagBits2::eTransferWrite;
+	newImageState.layout = toBuffer ? (uint32)vk::ImageLayout::eTransferSrcOptimal : 
+		(uint32)vk::ImageLayout::eTransferDstOptimal;
+	newImageState.stage = (uint64)vk::PipelineStageFlagBits2::eCopy;
 
 	for (uint32 i = 0; i < regionCount; i++)
 	{
@@ -1430,13 +1554,13 @@ void VulkanCommandBuffer::processCommand(const BlitImageCommand& command)
 		vulkanAPI->imageBlits.resize(regionCount);
 
 	Image::LayoutState newSrcImageState;
-	newSrcImageState.access = (uint32)vk::AccessFlagBits::eTransferRead;
-	newSrcImageState.stage = (uint32)vk::PipelineStageFlagBits::eTransfer;
+	newSrcImageState.access = (uint64)vk::AccessFlagBits2::eTransferRead;
+	newSrcImageState.stage = (uint64)vk::PipelineStageFlagBits2::eBlit;
 	newSrcImageState.layout = (uint32)vk::ImageLayout::eTransferSrcOptimal;
 
 	Image::LayoutState newDstImageState;
-	newDstImageState.access = (uint32)vk::AccessFlagBits::eTransferWrite;
-	newDstImageState.stage = (uint32)vk::PipelineStageFlagBits::eTransfer;
+	newDstImageState.access = (uint64)vk::AccessFlagBits2::eTransferWrite;
+	newDstImageState.stage = (uint64)vk::PipelineStageFlagBits2::eBlit;
 	newDstImageState.layout = (uint32)vk::ImageLayout::eTransferDstOptimal;
 
 	for (uint32 i = 0; i < regionCount; i++)
@@ -1494,7 +1618,7 @@ void VulkanCommandBuffer::processCommand(const BuildAccelerationStructureCommand
 
 	auto scratchBufferView = vulkanAPI->bufferPool.get(command.scratchBuffer);
 	Buffer::BarrierState srcNewState, dstNewState, tmpState;
-	srcNewState.stage = dstNewState.stage = (uint32)vk::PipelineStageFlagBits::eAccelerationStructureBuildKHR;
+	srcNewState.stage = dstNewState.stage = (uint64)vk::PipelineStageFlagBits2::eAccelerationStructureBuildKHR;
 
 	vk::AccelerationStructureBuildGeometryInfoKHR info;
 	OptView<AccelerationStructure> srcAsView = {}, dstAsView = {};
@@ -1504,7 +1628,7 @@ void VulkanCommandBuffer::processCommand(const BuildAccelerationStructureCommand
 			srcAsView = OptView<AccelerationStructure>(vulkanAPI->blasPool.get(ID<Blas>(command.srcAS)));
 		else srcAsView = OptView<AccelerationStructure>(vulkanAPI->tlasPool.get(ID<Tlas>(command.srcAS)));
 
-		srcNewState.access = (uint32)vk::AccessFlagBits::eAccelerationStructureReadKHR;
+		srcNewState.access = (uint64)vk::AccessFlagBits2::eAccelerationStructureReadKHR;
 		info.srcAccelerationStructure = (VkAccelerationStructureKHR)ResourceExt::getInstance(**srcAsView);
 	}
 	if (command.typeAS == AccelerationStructure::Type::Blas)
@@ -1517,14 +1641,14 @@ void VulkanCommandBuffer::processCommand(const BuildAccelerationStructureCommand
 		info.type = vk::AccelerationStructureTypeKHR::eTopLevel;
 		dstAsView = OptView<AccelerationStructure>(vulkanAPI->tlasPool.get(ID<Tlas>(command.dstAS)));
 	}
-	dstNewState.access |= (uint32)vk::AccessFlagBits::eAccelerationStructureWriteKHR;
+	dstNewState.access |= (uint64)vk::AccessFlagBits2::eAccelerationStructureWriteKHR;
 
 	auto srcOldAsState = command.srcAS ? &AccelerationStructureExt::getBarrierState(**srcAsView) : &tmpState;
 	auto& dstOldAsState = AccelerationStructureExt::getBarrierState(**dstAsView);
 	addMemoryBarrier(vulkanAPI, *srcOldAsState, dstOldAsState, srcNewState, dstNewState);
 
-	dstNewState.access = (uint32)(vk::AccessFlagBits::eAccelerationStructureReadKHR |
-		vk::AccessFlagBits::eAccelerationStructureWriteKHR);
+	dstNewState.access = (uint64)(vk::AccessFlagBits2::eAccelerationStructureReadKHR |
+		vk::AccessFlagBits2::eAccelerationStructureWriteKHR);
 	addBufferBarrier(vulkanAPI, dstNewState, command.scratchBuffer); // TODO: synchronize only used part of the scratch buffer.
 
 	auto buildData = (uint8*)AccelerationStructureExt::getBuildData(**dstAsView);
@@ -1546,7 +1670,7 @@ void VulkanCommandBuffer::processCommand(const BuildAccelerationStructureCommand
 	info.pGeometries = asArray;
 
 	auto bufferCount = buildDataHeader->bufferCount;
-	dstNewState.access = (uint32)vk::AccessFlagBits::eShaderRead;
+	dstNewState.access = (uint64)vk::AccessFlagBits2::eShaderRead;
 	for (uint32 i = 0; i < bufferCount; i++)
 		addBufferBarrier(vulkanAPI, dstNewState, syncBuffers[i]);
 
@@ -1602,7 +1726,7 @@ void VulkanCommandBuffer::processCommand(const BuildAccelerationStructureCommand
 			compactData->queryPool = queryPool;
 			compactData->queryPoolRef = createInfo.queryCount - 1;
 
-			dstNewState.access = (uint32)vk::AccessFlagBits::eAccelerationStructureReadKHR;
+			dstNewState.access = (uint64)vk::AccessFlagBits2::eAccelerationStructureReadKHR;
 			auto& oldAsState = AccelerationStructureExt::getBarrierState(**dstAsView);
 			addMemoryBarrier(vulkanAPI, oldAsState, dstNewState);
 			processPipelineBarriers();
@@ -1661,9 +1785,9 @@ void VulkanCommandBuffer::processCommand(const CopyAccelerationStructureCommand&
 	}
 
 	Buffer::BarrierState srcNewState, dstNewState;
-	srcNewState.stage = dstNewState.stage = (uint32)vk::PipelineStageFlagBits::eAccelerationStructureBuildKHR;
-	srcNewState.access = (uint32)vk::AccessFlagBits::eAccelerationStructureReadKHR;
-	dstNewState.access = (uint32)vk::AccessFlagBits::eAccelerationStructureWriteKHR;
+	srcNewState.stage = dstNewState.stage = (uint64)vk::PipelineStageFlagBits2::eAccelerationStructureBuildKHR;
+	srcNewState.access = (uint64)vk::AccessFlagBits2::eAccelerationStructureReadKHR;
+	dstNewState.access = (uint64)vk::AccessFlagBits2::eAccelerationStructureWriteKHR;
 	auto& srcOldState = AccelerationStructureExt::getBarrierState(**srcAsView);
 	auto& dstOldState = AccelerationStructureExt::getBarrierState(**dstAsView);
 	addMemoryBarrier(vulkanAPI, srcOldState, dstOldState, srcNewState, dstNewState);
@@ -1678,8 +1802,8 @@ void VulkanCommandBuffer::processCommand(const TraceRaysCommand& command)
 	SET_CPU_ZONE_SCOPED("TraceRays Command Process");
 
 	Buffer::BarrierState newSrcBufferState;
-	newSrcBufferState.access = (uint32)vk::AccessFlagBits::eShaderRead;
-	newSrcBufferState.stage = (uint32)vk::PipelineStageFlagBits::eRayTracingShaderKHR;
+	newSrcBufferState.access = (uint64)vk::AccessFlagBits2::eShaderRead;
+	newSrcBufferState.stage = (uint64)vk::PipelineStageFlagBits2::eRayTracingShaderKHR;
 	addBufferBarrier(vulkanAPI, newSrcBufferState, command.sbtBuffer);
 
 	auto dataIter = this->dataIter - command.lastSize;

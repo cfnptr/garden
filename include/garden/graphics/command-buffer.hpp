@@ -138,7 +138,7 @@ struct BindDescriptorSetsCommand final : public BindDescriptorSetsCommandBase
 };
 struct BindDescriptorSetsAsyncCommand final : public BindDescriptorSetsCommandBase
 {
-	DescriptorSet::Range descriptorSetRanges[2]; // TODO: Looks like there is no more than 2 for an async bind. Rethink later?
+	DescriptorSet::Range descriptorSetRanges[3]; // TODO: Looks like there is no more than 3 for an async bind. Rethink later?
 };
 
 //**********************************************************************************************************************

@@ -341,10 +341,23 @@ bool VulkanSwapchain::acquireNextImage()
 void VulkanSwapchain::submit()
 {
 	auto& inFlightFrame = inFlightFrames[inFlightIndex];
-	vk::PipelineStageFlags pipelineStage = vk::PipelineStageFlagBits::eColorAttachmentOutput;
-	vk::SubmitInfo submitInfo(1, &inFlightFrame.imageAvailableSemaphore, &pipelineStage,
-		1, &inFlightFrame.primaryCommandBuffer, 1, &renderFinishedSemaphores[imageIndex]);
-	vulkanAPI->frameQueue.submit(submitInfo, inFlightFrame.fence);
+	if (vulkanAPI->features.synchronization2)
+	{
+		vk::SemaphoreSubmitInfo waitSemaphoreInfo(inFlightFrame.imageAvailableSemaphore, 
+			0, vk::PipelineStageFlagBits2::eColorAttachmentOutput, 0);
+		vk::SemaphoreSubmitInfo signalSemaphoreInfo(renderFinishedSemaphores[imageIndex], 
+			0, vk::PipelineStageFlagBits2::eAllCommands, 0);
+		vk::CommandBufferSubmitInfo commandBufferInfo(inFlightFrame.primaryCommandBuffer, 0);
+		vk::SubmitInfo2 submitInfo({}, 1, &waitSemaphoreInfo, 1, &commandBufferInfo, 1, &signalSemaphoreInfo);
+		vulkanAPI->frameQueue.submit2(submitInfo, inFlightFrame.fence);
+	}
+	else
+	{
+		vk::PipelineStageFlags pipelineStage = vk::PipelineStageFlagBits::eColorAttachmentOutput;
+		vk::SubmitInfo submitInfo(1, &inFlightFrame.imageAvailableSemaphore, &pipelineStage,
+			1, &inFlightFrame.primaryCommandBuffer, 1, &renderFinishedSemaphores[imageIndex]);
+		vulkanAPI->frameQueue.submit(submitInfo, inFlightFrame.fence);
+	}
 }
 bool VulkanSwapchain::present()
 {
