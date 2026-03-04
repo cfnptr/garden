@@ -18,7 +18,6 @@
 using namespace garden;
 using namespace garden::graphics;
 
-//**********************************************************************************************************************
 static vk::PrimitiveTopology toVkPrimitiveTopology(GraphicsPipeline::Topology topology) noexcept
 {
 	switch (topology)
@@ -31,13 +30,13 @@ static vk::PrimitiveTopology toVkPrimitiveTopology(GraphicsPipeline::Topology to
 		default: abort();
 	}
 }
-static vk::PolygonMode toVkPolygonMode(GraphicsPipeline::Polygon polygon) noexcept
+static vk::PolygonMode toVkPolygonMode(GraphicsPipeline::PolygonMode polygonMode) noexcept
 {
-	switch (polygon)
+	switch (polygonMode)
 	{
-		case GraphicsPipeline::Polygon::Fill: return vk::PolygonMode::eFill;
-		case GraphicsPipeline::Polygon::Line: return vk::PolygonMode::eLine;
-		case GraphicsPipeline::Polygon::Point: return vk::PolygonMode::ePoint;
+		case GraphicsPipeline::PolygonMode::Fill: return vk::PolygonMode::eFill;
+		case GraphicsPipeline::PolygonMode::Line: return vk::PolygonMode::eLine;
+		case GraphicsPipeline::PolygonMode::Point: return vk::PolygonMode::ePoint;
 		default: abort();
 	}
 }
@@ -100,6 +99,21 @@ static vk::BlendOp toVkBlendOp(GraphicsPipeline::BlendOp blendOperation) noexcep
 		default: abort();
 	}
 }
+static vk::StencilOp toVkStencilOp(GraphicsPipeline::StencilOp stencilOperation) noexcept
+{
+	switch (stencilOperation)
+	{
+		case GraphicsPipeline::StencilOp::Keep: return vk::StencilOp::eKeep;
+		case GraphicsPipeline::StencilOp::Zero: return vk::StencilOp::eZero;
+		case GraphicsPipeline::StencilOp::Replace: return vk::StencilOp::eReplace;
+		case GraphicsPipeline::StencilOp::IncrClamp: return vk::StencilOp::eIncrementAndClamp;
+		case GraphicsPipeline::StencilOp::DecrClamp: return vk::StencilOp::eDecrementAndClamp;
+		case GraphicsPipeline::StencilOp::Invert: return vk::StencilOp::eInvert;
+		case GraphicsPipeline::StencilOp::IncrWrap: return vk::StencilOp::eIncrementAndWrap;
+		case GraphicsPipeline::StencilOp::DecrWrap: return vk::StencilOp::eDecrementAndWrap;
+		default: abort();
+	}
+}
 static constexpr vk::ColorComponentFlags toVkColorComponents(GraphicsPipeline::ColorComponent colorComponents) noexcept
 {
 	vk::ColorComponentFlags result;
@@ -117,6 +131,11 @@ static constexpr vk::ColorComponentFlags toVkColorComponents(GraphicsPipeline::C
 //**********************************************************************************************************************
 void GraphicsPipeline::createVkInstance(GraphicsCreateData& createData)
 {
+	GARDEN_ASSERT_MSG(createData.blendStates.size() == createData.colorFormats.size(), 
+		"Different shader output [" + to_string(createData.blendStates.size()) + "] and "
+		"framebuffer attachment count [" + to_string(createData.colorFormats.size()) +  "] "
+		"in graphics pipeline [" + createData.shaderPath.generic_string() +"]");
+
 	if (variantCount > 1)
 		this->instance = malloc<vk::Pipeline>(variantCount);
 
@@ -152,7 +171,7 @@ void GraphicsPipeline::createVkInstance(GraphicsCreateData& createData)
 		stageInfos[i] = stageInfo;
 	}
 
-	#if GARDEN_DEBUG | GARDEN_EDITOR
+	#if GARDEN_DEBUG || GARDEN_EDITOR
 	this->specConstValues = std::move(createData.specConstValues);
 	#endif
 
@@ -164,18 +183,21 @@ void GraphicsPipeline::createVkInstance(GraphicsCreateData& createData)
 	if (!createData.vertexAttributes.empty())
 	{
 		const auto& vertexAttributes = createData.vertexAttributes;
-		for (uint32 i = 0; i < (uint32)inputAttributes.size(); i++)
+		auto vertexAttributeCount = (uint32)vertexAttributes.size();
+		auto vertexAttributeData = vertexAttributes.data();
+		auto inputAttributeData = inputAttributes.data();
+
+		for (uint32 i = 0; i < vertexAttributeCount; i++)
 		{
-			auto attribute = vertexAttributes[i];
-			vk::VertexInputAttributeDescription inputAttribute(i, 0, 
+			auto attribute = vertexAttributeData[i];
+			inputAttributeData[i] = vk::VertexInputAttributeDescription(i, 0, 
 				toVkFormat(attribute.type, attribute.format), attribute.offset);
-			inputAttributes[i] = inputAttribute;
 		}
 
 		inputInfo.vertexBindingDescriptionCount = 1;
 		inputInfo.pVertexBindingDescriptions = &bindingDescription;
-		inputInfo.vertexAttributeDescriptionCount = (uint32)inputAttributes.size();
-		inputInfo.pVertexAttributeDescriptions = inputAttributes.data();
+		inputInfo.vertexAttributeDescriptionCount = vertexAttributeCount;
+		inputInfo.pVertexAttributeDescriptions = inputAttributeData;
 		// TODO: allow to specify input rate for an each vertex attribute?
 	}
 
@@ -184,65 +206,54 @@ void GraphicsPipeline::createVkInstance(GraphicsCreateData& createData)
 	vk::PipelineMultisampleStateCreateInfo multisampleInfo({},
 		vk::SampleCountFlagBits::e1, VK_FALSE, 1.0f, nullptr, VK_FALSE, VK_FALSE);
 
-	vk::GraphicsPipelineCreateInfo pipelineInfo({}, stageCount, stageInfos, &inputInfo, 
-		nullptr, nullptr, &viewportInfo, nullptr, &multisampleInfo, nullptr, nullptr, nullptr,
-		(VkPipelineLayout)pipelineLayout, nullptr, createData.subpassIndex, nullptr, -1);
-
+	const auto& colorFormats = createData.colorFormats;
+	auto colorFormatCount = colorFormats.size();
 	vk::PipelineRenderingCreateInfoKHR dynamicRenderingInfo;
 	vector<vk::Format> dynamicColorFormats;
 
-	GARDEN_ASSERT_MSG(createData.blendStates.size() == createData.colorFormats.size(), 
-		"Different shader output [" + to_string(createData.blendStates.size()) + "] and "
-		"framebuffer attachment count [" + to_string(createData.colorFormats.size()) +  "] "
-		"in graphics pipeline [" + createData.shaderPath.generic_string() +"]");
-
-	if (!createData.renderPass)
+	if (colorFormatCount > 0)
 	{
-		const auto& colorFormats = createData.colorFormats;
-		if (!colorFormats.empty())
+		dynamicColorFormats = vector<vk::Format>(colorFormatCount);
+		auto colorFormatData = dynamicColorFormats.data();
+		for (uint32 i = 0; i < colorFormatCount; i++)
+			colorFormatData[i] = toVkFormat(colorFormats[i]);
+		dynamicRenderingInfo.colorAttachmentCount = colorFormatCount;
+		dynamicRenderingInfo.pColorAttachmentFormats = colorFormatData;
+	}
+	if (createData.depthStencilFormat != Image::Format::Undefined)
+	{
+		if (isFormatDepthOnly(createData.depthStencilFormat))
 		{
-			dynamicColorFormats.reserve(colorFormats.size());
-			for (uint32 i = 0; i < (uint32)colorFormats.size(); i++)
-				dynamicColorFormats.push_back(toVkFormat(colorFormats[i]));
-
-			dynamicRenderingInfo.colorAttachmentCount = (uint32)dynamicColorFormats.size();
-			dynamicRenderingInfo.pColorAttachmentFormats = dynamicColorFormats.data();
+			dynamicRenderingInfo.depthAttachmentFormat = toVkFormat(createData.depthStencilFormat);
+			dynamicRenderingInfo.stencilAttachmentFormat = vk::Format::eUndefined;
 		}
-
-		if (createData.depthStencilFormat != Image::Format::Undefined)
+		else if (isFormatStencilOnly(createData.depthStencilFormat))
 		{
-			if (isFormatDepthOnly(createData.depthStencilFormat))
-			{
-				dynamicRenderingInfo.depthAttachmentFormat = toVkFormat(createData.depthStencilFormat);
-				dynamicRenderingInfo.stencilAttachmentFormat = vk::Format::eUndefined;
-			}
-			else if (isFormatStencilOnly(createData.depthStencilFormat))
-			{
-				dynamicRenderingInfo.stencilAttachmentFormat = toVkFormat(createData.depthStencilFormat);
-				dynamicRenderingInfo.depthAttachmentFormat = vk::Format::eUndefined;
-			}
-			else
-			{
-				dynamicRenderingInfo.depthAttachmentFormat =
-					dynamicRenderingInfo.stencilAttachmentFormat = toVkFormat(createData.depthStencilFormat);
-			}
+			dynamicRenderingInfo.stencilAttachmentFormat = toVkFormat(createData.depthStencilFormat);
+			dynamicRenderingInfo.depthAttachmentFormat = vk::Format::eUndefined;
 		}
 		else
 		{
 			dynamicRenderingInfo.depthAttachmentFormat =
-				dynamicRenderingInfo.stencilAttachmentFormat = vk::Format::eUndefined;
+				dynamicRenderingInfo.stencilAttachmentFormat = toVkFormat(createData.depthStencilFormat);
 		}
-
-		pipelineInfo.pNext = &dynamicRenderingInfo;
 	}
-	else pipelineInfo.renderPass = (VkRenderPass)createData.renderPass;
+	else
+	{
+		dynamicRenderingInfo.depthAttachmentFormat =
+			dynamicRenderingInfo.stencilAttachmentFormat = vk::Format::eUndefined;
+	}
+
+	vk::GraphicsPipelineCreateInfo pipelineInfo({}, stageCount, stageInfos, &inputInfo, 
+		nullptr, nullptr, &viewportInfo, nullptr, &multisampleInfo, nullptr, nullptr, nullptr, 
+		(VkPipelineLayout)pipelineLayout, nullptr, 0, nullptr, -1, &dynamicRenderingInfo);
 
 	// TODO: pass dynamic states as argument.
 	// Also allow to specify static viewport and scissor.
-	vector<vk::DynamicState> dynamicStates;
-	dynamicStates.push_back(vk::DynamicState::eViewport);
-	dynamicStates.push_back(vk::DynamicState::eScissor);
-	dynamicStates.push_back(vk::DynamicState::eDepthBias);
+	vector<vk::DynamicState> dynamicStates(3);
+	dynamicStates[0] = vk::DynamicState::eViewport;
+	dynamicStates[1] = vk::DynamicState::eScissor;
+	dynamicStates[2] = vk::DynamicState::eDepthBias;
 	vk::PipelineDynamicStateCreateInfo dynamicInfo;
 
 	if (!dynamicStates.empty())
@@ -277,7 +288,7 @@ void GraphicsPipeline::createVkInstance(GraphicsCreateData& createData)
 				createData.shaderPath.generic_string() + "]");
 			if (pipelineState.stencilTesting)
 			{
-				GARDEN_ASSERT_MSG(isFormatDepthOnly(createData.depthStencilFormat), 
+				GARDEN_ASSERT_MSG(!isFormatDepthOnly(createData.depthStencilFormat), 
 					"No stencil buffer in framebuffer for graphics pipeline [" + 
 					createData.shaderPath.generic_string() + "]");	
 			}
@@ -288,7 +299,7 @@ void GraphicsPipeline::createVkInstance(GraphicsCreateData& createData)
 			toVkPrimitiveTopology(pipelineState.topology), VK_FALSE); // TODO: support primitive restarting
 
 		vk::PipelineRasterizationStateCreateInfo rasterizationInfo({},
-			pipelineState.depthClamping, pipelineState.discarding, toVkPolygonMode(pipelineState.polygon),
+			pipelineState.depthClamping, pipelineState.discarding, toVkPolygonMode(pipelineState.polygonMode),
 			toVkCullMode(pipelineState.cullFace), toVkFrontFace(pipelineState.frontFace), pipelineState.depthBiasing, 
 			pipelineState.depthBiasConst, pipelineState.depthBiasClamp, pipelineState.depthBiasSlope, 1.0f);
 
@@ -300,9 +311,22 @@ void GraphicsPipeline::createVkInstance(GraphicsCreateData& createData)
 			depthStencilInfo.depthCompareOp = toVkCompareOp(pipelineState.depthCompare);
 			depthStencilInfo.depthBoundsTestEnable = pipelineState.depthBounding;
 			depthStencilInfo.stencilTestEnable = pipelineState.stencilTesting;
+			depthStencilInfo.front.failOp = toVkStencilOp(pipelineState.frontFaceStencil.failOperation);
+			depthStencilInfo.front.passOp = toVkStencilOp(pipelineState.frontFaceStencil.passOperation);
+			depthStencilInfo.front.depthFailOp = toVkStencilOp(pipelineState.frontFaceStencil.depthFailOperation);
+			depthStencilInfo.front.compareOp = toVkCompareOp(pipelineState.frontFaceStencil.compareOperator);
+			depthStencilInfo.front.compareMask = pipelineState.frontFaceStencil.compareMask;
+			depthStencilInfo.front.writeMask = pipelineState.frontFaceStencil.writeMask;
+			depthStencilInfo.front.reference = pipelineState.frontFaceStencil.reference;
+			depthStencilInfo.back.failOp = toVkStencilOp(pipelineState.backFaceStencil.failOperation);
+			depthStencilInfo.back.passOp = toVkStencilOp(pipelineState.backFaceStencil.passOperation);
+			depthStencilInfo.back.depthFailOp = toVkStencilOp(pipelineState.backFaceStencil.depthFailOperation);
+			depthStencilInfo.back.compareOp = toVkCompareOp(pipelineState.backFaceStencil.compareOperator);
+			depthStencilInfo.back.compareMask = pipelineState.backFaceStencil.compareMask;
+			depthStencilInfo.back.writeMask = pipelineState.backFaceStencil.writeMask;
+			depthStencilInfo.back.reference = pipelineState.backFaceStencil.reference;
 			depthStencilInfo.minDepthBounds = pipelineState.depthBounds.x;
 			depthStencilInfo.maxDepthBounds = pipelineState.depthBounds.y;
-			// TODO: stencil testing
 		}
 
 		auto blendStateSearch = blendStateOverrides.find(i);
@@ -335,8 +359,6 @@ void GraphicsPipeline::createVkInstance(GraphicsCreateData& createData)
 		pipelineInfo.pDepthStencilState = &depthStencilInfo;
 		pipelineInfo.pColorBlendState = &blendInfo;
 
-
-
 		auto result = vulkanAPI->device.createGraphicsPipeline(vulkanAPI->pipelineCache, pipelineInfo);
 		vk::detail::resultCheck(result.result, "vk::Device::createGraphicsPipeline");
 
@@ -365,19 +387,12 @@ GraphicsPipeline::GraphicsPipeline(GraphicsCreateData& createData,
 	else abort();
 }
 
-static void checkFramebufferSubpass(GraphicsAPI* graphicsAPI, ID<Framebuffer> framebuffer, uint8 subpassIndex)
-{
-	GARDEN_ASSERT(framebuffer == graphicsAPI->currentFramebuffer);
-	GARDEN_ASSERT(subpassIndex == graphicsAPI->currentSubpassIndex);
-}
-
 //**********************************************************************************************************************
 void GraphicsPipeline::updateFramebuffer(ID<Framebuffer> framebuffer)
 {
 	GARDEN_ASSERT_MSG(framebuffer, "Assert " + debugName);
 	#if GARDEN_DEBUG
 	auto framebufferView = GraphicsAPI::get()->framebufferPool.get(framebuffer);
-	GARDEN_ASSERT_MSG(framebufferView->getSubpasses().empty(), "Assert " + debugName);
 	GARDEN_ASSERT_MSG(attachmentCount == framebufferView->getColorAttachments().size(), "Different graphics pipeline "
 		"[" + debugName + "] and framebuffer [" + framebufferView->getDebugName() + "] attachment count");
 	#endif
@@ -397,10 +412,10 @@ void GraphicsPipeline::setViewport(float4 viewport)
 
 	// TODO: support multiple viewport/scissor count. MacBook intel viewport max count is 16.
 	SetViewportCommand command;
-	command.framebufferSize = framebufferView->getSize();
+	command.frameSize = framebufferView->getSize();
 
 	if (viewport == float4::zero)
-		command.viewport = float4(float2::zero, command.framebufferSize);
+		command.viewport = float4(float2::zero, command.frameSize);
 	else command.viewport = viewport;
 	graphicsAPI->currentCommandBuffer->addCommand(command);
 }
@@ -420,15 +435,15 @@ void GraphicsPipeline::setViewportAsync(float4 viewport, int32 threadIndex)
 	{
 		auto vulkanAPI = VulkanAPI::get();
 		auto framebufferView = vulkanAPI->framebufferPool.get(vulkanAPI->currentFramebuffer);
-		auto framebufferSize = framebufferView->getSize();
+		auto frameSize = framebufferView->getSize();
 
 		vk::Viewport vkViewport(viewport.x, viewport.y, viewport.z, viewport.w, 0.0f, 1.0f); // TODO: support custom depth range.
 		if (viewport == float4::zero)
 		{
-			vkViewport.width = framebufferSize.x;
-			vkViewport.height = framebufferSize.y;
+			vkViewport.width = frameSize.x;
+			vkViewport.height = frameSize.y;
 		}
-		else vkViewport.y = framebufferSize.y - (vkViewport.y + vkViewport.height);
+		else vkViewport.y = frameSize.y - (vkViewport.y + vkViewport.height);
 
 		while (threadIndex < autoThreadCount)
 			vulkanAPI->secondaryCommandBuffers[threadIndex++].setViewport(0, 1, &vkViewport);
@@ -449,10 +464,10 @@ void GraphicsPipeline::setScissor(int4 scissor)
 	auto framebufferView = graphicsAPI->framebufferPool.get(graphicsAPI->currentFramebuffer);
 
 	SetScissorCommand command;
-	command.framebufferSize = framebufferView->getSize();
+	command.frameSize = framebufferView->getSize();
 	
 	if (scissor == int4::zero)
-		command.scissor = int4(int2::zero, command.framebufferSize);
+		command.scissor = int4(int2::zero, command.frameSize);
 	else command.scissor = scissor;
 	graphicsAPI->currentCommandBuffer->addCommand(command);
 }
@@ -472,15 +487,15 @@ void GraphicsPipeline::setScissorAsync(int4 scissor, int32 threadIndex)
 	{
 		auto vulkanAPI = VulkanAPI::get();
 		auto framebufferView = vulkanAPI->framebufferPool.get(vulkanAPI->currentFramebuffer);
-		auto framebufferSize = framebufferView->getSize();
+		auto frameSize = framebufferView->getSize();
 
 		vk::Rect2D vkScissor({ scissor.x, scissor.y }, { (uint32)scissor.z, (uint32)scissor.w });
 		if (scissor == int4::zero)
 		{
-			vkScissor.extent.width = (uint32)framebufferSize.x;
-			vkScissor.extent.height = (uint32)framebufferSize.y;
+			vkScissor.extent.width = (uint32)frameSize.x;
+			vkScissor.extent.height = (uint32)frameSize.y;
 		}
-		else vkScissor.offset.y = framebufferSize.y - (vkScissor.offset.y + vkScissor.extent.height);
+		else vkScissor.offset.y = frameSize.y - (vkScissor.offset.y + vkScissor.extent.height);
 		vkScissor.offset.x = max(vkScissor.offset.x, 0); vkScissor.offset.y = max(vkScissor.offset.y, 0);
 
 		while (threadIndex < autoThreadCount)
@@ -502,10 +517,10 @@ void GraphicsPipeline::setViewportScissor(float4 viewportScissor)
 	auto framebufferView = graphicsAPI->framebufferPool.get(graphicsAPI->currentFramebuffer);
 
 	SetViewportScissorCommand command;
-	command.framebufferSize = framebufferView->getSize();
+	command.frameSize = framebufferView->getSize();
 
 	if (viewportScissor == float4::zero)
-		command.viewportScissor = float4(float2::zero, command.framebufferSize);
+		command.viewportScissor = float4(float2::zero, command.frameSize);
 	else command.viewportScissor = viewportScissor;
 	graphicsAPI->currentCommandBuffer->addCommand(command);
 }
@@ -525,7 +540,7 @@ void GraphicsPipeline::setViewportScissorAsync(float4 viewportScissor, int32 thr
 	{
 		auto vulkanAPI = VulkanAPI::get();
 		auto framebufferView = vulkanAPI->framebufferPool.get(vulkanAPI->currentFramebuffer);
-		auto framebufferSize = framebufferView->getSize();
+		auto frameSize = framebufferView->getSize();
 
 		vk::Viewport vkViewport(viewportScissor.x, viewportScissor.y,
 			viewportScissor.z, viewportScissor.w, 0.0f, 1.0f); // TODO: support custom depth range.
@@ -534,13 +549,13 @@ void GraphicsPipeline::setViewportScissorAsync(float4 viewportScissor, int32 thr
 	
 		if (viewportScissor == float4::zero)
 		{
-			vkViewport.width = framebufferSize.x; vkViewport.height = framebufferSize.y;
-			vkScissor.extent.width = (uint32)framebufferSize.x; vkScissor.extent.height = (uint32)framebufferSize.y;
+			vkViewport.width = frameSize.x; vkViewport.height = frameSize.y;
+			vkScissor.extent.width = (uint32)frameSize.x; vkScissor.extent.height = (uint32)frameSize.y;
 		}
 		else
 		{
-			vkViewport.y = framebufferSize.y - (vkViewport.y + vkViewport.height);
-			vkScissor.offset.y = framebufferSize.y - (vkScissor.offset.y + vkScissor.extent.height);
+			vkViewport.y = frameSize.y - (vkViewport.y + vkViewport.height);
+			vkScissor.offset.y = frameSize.y - (vkScissor.offset.y + vkScissor.extent.height);
 		}
 		vkScissor.offset.x = max(vkScissor.offset.x, 0); vkScissor.offset.y = max(vkScissor.offset.y, 0);
 
@@ -567,7 +582,7 @@ void GraphicsPipeline::draw(ID<Buffer> vertexBuffer, uint32 vertexCount,
 	GARDEN_ASSERT_MSG(ID<Pipeline>(graphicsAPI->graphicsPipelinePool.getID(this)) == 
 		graphicsAPI->currentPipelines[0], "Assert " + debugName);
 	GARDEN_ASSERT_MSG(instance, "Graphics pipeline [" + debugName + "] is not ready");
-	checkFramebufferSubpass(graphicsAPI, framebuffer, subpassIndex);
+	GARDEN_ASSERT(framebuffer == graphicsAPI->currentFramebuffer);
 
 	DrawCommand command;
 	command.vertexCount = vertexCount;
@@ -603,7 +618,7 @@ void GraphicsPipeline::drawAsync(int32 threadIndex, ID<Buffer> vertexBuffer,
 	GARDEN_ASSERT_MSG(graphicsAPI->currentCommandBuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(graphicsAPI->isCurrentRenderPassAsync, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(instance, "Graphics pipeline [" + debugName + "] is not ready");
-	checkFramebufferSubpass(graphicsAPI, framebuffer, subpassIndex);
+	GARDEN_ASSERT(framebuffer == graphicsAPI->currentFramebuffer);
 
 	graphicsAPI->calcAutoThreadIndex(threadIndex);
 	GARDEN_ASSERT_MSG(ID<Pipeline>(graphicsAPI->graphicsPipelinePool.getID(this)) == 
@@ -670,7 +685,7 @@ void GraphicsPipeline::drawIndexed(ID<Buffer> vertexBuffer, ID<Buffer> indexBuff
 	GARDEN_ASSERT_MSG(ResourceExt::getInstance(**indexBufferView), "Index buffer [" + 
 		indexBufferView->getDebugName() + "] is not ready");
 	GARDEN_ASSERT(indexCount + indexOffset <= indexBufferView->getBinarySize() / toBinarySize(indexType));
-	checkFramebufferSubpass(graphicsAPI, framebuffer, subpassIndex);
+	GARDEN_ASSERT(framebuffer == graphicsAPI->currentFramebuffer);
 
 	DrawIndexedCommand command;
 	command.indexType = indexType;
@@ -716,7 +731,7 @@ void GraphicsPipeline::drawIndexedAsync(int32 threadIndex, ID<Buffer> vertexBuff
 	GARDEN_ASSERT_MSG(ResourceExt::getInstance(**indexBufferView), "Index buffer [" + 
 		indexBufferView->getDebugName() + "] is not ready");
 	GARDEN_ASSERT(indexCount + indexOffset <= indexBufferView->getBinarySize() / toBinarySize(indexType));
-	checkFramebufferSubpass(graphicsAPI, framebuffer, subpassIndex);
+	GARDEN_ASSERT(framebuffer == graphicsAPI->currentFramebuffer);
 
 	graphicsAPI->calcAutoThreadIndex(threadIndex);
 	GARDEN_ASSERT_MSG(ID<Pipeline>(graphicsAPI->graphicsPipelinePool.getID(this)) == 
@@ -771,7 +786,7 @@ void GraphicsPipeline::drawFullscreen()
 	GARDEN_ASSERT_MSG(ID<Pipeline>(graphicsAPI->graphicsPipelinePool.getID(this)) == 
 		graphicsAPI->currentPipelines[0], "Assert " + debugName);
 	GARDEN_ASSERT_MSG(instance, "Graphics pipeline [" + debugName + "] is not ready");
-	checkFramebufferSubpass(graphicsAPI, framebuffer, subpassIndex);
+	GARDEN_ASSERT(framebuffer == graphicsAPI->currentFramebuffer);
 	
 	DrawCommand command;
 	command.vertexCount = 3;
@@ -787,7 +802,7 @@ void GraphicsPipeline::drawFullscreenAsync(int32 threadIndex)
 	GARDEN_ASSERT_MSG(graphicsAPI->currentCommandBuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(graphicsAPI->isCurrentRenderPassAsync, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(instance, "Graphics pipeline [" + debugName + "] is not ready");
-	checkFramebufferSubpass(graphicsAPI, framebuffer, subpassIndex);
+	GARDEN_ASSERT(framebuffer == graphicsAPI->currentFramebuffer);
 
 	graphicsAPI->calcAutoThreadIndex(threadIndex);
 	GARDEN_ASSERT_MSG(ID<Pipeline>(graphicsAPI->graphicsPipelinePool.getID(this)) == 

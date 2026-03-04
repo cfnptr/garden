@@ -65,7 +65,7 @@ public:
 	float boostFactor = 2.0f;
 	float jumpSpeed = 5.0f;
 	float swimSpeed = 1.0f;
-	float swimpResist = 0.9f;
+	float swimResist = 0.9f;
 	bool isMouseLocked = false;
 	bool canSwim = false;
 };

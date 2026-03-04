@@ -24,7 +24,7 @@ namespace garden
 {
 
 /**
- * @brief GPU data proccessing system.
+ * @brief GPU data processing system.
  */
 class GpuProcessSystem final : public System, public Singleton<GpuProcessSystem>
 {
@@ -95,7 +95,7 @@ public:
 	/**
 	 * @brief Calculates gaussian blur kernel coefficients.
 	 *
-	 * @param sigma ammount of bluring
+	 * @param sigma amount of blurring
 	 * @param[out] target gaussian kernel coefficients
 	 * @param coeffCount coefficients buffer size
 	 */

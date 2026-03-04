@@ -167,8 +167,8 @@ static void createVkCommandPools(vk::Device device, uint32 queueFamilyIndex,
 {
 	commandPools.resize(count);
 	vk::CommandPoolCreateInfo commandPoolInfo({}, queueFamilyIndex);
-	for (uint32 i = 0; i < count; i++)
-		commandPools[i] = device.createCommandPool(commandPoolInfo);
+	for (auto& commandPool : commandPools)
+		commandPool = device.createCommandPool(commandPoolInfo);
 }
 
 //**********************************************************************************************************************
@@ -176,25 +176,25 @@ static vector<ID<Image>> createVkSwapchainImages(VulkanAPI* vulkanAPI,
 	vk::SwapchainKHR swapchain, uint2 framebufferSize, vk::Format surfaceFormat)
 {
 	auto vkImages = vulkanAPI->device.getSwapchainImagesKHR(swapchain);
-	vector<ID<Image>> images(vkImages.size());
+	auto imageCount = (uint32)vkImages.size(); auto vkImageData = vkImages.data();
+	vector<ID<Image>> images(imageCount); auto imageData = images.data();
 	auto imageFormat = toImageFormat(surfaceFormat);
-	
-	for (uint32 i = 0; i < (uint32)images.size(); i++)
+
+	for (uint32 i = 0; i < imageCount; i++)
 	{
-		auto image = vulkanAPI->imagePool.create((VkImage)vkImages[i], imageFormat, Image::Usage::TransferDst, 
+		auto image = vulkanAPI->imagePool.create((VkImage)vkImageData[i], imageFormat, Image::Usage::TransferDst, 
 			Image::Strategy::Default, framebufferSize, (uint8)GraphicsBackend::VulkanAPI);
-		images[i] = image;
+		imageData[i] = image;
 
 		#if GARDEN_DEBUG || GARDEN_DEBUG
 		auto name = "image.swapchain" + to_string(i);
-		auto imageView = vulkanAPI->imagePool.get(images[i]);
+		auto imageView = vulkanAPI->imagePool.get(image);
 		ResourceExt::getDebugName(**imageView) = name;
-
-		#if GARDEN_DEBUG // Note: No GARDEN_EDITOR
-		vk::DebugUtilsObjectNameInfoEXT nameInfo(vk::ObjectType::eImage, (uint64)
-			(VkImage)ResourceExt::getInstance(**imageView), name.c_str());
-		vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo);
-		#endif
+			#if GARDEN_DEBUG // Note: No GARDEN_EDITOR
+			vk::DebugUtilsObjectNameInfoEXT nameInfo(vk::ObjectType::eImage, (uint64)
+				(VkImage)ResourceExt::getInstance(**imageView), name.c_str());
+			vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo);
+			#endif
 		#endif
 	}
 
@@ -257,9 +257,9 @@ VulkanSwapchain::VulkanSwapchain(VulkanAPI* vulkanAPI, uint2 framebufferSize, bo
 	instance = createVkSwapchain(vulkanAPI, framebufferSize, useVsync, useTripleBuffering, nullptr, format);
 	images = createVkSwapchainImages(vulkanAPI, instance, framebufferSize, format);
 
-	renderFinishedSemaphores.reserve(images.size());
-	for (uint32 i = 0; i < (uint32)images.size(); i++)
-		renderFinishedSemaphores.push_back(vulkanAPI->device.createSemaphore(semaphoreInfo));
+	renderFinishedSemaphores.resize(images.size());
+	for (auto& semaphore : renderFinishedSemaphores)
+		semaphore = vulkanAPI->device.createSemaphore(semaphoreInfo);
 
 	this->framebufferSize = framebufferSize;
 }
@@ -373,9 +373,8 @@ bool VulkanSwapchain::present()
 }
 
 //**********************************************************************************************************************
-void VulkanSwapchain::beginSecondaryCommandBuffers(vk::Framebuffer framebuffer, 
-	vk::RenderPass renderPass, uint8 subpassIndex, const vector<Framebuffer::OutputAttachment>& colorAttachments,
-	Framebuffer::OutputAttachment depthStencilAttachment, const string& debugName)
+void VulkanSwapchain::beginSecondaryCommandBuffers(const vector<Framebuffer::Attachment>& colorAttachments,
+	Framebuffer::Attachment depthStencilAttachment, const string& debugName)
 {
 	GARDEN_ASSERT(vulkanAPI->getThreadPool());
 	SET_CPU_ZONE_SCOPED("Secondary Command Buffers Begin");
@@ -386,13 +385,12 @@ void VulkanSwapchain::beginSecondaryCommandBuffers(vk::Framebuffer framebuffer,
 	if (vulkanAPI->secondaryCommandBuffers.size() != threadCount)
 	{
 		vulkanAPI->secondaryCommandBuffers.resize(threadCount);
-
 		auto& secondaryCommandStates = vulkanAPI->secondaryCommandStates;
 		for (auto secondaryCommandState : secondaryCommandStates)
 			delete secondaryCommandState;
 		secondaryCommandStates.resize(threadCount);
-		for (int32 i = 0; i < threadCount; i++)
-			secondaryCommandStates[i] = new VulkanAPI::atomic_bool_aligned();
+		for (auto& secondaryCommandState : secondaryCommandStates)
+			secondaryCommandState = new VulkanAPI::atomic_bool_aligned();
 	}
 
 	auto inFlightFrame = &inFlightFrames[inFlightIndex];
@@ -426,15 +424,16 @@ void VulkanSwapchain::beginSecondaryCommandBuffers(vk::Framebuffer framebuffer,
 	{
 		const auto& secondaryCommandPools = inFlightFrame->secondaryCommandPools;
 		vk::CommandBufferAllocateInfo allocateInfo({}, vk::CommandBufferLevel::eSecondary, 1);
+		auto commandBufferData = vulkanAPI->secondaryCommandBuffers.data();
 		
-		for (int32 i = 0; i < threadCount; i++)
+		for (uint32 i = 0; i < threadCount; i++)
 		{
 			allocateInfo.commandPool = secondaryCommandPools[i];
 			vk::CommandBuffer commandBuffer;
 			auto allocateResult = vulkanAPI->device.allocateCommandBuffers(&allocateInfo, &commandBuffer);
 			vk::detail::resultCheck(allocateResult, "vk::Device::allocateCommandBuffers");
 			inFlightFrame->secondaryCommandBuffers.push_back(commandBuffer);
-			vulkanAPI->secondaryCommandBuffers[i] = commandBuffer;
+			commandBufferData[i] = commandBuffer;
 
 			#if GARDEN_DEBUG // Note: No GARDEN_EDITOR
 			if (vulkanAPI->features.debugUtils)
@@ -447,58 +446,54 @@ void VulkanSwapchain::beginSecondaryCommandBuffers(vk::Framebuffer framebuffer,
 			#endif
 		}
 	}
-
 	inFlightFrame->secondaryCommandBufferIndex += threadCount;
 
-	vk::CommandBufferInheritanceInfo inheritanceInfo(renderPass, subpassIndex, framebuffer, VK_FALSE); // TODO: occlusion query
+	auto colorAttachmentCount = (uint32)colorAttachments.size();
+	if (colorAttachmentFormats.size() < colorAttachmentCount)
+		colorAttachmentFormats.resize(colorAttachmentCount);
+	auto colorFormatData = colorAttachmentFormats.data();
+	auto colorAttachmentData = colorAttachments.data();
+
+	vk::CommandBufferInheritanceRenderingInfoKHR inheritanceRenderingInfo(
+		{}, 0, colorAttachmentCount, colorFormatData);
+	vk::CommandBufferInheritanceInfo inheritanceInfo(nullptr, 0, 
+		nullptr, VK_FALSE, {}, {}, &inheritanceRenderingInfo); // TODO: occlusion query
 	vk::CommandBufferBeginInfo beginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit |
 		vk::CommandBufferUsageFlagBits::eRenderPassContinue, &inheritanceInfo);
 
-	vk::CommandBufferInheritanceRenderingInfoKHR inheritanceRenderingInfo;
-	if (!renderPass)
+	for (uint32 i = 0; i < colorAttachmentCount; i++)
 	{
-		if (colorAttachmentFormats.size() < colorAttachments.size())
-			colorAttachmentFormats.resize(colorAttachments.size());
-
-		for (uint32 i = 0; i < (uint32)colorAttachments.size(); i++)
+		if (!colorAttachmentData[i].imageView)
 		{
-			if (!colorAttachments[i].imageView)
-			{
-				colorAttachmentFormats[i] = vk::Format::eUndefined;
-				continue;
-			}
-
-			auto imageView = vulkanAPI->imageViewPool.get(colorAttachments[i].imageView);
-			colorAttachmentFormats[i] = toVkFormat(imageView->getFormat());
+			colorFormatData[i] = vk::Format::eUndefined;
+			continue;
 		}
 
-		if (depthStencilAttachment.imageView)
-		{
-			auto imageView = vulkanAPI->imageViewPool.get(depthStencilAttachment.imageView);
-			auto format = imageView->getFormat();
+		auto imageView = vulkanAPI->imageViewPool.get(colorAttachmentData[i].imageView);
+		colorFormatData[i] = (vk::Format)ImageViewExt::getApiFormat(**imageView);
+	}
 
-			if (isFormatDepthOnly(format))
-			{
-				inheritanceRenderingInfo.depthAttachmentFormat = toVkFormat(format);
-				inheritanceRenderingInfo.stencilAttachmentFormat = vk::Format::eUndefined;
-			}
-			else if (isFormatStencilOnly(format))
-			{
-				inheritanceRenderingInfo.depthAttachmentFormat = vk::Format::eUndefined;
-				inheritanceRenderingInfo.stencilAttachmentFormat = toVkFormat(format);
-			}
-			else
-			{
-				inheritanceRenderingInfo.depthAttachmentFormat = inheritanceRenderingInfo.stencilAttachmentFormat =
-					toVkFormat(imageView->getFormat());
-			}
+	if (depthStencilAttachment.imageView)
+	{
+		auto imageView = vulkanAPI->imageViewPool.get(depthStencilAttachment.imageView);
+		auto vkFormat = (vk::Format)ImageViewExt::getApiFormat(**imageView);
+		auto format = imageView->getFormat();
+
+		if (isFormatDepthOnly(format))
+		{
+			inheritanceRenderingInfo.depthAttachmentFormat = vkFormat;
+			inheritanceRenderingInfo.stencilAttachmentFormat = vk::Format::eUndefined;
 		}
-		
-		inheritanceRenderingInfo.viewMask = 0;
-		inheritanceRenderingInfo.colorAttachmentCount = (uint32)colorAttachments.size();
-		inheritanceRenderingInfo.pColorAttachmentFormats = colorAttachmentFormats.data();
-		inheritanceRenderingInfo.rasterizationSamples = vk::SampleCountFlagBits::e1;
-		inheritanceInfo.pNext = &inheritanceRenderingInfo;
+		else if (isFormatStencilOnly(format))
+		{
+			inheritanceRenderingInfo.depthAttachmentFormat = vk::Format::eUndefined;
+			inheritanceRenderingInfo.stencilAttachmentFormat = vkFormat;
+		}
+		else
+		{
+			inheritanceRenderingInfo.depthAttachmentFormat = 
+				inheritanceRenderingInfo.stencilAttachmentFormat = vkFormat;
+		}
 	}
 
 	threadPool->addTasks([this, &beginInfo](const ThreadPool::Task& task)

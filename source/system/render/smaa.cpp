@@ -36,33 +36,34 @@ static Ref<Image> createAreaLUT()
 
 static ID<Image> createEdgesBuffer(GraphicsSystem* graphicsSystem)
 {
-	auto framebufferSize = graphicsSystem->getScaledFrameSize();
-	auto edgesBuffer = graphicsSystem->createImage(SmaaRenderSystem::edgesBufferFormat, Image::Usage::ColorAttachment | 
-		Image::Usage::Sampled | Image::Usage::Fullscreen, { { nullptr } }, framebufferSize, Image::Strategy::Size);
-	SET_RESOURCE_DEBUG_NAME(edgesBuffer, "image.smaa.edgesBuffer");
-	return edgesBuffer;
+	auto image = graphicsSystem->createImage(SmaaRenderSystem::edgesBufferFormat, 
+		Image::Usage::ColorAttachment | Image::Usage::Sampled | Image::Usage::Fullscreen, 
+		{ { nullptr } }, graphicsSystem->getScaledFrameSize(), Image::Strategy::Size);
+	SET_RESOURCE_DEBUG_NAME(image, "image.smaa.edgesBuffer");
+	return image;
 }
 static ID<ImageView> getLdrCopyView(GraphicsSystem* graphicsSystem, DeferredRenderSystem* deferredSystem)
 {
 	auto gBuffer = deferredSystem->getGBuffers()[G_BUFFER_BASE_COLOR]; 
-	auto gBufferView = graphicsSystem->get(gBuffer)->getView(); // Note: Reusing G-Buffer memory.
+	auto imageView = graphicsSystem->get(gBuffer)->getView(); // Note: Reusing G-Buffer memory.
 	GARDEN_ASSERT(graphicsSystem->get(gBuffer)->getFormat() == DeferredRenderSystem::ldrBufferFormat);
-	return gBufferView;
+	return imageView;
 }
 static ID<ImageView> getWeightsView(GraphicsSystem* graphicsSystem, DeferredRenderSystem* deferredSystem)
 {
 	auto gBuffer = deferredSystem->getGBuffers()[G_BUFFER_METALLIC]; 
-	auto gBufferView = graphicsSystem->get(gBuffer)->getView(); // Note: Reusing G-Buffer memory.
+	auto imageView = graphicsSystem->get(gBuffer)->getView(); // Note: Reusing G-Buffer memory.
 	GARDEN_ASSERT(graphicsSystem->get(gBuffer)->getFormat() == Image::Format::UnormR8G8B8A8);
-	return gBufferView;
+	return imageView;
 }
 
 static ID<Framebuffer> createEdgesFramebuffer(GraphicsSystem* graphicsSystem, ID<Image> edgesBuffer)
 {
 	auto edgesView = graphicsSystem->get(edgesBuffer)->getView();
-	vector<Framebuffer::OutputAttachment> colorAttachments =
-	{ Framebuffer::OutputAttachment(edgesView, SmaaRenderSystem::processFbFlags) };
-
+	vector<Framebuffer::Attachment> colorAttachments =
+	{
+		Framebuffer::Attachment(edgesView, Framebuffer::LoadOp::Clear, Framebuffer::StoreOp::Store)
+	};
 	auto framebuffer = graphicsSystem->createFramebuffer(
 		graphicsSystem->getScaledFrameSize(), std::move(colorAttachments));
 	SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.smaa.edges");
@@ -71,9 +72,10 @@ static ID<Framebuffer> createEdgesFramebuffer(GraphicsSystem* graphicsSystem, ID
 static ID<Framebuffer> createWeightsFramebuffer(GraphicsSystem* graphicsSystem)
 {
 	auto weightsView = getWeightsView(graphicsSystem, DeferredRenderSystem::Instance::get());
-	vector<Framebuffer::OutputAttachment> colorAttachments =
-	{ Framebuffer::OutputAttachment(weightsView, SmaaRenderSystem::processFbFlags) };
-
+	vector<Framebuffer::Attachment> colorAttachments =
+	{
+		Framebuffer::Attachment(weightsView, Framebuffer::LoadOp::Clear, Framebuffer::StoreOp::Store)
+	};
 	auto framebuffer = graphicsSystem->createFramebuffer(
 		graphicsSystem->getScaledFrameSize(), std::move(colorAttachments));
 	SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.smaa.weights");
@@ -82,10 +84,10 @@ static ID<Framebuffer> createWeightsFramebuffer(GraphicsSystem* graphicsSystem)
 static ID<Framebuffer> createBlendFramebuffer(GraphicsSystem* graphicsSystem)
 {
 	auto ldrBuffer = DeferredRenderSystem::Instance::get()->getLdrBuffer();
-	auto ldrBufferView = graphicsSystem->get(ldrBuffer)->getView();
-	vector<Framebuffer::OutputAttachment> colorAttachments =
-	{ Framebuffer::OutputAttachment(ldrBufferView, SmaaRenderSystem::blendFbFlags) };
-
+	vector<Framebuffer::Attachment> colorAttachments =
+	{
+		Framebuffer::Attachment(graphicsSystem->get(ldrBuffer)->getView())
+	};
 	auto framebuffer = graphicsSystem->createFramebuffer(
 		graphicsSystem->getScaledFrameSize(), std::move(colorAttachments));
 	SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.smaa.blend");
@@ -223,7 +225,6 @@ void SmaaRenderSystem::deinit()
 		graphicsSystem->destroy(weightsDS);
 		graphicsSystem->destroy(edgesDS);
 		graphicsSystem->destroy(edgesBuffer);
-		graphicsSystem->destroy(blendFramebuffer);
 		graphicsSystem->destroy(weightsFramebuffer);
 		graphicsSystem->destroy(edgesFramebuffer);
 		graphicsSystem->destroy(blendPipeline);
@@ -298,7 +299,8 @@ void SmaaRenderSystem::preUiRender()
 	}
 
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
-	auto framebufferView = graphicsSystem->get(edgesFramebuffer);
+	auto ldrFramebuffer = deferredSystem->getLdrFramebuffer();
+	auto framebufferView = graphicsSystem->get(ldrFramebuffer);
 	auto ldrCopyView = graphicsSystem->get(getLdrCopyView(graphicsSystem, deferredSystem));
 
 	PushConstants pc;
@@ -367,27 +369,17 @@ void SmaaRenderSystem::gBufferRecreate()
 		edgesBuffer = createEdgesBuffer(graphicsSystem);
 	}
 
+	auto frameSize = graphicsSystem->getScaledFrameSize();
 	if (edgesFramebuffer)
 	{
 		auto framebufferView = graphicsSystem->get(edgesFramebuffer);
-		auto edgesView = graphicsSystem->get(edgesBuffer)->getView();
-		Framebuffer::OutputAttachment colorAttachment(edgesView, processFbFlags);
-		framebufferView->update(graphicsSystem->getScaledFrameSize(), &colorAttachment, 1);
+		framebufferView->update(frameSize, graphicsSystem->get(edgesBuffer)->getView());
 	}
 	if (weightsFramebuffer)
 	{
 		auto framebufferView = graphicsSystem->get(weightsFramebuffer);
 		auto weightsView = getWeightsView(graphicsSystem, DeferredRenderSystem::Instance::get());
-		Framebuffer::OutputAttachment colorAttachment(weightsView, processFbFlags);
-		framebufferView->update(graphicsSystem->getScaledFrameSize(), &colorAttachment, 1);
-	}
-	if (blendFramebuffer)
-	{
-		auto framebufferView = graphicsSystem->get(blendFramebuffer);
-		auto ldrBuffer = DeferredRenderSystem::Instance::get()->getLdrBuffer();
-		auto ldrBufferView = graphicsSystem->get(ldrBuffer)->getView();
-		Framebuffer::OutputAttachment colorAttachment(ldrBufferView, blendFbFlags);
-		framebufferView->update(graphicsSystem->getScaledFrameSize(), &colorAttachment, 1);
+		framebufferView->update(frameSize, weightsView);
 	}
 }
 

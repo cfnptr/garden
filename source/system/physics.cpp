@@ -2110,7 +2110,7 @@ public:
 	}
 };
 
-static const JPH::BroadPhaseLayerFilter defaultbroadPhaseFilter;
+static const JPH::BroadPhaseLayerFilter defaultBroadPhaseFilter;
 static const JPH::BodyFilter defaultBodyFilter;
 
 RayCastHit PhysicsSystem::castRay(const Ray& ray, float maxDistance, int8 broadPhaseLayer, bool castInactive)
@@ -2125,7 +2125,7 @@ RayCastHit PhysicsSystem::castRay(const Ray& ray, float maxDistance, int8 broadP
 
 	JPH::RayCastResult rayCastResult;
 	if (!narrowPhaseQuery->CastRay(rayCast, rayCastResult, 
-		broadPhaseLayer > -1 ? broadPhaseFilter : defaultbroadPhaseFilter,
+		broadPhaseLayer > -1 ? broadPhaseFilter : defaultBroadPhaseFilter,
 		{}, castInactive ? defaultBodyFilter : activeBodyFilter))
 	{
 		return {};
@@ -2159,7 +2159,7 @@ void PhysicsSystem::castRay(const Ray& ray, vector<RayCastHit>& hits,
 	static const JPH::RayCastSettings settings;
 	JPH::AllHitCollisionCollector<JPH::CastRayCollector> collector;
 	narrowPhaseQuery->CastRay(rayCast, settings, collector, 
-		broadPhaseLayer > -1 ? broadPhaseFilter : defaultbroadPhaseFilter, 
+		broadPhaseLayer > -1 ? broadPhaseFilter : defaultBroadPhaseFilter, 
 		{}, castInactive ? defaultBodyFilter : activeBodyFilter);
 	if (!collector.HadHit())
 	{
@@ -2199,7 +2199,7 @@ void PhysicsSystem::collideAABB(const Aabb& aabb, vector<ShapeHit>& hits, int8 b
 
 	JPH::AllHitCollisionCollector<JPH::CollideShapeBodyCollector> collector;
 	broadPhaseQuery->CollideAABox(toAABox(aabb), collector, 
-		broadPhaseLayer > -1 ? broadPhaseFilter : defaultbroadPhaseFilter);
+		broadPhaseLayer > -1 ? broadPhaseFilter : defaultBroadPhaseFilter);
 	if (!collector.HadHit())
 	{
 		hits.resize(0);
@@ -2228,7 +2228,7 @@ void PhysicsSystem::collideSphere(Sphere sphere, vector<ShapeHit>& hits, int8 br
 
 	JPH::AllHitCollisionCollector<JPH::CollideShapeBodyCollector> collector;
 	broadPhaseQuery->CollideSphere(toVec3(sphere.getPosition()), sphere.getRadius(), 
-		collector, broadPhaseLayer > -1 ? broadPhaseFilter : defaultbroadPhaseFilter);
+		collector, broadPhaseLayer > -1 ? broadPhaseFilter : defaultBroadPhaseFilter);
 	if (!collector.HadHit())
 	{
 		hits.resize(0);
@@ -2259,7 +2259,7 @@ ShapeHit PhysicsSystem::collidePoint(f32x4 point, int8 broadPhaseLayer, bool col
 
 	JPH::AnyHitCollisionCollector<JPH::CollidePointCollector> collector;
 	narrowPhaseQuery->CollidePoint(toVec3(point), collector, 
-		broadPhaseLayer > -1 ? broadPhaseFilter : defaultbroadPhaseFilter, 
+		broadPhaseLayer > -1 ? broadPhaseFilter : defaultBroadPhaseFilter, 
 		{}, collideInactive ? defaultBodyFilter : activeBodyFilter);
 	if (!collector.HadHit())
 		return {};
@@ -2282,7 +2282,7 @@ void PhysicsSystem::collidePoint(f32x4 point, vector<ShapeHit>& hits, int8 broad
 
 	JPH::AllHitCollisionCollector<JPH::CollidePointCollector> collector;
 	narrowPhaseQuery->CollidePoint(toVec3(point), collector, 
-		broadPhaseLayer > -1 ? broadPhaseFilter : defaultbroadPhaseFilter, 
+		broadPhaseLayer > -1 ? broadPhaseFilter : defaultBroadPhaseFilter, 
 		{}, collideInactive ? defaultBodyFilter : activeBodyFilter);
 	if (!collector.HadHit())
 	{

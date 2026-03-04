@@ -24,7 +24,7 @@ namespace garden
 {
 
 /**
- * @brief 3D model LOD rendering data conatiner. (Level of detail)
+ * @brief 3D model LOD rendering data container. (Level of detail)
  */
 struct ModelLOD final
 {

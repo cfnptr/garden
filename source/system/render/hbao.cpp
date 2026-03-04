@@ -38,11 +38,11 @@ static ID<Image> createNoiseImage(GraphicsSystem* graphicsSystem)
 		hbaoNoise[i] = float4(cosf(angle), sinf(angle), rand2, 0.0f);
 	}
 
-	auto noiseImage = graphicsSystem->createImage(Image::Format::SfloatR16G16B16A16,
+	auto image = graphicsSystem->createImage(Image::Format::SfloatR16G16B16A16,
 		Image::Usage::Sampled | Image::Usage::TransferDst, { { hbaoNoise } },
 		uint2(SSAO_NOISE_SIZE), Image::Strategy::Size, Image::Format::SfloatR32G32B32A32);
-	SET_RESOURCE_DEBUG_NAME(noiseImage, "image.hbao.noise");
-	return noiseImage;
+	SET_RESOURCE_DEBUG_NAME(image, "image.hbao.noise");
+	return image;
 }
 
 //**********************************************************************************************************************
@@ -179,7 +179,7 @@ void HbaoRenderSystem::aoRender()
 	{
 		// TODO: check if ortho projInfo is correct.
 		// If not, problem is in difference between GLM and our ortho.
-		abort(); // TODO: support othrographic depth linearization.
+		abort(); // TODO: support orthographic depth linearization.
 
 		pc.projInfo = float4
 		(

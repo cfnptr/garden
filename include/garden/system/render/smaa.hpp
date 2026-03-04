@@ -44,8 +44,6 @@ public:
 	};
 
 	static constexpr Image::Format edgesBufferFormat = Image::Format::UnormR8G8;
-	static constexpr Framebuffer::OutputAttachment::Flags processFbFlags = { true, false, true };
-	static constexpr Framebuffer::OutputAttachment::Flags blendFbFlags = { false, true, true };
 private:
 	Ref<Image> searchLUT = {}, areaLUT = {};
 	ID<Image> edgesBuffer = {};

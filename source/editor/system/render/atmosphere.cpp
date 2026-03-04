@@ -88,7 +88,7 @@ void AtmosphereEditorSystem::preUiRender()
 			ImGui::DragFloat("Ground Radius", &atmosphereSystem->groundRadius, 10.0f, 0.001f, FLT_MAX, "%.3f km");
 			if (ImGui::BeginItemTooltip())
 			{
-				ImGui::Text("Mean radius of the planet in kilometres.");
+				ImGui::Text("Mean radius of the planet in kilometers.");
 				ImGui::EndTooltip();
 			}
 			ImGui::SliderFloat3("Grounds Albedo", (float*)&atmosphereSystem->groundAlbedo, 0.0f, 1.0f);
@@ -146,11 +146,11 @@ void AtmosphereEditorSystem::preUiRender()
 				ImGui::Text("Small particles layer density, Rayleigh scattering strength.");
 				ImGui::EndTooltip();
 			}
-			ImGui::DragFloat("Layer Height", &atmosphereSystem->rayleightScaleHeight, 
+			ImGui::DragFloat("Layer Height", &atmosphereSystem->rayleighScaleHeight, 
 				0.01f, 0.001f, FLT_MAX, "%.3f km");
 			if (ImGui::BeginItemTooltip())
 			{
-				ImGui::Text("Small particles layer height in kilometres.");
+				ImGui::Text("Small particles layer height in kilometers.");
 				ImGui::EndTooltip();
 			}
 			atmosphereSystem->rayleighScattering = scattering * max(density, 0.000001f);
@@ -192,7 +192,7 @@ void AtmosphereEditorSystem::preUiRender()
 			ImGui::DragFloat("Layer Height", &atmosphereSystem->mieScaleHeight, 0.01f, 0.001f, FLT_MAX, "%.3f km");
 			if (ImGui::BeginItemTooltip())
 			{
-				ImGui::Text("Big particles layer height in kilometres.");
+				ImGui::Text("Big particles layer height in kilometers.");
 				ImGui::EndTooltip();
 			}
 			ImGui::SliderFloat("Phase G", &atmosphereSystem->miePhaseG, 0.0f, 1.0f);
@@ -226,7 +226,7 @@ void AtmosphereEditorSystem::preUiRender()
 			ImGui::DragFloat("Layer Height", &atmosphereSystem->ozoneLayerWidth, 0.01f, 0.0f, FLT_MAX, "%.3f km");
 			if (ImGui::BeginItemTooltip())
 			{
-				ImGui::Text("Ozone layer height in kilometres.");
+				ImGui::Text("Ozone layer height in kilometers.");
 				ImGui::EndTooltip();
 			}
 			ImGui::DragFloat("Layer Slope", &atmosphereSystem->ozoneLayerSlope, 0.01f, 0.0f, FLT_MAX);
@@ -255,7 +255,7 @@ void AtmosphereEditorSystem::preUiRender()
 		if (ImGui::Button("Earth"))
 		{
 			atmosphereSystem->rayleighScattering = AtmosphereRenderSystem::earthRayleighScattering;
-			atmosphereSystem->rayleightScaleHeight = AtmosphereRenderSystem::earthRayleightScaleHeight;
+			atmosphereSystem->rayleighScaleHeight = AtmosphereRenderSystem::earthRayleighScaleHeight;
 			atmosphereSystem->mieScattering = AtmosphereRenderSystem::earthMieScattering;
 			atmosphereSystem->mieScaleHeight = AtmosphereRenderSystem::earthMieScaleHeight;
 			atmosphereSystem->mieAbsorption = AtmosphereRenderSystem::earthMieAbsorption;
@@ -272,7 +272,7 @@ void AtmosphereEditorSystem::preUiRender()
 		if (ImGui::Button("Mars"))
 		{
 			atmosphereSystem->rayleighScattering = AtmosphereRenderSystem::marsRayleighScattering;
-			atmosphereSystem->rayleightScaleHeight = AtmosphereRenderSystem::marsRayleightScaleHeight;
+			atmosphereSystem->rayleighScaleHeight = AtmosphereRenderSystem::marsRayleighScaleHeight;
 			atmosphereSystem->mieScattering = AtmosphereRenderSystem::marsMieScattering;
 			atmosphereSystem->mieScaleHeight = AtmosphereRenderSystem::marsMieScaleHeight;
 			atmosphereSystem->mieAbsorption = AtmosphereRenderSystem::marsMieAbsorption;

@@ -58,9 +58,9 @@ void MeshRenderSystem::init()
 	{
 		ECSM_SUBSCRIBE_TO_EVENT("PreDeferredRender", MeshRenderSystem::preDeferredRender);
 		ECSM_SUBSCRIBE_TO_EVENT("DeferredRender", MeshRenderSystem::deferredRender);
-		ECSM_SUBSCRIBE_TO_EVENT("DepthHdrRender", MeshRenderSystem::depthHdrRender);
+		ECSM_SUBSCRIBE_TO_EVENT("DsHdrRender", MeshRenderSystem::dsHdrRender);
 		ECSM_SUBSCRIBE_TO_EVENT("PreRefrRender", MeshRenderSystem::preRefrRender);
-		ECSM_SUBSCRIBE_TO_EVENT("RefractedRender", MeshRenderSystem::refractedRender);
+		ECSM_SUBSCRIBE_TO_EVENT("RefrRender", MeshRenderSystem::refrRender);
 		ECSM_SUBSCRIBE_TO_EVENT("PreTransDepthRender", MeshRenderSystem::preTransDepthRender);
 		ECSM_SUBSCRIBE_TO_EVENT("TransDepthRender", MeshRenderSystem::transDepthRender);
 		ECSM_SUBSCRIBE_TO_EVENT("UiRender", MeshRenderSystem::uiRender);
@@ -72,7 +72,7 @@ void MeshRenderSystem::init()
 		}
 		else
 		{
-			ECSM_SUBSCRIBE_TO_EVENT("Translucent", MeshRenderSystem::translucentRender);
+			ECSM_SUBSCRIBE_TO_EVENT("TransRender", MeshRenderSystem::transRender);
 		}
 	}
 }
@@ -90,9 +90,9 @@ void MeshRenderSystem::deinit()
 		{
 			ECSM_UNSUBSCRIBE_FROM_EVENT("PreDeferredRender", MeshRenderSystem::preDeferredRender);
 			ECSM_UNSUBSCRIBE_FROM_EVENT("DeferredRender", MeshRenderSystem::deferredRender);
-			ECSM_UNSUBSCRIBE_FROM_EVENT("DepthHdrRender", MeshRenderSystem::depthHdrRender);
+			ECSM_UNSUBSCRIBE_FROM_EVENT("DsHdrRender", MeshRenderSystem::dsHdrRender);
 			ECSM_UNSUBSCRIBE_FROM_EVENT("PreRefrRender", MeshRenderSystem::preRefrRender);
-			ECSM_UNSUBSCRIBE_FROM_EVENT("RefractedRender", MeshRenderSystem::refractedRender);
+			ECSM_UNSUBSCRIBE_FROM_EVENT("RefrRender", MeshRenderSystem::refrRender);
 			ECSM_UNSUBSCRIBE_FROM_EVENT("PreTransDepthRender", MeshRenderSystem::preTransDepthRender);
 			ECSM_UNSUBSCRIBE_FROM_EVENT("TransDepthRender", MeshRenderSystem::transDepthRender);
 			ECSM_UNSUBSCRIBE_FROM_EVENT("UiRender", MeshRenderSystem::uiRender);
@@ -104,7 +104,7 @@ void MeshRenderSystem::deinit()
 			}
 			else
 			{
-				ECSM_UNSUBSCRIBE_FROM_EVENT("Translucent", MeshRenderSystem::translucentRender);
+				ECSM_UNSUBSCRIBE_FROM_EVENT("TransRender", MeshRenderSystem::transRender);
 			}
 		}
 
@@ -386,7 +386,7 @@ void MeshRenderSystem::prepareMeshes(const Frustum& viewFrustum,
 	uint32 transMeshMaxCount = 0, uiMeshMaxCount = 0;
 	transDrawIndex.store(0); uiDrawIndex.store(0);
 	unsortedBufferCount = sortedBufferCount = 0;
-	hasAnyRefr = hasAnyOIT = hasAnyTransDepth = false;
+	hasAnyRefr = hasAnyOIT = hasAnyTD = false;
 
 	for (auto meshSystem : meshSystems)
 	{
@@ -537,7 +537,7 @@ void MeshRenderSystem::prepareMeshes(const Frustum& viewFrustum,
 
 			hasAnyRefr |= renderType == MeshRenderType::Refracted;
 			hasAnyOIT |= renderType == MeshRenderType::OIT;
-			hasAnyTransDepth |= renderType == MeshRenderType::TransDepth;
+			hasAnyTD |= renderType == MeshRenderType::TransDepth;
 			
 			if (threadSystem)
 			{
@@ -851,9 +851,7 @@ void MeshRenderSystem::renderShadows()
 		return;
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	graphicsSystem->startRecording(CommandBufferType::Frame);
-	BEGIN_GPU_DEBUG_LABEL("Shadow Pass");
-	graphicsSystem->stopRecording();
+	auto hasAnyShadow = false;
 
 	for (auto system : *systemGroup)
 	{
@@ -875,6 +873,14 @@ void MeshRenderSystem::renderShadows()
 
 				if (shadowSystem->beginShadowRender(passIndex, MeshRenderType::Opaque))
 				{
+					#if GARDEN_DEBUG
+					if (!hasAnyShadow)
+					{
+						BEGIN_GPU_DEBUG_LABEL("Shadow Pass");
+						hasAnyShadow = true;
+					}
+					#endif
+
 					renderUnsorted(viewProj, MeshRenderType::Opaque, passIndex);
 					renderUnsorted(viewProj, MeshRenderType::Color, passIndex);
 					// Note: No TransDepth rendering for shadows, expected RT instead.
@@ -887,6 +893,14 @@ void MeshRenderSystem::renderShadows()
 
 				if (!isNonTranslucent && shadowSystem->beginShadowRender(passIndex, MeshRenderType::Translucent))
 				{
+					#if GARDEN_DEBUG
+					if (!hasAnyShadow)
+					{
+						BEGIN_GPU_DEBUG_LABEL("Shadow Pass");
+						hasAnyShadow = true;
+					}
+					#endif
+
 					renderUnsorted(viewProj, MeshRenderType::Refracted, passIndex);
 					renderUnsorted(viewProj, MeshRenderType::OIT, passIndex);
 					renderSorted(viewProj, MeshRenderType::Translucent, passIndex);
@@ -899,9 +913,14 @@ void MeshRenderSystem::renderShadows()
 		cleanupMeshes();
 	}
 
-	graphicsSystem->startRecording(CommandBufferType::Frame);
-	END_GPU_DEBUG_LABEL();
-	graphicsSystem->stopRecording();
+	#if GARDEN_DEBUG
+	if (hasAnyShadow)
+	{
+		graphicsSystem->startRecording(CommandBufferType::Frame);
+		END_GPU_DEBUG_LABEL();
+		graphicsSystem->stopRecording();
+	}
+	#endif
 }
 
 //**********************************************************************************************************************
@@ -966,9 +985,9 @@ void MeshRenderSystem::deferredRender()
 	const auto& cc = GraphicsSystem::Instance::get()->getCommonConstants();
 	renderUnsorted(cc.viewProj, MeshRenderType::Opaque, -1);
 }
-void MeshRenderSystem::depthHdrRender()
+void MeshRenderSystem::dsHdrRender()
 {
-	SET_CPU_ZONE_SCOPED("Mesh Depth HDR Render");
+	SET_CPU_ZONE_SCOPED("Mesh Depth/Stencil HDR Render");
 
 	const auto& cc = GraphicsSystem::Instance::get()->getCommonConstants();
 	renderUnsorted(cc.viewProj, MeshRenderType::Color, -1);
@@ -979,9 +998,9 @@ void MeshRenderSystem::preRefrRender()
 
 	if (!hasAnyRefr)
 		return;
-	DeferredRenderSystem::Instance::get()->markAnyRefraction();
+	DeferredRenderSystem::Instance::get()->markAnyRefracted();
 }
-void MeshRenderSystem::refractedRender()
+void MeshRenderSystem::refrRender()
 {
 	SET_CPU_ZONE_SCOPED("Mesh Refracted Render");
 
@@ -991,7 +1010,7 @@ void MeshRenderSystem::refractedRender()
 	const auto& cc = GraphicsSystem::Instance::get()->getCommonConstants();
 	renderUnsorted(cc.viewProj, MeshRenderType::Refracted, -1);
 }
-void MeshRenderSystem::translucentRender()
+void MeshRenderSystem::transRender()
 {
 	SET_CPU_ZONE_SCOPED("Mesh Translucent Render");
 
@@ -1005,7 +1024,7 @@ void MeshRenderSystem::preTransDepthRender()
 {
 	SET_CPU_ZONE_SCOPED("Mesh Pre Translucent Depth Render");
 
-	if (!hasAnyTransDepth)
+	if (!hasAnyTD)
 		return;
 	DeferredRenderSystem::Instance::get()->markAnyTransDepth();
 }

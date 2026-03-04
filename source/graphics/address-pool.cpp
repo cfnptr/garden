@@ -210,22 +210,22 @@ void AddressPool::addBufferBarriers(Buffer::BarrierState newState)
 	#if GARDEN_DEBUG
 	if (graphicsAPI->currentCommandBuffer == graphicsAPI->transferCommandBuffer)
 	{
-		for (uint32 i = 0; i < (uint32)resources.size(); i++)
+		for (auto resource : resources)
 		{
-			if (!resources[i])
+			if (!resource)
 				continue;
-			auto bufferView = graphicsAPI->bufferPool.get(resources[i]);
+			auto bufferView = graphicsAPI->bufferPool.get(resource);
 			GARDEN_ASSERT_MSG(hasAnyFlag(bufferView->getUsage(), Buffer::Usage::TransferQ), 
 				"Buffer [" + bufferView->getDebugName() + "] does not have transfer queue flag");
 		}
 	}
 	else if (graphicsAPI->currentCommandBuffer == graphicsAPI->computeCommandBuffer)
 	{
-		for (uint32 i = 0; i < (uint32)resources.size(); i++)
+		for (auto resource : resources)
 		{
-			if (!resources[i])
+			if (!resource)
 				continue;
-			auto bufferView = graphicsAPI->bufferPool.get(resources[i]);
+			auto bufferView = graphicsAPI->bufferPool.get(resource);
 			GARDEN_ASSERT_MSG(hasAnyFlag(bufferView->getUsage(), Buffer::Usage::ComputeQ), 
 				"Buffer [" + bufferView->getDebugName() + "] does not have compute queue flag");
 		}

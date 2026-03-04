@@ -42,19 +42,20 @@ static void createGBuffers(GraphicsSystem* graphicsSystem,
 	};
 
 	const Image::Mips mips = { { nullptr } };
-	auto framebufferSize = graphicsSystem->getScaledFrameSize();
-	gBuffers.resize(G_BUFFER_COUNT);
+	auto frameSize = graphicsSystem->getScaledFrameSize();
+	gBuffers.resize(G_BUFFER_COUNT); auto gBufferData = gBuffers.data();
 
 	for (uint8 i = 0; i < G_BUFFER_COUNT; i++)
 	{
 		if (formats[i] == Image::Format::Undefined)
 		{
-			gBuffers[i] = {};
+			gBufferData[i] = {};
 			continue;
 		}
 
-		gBuffers[i] = graphicsSystem->createImage(formats[i], usage, mips, framebufferSize, strategy);
-		SET_RESOURCE_DEBUG_NAME(gBuffers[i], "image.deferred.gBuffer" + to_string(i));
+		auto gBuffer = graphicsSystem->createImage(formats[i], usage, mips, frameSize, strategy);
+		SET_RESOURCE_DEBUG_NAME(gBuffer, "image.deferred.gBuffer" + to_string(i));
+		gBufferData[i] = gBuffer;
 	}
 }
 
@@ -71,22 +72,21 @@ static ID<Image> createDepthStencilBuffer(GraphicsSystem* graphicsSystem, bool u
 //**********************************************************************************************************************
 static ID<Image> createHdrBuffer(GraphicsSystem* graphicsSystem, bool isCopy, bool isFullSize)
 {
-	auto hdrBufferSize = isFullSize ? graphicsSystem->getFramebufferSize() : graphicsSystem->getScaledFrameSize();
+	auto frameSize = isFullSize ? graphicsSystem->getFramebufferSize() : graphicsSystem->getScaledFrameSize();
 
 	uint8 lodCount = 1, layerCount = 1;
 	if (isCopy)
 	{
-		lodCount = brdf::calcGgxBlurLodCount(hdrBufferSize);
+		lodCount = brdf::calcGgxBlurLodCount(frameSize);
 		layerCount = 2;
 	}
 
 	Image::Mips mips(lodCount);
-	for (uint8 i = 0; i < lodCount; i++)
-		mips[i].resize(layerCount);
+	for (auto& mip : mips) mip.resize(layerCount);
 
 	auto image = graphicsSystem->createImage(DeferredRenderSystem::hdrBufferFormat, Image::Usage::ColorAttachment | 
 		Image::Usage::Sampled | Image::Usage::Storage | Image::Usage::Fullscreen | Image::Usage::TransferSrc | 
-		Image::Usage::TransferDst, mips, hdrBufferSize, Image::Strategy::Size);
+		Image::Usage::TransferDst, mips, frameSize, Image::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(image, "image.deferred.hdr" + 
 		string(isCopy ? "Copy" : "") + string(isFullSize ? "Full" : ""));
 	return image;
@@ -135,16 +135,15 @@ static ID<Image> createTransBuffer(GraphicsSystem* graphicsSystem)
 }
 static ID<Image> createDisocclMap(GraphicsSystem* graphicsSystem)
 {
-	auto disocclMapSize = graphicsSystem->getScaledFrameSize();
-	auto mipCount = calcMipCount(disocclMapSize);
+	auto frameSize = graphicsSystem->getScaledFrameSize();
+	auto mipCount = calcMipCount(frameSize);
 
 	Image::Mips mips(mipCount);
-	for (uint8 i = 0; i < mipCount; i++)
-		mips[i].resize(1);
+	for (auto& mip : mips) mip.resize(1);
 
 	auto image = graphicsSystem->createImage(DeferredRenderSystem::disocclMapFormat, 
 		Image::Usage::TransferSrc | Image::Usage::TransferDst | Image::Usage::ColorAttachment | 
-		Image::Usage::Sampled | Image::Usage::Fullscreen, mips, disocclMapSize, Image::Strategy::Size);
+		Image::Usage::Sampled | Image::Usage::Fullscreen, mips, frameSize, Image::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(image, "image.deferred.disoccl");
 	return image;
 }
@@ -164,7 +163,7 @@ static ID<ImageView> createDepthCopyIV(GraphicsSystem* graphicsSystem, ID<Image>
 	SET_RESOURCE_DEBUG_NAME(imageView, "imageView.deferred.depthCopy");
 	return imageView;
 }
-static ID<ImageView> createDepthImageView(GraphicsSystem* graphicsSystem, ID<Image> depthStencilBuffer)
+static ID<ImageView> createDepthOnlyIV(GraphicsSystem* graphicsSystem, ID<Image> depthStencilBuffer)
 {
 	auto bufferView = graphicsSystem->get(depthStencilBuffer);
 	if (isFormatStencilOnly(bufferView->getFormat()))
@@ -175,7 +174,7 @@ static ID<ImageView> createDepthImageView(GraphicsSystem* graphicsSystem, ID<Ima
 	SET_RESOURCE_DEBUG_NAME(imageView, "imageView.deferred.depth");
 	return imageView;
 }
-static ID<ImageView> createStencilImageView(GraphicsSystem* graphicsSystem, ID<Image> depthStencilBuffer)
+static ID<ImageView> createStencilOnlyIV(GraphicsSystem* graphicsSystem, ID<Image> depthStencilBuffer)
 {
 	auto bufferView = graphicsSystem->get(depthStencilBuffer);
 	if (isFormatDepthOnly(bufferView->getFormat()))
@@ -199,21 +198,23 @@ static ID<ImageView> createHdrCopyIV(GraphicsSystem* graphicsSystem, ID<Image> h
 static ID<Framebuffer> createGFramebuffer(GraphicsSystem* graphicsSystem, 
 	const vector<ID<Image>> gBuffers, ID<ImageView> depthStencilIV)
 {
-	vector<Framebuffer::OutputAttachment> colorAttachments(G_BUFFER_COUNT);
+	vector<Framebuffer::Attachment> colorAttachments(G_BUFFER_COUNT);
+	auto colorAttachmentData = colorAttachments.data(); auto gBufferData = gBuffers.data();
+
 	for (uint8 i = 0; i < G_BUFFER_COUNT; i++)
 	{
-		if (!gBuffers[i])
+		if (!gBufferData[i])
 		{
-			colorAttachments[i] = {};
+			colorAttachmentData[i] = {};
 			continue;
 		}
 
-		auto gBufferView = graphicsSystem->get(gBuffers[i])->getView();
-		colorAttachments[i] = Framebuffer::OutputAttachment(gBufferView, DeferredRenderSystem::gBufferFlags);
+		colorAttachmentData[i] = Framebuffer::Attachment(graphicsSystem->get(
+			gBufferData[i])->getView(), Framebuffer::LoadOp::DontCare, Framebuffer::StoreOp::Store);
 	}
 
-	Framebuffer::OutputAttachment depthStencilAttachment(
-		depthStencilIV, DeferredRenderSystem::gBufferDepthFlags);
+	Framebuffer::Attachment depthStencilAttachment(depthStencilIV, 
+		Framebuffer::LoadOp::Clear, Framebuffer::StoreOp::Store);
 	auto framebuffer = graphicsSystem->createFramebuffer(graphicsSystem->getScaledFrameSize(), 
 		std::move(colorAttachments), depthStencilAttachment); 
 	SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.deferred.gBuffer");
@@ -222,60 +223,58 @@ static ID<Framebuffer> createGFramebuffer(GraphicsSystem* graphicsSystem,
 
 static ID<Framebuffer> createHdrFramebuffer(GraphicsSystem* graphicsSystem, ID<Image> hdrBuffer, bool isFullSize)
 {
-	auto hdrBufferView = graphicsSystem->get(hdrBuffer)->getView();
-	vector<Framebuffer::OutputAttachment> colorAttachments =
-	{ Framebuffer::OutputAttachment(hdrBufferView, DeferredRenderSystem::hdrBufferFlags) };
-
-	auto framebufferSize = isFullSize ? 
-		graphicsSystem->getFramebufferSize() : graphicsSystem->getScaledFrameSize();
-	auto framebuffer = graphicsSystem->createFramebuffer(framebufferSize, std::move(colorAttachments));
+	vector<Framebuffer::Attachment> colorAttachments =
+	{
+		Framebuffer::Attachment(graphicsSystem->get(hdrBuffer)->getView())
+	};
+	auto frameSize = isFullSize ? graphicsSystem->getFramebufferSize() : graphicsSystem->getScaledFrameSize();
+	auto framebuffer = graphicsSystem->createFramebuffer(frameSize, std::move(colorAttachments));
 	SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.deferred.hdr" + string(isFullSize ? "Full" : ""));
 	return framebuffer;
 }
-static ID<Framebuffer> createDepthHdrFB(GraphicsSystem* graphicsSystem, 
+static ID<Framebuffer> createDepthStencilHdrFB(GraphicsSystem* graphicsSystem, 
 	ID<Image> hdrBuffer, ID<ImageView> depthStencilIV)
 {
-	auto hdrBufferView = graphicsSystem->get(hdrBuffer)->getView();
-	vector<Framebuffer::OutputAttachment> colorAttachments =
-	{ Framebuffer::OutputAttachment(hdrBufferView, DeferredRenderSystem::hdrBufferFlags) };
-	Framebuffer::OutputAttachment depthStencilAttachment(
-		depthStencilIV, DeferredRenderSystem::hdrBufferDepthFlags);
-
+	vector<Framebuffer::Attachment> colorAttachments =
+	{
+		Framebuffer::Attachment(graphicsSystem->get(hdrBuffer)->getView())
+	};
+	Framebuffer::Attachment depthStencilAttachment(depthStencilIV);
 	auto framebuffer = graphicsSystem->createFramebuffer(graphicsSystem->getScaledFrameSize(), 
 		std::move(colorAttachments), depthStencilAttachment);
-	SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.deferred.depthHdr");
+	SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.deferred.depthStencilHdr");
 	return framebuffer;
 }
 static ID<Framebuffer> createLdrFramebuffer(GraphicsSystem* graphicsSystem, ID<Image> ldrBuffer)
 {
-	auto ldrBufferView = graphicsSystem->get(ldrBuffer)->getView();
-	vector<Framebuffer::OutputAttachment> colorAttachments =
-	{ Framebuffer::OutputAttachment(ldrBufferView, DeferredRenderSystem::ldrBufferFlags) };
-
+	vector<Framebuffer::Attachment> colorAttachments =
+	{
+		Framebuffer::Attachment(graphicsSystem->get(ldrBuffer)->getView())
+	};
 	auto framebuffer = graphicsSystem->createFramebuffer(
 		graphicsSystem->getScaledFrameSize(), std::move(colorAttachments));
 	SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.deferred.ldr");
 	return framebuffer;
 }
-static ID<Framebuffer> createDepthLdrFB(GraphicsSystem* graphicsSystem, 
+static ID<Framebuffer> createDepthStencilLdrFB(GraphicsSystem* graphicsSystem, 
 	ID<Image> ldrBuffer, ID<ImageView> depthStencilIV)
 {
-	auto ldrBufferView = graphicsSystem->get(ldrBuffer)->getView();
-	vector<Framebuffer::OutputAttachment> colorAttachments =
-	{ Framebuffer::OutputAttachment(ldrBufferView, DeferredRenderSystem::ldrBufferFlags) };
-	Framebuffer::OutputAttachment depthStencilAttachment(
-		depthStencilIV, DeferredRenderSystem::ldrBufferDepthFlags);
-
+	vector<Framebuffer::Attachment> colorAttachments =
+	{
+		Framebuffer::Attachment(graphicsSystem->get(ldrBuffer)->getView())
+	};
+	Framebuffer::Attachment depthStencilAttachment(depthStencilIV);
 	auto framebuffer = graphicsSystem->createFramebuffer(graphicsSystem->getScaledFrameSize(), 
 		std::move(colorAttachments), depthStencilAttachment);
-	SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.deferred.depthLdr");
+	SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.deferred.depthStencilLdr");
 	return framebuffer;
 }
 static ID<Framebuffer> createDisocclusionFB(GraphicsSystem* graphicsSystem, ID<Image> disocclMap)
 {
-	auto disocclMapView = graphicsSystem->get(disocclMap)->getView(0, 0);
-	vector<Framebuffer::OutputAttachment> colorAttachments =
-	{ Framebuffer::OutputAttachment(disocclMapView, DeferredRenderSystem::disocclMapFlags) };
+	vector<Framebuffer::Attachment> colorAttachments =
+	{
+		Framebuffer::Attachment(graphicsSystem->get(disocclMap)->getView(0, 0))
+	};
 	auto framebuffer = graphicsSystem->createFramebuffer(
 		graphicsSystem->getScaledFrameSize(), std::move(colorAttachments));
 	SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.deferred.disocclMap");
@@ -285,10 +284,10 @@ static ID<Framebuffer> createDisocclusionFB(GraphicsSystem* graphicsSystem, ID<I
 //**********************************************************************************************************************
 static ID<Framebuffer> createUiFramebuffer(GraphicsSystem* graphicsSystem, ID<Image> uiBuffer)
 {
-	auto uiBufferView = graphicsSystem->get(uiBuffer)->getView();
-	vector<Framebuffer::OutputAttachment> colorAttachments =
-	{ Framebuffer::OutputAttachment(uiBufferView, DeferredRenderSystem::uiBufferFlags) };
-
+	vector<Framebuffer::Attachment> colorAttachments =
+	{
+		Framebuffer::Attachment(graphicsSystem->get(uiBuffer)->getView())
+	};
 	auto framebuffer = graphicsSystem->createFramebuffer(
 		graphicsSystem->getFramebufferSize(), std::move(colorAttachments));
 	SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.deferred.ui");
@@ -297,33 +296,30 @@ static ID<Framebuffer> createUiFramebuffer(GraphicsSystem* graphicsSystem, ID<Im
 static ID<Framebuffer> createOitFramebuffer(GraphicsSystem* graphicsSystem, 
 	ID<Image> oitAccumBuffer, ID<Image> oitRevealBuffer, ID<ImageView> depthStencilIV)
 {
-	auto oitAccumBufferView = graphicsSystem->get(oitAccumBuffer)->getView();
-	auto oitRevealBufferView = graphicsSystem->get(oitRevealBuffer)->getView();
-
-	vector<Framebuffer::OutputAttachment> colorAttachments =
+	vector<Framebuffer::Attachment> colorAttachments =
 	{
-		Framebuffer::OutputAttachment(oitAccumBufferView, DeferredRenderSystem::oitBufferFlags),
-		Framebuffer::OutputAttachment(oitRevealBufferView, DeferredRenderSystem::oitBufferFlags)
+		Framebuffer::Attachment(graphicsSystem->get(oitAccumBuffer)->getView(), 
+			Framebuffer::LoadOp::Clear, Framebuffer::StoreOp::Store),
+		Framebuffer::Attachment(graphicsSystem->get(oitRevealBuffer)->getView(), 
+			Framebuffer::LoadOp::Clear, Framebuffer::StoreOp::Store)
 	};
-	Framebuffer::OutputAttachment depthStencilAttachment(
-		depthStencilIV, DeferredRenderSystem::oitBufferDepthFlags);
-
+	Framebuffer::Attachment depthStencilAttachment(depthStencilIV, 
+		Framebuffer::LoadOp::Load, Framebuffer::StoreOp::None);
 	auto framebuffer = graphicsSystem->createFramebuffer(graphicsSystem->getScaledFrameSize(), 
 		std::move(colorAttachments), depthStencilAttachment);
 	SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.deferred.oit");
 	return framebuffer;
 }
 static ID<Framebuffer> createTransDepthFB(GraphicsSystem* graphicsSystem, 
-	ID<Image> transBuffer, ID<ImageView> depthStencilIV)
+	ID<Image> transBuffer, ID<ImageView> depthOnlyIV)
 {
-	auto transBufferView = graphicsSystem->get(transBuffer)->getView();
 	GARDEN_ASSERT(graphicsSystem->get(transBuffer)->getFormat() == Image::Format::UnormR8);
-
-	vector<Framebuffer::OutputAttachment> colorAttachments =
-	{ Framebuffer::OutputAttachment(transBufferView, DeferredRenderSystem::transBufferFlags) };
-	Framebuffer::OutputAttachment depthStencilAttachment(
-		depthStencilIV, DeferredRenderSystem::transBufferDepthFlags);
-
+	vector<Framebuffer::Attachment> colorAttachments =
+	{
+		Framebuffer::Attachment(graphicsSystem->get(transBuffer)->getView(), 
+			Framebuffer::LoadOp::Clear, Framebuffer::StoreOp::Store)
+	};
+	Framebuffer::Attachment depthStencilAttachment(depthOnlyIV);
 	auto framebuffer = graphicsSystem->createFramebuffer(graphicsSystem->getScaledFrameSize(), 
 		std::move(colorAttachments), depthStencilAttachment);
 	SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.deferred.transDepth");
@@ -369,20 +365,20 @@ DeferredRenderSystem::DeferredRenderSystem(Options options,
 	manager->registerEvent("DeferredRender");
 	manager->registerEvent("PreHdrRender");
 	manager->registerEvent("HdrRender");
-	manager->registerEvent("PreDepthHdrRender");
-	manager->registerEvent("DepthHdrRender");
+	manager->registerEvent("PreDsHdrRender");
+	manager->registerEvent("DsHdrRender");
 	manager->registerEvent("PreRefrRender");
-	manager->registerEvent("RefractedRender");
+	manager->registerEvent("RefrRender");
 	manager->registerEvent("PreTransRender");
-	manager->registerEvent("TranslucentRender");
+	manager->registerEvent("TranslRender");
 	manager->registerEvent("PreTransDepthRender");
 	manager->registerEvent("TransDepthRender");
 	manager->registerEvent("PreOitRender");
 	manager->registerEvent("OitRender");
 	manager->registerEvent("PreLdrRender");
 	manager->registerEvent("LdrRender");
-	manager->registerEvent("PreDepthLdrRender");
-	manager->registerEvent("DepthLdrRender");
+	manager->registerEvent("PreDsLdrRender");
+	manager->registerEvent("DsLdrRender");
 	manager->registerEvent("PostLdrToUI");
 	manager->tryRegisterEvent("PreUiRender");
 	manager->tryRegisterEvent("UiRender");
@@ -403,20 +399,20 @@ DeferredRenderSystem::~DeferredRenderSystem()
 		manager->unregisterEvent("DeferredRender");
 		manager->unregisterEvent("PreHdrRender");
 		manager->unregisterEvent("HdrRender");
-		manager->unregisterEvent("PreDepthHdrRender");
-		manager->unregisterEvent("DepthHdrRender");
+		manager->unregisterEvent("PreDsHdrRender");
+		manager->unregisterEvent("DsHdrRender");
 		manager->unregisterEvent("PreRefrRender");
-		manager->unregisterEvent("RefractedRender");
+		manager->unregisterEvent("RefrRender");
 		manager->unregisterEvent("PreTransRender");
-		manager->unregisterEvent("TranslucentRender");
+		manager->unregisterEvent("TransRender");
 		manager->unregisterEvent("PreTransDepthRender");
 		manager->unregisterEvent("TransDepthRender");
 		manager->unregisterEvent("PreOitRender");
 		manager->unregisterEvent("OitRender");
 		manager->unregisterEvent("PreLdrRender");
 		manager->unregisterEvent("LdrRender");
-		manager->unregisterEvent("PreDepthLdrRender");
-		manager->unregisterEvent("DepthLdrRender");
+		manager->unregisterEvent("PreDsLdrRender");
+		manager->unregisterEvent("DsLdrRender");
 		manager->unregisterEvent("PostLdrToUI");
 		manager->tryUnregisterEvent("PreUiRender");
 		manager->tryUnregisterEvent("UiRender");
@@ -457,14 +453,14 @@ void DeferredRenderSystem::deinit()
 		graphicsSystem->destroy(transDepthFB);
 		graphicsSystem->destroy(oitFramebuffer);
 		graphicsSystem->destroy(uiFramebuffer);
-		graphicsSystem->destroy(depthLdrFB);
+		graphicsSystem->destroy(depthStencilLdrFB);
 		graphicsSystem->destroy(ldrFramebuffer);
-		graphicsSystem->destroy(depthHdrFB);
+		graphicsSystem->destroy(depthStencilHdrFB);
 		graphicsSystem->destroy(hdrFramebuffer);
 		graphicsSystem->destroy(gFramebuffer);
 		graphicsSystem->destroy(hdrCopyIV);
-		graphicsSystem->destroy(stencilImageView);
-		graphicsSystem->destroy(depthImageView);
+		graphicsSystem->destroy(stencilOnlyIV);
+		graphicsSystem->destroy(depthOnlyIV);
 		graphicsSystem->destroy(depthCopyIV);
 		graphicsSystem->destroy(depthStencilIV);
 		if (upscaleHdrBuffer != hdrBuffer)
@@ -584,13 +580,12 @@ void DeferredRenderSystem::render()
 			if (!disocclDS)
 			{
 				auto uniforms = getDisocclUniforms(graphicsSystem, 
-					getDepthImageView(), getDepthCopyIV(), getGFramebuffer());
+					getDepthOnlyIV(), getDepthCopyIV(), getGFramebuffer());
 				disocclDS = graphicsSystem->createDescriptorSet(disocclPipeline, std::move(uniforms));
 				SET_RESOURCE_DEBUG_NAME(disocclDS, "descriptorSet.deferred.disoccl");
 			}
 
 			auto pipelineView = graphicsSystem->get(disocclPipeline);
-			auto framebufferSize = graphicsSystem->getScaledFrameSize();
 			auto& cc = graphicsSystem->getCommonConstants();
 
 			DisocclPC pc;
@@ -598,8 +593,12 @@ void DeferredRenderSystem::render()
 			pc.threshold = disocclThreshold;
 			pc.velFactor = disocclVelFactor;
 
+			auto framebuffer = getDisocclusionFB();
+			auto framebufferView = graphicsSystem->get(framebuffer);
+			framebufferView->updateDepthStencil(anyDisoccl ? Framebuffer::LoadOp::Load : 
+				Framebuffer::LoadOp::DontCare, Framebuffer::StoreOp::Store);
 			{
-				RenderPass renderPass(getDisocclusionFB(), float4::zero);
+				RenderPass renderPass(framebuffer, float4::zero);
 				pipelineView->bind();
 				pipelineView->setViewportScissor();
 				pipelineView->bindDescriptorSet(disocclDS);
@@ -634,21 +633,21 @@ void DeferredRenderSystem::render()
 		graphicsSystem->stopRecording();
 	}
 
-	event = &manager->getEvent("PreDepthHdrRender");
+	event = &manager->getEvent("PreDsHdrRender");
 	if (event->hasSubscribers())
 	{
-		SET_CPU_ZONE_SCOPED("Pre Depth HDR Render");
+		SET_CPU_ZONE_SCOPED("Pre Depth/Stencil HDR Render");
 		event->run();
 	}
-	event = &manager->getEvent("DepthHdrRender");
+	event = &manager->getEvent("DsHdrRender");
 	if (event->hasSubscribers())
 	{
-		SET_CPU_ZONE_SCOPED("Depth HDR Render Pass");
+		SET_CPU_ZONE_SCOPED("Depth/Stencil HDR Render Pass");
 		graphicsSystem->startRecording(CommandBufferType::Frame);
 		{
-			SET_GPU_DEBUG_LABEL("Depth HDR Pass");
+			SET_GPU_DEBUG_LABEL("Depth/Stencil HDR Pass");
 			{
-				RenderPass renderPass(getDepthHdrFB(), float4::zero,
+				RenderPass renderPass(getDepthStencilHdrFB(), float4::zero,
 					0.0f, 0x00, int4::zero, options.useAsyncRecording);
 				event->run();
 			}
@@ -662,8 +661,8 @@ void DeferredRenderSystem::render()
 		SET_CPU_ZONE_SCOPED("Pre Refracted Render");
 		event->run();
 	}
-	event = &manager->getEvent("RefractedRender");
-	if (hasAnyRefr && event->hasSubscribers())
+	event = &manager->getEvent("RefrRender");
+	if (anyRefr && event->hasSubscribers())
 	{
 		SET_CPU_ZONE_SCOPED("Refracted Render Pass");
 
@@ -681,7 +680,7 @@ void DeferredRenderSystem::render()
 				gpuProcessSystem->ggxBlur(_hdrCopyBuffer, hdrCopyBlurFBs, 
 					hdrCopyBlurPipeline, hdrCopyBlurDSes);
 
-				RenderPass renderPass(getDepthHdrFB(), float4::zero,
+				RenderPass renderPass(getDepthStencilHdrFB(), float4::zero,
 					0.0f, 0x00, int4::zero, options.useAsyncRecording);
 				event->run();
 			}
@@ -695,7 +694,7 @@ void DeferredRenderSystem::render()
 		SET_CPU_ZONE_SCOPED("Pre Translucent Render");
 		event->run();
 	}
-	event = &manager->getEvent("TranslucentRender");
+	event = &manager->getEvent("TranslRender");
 	if (event->hasSubscribers())
 	{
 		SET_CPU_ZONE_SCOPED("Translucent Render Pass");
@@ -703,7 +702,7 @@ void DeferredRenderSystem::render()
 		{
 			SET_GPU_DEBUG_LABEL("Translucent Pass");
 			{
-				RenderPass renderPass(getDepthHdrFB(), float4::zero,
+				RenderPass renderPass(getDepthStencilHdrFB(), float4::zero,
 					0.0f, 0x00, int4::zero, options.useAsyncRecording);
 				event->run();
 			}
@@ -718,7 +717,7 @@ void DeferredRenderSystem::render()
 		event->run();
 	}
 	event = &manager->getEvent("TransDepthRender");
-	if (hasAnyTD && event->hasSubscribers())
+	if (anyTransDepth && event->hasSubscribers())
 	{
 		SET_CPU_ZONE_SCOPED("Translucent Depth Render Pass");
 		graphicsSystem->startRecording(CommandBufferType::Frame);
@@ -741,7 +740,7 @@ void DeferredRenderSystem::render()
 		event->run();
 	}
 	event = &manager->getEvent("OitRender");
-	if (hasAnyOit && event->hasSubscribers())
+	if (anyOIT && event->hasSubscribers())
 	{
 		SET_CPU_ZONE_SCOPED("OIT Render Pass");
 		static const vector<float4> clearColors = { float4::zero, float4::one };
@@ -779,21 +778,21 @@ void DeferredRenderSystem::render()
 		graphicsSystem->stopRecording();
 	}
 
-	event = &manager->getEvent("PreDepthLdrRender");
+	event = &manager->getEvent("PreDsLdrRender");
 	if (event->hasSubscribers())
 	{
-		SET_CPU_ZONE_SCOPED("Pre Depth LDR Render");
+		SET_CPU_ZONE_SCOPED("Pre Depth/Stencil LDR Render");
 		event->run();
 	}
-	event = &manager->getEvent("DepthLdrRender");
+	event = &manager->getEvent("DsLdrRender");
 	if (event->hasSubscribers())
 	{
-		SET_CPU_ZONE_SCOPED("Depth LDR Render Pass");
+		SET_CPU_ZONE_SCOPED("Depth/Stencil LDR Render Pass");
 		graphicsSystem->startRecording(CommandBufferType::Frame);
 		{
-			SET_GPU_DEBUG_LABEL("Depth LDR Pass");
+			SET_GPU_DEBUG_LABEL("Depth/Stencil LDR Pass");
 			{
-				RenderPass renderPass(getDepthLdrFB(), float4::zero);
+				RenderPass renderPass(getDepthStencilLdrFB(), float4::zero);
 				event->run();
 			}
 		}
@@ -855,7 +854,7 @@ void DeferredRenderSystem::render()
 	}
 	graphicsSystem->stopRecording();
 
-	hasAnyRefr = hasAnyOit = hasAnyTD = false;
+	anyDisoccl = anyRefr = anyOIT = anyTransDepth = false;
 }
 
 //**********************************************************************************************************************
@@ -874,8 +873,8 @@ void DeferredRenderSystem::swapchainRecreate()
 
 		graphicsSystem->destroy(disocclDS);
 		graphicsSystem->destroy(hdrCopyIV);
-		graphicsSystem->destroy(stencilImageView);
-		graphicsSystem->destroy(depthImageView);
+		graphicsSystem->destroy(stencilOnlyIV);
+		graphicsSystem->destroy(depthOnlyIV);
 		graphicsSystem->destroy(depthCopyIV);
 		graphicsSystem->destroy(depthStencilIV);
 		graphicsSystem->destroy(hdrCopyBlurDSes);
@@ -891,98 +890,71 @@ void DeferredRenderSystem::swapchainRecreate()
 		graphicsSystem->destroy(hdrBuffer);
 		graphicsSystem->destroy(gBuffers); gBuffers.clear();
 
-		auto framebufferSize = graphicsSystem->getScaledFrameSize();
-		Framebuffer::OutputAttachment colorAttachments[G_BUFFER_COUNT];
-		Framebuffer::OutputAttachment depthStencilAttachment;
-		depthStencilAttachment.imageView = getDepthStencilIV();
+		auto frameSize = graphicsSystem->getScaledFrameSize();
+		auto depthStencilIV = getDepthStencilIV();
 
 		if (gFramebuffer)
 		{
 			auto _gBuffers = getGBuffers();
 			auto framebufferView = graphicsSystem->get(gFramebuffer);
+
+			ID<ImageView> colorAttachments[G_BUFFER_COUNT];
 			for (uint8 i = 0; i < G_BUFFER_COUNT; i++)
 			{
-				if (!_gBuffers[i])
-				{
-					colorAttachments[i] = {};
-					continue;
-				}
-
-				colorAttachments[i] = Framebuffer::OutputAttachment(
-					graphicsSystem->get(_gBuffers[i])->getView(), gBufferFlags);
+				colorAttachments[i] = _gBuffers[i] ? graphicsSystem->get(
+					_gBuffers[i])->getView() : ID<ImageView>();
 			}
-			depthStencilAttachment.setFlags(gBufferDepthFlags);
-			framebufferView->update(framebufferSize, colorAttachments, G_BUFFER_COUNT, depthStencilAttachment);
+			framebufferView->update(frameSize, colorAttachments, G_BUFFER_COUNT, depthStencilIV);
 		}
 		if (hdrFramebuffer)
 		{
 			auto framebufferView = graphicsSystem->get(hdrFramebuffer);
-			colorAttachments[0] = Framebuffer::OutputAttachment(
-				graphicsSystem->get(getHdrBuffer())->getView(), hdrBufferFlags);
-			framebufferView->update(framebufferSize, colorAttachments, 1);
+			framebufferView->update(frameSize, graphicsSystem->get(getHdrBuffer())->getView());
 		}
-		if (depthHdrFB)
+		if (depthStencilHdrFB)
 		{
-			auto framebufferView = graphicsSystem->get(depthHdrFB);
-			colorAttachments[0] = Framebuffer::OutputAttachment(
-				graphicsSystem->get(getHdrBuffer())->getView(), hdrBufferFlags);
-			depthStencilAttachment.setFlags(hdrBufferDepthFlags);
-			framebufferView->update(framebufferSize, colorAttachments, 1, depthStencilAttachment);
+			auto framebufferView = graphicsSystem->get(depthStencilHdrFB);
+			framebufferView->update(frameSize, graphicsSystem->get(getHdrBuffer())->getView(), depthStencilIV);
 		}
 		if (ldrFramebuffer)
 		{
-			colorAttachments[0] = Framebuffer::OutputAttachment(
-				graphicsSystem->get(getLdrBuffer())->getView(), ldrBufferFlags);
 			auto framebufferView = graphicsSystem->get(ldrFramebuffer);
-			framebufferView->update(framebufferSize, colorAttachments, 1);
+			framebufferView->update(frameSize, graphicsSystem->get(getLdrBuffer())->getView());
 		}
-		if (depthLdrFB)
+		if (depthStencilLdrFB)
 		{
-			auto framebufferView = graphicsSystem->get(depthLdrFB);
-			colorAttachments[0] = Framebuffer::OutputAttachment(
-				graphicsSystem->get(getLdrBuffer())->getView(), ldrBufferFlags);
-			depthStencilAttachment.setFlags(ldrBufferDepthFlags);
-			framebufferView->update(framebufferSize, colorAttachments, 1, depthStencilAttachment);
+			auto framebufferView = graphicsSystem->get(depthStencilLdrFB);
+			framebufferView->update(frameSize, graphicsSystem->get(getLdrBuffer())->getView(), depthStencilIV);
 		}
 		if (uiFramebuffer)
 		{
-			colorAttachments[0] = Framebuffer::OutputAttachment(
-				graphicsSystem->get(getUiBuffer())->getView(), uiBufferFlags);
 			auto framebufferView = graphicsSystem->get(uiFramebuffer);
-			framebufferView->update(graphicsSystem->getFramebufferSize(), colorAttachments, 1);
+			framebufferView->update(graphicsSystem->getFramebufferSize(), 
+				graphicsSystem->get(getUiBuffer())->getView());
 		}
 		if (oitFramebuffer)
 		{
-			colorAttachments[0] = Framebuffer::OutputAttachment(
-				graphicsSystem->get(getOitAccumBuffer())->getView(), oitBufferFlags);
-			colorAttachments[1] = Framebuffer::OutputAttachment(
-				graphicsSystem->get(getOitRevealBuffer())->getView(), oitBufferFlags);
+			ID<ImageView> colorAttachments[2];
+			colorAttachments[0] = graphicsSystem->get(getOitAccumBuffer())->getView();
+			colorAttachments[1] = graphicsSystem->get(getOitRevealBuffer())->getView();
 			auto framebufferView = graphicsSystem->get(oitFramebuffer);
-			depthStencilAttachment.setFlags(oitBufferDepthFlags);
-			framebufferView->update(framebufferSize, colorAttachments, 2, depthStencilAttachment);
+			framebufferView->update(frameSize, colorAttachments, 2, depthStencilIV);
 		}
 		if (transDepthFB)
 		{
-			colorAttachments[0] = Framebuffer::OutputAttachment(
-				graphicsSystem->get(getTransBuffer())->getView(), transBufferFlags);
 			auto framebufferView = graphicsSystem->get(transDepthFB);
-			depthStencilAttachment.setFlags(transBufferDepthFlags);
-			framebufferView->update(framebufferSize, colorAttachments, 1, depthStencilAttachment);
+			framebufferView->update(frameSize, graphicsSystem->get(getTransBuffer())->getView(), depthStencilIV);
 		}
 		if (upscaleHdrFB)
 		{
-			colorAttachments[0] = Framebuffer::OutputAttachment(
-				graphicsSystem->get(getUpscaleHdrBuffer())->getView(), hdrBufferFlags);
 			auto framebufferView = graphicsSystem->get(upscaleHdrFB);
-			framebufferView->update(graphicsSystem->useUpscaling ? 
-				graphicsSystem->getFramebufferSize() : framebufferSize, colorAttachments, 1);
+			framebufferView->update(graphicsSystem->useUpscaling ? graphicsSystem->getFramebufferSize() : 
+				frameSize, graphicsSystem->get(getUpscaleHdrBuffer())->getView());
 		}
 		if (disocclusionFB)
 		{
-			colorAttachments[0] = Framebuffer::OutputAttachment(
-				graphicsSystem->get(getDisocclMap())->getView(0, 0), disocclMapFlags);
 			auto framebufferView = graphicsSystem->get(disocclusionFB);
-			framebufferView->update(framebufferSize, colorAttachments, 1);
+			framebufferView->update(frameSize, graphicsSystem->get(getDisocclMap())->getView(0, 0));
 		}
 	}
 
@@ -1134,17 +1106,17 @@ ID<ImageView> DeferredRenderSystem::getDepthCopyIV()
 		depthCopyIV = createDepthCopyIV(GraphicsSystem::Instance::get(), getDepthCopyBuffer());
 	return depthCopyIV;
 }
-ID<ImageView> DeferredRenderSystem::getDepthImageView()
+ID<ImageView> DeferredRenderSystem::getDepthOnlyIV()
 {
-	if (!depthImageView)
-		depthImageView = createDepthImageView(GraphicsSystem::Instance::get(), getDepthStencilBuffer());
-	return depthImageView;
+	if (!depthOnlyIV)
+		depthOnlyIV = createDepthOnlyIV(GraphicsSystem::Instance::get(), getDepthStencilBuffer());
+	return depthOnlyIV;
 }
-ID<ImageView> DeferredRenderSystem::getStencilImageView()
+ID<ImageView> DeferredRenderSystem::getStencilOnlyIV()
 {
-	if (!stencilImageView)
-		stencilImageView = createStencilImageView(GraphicsSystem::Instance::get(), getDepthStencilBuffer());
-	return stencilImageView;
+	if (!stencilOnlyIV)
+		stencilOnlyIV = createStencilOnlyIV(GraphicsSystem::Instance::get(), getDepthStencilBuffer());
+	return stencilOnlyIV;
 }
 ID<ImageView> DeferredRenderSystem::getTransImageView()
 {
@@ -1174,11 +1146,14 @@ ID<Framebuffer> DeferredRenderSystem::getHdrFramebuffer()
 		hdrFramebuffer = createHdrFramebuffer(GraphicsSystem::Instance::get(),getHdrBuffer(), false);
 	return hdrFramebuffer;
 }
-ID<Framebuffer> DeferredRenderSystem::getDepthHdrFB()
+ID<Framebuffer> DeferredRenderSystem::getDepthStencilHdrFB()
 {
-	if (!depthHdrFB)
-		depthHdrFB = createDepthHdrFB(GraphicsSystem::Instance::get(), getHdrBuffer(), getDepthStencilIV());
-	return depthHdrFB;
+	if (!depthStencilHdrFB)
+	{
+		depthStencilHdrFB = createDepthStencilHdrFB(GraphicsSystem::Instance::get(), 
+			getHdrBuffer(), getDepthStencilIV());
+	}
+	return depthStencilHdrFB;
 }
 ID<Framebuffer> DeferredRenderSystem::getLdrFramebuffer()
 {
@@ -1186,11 +1161,14 @@ ID<Framebuffer> DeferredRenderSystem::getLdrFramebuffer()
 		ldrFramebuffer = createLdrFramebuffer(GraphicsSystem::Instance::get(),getLdrBuffer());
 	return ldrFramebuffer;
 }
-ID<Framebuffer> DeferredRenderSystem::getDepthLdrFB()
+ID<Framebuffer> DeferredRenderSystem::getDepthStencilLdrFB()
 {
-	if (!depthLdrFB)
-		depthLdrFB = createDepthLdrFB(GraphicsSystem::Instance::get(), getLdrBuffer(), getDepthStencilIV());
-	return depthLdrFB;
+	if (!depthStencilLdrFB)
+	{
+		depthStencilLdrFB = createDepthStencilLdrFB(GraphicsSystem::Instance::get(), 
+			getLdrBuffer(), getDepthStencilIV());
+	}
+	return depthStencilLdrFB;
 }
 ID<Framebuffer> DeferredRenderSystem::getUiFramebuffer()
 {
@@ -1210,7 +1188,7 @@ ID<Framebuffer> DeferredRenderSystem::getOitFramebuffer()
 ID<Framebuffer> DeferredRenderSystem::getTransDepthFB()
 {
 	if (!transDepthFB)
-		transDepthFB = createTransDepthFB(GraphicsSystem::Instance::get(), getTransBuffer(), getDepthStencilIV());
+		transDepthFB = createTransDepthFB(GraphicsSystem::Instance::get(), getTransBuffer(), getDepthOnlyIV());
 	return transDepthFB;
 }
 ID<Framebuffer> DeferredRenderSystem::getUpscaleHdrFB()

@@ -36,8 +36,7 @@ void ThreadPool::threadFunction(uint32 threadIndex)
 
 	if (background)
 		mpmt::Thread::setBackgroundPriority();
-	else
-		mpmt::Thread::setForegroundPriority();
+	else mpmt::Thread::setForegroundPriority();
 
 	#if GARDEN_OS_LINUX || GARDEN_OS_MACOS
 	signal(SIGPIPE, SIG_IGN);
@@ -96,8 +95,9 @@ ThreadPool::ThreadPool(bool isBackground, string_view name, uint32 threadCount) 
 	threadCount -= offset; // Note: foreground pool also uses main thread.
 	threads.resize(threadCount);
 
+	auto threadData = threads.data();
 	for (uint32 i = 0; i < threadCount; i++)
-		threads[i] = thread(&ThreadPool::threadFunction, this, i + offset);
+		threadData[i] = thread(&ThreadPool::threadFunction, this, i + offset);
 }
 ThreadPool::~ThreadPool()
 {
@@ -129,19 +129,20 @@ void ThreadPool::addTasks(const vector<Task::Function>& functions, float priorit
 	GARDEN_ASSERT(isRunning);
 
 	mutex.lock();
-	for (uint32 i = 0; i < (uint32)functions.size(); i++)
+	auto functionCount = (uint32)functions.size();
+	auto functionData = functions.data();
+	for (uint32 i = 0; i < functionCount; i++)
 	{
-		auto task = Task(functions[i], priority);
+		auto task = Task(functionData[i], priority);
 		task.taskIndex = i;
 		GARDEN_ASSERT(task.function);
 		taskQueue.emplace(priority, task);
 	}
 	mutex.unlock();
 
-	if (functions.size() > 1)
+	if (functionCount > 1)
 		workCond.notify_all();
-	else
-		workCond.notify_one();
+	else workCond.notify_one();
 }
 void ThreadPool::addTasks(const Task::Function& function, uint32 count, float priority)
 {
@@ -160,8 +161,7 @@ void ThreadPool::addTasks(const Task::Function& function, uint32 count, float pr
 
 	if (count > 1)
 		workCond.notify_all();
-	else
-		workCond.notify_one();
+	else workCond.notify_one();
 }
 void ThreadPool::addItems(const Task::Function& function, uint32 count, float priority)
 {
@@ -189,8 +189,7 @@ void ThreadPool::addItems(const Task::Function& function, uint32 count, float pr
 
 	if (taskCount > 1)
 		workCond.notify_all();
-	else
-		workCond.notify_one();
+	else workCond.notify_one();
 }
 
 //**********************************************************************************************************************

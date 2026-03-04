@@ -28,7 +28,6 @@
 #include "garden/graphics/glfw.hpp" // Note: Do not move it.
 #include "garden/resource/primitive.hpp"
 #include "garden/profiler.hpp"
-#include "garden/os.hpp"
 
 #include "math/random.hpp"
 #include "math/brdf.hpp"
@@ -70,7 +69,7 @@ static void calcJitterOffsets(vector<float2>& jitterOffsets,
 
 //**********************************************************************************************************************
 GraphicsSystem::GraphicsSystem(uint2 windowSize, bool isFullscreen, bool isDecorated, bool useVsync, 
-	bool useTripleBuffering, bool useAsyncRecording, bool _setSingleton) : Singleton(false),
+	bool useTripleBuffering, bool useAsyncRecording, bool setSingleton) : Singleton(setSingleton),
 	asyncRecording(useAsyncRecording), useVsync(useVsync), useTripleBuffering(useTripleBuffering)
 {
 	auto manager = Manager::Instance::get();
@@ -83,9 +82,6 @@ GraphicsSystem::GraphicsSystem(uint2 windowSize, bool isFullscreen, bool isDecor
 	ECSM_SUBSCRIBE_TO_EVENT("PreDeinit", GraphicsSystem::preDeinit);
 	ECSM_SUBSCRIBE_TO_EVENT("Update", GraphicsSystem::update);
 
-	if (_setSingleton)
-		setSingleton();
-
 	auto appInfoSystem = AppInfoSystem::Instance::get();
 	auto threadSystem = ThreadSystem::Instance::tryGet();
 	auto threadPool = threadSystem ? &threadSystem->getForegroundPool() : nullptr;
@@ -95,10 +91,10 @@ GraphicsSystem::GraphicsSystem(uint2 windowSize, bool isFullscreen, bool isDecor
 
 	auto graphicsAPI = GraphicsAPI::get();
 	auto swapchainImage = graphicsAPI->imagePool.get(graphicsAPI->getSwapchain()->getCurrentImage());
-	auto framebufferSize = (uint2)swapchainImage->getSize();
-	calcJitterOffsets(jitterOffsets, framebufferSize, framebufferSize);
+	auto frameSize = (uint2)swapchainImage->getSize();
+	calcJitterOffsets(jitterOffsets, frameSize, frameSize);
 
-	swapchainFramebuffer = graphicsAPI->framebufferPool.create(framebufferSize, swapchainImage->getView());
+	swapchainFramebuffer = graphicsAPI->framebufferPool.create(frameSize, swapchainImage->getView());
 	SET_RESOURCE_DEBUG_NAME(swapchainFramebuffer, "framebuffer.swapchain");
 
 	setShadowColor(float3::one);
@@ -330,8 +326,8 @@ static void disposeGpuResources(GraphicsAPI* graphicsAPI)
 void GraphicsSystem::input()
 {
 	auto inputSystem = InputSystem::Instance::get();
-	auto windowSize = inputSystem->getWindowSize(); auto framebufferSize = inputSystem->getFramebufferSize();
-	isFramebufferSizeValid = windowSize.x > 0 && windowSize.y > 0 && framebufferSize.x > 0 && framebufferSize.y > 0;
+	auto windowSize = inputSystem->getWindowSize(); auto frameSize = inputSystem->getFramebufferSize();
+	isFramebufferSizeValid = windowSize.x > 0 && windowSize.y > 0 && frameSize.x > 0 && frameSize.y > 0;
 	beginSleepClock = mpio::OS::getCurrentClock();
 }
 void GraphicsSystem::update()
@@ -361,9 +357,9 @@ void GraphicsSystem::update()
 		swapchain->recreate(inputSystem->getFramebufferSize(), useVsync, useTripleBuffering);
 		outOfDateSwapchain = false; nvMaxFrameRate = UINT16_MAX;
 
-		auto framebufferSize = swapchain->getFramebufferSize();
-		GARDEN_LOG_INFO("Recreated swapchain. (" + to_string(framebufferSize.x) + "x" +
-			to_string(framebufferSize.y) + " px, " + to_string(swapchain->getImageCount()) + "I)");
+		auto frameSize = swapchain->getFramebufferSize();
+		GARDEN_LOG_INFO("Recreated swapchain. (" + to_string(frameSize.x) + "x" +
+			to_string(frameSize.y) + " px, " + to_string(swapchain->getImageCount()) + "I)");
 	}
 
 	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
@@ -396,10 +392,7 @@ void GraphicsSystem::update()
 		SET_CPU_ZONE_SCOPED("Swapchain Recreate");
 
 		if (useJittering)
-		{
-			auto framebufferSize = swapchain->getFramebufferSize();
-			calcJitterOffsets(jitterOffsets, getScaledFrameSize(), framebufferSize);
-		}
+			calcJitterOffsets(jitterOffsets, getScaledFrameSize(), swapchain->getFramebufferSize());
 
 		if (forceRecreateSwapchain)
 		{
@@ -412,7 +405,7 @@ void GraphicsSystem::update()
 		swapchainChanges = {};
 
 		// Note: Do not force resource dispose!
-		//       It breaks already writen stagings.
+		//       It breaks already written stagings.
 	}
 
 	if (camera && isFramebufferSizeValid)
@@ -504,10 +497,6 @@ uint2 GraphicsSystem::getFramebufferSize() const noexcept
 ID<Framebuffer> GraphicsSystem::getCurrentFramebuffer() const noexcept
 {
 	return GraphicsAPI::get()->currentFramebuffer;
-}
-uint8 GraphicsSystem::getCurrentSubpassIndex() const noexcept
-{
-	return GraphicsAPI::get()->currentSubpassIndex;
 }
 bool GraphicsSystem::isCurrentRenderPassAsync() const noexcept
 {
@@ -833,7 +822,7 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 			graphicsAPI->bufferPool.destroy(stagingBuffer);
 
 			vector<Image::BlitRegion> blitRegions(mipCount);
-			mipSize = (uint3)size;
+			mipSize = (uint3)size; auto blitRegionData = blitRegions.data();
 
 			for (uint8 i = 0; i < mipCount; i++)
 			{
@@ -843,7 +832,7 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 				region.layerCount = layerCount;
 				region.srcMipLevel = i;
 				region.dstMipLevel = i;
-				blitRegions[i] = region;
+				blitRegionData[i] = region;
 				mipSize = max(mipSize / 2u, uint3::one);
 			}
 
@@ -933,120 +922,17 @@ View<ImageView> GraphicsSystem::get(ID<ImageView> imageView) const noexcept
 
 //**********************************************************************************************************************
 ID<Framebuffer> GraphicsSystem::createFramebuffer(uint2 size,
-	vector<Framebuffer::OutputAttachment>&& colorAttachments, Framebuffer::OutputAttachment depthStencilAttachment)
+	vector<Framebuffer::Attachment>&& colorAttachments, Framebuffer::Attachment depthStencilAttachment)
 {
 	GARDEN_ASSERT(areAllTrue(size > uint2::zero));
 	GARDEN_ASSERT(!colorAttachments.empty() || depthStencilAttachment.imageView);
-	auto graphicsAPI = GraphicsAPI::get();
 
-	// TODO: add checks if attachments do not overlaps and repeat.
-	// TODO: we can use attachments with different sizes, but should we?
-
-	#if GARDEN_DEBUG
-	for	(uint32 i = 0; i < (uint32)colorAttachments.size(); i++)
-	{
-		auto colorAttachment = colorAttachments[i];
-		if (!colorAttachment.imageView)
-			continue;
-
-		auto imageView = graphicsAPI->imageViewPool.get(colorAttachment.imageView);
-		GARDEN_ASSERT_MSG(isFormatColor(imageView->getFormat()), "Incorrect framebuffer color "
-			"attachment [" + to_string(i) + "] image view [" + imageView->getDebugName() + "] format");
-		auto image = graphicsAPI->imagePool.get(imageView->getImage());
-		GARDEN_ASSERT_MSG(size == imageView->calcSize(), "Incorrect framebuffer color attachment [" + 
-			to_string(i) + "] image view [" + imageView->getDebugName() + "] size at mip");
-		GARDEN_ASSERT_MSG(hasAnyFlag(image->getUsage(), Image::Usage::ColorAttachment), "Missing framebuffer "
-			"color attachment [" + to_string(i) + "] image view [" + imageView->getDebugName() + "] flag");
-	}
-
-	if (depthStencilAttachment.imageView)
-	{
-		auto imageView = graphicsAPI->imageViewPool.get(depthStencilAttachment.imageView);
-		GARDEN_ASSERT_MSG(isFormatDepthOrStencil(imageView->getFormat()), "Incorrect framebuffer depth/stencil " 
-			"attachment image view [" + imageView->getDebugName() + "] format");
-		auto image = graphicsAPI->imagePool.get(imageView->getImage());
-		GARDEN_ASSERT_MSG(size == imageView->calcSize(), "Incorrect framebuffer depth/stencil "
-			"attachment image view [" + imageView->getDebugName() + "] size at mip");
-		GARDEN_ASSERT_MSG(hasAnyFlag(image->getUsage(), Image::Usage::DepthStencilAttachment), "Missing "
-			"framebuffer depth/stencil attachment image view [" + imageView->getDebugName() + "] flag");
-	}
-	#endif
-
-	auto framebuffer = graphicsAPI->framebufferPool.create(size,
+	auto framebuffer = GraphicsAPI::get()->framebufferPool.create(size,
 		std::move(colorAttachments), depthStencilAttachment);
 	SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer" + to_string(*framebuffer));
 	return framebuffer;
 }
 
-//**********************************************************************************************************************
-ID<Framebuffer> GraphicsSystem::createFramebuffer(uint2 size, vector<Framebuffer::Subpass>&& subpasses)
-{
-	GARDEN_ASSERT(areAllTrue(size > uint2::zero));
-	GARDEN_ASSERT(!subpasses.empty());
-	auto graphicsAPI = GraphicsAPI::get();
-
-	#if GARDEN_DEBUG
-	psize outputAttachmentCount = 0;
-	for (const auto& subpass : subpasses)
-	{
-		const auto& inputAttachments = subpass.inputAttachments;
-		for	(uint32 i = 0; i < (uint32)inputAttachments.size(); i++)
-		{
-			auto inputAttachment = inputAttachments[i];
-			auto imageView = graphicsAPI->imageViewPool.get(inputAttachment.imageView);
-			GARDEN_ASSERT_MSG(inputAttachment.imageView, "Incorrect framebuffer input "
-				"attachment [" + to_string(i) + "] image view [" + imageView->getDebugName() + "] format");
-			GARDEN_ASSERT_MSG(inputAttachment.pipelineStages != PipelineStage::None, "No framebuffer input "
-				"attachment [" + to_string(i) + "] image view [" + imageView->getDebugName() + "] pipeline stages");
-			
-			auto image = graphicsAPI->imagePool.get(imageView->getImage());
-			GARDEN_ASSERT_MSG(size == imageView->calcSize(), "Incorrect framebuffer input attachment [" + 
-				to_string(i) + "] image view [" + imageView->getDebugName() + "] size at mip");
-			GARDEN_ASSERT_MSG(hasAnyFlag(image->getUsage(), Image::Usage::InputAttachment), "Missing framebuffer "
-				"input attachment [" + to_string(i) + "] image view [" + imageView->getDebugName() + "] flag");
-		}
-
-		const auto& outputAttachments = subpass.outputAttachments;
-		for	(uint32 i = 0; i < (uint32)outputAttachments.size(); i++)
-		{
-			auto outputAttachment = outputAttachments[i];
-			auto imageView = graphicsAPI->imageViewPool.get(outputAttachment.imageView);
-			GARDEN_ASSERT_MSG(outputAttachment.imageView, "Framebuffer "
-				"output attachment [" + to_string(i) + "] image view is null");
-			GARDEN_ASSERT_MSG((!outputAttachment.flags.clear && !outputAttachment.flags.load) ||
-				(outputAttachment.flags.clear && !outputAttachment.flags.load) ||
-				(!outputAttachment.flags.clear && outputAttachment.flags.load),
-				"Incorrect framebuffer output attachment [" + to_string(i) + 
-				"] image view [" + imageView->getDebugName() + "] flags");
-			
-			auto image = graphicsAPI->imagePool.get(imageView->getImage());
-			GARDEN_ASSERT_MSG(size == imageView->calcSize(), "Incorrect framebuffer output attachment [" + 
-				to_string(i) + "] image view [" + imageView->getDebugName() + "] size at mip");
-			#if GARDEN_DEBUG
-			if (isFormatColor(imageView->getFormat()))
-			{
-				GARDEN_ASSERT_MSG(hasAnyFlag(image->getUsage(), Image::Usage::ColorAttachment), "Missing framebuffer "
-					"output attachment [" + to_string(i) + "] image view [" + imageView->getDebugName() + "] color flag");
-			}
-			#endif
-			outputAttachmentCount++;
-
-			for	(auto inputAttachment : subpass.inputAttachments)
-			{
-				GARDEN_ASSERT_MSG(outputAttachment.imageView != inputAttachment.imageView, 
-					"Framebuffer output attachment [" + to_string(i) +  "] image view [" + 
-					imageView->getDebugName() + "] is also used as an input attachment");
-			}
-		}
-	}
-
-	GARDEN_ASSERT(outputAttachmentCount > 0);
-	#endif
-
-	auto framebuffer = graphicsAPI->framebufferPool.create(size, std::move(subpasses));
-	SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer" + to_string(*framebuffer));
-	return framebuffer;
-}
 void GraphicsSystem::destroy(ID<Framebuffer>& framebuffer)
 {
 	#if GARDEN_DEBUG

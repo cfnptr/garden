@@ -94,7 +94,7 @@ namespace garden::graphics
 		int8 isUniform = 0, isBuffer = 0, isPushConstants = 0, isSamplerState = 0;
 		bool isSkipMode = false, isReadonly = false, isWriteonly = false, isMutable = false, isRestrict = false, 
 			isVolatile = false, isCoherent = false, isNoncoherent = false, isStd430 = false;
-		uint8 attachmentIndex = 0, descriptorSetIndex = 0, specConstIndex = 1;
+		uint8 descriptorSetIndex = 0, specConstIndex = 1;
 		GslUniformType uniformType = {};
 		Sampler::State samplerState;
 	};
@@ -119,7 +119,7 @@ namespace garden::graphics
 		bool isComparing = false, isCompareOperation = false, isAnisoFiltering = false, isMaxAnisotropy = false, 
 			isUnnormCoords = false, isMipLodBias = false, isMinLod = false, isMaxLod = false, isFilter = false, 
 			isFilterMin = false, isFilterMag = false, isFilterMipmap = false, isBorderColor = false, 
-			isAddressMode = false, isAddressModeX = false, isAddressModeY = false, isAddressModeZ = false,
+			isAddressMode = false, isAddressModeX = false, isAddressModeY = false, isAddressModeZ = false, 
 			isVariantCount = false, isReference = false;
 		uint8 arraySize = 1;
 		GslDataType dataType = {}; Image::Format imageFormat = {};
@@ -127,16 +127,21 @@ namespace garden::graphics
 	};
 	struct GraphicsLineData final : public LineData
 	{
-		int8 isIn = 0, isOut = 0, isTopology = 0, isPolygon = 0, isDiscarding = 0, 
+		int8 isIn = 0, isOut = 0, isTopology = 0, isPolygonMode = 0, isDiscarding = 0, 
 			isDepthTesting = 0, isDepthWriting = 0, isDepthClamping = 0, isDepthBiasing = 0, 
 			isDepthCompare = 0, isDepthOverride = 0, isDepthBounding = 0, 
 			isDepthBiasConst = 0, isDepthBiasSlope = 0, isDepthBiasClamp = 0, 
-			isStencilTesting = 0, isCullFace = 0, isFrontFace = 0, 
+			isStencilTesting = 0, isStencilFail = 0, isStencilFailFF = 0, isStencilFailBF = 0, 
+			isStencilPass = 0, isStencilPassFF = 0, isStencilPassBF = 0, isStencilDepthFail = 0, 
+			isStencilDepthFailFF = 0, isStencilDepthFailBF = 0, isStencilCompare = 0,
+			isStencilCompareFF = 0, isStencilCompareBF = 0, isStencilCompareMask = 0,
+			isStencilCompareMaskFF = 0, isStencilCompareMaskBF = 0, isStencilWriteMask = 0,
+			isStencilWriteMaskFF = 0, isStencilWriteMaskBF = 0, isStencilReference = 0,
+			isStencilReferenceFF = 0, isStencilReferenceBF = 0, isCullFace = 0, isFrontFace = 0, 
 			isBlending = 0, isColorMask = 0, isBlendFactor = 0, isSrcBlendFactor = 0, 
 			isDstBlendFactor = 0, isSrcColorFactor = 0,isDstColorFactor = 0, 
 			isSrcAlphaFactor = 0, isDstAlphaFactor = 0, isBlendOperation = 0, 
-			isColorOperation = 0, isAlphaOperation = 0, 
-			isAttributeOffset = 0, isAttachmentOffset = 0;
+			isColorOperation = 0, isAlphaOperation = 0, isAttributeOffset = 0;
 		bool isFlat = false, isNoperspective = false;
 	};
 	struct ComputeLineData final : public LineData
@@ -179,6 +184,18 @@ static string_view toStringState(bool state) noexcept
 	return state ? "on" : "off";
 }
 
+static int32 toIntValue(string_view value, uint32 lineIndex)
+{
+	try { return stol(string(value), nullptr, 0); }
+	catch (const exception&)
+	{ throw CompileError("invalid signed integer value", lineIndex, string(value)); }
+}
+static uint32 toUintValue(string_view value, uint32 lineIndex)
+{
+	try { return stoul(string(value), nullptr, 0); }
+	catch (const exception&)
+	{ throw CompileError("invalid unsigned integer value", lineIndex, string(value)); }
+}
 static float toFloatValue(string_view value, uint32 lineIndex)
 {
 	if (value == "inf") return INFINITY;
@@ -252,6 +269,8 @@ static Image::Format toImageFormat(string_view gslImageFormat)
 
 	return Image::Format::Undefined;
 }
+
+//******************************************************************************************************************
 static string_view toGlslString(Image::Format imageFormat)
 {
 	switch (imageFormat)
@@ -372,10 +391,6 @@ static void onShaderUniform(FileData& fileData, LineData& lineData, PipelineStag
 			fileData.outputFileStream << ") uniform pushConstants ";
 			fileData.isUniform = 0; fileData.isPushConstants = 1;
 		}
-		else if (lineData.word == toString(GslUniformType::SubpassInput))
-		{
-			fileData.uniformType = GslUniformType::SubpassInput; fileData.isUniform = 3;
-		}
 		else
 		{
 			try
@@ -478,7 +493,6 @@ static void onShaderUniform(FileData& fileData, LineData& lineData, PipelineStag
 	}
 
 	auto writeAccess = !fileData.isReadonly && !isSamplerType(fileData.uniformType) &&
-		fileData.uniformType != GslUniformType::SubpassInput &&
 		fileData.uniformType != GslUniformType::UniformBuffer &&
 		fileData.uniformType != GslUniformType::PushConstants &&
 		fileData.uniformType != GslUniformType::AccelerationStructure;
@@ -496,10 +510,13 @@ static void onShaderUniform(FileData& fileData, LineData& lineData, PipelineStag
 		uniform.bindingIndex = binding = bindingIndex++;
 		uniform.descriptorSetIndex = fileData.descriptorSetIndex;
 		uniform.arraySize = lineData.arraySize;
-		uniform.readAccess = readAccess;
-		uniform.writeAccess = writeAccess;
-		uniform.isMutable = fileData.isMutable;
-		uniform.isNoncoherent = fileData.isNoncoherent;
+		uniform.readAccess = readAccess ? 1 : 0;
+		uniform.writeAccess = writeAccess ? 1 : 0;
+		uniform.isMutable = fileData.isMutable ? 1 : 0;
+		uniform.isNoncoherent = fileData.isNoncoherent ? 1 : 0;
+		uniform.isSamplerType = isSamplerType(uniform.type) ? 1 : 0;
+		uniform.isImageType = isImageType(uniform.type) ? 1 : 0;
+		uniform.isBufferType = isBufferType(uniform.type) ? 1 : 0;
 
 		if (!uniforms.emplace(lineData.uniformName, uniform).second)
 			throw GardenError("Failed to emplace uniform.");
@@ -540,14 +557,7 @@ static void onShaderUniform(FileData& fileData, LineData& lineData, PipelineStag
 		uniform.pipelineStages |= pipelineStage; binding = uniform.bindingIndex;
 	}
 	
-	if (fileData.uniformType == GslUniformType::SubpassInput)
-	{
-		fileData.outputFileStream << "layout(binding = " << to_string(binding) <<
-			", set = " << to_string(fileData.descriptorSetIndex) <<
-			", input_attachment_index = " << to_string(fileData.attachmentIndex++) <<
-			") uniform subpassInput ";
-	}
-	else if (fileData.uniformType == GslUniformType::UniformBuffer)
+	if (fileData.uniformType == GslUniformType::UniformBuffer)
 	{
 		fileData.outputFileStream << "layout(binding = " << to_string(binding) <<
 			", set = " << to_string(fileData.descriptorSetIndex);
@@ -651,7 +661,7 @@ static void onShaderPushConstants(FileData& fileData, LineData& lineData, uint16
 static Sampler::Filter toSamplerFilter(string_view name, uint32 lineIndex)
 {
 	try { return toSamplerFilter(name); }
-	catch (const exception&) { throw CompileError("unrecognized sampler filter type", lineIndex, string(name)); }
+	catch (const exception&) { throw CompileError("unrecognized sampler filter", lineIndex, string(name)); }
 }
 static Sampler::AddressMode toAddressMode(string_view name, uint32 lineIndex)
 {
@@ -663,13 +673,13 @@ static Sampler::BorderColor toBorderColor(string_view name, uint32 lineIndex)
 {
 	try { return toBorderColor(name); }
 	catch (const exception&)
-	{ throw CompileError("unrecognized border color type", lineIndex, string(name)); }
+	{ throw CompileError("unrecognized border color", lineIndex, string(name)); }
 }
 static CompareOp toCompareOp(string_view name, uint32 lineIndex)
 {
 	try { return toCompareOp(name); }
 	catch (const exception&)
-	{ throw CompileError("unrecognized compare operator type", lineIndex, string(name)); }
+	{ throw CompileError("unrecognized compare operator", lineIndex, string(name)); }
 }
 
 //******************************************************************************************************************
@@ -810,17 +820,47 @@ static void onShaderSamplerState(FileData& fileData, LineData& lineData)
 }
 
 //******************************************************************************************************************
+static GraphicsPipeline::Topology toTopology(string_view name, uint32 lineIndex)
+{
+	try { return toTopology(name); }
+	catch (const exception&)
+	{ throw CompileError("unrecognized pipeline state topology", lineIndex, string(name)); }
+}
+static GraphicsPipeline::PolygonMode toPolygonMode(string_view name, uint32 lineIndex)
+{
+	try { return toPolygonMode(name); }
+	catch (const exception&)
+	{ throw CompileError("unrecognized pipeline state polygon mode", lineIndex, string(name)); }
+}
+static GraphicsPipeline::CullFace toCullFace(string_view name, uint32 lineIndex)
+{
+	try { return toCullFace(name); }
+	catch (const exception&)
+	{ throw CompileError("unrecognized pipeline state cull face", lineIndex, string(name)); }
+}
+static GraphicsPipeline::FrontFace toFrontFace(string_view name, uint32 lineIndex)
+{
+	try { return toFrontFace(name); }
+	catch (const exception&)
+	{ throw CompileError("unrecognized pipeline state front face", lineIndex, string(name)); }
+}
 static GraphicsPipeline::BlendFactor toBlendFactor(string_view name, uint32 lineIndex)
 {
 	try { return toBlendFactor(name); }
 	catch (const exception&)
-	{ throw CompileError("unrecognized pipeline state blend factor type", lineIndex, string(name)); }
+	{ throw CompileError("unrecognized pipeline state blend factor", lineIndex, string(name)); }
 }
-static GraphicsPipeline::BlendOp toBlendOperation(string_view name, uint32 lineIndex)
+static GraphicsPipeline::BlendOp toBlendOp(string_view name, uint32 lineIndex)
 {
 	try { return toBlendOp(name); }
 	catch (const exception&)
-	{ throw CompileError("unrecognized pipeline state blend operation type", lineIndex, string(name)); }
+	{ throw CompileError("unrecognized pipeline state blend operation", lineIndex, string(name)); }
+}
+static GraphicsPipeline::StencilOp toStencilOp(string_view name, uint32 lineIndex)
+{
+	try { return toStencilOp(name); }
+	catch (const exception&)
+	{ throw CompileError("unrecognized pipeline state stencil operation", lineIndex, string(name)); }
 }
 
 //******************************************************************************************************************
@@ -843,7 +883,7 @@ static void onShaderPipelineState(GraphicsFileData& fileData, GraphicsLineData& 
 		else
 		{
 			if (lineData.word == "topology") lineData.isTopology = 1;
-			else if (lineData.word == "polygon") lineData.isPolygon = 1;
+			else if (lineData.word == "polygonMode") lineData.isPolygonMode = 1;
 			else if (lineData.word == "discarding") lineData.isDiscarding = 1;
 			else if (lineData.word == "depthTesting") lineData.isDepthTesting = 1;
 			else if (lineData.word == "depthWriting") lineData.isDepthWriting = 1;
@@ -855,6 +895,27 @@ static void onShaderPipelineState(GraphicsFileData& fileData, GraphicsLineData& 
 			else if (lineData.word == "depthBiasSlope") lineData.isDepthBiasSlope = 1;
 			else if (lineData.word == "depthBiasClamp") lineData.isDepthBiasClamp = 1;
 			else if (lineData.word == "stencilTesting") lineData.isStencilTesting = 1;
+			else if (lineData.word == "stencilFail") lineData.isStencilFail = 1;
+			else if (lineData.word == "stencilFailFF") lineData.isStencilFailFF = 1;
+			else if (lineData.word == "stencilFailBF") lineData.isStencilFailBF = 1;
+			else if (lineData.word == "stencilPass") lineData.isStencilPass = 1;
+			else if (lineData.word == "stencilPassFF") lineData.isStencilPassFF = 1;
+			else if (lineData.word == "stencilPassBF") lineData.isStencilPassBF = 1;
+			else if (lineData.word == "stencilDepthFail") lineData.isStencilDepthFail = 1;
+			else if (lineData.word == "stencilDepthFailFF") lineData.isStencilDepthFailFF = 1;
+			else if (lineData.word == "stencilDepthFailBF") lineData.isStencilDepthFailBF = 1;
+			else if (lineData.word == "stencilCompare") lineData.isStencilCompare = 1;
+			else if (lineData.word == "stencilCompareFF") lineData.isStencilCompareFF = 1;
+			else if (lineData.word == "stencilCompareBF") lineData.isStencilCompareBF = 1;
+			else if (lineData.word == "stencilCompareMask") lineData.isStencilCompareMask = 1;
+			else if (lineData.word == "stencilCompareMaskFF") lineData.isStencilCompareMaskFF = 1;
+			else if (lineData.word == "stencilCompareMaskBF") lineData.isStencilCompareMaskBF = 1;
+			else if (lineData.word == "stencilWriteMask") lineData.isStencilWriteMask = 1;
+			else if (lineData.word == "stencilWriteMaskFF") lineData.isStencilWriteMaskFF = 1;
+			else if (lineData.word == "stencilWriteMaskBF") lineData.isStencilWriteMaskBF = 1;
+			else if (lineData.word == "stencilReference") lineData.isStencilReference = 1;
+			else if (lineData.word == "stencilReferenceFF") lineData.isStencilReference = 1;
+			else if (lineData.word == "stencilReferenceBF") lineData.isStencilReference = 1;
 			else if (lineData.word == "cullFace") lineData.isCullFace = 1;
 			else if (lineData.word == "frontFace") lineData.isFrontFace = 1;
 			else if (lineData.word.length() >= 9 && memcmp(lineData.word.c_str(), "colorMask", 9) == 0)
@@ -960,19 +1021,9 @@ static void onShaderPipelineState(GraphicsFileData& fileData, GraphicsLineData& 
 			throw CompileError("no ';' after pipeline state property name", fileData.lineIndex, string(name));
 
 		if (lineData.isTopology)
-		{
-			try { state.topology = toTopology(name); }
-			catch (const exception&)
-			{ throw CompileError("unrecognized pipeline state topology type", fileData.lineIndex, string(name)); }
-			lineData.isTopology = 0;
-		}
-		else if (lineData.isPolygon)
-		{
-			try { state.polygon = toPolygon(name); }
-			catch (const exception&)
-			{ throw CompileError("unrecognized pipeline state polygon type", fileData.lineIndex, string(name)); }
-			lineData.isPolygon = 0;
-		}
+		{ state.topology = toTopology(name, fileData.lineIndex); lineData.isTopology = 0; }
+		else if (lineData.isPolygonMode)
+		{ state.polygonMode = toPolygonMode(name, fileData.lineIndex); lineData.isPolygonMode = 0; }
 		else if (lineData.isDiscarding)
 		{ state.discarding = toBoolState(name, fileData.lineIndex); lineData.isDiscarding = 0; }
 		else if (lineData.isDepthTesting)
@@ -995,20 +1046,122 @@ static void onShaderPipelineState(GraphicsFileData& fileData, GraphicsLineData& 
 		{ state.depthBiasClamp = toFloatValue(name, fileData.lineIndex); lineData.isDepthBiasClamp = 0; }
 		else if (lineData.isStencilTesting)
 		{ state.stencilTesting = toBoolState(name, fileData.lineIndex); lineData.isStencilTesting = 0; }
+		else if (lineData.isStencilFail)
+		{
+			state.frontFaceStencil.failOperation = state.backFaceStencil.failOperation =
+				toStencilOp(name, fileData.lineIndex);
+			lineData.isStencilFail = 0;
+		}
+		else if (lineData.isStencilFailFF)
+		{
+			state.frontFaceStencil.failOperation = toStencilOp(name, fileData.lineIndex);
+			lineData.isStencilFailFF = 0;
+		}
+		else if (lineData.isStencilFailBF)
+		{
+			state.backFaceStencil.failOperation = toStencilOp(name, fileData.lineIndex);
+			lineData.isStencilFailBF = 0;
+		}
+		else if (lineData.isStencilPass)
+		{
+			state.frontFaceStencil.passOperation = state.backFaceStencil.passOperation =
+				toStencilOp(name, fileData.lineIndex);
+			lineData.isStencilPass = 0;
+		}
+		else if (lineData.isStencilPassFF)
+		{
+			state.frontFaceStencil.passOperation = toStencilOp(name, fileData.lineIndex);
+			lineData.isStencilPassFF = 0;
+		}
+		else if (lineData.isStencilPassBF)
+		{
+			state.backFaceStencil.passOperation = toStencilOp(name, fileData.lineIndex);
+			lineData.isStencilPassBF = 0;
+		}
+		else if (lineData.isStencilDepthFail)
+		{
+			state.frontFaceStencil.depthFailOperation = state.backFaceStencil.depthFailOperation =
+				toStencilOp(name, fileData.lineIndex);
+			lineData.isStencilDepthFail = 0;
+		}
+		else if (lineData.isStencilDepthFailFF)
+		{
+			state.frontFaceStencil.depthFailOperation = toStencilOp(name, fileData.lineIndex);
+			lineData.isStencilDepthFailFF = 0;
+		}
+		else if (lineData.isStencilDepthFailBF)
+		{
+			state.backFaceStencil.depthFailOperation = toStencilOp(name, fileData.lineIndex);
+			lineData.isStencilDepthFailBF = 0;
+		}
+		else if (lineData.isStencilCompare)
+		{
+			state.frontFaceStencil.compareOperator = state.backFaceStencil.compareOperator = 
+				toCompareOp(name, fileData.lineIndex);
+			lineData.isStencilCompare = 0;
+		}
+		else if (lineData.isStencilCompareFF)
+		{
+			state.frontFaceStencil.compareOperator = toCompareOp(name, fileData.lineIndex);
+			lineData.isStencilCompareFF = 0;
+		}
+		else if (lineData.isStencilCompareBF)
+		{
+			state.backFaceStencil.compareOperator = toCompareOp(name, fileData.lineIndex);
+			lineData.isStencilCompareBF = 0;
+		}
+		else if (lineData.isStencilCompareMask)
+		{
+			state.frontFaceStencil.compareMask = state.backFaceStencil.compareMask = 
+				(uint8)toUintValue(name, fileData.lineIndex);
+			lineData.isStencilCompareMask = 0;
+		}
+		else if (lineData.isStencilCompareMaskFF)
+		{
+			state.frontFaceStencil.compareMask = (uint8)toUintValue(name, fileData.lineIndex);
+			lineData.isStencilCompareMaskFF = 0;
+		}
+		else if (lineData.isStencilCompareMaskBF)
+		{
+			state.backFaceStencil.compareMask = (uint8)toUintValue(name, fileData.lineIndex);
+			lineData.isStencilCompareMaskBF = 0;
+		}
+		else if (lineData.isStencilWriteMask)
+		{
+			state.frontFaceStencil.writeMask = state.backFaceStencil.writeMask = 
+				(uint8)toUintValue(name, fileData.lineIndex);
+			lineData.isStencilWriteMask = 0;
+		}
+		else if (lineData.isStencilWriteMaskFF)
+		{
+			state.frontFaceStencil.writeMask = (uint8)toUintValue(name, fileData.lineIndex);
+			lineData.isStencilWriteMaskFF = 0;
+		}
+		else if (lineData.isStencilWriteMaskBF)
+		{
+			state.backFaceStencil.writeMask = (uint8)toUintValue(name, fileData.lineIndex);
+			lineData.isStencilWriteMaskBF = 0;
+		}
+		else if (lineData.isStencilReference)
+		{
+			state.frontFaceStencil.reference = state.backFaceStencil.reference = 
+				(uint8)toUintValue(name, fileData.lineIndex);
+			lineData.isStencilReference = 0;
+		}
+		else if (lineData.isStencilReferenceFF)
+		{
+			state.frontFaceStencil.reference = (uint8)toUintValue(name, fileData.lineIndex);
+			lineData.isStencilReferenceFF = 0;
+		}
+		else if (lineData.isStencilReferenceBF)
+		{
+			state.backFaceStencil.reference = (uint8)toUintValue(name, fileData.lineIndex);
+			lineData.isStencilReferenceBF = 0;
+		}
 		else if (lineData.isCullFace)
-		{
-			try { state.cullFace = toCullFace(name); }
-			catch (const exception&)
-			{ throw CompileError("unrecognized pipeline state cull face type", fileData.lineIndex, string(name)); }
-			lineData.isCullFace = 0;
-		}
+		{ state.cullFace = toCullFace(name, fileData.lineIndex); lineData.isCullFace = 0; }
 		else if (lineData.isFrontFace)
-		{
-			try { state.frontFace = toFrontFace(name); }
-			catch (const exception&)
-			{ throw CompileError("unrecognized pipeline state front face type", fileData.lineIndex, string(name)); }
-			lineData.isFrontFace = 0;
-		}
+		{ state.frontFace = toFrontFace(name, fileData.lineIndex); lineData.isFrontFace = 0; }
 		else if (lineData.isColorMask)
 		{
 			if (fileData.blendStateIndex + 1 > blendStates.size())
@@ -1081,21 +1234,21 @@ static void onShaderPipelineState(GraphicsFileData& fileData, GraphicsLineData& 
 			if (fileData.blendStateIndex + 1 > blendStates.size())
 				blendStates.resize(fileData.blendStateIndex + 1);
 			auto& blendState = blendStates[fileData.blendStateIndex];
-			blendState.colorOperation = blendState.alphaOperation = toBlendOperation(name, fileData.lineIndex);
+			blendState.colorOperation = blendState.alphaOperation = toBlendOp(name, fileData.lineIndex);
 			lineData.isBlendOperation = 0;
 		}
 		else if (lineData.isColorOperation)
 		{
 			if (fileData.blendStateIndex + 1 > blendStates.size())
 				blendStates.resize(fileData.blendStateIndex + 1);
-			blendStates[fileData.blendStateIndex].colorOperation = toBlendOperation(name, fileData.lineIndex);
+			blendStates[fileData.blendStateIndex].colorOperation = toBlendOp(name, fileData.lineIndex);
 			lineData.isColorOperation = 0;
 		}
 		else if (lineData.isAlphaOperation)
 		{
 			if (fileData.blendStateIndex + 1 > blendStates.size())
 				blendStates.resize(fileData.blendStateIndex + 1);
-			blendStates[fileData.blendStateIndex].alphaOperation = toBlendOperation(name, fileData.lineIndex);
+			blendStates[fileData.blendStateIndex].alphaOperation = toBlendOp(name, fileData.lineIndex);
 			lineData.isAlphaOperation = 0;
 		}
 		else abort();
@@ -1179,7 +1332,7 @@ static void onShaderVariantCount(FileData& fileData, LineData& lineData, uint8& 
 }
 
 //******************************************************************************************************************
-static void replaceVaribaleDot(string& word, const char* compare, bool toUpper = false) noexcept
+static void replaceVariableDot(string& word, const char* compare, bool toUpper = false) noexcept
 {
 	auto dotOffset = strlen(compare) - 1;
 	while (true)
@@ -1200,14 +1353,14 @@ static void onShaderGlobalVariable(string& word) noexcept
 {
 	if (word.length() > 3)
 	{
-		replaceVaribaleDot(word, "vs.");
-		replaceVaribaleDot(word, "fs.");
-		replaceVaribaleDot(word, "fb.");
-		replaceVaribaleDot(word, "gl.", true);
+		replaceVariableDot(word, "vs.");
+		replaceVariableDot(word, "fs.");
+		replaceVariableDot(word, "fb.");
+		replaceVariableDot(word, "gl.", true);
 	}
 
 	if (word.length() > 4)
-		replaceVaribaleDot(word, "gsl.");
+		replaceVariableDot(word, "gsl.");
 }
 
 //******************************************************************************************************************
@@ -1493,14 +1646,6 @@ static bool compileGraphicsShader(const fs::path& inputPath, const fs::path& out
 				onShaderPipelineState(fileData, lineData, data.pipelineState, data.blendStates);
 				overrideOutput = true;
 			}
-			else if (lineData.isAttachmentOffset)
-			{
-				auto offset = strtoul(lineData.word.c_str(), nullptr, 10);
-				if (offset > UINT8_MAX)
-					throw CompileError("invalid subpass input offset", fileData.lineIndex, lineData.word);
-				fileData.outputFileStream << "// #attachmentOffset ";
-				fileData.attachmentIndex += (uint8)offset; lineData.isAttachmentOffset = 0;
-			}
 			else if (lineData.isAttributeOffset)
 			{
 				auto offset = strtoul(lineData.word.c_str(), nullptr, 10);
@@ -1517,7 +1662,6 @@ static bool compileGraphicsShader(const fs::path& inputPath, const fs::path& out
 				else if (lineData.word == "out" && wordIndex == 1 && !lineData.isDepthOverride)
 				{ lineData.isOut = 1; overrideOutput = true; }
 				else if (lineData.word == "pipelineState") { fileData.isPipelineState = 1; overrideOutput = true; }
-				else if (lineData.word == "#attachmentOffset") { lineData.isAttachmentOffset = 1; overrideOutput = true; }
 				else if (lineData.word == "#attributeOffset")
 				{
 					if (pipelineStage != PipelineStage::Vertex)

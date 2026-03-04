@@ -90,7 +90,6 @@ public:
 
 	static constexpr Image::Format cloudsColorFormat = Image::Format::SfloatR16G16B16A16;
 	static constexpr Image::Format cloudsDepthFormat = Image::Format::SfloatR16;
-	static constexpr Framebuffer::OutputAttachment::Flags framebufferFlags = { false, false, true };
 private:
 	Ref<Image> dataFields = {}, vertProfile = {}, noiseShape = {}, cirrusShape = {};
 	ID<Image> cloudsCamView = {}, cloudsCamViewDepth = {}, cloudsSkybox = {};
@@ -131,11 +130,11 @@ public:
 	float topRadius = 4.0f;        /**< Stratus and cumulus clouds end height. (km) */
 	float minDistance = 0.2f;      /**< Clouds volume tracing offset in front of camera. (km) */
 	float maxDistance = 200.0f;    /**< Maximum clouds volume tracing distance. (km) */
-	float cumulusCoverage = 0.4f;  /**< Ammount of cumulus clouds. (Clear or cloudy weather) */
-	float cirrusCoverage = 0.2f;   /**< Ammount of cirrus clouds. (Clear or cloudy weather) */
+	float cumulusCoverage = 0.4f;  /**< Amount of cumulus clouds. (Clear or cloudy weather) */
+	float cirrusCoverage = 0.2f;   /**< Amount of cirrus clouds. (Clear or cloudy weather) */
 	float temperatureDiff = 0.75f; /**< Temperature difference between layers. (Storm clouds) */
 	float currentTime = 0.0f;      /**< Custom current time value. (For a multiplayer sync) */
-	bool noDelay = false;          /**< Make all computation in one fram. (Expnesive!) */
+	bool noDelay = false;          /**< Make all computation in one frame. (Expensive!) */
 
 	/**
 	 * @brief Returns volumetric clouds rendering graphics quality.

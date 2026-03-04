@@ -58,13 +58,14 @@ void ModelRenderEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened
 
 	auto modelView = Manager::Instance::get()->get<ModelRenderComponent>(entity);
 	auto editorSystem = EditorRenderSystem::Instance::get();
-	auto& levels = modelView->levels;
+	auto& levels = modelView->levels; auto levelData = levels.data();
+	auto levelCount = (uint32)levels.size();
 
 	if (!levels.empty())
 	{
-		for (uint32 i = 0; i < (uint32)levels.size(); i++)
+		for (uint32 i = 0; i < levelCount; i++)
 		{
-			auto& level = levels[i];
+			auto& level = levelData[i];
 			auto indexStr = to_string(i);
 			ImGui::PushID(indexStr.c_str());
 			ImGui::SeparatorText(indexStr.c_str());

@@ -48,7 +48,6 @@ public:
 
 	void processCommand(const BufferBarrierCommand& command) final;
 	void processCommand(const BeginRenderPassCommand& command) final;
-	void processCommand(const NextSubpassCommand& command) final;
 	void processCommand(const ExecuteCommand& command) final;
 	void processCommand(const EndRenderPassCommand& command) final;
 	void processCommand(const ClearAttachmentsCommand& command) final;

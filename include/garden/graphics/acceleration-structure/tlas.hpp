@@ -89,6 +89,14 @@ public:
 	 * @brief Returns TLAS instance array.
 	 */
 	const vector<InstanceData>& getInstances() const noexcept { return instances; }
+	/**
+	 * @brief Returns TLAS instance array.
+	 */
+	InstanceData* getInstanceData() noexcept { return instances.data(); }
+	/**
+	 * @brief Returns TLAS instance array size.
+	 */
+	uint32 getInstanceCount() const noexcept { return (uint32 )instances.size(); }
 
 	/**
 	 * @brief Returns TLAS buffer instance size in bytes.
@@ -101,7 +109,7 @@ public:
 	 * @param instanceCount instance array size
 	 * @param[out] data output instance buffer data
 	 */
-	static void getInstanceData(const InstanceData* instanceArray, uint32 instanceCount, uint8* data) noexcept;
+	static void fillInstanceData(const InstanceData* instanceArray, uint32 instanceCount, uint8* data) noexcept;
 
 	//******************************************************************************************************************
 	// Render commands

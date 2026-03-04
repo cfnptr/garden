@@ -54,7 +54,7 @@ DlssRenderSystem::~DlssRenderSystem()
 	unsetSingleton();
 }
 
-static NVSDK_NGX_PerfQuality_Value toNgxPerfQUality(DlssQuality quality)
+static NVSDK_NGX_PerfQuality_Value toNgxPerfQuality(DlssQuality quality)
 {
 	switch (quality)
 	{
@@ -98,7 +98,7 @@ static NVSDK_NGX_Resource_VK imageToNgxResource(VulkanAPI* vulkanAPI,
 
 	return NVSDK_NGX_Create_ImageView_Resource_VK(
 		(VkImageView)ResourceExt::getInstance(**imageViewView), (VkImage)ResourceExt::getInstance(**baseImageView), 
-		subresourceRange, (VkFormat)toVkFormat(imageViewView->getFormat()), imageSize.x, imageSize.y, isStorage);
+		subresourceRange, (VkFormat)ImageViewExt::getApiFormat(**imageViewView), imageSize.x, imageSize.y, isStorage);
 }
 
 //**********************************************************************************************************************
@@ -186,15 +186,15 @@ static NVSDK_NGX_Handle* createDlssFeature(CommandBuffer* commandBuffer, NVSDK_N
 	NVSDK_NGX_PerfQuality_Value perfQuality, NVSDK_NGX_DLSS_Hint_Render_Preset renderPreset, 
 	uint2& optimalSize, uint2& minSize, uint2& maxSize, float& sharpness)
 {
-	auto framebufferSize = GraphicsSystem::Instance::get()->getFramebufferSize();
+	auto frameSize = GraphicsSystem::Instance::get()->getFramebufferSize();
 	unsigned int optimalWidth = 0, optimalHeight = 0, maxWidth = 0, 
 		maxHeight = 0, minWidth = 0, minHeight = 0;
-	auto ngxResult = NGX_DLSS_GET_OPTIMAL_SETTINGS(ngxParameters, framebufferSize.x, framebufferSize.y,
+	auto ngxResult = NGX_DLSS_GET_OPTIMAL_SETTINGS(ngxParameters, frameSize.x, frameSize.y,
 		perfQuality, &optimalWidth, &optimalHeight, &maxWidth, &maxHeight, &minWidth, &minHeight, &sharpness);
 	if (ngxResult != NVSDK_NGX_Result_Success)
 	{
-		optimalWidth = maxWidth = minWidth = framebufferSize.x;
-		optimalHeight = maxHeight = minHeight = framebufferSize.y; sharpness = 0.0f;
+		optimalWidth = maxWidth = minWidth = frameSize.x;
+		optimalHeight = maxHeight = minHeight = frameSize.y; sharpness = 0.0f;
 		GARDEN_LOG_ERROR("Failed to get Nvidia DLSS optimal settings.");
 	}
 
@@ -207,8 +207,8 @@ static NVSDK_NGX_Handle* createDlssFeature(CommandBuffer* commandBuffer, NVSDK_N
 	if (DeferredRenderSystem::Instance::tryGet())
 		createParams.InFeatureCreateFlags |= NVSDK_NGX_DLSS_Feature_Flags_IsHDR;
 
-	createParams.Feature.InTargetWidth = framebufferSize.x;
-	createParams.Feature.InTargetHeight = framebufferSize.y;
+	createParams.Feature.InTargetWidth = frameSize.x;
+	createParams.Feature.InTargetHeight = frameSize.y;
 	createParams.Feature.InWidth = optimalWidth;
 	createParams.Feature.InHeight = optimalHeight;
 	createParams.Feature.InPerfQualityValue = perfQuality;
@@ -351,7 +351,7 @@ void DlssRenderSystem::createDlssFeatureCommand(void* commandBuffer, void* argum
 	GARDEN_ASSERT(!dlssSystem->feature);
 
 	dlssSystem->feature = createDlssFeature((CommandBuffer*)commandBuffer, 
-		(NVSDK_NGX_Parameter*)dlssSystem->parameters, toNgxPerfQUality(dlssSystem->quality), {},
+		(NVSDK_NGX_Parameter*)dlssSystem->parameters, toNgxPerfQuality(dlssSystem->quality), {},
 		dlssSystem->optimalSize, dlssSystem->minSize, dlssSystem->maxSize, dlssSystem->sharpness);
 	GARDEN_LOG_INFO("Recreated Nvidia DLSS feature. (optimalSize: " + toString(dlssSystem->optimalSize) + ")");
 }

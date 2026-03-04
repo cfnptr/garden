@@ -98,18 +98,19 @@ void RayTracingPipeline::createVkInstance(RayTracingCreateData& createData)
 	auto shaders = createShaders(codeArray.data(), stageCount, createData.shaderPath);
 	vector<vk::PipelineShaderStageCreateInfo> stageInfos(stageCount);
 	vector<vk::SpecializationInfo> specializationInfos(stageCount);
+	auto stageInfoData = stageInfos.data(); auto specInfoData = specializationInfos.data();
 	
 	for (uint8 i = 0; i < stageCount; i++)
 	{
-		auto pipelineStage = pipelineStages[i]; auto specializationInfo = &specializationInfos[i];
+		auto pipelineStage = pipelineStages[i]; auto specializationInfo = &specInfoData[i];
 		fillVkSpecConsts(createData.shaderPath, specializationInfo, 
 			createData.specConsts, createData.specConstValues, pipelineStage, variantCount);
 		vk::PipelineShaderStageCreateInfo stageInfo({}, toVkShaderStage(pipelineStage), (VkShaderModule)shaders[i], 
 			"main", specializationInfo->mapEntryCount > 0 ? specializationInfo : nullptr);
-		stageInfos[i] = stageInfo;
+		stageInfoData[i] = stageInfo;
 	}
 
-	#if GARDEN_DEBUG | GARDEN_EDITOR
+	#if GARDEN_DEBUG || GARDEN_EDITOR
 	this->specConstValues = std::move(createData.specConstValues);
 	#endif
 
@@ -117,9 +118,9 @@ void RayTracingPipeline::createVkInstance(RayTracingCreateData& createData)
 	GARDEN_ASSERT(createData.rayRecursionDepth > 0);
 	GARDEN_ASSERT(createData.rayRecursionDepth <= vulkanAPI->rtProperties.maxRayRecursionDepth);
 
-	vk::RayTracingPipelineCreateInfoKHR pipelineInfo({}, 
-		stageCount, stageInfos.data(), groupCount, shaderGroupInfos.data(), createData.rayRecursionDepth, 
-		nullptr, nullptr, nullptr, (VkPipelineLayout)pipelineLayout, nullptr, -1);
+	vk::RayTracingPipelineCreateInfoKHR pipelineInfo({}, stageCount, stageInfoData, groupCount, 
+		shaderGroupInfos.data(), createData.rayRecursionDepth, nullptr, nullptr, nullptr, 
+		(VkPipelineLayout)pipelineLayout, nullptr, -1);
 
 	for (uint8 i = 0; i < variantCount; i++)
 	{
@@ -134,8 +135,7 @@ void RayTracingPipeline::createVkInstance(RayTracingCreateData& createData)
 
 		if (variantCount > 1)
 			((void**)this->instance)[i] = result.value;
-		else
-			this->instance = result.value;
+		else this->instance = result.value;
 	}
 
 	destroyShaders(shaders);
@@ -164,8 +164,7 @@ RayTracingPipeline::SBT RayTracingPipeline::createSBT(Buffer::Usage flags)
 	GARDEN_ASSERT_MSG(graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(instance, "Ray tracing pipeline [" + debugName + "] is not ready");
 
-	SBT sbt;
-	sbt.groupRegions.reserve(variantCount);
+	SBT sbt; sbt.groupRegions.resize(variantCount);
 	auto groupCount = rayGenGroupCount + missGroupCount + callGroupCount + hitGroupCount;	
 
 	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
@@ -227,7 +226,7 @@ RayTracingPipeline::SBT RayTracingPipeline::createSBT(Buffer::Usage flags)
 			sbtGroupRegion.hitRegion.size = hitRegionSize;
 			sbtAddress += hitRegionSize;
 
-			sbt.groupRegions.push_back(sbtGroupRegion);
+			sbt.groupRegions[i] = sbtGroupRegion;
 
 			vk::Pipeline pipeline = variantCount > 1 ? ((VkPipeline*)instance)[i] : (VkPipeline)instance;
 			auto result = vulkanAPI->device.getRayTracingShaderGroupHandlesKHR(

@@ -29,9 +29,10 @@ static DescriptorSet::Uniforms getBufferUniforms(GraphicsSystem* graphicsSystem,
 	auto oitAccumBufferView = deferredSystem->getOitAccumIV();
 	auto oitRevealBufferView = deferredSystem->getOitRevealIV();
 	auto disocclMapView = deferredSystem->getDisocclView(0);
-	auto depthBufferView = deferredSystem->getDepthImageView();
+	auto depthBufferView = deferredSystem->getDepthOnlyIV();
 	auto gFramebufferView = graphicsSystem->get(deferredSystem->getGFramebuffer());
-	const auto& gColorAttachments = gFramebufferView->getColorAttachments();
+	auto gColorAttachments = gFramebufferView->getColorAttachments().data();
+	auto emptyTexture = graphicsSystem->getEmptyTexture();
 	
 	auto pbrLightingSystem = PbrLightingSystem::Instance::tryGet();
 	ID<ImageView> shadBuffer, shadBlurBuffer, aoBuffer, aoBlurBuffer, reflBuffer, giBuffer;
@@ -44,18 +45,17 @@ static DescriptorSet::Uniforms getBufferUniforms(GraphicsSystem* graphicsSystem,
 		aoBlurBuffer = pbrLightingSystem->getAoBlurView();
 		reflBuffer = pbrLightingSystem->getReflBaseView();
 		giBuffer = pbrLightingSystem->getGiBuffer() ? graphicsSystem->get(
-			pbrLightingSystem->getGiBuffer())->getView() : graphicsSystem->getEmptyTexture();
+			pbrLightingSystem->getGiBuffer())->getView() : emptyTexture;
 
 		if (!shadBuffer)
-			shadBuffer = shadBlurBuffer = graphicsSystem->getEmptyTexture();
+			shadBuffer = shadBlurBuffer = emptyTexture;
 		if (!aoBuffer)
-			aoBuffer = aoBlurBuffer = graphicsSystem->getEmptyTexture();
+			aoBuffer = aoBlurBuffer = emptyTexture;
 		if (!reflBuffer)
-			reflBuffer = graphicsSystem->getEmptyTexture();
+			reflBuffer = emptyTexture;
 	}
 	else
 	{
-		auto emptyTexture = graphicsSystem->getEmptyTexture();
 		shadBuffer = shadBlurBuffer = emptyTexture;
 		aoBuffer = aoBlurBuffer = emptyTexture;
 		reflBuffer = emptyTexture; giBuffer = emptyTexture;
@@ -78,10 +78,9 @@ static DescriptorSet::Uniforms getBufferUniforms(GraphicsSystem* graphicsSystem,
 
 	for (uint8 i = 0; i < G_BUFFER_COUNT; i++)
 	{
-		uniforms.emplace("g" + to_string(i), DescriptorSet::Uniform(gColorAttachments[i].imageView ? 
-			gColorAttachments[i].imageView : graphicsSystem->getEmptyTexture()));
+		auto imageView = gColorAttachments[i].imageView;
+		uniforms.emplace("g" + to_string(i), DescriptorSet::Uniform(imageView ? imageView : emptyTexture));
 	}
-
 	return uniforms;
 }
 

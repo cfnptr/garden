@@ -47,7 +47,12 @@ pipelineState
 
 * **topology** [ triangleList | triangleStrip | lineList | lineStrip | pointList ] -
 	Specify what kind of primitives to render. (triangleList)
-* **polygon** [ fill | line | point ] - Specify how polygons will be rasterized. (fill)
+* **polygonMode** [ fill | line | point ] - Specify how polygons will be rasterized. (fill)
+
+### Culling
+
+* **cullFace** [ none, front | back | frontBack ] - Specify whether front or back-facing polygons can be culled. (back)
+* **frontFace** [ clockwise | counterClockwise ] - Define front and back-facing polygons. (counterClockwise)
 
 ### Depth
 
@@ -65,12 +70,18 @@ pipelineState
 ### Stencil
 
 * **stencilTesting** [ on | off ] - If enabled, do stencil comparisons and update the stencil buffer. (off)
+* **stencilFail** [OPERATION] - Stencil test fail operation for front and back facing polygons. (keep)
+* **stencilPass** [OPERATION] - Stencil and depth test pass operation for front and back facing polygons. (keep)
+* **stencilDepthFail** [OPERATION] - Stencil test pass, but depth fail operation for front and back facing polygons. (keep)
+* **stencilCompare** [OPERATOR] - Stencil comparison operator used to test the reference value. (always)
+* **stencilCompareMask** [ 0x00 | 0xFF | ... ] - Stencil test bitmask used to test the reference value. (0xFF)
+* **stencilWriteMask** [ 0x00 | 0xFF | ... ] - Stencil test bitmask controlling which bits can be modified. (0xFF)
+* **stencilReference** [ 0x00 | 0xFF | ... ] - Stencil test reference value used as the static source for comparison. (0x00)
 
+**OPERATION**s: [ keep | zero | replace | incrClamp | decrClamp | invert | incrWrap | decrWrap ]
+**OPERATOR**s: [ never | less | equal | lessOrEqual | greater | notEqual | greaterOrEqual | always ]
 
-### Culling
-
-* **cullFace** [ none, front | back | frontBack ] - Specify whether front or back-facing polygons can be culled. (back)
-* **frontFace** [ clockwise | counterClockwise ] - Define front and back-facing polygons. (counterClockwise)
+> Each of stencil parameters have **front** and **back** face polygon variants, except stencilTesting. (stencilFailFF, stencilFailBF)
 
 ### Blending
 
@@ -79,6 +90,7 @@ pipelineState
 * **blendOperationX** [ add | sub | revSub | min | max ] - Specify the RGB color and alpha blend equation. (add)
 * **colorOperationX** [ add | sub | revSub | min | max ] - Specify the RGB color blend equation. (add)
 * **alphaOperationX** [ add | sub | revSub | min | max ] - Specify the alpha blend equation. (add)
+* **blendFactorX** [FACTOR] - Specify pixel arithmetic for source and destination RGB color and alpha.
 * **srcBlendFactorX** [FACTOR] - Specify pixel arithmetic for source RGB color and alpha. (srcAlpha, one)
 * **dstBlendFactorX** [FACTOR] - Specify pixel arithmetic for destination RGB color and alpha. (oneMinusSrcAlpha, zero)
 * **srcColorFactorX** [FACTOR] - Specify pixel arithmetic for source RGB color. (srcAlpha)
@@ -94,7 +106,7 @@ pipelineState
 * **min** - Minimum of the source and destination values per component. [O = min(dS, sD)]
 * **max** - Maximum of the source and destination values per component. [O = max(dS, sD)]
 
-**Blending scale factors**: [ zero | one | srcColor | oneMinusSrcColor | dstColor | oneMinusDstColor | srcAlpha | 
+**FACTOR**s: [ zero | one | srcColor | oneMinusSrcColor | dstColor | oneMinusDstColor | srcAlpha | 
     oneMinusSrcAlpha | dstAlpha | oneMinusDstAlpha | constColor | oneMinusConstColor | constAlpha | 
     oneMinusConstAlpha | src1Color | oneMinusSrc1Color | src1Alpha | oneMinusSrc1Alpha | srcAlphaSaturate ]
 
@@ -149,14 +161,7 @@ uniform samplerCube someSampler;
 * **minLod** [ 0.0 | 0.5 | 2.0 | ... ] - Used to clamp the minimum of the computed LOD value. (0.0)
 * **maxLod** [ 0.0 | 1.5 | 5.0 | inf | ... ] - Used to clamp the maximum of the computed LOD value. (inf)
 
-**Texture address mode types**: [ repeat | mirroredRepeat | clampToEdge | clampToBorder | mirrorClampToEdge ]
-
-### You can add offset to the subpassInput index:
-
-```
-#attachmentOffset 1
-uniform subpassInput someSubpass;
-```
+**TYPE**s: [ repeat | mirroredRepeat | clampToEdge | clampToBorder | mirrorClampToEdge ]
 
 ## Image / Texture (UAV)
 

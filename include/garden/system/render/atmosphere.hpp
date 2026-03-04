@@ -132,7 +132,7 @@ public:
 	};
 
 	static constexpr float3 earthRayleighScattering = float3(0.005802f, 0.013558f, 0.0331f);
-	static constexpr float earthRayleightScaleHeight = 8.0f;
+	static constexpr float earthRayleighScaleHeight = 8.0f;
 	static constexpr float3 earthMieScattering = float3(0.003996f);
 	static constexpr float earthMieScaleHeight = 1.2f;
 	static constexpr float3 earthMieAbsorption = float3(0.000444f);
@@ -149,7 +149,7 @@ public:
 	// Mars has a very thin atmosphere (CO2), so Rayleigh is weak.
 	// However, the sky is bright due to suspended dust (Mie).
 	static constexpr float3 marsRayleighScattering = float3(0.000087f, 0.000203f, 0.000496f);
-	static constexpr float marsRayleightScaleHeight = 11.1f;
+	static constexpr float marsRayleighScaleHeight = 11.1f;
 
 	// Mie (Dust) is the dominant factor on Mars.
 	static constexpr float3 marsMieScattering = float3(0.08f, 0.06f, 0.04f);
@@ -168,7 +168,8 @@ public:
 	static constexpr float marsAtmosphereHeight = 100.0f;
 	static constexpr float marsSunAngularSize = 0.35f;
 
-	static constexpr Framebuffer::OutputAttachment::Flags framebufferFlags = { false, false, true };
+	static constexpr Image::Format multiScattLutFormat = Image::Format::SfloatR16G16B16A16;
+	static constexpr Image::Format cameraVolumeFormat = Image::Format::SfloatR16G16B16A16;
 private:
 	//******************************************************************************************************************
 	vector<float> iblWeightBuffer;
@@ -220,7 +221,7 @@ private:
 public:
 	bool isEnabled = true; /**< Is physically based atmosphere rendering enabled. */
 	float3 rayleighScattering = earthRayleighScattering;
-	float rayleightScaleHeight = earthRayleightScaleHeight; /**< (km) */
+	float rayleighScaleHeight = earthRayleighScaleHeight; /**< (km) */
 	float3 mieScattering = earthMieScattering;
 	float mieScaleHeight = earthMieScaleHeight; /**< (km) */
 	float3 mieAbsorption = earthMieAbsorption;
@@ -236,7 +237,7 @@ public:
 	float starAngularSize = earthSunAngularSize; /**< (degrees) */
 	float giFactor = 1.0f;         /**< Global illumination factor. */
 	float multiScattFactor = 1.0f; /**< Light multi-scattering factor. */
-	bool noDelay = false;          /**< Make all computation in one fram. (Expnesive!) */
+	bool noDelay = false;          /**< Make all computation in one frame. (Expensive!) */
 
 	/*******************************************************************************************************************
 	 * @brief Returns atmosphere rendering graphics quality.
@@ -329,7 +330,7 @@ public:
 	 *
 	 * @param quality target graphics quality level
 	 * @param[out] sliceCount camera volume slice count
-	 * @param[out] kmPerSlice camera volume kilometres per slice
+	 * @param[out] kmPerSlice camera volume kilometers per slice
 	 */
 	static void getSliceQuality(GraphicsQuality quality, float& sliceCount, float& kmPerSlice) noexcept;
 };

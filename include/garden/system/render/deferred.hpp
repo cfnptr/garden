@@ -44,13 +44,13 @@ namespace garden
  * Registers events:
  *   PreDeferredRender, DeferredRender, 
  *   PreHdrRender, HdrRender, 
- *   PreDepthHdrRender, DepthHdrRender, 
+ *   PreDsHdrRender, DsHdrRender, 
  *   PreRefrRender, RefractedRender, 
- *   PreTransRender, TranslucentRender, 
- *   PreTransDepthRender, TransDepthRender, 
+ *   PreTransRender, TransRender, 
+ *   PreTransDepthRender, TransDepthRender
  *   PreOitRender, OitRender, 
  *   PreLdrRender, LdrRender, 
- *   PreDepthLdrRender, DepthLdrRender, 
+ *   PreDsLdrRender, DsLdrRender, 
  *   PostLdrToUI, PreUiRender, UiRender, 
  *   GBufferRecreate.
  */
@@ -90,20 +90,6 @@ public:
 	static constexpr Image::Format oitRevealBufferFormat = Image::Format::UnormR8;
 	static constexpr Image::Format transBufferFormat = Image::Format::UnormR8;
 	static constexpr Image::Format disocclMapFormat = Image::Format::UnormR8;
-
-	static constexpr Framebuffer::OutputAttachment::Flags gBufferFlags = { false, false, true };
-	static constexpr Framebuffer::OutputAttachment::Flags gBufferDepthFlags = { true, false, true };
-	static constexpr Framebuffer::OutputAttachment::Flags hdrBufferFlags = { false, true, true };
-	static constexpr Framebuffer::OutputAttachment::Flags hdrBufferDepthFlags = { false, true, true };
-	static constexpr Framebuffer::OutputAttachment::Flags ldrBufferFlags = { false, true, true };
-	static constexpr Framebuffer::OutputAttachment::Flags ldrBufferDepthFlags = { false, true, true };
-	static constexpr Framebuffer::OutputAttachment::Flags uiBufferFlags = { false, true, true };
-	static constexpr Framebuffer::OutputAttachment::Flags oitBufferFlags = { true, false, true };
-	static constexpr Framebuffer::OutputAttachment::Flags oitBufferDepthFlags = { false, true, false };
-	static constexpr Framebuffer::OutputAttachment::Flags normalsBufferFlags = { false, true, true };
-	static constexpr Framebuffer::OutputAttachment::Flags transBufferFlags = { true, false, true};
-	static constexpr Framebuffer::OutputAttachment::Flags transBufferDepthFlags = { false, true, true };
-	static constexpr Framebuffer::OutputAttachment::Flags disocclMapFlags = { false, false, true};
 private:
 	vector<ID<Image>> gBuffers;
 	ID<Image> hdrBuffer = {}, hdrCopyBuffer = {};
@@ -113,14 +99,14 @@ private:
 	ID<Image> transBuffer = {}, upscaleHdrBuffer = {};
 	ID<ImageView> depthStencilIV = {};
 	ID<ImageView> depthCopyIV = {};
-	ID<ImageView> depthImageView = {};
-	ID<ImageView> stencilImageView = {};
+	ID<ImageView> depthOnlyIV = {};
+	ID<ImageView> stencilOnlyIV = {};
 	ID<ImageView> hdrCopyIV = {};
 	ID<Framebuffer> gFramebuffer = {};
 	ID<Framebuffer> hdrFramebuffer = {};
-	ID<Framebuffer> depthHdrFB = {};
+	ID<Framebuffer> depthStencilHdrFB = {};
 	ID<Framebuffer> ldrFramebuffer = {};
-	ID<Framebuffer> depthLdrFB = {};
+	ID<Framebuffer> depthStencilLdrFB = {};
 	ID<Framebuffer> uiFramebuffer = {};
 	ID<Framebuffer> oitFramebuffer = {};
 	ID<Framebuffer> transDepthFB = {};
@@ -133,9 +119,8 @@ private:
 	vector<ID<Framebuffer>> hdrCopyBlurFBs;
 	vector<ID<DescriptorSet>> hdrCopyBlurDSes;
 	Options options = {};
-	bool hasAnyRefr = false;
-	bool hasAnyOit = false;
-	bool hasAnyTD = false;
+	bool anyDisoccl = false, anyRefr = false, anyOIT = false;
+	bool anyTransDepth = false;
 
 	/**
 	 * @brief Creates a new deferred rendering system instance.
@@ -172,29 +157,40 @@ public:
 	void setOptions(Options options);
 
 	/**
-	 * @brief Marks that there is rendered refraction data on the current frame.
+	 * @brief Marks that there is rendered disocclusion data on the current frame.
 	 */
-	void markAnyRefraction() noexcept { hasAnyRefr = true; }
+	void markAnyDisoccl() noexcept { anyDisoccl = true; }
 	/**
-	 * @brief Returns if there is rendered refraction data on the current frame.
+	 * @brief Returns if there is rendered disocclusion data on the current frame.
 	 */
-	bool hasAnyRefraction() const noexcept { return hasAnyRefr; }
+	bool hasAnyDisoccl() const noexcept { return anyDisoccl; }
+
 	/**
-	 * @brief Marks that there is rendered OIT data on the current frame.
+	 * @brief Marks that there is rendered refracted data on the current frame.
 	 */
-	void markAnyOIT() noexcept { hasAnyOit = true; }
+	void markAnyRefracted() noexcept { anyRefr = true; }
 	/**
-	 * @brief Returns if there is rendered OIT data on the current frame.
+	 * @brief Returns if there is rendered refracted data on the current frame.
 	 */
-	bool hasAnyOIT() const noexcept { return hasAnyOit; }
+	bool hasAnyRefracted() const noexcept { return anyRefr; }
+
+	/**
+	 * @brief Marks that there is rendered OIT data on the current frame. (Order Independent Transparency)
+	 */
+	void markAnyOIT() noexcept { anyOIT = true; }
+	/**
+	 * @brief Returns if there is rendered OIT data on the current frame. (Order Independent Transparency)
+	 */
+	bool hasAnyOIT() const noexcept { return anyOIT; }
+
 	/**
 	 * @brief Marks that there is rendered translucent depth data on the current frame.
 	 */
-	void markAnyTransDepth() noexcept { hasAnyTD = true; }
+	void markAnyTransDepth() noexcept { anyTransDepth = true; }
 	/**
 	 * @brief Returns if there is rendered translucent depth data on the current frame.
 	 */
-	bool hasAnyTransDepth() const noexcept { return hasAnyTD; }
+	bool hasAnyTransDepth() const noexcept { return anyTransDepth; }
 
 	/**
 	 * @brief Returns deferred camera velocity graphics pipeline.
@@ -288,13 +284,13 @@ public:
 	 */
 	ID<ImageView> getDepthCopyIV();
 	/**
-	 * @brief Returns deferred depth buffer image view.
+	 * @brief Returns deferred depth only buffer image view.
 	 */
-	ID<ImageView> getDepthImageView();
+	ID<ImageView> getDepthOnlyIV();
 	/**
-	 * @brief Returns deferred stencil buffer image view.
+	 * @brief Returns deferred stencil only buffer image view.
 	 */
-	ID<ImageView> getStencilImageView();
+	ID<ImageView> getStencilOnlyIV();
 	/**
 	 * @brief Returns deferred transparent buffer image view.
 	 */
@@ -318,17 +314,17 @@ public:
 	 */
 	ID<Framebuffer> getHdrFramebuffer();
 	/**
-	 * @brief Returns deferred depth HDR framebuffer. (HDR + Depth)
+	 * @brief Returns deferred depth/stencil HDR framebuffer. (High Dynamic Range)
 	 */
-	ID<Framebuffer> getDepthHdrFB();
+	ID<Framebuffer> getDepthStencilHdrFB();
 	/**
 	 * @brief Returns deferred LDR framebuffer. (Low Dynamic Range)
 	 */
 	ID<Framebuffer> getLdrFramebuffer();
 	/**
-	 * @brief Returns deferred depth LDR framebuffer. (LDR + Depth)
+	 * @brief Returns deferred depth/stencil LDR framebuffer. (Low Dynamic Range)
 	 */
-	ID<Framebuffer> getDepthLdrFB();
+	ID<Framebuffer> getDepthStencilLdrFB();
 	/**
 	 * @brief Returns deferred UI framebuffer. (User Interface)
 	 */

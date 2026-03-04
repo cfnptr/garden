@@ -59,8 +59,6 @@ void CommandBuffer::processCommands()
 			processCommand(*(const BufferBarrierCommand*)command); break;
 		case Command::Type::BeginRenderPass:
 			processCommand(*(const BeginRenderPassCommand*)command); break;
-		case Command::Type::NextSubpass:
-			processCommand(*(const NextSubpassCommand*)command); break;
 		case Command::Type::Execute:
 			processCommand(*(const ExecuteCommand*)command); break;
 		case Command::Type::EndRenderPass:
@@ -145,9 +143,6 @@ void CommandBuffer::flushLockedResources(LockResources& lockedResources)
 			break;
 		case ResourceType::ImageView:
 			ResourceExt::getBusyLock(**graphicsAPI->imageViewPool.get(ID<ImageView>(key.resource))) -= pair.second;
-			break;
-		case ResourceType::Framebuffer:
-			ResourceExt::getBusyLock(**graphicsAPI->framebufferPool.get(ID<Framebuffer>(key.resource))) -= pair.second;
 			break;
 		case ResourceType::Sampler:
 			ResourceExt::getBusyLock(**graphicsAPI->samplerPool.get(ID<Sampler>(key.resource))) -= pair.second;

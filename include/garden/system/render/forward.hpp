@@ -34,7 +34,7 @@ namespace garden
  * 
  * Registers events:
  *   PreForwardRender, ForwardRender, 
- *   PreDepthForwardRender, DepthForwardRender, 
+ *   PreDsForwardRender, DsForwardRender, 
  *   PreUiRender, UiRender, 
  *   ColorBufferRecreate.
  */
@@ -45,11 +45,6 @@ public:
 	static constexpr Image::Format hdrBufferFormat = Image::Format::SfloatR16G16B16A16;
 	static constexpr Image::Format uiBufferFormat = Image::Format::SrgbR8G8B8A8;
 	static constexpr Image::Format depthStencilFormat = Image::Format::UnormD16;
-
-	static constexpr Framebuffer::OutputAttachment::Flags colorBufferFlags = { false, false, true };
-	static constexpr Framebuffer::OutputAttachment::Flags hdrBufferFlags = { false, false, true };
-	static constexpr Framebuffer::OutputAttachment::Flags uiBufferFlags = { false, true, true };
-	static constexpr Framebuffer::OutputAttachment::Flags depthBufferFlags = { true, false, true };
 private:
 	ID<Image> colorBuffer = {};
 	ID<Image> uiBuffer = {};

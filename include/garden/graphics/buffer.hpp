@@ -100,7 +100,6 @@ public:
 		uint64 dstOffset = 0; /**< Destination buffer offset of the region in bytes. */
 	};
 private:
-	uint8 _alignment = 0;
 	uint8* map = nullptr;
 	uint64 deviceAddress = 0;
 	BarrierState barrierState = {};
@@ -364,7 +363,7 @@ class BufferExt final
 {
 public:
 	/**
-	 * @brief Returns buffer memory map.
+	 * @brief Returns buffer to the buffer mapped memory.
 	 * @warning In most cases you should use @ref Buffer functions.
 	 * @param[in] buffer target buffer instance
 	 */

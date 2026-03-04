@@ -98,7 +98,6 @@ public:
 	 */
 	struct GraphicsOptions final : public PipelineOptions
 	{
-		uint8 subpassIndex = 0; /**< Graphics pipeline framebuffer subpass index. */
 		GraphicsPipeline::PipelineStates* pipelineStateOverrides = nullptr; /**< Pipeline state overrides or null. */
 		GraphicsPipeline::BlendStates* blendStateOverrides = nullptr; /**< Pipeline blend state overrides or null. */
 		GraphicsPipeline::ShaderOverrides* shaderOverrides = nullptr; /**< Pipeline shader code overrides or null. */
@@ -122,7 +121,6 @@ protected:
 	struct GraphicsQueueItem final
 	{
 		GraphicsPipeline pipeline;
-		void* renderPass = nullptr;
 		ID<GraphicsPipeline> instance = {};
 	};
 	struct ComputeQueueItem final

@@ -25,8 +25,9 @@ static vector<void*> createVkPipelineSamplers(const Pipeline::Uniforms& uniforms
 {
 	auto vulkanAPI = VulkanAPI::get();
 	vector<void*> samplers(samplerStates.size());
-	uint32 i = 0;
+	auto samplerData = samplers.data();
 
+	uint32 i = 0;
 	for (auto it = samplerStates.begin(); it != samplerStates.end(); it++, i++)
 	{
 		auto& uniform = uniforms.at(it->first);
@@ -42,7 +43,7 @@ static vector<void*> createVkPipelineSamplers(const Pipeline::Uniforms& uniforms
 			it->second : samplerStateSearch->second;
 		auto samplerInfo = getVkSamplerCreateInfo(state);
 		auto sampler = vulkanAPI->device.createSampler(samplerInfo);
-		samplers[i] = (VkSampler)sampler;
+		samplerData[i] = (VkSampler)sampler;
 		immutableSamplers.emplace(it->first, sampler);
 
 		#if GARDEN_DEBUG // Note: No GARDEN_EDITOR
@@ -61,7 +62,7 @@ static vector<void*> createVkPipelineSamplers(const Pipeline::Uniforms& uniforms
 
 //**********************************************************************************************************************
 static void createVkDescriptorSetLayouts(vector<void*>& descriptorSetLayouts, vector<void*>& descriptorPools,
-	const Pipeline::Uniforms& uniforms, const tsl::robin_map<string, vk::Sampler>& immutableSamplers,
+	const Pipeline::Uniforms& pipelineUniforms, const tsl::robin_map<string, vk::Sampler>& immutableSamplers,
 	const fs::path& pipelinePath, uint32 maxBindlessCount, uint8 descriptorSetCount)
 {
 	auto vulkanAPI = VulkanAPI::get();
@@ -69,50 +70,52 @@ static void createVkDescriptorSetLayouts(vector<void*>& descriptorSetLayouts, ve
 	vector<vk::DescriptorBindingFlags> descriptorBindingFlags;
 	vector<vector<vk::Sampler>> samplerArrays;
 	vector<vk::DescriptorPoolSize> descriptorPoolSizes;
-	descriptorSetLayouts.reserve(descriptorSetCount);
-	descriptorPools.reserve(descriptorSetCount);
+	descriptorSetLayouts.resize(descriptorSetCount);
+	descriptorPools.resize(descriptorSetCount);
+	auto descriptorSetLayoutData = descriptorSetLayouts.data();
+	auto descriptorPoolData = descriptorPools.data();
 
 	for (uint8 dsIndex = 0; dsIndex < descriptorSetCount; dsIndex++)
 	{
 		uint32 bindingIndex = 0; auto isBindless = false;
-		if (descriptorSetBindings.size() < uniforms.size())
-			descriptorSetBindings.resize(uniforms.size());
+		if (descriptorSetBindings.size() < pipelineUniforms.size())
+			descriptorSetBindings.resize(pipelineUniforms.size());
 
-		for	(const auto& pair : uniforms)
+		for	(const auto& uniformPair : pipelineUniforms)
 		{
-			auto uniform = pair.second;
-			if (uniform.descriptorSetIndex != dsIndex)
+			auto pipelineUniform = uniformPair.second;
+			if (pipelineUniform.descriptorSetIndex != dsIndex)
 				continue;
 
 			auto& descriptorSetBinding = descriptorSetBindings[bindingIndex];
-			descriptorSetBinding.binding = (uint32)uniform.bindingIndex;
-			descriptorSetBinding.descriptorType = toVkDescriptorType(uniform.type);
-			descriptorSetBinding.stageFlags = toVkShaderStages(uniform.pipelineStages);
+			descriptorSetBinding.binding = (uint32)pipelineUniform.bindingIndex;
+			descriptorSetBinding.descriptorType = toVkDescriptorType(pipelineUniform.type);
+			descriptorSetBinding.stageFlags = toVkShaderStages(pipelineUniform.pipelineStages);
 
-			if (uniform.arraySize > 0)
+			if (pipelineUniform.arraySize > 0)
 			{
-				if (!uniform.isMutable && isSamplerType(uniform.type))
+				if (!pipelineUniform.isMutable && pipelineUniform.isSamplerType)
 				{
-					if (uniform.arraySize > 1)
+					if (pipelineUniform.arraySize > 1)
 					{
 						// TODO: allow to specify sampler states for separate uniform array elements?
-						vector<vk::Sampler> samplers(uniform.arraySize, *&immutableSamplers.at(pair.first));
+						vector<vk::Sampler> samplers(pipelineUniform.arraySize, *&immutableSamplers.at(uniformPair.first));
 						samplerArrays.push_back(std::move(samplers));
 						descriptorSetBinding.pImmutableSamplers = samplerArrays[samplerArrays.size() - 1].data();
 					}
 					else
 					{
-						descriptorSetBinding.pImmutableSamplers = &immutableSamplers.at(pair.first);
+						descriptorSetBinding.pImmutableSamplers = &immutableSamplers.at(uniformPair.first);
 					}
 				}
-				descriptorSetBinding.descriptorCount = uniform.arraySize;
+				descriptorSetBinding.descriptorCount = pipelineUniform.arraySize;
 			}
 			else
 			{
 				GARDEN_ASSERT_MSG(maxBindlessCount > 0, "Can not use bindless uniforms inside non bindless pipeline");
 
-				if (descriptorBindingFlags.size() < uniforms.size())
-					descriptorBindingFlags.resize(uniforms.size());
+				if (descriptorBindingFlags.size() < pipelineUniforms.size())
+					descriptorBindingFlags.resize(pipelineUniforms.size());
 				if (descriptorPoolSizes.empty())
 				{
 					descriptorPoolSizes =
@@ -140,9 +143,9 @@ static void createVkDescriptorSetLayouts(vector<void*>& descriptorSetLayouts, ve
 				default: abort();
 				}
 
-				if (!uniform.isMutable && isSamplerType(uniform.type))
+				if (!pipelineUniform.isMutable && pipelineUniform.isSamplerType)
 				{
-					vector<vk::Sampler> samplers(maxBindlessCount, *&immutableSamplers.at(pair.first));
+					vector<vk::Sampler> samplers(maxBindlessCount, *&immutableSamplers.at(uniformPair.first));
 					samplerArrays.push_back(std::move(samplers));
 					descriptorSetBinding.pImmutableSamplers = samplerArrays[samplerArrays.size() - 1].data();
 				}
@@ -183,7 +186,7 @@ static void createVkDescriptorSetLayouts(vector<void*>& descriptorSetLayouts, ve
 
 			vk::DescriptorPoolCreateInfo descriptorPoolInfo(vk::DescriptorPoolCreateFlagBits::eUpdateAfterBind, 
 				maxSetCount, (uint32)descriptorPoolSizes.size(), descriptorPoolSizes.data());
-			descriptorPools.push_back(vulkanAPI->device.createDescriptorPool(descriptorPoolInfo));
+			descriptorPoolData[dsIndex] = vulkanAPI->device.createDescriptorPool(descriptorPoolInfo);
 			descriptorPoolSizes.clear();
 
 			#if GARDEN_DEBUG // Note: No GARDEN_EDITOR
@@ -196,9 +199,9 @@ static void createVkDescriptorSetLayouts(vector<void*>& descriptorSetLayouts, ve
 			}
 			#endif
 		}
-		else descriptorPools.push_back(nullptr);
+		else descriptorPoolData[dsIndex] = nullptr;
 
-		descriptorSetLayouts.push_back(vulkanAPI->device.createDescriptorSetLayout(descriptorSetLayoutInfo));
+		descriptorSetLayoutData[dsIndex] = vulkanAPI->device.createDescriptorSetLayout(descriptorSetLayoutInfo);
 		samplerArrays.clear();
 
 		#if GARDEN_DEBUG // Note: No GARDEN_EDITOR
@@ -206,7 +209,7 @@ static void createVkDescriptorSetLayouts(vector<void*>& descriptorSetLayouts, ve
 		{
 			auto name = "descriptorSetLayout." + pipelinePath.generic_string() + to_string(dsIndex);
 			vk::DebugUtilsObjectNameInfoEXT nameInfo(vk::ObjectType::eDescriptorSetLayout,
-				(uint64)descriptorSetLayouts[dsIndex], name.c_str());
+				(uint64)descriptorSetLayoutData[dsIndex], name.c_str());
 			vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo);
 		}
 		#endif
@@ -328,19 +331,20 @@ static vector<void*> createVkShaders(const vector<uint8>* codeArray, uint8 shade
 {
 	auto vulkanAPI = VulkanAPI::get();
 	vector<void*> shaders(shaderCount);
+	auto shaderData = shaders.data();
 
 	for (uint8 i = 0; i < shaderCount; i++)
 	{
 		const auto& shaderCode = codeArray[i];
-		vk::ShaderModuleCreateInfo shaderInfo({},
-			(uint32)shaderCode.size(), (const uint32*)shaderCode.data());
-		shaders[i] = (VkShaderModule)vulkanAPI->device.createShaderModule(shaderInfo);
+		vk::ShaderModuleCreateInfo shaderInfo({}, (uint32)shaderCode.size(), (const uint32*)shaderCode.data());
+		auto shader = (VkShaderModule)vulkanAPI->device.createShaderModule(shaderInfo);
+		shaderData[i] = shader;
 
 		#if GARDEN_DEBUG // Note: No GARDEN_EDITOR
 		if (vulkanAPI->features.debugUtils)
 		{
 			auto _name = "shaderModule." + pipelinePath.generic_string() + to_string(i);
-			vk::DebugUtilsObjectNameInfoEXT nameInfo(vk::ObjectType::eShaderModule, (uint64)shaders[i], _name.c_str());
+			vk::DebugUtilsObjectNameInfoEXT nameInfo(vk::ObjectType::eShaderModule, (uint64)shader, _name.c_str());
 			vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo);
 		}
 		#endif
@@ -505,7 +509,7 @@ void Pipeline::updateDescriptorsLock(const DescriptorSet::Range*
 		return;
 
 	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
-	for (uint8 i = 0; i < rangeCount; i++) // TODO: make non async variant woth busyLock++ or multithread this?
+	for (uint8 i = 0; i < rangeCount; i++) // TODO: make non async variant with busyLock++ or multithread this?
 	{
 		auto descriptorSet = descriptorSetRanges[i].set;
 		auto dsView = graphicsAPI->descriptorSetPool.get(descriptorSet);
@@ -518,15 +522,12 @@ void Pipeline::updateDescriptorsLock(const DescriptorSet::Range*
 
 		for (const auto& dsUniform : dsUniforms)
 		{
-			auto searchResult = pipelineUniforms.find(dsUniform.first);
-			if (searchResult == pipelineUniforms.end())
+			auto uniformPair = pipelineUniforms.find(dsUniform.first);
+			if (uniformPair == pipelineUniforms.end())
 				continue;
 
-			const auto& pipelineUniform = searchResult->second;
-			auto uniformType = pipelineUniform.type;
-
-			if (isSamplerType(uniformType) || isImageType(uniformType) ||
-				uniformType == GslUniformType::SubpassInput)
+			auto pipelineUniform = uniformPair->second;
+			if (pipelineUniform.isSamplerType | pipelineUniform.isImageType)
 			{
 				for (const auto& resourceArray : dsUniform.second.resourceSets)
 				{
@@ -552,7 +553,7 @@ void Pipeline::updateDescriptorsLock(const DescriptorSet::Range*
 					}
 				}
 			}
-			else if (isBufferType(uniformType))
+			else if (pipelineUniform.isBufferType)
 			{
 				for (const auto& resourceArray : dsUniform.second.resourceSets)
 				{
@@ -575,7 +576,7 @@ void Pipeline::updateDescriptorsLock(const DescriptorSet::Range*
 					}
 				}
 			}
-			else if (uniformType == GslUniformType::AccelerationStructure)
+			else if (pipelineUniform.type == GslUniformType::AccelerationStructure)
 			{
 				for (const auto& resourceArray : dsUniform.second.resourceSets)
 				{
@@ -745,11 +746,11 @@ void Pipeline::bindDescriptorSets(const DescriptorSet::Range* descriptorSetRange
 	#if GARDEN_DEBUG
 	for (uint8 i = 0; i < rangeCount; i++)
 	{
-		auto dsRange = descriptorSetRanges[i];
-		GARDEN_ASSERT_MSG(dsRange.set, "Pipeline [" + debugName + "] "
+		auto descriptorSetRange = descriptorSetRanges[i];
+		GARDEN_ASSERT_MSG(descriptorSetRange.set, "Pipeline [" + debugName + "] "
 			"descriptor set [" + to_string(i) +  "] is null");
-		auto descriptorSetView = graphicsAPI->descriptorSetPool.get(dsRange.set);
-		GARDEN_ASSERT_MSG(dsRange.offset + dsRange.count <= descriptorSetView->getSetCount(), 
+		auto descriptorSetView = graphicsAPI->descriptorSetPool.get(descriptorSetRange.set);
+		GARDEN_ASSERT_MSG(descriptorSetRange.offset + descriptorSetRange.count <= descriptorSetView->getSetCount(), 
 			"Out of pipeline [" + debugName + "] descriptor set count range");
 		auto pipeline = graphicsAPI->getPipeline(descriptorSetView->getPipelineType(), this);
 		GARDEN_ASSERT_MSG(pipeline == descriptorSetView->getPipeline(), "Descriptor set [" + 
@@ -780,14 +781,14 @@ void Pipeline::bindDescriptorSetsAsync(const DescriptorSet::Range* descriptorSet
 	#if GARDEN_DEBUG
 	for (uint8 i = 0; i < rangeCount; i++)
 	{
-		auto dsRange = descriptorSetRanges[i];
-		GARDEN_ASSERT_MSG(dsRange.set,"Pipeline [" + debugName + "] "
+		auto descriptorSetRange = descriptorSetRanges[i];
+		GARDEN_ASSERT_MSG(descriptorSetRange.set,"Pipeline [" + debugName + "] "
 			"descriptor set [" + to_string(i) +  "] is null");
 		auto thisPipeline = graphicsAPI->getPipeline(type, this);
-		auto descriptorSetView = graphicsAPI->descriptorSetPool.get(dsRange.set);
+		auto descriptorSetView = graphicsAPI->descriptorSetPool.get(descriptorSetRange.set);
 		GARDEN_ASSERT_MSG(thisPipeline == descriptorSetView->getPipeline(), "Descriptor set [" + 
 			to_string(i) +  "] pipeline is different from this pipeline [" + debugName + "]");
-		GARDEN_ASSERT_MSG(dsRange.offset + dsRange.count <= descriptorSetView->getSetCount(),
+		GARDEN_ASSERT_MSG(descriptorSetRange.offset + descriptorSetRange.count <= descriptorSetView->getSetCount(),
 			"Out of pipeline [" + debugName + "] descriptor set count range");
 	}
 	#endif
@@ -806,14 +807,14 @@ void Pipeline::bindDescriptorSetsAsync(const DescriptorSet::Range* descriptorSet
 
 		for (uint8 i = 0; i < rangeCount; i++)
 		{
-			auto dsRange = descriptorSetRanges[i];
-			auto descriptorSetView = graphicsAPI->descriptorSetPool.get(dsRange.set);
+			auto descriptorSetRange = descriptorSetRanges[i];
+			auto descriptorSetView = graphicsAPI->descriptorSetPool.get(descriptorSetRange.set);
 			auto instance = (vk::DescriptorSet*)ResourceExt::getInstance(**descriptorSetView);
 
 			if (descriptorSetView->getSetCount() > 1)
 			{
-				auto count = dsRange.offset + dsRange.count;
-				for (uint32 j = dsRange.offset; j < count; j++)
+				auto setCount = descriptorSetRange.offset + descriptorSetRange.count;
+				for (uint32 j = descriptorSetRange.offset; j < setCount; j++)
 					vkDescriptorSets.push_back(instance[j]);
 			}
 			else vkDescriptorSets.push_back((VkDescriptorSet)instance);

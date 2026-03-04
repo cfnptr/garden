@@ -29,7 +29,7 @@ static ID<GraphicsPipeline> createPipeline()
 	options.loadAsync = false; // We can't load async due to imageLoaded() usage.
 
 	return ResourceSystem::Instance::get()->loadGraphicsPipeline(
-		"skybox", deferredSystem->getDepthHdrFB(), options);
+		"skybox", deferredSystem->getDepthStencilHdrFB(), options);
 }
 static DescriptorSet::Uniforms getUniforms(GraphicsSystem* graphicsSystem, ID<Image> cubemap)
 {
@@ -80,7 +80,7 @@ void SkyboxRenderSystem::init()
 {
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("ImageLoaded", SkyboxRenderSystem::imageLoaded);
-	ECSM_SUBSCRIBE_TO_EVENT("DepthHdrRender", SkyboxRenderSystem::depthHdrRender);
+	ECSM_SUBSCRIBE_TO_EVENT("DdHdrRender", SkyboxRenderSystem::dsHdrRender);
 }
 void SkyboxRenderSystem::deinit()
 {
@@ -90,7 +90,7 @@ void SkyboxRenderSystem::deinit()
 
 		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("ImageLoaded", SkyboxRenderSystem::imageLoaded);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("DepthHdrRender", SkyboxRenderSystem::depthHdrRender);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("DsHdrRender", SkyboxRenderSystem::dsHdrRender);
 	}
 }
 
@@ -112,9 +112,9 @@ void SkyboxRenderSystem::imageLoaded()
 }
 
 //**********************************************************************************************************************
-void SkyboxRenderSystem::depthHdrRender()
+void SkyboxRenderSystem::dsHdrRender()
 {
-	SET_CPU_ZONE_SCOPED("Skybox Depth HDR Render");
+	SET_CPU_ZONE_SCOPED("Skybox Depth/Stencil HDR Render");
 
 	if (!isEnabled)
 		return;

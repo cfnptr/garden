@@ -22,15 +22,14 @@ using namespace garden;
 
 static ID<Image> createHizBuffer(GraphicsSystem* graphicsSystem)
 {
-	auto hizBufferSize =  graphicsSystem->getScaledFrameSize();
-	auto mipCount = calcMipCount(hizBufferSize);
+	auto frameSize = graphicsSystem->getScaledFrameSize();
+	auto mipCount = calcMipCount(frameSize);
 
 	Image::Mips mips(mipCount);
-	for (uint8 i = 0; i < mipCount; i++)
-		mips[i].resize(1);
+	for (auto& mip : mips) mip.resize(1);
 
 	auto image = graphicsSystem->createImage(HizRenderSystem::bufferFormat, Image::Usage::ColorAttachment | 
-		Image::Usage::Sampled | Image::Usage::TransferDst, mips, hizBufferSize, Image::Strategy::Size);
+		Image::Usage::Sampled | Image::Usage::TransferDst, mips, frameSize, Image::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(image, "image.hiz.buffer");
 	return image;
 }
@@ -38,19 +37,21 @@ static ID<Image> createHizBuffer(GraphicsSystem* graphicsSystem)
 static void createHizFramebuffers(GraphicsSystem* graphicsSystem, 
 	ID<Image> hizBuffer, vector<ID<Framebuffer>>& framebuffers)
 {
-	auto framebufferSize = graphicsSystem->getScaledFrameSize();
+	auto frameSize = graphicsSystem->getScaledFrameSize();
 	auto hisBufferView = graphicsSystem->get(hizBuffer);
 	auto mipCount = hisBufferView->getMipCount();
-	framebuffers.resize(mipCount);
+	framebuffers.resize(mipCount); auto framebufferData = framebuffers.data();
 
 	for (uint8 i = 0; i < mipCount; i++)
 	{
-		vector<Framebuffer::OutputAttachment> colorAttachments =
-		{ Framebuffer::OutputAttachment(hisBufferView->getView(0, i), { false, false, true }) };
-		auto framebuffer = graphicsSystem->createFramebuffer(framebufferSize, std::move(colorAttachments));
+		vector<Framebuffer::Attachment> colorAttachments =
+		{
+			Framebuffer::Attachment(hisBufferView->getView(0, i), 
+				Framebuffer::LoadOp::DontCare, Framebuffer::StoreOp::Store)
+		};
+		auto framebuffer = graphicsSystem->createFramebuffer(frameSize, std::move(colorAttachments));
 		SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.hiz" + to_string(i));
-		framebuffers[i] = framebuffer;
-		framebufferSize = max(framebufferSize / 2u, uint2::one);
+		framebufferData[i] = framebuffer; frameSize = max(frameSize / 2u, uint2::one);
 	}
 }
 
@@ -64,19 +65,19 @@ static void createHizDescriptorSets(GraphicsSystem* graphicsSystem, ID<GraphicsP
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	auto hisBufferView = graphicsSystem->get(hizBuffer);
 	auto mipCount = hisBufferView->getMipCount();
-	descriptorSets.resize(mipCount);
+	descriptorSets.resize(mipCount); auto descriptorSetData = descriptorSets.data();
 
-	auto uniforms = getUniforms(deferredSystem->getDepthImageView());
+	auto uniforms = getUniforms(deferredSystem->getDepthOnlyIV());
 	auto descriptorSet = graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms));
 	SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.hiz0");
-	descriptorSets[0] = descriptorSet;
+	descriptorSetData[0] = descriptorSet;
 
 	for (uint8 i = 1; i < mipCount; i++)
 	{
 		uniforms = getUniforms(hisBufferView->getView(0, i - 1));
 		descriptorSet = graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms));
 		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.hiz" + to_string(i));
-		descriptorSets[i] = descriptorSet;
+		descriptorSetData[i] = descriptorSet;
 	}
 }
 
@@ -156,9 +157,11 @@ void HizRenderSystem::downsampleHiz(uint8 mipCount)
 
 	if (descriptorSets.empty())
 		createHizDescriptorSets(graphicsSystem, pipeline, hizBuffer, descriptorSets);
-	
-	auto framebufferView = graphicsSystem->get(framebuffers[0]);
-	pipelineView->updateFramebuffer(framebuffers[0]);
+
+	auto framebufferData = framebuffers.data();
+	auto descriptorSetData = descriptorSets.data();
+	auto framebufferView = graphicsSystem->get(framebufferData[0]);
+	pipelineView->updateFramebuffer(framebufferData[0]);
 
 	auto hizBufferView = graphicsSystem->get(hizBuffer);
 	if (mipCount > hizBufferView->getMipCount())
@@ -168,7 +171,7 @@ void HizRenderSystem::downsampleHiz(uint8 mipCount)
 	{
 		SET_GPU_DEBUG_LABEL("HiZ Downsample");
 		{
-			RenderPass renderPass(framebuffers[0], float4::zero);
+			RenderPass renderPass(framebufferData[0], float4::zero);
 			pipelineView->bind(HIZ_VARIANT_FIRST);
 			pipelineView->setViewportScissor();
 			pipelineView->bindDescriptorSet(descriptorSets[0]);
@@ -177,12 +180,12 @@ void HizRenderSystem::downsampleHiz(uint8 mipCount)
 		
 		for (uint8 i = 1; i < mipCount; i++)
 		{
-			pipelineView->updateFramebuffer(framebuffers[i]);
+			pipelineView->updateFramebuffer(framebufferData[i]);
 
-			RenderPass renderPass(framebuffers[i], float4::zero);
+			RenderPass renderPass(framebufferData[i], float4::zero);
 			pipelineView->bind(HIZ_VARIANT_BASE);
 			pipelineView->setViewportScissor();
-			pipelineView->bindDescriptorSet(descriptorSets[i]);
+			pipelineView->bindDescriptorSet(descriptorSetData[i]);
 			pipelineView->drawFullscreen();
 		}
 	}

@@ -17,6 +17,8 @@
  * @brief Common graphics framebuffer functions.
  */
 
+ // TODO: implement VK_KHR_dynamic_rendering_local_read.
+
 #pragma once
 #include "garden/graphics/image.hpp"
 
@@ -25,7 +27,7 @@ namespace garden::graphics
 
 class FramebufferExt;
 
-/***********************************************************************************************************************
+/**
  * @brief Rendering destinations container.
  * 
  * @details
@@ -34,132 +36,58 @@ class FramebufferExt;
  * depth and stencil buffers. The framebuffer object itself does not contain the image data, 
  * instead, it references the image views that are the actual storage for these buffers.
  */
-class Framebuffer final : public Resource
+class Framebuffer final
 {
 public:
 	/**
-	 * @brief Framebuffer input attachment description.
-	 * @details See the @ref Framebuffer::getSubpasses().
-	 * @warning pipelineStages variable affects memory syncronization!
+	 * @brief Framebuffer attachment content load operations.
+	 * @details Specifies how contents of an attachment are treated at the beginning of the rendering.
 	 */
-	struct InputAttachment final
+	enum class LoadOp : uint8
 	{
-		ID<ImageView> imageView = {};      /**< Input attachment image view. */
-		PipelineStage pipelineStages = {}; /**< Pipeline stages where attachment is used. [affects synchronization!] */
-
-		/**
-		 * @brief Creates a new framebuffer input attachment.
-		 * 
-		 * @param imageView target input image view
-		 * @param pipelineStages pipeline stages where attachment is used [affects synchronization!]
-		 */
-		constexpr InputAttachment(ID<ImageView> imageView, PipelineStage pipelineStages) noexcept :
-			imageView(imageView), pipelineStages(pipelineStages) { }
-		/**
-		 * @brief Creates a new empty framebuffer input attachment.
-		 * @note It can not be used to create a framebuffer.
-		 */
-		constexpr InputAttachment() noexcept = default;
+		Load,     /**< Load existing content of an attachment image. */
+		Clear,    /**< Clear render pass content with specified value. */
+		DontCare, /**< Existing attachment image content may be undefined. */
+		None,     /**< Undefined existing attachment image content. (Read only) */
+		Count,    /**< Framebuffer attachment content load operation count. */
 	};
 	/**
-	 * @brief Framebuffer output attachment description.
+	 * @brief Framebuffer attachment content store operations.
+	 * @details Specifies how contents of an attachment are treated at the end of the rendering.
+	 */
+	enum class StoreOp : uint8
+	{
+		Store,    /**< Write render pass generated content to the memory. */
+		DontCare, /**< Render pass generated content may be discarded. */
+		None,     /**< Render pass does not generate any content. (Read only) */
+		Count,    /**< Framebuffer attachment content store operation count. */
+	};
+
+	/**
+	 * @brief Framebuffer attachment properties.
 	 * @details See the @ref Framebuffer::getColorAttachments().
-	 * @warning clear, load and store variables are per attachment, not subpass!
 	 */
-	struct OutputAttachment final
+	struct Attachment final
 	{
-		struct Flags final
-		{
-			bool clear = false; /**< Clear output attachment content before rendering. */
-			bool load = false;  /**< Load output attachment content before rendering. */
-			bool store = false; /**< Store output attachment content after rendering. */
-			constexpr Flags() noexcept = default;
-		};
-
-		ID<ImageView> imageView = {}; /**< Output attachment image view. */
-		Flags flags = {};             /**< Output attachment content flags. */
+		ID<ImageView> imageView = {}; /**< Framebuffer attachment image view instance. */
+		LoadOp loadOperation = {};    /**< Existing attachment content load operation. */
+		StoreOp storeOperation = {};  /**< Generated attachment content store operation. */
+		uint16 _alignment = 0;
 
 		/**
-		 * @brief Creates a new framebuffer input attachment.
+		 * @brief Creates a new framebuffer attachment.
 		 * 
-		 * @param imageView target output image view
-		 * @param flags output attachment content flags
+		 * @param imageView target framebuffer attachment image view
+		 * @param loadOperation attachment content load operation
+		 * @param storeOperation attachment content store operation
 		 */
-		constexpr OutputAttachment(ID<ImageView> imageView, Flags flags) noexcept :
-			imageView(imageView), flags(flags) { }
-		/**
-		 * @brief Creates a new empty framebuffer output attachment.
-		 * @note It can not be used to create a framebuffer.
-		 */
-		constexpr OutputAttachment() noexcept { }
-
-		/**
-		 * @brief Sets framebuffer output attachment content clear, load and store flags.
-		 * @param flags output attachment content flags
-		 */
-		constexpr void setFlags(Flags flags) noexcept { this->flags = flags; }
+		constexpr Attachment(ID<ImageView> imageView = {}, 
+			LoadOp loadOperation = LoadOp::Load, StoreOp storeOperation = StoreOp::Store) noexcept :
+			imageView(imageView), loadOperation(loadOperation), storeOperation(storeOperation) { }
 	};
 
 	/*******************************************************************************************************************
-	 * @brief Framebuffer subpass description.
-	 * 
-	 * @details
-	 * Subpass represents a phase of rendering that produces specific outputs or performs certain operations using 
-	 * shared resources. Each subpass can read from and write to attachments (like color buffers, depth buffers, etc.) 
-	 * that were set up in the framebuffer when the render pass was defined. Improves performance on tiled GPUs.
-	 * 
-	 * See the @ref Framebuffer::getColorAttachments().
-	 */
-	struct Subpass final
-	{
-		vector<InputAttachment> inputAttachments;   /**< Subpass input attachment array. */
-		vector<OutputAttachment> outputAttachments; /**< Subpass output attachment array. */
-		PipelineType pipelineType = {};             /**< Rendering pipeline type to use. */
-
-		/**
-		 * @brief Creates a new framebuffer subpass.
-		 * 
-		 * @param pipelineType rendering pipeline type to use
-		 * @param[in] inputAttachments subpass input attachment array
-		 * @param[in] outputAttachments subpass output attachment array
-		 */
-		Subpass(PipelineType pipelineType, const vector<InputAttachment>& inputAttachments,
-			const vector<OutputAttachment>& outputAttachments) noexcept :
-			inputAttachments(inputAttachments), outputAttachments(outputAttachments), pipelineType(pipelineType) { }
-		/**
-		 * @brief Creates a new empty framebuffer subpass.
-		 * @note It can not be used to create a framebuffer.
-		 */
-		Subpass() noexcept = default;
-	};
-	/**
-	 * @brief Framebuffer subpass attachment container.
-	 * @details See the @ref Framebuffer::recreate().
-	 * @note Attachment array sizes should be the same as in the created framebuffer.
-	 */
-	struct SubpassImages final
-	{
-		vector<ID<ImageView>> inputAttachments;  /**< A new subpass input attachment array. */
-		vector<ID<ImageView>> outputAttachments; /**< A new subpass output attachment array. */
-
-		/**
-		 * @brief Creates a new framebuffer subpass images container.
-		 * 
-		 * @param[in] inputAttachments a new subpass input attachment array
-		 * @param[in] outputAttachments a new subpass output attachment array
-		 */
-		SubpassImages(const vector<ID<ImageView>>& inputAttachments,
-			const vector<ID<ImageView>>& outputAttachments) noexcept :
-			inputAttachments(inputAttachments), outputAttachments(outputAttachments) { }
-		/**
-		 * @brief Creates a new empty framebuffer subpass images container.
-		 * @note It can not be used to recreate a subpass.
-		 */
-		SubpassImages() noexcept = default;
-	};
-
-	/*******************************************************************************************************************
-	 * @brief Depth/stencil color container.
+	 * @brief Framebuffer depth/stencil color container.
 	 */
 	struct DepthStencilValue final
 	{
@@ -167,7 +95,7 @@ public:
 		uint32 stencil = 0x00; /**< Stencil buffer value. */
 	};
 	/**
-	 * @brief Attachment clear color container.
+	 * @brief Framebuffer attachment clear color container.
 	 */
 	union ClearColor final
 	{
@@ -177,7 +105,7 @@ public:
 		DepthStencilValue deptStencilValue; /**< Depth/stencil clear value. */
 	};
 	/**
-	 * @brief Clear attachment description.
+	 * @brief Framebuffer clear attachment properties.
 	 * @details See the @ref Framebuffer::clearAttachments().
 	 */
 	struct ClearAttachment final
@@ -186,7 +114,7 @@ public:
 		ClearColor clearColor = {}; /**< Attachment clear color. (infill) */
 	};
 	/**
-	 * @brief Attachment clear region description.
+	 * @brief Framebuffer attachment clear region properties.
 	 * @details See the @ref Framebuffer::clearAttachments().
 	 */
 	struct ClearRegion final
@@ -197,25 +125,24 @@ public:
 		uint32 layerCount = 0;      /**< Image array layer count. */
 	};
 private:
-	vector<Subpass> subpasses;
-	vector<OutputAttachment> colorAttachments;
-	void* renderPass = nullptr;
+	vector<Attachment> colorAttachments;
+	Attachment depthStencilAttachment = {};
 	uint2 size = uint2::zero;
-	OutputAttachment depthStencilAttachment = {};
+	uint32 depthStencilLayout = 0;
 	bool isSwapchain = false;
 
-	Framebuffer(uint2 size, vector<Subpass>&& subpasses);
-	Framebuffer(uint2 size, vector<OutputAttachment>&& colorAttachments,
-		OutputAttachment depthStencilAttachment);
+	#if GARDEN_DEBUG || GARDEN_EDITOR
+	string debugName = UNNAMED_RESOURCE;
+	#endif
+
+	Framebuffer(uint2 size, vector<Attachment>&& colorAttachments, Attachment depthStencilAttachment);
 	Framebuffer(uint2 size, ID<ImageView> swapchainImage)
 	{
-		Framebuffer::OutputAttachment::Flags flags = { false, true, true };
-		this->instance = (void*)1;
-		this->colorAttachments.emplace_back(swapchainImage, flags);
+		this->colorAttachments = { Attachment(swapchainImage, LoadOp::Load, StoreOp::Store) };
 		this->size = size;
 		this->isSwapchain = true;
 	}
-	bool destroy() final;
+	bool destroy() { return true; }
 
 	friend class FramebufferExt;
 	friend class LinearPool<Framebuffer>;
@@ -228,65 +155,133 @@ public:
 
 	/**
 	 * @brief Returns framebuffer size in texels.
-	 * @details All attachments should have this size.
+	 * @details All framebuffer attachments should have this size.
 	 */
 	uint2 getSize() const noexcept { return size; }
 	/**
 	 * @brief Returns framebuffer color attachments.
-	 * @details Images within a framebuffer where the output color data from rendering operations is stored.
+	 * @details Images within a framebuffer where the color data from rendering operations are stored.
 	 */
-	const vector<OutputAttachment>& getColorAttachments() const noexcept { return colorAttachments; }
+	const vector<Attachment>& getColorAttachments() const noexcept { return colorAttachments; }
 	/**
 	 * @brief Returns framebuffer depth/stencil attachment.
-	 * @details Image within a framebuffer where the output depth/stencil data from rendering operations is stored.
+	 * @details Image within a framebuffer where the depth/stencil data from rendering operations are stored.
 	 */
-	const OutputAttachment& getDepthStencilAttachment() const noexcept { return depthStencilAttachment; }
+	const Attachment& getDepthStencilAttachment() const noexcept { return depthStencilAttachment; }
+
 	/**
-	 * @brief Returns framebuffer subpasses.
-	 * 
-	 * @details
-	 * Advanced feature designed to optimize rendering by organizing the rendering process into multiple, 
-	 * sequential steps that share the same framebuffer. These subpasses are part of a larger structure 
-	 * known as a "render pass", which defines how the graphics pipeline will handle contents of the 
-	 * framebuffer throughout the various stages of rendering. Improves performance on tiled GPUs.
+	 * @brief Returns true if framebuffer contains color or depth stencil attachments.
 	 */
-	const vector<Subpass>& getSubpasses() const noexcept { return subpasses; }
+	bool isValid() const noexcept { return !colorAttachments.empty() || depthStencilAttachment.imageView; }
 	/**
-	 * @brief Is framebuffer part og the swapchain.
+	 * @brief Is this framebuffer part of the swapchain.
 	 * @details Swapchain framebuffers are provided by the graphics API.
 	 */
 	bool isSwapchainFramebuffer() const noexcept { return isSwapchain; }
 
-	/*******************************************************************************************************************
+	/**
 	 * @brief Updates framebuffer attachments.
-	 * @note This operation is fast when dynamic rendering is supported.
 	 * 
 	 * @param size a new framebuffer size in texels
-	 * @param[in] colorAttachments color attachment array
+	 * @param[in] colorAttachments color attachment array or null
 	 * @param colorAttachmentCount color attachment array size
 	 * @param depthStencilAttachment depth stencil attachment or empty
 	 */
-	void update(uint2 size, const OutputAttachment* colorAttachments,
-		uint32 colorAttachmentCount, OutputAttachment depthStencilAttachment = {});
+	void update(uint2 size, const Attachment* colorAttachments,
+		uint32 colorAttachmentCount, Attachment depthStencilAttachment = {});
 	/**
 	 * @brief Updates framebuffer attachments.
-	 * @note This operation is fast when dynamic rendering is supported.
 	 * 
 	 * @param size a new framebuffer size in texels
-	 * @param[in] colorAttachments color attachment array
+	 * @param[in] colorAttachments color attachment array or empty
 	 * @param depthStencilAttachment depth stencil attachment or empty
 	 */
-	void update(uint2 size, vector<OutputAttachment>&& colorAttachments,
-		OutputAttachment depthStencilAttachment = {});
-	
+	void update(uint2 size, vector<Attachment>&& colorAttachments, Attachment depthStencilAttachment = {});
 	/**
-	 * @brief Recreates framebuffer subpasses.
-	 * @warning Use only when required, this operation impacts performance!
+	 * @brief Updates framebuffer attachments.
 	 * 
 	 * @param size a new framebuffer size in texels
-	 * @param[in] subpasses target subpass array
+	 * @param colorAttachment color attachment or empty
+	 * @param depthStencilAttachment depth stencil attachment or empty
 	 */
-	void recreate(uint2 size, const vector<SubpassImages>& subpasses);
+	void update(uint2 size, Attachment colorAttachment, Attachment depthStencilAttachment = {})
+	{
+		update(size, &colorAttachment, 1, depthStencilAttachment);
+	}
+
+	/*******************************************************************************************************************
+	 * @brief Updates framebuffer attachments.
+	 * 
+	 * @param size a new framebuffer size in texels
+	 * @param[in] colorImageViews color image view array or null
+	 * @param colorImageViewCount color image view array size
+	 * @param depthStencilIV depth stencil image view or empty
+	 */
+	void update(uint2 size, const ID<ImageView>* colorImageViews,
+		uint32 colorImageViewCount, ID<ImageView> depthStencilIV = {});
+	/**
+	 * @brief Updates framebuffer attachments.
+	 * 
+	 * @param size a new framebuffer size in texels
+	 * @param[in] colorImageViews a new color image view array or empty
+	 * @param depthStencilIV a new depth stencil image view or empty
+	 */
+	void update(uint2 size, const vector<ID<ImageView>>& colorImageViews, ID<ImageView> depthStencilIV= {})
+	{
+		update(size, colorImageViews.data(), colorImageViews.size(), depthStencilIV);
+	}
+	/**
+	 * @brief Updates framebuffer attachments.
+	 * 
+	 * @param size a new framebuffer size in texels
+	 * @param colorImageView a new color image view or empty
+	 * @param depthStencilIV a new depth stencil image view or empty
+	 */
+	void update(uint2 size, ID<ImageView> colorImageView, ID<ImageView> depthStencilIV = {})
+	{
+		update(size, &colorImageView, 1, depthStencilIV);
+	}
+
+	/**
+	 * @brief Updates framebuffer color attachment at specified index.
+	 *
+	 * @param index target framebuffer color attachment index
+	 * @param[in] colorAttachment a new color attachment data
+	 */
+	void updateColor(uint32 index, const Attachment& colorAttachment);
+	/**
+	 * @brief Updates framebuffer color attachment at specified index.
+	 *
+	 * @param index target framebuffer color attachment index
+	 * @param colorImageView a new color image view or empty
+	 */
+	void updateColor(uint32 index, ID<ImageView> colorImageView);
+	/**
+	 * @brief Updates framebuffer color attachment at specified index.
+	 *
+	 * @param index target framebuffer color attachment index
+	 * @param loadOperation a new attachment content load operation
+	 * @param storeOperation a new attachment content store operation
+	 */
+	void updateColor(uint32 index, LoadOp loadOperation, StoreOp storeOperation);
+
+	/**
+	 * @brief Updates framebuffer depth stencil attachment.
+	 * @param[in] depthStencilAttachment a new depth stencil attachment data
+	 */
+	void updateDepthStencil(const Attachment& depthStencilAttachment);
+	/**
+	 * @brief Updates framebuffer depth stencil attachment.
+	 * @param depthStencilIV a new depth stencil image view or empty
+	 */
+	void updateDepthStencil(ID<ImageView> depthStencilIV);
+	/**
+	 * @brief Updates framebuffer depth stencil attachment.
+	 *
+	 * @param loadOperation a new attachment content load operation
+	 * @param storeOperation a new attachment content store operation
+	 */
+	void updateDepthStencil(LoadOp loadOperation, StoreOp storeOperation);
 
 	//******************************************************************************************************************
 	// Render commands
@@ -356,16 +351,6 @@ public:
 	void beginRenderPass(const float4& clearColor, float clearDepth = 0.0f,
 		uint32 clearStencil = 0x00, int4 region = int4::zero, bool asyncRecording = false)
 	{ beginRenderPass(&clearColor, 1, clearDepth, clearStencil, region, asyncRecording); }
-	
-	/*******************************************************************************************************************
-	 * @brief Proceeds to the next framebuffer subpass.
-	 * @param asyncRecording render with multithreaded commands recording
-	 * 
-	 * @details
-	 * Subpasses are a feature that allows multiple rendering operations to be 
-	 * efficiently batched together into a single render pass with multiple steps.
-	 */
-	void nextSubpass(bool asyncRecording = false);
 
 	/**
 	 * @brief Ends framebuffer render pass.
@@ -457,12 +442,54 @@ public:
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	/**
+	 * @brief Returns framebuffer debug name. (Debug Only)
+	 */
+	const string& getDebugName() const noexcept { return debugName; }
+	/**
 	 * @brief Sets framebuffer debug name. (Debug Only)
 	 * @param[in] name target debug name
 	 */
-	void setDebugName(const string& name) final;
+	void setDebugName(const string& name)
+	{
+		GARDEN_ASSERT(!name.empty());
+		debugName = name;
+	}
 	#endif
 };
+
+/***********************************************************************************************************************
+ * @brief Framebuffer attachment content load operation name strings
+ */
+constexpr const char* framebufferLoadOpNames[(psize)Framebuffer::LoadOp::Count] =
+{
+	"Load", "Clear", "DontCare", "None"
+};
+/**
+ * @brief Framebuffer attachment content load operation name strings
+ */
+constexpr const char* framebufferStoreOpNames[(psize)Framebuffer::StoreOp::Count] =
+{
+	"Store", "DontCare", "None"
+};
+
+/**
+ * @brief Returns framebuffer attachment content load operation name string.
+ * @param loadOperation target framebuffer load operation
+ */
+static string_view toString(Framebuffer::LoadOp loadOperation) noexcept
+{
+	GARDEN_ASSERT(loadOperation < Framebuffer::LoadOp::Count);
+	return framebufferLoadOpNames[(psize)loadOperation];
+}
+/**
+ * @brief Returns framebuffer attachment content store operation name string.
+ * @param storeOperation target framebuffer store operation
+ */
+static string_view toString(Framebuffer::StoreOp storeOperation) noexcept
+{
+	GARDEN_ASSERT(storeOperation < Framebuffer::StoreOp::Count);
+	return framebufferStoreOpNames[(psize)storeOperation];
+}
 
 /***********************************************************************************************************************
  * @brief Framebuffer render pass abstraction class.
@@ -545,16 +572,6 @@ public:
 	 * outputs are correctly handled and that the GPU is ready to proceed with other tasks or another render pass.
 	 */
 	~RenderPass();
-
-	/*******************************************************************************************************************
-	 * @brief Proceeds to the next framebuffer subpass.
-	 * @param asyncRecording render with multithreaded commands recording
-	 *
-	 * @details
-	 * Subpasses are a feature that allows multiple rendering operations to be
-	 * efficiently batched together into a single render pass with multiple steps.
-	 */
-	void nextSubpass(bool asyncRecording = false);
 };
 
 /***********************************************************************************************************************
@@ -565,25 +582,12 @@ class FramebufferExt final
 {
 public:
 	/**
-	 * @brief Returns framebuffer subpasses.
-	 * @warning In most cases you should use @ref Framebuffer functions.
-	 * @param[in] framebuffer target framebuffer instance
-	 */
-	static vector<Framebuffer::Subpass>& getSubpasses(Framebuffer& framebuffer)
-		noexcept { return framebuffer.subpasses; }
-	/**
 	 * @brief Returns framebuffer color attachments.
 	 * @warning In most cases you should use @ref Framebuffer functions.
 	 * @param[in] framebuffer target framebuffer instance
 	 */
-	static vector<Framebuffer::OutputAttachment>& getColorAttachments(Framebuffer& framebuffer)
+	static vector<Framebuffer::Attachment>& getColorAttachments(Framebuffer& framebuffer)
 		noexcept { return framebuffer.colorAttachments; }
-	/**
-	 * @brief Returns framebuffer render pass instance.
-	 * @warning In most cases you should use @ref Framebuffer functions.
-	 * @param[in] framebuffer target framebuffer instance
-	 */
-	static void*& getRenderPass(Framebuffer& framebuffer) noexcept { return framebuffer.renderPass; }
 	/**
 	 * @brief Returns framebuffer size in texels.
 	 * @warning In most cases you should use @ref Framebuffer functions.
@@ -595,10 +599,16 @@ public:
 	 * @warning In most cases you should use @ref Framebuffer functions.
 	 * @param[in] framebuffer target framebuffer instance
 	 */
-	static Framebuffer::OutputAttachment& getDepthStencilAttachment(Framebuffer& framebuffer)
+	static Framebuffer::Attachment& getDepthStencilAttachment(Framebuffer& framebuffer)
 		noexcept { return framebuffer.depthStencilAttachment; }
 	/**
-	 * @brief Is framebuffer part of the swapchain.
+	 * @brief Returns framebuffer depth stencil attachment layout
+	 * @warning In most cases you should use @ref Framebuffer functions.
+	 * @param[in] framebuffer target framebuffer instance
+	 */
+	static uint32& getDepthStencilLayout(Framebuffer& framebuffer) noexcept { return framebuffer.depthStencilLayout; }
+	/**
+	 * @brief Is this framebuffer part of the swapchain.
 	 * @warning In most cases you should use @ref Framebuffer functions.
 	 * @param[in] framebuffer target framebuffer instance
 	 */

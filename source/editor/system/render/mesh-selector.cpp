@@ -44,9 +44,9 @@ void MeshSelectorEditorSystem::init()
 {
 	auto manager = Manager::Instance::get();
 	if (DeferredRenderSystem::Instance::has())
-		ECSM_SUBSCRIBE_TO_EVENT("DepthLdrRender", MeshSelectorEditorSystem::render);
+		ECSM_SUBSCRIBE_TO_EVENT("DsLdrRender", MeshSelectorEditorSystem::render);
 	else
-		ECSM_SUBSCRIBE_TO_EVENT("DepthForwardRender", MeshSelectorEditorSystem::render);
+		ECSM_SUBSCRIBE_TO_EVENT("DsForwardRender", MeshSelectorEditorSystem::render);
 	ECSM_SUBSCRIBE_TO_EVENT("EditorSettings", MeshSelectorEditorSystem::editorSettings);
 
 	auto settingsSystem = SettingsSystem::Instance::tryGet();
@@ -59,9 +59,9 @@ void MeshSelectorEditorSystem::deinit()
 	{
 		auto manager = Manager::Instance::get();
 		if (DeferredRenderSystem::Instance::has())
-			ECSM_UNSUBSCRIBE_FROM_EVENT("DepthLdrRender", MeshSelectorEditorSystem::render);
+			ECSM_UNSUBSCRIBE_FROM_EVENT("DsLdrRender", MeshSelectorEditorSystem::render);
 		else
-			ECSM_UNSUBSCRIBE_FROM_EVENT("DepthForwardRender", MeshSelectorEditorSystem::render);
+			ECSM_UNSUBSCRIBE_FROM_EVENT("DsForwardRender", MeshSelectorEditorSystem::render);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorSettings", MeshSelectorEditorSystem::editorSettings);
 	}
 }

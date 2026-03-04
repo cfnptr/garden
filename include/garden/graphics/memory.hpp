@@ -72,9 +72,11 @@ public:
 	 */
 	enum class AccessFlags : uint8
 	{
-		None = 0x00,        /**< No memory access flags. */
-		ShaderRead = 0x01,  /**< Specifies read access to a shader uniform. */
-		ShaderWrite = 0x02, /**< Specifies write access to a shader uniform. */
+		None = 0x00,               /**< No memory access flags. */
+		ShaderUniformRead = 0x01,  /**< Specifies read access to a shader uniform buffer. */
+		ShaderSampledRead = 0x02,  /**< Specifies read access to a shader uniform image. */
+		ShaderStorageRead = 0x04,  /**< Specifies read access to a shader storage buffer/image. */
+		ShaderStorageWrite = 0x08, /**< Specifies write access to a shader storage buffer/image. */
 		// TODO: other shader access flags
 	};
 
@@ -87,12 +89,12 @@ public:
 		uint64 stage = 0;  /**< Pipeline stages. (Internal API format) */
 	};
 protected:
-	void* allocation = nullptr;
-	uint64 binarySize = 0;
-	uint64 version = 0;
 	CpuAccess cpuAccess = {};
 	Location location = {};
 	Strategy strategy = {};
+	void* allocation = nullptr;
+	uint64 binarySize = 0;
+	uint64 version = 0;
 
 	Memory(uint64 binarySize, CpuAccess cpuAccess, Location location, Strategy strategy, uint64 version) noexcept :
 		binarySize(binarySize), version(version), cpuAccess(cpuAccess), location(location), strategy(strategy) { }
@@ -140,8 +142,10 @@ DECLARE_ENUM_CLASS_FLAG_OPERATORS(Memory::AccessFlags)
  */
 static string_view toString(Memory::AccessFlags accessFlag)
 {
-	if (hasOneFlag(accessFlag, Memory::AccessFlags::ShaderRead)) return "ShaderRead";
-	if (hasOneFlag(accessFlag, Memory::AccessFlags::ShaderWrite)) return "ShaderWrite";
+	if (hasOneFlag(accessFlag, Memory::AccessFlags::ShaderUniformRead)) return "ShaderUniformRead";
+	if (hasOneFlag(accessFlag, Memory::AccessFlags::ShaderSampledRead)) return "ShaderSampledRead";
+	if (hasOneFlag(accessFlag, Memory::AccessFlags::ShaderStorageRead)) return "ShaderStorageRead";
+	if (hasOneFlag(accessFlag, Memory::AccessFlags::ShaderStorageWrite)) return "ShaderStorageWrite";
 	return "None";
 }
 /**
@@ -151,8 +155,10 @@ static string_view toString(Memory::AccessFlags accessFlag)
 static string toStringList(Memory::AccessFlags accessFlags)
 {
 	string list;
-	if (hasAnyFlag(accessFlags, Memory::AccessFlags::ShaderRead)) list += "ShaderRead | ";
-	if (hasAnyFlag(accessFlags, Memory::AccessFlags::ShaderWrite)) list += "ShaderWrite | ";
+	if (hasAnyFlag(accessFlags, Memory::AccessFlags::ShaderUniformRead)) list += "ShaderUniformRead | ";
+	if (hasAnyFlag(accessFlags, Memory::AccessFlags::ShaderSampledRead)) list += "ShaderSampledRead | ";
+	if (hasAnyFlag(accessFlags, Memory::AccessFlags::ShaderStorageRead)) list += "ShaderStorageRead | ";
+	if (hasAnyFlag(accessFlags, Memory::AccessFlags::ShaderStorageWrite)) list += "ShaderStorageWrite | ";
 	if (list.length() >= 3) list.resize(list.length() - 3);
 	else return "None";
 	return list;

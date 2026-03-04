@@ -46,7 +46,7 @@ static DescriptorSet::Uniforms getUniforms(GraphicsSystem* graphicsSystem,
 	auto bloomBufferView = bloomSystem && useBloomBuffer ? graphicsSystem->get(
 		bloomSystem->getBloomBuffer())->getView() : graphicsSystem->getEmptyTexture();
 	auto depthBufferView = useLightAbsorption ? 
-		deferredSystem->getDepthImageView() : graphicsSystem->getEmptyTexture();
+		deferredSystem->getDepthOnlyIV() : graphicsSystem->getEmptyTexture();
 	auto inFlightCount = graphicsSystem->getInFlightCount();
 
 	DescriptorSet::Uniforms uniforms =

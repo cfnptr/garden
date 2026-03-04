@@ -41,15 +41,15 @@ class DescriptorSetExt;
 class DescriptorSet final : public Resource
 {
 public:
-	/*
+	/**
 	 * @brief Descriptor set buffer instances for each in-flight frame.
 	 */
 	using Buffers = vector<vector<ID<Buffer>>>;
-	/*
+	/**
 	 * @brief Descriptor set image view instances for each in-flight frame.
 	 */
 	using ImageViews = vector<vector<ID<ImageView>>>;
-	/*
+	/**
 	 * @brief Descriptor set TLAS instances for each in-flight frame.
 	 */
 	using Tlases = vector<vector<ID<Tlas>>>;
@@ -171,9 +171,11 @@ public:
 
 	using Uniforms = tsl::robin_map<string, Uniform, SvHash, SvEqual>;
 	using Samplers = tsl::robin_map<string, ID<Sampler>>;
+	using Barriers = vector<vector<Image::LayoutState>>;
 private:
 	ID<Pipeline> pipeline = {};
 	Uniforms uniforms;
+	Barriers barriers;
 	PipelineType pipelineType = {};
 	uint8 index = 0;
 	uint8 setCount = 0;
@@ -192,7 +194,7 @@ public:
 	DescriptorSet() noexcept = default;
 
 	/**
-	 * @brief Returns descriptor set parent pipeline.
+	 * @brief Returns descriptor set parent pipeline instance.
 	 * @note Can be used only with parent pipeline.
 	 */
 	ID<Pipeline> getPipeline() const noexcept { return pipeline; }
@@ -207,12 +209,12 @@ public:
 	 */
 	uint8 getIndex() const noexcept { return index; }
 	/**
-	 * @brief Returns uniform map. (resources)
+	 * @brief Returns descriptor set uniform map. (resources)
 	 * @details Can be used to access descriptor set resources.
 	 */
 	const Uniforms& getUniforms() const noexcept { return uniforms; }
 	/**
-	 * @brief Returns uniform map. (resources)
+	 * @brief Returns descriptor set uniform map. (resources)
 	 * @details Can be used to access descriptor set resources.
 	 */
 	Uniforms& getUniforms() noexcept { return uniforms; }
@@ -244,7 +246,7 @@ public:
 	 * @param setIndex descriptor set index inside descriptor set array
 	 */
 	void updateUniform(string_view name, const UniformResource& uniform, 
-		uint32 elementIndex = 0, uint32 setIndex = 0);
+		uint32 elementIndex = 0, uint8 setIndex = 0);
 	/**
 	 * @brief Writes updated descriptor set uniform resources.
 	 * @warning Use only when required, this operation impacts performance!
@@ -254,7 +256,7 @@ public:
 	 * @param elementOffset element offset inside descriptor array
 	 * @param setIndex descriptor set index inside descriptor set array
 	 */
-	void updateResources(string_view name, uint32 elementCount, uint32 elementOffset = 0, uint32 setIndex = 0);
+	void updateResources(string_view name, uint32 elementCount, uint32 elementOffset = 0, uint8 setIndex = 0);
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	/**
@@ -280,7 +282,7 @@ class DescriptorSetExt final
 {
 public:
 	/**
-	 * @brief Returns descriptor set parent pipeline.
+	 * @brief Returns descriptor set parent pipeline instance.
 	 * @warning In most cases you should use @ref DescriptorSet functions.
 	 * @param[in] descriptorSet target descriptor set instance
 	 */
@@ -291,6 +293,12 @@ public:
 	 * @param[in] descriptorSet target descriptor set instance
 	 */
 	static DescriptorSet::Uniforms& getUniforms(DescriptorSet& descriptorSet) noexcept { return descriptorSet.uniforms; }
+	/**
+	 * @brief Returns descriptor set barriers.
+	 * @warning In most cases you should use @ref DescriptorSet functions.
+	 * @param[in] descriptorSet target descriptor set instance
+	 */
+	static DescriptorSet::Barriers& getBarriers(DescriptorSet& descriptorSet) noexcept { return descriptorSet.barriers; }
 	/**
 	 * @brief Returns descriptor set parent pipeline type.
 	 * @warning In most cases you should use @ref DescriptorSet functions.

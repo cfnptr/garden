@@ -229,7 +229,7 @@ public:
 	uint2 getScaledFrameSize() const noexcept { return scaledFrameSize; }
 	/**
 	 * @brief Returns sub-pixel jittering offsets.
-	 * @details Useful for temporal anti-alisaing. (TAA, DLSS, FSR, XeSS, etc)
+	 * @details Useful for temporal anti-aliasing. (TAA, DLSS, FSR, XeSS, etc)
 	 */
 	const vector<float2>& getJitterOffsets() const noexcept { return jitterOffsets; }
 
@@ -239,13 +239,8 @@ public:
 	 */
 	ID<Framebuffer> getCurrentFramebuffer() const noexcept;
 	/**
-	 * @brief Returns current render subpass index.
-	 * @details Changes by the @ref Framebuffer::nextSubpass().
-	 */
-	uint8 getCurrentSubpassIndex() const noexcept;
-	/**
 	 * @brief Is current render pass use multithreaded commands recording.
-	 * @details Changes by the @ref Framebuffer::nextSubpass().
+	 * @details Set by the @ref Framebuffer::beginRenderPass().
 	 */
 	bool isCurrentRenderPassAsync() const noexcept;
 
@@ -283,7 +278,7 @@ public:
 	bool hasRayQuery() const;
 	/**
 	 * @brief Returns shader subgroup size. (Warp or wavefront size)
-	 * @details Typically 32 or 64 threads on moder desktop GPUs. (But may be 4, 8, 16, etc.)
+	 * @details Typically 32 or 64 threads on modern desktop GPUs. (But may be 4, 8, 16, etc.)
 	 */
 	uint32 getSubgroupSize() const;
 
@@ -771,15 +766,8 @@ public:
 	 * @param colorAttachments color attachments or empty array
 	 * @param depthStencilAttachment depth or/and stencil attachment or null
 	 */
-	ID<Framebuffer> createFramebuffer(uint2 size, vector<Framebuffer::OutputAttachment>&& colorAttachments,
-		Framebuffer::OutputAttachment depthStencilAttachment = {});
-	/**
-	 * @brief Creates a new framebuffer instance.
-	 * 
-	 * @param size framebuffer size in pixels
-	 * @param[in] subpasses target framebuffer subpasses
-	 */
-	ID<Framebuffer> createFramebuffer(uint2 size, vector<Framebuffer::Subpass>&& subpasses);
+	ID<Framebuffer> createFramebuffer(uint2 size, vector<Framebuffer::Attachment>&& colorAttachments,
+		Framebuffer::Attachment depthStencilAttachment = {});
 
 	/**
 	 * @brief Destroys framebuffer instance.

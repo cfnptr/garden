@@ -110,7 +110,7 @@ uint32 Tlas::getInstanceSize() noexcept
 		return sizeof(vk::AccelerationStructureInstanceKHR);
 	else abort();
 }
-void Tlas::getInstanceData(const InstanceData* instanceArray, uint32 instanceCount, uint8* data) noexcept
+void Tlas::fillInstanceData(const InstanceData* instanceArray, uint32 instanceCount, uint8* data) noexcept
 {
 	GARDEN_ASSERT(instanceArray);
 	GARDEN_ASSERT(instanceCount > 0);

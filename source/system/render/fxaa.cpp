@@ -24,17 +24,18 @@ using namespace garden;
 static ID<ImageView> getLdrCopyView(GraphicsSystem* graphicsSystem, DeferredRenderSystem* deferredSystem)
 {
 	auto gBuffer = deferredSystem->getGBuffers()[G_BUFFER_BASE_COLOR];
-	auto gBufferView = graphicsSystem->get(gBuffer)->getView(); // Note: Reusing G-Buffer memory.
+	auto imageView = graphicsSystem->get(gBuffer)->getView(); // Note: Reusing G-Buffer memory.
 	GARDEN_ASSERT(graphicsSystem->get(gBuffer)->getFormat() == DeferredRenderSystem::ldrBufferFormat);
-	return gBufferView;
+	return imageView;
 }
 static ID<Framebuffer> createFramebuffer(GraphicsSystem* graphicsSystem)
 {
 	auto ldrBuffer = DeferredRenderSystem::Instance::get()->getLdrBuffer();
-	auto ldrBufferView = graphicsSystem->get(ldrBuffer)->getView();
-	vector<Framebuffer::OutputAttachment> colorAttachments =
-	{ Framebuffer::OutputAttachment(ldrBufferView, FxaaRenderSystem::framebufferFlags) };
-
+	vector<Framebuffer::Attachment> colorAttachments =
+	{
+		Framebuffer::Attachment(graphicsSystem->get(ldrBuffer)->getView(),
+			Framebuffer::LoadOp::Load, Framebuffer::StoreOp::Store)
+	};
 	auto framebuffer = graphicsSystem->createFramebuffer(
 		graphicsSystem->getScaledFrameSize(), std::move(colorAttachments));
 	SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.fxaa");
@@ -184,15 +185,6 @@ void FxaaRenderSystem::gBufferRecreate()
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	graphicsSystem->destroy(descriptorSet);
-
-	if (framebuffer)
-	{
-		auto framebufferView = graphicsSystem->get(framebuffer);
-		auto ldrBuffer = DeferredRenderSystem::Instance::get()->getLdrBuffer();
-		auto ldrBufferView = graphicsSystem->get(ldrBuffer)->getView();
-		Framebuffer::OutputAttachment colorAttachment(ldrBufferView, framebufferFlags);
-		framebufferView->update(graphicsSystem->getScaledFrameSize(), &colorAttachment, 1);
-	}
 }
 void FxaaRenderSystem::qualityChange()
 {

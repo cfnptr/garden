@@ -31,8 +31,8 @@ class ResourceExt;
  */
 enum class ResourceType : uint8
 {
-	Buffer, Image, ImageView, Framebuffer, Sampler, Blas, Tlas, 
-	GraphicsPipeline, ComputePipeline, RayTracingPipeline, DescriptorSet, Count
+	Buffer, Image, ImageView, Sampler, Blas, Tlas, GraphicsPipeline, 
+	ComputePipeline, RayTracingPipeline, DescriptorSet, Count
 };
 
 /**
@@ -45,13 +45,13 @@ enum class ResourceType : uint8
 class Resource
 {
 protected:
-	void* instance = nullptr;
-	atomic_int32 busyLock = 0;
-	
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	#define UNNAMED_RESOURCE "unnamed"
 	string debugName = UNNAMED_RESOURCE;
 	#endif
+
+	void* instance = nullptr;
+	atomic_int32 busyLock = 0;
 
 	virtual bool destroy() = 0;
 	friend class ResourceExt;

@@ -86,9 +86,9 @@ void MeshGizmosEditorSystem::init()
 {
 	auto manager = Manager::Instance::get();
 	if (DeferredRenderSystem::Instance::has())
-		ECSM_SUBSCRIBE_TO_EVENT("DepthLdrRender", MeshGizmosEditorSystem::render);
+		ECSM_SUBSCRIBE_TO_EVENT("DsLdrRender", MeshGizmosEditorSystem::render);
 	else
-		ECSM_SUBSCRIBE_TO_EVENT("DepthForwardRender", MeshGizmosEditorSystem::render);
+		ECSM_SUBSCRIBE_TO_EVENT("DsForwardRender", MeshGizmosEditorSystem::render);
 	ECSM_SUBSCRIBE_TO_EVENT("EditorSettings", MeshGizmosEditorSystem::editorSettings);
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
@@ -96,7 +96,7 @@ void MeshGizmosEditorSystem::init()
 
 	ID<Framebuffer> framebuffer;
 	if (DeferredRenderSystem::Instance::has())
-		framebuffer = DeferredRenderSystem::Instance::get()->getDepthLdrFB();
+		framebuffer = DeferredRenderSystem::Instance::get()->getDepthStencilLdrFB();
 	else
 		framebuffer = ForwardRenderSystem::Instance::get()->getFullFramebuffer();
 
@@ -132,9 +132,9 @@ void MeshGizmosEditorSystem::deinit()
 
 		auto manager = Manager::Instance::get();
 		if (DeferredRenderSystem::Instance::has())
-			ECSM_UNSUBSCRIBE_FROM_EVENT("DepthLdrRender", MeshGizmosEditorSystem::render);
+			ECSM_UNSUBSCRIBE_FROM_EVENT("DsLdrRender", MeshGizmosEditorSystem::render);
 		else
-			ECSM_UNSUBSCRIBE_FROM_EVENT("DepthForwardRender", MeshGizmosEditorSystem::render);
+			ECSM_UNSUBSCRIBE_FROM_EVENT("DsForwardRender", MeshGizmosEditorSystem::render);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorSettings", MeshGizmosEditorSystem::editorSettings);
 	}
 }
@@ -279,6 +279,7 @@ void MeshGizmosEditorSystem::render()
 	if (!ImGui::GetIO().WantCaptureMouse && inputSystem->getCursorMode() == CursorMode::Normal &&
 		(!uiTranformSystem || (uiTranformSystem && !uiTranformSystem->getHovered())))
 	{
+		auto gizmosMeshData = gizmosMeshes.data();
 		auto ndcPosition = ((cursorPosition + 0.5f) / windowSize) * 2.0f - 1.0f;
 		auto globalOrigin = cc.invViewProj * f32x4(ndcPosition.x, -ndcPosition.y, 1.0f, 1.0f);
 		auto globalDirection = cc.invViewProj * f32x4(ndcPosition.x, -ndcPosition.y, 0.0001f, 1.0f);
@@ -288,12 +289,12 @@ void MeshGizmosEditorSystem::render()
 		float newDistSq = FLT_MAX; uint32 meshIndex = 0;
 		for (uint32 i = 0; i < 4; i++)
 		{
-			auto modelInverse = inverse4x4(gizmosMeshes[i].model);
+			auto model = gizmosMeshData[i].model, modelInverse = inverse4x4(model);
 			auto ray = Ray(modelInverse * f32x4(globalOrigin, 1.0f), dot3x3(modelInverse, globalDirection));
 			if (!raycast(Aabb::two, ray))
 				continue;
 
-			auto distSq = distanceSq3(globalOrigin, getTranslation(gizmosMeshes[i].model));
+			auto distSq = distanceSq3(globalOrigin, getTranslation(model));
 			if (distSq < newDistSq)
 			{
 				meshIndex = i;
@@ -303,7 +304,7 @@ void MeshGizmosEditorSystem::render()
 
 		if (newDistSq != FLT_MAX)
 		{
-			auto& mesh = gizmosMeshes[meshIndex];
+			auto& mesh = gizmosMeshData[meshIndex];
 			mesh.model = scale(mesh.model, f32x4(1.25f));
 			mesh.color = Color((float4)mesh.color * highlightFactor);
 

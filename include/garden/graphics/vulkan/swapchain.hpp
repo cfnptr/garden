@@ -77,9 +77,8 @@ public:
 	void submit() final;
 	bool present() final;
 
-	void beginSecondaryCommandBuffers(vk::Framebuffer framebuffer, vk::RenderPass renderPass, 
-		uint8 subpassIndex, const vector<Framebuffer::OutputAttachment>& colorAttachments,
-		Framebuffer::OutputAttachment depthStencilAttachment, const string& name);
+	void beginSecondaryCommandBuffers(const vector<Framebuffer::Attachment>& colorAttachments, 
+		Framebuffer::Attachment depthStencilAttachment, const string& name);
 	void endSecondaryCommandBuffers();
 };
 

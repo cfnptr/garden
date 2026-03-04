@@ -137,7 +137,7 @@ public:
 	bool isBigFontSize() const noexcept { return bigFontSize; }
 
 	/**
-	 * @brief Returns loaded localizaion strings language.
+	 * @brief Returns loaded localization strings language.
 	 */
 	Language getLanguage() const noexcept { return loadedLanguage; }
 	/**

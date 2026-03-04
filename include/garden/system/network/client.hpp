@@ -156,7 +156,7 @@ public:
 	}
 
 	/**
-	 * @brief Disconnects networn client from the server.
+	 * @brief Disconnects network client from the server.
 	 * @param reason client disconnection reason
 	 */
 	void disconnect(int reason) noexcept;

@@ -171,7 +171,6 @@ enum class GslUniformType : uint8
 	Uimage1DArray,         /**< 1D unsigned integer image array. (read and write access) */
 	Uimage2DArray,         /**< 2D unsigned integer image array. (read and write access) */
 
-	SubpassInput,          /**< Subpass input image. (read only access) */
 	UniformBuffer,         /**< Uniform buffer. (read only access) */
 	StorageBuffer,         /**< Storage buffer. (read and write access) */
 	PushConstants,         /**< Push constants buffer. (read only access) */
@@ -189,7 +188,7 @@ constexpr const char* gslDataTypeNames[(psize)GslDataType::Count] =
 	"bool2", "bool3", "bool4", "sbyte2", "sbyte3", "sbyte4", "short2", "short3", "short4", "int2", "int3", "int4",
 	"long2", "long3", "long4",  "byte2", "byte3", "byte4", "ushort2", "ushort3", "ushort4", "uint2", "uint3", "uint4", 
 	"ulong2", "ulong3", "ulong4", "half2", "half3", "half4", "half2", "half3", "half4",
-	"half2x2", "half3x3", "half4x4", "half2x3", "half3x2", "half2x4", "halfx2", "half3x4", "half4x3",
+	"half2x2", "half3x3", "half4x4", "half2x3", "half3x2", "half2x4", "half2x2", "half3x4", "half4x3",
 	"float2x2", "float3x3", "float4x4", "float2x3", "float3x2", "float2x4", "float4x2", "float3x4", "float4x3"
 };
 /**
@@ -212,7 +211,7 @@ constexpr const char* gslUniformTypeNames[(psize)GslUniformType::Count] =
 	"image1D", "image2D", "image3D", "imageCube", "image1DArray", "image2DArray",
 	"iimage1D", "iimage2D", "iimage3D", "iimageCube", "iimage1DArray", "iimage2DArray",
 	"uimage1D", "uimage2D", "uimage3D", "uimageCube", "uimage1DArray", "uimage2DArray",
-	"subpassInput", "uniformBuffer", "storageBuffer", "pushConstants", "accelerationStructure"
+	"uniformBuffer", "storageBuffer", "pushConstants", "accelerationStructure"
 };
 
 /***********************************************************************************************************************
@@ -364,7 +363,6 @@ static GslUniformType toGslUniformType(string_view uniformType)
 	if (uniformType == "uimage1DArray") return GslUniformType::Uimage1DArray;
 	if (uniformType == "uimage2DArray") return GslUniformType::Uimage2DArray;
 
-	if (uniformType == "subpassInput") return GslUniformType::SubpassInput;
 	if (uniformType == "uniformBuffer") return GslUniformType::UniformBuffer;
 	if (uniformType == "storageBuffer") return GslUniformType::StorageBuffer;
 	if (uniformType == "pushConstants") return GslUniformType::PushConstants;

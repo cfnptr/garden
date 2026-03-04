@@ -216,12 +216,12 @@ void VulkanCommandBuffer::addImageBarrier(VulkanAPI* vulkanAPI,
 {
 	auto view = vulkanAPI->imageViewPool.get(imageView);
 	auto image = vulkanAPI->imagePool.get(view->getImage());
-	auto& oldImageState = vulkanAPI->getImageState(view->getImage(), view->getBaseMip(), view->getBaseLayer());
+	auto& oldImageState = vulkanAPI->getImageState(view->getImage(), view->getBaseLayer(), view->getBaseMip());
 
 	if (VulkanCommandBuffer::isDifferentState(oldImageState, newImageState))
 	{
 		::addImageBarrier(vulkanAPI, oldImageState, newImageState, (VkImage)ResourceExt::getInstance(**image), 
-			view->getBaseMip(), 1, view->getBaseLayer(), 1, toVkImageAspectFlags(view->getFormat()));
+			view->getBaseMip(), 1, view->getBaseLayer(), 1, (vk::ImageAspectFlags)ImageViewExt::getAspectFlags(**view));
 	}
 
 	imageView = oldImageState.view;
@@ -236,7 +236,7 @@ static void addImageBarriers(VulkanAPI* vulkanAPI, Image::LayoutState& newImageS
 {
 	auto imageView = vulkanAPI->imagePool.get(image);
 	auto vkImage = (VkImage)ResourceExt::getInstance(**imageView);
-	auto aspectFlags = toVkImageAspectFlags(imageView->getFormat());
+	auto aspectFlags = (vk::ImageAspectFlags)ImageExt::getAspectFlags(**imageView);
 
 	auto newFullBarrier = baseMip == 0 && mipCount == imageView->getMipCount() &&
 		baseLayer == 0 && layerCount == imageView->getLayerCount();
@@ -264,11 +264,11 @@ static void addImageBarriers(VulkanAPI* vulkanAPI, Image::LayoutState& newImageS
 		{
 			for (uint32 layer = baseLayer; layer < layerCount; layer++)
 			{
-				auto& oldImageState = vulkanAPI->getImageState(image, mip, layer);
+				auto& oldImageState = vulkanAPI->getImageState(image, layer, mip);
 				if (VulkanCommandBuffer::isDifferentState(oldImageState, newImageState))
 				{
-					addImageBarrier(vulkanAPI, oldImageState, newImageState, 
-						vkImage, mip, 1, layer, 1, aspectFlags);
+					addImageBarrier(vulkanAPI, oldImageState, 
+						newImageState, vkImage, mip, 1, layer, 1, aspectFlags);
 				}
 
 				auto imageView = oldImageState.view;
@@ -288,133 +288,31 @@ void VulkanCommandBuffer::addDescriptorSetBarriers(VulkanAPI* vulkanAPI,
 
 	for (uint8 i = 0; i < rangeCount; i++)
 	{
-		auto descriptor = descriptorSetRanges[i];
-		auto descriptorSet = vulkanAPI->descriptorSetPool.get(descriptor.set);
-		const auto& dsUniforms = descriptorSet->getUniforms();
-		auto pipelineView = vulkanAPI->getPipelineView(
-			descriptorSet->getPipelineType(), descriptorSet->getPipeline());
-		const auto& pipelineUniforms = pipelineView->getUniforms();
-
-		for (const auto& pipelineUniform : pipelineUniforms)
+		auto descriptorSetRange = descriptorSetRanges[i];
+		auto setCount = descriptorSetRange.offset + descriptorSetRange.count;
+		auto descriptorSetView = vulkanAPI->descriptorSetPool.get(descriptorSetRange.set);
+		const auto barriers = DescriptorSetExt::getBarriers(**descriptorSetView).data();
+		
+		for (uint32 j = descriptorSetRange.offset; j < setCount; j++)
 		{
-			auto uniform = pipelineUniform.second;
-			if (uniform.descriptorSetIndex != i || uniform.isNoncoherent)
-				continue;
-
-			auto setCount = descriptor.offset + descriptor.count;
-			const auto& dsUniform = dsUniforms.at(pipelineUniform.first);
-
-			if (isSamplerType(uniform.type) || isImageType(uniform.type))
+			const auto& setBarriers = barriers[j];
+			for (auto barrierState : setBarriers)
 			{
-				SET_CPU_ZONE_SCOPED("Image/Sampler Barriers Process");
-
-				Image::LayoutState newImageState;
-				newImageState.stage = (uint64)toVkPipelineStages(uniform.pipelineStages);
-
-				if (isSamplerType(uniform.type))
+				if (barrierState.layout == 0)
+					addBufferBarrier(vulkanAPI, barrierState, ID<Buffer>(barrierState.view));
+				else if (barrierState.layout == UINT32_MAX)
 				{
-					newImageState.access = (uint64)vk::AccessFlagBits2::eShaderSampledRead;
-					newImageState.layout = (uint32)vk::ImageLayout::eShaderReadOnlyOptimal;
+					auto tlasView = vulkanAPI->tlasPool.get(ID<Tlas>(barrierState.view));
+					auto& oldAsState = AccelerationStructureExt::getBarrierState(**tlasView);
+					addMemoryBarrier(vulkanAPI, oldAsState, barrierState);
 				}
 				else
 				{
-					if (uniform.readAccess)
-						newImageState.access = (uint64)vk::AccessFlagBits2::eShaderStorageRead;
-					if (uniform.writeAccess)
-						newImageState.access |= (uint64)vk::AccessFlagBits2::eShaderStorageWrite;
-					newImageState.layout = (uint32)vk::ImageLayout::eGeneral;
-				}
-
-				if (pipelineView->isBindless())
-				{
-					for (uint32 j = descriptor.offset; j < setCount; j++)
-					{
-						const auto& resourceArray = dsUniform.resourceSets[j];
-						for (auto resource : resourceArray)
-						{
-							if (!resource)
-								continue;
-
-							auto imageView = vulkanAPI->imageViewPool.get(ID<ImageView>(resource));
-							addImageBarriers(vulkanAPI, newImageState, imageView->getImage(), imageView->getBaseMip(), 
-								imageView->getMipCount(), imageView->getBaseLayer(), imageView->getLayerCount());
-						}
-					}
-				}
-				else
-				{
-					for (uint32 j = descriptor.offset; j < setCount; j++)
-					{
-						const auto& resourceArray = dsUniform.resourceSets[j];
-						for (auto resource : resourceArray)
-						{
-							auto imageView = vulkanAPI->imageViewPool.get(ID<ImageView>(resource));
-							addImageBarriers(vulkanAPI, newImageState, imageView->getImage(), imageView->getBaseMip(), 
-								imageView->getMipCount(), imageView->getBaseLayer(), imageView->getLayerCount());
-						}
-					}
+					auto imageView = vulkanAPI->imageViewPool.get(barrierState.view);
+					addImageBarriers(vulkanAPI, barrierState, imageView->getImage(), imageView->getBaseMip(), 
+						imageView->getMipCount(), imageView->getBaseLayer(), imageView->getLayerCount());
 				}
 			}
-			else if (isBufferType(uniform.type))
-			{
-				SET_CPU_ZONE_SCOPED("Buffer Barriers Process");
-
-				Buffer::BarrierState newBufferState;
-				newBufferState.stage = (uint64)toVkPipelineStages(uniform.pipelineStages);
-
-				if (uniform.type == GslUniformType::UniformBuffer)
-				{
-					newBufferState.access = (uint64)vk::AccessFlagBits2::eUniformRead;
-				}
-				else
-				{
-					if (uniform.readAccess)
-						newBufferState.access = (uint64)vk::AccessFlagBits2::eShaderStorageRead;
-					if (uniform.writeAccess)
-						newBufferState.access |= (uint64)vk::AccessFlagBits2::eShaderStorageWrite;
-				}
-
-				if (pipelineView->isBindless())
-				{
-					for (uint32 j = descriptor.offset; j < setCount; j++)
-					{
-						const auto& resourceArray = dsUniform.resourceSets[j];
-						for (auto resource : resourceArray)
-						{
-							if (!resource)
-								continue;
-							addBufferBarrier(vulkanAPI, newBufferState, ID<Buffer>(resource));
-						}
-					}
-				}
-				else
-				{
-					for (uint32 j = descriptor.offset; j < setCount; j++)
-					{
-						const auto& resourceArray = dsUniform.resourceSets[j];
-						for (auto resource : resourceArray)
-							addBufferBarrier(vulkanAPI, newBufferState, ID<Buffer>(resource));
-					}
-				}
-			}
-			else if (uniform.type == GslUniformType::AccelerationStructure)
-			{
-				Buffer::BarrierState newAsState;
-				newAsState.access = (uint64)vk::AccessFlagBits2::eAccelerationStructureReadKHR;
-				newAsState.stage = (uint64)vk::PipelineStageFlagBits2::eRayTracingShaderKHR;
-
-				for (uint32 j = descriptor.offset; j < setCount; j++)
-				{
-					const auto& resourceArray = dsUniform.resourceSets[j];
-					for (auto resource : resourceArray)
-					{
-						auto tlasView = vulkanAPI->tlasPool.get(ID<Tlas>(resource));
-						auto& oldAsState = AccelerationStructureExt::getBarrierState(**tlasView);
-						addMemoryBarrier(vulkanAPI, oldAsState, newAsState);
-					}
-				}
-			}
-			else abort();
 		}
 	}
 }
@@ -701,11 +599,9 @@ void VulkanCommandBuffer::addRenderPassBarriers(uint32 thisSize)
 	{
 		auto command = (const Command*)dataIter;
 		GARDEN_ASSERT(command->type < Command::Type::Count);
-		GARDEN_ASSERT(command->type != Command::Type::Unknown);
 
 		if (command->type == Command::Type::EndRenderPass)
 			break;
-
 		addRenderPassBarriers(command);
 		dataIter += command->thisSize;
 	}
@@ -719,11 +615,10 @@ void VulkanCommandBuffer::addRenderPassBarriersAsync(uint32 thisSize)
 	auto dataIter = this->dataIter + thisSize;
 	while (dataIter < this->dataEnd)
 	{
-		auto command = (const ExecuteCommand*)(this->dataIter + thisSize);
-		GARDEN_ASSERT(command->type < Command::Type::Count);
-		GARDEN_ASSERT(command->type != Command::Type::Unknown);
-
+		auto command = (const ExecuteCommand*)dataIter;
 		auto commandType = command->type;
+		GARDEN_ASSERT(commandType < Command::Type::Count);
+
 		if (commandType == Command::Type::EndRenderPass)
 			break;
 		dataIter += command->thisSize;
@@ -742,38 +637,15 @@ void VulkanCommandBuffer::addRenderPassBarriersAsync(uint32 thisSize)
 				i * asyncCommandSize) - asyncCommandOffset);
 			addRenderPassBarriers(&asyncCommand->base);
 		}
-		dataIter += command->thisSize;
 	}
 }
 
-//**********************************************************************************************************************
-static bool findLastSubpassInput(const vector<Framebuffer::Subpass>& subpasses,
-	ID<ImageView> colorAttachment, PipelineStage& pipelineStages) noexcept
-{
-	// TODO: cache this and do not search each frame?
-	bool isLastInput = false;
-	for (auto subpass = subpasses.rbegin(); subpass != subpasses.rend(); subpass++)
-	{
-		for (const auto& inputAttachment : subpass->inputAttachments)
-		{
-			if (colorAttachment == inputAttachment.imageView)
-			{
-				subpass = subpasses.rend() - 1;
-				pipelineStages = inputAttachment.pipelineStages;
-				isLastInput = true;
-				break;
-			}
-		}
-	}
-	return isLastInput;
-}
 static constexpr bool isMajorCommand(Command::Type commandType) noexcept
 {
 	return commandType == Command::Type::Dispatch | commandType == Command::Type::TraceRays |
 		commandType == Command::Type::EndRenderPass;
 }
 
-//**********************************************************************************************************************
 void VulkanCommandBuffer::processCommand(const BufferBarrierCommand& command)
 {
 	SET_CPU_ZONE_SCOPED("BufferBarrier Command Process");
@@ -791,238 +663,181 @@ void VulkanCommandBuffer::processCommand(const BeginRenderPassCommand& command)
 {
 	SET_CPU_ZONE_SCOPED("BeginRenderPass Command Process");
 
-	auto framebuffer = vulkanAPI->framebufferPool.get(command.framebuffer);
-	const auto& colorAttachments = framebuffer->getColorAttachments().data();
-	auto colorAttachmentCount = (uint32)framebuffer->getColorAttachments().size();
-	auto commandBufferData = (const uint8*)&command;
-	auto clearColors = (const float4*)(commandBufferData + sizeof(BeginRenderPassCommandBase));
-
-	noSubpass = framebuffer->getSubpasses().empty();
-	if (noSubpass)
-	{
-		if (vulkanAPI->colorAttachmentInfos.size() < colorAttachmentCount)
-			vulkanAPI->colorAttachmentInfos.resize(colorAttachmentCount);
-	}
-
-	for (uint32 i = 0; i < colorAttachmentCount; i++)
-	{
-		auto colorAttachment = colorAttachments[i];
-		if (noSubpass && !colorAttachment.imageView)
-		{
-			vulkanAPI->colorAttachmentInfos[i].imageView = nullptr;
-			continue;
-		}
-
-		Image::LayoutState newImageState;
-		newImageState.access = (uint64)vk::AccessFlagBits2::eColorAttachmentWrite;
-		if (colorAttachment.flags.load)
-			newImageState.access |= (uint64)vk::AccessFlagBits2::eColorAttachmentRead;
-		newImageState.stage = (uint64)vk::PipelineStageFlagBits2::eColorAttachmentOutput;
-		newImageState.layout = (uint32)vk::ImageLayout::eColorAttachmentOptimal;
-		addImageBarrier(vulkanAPI, newImageState, colorAttachment.imageView);
-
-		if (noSubpass)
-		{
-			vk::AttachmentLoadOp loadOperation;
-			vk::ClearValue clearValue;
-
-			if (colorAttachment.flags.clear)
-			{
-				array<float, 4> color; *(float4*)color.data() = clearColors[i];
-				loadOperation = vk::AttachmentLoadOp::eClear;
-				clearValue = vk::ClearValue(vk::ClearColorValue(color));
-			}
-			else if (colorAttachment.flags.load)
-			{
-				loadOperation = vk::AttachmentLoadOp::eLoad;
-			}
-			else
-			{
-				loadOperation = vk::AttachmentLoadOp::eDontCare;
-			}
-
-			auto storeOperation = colorAttachment.flags.store ? 
-				vk::AttachmentStoreOp::eStore : vk::AttachmentStoreOp::eNone;
-
-			auto imageView = vulkanAPI->imageViewPool.get(colorAttachment.imageView);
-			vk::RenderingAttachmentInfo colorAttachmentInfo(
-				(VkImageView)ResourceExt::getInstance(**imageView),
-				vk::ImageLayout::eColorAttachmentOptimal, {}, nullptr, 
-				vk::ImageLayout::eUndefined, loadOperation, storeOperation, clearValue);
-			vulkanAPI->colorAttachmentInfos[i] = colorAttachmentInfo;
-			// TODO: some how utilize write discarding? (eDontCare)
-		}
-		else
-		{
-			array<float, 4> color; *(float4*)color.data() = clearColors[i];
-			vulkanAPI->clearValues.emplace_back(vk::ClearColorValue(color));
-		}
-	}
-
-	vk::RenderingAttachmentInfoKHR depthStencilAttachmentInfo;
-	vk::RenderingAttachmentInfoKHR* depthAttachmentInfoPtr = nullptr;
-	vk::RenderingAttachmentInfoKHR* stencilAttachmentInfoPtr = nullptr;
-
-	if (framebuffer->getDepthStencilAttachment().imageView)
-	{
-		auto depthStencilAttachment = framebuffer->getDepthStencilAttachment();
-
-		Image::LayoutState newImageState;
-		if (depthStencilAttachment.flags.load)
-			newImageState.access = (uint64)vk::AccessFlagBits2::eDepthStencilAttachmentRead;
-		if (depthStencilAttachment.flags.clear || depthStencilAttachment.flags.load)
-			newImageState.stage = (uint64)vk::PipelineStageFlagBits2::eEarlyFragmentTests;
-		if (depthStencilAttachment.flags.store)
-		{
-			newImageState.access |= (uint64)vk::AccessFlagBits2::eDepthStencilAttachmentWrite;
-			newImageState.stage |= (uint64)vk::PipelineStageFlagBits2::eLateFragmentTests;
-		}
-
-		auto imageView = vulkanAPI->imageViewPool.get(depthStencilAttachment.imageView);
-		auto imageFormat = imageView->getFormat();
-
-		if (noSubpass)
-		{
-			if (depthStencilAttachment.flags.clear) // TODO: support separated depth/stencil clear?
-			{
-				depthStencilAttachmentInfo.loadOp = vk::AttachmentLoadOp::eClear;
-				depthStencilAttachmentInfo.clearValue = vk::ClearValue(vk::ClearDepthStencilValue(
-					command.clearDepth, command.clearStencil));
-			}
-			else if (depthStencilAttachment.flags.load)
-			{
-				depthStencilAttachmentInfo.loadOp = vk::AttachmentLoadOp::eLoad;
-			}
-			else
-			{
-				depthStencilAttachmentInfo.loadOp = vk::AttachmentLoadOp::eDontCare;
-			}
-
-			depthStencilAttachmentInfo.imageView = (VkImageView)ResourceExt::getInstance(**imageView);
-			depthStencilAttachmentInfo.storeOp = depthStencilAttachment.flags.store ? 
-				vk::AttachmentStoreOp::eStore : vk::AttachmentStoreOp::eNone;
-		}
-		else
-		{
-			vulkanAPI->clearValues.emplace_back(vk::ClearDepthStencilValue(
-				command.clearDepth, command.clearStencil));
-		}
-
-		if (isFormatDepthOnly(imageFormat))
-		{
-			if (noSubpass)
-			{
-				depthStencilAttachmentInfo.imageLayout = vk::ImageLayout::eDepthAttachmentOptimal;
-				depthAttachmentInfoPtr = &depthStencilAttachmentInfo;
-			}
-			newImageState.layout = (uint32)vk::ImageLayout::eDepthAttachmentOptimal;
-		}
-		else if (isFormatStencilOnly(imageFormat))
-		{
-			if (noSubpass)
-			{
-				depthStencilAttachmentInfo.imageLayout = vk::ImageLayout::eStencilAttachmentOptimal;
-				stencilAttachmentInfoPtr = &depthStencilAttachmentInfo;
-			}
-			newImageState.layout = (uint32)vk::ImageLayout::eStencilAttachmentOptimal;
-		}
-		else
-		{
-			if (noSubpass)
-			{
-				depthStencilAttachmentInfo.imageLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
-				depthAttachmentInfoPtr = &depthStencilAttachmentInfo;
-				stencilAttachmentInfoPtr = &depthStencilAttachmentInfo;
-			}
-			newImageState.layout = (uint32)vk::ImageLayout::eDepthStencilAttachmentOptimal;
-		}
-		addImageBarrier(vulkanAPI, newImageState, depthStencilAttachment.imageView);
-	}
-
 	if (command.asyncRecording)
 		addRenderPassBarriersAsync(command.thisSize);
 	else addRenderPassBarriers(command.thisSize);
 
+	auto framebufferView = vulkanAPI->framebufferPool.get(command.framebuffer);
+	const auto& colorAttachments = framebufferView->getColorAttachments().data();
+	auto colorAttachmentCount = (uint32)framebufferView->getColorAttachments().size();
+	auto commandBufferData = (const uint8*)&command;
+	auto clearColors = (const float4*)(commandBufferData + sizeof(BeginRenderPassCommandBase));
+
+	if (vulkanAPI->colorAttachmentInfos.size() < colorAttachmentCount)
+		vulkanAPI->colorAttachmentInfos.resize(colorAttachmentCount);
+	auto colorAttachmentData = vulkanAPI->colorAttachmentInfos.data(); 
+
+	for (uint32 i = 0; i < colorAttachmentCount; i++)
+	{
+		auto colorAttachment = colorAttachments[i];
+		if (!colorAttachment.imageView)
+		{
+			colorAttachmentData[i].imageView = nullptr;
+			continue;
+		}
+
+		Image::LayoutState newImageState;
+		newImageState.stage = (uint64)vk::PipelineStageFlagBits2::eColorAttachmentOutput;
+		newImageState.layout = (uint32)vk::ImageLayout::eColorAttachmentOptimal;
+
+		vk::AttachmentLoadOp loadOperation; vk::ClearValue clearValue;
+		switch (colorAttachment.loadOperation)
+		{
+		case Framebuffer::LoadOp::Load:
+			loadOperation = vk::AttachmentLoadOp::eLoad;
+			newImageState.access = (uint64)vk::AccessFlagBits2::eColorAttachmentRead;
+			break;
+		case Framebuffer::LoadOp::Clear:
+			loadOperation = vk::AttachmentLoadOp::eClear;
+			newImageState.access = (uint64)vk::AccessFlagBits2::eColorAttachmentWrite;
+			{
+				array<float, 4> color; *(float4*)color.data() = clearColors[i];
+				clearValue = vk::ClearValue(vk::ClearColorValue(color));
+			}
+			break;
+		case Framebuffer::LoadOp::DontCare:
+			loadOperation = vk::AttachmentLoadOp::eDontCare;
+			newImageState.access = (uint64)vk::AccessFlagBits2::eColorAttachmentWrite;
+			break;
+		case Framebuffer::LoadOp::None:
+			loadOperation = vk::AttachmentLoadOp::eNone;
+			break;
+		default: abort();
+		}
+
+		vk::AttachmentStoreOp storeOperation;
+		switch (colorAttachment.storeOperation)
+		{
+		case Framebuffer::StoreOp::Store:
+			storeOperation = vk::AttachmentStoreOp::eStore;
+			newImageState.access |= (uint64)vk::AccessFlagBits2::eColorAttachmentWrite;
+			break;
+		case Framebuffer::StoreOp::DontCare:
+			storeOperation = vk::AttachmentStoreOp::eDontCare;
+			newImageState.access |= (uint64)vk::AccessFlagBits2::eColorAttachmentWrite;
+			break;
+		case Framebuffer::StoreOp::None:
+			storeOperation = vk::AttachmentStoreOp::eNone;
+			break;
+		default: abort();
+		}
+
+		auto imageView = vulkanAPI->imageViewPool.get(colorAttachment.imageView);
+		vk::RenderingAttachmentInfo colorAttachmentInfo(
+			(VkImageView)ResourceExt::getInstance(**imageView),
+			vk::ImageLayout::eColorAttachmentOptimal, {}, nullptr, 
+			vk::ImageLayout::eUndefined, loadOperation, storeOperation, clearValue);
+		colorAttachmentData[i] = colorAttachmentInfo;
+		addImageBarrier(vulkanAPI, newImageState, colorAttachment.imageView);
+	}
+
+	auto depthStencilAttachment = framebufferView->getDepthStencilAttachment();
+	vk::RenderingAttachmentInfoKHR depthStencilAttachmentInfo;
+	vk::RenderingAttachmentInfoKHR* depthAttachmentInfoPtr = nullptr;
+	vk::RenderingAttachmentInfoKHR* stencilAttachmentInfoPtr = nullptr;
+
+	if (depthStencilAttachment.imageView)
+	{
+		Image::LayoutState newImageState;
+
+		vk::AttachmentLoadOp loadOperation; vk::ClearValue clearValue;
+		switch (depthStencilAttachment.loadOperation)
+		{
+		case Framebuffer::LoadOp::Load:
+			loadOperation = vk::AttachmentLoadOp::eLoad;
+			newImageState.access = (uint64)vk::AccessFlagBits2::eDepthStencilAttachmentRead;
+			newImageState.stage = (uint64)vk::PipelineStageFlagBits2::eEarlyFragmentTests;
+			break;
+		case Framebuffer::LoadOp::Clear:
+			loadOperation = vk::AttachmentLoadOp::eClear;
+			newImageState.access = (uint64)vk::AccessFlagBits2::eDepthStencilAttachmentWrite;
+			newImageState.stage = (uint64)vk::PipelineStageFlagBits2::eEarlyFragmentTests;
+			depthStencilAttachmentInfo.clearValue = vk::ClearValue(  // TODO: support separated depth/stencil clear?
+				vk::ClearDepthStencilValue(command.clearDepth, command.clearStencil));
+			break;
+		case Framebuffer::LoadOp::DontCare:
+			loadOperation = vk::AttachmentLoadOp::eDontCare;
+			newImageState.access = (uint64)vk::AccessFlagBits2::eDepthStencilAttachmentWrite;
+			break;
+		case Framebuffer::LoadOp::None:
+			loadOperation = vk::AttachmentLoadOp::eNone;
+			break;
+		default: abort();
+		}
+
+		vk::AttachmentStoreOp storeOperation;
+		switch (depthStencilAttachment.storeOperation)
+		{
+		case Framebuffer::StoreOp::Store:
+			storeOperation = vk::AttachmentStoreOp::eStore;
+			newImageState.access |= (uint64)vk::AccessFlagBits2::eDepthStencilAttachmentWrite;
+			newImageState.stage |= (uint64)vk::PipelineStageFlagBits2::eLateFragmentTests;
+			break;
+		case Framebuffer::StoreOp::DontCare:
+			storeOperation = vk::AttachmentStoreOp::eDontCare;
+			newImageState.access |= (uint64)vk::AccessFlagBits2::eDepthStencilAttachmentWrite;
+			newImageState.stage |= (uint64)vk::PipelineStageFlagBits2::eLateFragmentTests;
+			break;
+		case Framebuffer::StoreOp::None:
+			storeOperation = vk::AttachmentStoreOp::eNone;
+			break;
+		default: abort();
+		}
+
+		auto imageView = vulkanAPI->imageViewPool.get(depthStencilAttachment.imageView);
+		const auto& currImageState = vulkanAPI->getImageState(imageView->getImage(), 
+			imageView->getBaseLayer(), imageView->getBaseMip());
+		if (currImageState.layout == (uint32)vk::ImageLayout::eDepthStencilReadOnlyOptimal)
+		{
+			// Note: detecting if image is both attachment and sampler.
+			//       This can contain false positives! Rethink later.
+			newImageState.access |= (uint64)currImageState.access;
+			newImageState.stage |= (uint64)currImageState.stage;
+		}
+
+		depthStencilAttachmentInfo.imageView = (VkImageView)ResourceExt::getInstance(**imageView);
+		depthStencilAttachmentInfo.imageLayout = (vk::ImageLayout)
+			FramebufferExt::getDepthStencilLayout(**framebufferView);
+		depthStencilAttachmentInfo.loadOp = loadOperation;
+		depthStencilAttachmentInfo.storeOp = storeOperation;
+
+		auto imageFormat = imageView->getFormat();
+		if (isFormatDepthOnly(imageFormat))
+			depthAttachmentInfoPtr = &depthStencilAttachmentInfo;
+		else if (isFormatStencilOnly(imageFormat))
+			stencilAttachmentInfoPtr = &depthStencilAttachmentInfo;
+		else
+		{
+			depthAttachmentInfoPtr = &depthStencilAttachmentInfo;
+			stencilAttachmentInfoPtr = &depthStencilAttachmentInfo;
+		}
+
+		newImageState.layout = (uint32)depthStencilAttachmentInfo.imageLayout;
+		addImageBarrier(vulkanAPI, newImageState, depthStencilAttachment.imageView);
+	}
+
 	processPipelineBarriers();
 
-	vk::Rect2D rect({ command.region.x, command.region.y },
+	vk::Rect2D rect({ command.region.x, command.region.y }, 
 		{ (uint32)command.region.z, (uint32)command.region.w });
+	vk::RenderingInfo renderingInfo(command.asyncRecording ? 
+		vk::RenderingFlagBits::eContentsSecondaryCommandBuffers : vk::RenderingFlags(),
+		rect, 1, 0, colorAttachmentCount, colorAttachmentData, 
+		depthAttachmentInfoPtr, stencilAttachmentInfoPtr);
 
-	if (noSubpass)
-	{
-		vk::RenderingInfo renderingInfo(command.asyncRecording ?
-			vk::RenderingFlagBits::eContentsSecondaryCommandBuffers : vk::RenderingFlags(),
-			rect, 1, 0, colorAttachmentCount, vulkanAPI->colorAttachmentInfos.data(),
-			depthAttachmentInfoPtr, stencilAttachmentInfoPtr);
-
-		if (vulkanAPI->versionMinor < 3)
-			instance.beginRenderingKHR(renderingInfo);
-		else instance.beginRendering(renderingInfo);
-	}
-	else
-	{
-		vk::RenderPassBeginInfo beginInfo((VkRenderPass)FramebufferExt::getRenderPass(**framebuffer),
-			(VkFramebuffer)ResourceExt::getInstance(**framebuffer), rect, vulkanAPI->clearValues);
-		instance.beginRenderPass(beginInfo, command.asyncRecording ?
-			vk::SubpassContents::eSecondaryCommandBuffers : vk::SubpassContents::eInline);
-		vulkanAPI->clearValues.clear();
-
-		const auto& subpasses = framebuffer->getSubpasses();
-		for (uint32 i = 0; i < colorAttachmentCount; i++)
-		{
-			auto colorAttachment = colorAttachments[i];
-			auto imageView = vulkanAPI->imageViewPool.get(colorAttachment.imageView);
-			auto& imageState = vulkanAPI->getImageState(imageView->getImage(),
-				imageView->getBaseMip(), imageView->getBaseLayer());
-			imageState.layout = (uint32)vk::ImageLayout::eGeneral;
-
-			PipelineStage pipelineStages;
-			auto isLastInput = findLastSubpassInput(subpasses, colorAttachment.imageView, pipelineStages);
-
-			if (isLastInput)
-			{
-				imageState.access = (uint64)vk::AccessFlagBits2::eShaderRead;
-				imageState.stage = (uint64)toVkPipelineStages(pipelineStages);
-			}
-			else
-			{
-				imageState.access = (uint64)vk::AccessFlagBits2::eColorAttachmentWrite;
-				imageState.stage = (uint64)vk::PipelineStageFlagBits2::eColorAttachmentOutput;
-			}
-		}
-
-		if (framebuffer->getDepthStencilAttachment().imageView)
-		{
-			auto depthStencilAttachment = framebuffer->getDepthStencilAttachment();
-			auto imageView = vulkanAPI->imageViewPool.get(depthStencilAttachment.imageView);
-			auto& imageState = vulkanAPI->getImageState(imageView->getImage(),
-				imageView->getBaseMip(), imageView->getBaseLayer());
-			imageState.layout = (uint32)vk::ImageLayout::eGeneral;
-
-			PipelineStage pipelineStages;
-			auto isLastInput = findLastSubpassInput(subpasses, depthStencilAttachment.imageView, pipelineStages);
-
-			if (isLastInput)
-			{
-				imageState.access = (uint64)vk::AccessFlagBits2::eShaderRead;
-				imageState.stage = (uint64)toVkPipelineStages(pipelineStages);
-			}
-			else
-			{
-				imageState.access = (uint64)vk::AccessFlagBits2::eDepthStencilAttachmentWrite;
-				imageState.stage = (uint64)vk::PipelineStageFlagBits2::eEarlyFragmentTests;
-			}
-		}
-	}
-}
-
-//**********************************************************************************************************************
-void VulkanCommandBuffer::processCommand(const NextSubpassCommand& command)
-{
-	SET_CPU_ZONE_SCOPED("NextSubpass Command Process");
-
-	instance.nextSubpass(command.asyncRecording ?
-		vk::SubpassContents::eSecondaryCommandBuffers : vk::SubpassContents::eInline);
+	if (vulkanAPI->versionMinor < 3)
+		instance.beginRenderingKHR(renderingInfo);
+	else instance.beginRendering(renderingInfo);
 }
 
 void VulkanCommandBuffer::processCommand(const ExecuteCommand& command)
@@ -1037,13 +852,9 @@ void VulkanCommandBuffer::processCommand(const EndRenderPassCommand& command)
 {
 	SET_CPU_ZONE_SCOPED("EndRenderPass Command Process");
 
-	if (noSubpass)
-	{
-		if (vulkanAPI->versionMinor < 3)
-			instance.endRenderingKHR();
-		else instance.endRendering();
-	}
-	else instance.endRenderPass();
+	if (vulkanAPI->versionMinor < 3)
+		instance.endRenderingKHR();
+	else instance.endRendering();
 }
 
 //**********************************************************************************************************************
@@ -1064,6 +875,8 @@ void VulkanCommandBuffer::processCommand(const ClearAttachmentsCommand& command)
 		vulkanAPI->clearAttachments.resize(attachmentCount);
 	if (vulkanAPI->clearAttachmentsRects.size() < regionCount)
 		vulkanAPI->clearAttachmentsRects.resize(regionCount);
+	auto clearAttachmentData = vulkanAPI->clearAttachments.data();
+	auto clearRectData = vulkanAPI->clearAttachmentsRects.data();
 
 	for (uint8 i = 0; i < attachmentCount; i++)
 	{
@@ -1072,13 +885,12 @@ void VulkanCommandBuffer::processCommand(const ClearAttachmentsCommand& command)
 		ID<ImageView> attachmentView;
 		if (attachment.index < colorAttachments.size())
 			attachmentView = colorAttachments[attachment.index].imageView;
-		else if (attachment.index == colorAttachments.size())
+		else
 		{
 			GARDEN_ASSERT_MSG(framebufferView->getDepthStencilAttachment().imageView, 
 				"Assert " + framebufferView->getDebugName());
 			attachmentView = framebufferView->getDepthStencilAttachment().imageView;
 		}
-		else abort();
 
 		auto imageView = vulkanAPI->imageViewPool.get(attachmentView);
 		auto format = imageView->getFormat();
@@ -1096,8 +908,8 @@ void VulkanCommandBuffer::processCommand(const ClearAttachmentsCommand& command)
 			clearValue.depthStencil.stencil = attachment.clearColor.deptStencilValue.stencil;
 		}
 
-		vulkanAPI->clearAttachments[i] = vk::ClearAttachment(
-			toVkImageAspectFlags(format), attachment.index, clearValue);
+		clearAttachmentData[i] = vk::ClearAttachment((vk::ImageAspectFlags)
+			ImageViewExt::getAspectFlags(**imageView), attachment.index, clearValue);
 	}
 
 	for (uint32 i = 0; i < regionCount; i++)
@@ -1108,22 +920,17 @@ void VulkanCommandBuffer::processCommand(const ClearAttachmentsCommand& command)
 		if (region.extent == uint2::zero)
 		{
 			auto size = framebufferView->getSize();
-			rect.extent.width = size.x;
-			rect.extent.height = size.y;
+			rect.extent.width = size.x; rect.extent.height = size.y;
 		}
 		else
 		{
-			rect.extent.width = region.extent.x;
-			rect.extent.height = region.extent.y;
+			rect.extent.width = region.extent.x; rect.extent.height = region.extent.y;
 		}
-		
-		vulkanAPI->clearAttachmentsRects[i] = vk::ClearRect(rect, 
-			region.baseLayer, region.layerCount == 0 ? 1 : region.layerCount);
+		clearRectData[i] = vk::ClearRect(rect, region.baseLayer, region.layerCount == 0 ? 1 : region.layerCount);
 	}
 
 	// TODO: should we add barriers? Looks like no.
-	instance.clearAttachments(attachmentCount, vulkanAPI->clearAttachments.data(),
-		regionCount, vulkanAPI->clearAttachmentsRects.data());
+	instance.clearAttachments(attachmentCount, clearAttachmentData, regionCount, clearRectData);
 }
 
 //**********************************************************************************************************************
@@ -1151,14 +958,14 @@ void VulkanCommandBuffer::processCommand(const BindDescriptorSetsCommand& comman
 
 	for (uint8 i = 0; i < rangeCount; i++)
 	{
-		auto descriptor = descriptorSetRanges[i];
-		auto descriptorSet = vulkanAPI->descriptorSetPool.get(descriptor.set);
+		auto descriptorSetRange = descriptorSetRanges[i];
+		auto descriptorSet = vulkanAPI->descriptorSetPool.get(descriptorSetRange.set);
 		auto instance = (vk::DescriptorSet*)ResourceExt::getInstance(**descriptorSet);
 
 		if (descriptorSet->getSetCount() > 1)
 		{
-			auto count = descriptor.offset + descriptor.count;
-			for (uint32 j = descriptor.offset; j < count; j++)
+			auto setCount = descriptorSetRange.offset + descriptorSetRange.count;
+			for (uint32 j = descriptorSetRange.offset; j < setCount; j++)
 				descriptorSets.push_back(instance[j]);
 		}
 		else descriptorSets.push_back((VkDescriptorSet)instance);
@@ -1188,7 +995,7 @@ void VulkanCommandBuffer::processCommand(const SetViewportCommand& command)
 
 	vk::Viewport viewport(command.viewport.x, command.viewport.y,
 		command.viewport.z, command.viewport.w, 0.0f, 1.0f); // TODO: depth
-	viewport.x = command.framebufferSize.y - (viewport.y + viewport.height);
+	viewport.x = command.frameSize.y - (viewport.y + viewport.height);
 	instance.setViewport(0, 1, &viewport); // TODO: multiple viewports
 }
 
@@ -1198,7 +1005,7 @@ void VulkanCommandBuffer::processCommand(const SetScissorCommand& command)
 
 	vk::Rect2D scissor({ command.scissor.x, command.scissor.y }, 
 		{ (uint32)command.scissor.z, (uint32)command.scissor.w });
-	scissor.offset.x = command.framebufferSize.y - (scissor.offset.y + scissor.extent.height);
+	scissor.offset.x = command.frameSize.y - (scissor.offset.y + scissor.extent.height);
 	scissor.offset.x = max(scissor.offset.x, 0); scissor.offset.y = max(scissor.offset.y, 0);
 	instance.setScissor(0, 1, &scissor); // TODO: multiple scissors
 }
@@ -1212,8 +1019,8 @@ void VulkanCommandBuffer::processCommand(const SetViewportScissorCommand& comman
 		viewportScissor.z, viewportScissor.w, 0.0f, 1.0f);
 	vk::Rect2D scissor({ (int32)viewportScissor.x, (int32)viewportScissor.y },
 		{ (uint32)viewportScissor.z, (uint32)viewportScissor.w });
-	viewport.x = command.framebufferSize.y - (viewport.y + viewport.height);
-	scissor.offset.x = command.framebufferSize.y - (scissor.offset.y + scissor.extent.height);
+	viewport.x = command.frameSize.y - (viewport.y + viewport.height);
+	scissor.offset.x = command.frameSize.y - (scissor.offset.y + scissor.extent.height);
 	scissor.offset.x = max(scissor.offset.x, 0); scissor.offset.y = max(scissor.offset.y, 0);
 	instance.setViewport(0, 1, &viewport); instance.setScissor(0, 1, &scissor);
 	// TODO: multiple viewports
@@ -1279,10 +1086,9 @@ void VulkanCommandBuffer::processCommand(const DispatchCommand& command)
 	while (dataIter != this->data)
 	{
 		auto subCommand = (const Command*)dataIter;
-		GARDEN_ASSERT(subCommand->type < Command::Type::Count);
-		GARDEN_ASSERT(subCommand->type != Command::Type::Unknown);
-
 		auto commandType = subCommand->type;
+		GARDEN_ASSERT(commandType < Command::Type::Count);
+
 		if (isMajorCommand(commandType))
 			break;
 		dataIter -= subCommand->lastSize;
@@ -1335,6 +1141,7 @@ void VulkanCommandBuffer::processCommand(const CopyBufferCommand& command)
 
 	if (vulkanAPI->bufferCopies.size() < regionCount)
 		vulkanAPI->bufferCopies.resize(regionCount);
+	auto bufferCopyData = vulkanAPI->bufferCopies.data();
 
 	Buffer::BarrierState newSrcBufferState;
 	newSrcBufferState.access = (uint64)vk::AccessFlagBits2::eTransferRead;
@@ -1347,14 +1154,14 @@ void VulkanCommandBuffer::processCommand(const CopyBufferCommand& command)
 	for (uint32 i = 0; i < regionCount; i++)
 	{
 		auto region = regions[i];
-		vulkanAPI->bufferCopies[i] = vk::BufferCopy(region.srcOffset, region.dstOffset,
+		bufferCopyData[i] = vk::BufferCopy(region.srcOffset, region.dstOffset,
 			region.size == 0 ? srcBuffer->getBinarySize() : region.size);
 		addBufferBarrier(vulkanAPI, newSrcBufferState, source);
 		addBufferBarrier(vulkanAPI, newDstBufferState, destination);
 	}
 	processPipelineBarriers();
 
-	instance.copyBuffer(vkSrcBuffer, vkDstBuffer, regionCount, vulkanAPI->bufferCopies.data());
+	instance.copyBuffer(vkSrcBuffer, vkDstBuffer, regionCount, bufferCopyData);
 }
 
 //**********************************************************************************************************************
@@ -1366,10 +1173,11 @@ void VulkanCommandBuffer::processCommand(const ClearImageCommand& command)
 	auto imageView = vulkanAPI->imagePool.get(image);
 	auto vkImage = (VkImage)ResourceExt::getInstance(**imageView);
 	auto regions = (const Image::ClearRegion*)((const uint8*)&command + sizeof(ClearImageCommandBase));
-	auto aspectFlags = toVkImageAspectFlags(imageView->getFormat());
+	auto aspectFlags = (vk::ImageAspectFlags)ImageExt::getAspectFlags(**imageView);
 
 	if (vulkanAPI->imageClears.size() < regionCount)
 		vulkanAPI->imageClears.resize(regionCount);
+	auto imageClearData = vulkanAPI->imageClears.data();
 
 	Image::LayoutState newImageState;
 	newImageState.access = (uint64)vk::AccessFlagBits2::eTransferWrite;
@@ -1381,8 +1189,8 @@ void VulkanCommandBuffer::processCommand(const ClearImageCommand& command)
 		auto region = regions[i];
 		auto mipCount = region.mipCount == 0 ? imageView->getMipCount() : region.mipCount;
 		auto layerCount = region.layerCount == 0 ? imageView->getLayerCount() : region.layerCount;
-		vulkanAPI->imageClears[i] = vk::ImageSubresourceRange(aspectFlags,
-			region.baseMip, mipCount, region.baseLayer, layerCount);
+		imageClearData[i] = vk::ImageSubresourceRange(
+			aspectFlags, region.baseMip, mipCount, region.baseLayer, layerCount);
 		addImageBarriers(vulkanAPI, newImageState, image, region.baseMip, mipCount, region.baseLayer, layerCount);
 	}
 	processPipelineBarriers();
@@ -1399,7 +1207,7 @@ void VulkanCommandBuffer::processCommand(const ClearImageCommand& command)
 		}
 
 		instance.clearColorImage(vkImage, vk::ImageLayout::eTransferDstOptimal,
-			&clearValue, regionCount, vulkanAPI->imageClears.data());
+			&clearValue, regionCount, imageClearData);
 	}
 	else
 	{
@@ -1407,7 +1215,7 @@ void VulkanCommandBuffer::processCommand(const ClearImageCommand& command)
 		memcpy(&clearValue.stencil, &command.color.y, sizeof(uint32));
 
 		instance.clearDepthStencilImage(vkImage, vk::ImageLayout::eTransferDstOptimal,
-			&clearValue, regionCount, vulkanAPI->imageClears.data());
+			&clearValue, regionCount, imageClearData);
 	}
 }
 
@@ -1423,11 +1231,12 @@ void VulkanCommandBuffer::processCommand(const CopyImageCommand& command)
 	auto vkSrcImage = (VkImage)ResourceExt::getInstance(**srcImage);
 	auto vkDstImage = (VkImage)ResourceExt::getInstance(**dstImage);
 	auto regions = (const Image::CopyImageRegion*)((const uint8*)&command + sizeof(CopyImageCommandBase));
-	auto srcAspectFlags = toVkImageAspectFlags(srcImage->getFormat());
-	auto dstAspectFlags = toVkImageAspectFlags(dstImage->getFormat());
+	auto srcAspectFlags = (vk::ImageAspectFlags)ImageExt::getAspectFlags(**srcImage);
+	auto dstAspectFlags = (vk::ImageAspectFlags)ImageExt::getAspectFlags(**dstImage);
 
 	if (vulkanAPI->imageCopies.size() < regionCount)
 		vulkanAPI->imageCopies.resize(regionCount);
+	auto imageCopyData = vulkanAPI->imageCopies.data();
 
 	Image::LayoutState newSrcImageState;
 	newSrcImageState.access = (uint64)vk::AccessFlagBits2::eTransferRead;
@@ -1458,7 +1267,7 @@ void VulkanCommandBuffer::processCommand(const CopyImageCommand& command)
 		}
 		else extent = vk::Extent3D(region.extent.x, region.extent.y, region.extent.z);
 
-		vulkanAPI->imageCopies[i] = vk::ImageCopy(srcSubresource, srcOffset, dstSubresource, dstOffset, extent);
+		imageCopyData[i] = vk::ImageCopy(srcSubresource, srcOffset, dstSubresource, dstOffset, extent);
 		addImageBarriers(vulkanAPI, newSrcImageState, source, region.srcMipLevel, 
 			1, region.srcBaseLayer, srcSubresource.layerCount);
 		addImageBarriers(vulkanAPI, newDstImageState, destination, region.dstMipLevel, 
@@ -1467,7 +1276,7 @@ void VulkanCommandBuffer::processCommand(const CopyImageCommand& command)
 	processPipelineBarriers();
 
 	instance.copyImage(vkSrcImage, vk::ImageLayout::eTransferSrcOptimal, vkDstImage, 
-		vk::ImageLayout::eTransferDstOptimal, regionCount, vulkanAPI->imageCopies.data());
+		vk::ImageLayout::eTransferDstOptimal, regionCount, imageCopyData);
 }
 
 //**********************************************************************************************************************
@@ -1482,10 +1291,11 @@ void VulkanCommandBuffer::processCommand(const CopyBufferImageCommand& command)
 	auto vkBuffer = (VkBuffer)ResourceExt::getInstance(**bufferView);
 	auto vkImage = (VkImage)ResourceExt::getInstance(**imageView);
 	auto regions = (const Image::CopyBufferRegion*)((const uint8*)&command + sizeof(CopyBufferImageCommandBase));
-	auto aspectFlags = toVkImageAspectFlags(imageView->getFormat());
+	auto aspectFlags = (vk::ImageAspectFlags)ImageExt::getAspectFlags(**imageView);
 
 	if (vulkanAPI->bufferImageCopies.size() < regionCount)
 		vulkanAPI->bufferImageCopies.resize(regionCount);
+	auto bufferImageCopyData = vulkanAPI->bufferImageCopies.data();
 
 	Buffer::BarrierState newBufferState;
 	newBufferState.access = toBuffer ? (uint64)vk::AccessFlagBits2::eTransferWrite : 
@@ -1515,7 +1325,7 @@ void VulkanCommandBuffer::processCommand(const CopyBufferImageCommand& command)
 		}
 		else dstExtent = vk::Extent3D(region.imageExtent.x, region.imageExtent.y, region.imageExtent.z);
 
-		vulkanAPI->bufferImageCopies[i] = vk::BufferImageCopy((vk::DeviceSize)region.bufferOffset,
+		bufferImageCopyData[i] = vk::BufferImageCopy((vk::DeviceSize)region.bufferOffset,
 			region.bufferRowLength, region.bufferImageHeight, imageSubresource, dstOffset, dstExtent);
 		addBufferBarrier(vulkanAPI, newBufferState, buffer);
 		addImageBarriers(vulkanAPI, newImageState, image, region.imageMipLevel, 
@@ -1526,12 +1336,12 @@ void VulkanCommandBuffer::processCommand(const CopyBufferImageCommand& command)
 	if (toBuffer)
 	{
 		instance.copyImageToBuffer(vkImage, vk::ImageLayout::eTransferSrcOptimal,
-			vkBuffer, regionCount, vulkanAPI->bufferImageCopies.data());
+			vkBuffer, regionCount, bufferImageCopyData);
 	}
 	else
 	{
-		instance.copyBufferToImage(vkBuffer, vkImage, vk::ImageLayout::eTransferDstOptimal, 
-			regionCount, vulkanAPI->bufferImageCopies.data());
+		instance.copyBufferToImage(vkBuffer, vkImage, 
+			vk::ImageLayout::eTransferDstOptimal, regionCount, bufferImageCopyData);
 	}
 }
 
@@ -1547,11 +1357,12 @@ void VulkanCommandBuffer::processCommand(const BlitImageCommand& command)
 	auto vkSrcImage = (VkImage)ResourceExt::getInstance(**srcImage);
 	auto vkDstImage = (VkImage)ResourceExt::getInstance(**dstImage);
 	auto regions = (const Image::BlitRegion*)( (const uint8*)&command + sizeof(BlitImageCommandBase));
-	auto srcAspectFlags = toVkImageAspectFlags(srcImage->getFormat());
-	auto dstAspectFlags = toVkImageAspectFlags(dstImage->getFormat());
+	auto srcAspectFlags = (vk::ImageAspectFlags)ImageExt::getAspectFlags(**srcImage);
+	auto dstAspectFlags = (vk::ImageAspectFlags)ImageExt::getAspectFlags(**dstImage);
 
 	if (vulkanAPI->imageBlits.size() < regionCount)
 		vulkanAPI->imageBlits.resize(regionCount);
+	auto imageBlitData = vulkanAPI->imageBlits.data();
 
 	Image::LayoutState newSrcImageState;
 	newSrcImageState.access = (uint64)vk::AccessFlagBits2::eTransferRead;
@@ -1591,7 +1402,7 @@ void VulkanCommandBuffer::processCommand(const BlitImageCommand& command)
 		}
 		else dstBounds[1] = vk::Offset3D(region.dstExtent.x, region.dstExtent.y, region.dstExtent.z);
 
-		vulkanAPI->imageBlits[i] = vk::ImageBlit(srcSubresource, srcBounds, dstSubresource, dstBounds);
+		imageBlitData[i] = vk::ImageBlit(srcSubresource, srcBounds, dstSubresource, dstBounds);
 		addImageBarriers(vulkanAPI, newSrcImageState, source, region.srcMipLevel, 
 			1, region.srcBaseLayer, srcSubresource.layerCount);
 		addImageBarriers(vulkanAPI, newDstImageState, destination, region.dstMipLevel, 
@@ -1599,9 +1410,8 @@ void VulkanCommandBuffer::processCommand(const BlitImageCommand& command)
 	}
 	processPipelineBarriers();
 
-	instance.blitImage(vkSrcImage, vk::ImageLayout::eTransferSrcOptimal,
-		vkDstImage, vk::ImageLayout::eTransferDstOptimal, regionCount, 
-		vulkanAPI->imageBlits.data(), (vk::Filter)command.filter);
+	instance.blitImage(vkSrcImage, vk::ImageLayout::eTransferSrcOptimal, vkDstImage, 
+		vk::ImageLayout::eTransferDstOptimal, regionCount, imageBlitData, (vk::Filter)command.filter);
 }
 
 //**********************************************************************************************************************
@@ -1810,10 +1620,9 @@ void VulkanCommandBuffer::processCommand(const TraceRaysCommand& command)
 	while (dataIter != this->data)
 	{
 		auto subCommand = (const Command*)dataIter;
-		GARDEN_ASSERT(subCommand->type < Command::Type::Count);
-		GARDEN_ASSERT(subCommand->type != Command::Type::Unknown);
-
 		auto commandType = subCommand->type;
+		GARDEN_ASSERT(commandType < Command::Type::Count);
+
 		if (isMajorCommand(commandType))
 			break;
 		dataIter -= subCommand->lastSize;

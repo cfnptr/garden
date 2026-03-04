@@ -164,7 +164,7 @@ ID<GraphicsPipeline> SpriteRenderSystem::createBasePipeline()
 		}
 		else
 		{
-			framebuffer = deferredSystem->getDepthHdrFB();
+			framebuffer = deferredSystem->getDepthStencilHdrFB();
 			pipelineState.depthTesting = pipelineState.depthWriting = true;
 		}
 	}
