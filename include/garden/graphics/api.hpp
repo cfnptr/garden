@@ -74,8 +74,8 @@ public:
 	 */
 	enum class DestroyResourceType : uint32
 	{
-		DescriptorSet, Pipeline, DescriptorPool, DescriptorSetLayout, Sampler, 
-		Framebuffer, ImageView, Image, Tlas, Blas, Buffer, QueryPool, Count
+		DescriptorSet, Pipeline, DescriptorPool, DescriptorSetLayout, 
+		Sampler, ImageView, Image, Tlas, Blas, Buffer, QueryPool, Count
 	};
 	/**
 	 * @brief Graphics resource destroy data container.
@@ -116,7 +116,6 @@ public:
 	LinearPool<DescriptorSet> descriptorSetPool;
 	LinearPool<Blas> blasPool;
 	LinearPool<Tlas> tlasPool;
-	tsl::robin_map<void*, uint64> renderPasses;
 	uint64 graphicsPipelineVersion = 1;
 	uint64 computePipelineVersion = 1;
 	uint64 rayTracingPipelineVersion = 1;
@@ -128,7 +127,6 @@ public:
 	CommandBuffer* computeCommandBuffer;
 	CommandBuffer* currentCommandBuffer = nullptr;
 	ID<Framebuffer> currentFramebuffer = {};
-	uint32 currentSubpassIndex = 0;
 	vector<ID<Pipeline>> currentPipelines;
 	vector<PipelineType> currentPipelineTypes;
 	vector<uint8> currentPipelineVariants;
@@ -174,13 +172,16 @@ public:
 	 */
 	ID<Pipeline> getPipeline(PipelineType type, const Pipeline* pipeline) const noexcept
 	{
-		if (type == PipelineType::Graphics)
+		switch (type)
+		{
+		case PipelineType::Graphics:
 			return ID<Pipeline>(graphicsPipelinePool.getID((const GraphicsPipeline*)pipeline));
-		else if (type == PipelineType::Compute)
+		case PipelineType::Compute:
 			return ID<Pipeline>(computePipelinePool.getID((const ComputePipeline*)pipeline));
-		else if (type == PipelineType::RayTracing)
+		case PipelineType::RayTracing:
 			return ID<Pipeline>(rayTracingPipelinePool.getID((const RayTracingPipeline*)pipeline));
-		abort();
+		default: abort();
+		}
 	}
 	/**
 	 * @brief Returns pipeline pool view from it ID.
@@ -190,13 +191,16 @@ public:
 	 */
 	View<Pipeline> getPipelineView(PipelineType type, ID<Pipeline> pipeline) const noexcept
 	{
-		if (type == PipelineType::Graphics)
+		switch (type)
+		{
+		case PipelineType::Graphics:
 			return View<Pipeline>(graphicsPipelinePool.get(ID<GraphicsPipeline>(pipeline)));
-		else if (type == PipelineType::Compute)
+		case PipelineType::Compute:
 			return View<Pipeline>(computePipelinePool.get(ID<ComputePipeline>(pipeline)));
-		else if (type == PipelineType::RayTracing)
+		case PipelineType::RayTracing:
 			return View<Pipeline>(rayTracingPipelinePool.get(ID<RayTracingPipeline>(pipeline)));
-		abort();
+		default: abort();
+		}
 	}
 
 	/**
@@ -206,7 +210,7 @@ public:
 	 * @param mip image mipmap level
 	 * @param layer image array layer index
 	 */
-	Image::LayoutState& getImageState(ID<Image> image, uint8 mip, uint32 layer) noexcept
+	Image::LayoutState& getImageState(ID<Image> image, uint32 layer, uint8 mip) noexcept
 	{
 		auto imageView = imagePool.get(image);
 		auto& barrierStates = ImageExt::getBarrierStates(**imageView);

@@ -64,8 +64,6 @@ static constexpr vk::ImageUsageFlags toVkImageUsages(Image::Usage imageUsage) no
 		flags |= vk::ImageUsageFlagBits::eColorAttachment;
 	if (hasAnyFlag(imageUsage, Image::Usage::DepthStencilAttachment))
 		flags |= vk::ImageUsageFlagBits::eDepthStencilAttachment;
-	if (hasAnyFlag(imageUsage, Image::Usage::InputAttachment))
-		flags |= vk::ImageUsageFlagBits::eInputAttachment;
 	return flags;
 }
 static VmaAllocationCreateFlagBits toVmaMemoryStrategy(Image::Strategy memoryUsage) noexcept
@@ -81,7 +79,7 @@ static VmaAllocationCreateFlagBits toVmaMemoryStrategy(Image::Strategy memoryUsa
 
 //**********************************************************************************************************************
 static void createVkImage(Image::Type type, Image::Format format, Image::Usage usage, 
-	Image::Strategy strategy, u32x4 size, void*& instance, void*& allocation)
+	Image::Strategy strategy, u32x4 size, void*& instance, void*& allocation, uint32& aspectFlags)
 {
 	VkImageCreateInfo imageInfo = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
 	imageInfo.imageType = (VkImageType)toVkImageType(type);
@@ -175,8 +173,8 @@ static void createVkImage(Image::Type type, Image::Format format, Image::Usage u
 
 	// TODO: https://gpuopen-librariesandsdks.github.io/VulkanMemoryAllocator/html/resource_aliasing.html
 
-	instance = vmaInstance;
-	allocation = vmaAllocation;
+	instance = vmaInstance; allocation = vmaAllocation;
+	aspectFlags = (uint32)toVkImageAspectFlags(format);
 }
 
 //**********************************************************************************************************************
@@ -186,7 +184,7 @@ Image::Image(Type type, Format format, Usage usage, Strategy strategy, u32x4 siz
 	GARDEN_ASSERT(areAllTrue(size > u32x4::zero));
 
 	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
-		createVkImage(type, format, usage, strategy, size, instance, allocation);
+		createVkImage(type, format, usage, strategy, size, instance, allocation, aspectFlags);
 	else abort();
 
 	this->binarySize = 0;
@@ -219,8 +217,11 @@ Image::Image(void* instance, Format format, Usage usage, Strategy strategy, uint
 	this->swapchain = true;
 	this->size = u32x4(size.x, size.y, 1, 1);
 
-	if ((GraphicsBackend)backend == GraphicsBackend::VulkanAPI) // Note: do not remove.
+	if ((GraphicsBackend)backend == GraphicsBackend::VulkanAPI)
+	{
 		barrierStates[0].stage = (uint64)vk::PipelineStageFlagBits2::eColorAttachmentOutput;
+		aspectFlags = (uint32)toVkImageAspectFlags(format);
+	}
 	else abort();
 }
 bool Image::destroy()
@@ -310,7 +311,7 @@ ID<ImageView> Image::getView(uint32 layer, uint8 mip)
 
 		#if GARDEN_DEBUG || GARDEN_EDITOR
 		auto viewView = graphicsAPI->imageViewPool.get(view);
-		viewView->setDebugName(debugName + ".view_" + to_string(layer) + "_" + to_string(mip));
+		viewView->setDebugName(debugName + ".view_l" + to_string(layer) + "_m" + to_string(mip));
 		#endif
 	}
 	return view;
@@ -909,7 +910,7 @@ void Image::setDebugName(const string& name)
 
 //**********************************************************************************************************************
 static void* createVkImageView(View<Image> imageView, Image::Type type, Image::Format format, 
-	uint32 baseLayer, uint32 layerCount, uint8 baseMip, uint8 mipCount)
+	uint32 baseLayer, uint32 layerCount, uint8 baseMip, uint8 mipCount, uint32& apiFormat, uint32& aspectFlags)
 {
 	auto imageFormat = isFormatDepthAndStencil(imageView->getFormat()) ? imageView->getFormat() : format;
 	vk::ImageViewCreateInfo imageViewInfo({}, (VkImage)ResourceExt::getInstance(**imageView),
@@ -918,6 +919,7 @@ static void* createVkImageView(View<Image> imageView, Image::Type type, Image::F
 			vk::ComponentSwizzle::eIdentity, vk::ComponentSwizzle::eIdentity),
 		// TODO: utilize component swizzle
 		vk::ImageSubresourceRange(toVkImageAspectFlags(format), baseMip, mipCount, baseLayer, layerCount));
+	apiFormat = (uint32)imageViewInfo.format; aspectFlags = (uint32)imageViewInfo.subresourceRange.aspectMask;
 	return (VkImageView)VulkanAPI::get()->device.createImageView(imageViewInfo);
 }
 
@@ -940,7 +942,9 @@ ImageView::ImageView(bool isDefault, ID<Image> image, Image::Type type,
 			default: abort();
 			}
 		}
-		this->instance = createVkImageView(imageView, type, format, baseLayer, layerCount, baseMip, mipCount);
+
+		this->instance = createVkImageView(imageView, type, format, 
+			baseLayer, layerCount, baseMip, mipCount, apiFormat, aspectFlags);
 	}
 	else abort();
 
@@ -975,12 +979,12 @@ bool ImageView::destroy()
 			if (pipelineView->isBindless())
 				continue;
 
-			const auto& uniforms = pipelineView->getUniforms();
+			const auto& pipelineUniforms = pipelineView->getUniforms();
 			for (const auto& pair : descriptorUniforms)
 			{
-				const auto uniform = uniforms.find(pair.first);
-				if (uniform == uniforms.end() || (!isSamplerType(uniform->second.type) && 
-					!isImageType(uniform->second.type)) || uniform->second.descriptorSetIndex != descriptorSet.getIndex())
+				const auto uniformPair = pipelineUniforms.find(pair.first);
+				if (uniformPair == pipelineUniforms.end() || (!uniformPair->second.isSamplerType && 
+					!uniformPair->second.isImageType) || uniformPair->second.descriptorSetIndex != descriptorSet.getIndex())
 				{
 					continue;
 				}
@@ -1000,7 +1004,7 @@ bool ImageView::destroy()
 
 		for (auto& framebuffer : graphicsAPI->framebufferPool)
 		{
-			if (!ResourceExt::getInstance(framebuffer))
+			if (!framebuffer.isValid())
 				continue;
 
 			const auto& colorAttachments = framebuffer.getColorAttachments();

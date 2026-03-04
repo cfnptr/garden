@@ -27,15 +27,14 @@ using namespace garden;
 
 static ID<Image> createBloomBuffer(GraphicsSystem* graphicsSystem, uint8 maxMipCount)
 {
-	auto bloomBufferSize = max(graphicsSystem->getFramebufferSize() / 2u, uint2::one);
-	auto mipCount = std::min(calcMipCount(bloomBufferSize), maxMipCount);
+	auto frameSize = max(graphicsSystem->getFramebufferSize() / 2u, uint2::one);
+	auto mipCount = std::min(calcMipCount(frameSize), maxMipCount);
 
 	Image::Mips mips(mipCount);
-	for (uint8 i = 0; i < mipCount; i++)
-		mips[i].resize(1);
+	for (auto& mip : mips) mip.resize(1);
 
 	auto image = graphicsSystem->createImage(BloomRenderSystem::bufferFormat, Image::Usage::ColorAttachment | 
-		Image::Usage::Sampled | Image::Usage::TransferDst, mips, bloomBufferSize, Image::Strategy::Size);
+		Image::Usage::Sampled | Image::Usage::TransferDst, mips, frameSize, Image::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(image, "image.bloom.buffer");
 	return image;
 }
@@ -43,20 +42,43 @@ static ID<Image> createBloomBuffer(GraphicsSystem* graphicsSystem, uint8 maxMipC
 static void createBloomFramebuffers(GraphicsSystem* graphicsSystem, 
 	ID<Image> bloomBuffer, vector<ID<Framebuffer>>& framebuffers)
 {
-	auto framebufferSize = max(graphicsSystem->getFramebufferSize() / 2u, uint2::one);
+	auto frameSize = max(graphicsSystem->getFramebufferSize() / 2u, uint2::one);
 	auto bloomBufferView = graphicsSystem->get(bloomBuffer);
 	auto mipCount = bloomBufferView->getMipCount();
-	framebuffers.resize(mipCount);
+	framebuffers.resize(mipCount + (mipCount - 1));
+	auto framebufferData = framebuffers.data();
 
-	for (uint8 i = 0; i < mipCount; i++)
+	vector<Framebuffer::Attachment> colorAttachments =
 	{
-		vector<Framebuffer::OutputAttachment> colorAttachments =
-		{ Framebuffer::OutputAttachment(bloomBufferView->getView(0, i), { false, true, true }) };
-		auto framebuffer = graphicsSystem->createFramebuffer(framebufferSize, std::move(colorAttachments));
-		SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.bloom" + to_string(i));
+		Framebuffer::Attachment(bloomBufferView->getView(0, 0),
+			Framebuffer::LoadOp::DontCare, Framebuffer::StoreOp::Store)
+	};
+	auto framebuffer = graphicsSystem->createFramebuffer(frameSize, std::move(colorAttachments));
+	SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.bloom.downsample0");
+	framebufferData[0] = framebuffer;
 	
-		framebuffers[i] = framebuffer;
-		framebufferSize = max(framebufferSize / 2u, uint2::one);
+	auto mipFrameSize = max(frameSize / 2u, uint2::one);
+	auto mipCountMinOne = mipCount - 1;
+
+	for (uint8 i = 1; i < mipCount; i++)
+	{
+		colorAttachments =
+		{
+			Framebuffer::Attachment(bloomBufferView->getView(0, i),
+				Framebuffer::LoadOp::DontCare, Framebuffer::StoreOp::Store)
+		};
+		framebuffer = graphicsSystem->createFramebuffer(mipFrameSize, std::move(colorAttachments));
+		SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.bloom.downsample" + to_string(i));
+		framebufferData[i] = framebuffer; mipFrameSize = max(mipFrameSize / 2u, uint2::one);
+
+		auto mip = mipCountMinOne - i;
+		colorAttachments =
+		{
+			Framebuffer::Attachment(bloomBufferView->getView(0, mip))
+		};
+		framebuffer = graphicsSystem->createFramebuffer(calcSizeAtMip(frameSize, mip), std::move(colorAttachments));
+		SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.bloom.upsample" + to_string(i - 1));
+		framebufferData[mipCountMinOne + i] = framebuffer;
 	}
 }
 
@@ -73,11 +95,12 @@ static void createBloomDescriptorSets(GraphicsSystem* graphicsSystem,
 	auto bloomBufferView = graphicsSystem->get(bloomBuffer);
 	auto mipCount = bloomBufferView->getMipCount();
 	descriptorSets.resize(mipCount + (mipCount - 1));
+	auto descriptorSetData = descriptorSets.data();
 
 	auto uniforms = getUniforms(DeferredRenderSystem::Instance::get()->getUpscaleHdrIV());
 	auto descriptorSet = graphicsSystem->createDescriptorSet(downsamplePipeline, std::move(uniforms));
 	SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.bloom.downsample0");
-	descriptorSets[0] = descriptorSet;
+	descriptorSetData[0] = descriptorSet;
 
 	auto mipCountMinOne = mipCount - 1;
 	for (uint8 i = 1; i < mipCount; i++)
@@ -85,13 +108,12 @@ static void createBloomDescriptorSets(GraphicsSystem* graphicsSystem,
 		uniforms = getUniforms(bloomBufferView->getView(0, i - 1));
 		descriptorSet = graphicsSystem->createDescriptorSet(downsamplePipeline, std::move(uniforms));
 		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.bloom.downsample" + to_string(i));
-		descriptorSets[i] = descriptorSet;
+		descriptorSetData[i] = descriptorSet;
 
 		uniforms = getUniforms(bloomBufferView->getView(0, mipCount - i));
-		auto index = mipCount + (mipCountMinOne - i);
 		descriptorSet = graphicsSystem->createDescriptorSet(upsamplePipeline, std::move(uniforms));
-		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.bloom.upsample" + to_string(i));
-		descriptorSets[index] = descriptorSet;
+		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.bloom.upsample" + to_string(i - 1));
+		descriptorSetData[mipCountMinOne + i] = descriptorSet;
 	}
 }
 static uint8 getMaxMipCount(GraphicsQuality quality) noexcept
@@ -220,7 +242,9 @@ void BloomRenderSystem::preLdrRender()
 	if (descriptorSets.empty())
 		createBloomDescriptorSets(graphicsSystem, downsamplePipeline, upsamplePipeline, bloomBuffer, descriptorSets);
 	
-	auto mipCount = (uint8)framebuffers.size();
+	auto framebufferData = framebuffers.data();
+	auto descriptorSetData = descriptorSets.data();
+	auto mipCount = graphicsSystem->get(bloomBuffer)->getMipCount();
 	
 	graphicsSystem->startRecording(CommandBufferType::Frame);
 	{
@@ -232,43 +256,46 @@ void BloomRenderSystem::preLdrRender()
 			pc.threshold = saturate(threshold);
 			downsamplePipelineView->pushConstants(&pc);
 			{
-				auto framebufferView = graphicsSystem->get(framebuffers[0]);
-				auto framebufferSize = framebufferView->getSize();
-				downsamplePipelineView->updateFramebuffer(framebuffers[0]);
+				auto framebuffer = framebufferData[0];
+				auto framebufferView = graphicsSystem->get(framebuffer);
+				auto frameSize = framebufferView->getSize();
+				downsamplePipelineView->updateFramebuffer(framebuffer);
 
-				RenderPass renderPass(framebuffers[0], float4::zero);
-				downsamplePipelineView->bind(framebufferSize.x & 1 || framebufferSize.y & 1 ? 
+				RenderPass renderPass(framebuffer, float4::zero);
+				downsamplePipelineView->bind(frameSize.x & 1 || frameSize.y & 1 ? 
 					BLOOM_DOWNSAMPLE_BASE : BLOOM_DOWNSAMPLE_6X6);
 				downsamplePipelineView->setViewportScissor();
-				downsamplePipelineView->bindDescriptorSet(descriptorSets[0]);
+				downsamplePipelineView->bindDescriptorSet(descriptorSetData[0]);
 				downsamplePipelineView->drawFullscreen();
 			}
 
 			for (uint8 i = 1; i < mipCount; i++)
 			{
-				auto framebufferView = graphicsSystem->get(framebuffers[i - 1]);
-				auto framebufferSize = framebufferView->getSize();
-				downsamplePipelineView->updateFramebuffer(framebuffers[i]);
+				auto framebuffer = framebufferData[i];
+				auto prevFrameSize = graphicsSystem->get(framebufferData[i - 1])->getSize();
+				downsamplePipelineView->updateFramebuffer(framebuffer);
 
-				RenderPass renderPass(framebuffers[i], float4::zero);
-				downsamplePipelineView->bind(framebufferSize.x & 1 || framebufferSize.y & 1 ? 
+				RenderPass renderPass(framebuffer, float4::zero);
+				downsamplePipelineView->bind(prevFrameSize.x & 1 || prevFrameSize.y & 1 ? 
 					BLOOM_DOWNSAMPLE_BASE : BLOOM_DOWNSAMPLE_6X6);
 				downsamplePipelineView->setViewportScissor();
-				downsamplePipelineView->bindDescriptorSet(descriptorSets[i]);
+				downsamplePipelineView->bindDescriptorSet(descriptorSetData[i]);
 				downsamplePipelineView->drawFullscreen();
 			}
 		}
 		{
 			SET_GPU_DEBUG_LABEL("Upsample");
 
-			for (int8 i = mipCount - 2; i >= 0; i--)
+			auto count = mipCount + (mipCount - 1);
+			for (uint8 i = mipCount; i < count; i++)
 			{
-				upsamplePipelineView->updateFramebuffer(framebuffers[i]);
+				auto framebuffer = framebufferData[i];
+				upsamplePipelineView->updateFramebuffer(framebuffer);
 
-				RenderPass renderPass(framebuffers[i], float4::zero);
+				RenderPass renderPass(framebuffer, float4::zero);
 				upsamplePipelineView->bind();
 				upsamplePipelineView->setViewportScissor();
-				upsamplePipelineView->bindDescriptorSet(descriptorSets[mipCount + i]);
+				upsamplePipelineView->bindDescriptorSet(descriptorSetData[i]);
 				upsamplePipelineView->drawFullscreen();
 			}
 		}

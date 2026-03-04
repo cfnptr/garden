@@ -30,7 +30,7 @@ void ComputePipeline::createVkInstance(ComputeCreateData& createData)
 	vk::SpecializationInfo specializationInfo;
 	fillVkSpecConsts(createData.shaderPath, &specializationInfo, createData.specConsts,
 		createData.specConstValues, PipelineStage::Compute, variantCount);
-	#if GARDEN_DEBUG | GARDEN_EDITOR
+	#if GARDEN_DEBUG || GARDEN_EDITOR
 	this->specConstValues = std::move(createData.specConstValues);
 	#endif
 
@@ -48,8 +48,7 @@ void ComputePipeline::createVkInstance(ComputeCreateData& createData)
 
 		if (createData.variantCount > 1)
 			((void**)this->instance)[i] = result.value;
-		else
-			this->instance = result.value;
+		else this->instance = result.value;
 	}
 
 	destroyShaders(shaders);

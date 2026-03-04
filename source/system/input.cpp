@@ -418,7 +418,7 @@ void InputSystem::startRenderThread()
 		string newClipboard; auto hasNewClipboard = false;
 
 		string newWindowTitle = "";
-		vector<vector<uint8>> imageData; vector<GLFWimage> images;
+		vector<vector<uint8>> imagePixels; vector<GLFWimage> images;
 
 		#if GARDEN_OS_WINDOWS
 		inputSystem->eventLocker.lock();
@@ -494,20 +494,19 @@ void InputSystem::startRenderThread()
 			{
 				auto resourceSystem = ResourceSystem::Instance::get();
 				const auto& paths = inputSystem->currWindowIconPaths;
-				imageData.resize(paths.size());
-				images.resize(paths.size());
+				imagePixels.resize(paths.size()); images.resize(paths.size());
+				auto imagePixelData = imagePixels.data(); auto imageData = images.data();
 
 				for (psize i = 0; i < paths.size(); i++)
 				{
-					uint2 size;
-					resourceSystem->loadImageData(paths[i], 
-						Image::Format::SrgbR8G8B8A8, imageData[i], size);
+					uint2 size; resourceSystem->loadImageData(paths[i], 
+						Image::Format::SrgbR8G8B8A8, imagePixelData[i], size);
 
 					GLFWimage image;
 					image.width = size.x;
 					image.height = size.y;
-					image.pixels = imageData[i].data();
-					images[i] = image;
+					image.pixels = imagePixelData[i].data();
+					imageData[i] = image;
 				}
 			}
 			inputSystem->currWindowIconPaths.clear();

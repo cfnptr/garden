@@ -43,8 +43,8 @@ PhysicsEditorSystem::~PhysicsEditorSystem()
 void PhysicsEditorSystem::init()
 {
 	auto manager = Manager::Instance::get();
-	ECSM_SUBSCRIBE_TO_EVENT("PreDepthLdrRender", PhysicsEditorSystem::preDepthLdrRender);
-	ECSM_SUBSCRIBE_TO_EVENT("DepthLdrRender", PhysicsEditorSystem::depthLdrRender);
+	ECSM_SUBSCRIBE_TO_EVENT("PreDsLdrRender", PhysicsEditorSystem::preDsLdrRender);
+	ECSM_SUBSCRIBE_TO_EVENT("DsLdrRender", PhysicsEditorSystem::dsLdrRender);
 	ECSM_SUBSCRIBE_TO_EVENT("EditorBarTool", PhysicsEditorSystem::editorBarTool);
 
 	EditorRenderSystem::Instance::get()->registerEntityInspector<RigidbodyComponent>(
@@ -75,14 +75,14 @@ void PhysicsEditorSystem::deinit()
 		editorSystem->tryUnregisterEntityInspector<CharacterComponent>();
 
 		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("PreDepthLdrRender", PhysicsEditorSystem::preDepthLdrRender);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("DepthLdrRender", PhysicsEditorSystem::depthLdrRender);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("PreDsLdrRender", PhysicsEditorSystem::preDsLdrRender);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("DsLdrRender", PhysicsEditorSystem::dsLdrRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarTool", PhysicsEditorSystem::editorBarTool);
 	}
 }
 
 //**********************************************************************************************************************
-void PhysicsEditorSystem::preDepthLdrRender()
+void PhysicsEditorSystem::preDsLdrRender()
 {
 	auto physicsSystem = PhysicsSystem::Instance::get();
 	if (!showWindow)
@@ -165,7 +165,7 @@ void PhysicsEditorSystem::preDepthLdrRender()
 	}
 	graphicsSystem->stopRecording();
 }
-void PhysicsEditorSystem::depthLdrRender()
+void PhysicsEditorSystem::dsLdrRender()
 {
 	if (!drawShapes && !drawConstraints && !drawConstraintLimits && !drawConstraintRefFrame)
 		return;
@@ -606,9 +606,12 @@ static void renderConstraints(View<RigidbodyComponent> rigidbodyView, PhysicsEdi
 		ImGui::PushID("constraint");
 
 		auto& constraints = rigidbodyView->getConstraints();
-		for (uint32 i = 0; i < (uint32)constraints.size(); i++)
+		auto constraintCount = (uint32)constraints.size();
+		auto constraintData = constraints.data();
+
+		for (uint32 i = 0; i < constraintCount; i++)
 		{
-			auto& constraint = constraints[i];
+			auto& constraint = constraintData[i];
 			ImGui::SeparatorText(to_string(i).c_str()); ImGui::SameLine();
 			ImGui::PushID(to_string(i).c_str());
 

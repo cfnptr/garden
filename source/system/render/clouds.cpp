@@ -33,27 +33,27 @@ static const uint32 bayerIndices4x4[16] =
 
 static ID<Image> createCloudsCamView(GraphicsSystem* graphicsSystem)
 {
-	auto size = max(graphicsSystem->getScaledFrameSize() / 2, uint2::one);
-	auto cloudsCamView = graphicsSystem->createImage(CloudsRenderSystem::cloudsColorFormat, Image::Usage::Sampled | 
-		Image::Usage::ColorAttachment, { { nullptr, nullptr } }, size, Image::Strategy::Size);
-	SET_RESOURCE_DEBUG_NAME(cloudsCamView, "image.clouds.camView");
-	return cloudsCamView;
+	auto frameSize = max(graphicsSystem->getScaledFrameSize() / 2, uint2::one);
+	auto image = graphicsSystem->createImage(CloudsRenderSystem::cloudsColorFormat, Image::Usage::Sampled | 
+		Image::Usage::ColorAttachment, { { nullptr, nullptr } }, frameSize, Image::Strategy::Size);
+	SET_RESOURCE_DEBUG_NAME(image, "image.clouds.camView");
+	return image;
 }
 static ID<Image> createCloudsSkybox(GraphicsSystem* graphicsSystem, ID<Image> skybox)
 {
 	auto cubemapSize = max(graphicsSystem->get(skybox)->getSize().getX() / 2, 1u);
-	auto cloudsSkybox = graphicsSystem->createImage(CloudsRenderSystem::cloudsColorFormat, Image::Usage::Sampled | 
+	auto image = graphicsSystem->createImage(CloudsRenderSystem::cloudsColorFormat, Image::Usage::Sampled | 
 		Image::Usage::ColorAttachment, { { nullptr } }, uint2(cubemapSize), Image::Strategy::Size);
-	SET_RESOURCE_DEBUG_NAME(cloudsSkybox, "image.clouds.skybox");
-	return cloudsSkybox;
+	SET_RESOURCE_DEBUG_NAME(image, "image.clouds.skybox");
+	return image;
 }
 static ID<Image> createCloudsCamViewDepth(GraphicsSystem* graphicsSystem)
 {
-	auto size = max(graphicsSystem->getScaledFrameSize() / 2, uint2::one);
-	auto cloudsCamViewDepth = graphicsSystem->createImage(CloudsRenderSystem::cloudsDepthFormat, 
-		Image::Usage::Sampled | Image::Usage::ColorAttachment, { { nullptr } }, size, Image::Strategy::Size);
-	SET_RESOURCE_DEBUG_NAME(cloudsCamViewDepth, "image.clouds.camViewDepth");
-	return cloudsCamViewDepth;
+	auto frameSize = max(graphicsSystem->getScaledFrameSize() / 2, uint2::one);
+	auto image = graphicsSystem->createImage(CloudsRenderSystem::cloudsDepthFormat, Image::Usage::Sampled | 
+		Image::Usage::ColorAttachment, { { nullptr } }, frameSize, Image::Strategy::Size);
+	SET_RESOURCE_DEBUG_NAME(image, "image.clouds.camViewDepth");
+	return image;
 }
 
 static ID<Framebuffer> createCamViewFramebuffer(GraphicsSystem* graphicsSystem, 
@@ -62,10 +62,10 @@ static ID<Framebuffer> createCamViewFramebuffer(GraphicsSystem* graphicsSystem,
 	auto camViewView = graphicsSystem->get(cloudsCamView);
 	auto viewDepthView = graphicsSystem->get(cloudsCamViewDepth);
 
-	vector<Framebuffer::OutputAttachment> colorAttachments =
+	vector<Framebuffer::Attachment> colorAttachments =
 	{
-		Framebuffer::OutputAttachment(camViewView->getView(), CloudsRenderSystem::framebufferFlags),
-		Framebuffer::OutputAttachment(viewDepthView->getView(), CloudsRenderSystem::framebufferFlags),
+		Framebuffer::Attachment(camViewView->getView(0, 0), Framebuffer::LoadOp::DontCare, Framebuffer::StoreOp::Store),
+		Framebuffer::Attachment(viewDepthView->getView(), Framebuffer::LoadOp::DontCare, Framebuffer::StoreOp::Store),
 	};
 
 	auto framebuffer = graphicsSystem->createFramebuffer(
@@ -79,21 +79,20 @@ static void updateCamViewFramebuffer(GraphicsSystem* graphicsSystem, ID<Image> c
 	auto camView = graphicsSystem->get(cloudsCamView);
 	auto camViewView = camView->getView(graphicsSystem->getInFlightIndex(), 0);
 	auto viewDepthView = graphicsSystem->get(cloudsCamViewDepth)->getView();
-
-	Framebuffer::OutputAttachment colorAttachments[2] = 
-	{
-		Framebuffer::OutputAttachment(camViewView, CloudsRenderSystem::framebufferFlags),
-		Framebuffer::OutputAttachment(viewDepthView, CloudsRenderSystem::framebufferFlags),
-	};
-	framebufferView->update((uint2)camView->getSize(), colorAttachments, 2);
+	ID<ImageView> colorImageViews[2] = { camViewView, viewDepthView };
+	framebufferView->update((uint2)camView->getSize(), colorImageViews, 2);
 }
 
 static ID<Framebuffer> createSkyboxFramebuffer(GraphicsSystem* graphicsSystem, ID<Image> cloudsSkybox)
 {
 	auto cloudsSkyboxView = graphicsSystem->get(cloudsSkybox);
-	vector<Framebuffer::OutputAttachment> colorAttachments =
-	{ Framebuffer::OutputAttachment(cloudsSkyboxView->getView(), CloudsRenderSystem::framebufferFlags) };
-	auto framebuffer = graphicsSystem->createFramebuffer((uint2)cloudsSkyboxView->getSize(), std::move(colorAttachments));
+	vector<Framebuffer::Attachment> colorAttachments =
+	{
+		Framebuffer::Attachment(cloudsSkyboxView->getView(), 
+			Framebuffer::LoadOp::DontCare, Framebuffer::StoreOp::Store)
+	};
+	auto framebuffer = graphicsSystem->createFramebuffer(
+		(uint2)cloudsSkyboxView->getSize(), std::move(colorAttachments));
 	SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.clouds.skybox");
 	return framebuffer;
 }
@@ -254,7 +253,7 @@ static DescriptorSet::Uniforms getSkyboxUniforms(GraphicsSystem* graphicsSystem,
 static DescriptorSet::Uniforms getViewBlendUniforms(GraphicsSystem* graphicsSystem, 
 	ID<Image> cloudsCamView, ID<Image> cloudsCamViewDepth)
 {
-	auto depthBufferView = DeferredRenderSystem::Instance::get()->getDepthImageView();
+	auto depthBufferView = DeferredRenderSystem::Instance::get()->getDepthOnlyIV();
 	auto camViewView = graphicsSystem->get(cloudsCamView);
 	auto camViewDepthView = graphicsSystem->get(cloudsCamViewDepth)->getView();
 	DescriptorSet::ImageViews camViews = { { camViewView->getView(0, 0) }, { camViewView->getView(1, 0) } };
@@ -460,8 +459,7 @@ void CloudsRenderSystem::preSkyFaceRender()
 	if (updateSkyboxFB)
 	{
 		auto cloudsSkyboxView = graphicsSystem->get(cloudsSkybox);
-		Framebuffer::OutputAttachment colorAttachment(cloudsSkyboxView->getView(), framebufferFlags);
-		framebufferView->update((uint2)cloudsSkyboxView->getSize(), &colorAttachment, 1);
+		framebufferView->update((uint2)cloudsSkyboxView->getSize(), cloudsSkyboxView->getView());
 	}
 
 	if (!skyboxPipeline)
@@ -591,7 +589,7 @@ void CloudsRenderSystem::preHdrRender()
 //**********************************************************************************************************************
 void CloudsRenderSystem::hdrRender()
 {
-	SET_CPU_ZONE_SCOPED("Clouds Depth HDR Render");
+	SET_CPU_ZONE_SCOPED("Clouds HDR Render");
 
 	if (!isEnabled)
 		return;

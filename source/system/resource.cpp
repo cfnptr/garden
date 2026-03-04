@@ -88,13 +88,11 @@ namespace garden::graphics
 	};
 	struct GraphicsPipelineLoadData final : public PipelineLoadData
 	{
-		void* renderPass = nullptr;
 		vector<Image::Format> colorFormats;
 		GraphicsPipeline::PipelineStates pipelineStateOverrides;
 		GraphicsPipeline::BlendStates blendStateOverrides;
 		ID<GraphicsPipeline> instance = {};
 		Image::Format depthStencilFormat = {};
-		uint8 subpassIndex = 0;
 		bool useAsyncRecording = false;
 	};
 	struct ComputePipelineLoadData final : public PipelineLoadData
@@ -238,21 +236,6 @@ void ResourceSystem::dequeuePipelines()
 	while (!loadedGraphicsQueue.empty())
 	{
 		auto& item = loadedGraphicsQueue.front();
-
-		if (item.renderPass)
-		{
-			auto& shareCount = graphicsAPI->renderPasses.at(item.renderPass);
-			if (shareCount == 0)
-			{
-				graphicsAPI->destroyResource(GraphicsAPI::DestroyResourceType::Framebuffer, nullptr, item.renderPass);
-				graphicsAPI->renderPasses.erase(item.renderPass);
-			}
-			else
-			{
-				shareCount--;
-			}
-		}
-
 		auto pipeline = *item.instance <= graphicsOccupancy ? 
 			&graphicsPipelines[*item.instance - 1] : nullptr;
 		
@@ -671,7 +654,6 @@ static void recompilePipelines(ResourceSystem* resourceSystem,
 			options.maxBindlessCount = pipelineView->getMaxBindlessCount();
 			options.useAsyncRecording = pipelineView->useAsyncRecording();
 			options.loadAsync = false;
-			options.subpassIndex = pipelineView->getSubpassIndex();
 			// TODO: store and load overrides?
 
 			try
@@ -1463,34 +1445,37 @@ void ResourceSystem::loadImageData(const uint8* data, psize dataSize, ImageFileT
 static void loadImageArrayData(ResourceSystem* resourceSystem, const vector<fs::path>& paths,
 	Image::Format format, vector<vector<uint8>>& pixelArrays, uint2& size, int32 threadIndex)
 {
-	resourceSystem->loadImageData(paths[0], format, pixelArrays[0], size, threadIndex);
+	auto pathCount = (uint32)paths.size();
+	auto pathData = paths.data(); auto pixelArrayData = pixelArrays.data();
+	resourceSystem->loadImageData(pathData[0], format, pixelArrayData[0], size, threadIndex);
 
-	for (uint32 i = 1; i < (uint32)paths.size(); i++)
+	for (uint32 i = 1; i < pathCount; i++)
 	{
 		uint2 elementSize;
-		resourceSystem->loadImageData(paths[i], format, pixelArrays[i], elementSize, threadIndex);
+		resourceSystem->loadImageData(pathData[i], format, pixelArrayData[i], elementSize, threadIndex);
 
 		if (size != elementSize)
 		{
 			auto count = (psize)size.x * size.y;
 			auto binarySize = toBinarySize(format);
-			pixelArrays[i].resize(binarySize * count);
+			auto pixelArray = pixelArrayData[i];
+			pixelArray.resize(binarySize * count);
 
 			// TODO: or maybe use checkerboard pattern?
 			if (binarySize == 16)
 			{
-				auto pixels = (f32x4*)pixelArrays[i].data();
+				auto pixels = (f32x4*)pixelArray.data();
 				for (uint32 j = 0; j < count; j++)
 					pixels[j] = f32x4(1.0f, 0.0f, 1.0f, 1.0f); 
 			}
 			else if (binarySize == 4)
 			{
-				auto pixels = (Color*)pixelArrays[i].data();
+				auto pixels = (Color*)pixelArray.data();
 				for (uint32 j = 0; j < count; j++)
 					pixels[j] = Color::magenta;
 			}
-			else memset(pixelArrays[i].data(), UINT8_MAX, pixelArrays[i].size());
-			GARDEN_LOG_ERROR("Differente image array element size. (path: " + paths[i].generic_string() + ")");
+			else memset(pixelArray.data(), UINT8_MAX, pixelArray.size());
+			GARDEN_LOG_ERROR("Different image array element size. (path: " + pathData[i].generic_string() + ")");
 		}
 	}
 }
@@ -1861,9 +1846,10 @@ void ResourceSystem::combineImages(const vector<fs::path>& inputPaths, const fs:
 	vector<uint8> inBuffer; uint2 inSize;
 	loadImageData(inputPaths[0], imageFormat, inBuffer, inSize, threadIndex);
 
+	auto pathCount = (uint32)inputPaths.size();
 	auto formatBinarySize = toBinarySize(imageFormat);
 	auto inBinSizeX = formatBinarySize * inSize.x, inBinSizeY = formatBinarySize * inSize.y;
-	auto outBinSizeY = formatBinarySize * inSize.y * inputPaths.size();
+	auto outBinSizeY = formatBinarySize * inSize.y * pathCount;
 	vector<uint8> outBuffer(inSize.x * outBinSizeY);
 
 	auto inData = inBuffer.data(), outData = outBuffer.data();
@@ -1873,10 +1859,11 @@ void ResourceSystem::combineImages(const vector<fs::path>& inputPaths, const fs:
 		inData += inBinSizeY; outData += outBinSizeY;
 	}
 
-	for (uint32 i = 1; i < (uint32)inputPaths.size(); i++)
+	auto inputPathData = inputPaths.data();
+	for (uint32 i = 1; i < pathCount; i++)
 	{
 		uint2 otherSize;
-		loadImageData(inputPaths[i], imageFormat, inBuffer, otherSize, threadIndex);
+		loadImageData(inputPathData[i], imageFormat, inBuffer, otherSize, threadIndex);
 
 		if (inSize != otherSize)
 			throw GardenError("Failed to combine images, different sizes.");
@@ -2094,52 +2081,27 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 	// TODO: validate specConstValues and stateOverrides
 
 	auto graphicsAPI = GraphicsAPI::get();
-	auto framebufferView = graphicsAPI->framebufferPool.get(framebuffer);
-	const auto& subpasses = framebufferView->getSubpasses();
-
-	GARDEN_ASSERT_MSG((subpasses.empty() && options.subpassIndex == 0) || (!subpasses.empty() && 
-		options.subpassIndex < subpasses.size()), "Assert " + path.generic_string());
-
 	auto pipelineVersion = graphicsAPI->graphicsPipelineVersion++;
-	auto pipeline = graphicsAPI->graphicsPipelinePool.create(path, options.maxBindlessCount, 
-		options.useAsyncRecording, pipelineVersion, framebuffer, options.subpassIndex);
+	auto pipeline = graphicsAPI->graphicsPipelinePool.create(path, 
+		options.maxBindlessCount, options.useAsyncRecording, pipelineVersion, framebuffer);
 
-	void* renderPass = nullptr;
-	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
-	{
-		renderPass = FramebufferExt::getRenderPass(**framebufferView);
-		if (renderPass)
-			graphicsAPI->renderPasses.at(renderPass)++;
-	}
-	else abort();
+	auto framebufferView = graphicsAPI->framebufferPool.get(framebuffer);
+	const auto& colorAttachments = framebufferView->getColorAttachments();
+	auto colorAttachmentCount = (uint32)colorAttachments.size();
+	auto colorAttachmentData = colorAttachments.data();
 
-	vector<Image::Format> colorFormats;
-	if (subpasses.empty())
+	vector<Image::Format> colorFormats(colorAttachmentCount);
+	auto colorFormatData = colorFormats.data();
+	for (uint32 i = 0; i < colorAttachmentCount; i++)
 	{
-		const auto& colorAttachments = framebufferView->getColorAttachments();
-		colorFormats.reserve(colorAttachments.size());
-		for (uint32 i = 0; i < (uint32)colorAttachments.size(); i++)
+		auto imageView = colorAttachmentData[i].imageView;
+		if (!imageView)
 		{
-			if (!colorAttachments[i].imageView)
-			{
-				colorFormats.push_back(Image::Format::Undefined);
-				continue;
-			}
-			
-			auto attachment = graphicsAPI->imageViewPool.get(colorAttachments[i].imageView);
-			colorFormats.push_back(attachment->getFormat());
+			colorFormatData[i] = Image::Format::Undefined;
+			continue;
 		}
-	}
-	else
-	{
-		const auto& outputAttachments = subpasses[options.subpassIndex].outputAttachments;
-		if (!outputAttachments.empty())
-		{
-			auto attachment = graphicsAPI->imageViewPool.get(
-				outputAttachments[outputAttachments.size() - 1].imageView);
-			colorFormats.resize(isFormatColor(attachment->getFormat()) ?
-				(uint32)outputAttachments.size() : (uint32)outputAttachments.size() - 1);
-		}
+		auto attachment = graphicsAPI->imageViewPool.get(imageView);
+		colorFormatData[i] = attachment->getFormat();
 	}
 
 	auto depthStencilFormat = Image::Format::Undefined;
@@ -2157,8 +2119,6 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 		auto data = new GraphicsPipelineLoadData();
 		data->shaderPath = path;
 		data->pipelineVersion = pipelineVersion;
-		data->renderPass = renderPass;
-		data->subpassIndex = options.subpassIndex;
 		data->colorFormats = std::move(colorFormats);
 		if (options.specConstValues)
 			data->specConstValues = std::move(*options.specConstValues);
@@ -2171,7 +2131,6 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 		data->instance = pipeline;
 		data->maxBindlessCount = options.maxBindlessCount;
 		data->depthStencilFormat = depthStencilFormat;
-		data->subpassIndex = options.subpassIndex;
 		data->useAsyncRecording = options.useAsyncRecording;
 		#if !GARDEN_PACK_RESOURCES
 		data->resourcesPath = appResourcesPath;
@@ -2191,8 +2150,6 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 			pipelineData.colorFormats = std::move(data->colorFormats);
 			pipelineData.pipelineStateOverrides = std::move(data->pipelineStateOverrides);
 			pipelineData.blendStateOverrides = std::move(data->blendStateOverrides);
-			pipelineData.renderPass = data->renderPass;
-			pipelineData.subpassIndex = data->subpassIndex;
 			pipelineData.depthStencilFormat = data->depthStencilFormat;
 			#if GARDEN_PACK_RESOURCES
 			pipelineData.packReader = &packReader;
@@ -2211,7 +2168,7 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 			GraphicsQueueItem item =
 			{
 				GraphicsPipelineExt::create(pipelineData, data->useAsyncRecording),
-				data->renderPass, data->instance
+				data->instance
 			};
 
 			queueLocker.lock();
@@ -2238,8 +2195,6 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 		pipelineData.pipelineVersion = pipelineVersion;
 		pipelineData.maxBindlessCount = options.maxBindlessCount;
 		pipelineData.colorFormats = std::move(colorFormats);
-		pipelineData.renderPass = renderPass;
-		pipelineData.subpassIndex = options.subpassIndex;
 		pipelineData.depthStencilFormat = depthStencilFormat;
 		#if GARDEN_PACK_RESOURCES
 		pipelineData.packReader = &packReader;
@@ -2490,7 +2445,7 @@ static bool loadOrCompileRayTracing(GslCompiler::RayTracingData& data)
 	auto anyHitOutputPath = data.cachePath / anyHitPath;
 	auto closHitOutputPath = data.cachePath / closestHitPath;
 
-	// !!! TODO: chec for changes in additional ray tracing shader hit groups shaders. rt-shader.1.rchit.spv
+	// !!! TODO: check for changes in additional ray tracing shader hit groups shaders. rt-shader.1.rchit.spv
 
 	if (!fs::exists(headerFilePath) ||
 		(!fs::exists(rayGenOutputPath) || fs::last_write_time(rayGenInputPath) > fs::last_write_time(rayGenOutputPath)) ||

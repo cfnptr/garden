@@ -25,11 +25,11 @@ static ID<Buffer> createGgxKernel(GraphicsSystem* graphicsSystem)
 	float2 coeffs[brdf::ggxCoeffCount];
 	GpuProcessSystem::calcGaussCoeffs(brdf::ggxSigma0, coeffs, brdf::ggxCoeffCount);
 
-	auto kernel = graphicsSystem->createBuffer(Buffer::Usage::Storage | Buffer::Usage::TransferDst | 
+	auto buffer = graphicsSystem->createBuffer(Buffer::Usage::Storage | Buffer::Usage::TransferDst | 
 		Buffer::Usage::TransferQ, Buffer::CpuAccess::None, coeffs, brdf::ggxCoeffCount * 
 		sizeof(float2), Buffer::Location::PreferGPU, Buffer::Strategy::Size);
-	SET_RESOURCE_DEBUG_NAME(kernel, "buffer.storage.ggxBlurKernel");
-	return kernel;
+	SET_RESOURCE_DEBUG_NAME(buffer, "buffer.storage.ggxBlurKernel");
+	return buffer;
 }
 
 //**********************************************************************************************************************
@@ -134,21 +134,21 @@ void GpuProcessSystem::generateMips(ID<Image> image, ID<ComputePipeline> pipelin
 	auto pipelineView = graphicsSystem->get(pipeline);
 	pipelineView->bind();
 
-	vector<ID<ImageView>> imageViews(mipCount);
-	imageViews[0] = graphicsSystem->createImageView(
-		image, imageType, Image::Format::Undefined, 0, 0, 0, 1);
-	SET_RESOURCE_DEBUG_NAME(imageViews[0], "imageView.normalMap.mip0");
+	vector<ID<ImageView>> imageViews(mipCount); auto imageViewData = imageViews.data();
+	auto imageView = graphicsSystem->createImageView(image, imageType, Image::Format::Undefined, 0, 0, 0, 1);
+	SET_RESOURCE_DEBUG_NAME(imageView, "imageView.normalMap.mip0");
+	imageViewData[0] = imageView;
 
 	for (uint8 i = 1; i < mipCount; i++)
 	{
-		imageViews[i] = graphicsSystem->createImageView(
-			image, imageType, Image::Format::Undefined, 0, 0, i, 1);
-		SET_RESOURCE_DEBUG_NAME(imageViews[0], "imageView.normalMap.mip" + to_string(i));
+		imageView = graphicsSystem->createImageView(image, imageType, Image::Format::Undefined, 0, 0, i, 1);
+		SET_RESOURCE_DEBUG_NAME(imageViewData[0], "imageView.normalMap.mip" + to_string(i));
+		imageViewData[i] = imageView;
 
 		DescriptorSet::Uniforms uniforms
 		{
-			{ "srcBuffer", DescriptorSet::Uniform(imageViews[i - 1]) },
-			{ "dstBuffer", DescriptorSet::Uniform(imageViews[i]) }
+			{ "srcBuffer", DescriptorSet::Uniform(imageViewData[i - 1]) },
+			{ "dstBuffer", DescriptorSet::Uniform(imageView) }
 		};
 		auto descriptorSet = graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms));
 		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.normalMapMips" + to_string(i));
@@ -225,9 +225,9 @@ void GpuProcessSystem::gaussianBlur(ID<ImageView> srcBuffer, ID<Framebuffer> dst
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	if (!pipeline)
 	{
-		auto kenrelBufferView = graphicsSystem->get(kernelBuffer);
-		GARDEN_ASSERT(kenrelBufferView->getBinarySize() % sizeof(float2) == 0);
-		auto coeffCount = kenrelBufferView->getBinarySize() / sizeof(float2);
+		auto kernelBufferView = graphicsSystem->get(kernelBuffer);
+		GARDEN_ASSERT(kernelBufferView->getBinarySize() % sizeof(float2) == 0);
+		auto coeffCount = kernelBufferView->getBinarySize() / sizeof(float2);
 		pipeline = createGaussianBlur(dstFramebuffer, coeffCount);
 	}
 
@@ -346,7 +346,7 @@ void GpuProcessSystem::prepareGgxBlur(ID<Image> buffer, vector<ID<Framebuffer>>&
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto bufferView = graphicsSystem->get(buffer);
 	auto roughnessLodCount = bufferView->getMipCount();
-	auto framebufferSize = (uint2)bufferView->getSize();
+	auto frameSize = (uint2)bufferView->getSize();
 	GARDEN_ASSERT(bufferView->getLayerCount() >= 2);
 	GARDEN_ASSERT(bufferView->getMipCount() > 1);
 
@@ -364,20 +364,21 @@ void GpuProcessSystem::prepareGgxBlur(ID<Image> buffer, vector<ID<Framebuffer>>&
 
 			if (framebuffer)
 			{
-				Framebuffer::OutputAttachment colorAttachment(colorView, { false, false, true });
 				auto framebufferView = graphicsSystem->get(framebuffer);
-				framebufferView->update(framebufferSize, &colorAttachment, 1);
+				framebufferView->update(frameSize, colorView);
 			}
 			else
 			{
-				vector<Framebuffer::OutputAttachment> colorAttachments =
-				{ Framebuffer::OutputAttachment(colorView, { false, false, true }) };
-				framebuffer = graphicsSystem->createFramebuffer(framebufferSize, std::move(colorAttachments));
+				vector<Framebuffer::Attachment> colorAttachments =
+				{
+					Framebuffer::Attachment(colorView, Framebuffer::LoadOp::DontCare, Framebuffer::StoreOp::Store)
+				};
+				framebuffer = graphicsSystem->createFramebuffer(frameSize, std::move(colorAttachments));
 				SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.ggxBlur" + to_string(index));
 				framebufferData[index] = framebuffer;
 			}
 		}
-		framebufferSize = max(framebufferSize / 2u, uint2::one);
+		frameSize = max(frameSize / 2u, uint2::one);
 	}
 }
 bool GpuProcessSystem::ggxBlur(ID<Image> buffer, const vector<ID<Framebuffer>>& framebuffers, 

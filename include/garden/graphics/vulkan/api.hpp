@@ -110,7 +110,6 @@ public:
 	vector<vk::RenderingAttachmentInfoKHR> colorAttachmentInfos;
 	vector<vk::ClearAttachment> clearAttachments;
 	vector<vk::ClearRect> clearAttachmentsRects;
-	vector<vk::ClearValue> clearValues;
 	vector<vk::BufferCopy> bufferCopies;
 	vector<vk::ImageSubresourceRange> imageClears;
 	vector<vk::ImageCopy> imageCopies;
@@ -172,7 +171,7 @@ public:
 	 */
 	inline static VulkanAPI* get() noexcept
 	{
-		GARDEN_ASSERT_MSG(vulkanInstance, "Graphics API is not intialized");
+		GARDEN_ASSERT_MSG(vulkanInstance, "Graphics API is not initialized");
 		return vulkanInstance;
 	}
 };
@@ -609,10 +608,14 @@ static constexpr vk::ImageAspectFlags toVkImageAspectFlags(Image::Format imageFo
 static vk::AccessFlags2 toVkAccessFlags(Memory::AccessFlags accessFlags) noexcept
 {
 	vk::AccessFlags2 flags;
-	if (hasAnyFlag(accessFlags, Memory::AccessFlags::ShaderRead))
-		flags |= vk::AccessFlagBits2::eShaderRead;
-	if (hasAnyFlag(accessFlags, Memory::AccessFlags::ShaderWrite))
-		flags |= vk::AccessFlagBits2::eShaderWrite;
+	if (hasAnyFlag(accessFlags, Memory::AccessFlags::ShaderUniformRead))
+		flags |= vk::AccessFlagBits2::eUniformRead;
+	if (hasAnyFlag(accessFlags, Memory::AccessFlags::ShaderSampledRead))
+		flags |= vk::AccessFlagBits2::eShaderSampledRead;
+	if (hasAnyFlag(accessFlags, Memory::AccessFlags::ShaderStorageRead))
+		flags |= vk::AccessFlagBits2::eShaderStorageRead;
+	if (hasAnyFlag(accessFlags, Memory::AccessFlags::ShaderStorageWrite))
+		flags |= vk::AccessFlagBits2::eShaderStorageWrite;
 	return flags;
 }
 
@@ -667,8 +670,6 @@ static vk::DescriptorType toVkDescriptorType(GslUniformType uniformType) noexcep
 	case GslUniformType::Uimage1DArray:
 	case GslUniformType::Uimage2DArray:
 		return vk::DescriptorType::eStorageImage;
-	case GslUniformType::SubpassInput:
-		return vk::DescriptorType::eInputAttachment;
 	case GslUniformType::UniformBuffer:
 		return vk::DescriptorType::eUniformBuffer;
 	case GslUniformType::StorageBuffer:

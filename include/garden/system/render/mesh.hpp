@@ -35,7 +35,7 @@ enum class MeshRenderType : uint8
 	OIT,         /**< Order independent transparency. (Faster than Translucent type) */
 	Refracted,   /**< Refracted or absorbed light rendering. */
 	TransDepth,  /**< Translucent depth only rendering. (Useful for ray tracing) */
-	UI,          /**< User interface redering. (Uses GUI orthographic projection matrix) */
+	UI,          /**< User interface rendering. (Uses GUI orthographic projection matrix) */
 	Count        /**< Common mesh render type count. */
 };
 
@@ -231,7 +231,7 @@ private:
 	bool asyncPreparing = false;
 	bool hasAnyRefr = false;
 	bool hasAnyOIT = false;
-	bool hasAnyTransDepth = false;
+	bool hasAnyTD = false;
 	alignas(64) atomic<uint32> uiDrawIndex = 0;
 
 	/**
@@ -263,10 +263,10 @@ private:
 	void forwardRender();
 	void preDeferredRender();
 	void deferredRender();
-	void depthHdrRender();
+	void dsHdrRender();
 	void preRefrRender();
-	void refractedRender();
-	void translucentRender();
+	void refrRender();
+	void transRender();
 	void preTransDepthRender();
 	void transDepthRender();
 	void preOitRender();

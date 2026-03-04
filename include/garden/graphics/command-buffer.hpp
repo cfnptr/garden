@@ -31,7 +31,7 @@ struct Command
 {
 	enum class Type : uint8
 	{
-		Unknown, BufferBarrier, BeginRenderPass, NextSubpass, Execute, EndRenderPass, ClearAttachments,
+		Unknown, BufferBarrier, BeginRenderPass, Execute, EndRenderPass, ClearAttachments,
 		BindPipeline, BindDescriptorSets, PushConstants, SetViewport, SetScissor,
 		SetViewportScissor, SetDepthBias, Draw, DrawIndexed, DrawIndirect, DrawIndexedIndirect, 
 		Dispatch, FillBuffer, CopyBuffer, ClearImage, CopyImage, CopyBufferImage, BlitImage,
@@ -79,12 +79,6 @@ struct BeginRenderPassCommandBase : public Command
 struct BeginRenderPassCommand final : public BeginRenderPassCommandBase
 {
 	const float4* clearColors = nullptr; // Do not use f32x4, unaligned memory!
-};
-struct NextSubpassCommand final : public Command
-{
-	uint8 asyncRecording = false;
-	uint16 _alignment = 0;
-	NextSubpassCommand() noexcept : Command(Type::NextSubpass) { }
 };
 struct ExecuteCommandBase : public Command
 {
@@ -159,7 +153,7 @@ struct SetViewportCommand final : public Command
 	uint8 _alignment0 = 0;
 	uint16 _alignment1 = 0;
 	float4 viewport = float4::zero;
-	int2 framebufferSize = int2::zero;
+	int2 frameSize = int2::zero;
 	SetViewportCommand() noexcept : Command(Type::SetViewport) { }
 };
 struct SetScissorCommand final : public Command
@@ -167,7 +161,7 @@ struct SetScissorCommand final : public Command
 	uint8 _alignment0 = 0;
 	uint16 _alignment1 = 0;
 	int4 scissor = int4::zero;
-	int2 framebufferSize = int2::zero;
+	int2 frameSize = int2::zero;
 	SetScissorCommand() noexcept : Command(Type::SetScissor) { }
 };
 struct SetViewportScissorCommand final : public Command
@@ -175,7 +169,7 @@ struct SetViewportScissorCommand final : public Command
 	uint8 _alignment0 = 0;
 	uint16 _alignment1 = 0;
 	float4 viewportScissor = float4::zero;
-	int2 framebufferSize = int2::zero;
+	int2 frameSize = int2::zero;
 	SetViewportScissorCommand() noexcept : Command(Type::SetViewportScissor) { }
 };
 struct SetDepthBiasCommand final : public Command
@@ -443,7 +437,6 @@ protected:
 	uint8* dataIter = nullptr, *dataEnd = nullptr;
 	uint32 lastSize = 0;
 	CommandBufferType type = {};
-	bool noSubpass = false;
 	bool isRunning = false;
 	volatile bool hasAnyCommand = false;
 
@@ -489,7 +482,6 @@ protected:
 
 	virtual void processCommand(const BufferBarrierCommand& command) = 0;
 	virtual void processCommand(const BeginRenderPassCommand& command) = 0;
-	virtual void processCommand(const NextSubpassCommand& command) = 0;
 	virtual void processCommand(const ExecuteCommand& command) = 0;
 	virtual void processCommand(const EndRenderPassCommand& command) = 0;
 	virtual void processCommand(const ClearAttachmentsCommand& command) = 0;
@@ -554,23 +546,18 @@ public:
 			memcpy(allocation + 1, command.clearColors, command.clearColorCount * sizeof(float4));
 		hasAnyCommand = true;
 	}
-	void addCommand(const NextSubpassCommand& command)
-	{
-		GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Graphics);
-		allocateCommand(command);
-	}
 	void addCommand(const ExecuteCommand& command)
 	{
-		psize asynSize = 0;
+		psize asyncSize = 0;
 		for (const auto& async : asyncData)
-			asynSize += async.size;
-		if (asynSize == 0) return;
+			asyncSize += async.size;
+		if (asyncSize == 0) return;
 
-		GARDEN_ASSERT(asynSize % asyncCommandSize == 0);
+		GARDEN_ASSERT(asyncSize % asyncCommandSize == 0);
 		auto bufferBinarySize = command.bufferCount * sizeof(void*);
-		auto commandSize = sizeof(ExecuteCommandBase) + bufferBinarySize + asynSize;
+		auto commandSize = sizeof(ExecuteCommandBase) + bufferBinarySize + asyncSize;
 		auto allocation = allocateCommand<ExecuteCommandBase>(command, commandSize);
-		allocation->asyncCommandCount = asynSize / asyncCommandSize;
+		allocation->asyncCommandCount = asyncSize / asyncCommandSize;
 
 		auto data = (uint8*)allocation + sizeof(ExecuteCommandBase);
 		memcpy(data, command.buffers, bufferBinarySize);
@@ -815,8 +802,6 @@ public:
 	{ addLockedResource(ResourceType::Image, ID<Resource>(resource), threadIndex); }
 	void addLockedResource(ID<ImageView> resource, int32 threadIndex = -1)
 	{ addLockedResource(ResourceType::ImageView, ID<Resource>(resource), threadIndex); }
-	void addLockedResource(ID<Framebuffer> resource, int32 threadIndex = -1)
-	{ addLockedResource(ResourceType::Framebuffer, ID<Resource>(resource), threadIndex); }
 	void addLockedResource(ID<Sampler> resource, int32 threadIndex = -1)
 	{ addLockedResource(ResourceType::Sampler, ID<Resource>(resource), threadIndex); }
 	void addLockedResource(ID<Blas> resource, int32 threadIndex = -1)

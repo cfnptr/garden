@@ -20,15 +20,6 @@
 
 using namespace garden;
 
-static ID<ImageView> getLdrGgxView(GraphicsSystem* graphicsSystem, DeferredRenderSystem* deferredSystem)
-{
-	auto gBuffer = deferredSystem->getGBuffers()[G_BUFFER_BASE_COLOR]; 
-	auto gBufferView = graphicsSystem->get(gBuffer)->getView(); // Note: Reusing G-Buffer memory.
-	GARDEN_ASSERT(graphicsSystem->get(gBuffer)->getFormat() == DeferredRenderSystem::ldrBufferFormat);
-	return gBufferView;
-}
-
-//**********************************************************************************************************************
 BlurRenderSystem::BlurRenderSystem(bool setSingleton) : Singleton(setSingleton)
 {
 	auto manager = Manager::Instance::get();
@@ -50,7 +41,7 @@ BlurRenderSystem::~BlurRenderSystem()
 void BlurRenderSystem::init()
 {
 	auto manager = Manager::Instance::get();
-	ECSM_SUBSCRIBE_TO_EVENT("PreDepthLdrRender", BlurRenderSystem::preDepthLdrRender);
+	ECSM_SUBSCRIBE_TO_EVENT("PreDsLdrRender", BlurRenderSystem::preDsLdrRender);
 	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", BlurRenderSystem::gBufferRecreate);
 }
 void BlurRenderSystem::deinit()
@@ -64,15 +55,15 @@ void BlurRenderSystem::deinit()
 		graphicsSystem->destroy(ldrGgxPipeline);
 
 		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("PreLdrRender", BlurRenderSystem::preDepthLdrRender);
+		ECSM_UNSUBSCRIBE_FROM_EVENT("PreLdrRender", BlurRenderSystem::preDsLdrRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("GBufferRecreate", BlurRenderSystem::gBufferRecreate);
 	}
 }
 
 //**********************************************************************************************************************
-void BlurRenderSystem::preDepthLdrRender()
+void BlurRenderSystem::preDsLdrRender()
 {
-	SET_CPU_ZONE_SCOPED("Blur Pre Depth LDR Render");
+	SET_CPU_ZONE_SCOPED("Blur Pre Depth/Stencil LDR Render");
 
 	if (!ldrGgxBlur || intensity <= 0.0f)
 		return;
@@ -80,21 +71,25 @@ void BlurRenderSystem::preDepthLdrRender()
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	auto gpuProcessSystem = GpuProcessSystem::Instance::get();
-	auto framebufferSize = graphicsSystem->getScaledFrameSize();
+	auto frameSize = graphicsSystem->getScaledFrameSize();
 	auto kernelBuffer = gpuProcessSystem->getGgxBlurKernel();
 	auto ldrBuffer = deferredSystem->getLdrBuffer();
 	auto ldrBufferView = graphicsSystem->get(ldrBuffer)->getView();
 
 	if (!ldrGgxFramebuffers[0])
 	{
-		vector<Framebuffer::OutputAttachment> colorAttachments =
-		{ Framebuffer::OutputAttachment(ldrBufferView, framebufferFlags) };
-		ldrGgxFramebuffers[0] = graphicsSystem->createFramebuffer(framebufferSize, std::move(colorAttachments));
+		vector<Framebuffer::Attachment> colorAttachments =
+		{
+			Framebuffer::Attachment(ldrBufferView, Framebuffer::LoadOp::DontCare, Framebuffer::StoreOp::Store)
+		};
+		ldrGgxFramebuffers[0] = graphicsSystem->createFramebuffer(frameSize, std::move(colorAttachments));
 		SET_RESOURCE_DEBUG_NAME(ldrGgxFramebuffers[0], "framebuffer.ldrGgxBlur0");
 
-		colorAttachments = { Framebuffer::OutputAttachment(
-			getLdrGgxView(graphicsSystem, deferredSystem), framebufferFlags) };
-		ldrGgxFramebuffers[1] = graphicsSystem->createFramebuffer(framebufferSize, std::move(colorAttachments));
+		colorAttachments =
+		{
+			Framebuffer::Attachment(getLdrGgxView(), Framebuffer::LoadOp::DontCare, Framebuffer::StoreOp::Store)
+		};
+		ldrGgxFramebuffers[1] = graphicsSystem->createFramebuffer(frameSize, std::move(colorAttachments));
 		SET_RESOURCE_DEBUG_NAME(ldrGgxFramebuffers[1], "framebuffer.ldrGgxBlur1");
 	}
 
@@ -114,15 +109,20 @@ void BlurRenderSystem::gBufferRecreate()
 	{
 		auto deferredSystem = DeferredRenderSystem::Instance::get();
 		auto ldrBuffer = deferredSystem->getLdrBuffer();
-		auto ldrBufferView = graphicsSystem->get(ldrBuffer)->getView();
-		auto framebufferSize = graphicsSystem->getScaledFrameSize();
+		auto frameSize = graphicsSystem->getScaledFrameSize();
 		auto framebufferView = graphicsSystem->get(ldrGgxFramebuffers[0]);
-		Framebuffer::OutputAttachment colorAttachment(ldrBufferView, framebufferFlags);
-		framebufferView->update(framebufferSize, &colorAttachment, 1);
+		framebufferView->update(frameSize, graphicsSystem->get(ldrBuffer)->getView());
 
 		framebufferView = graphicsSystem->get(ldrGgxFramebuffers[1]);
-		colorAttachment = Framebuffer::OutputAttachment(
-			getLdrGgxView(graphicsSystem, deferredSystem), framebufferFlags);
-		framebufferView->update(framebufferSize, &colorAttachment, 1);
+		framebufferView->update(frameSize, getLdrGgxView());
 	}
+}
+
+ID<ImageView> BlurRenderSystem::getLdrGgxView()
+{
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto gBuffer = DeferredRenderSystem::Instance::get()->getGBuffers()[G_BUFFER_BASE_COLOR]; 
+	auto imageView = graphicsSystem->get(gBuffer)->getView(); // Note: Reusing G-Buffer memory.
+	GARDEN_ASSERT(graphicsSystem->get(gBuffer)->getFormat() == DeferredRenderSystem::ldrBufferFormat);
+	return imageView;
 }

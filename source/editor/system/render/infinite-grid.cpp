@@ -62,13 +62,13 @@ void InfiniteGridEditorSystem::init()
 	{
 		if (DeferredRenderSystem::Instance::has())
 		{
-			ECSM_SUBSCRIBE_TO_EVENT("PreDepthLdrRender", InfiniteGridEditorSystem::preRender);
-			ECSM_SUBSCRIBE_TO_EVENT("DepthLdrRender", InfiniteGridEditorSystem::render);
+			ECSM_SUBSCRIBE_TO_EVENT("PreDsLdrRender", InfiniteGridEditorSystem::preRender);
+			ECSM_SUBSCRIBE_TO_EVENT("DsLdrRender", InfiniteGridEditorSystem::render);
 		}
 		else
 		{
-			ECSM_SUBSCRIBE_TO_EVENT("PreDepthForwardRender", InfiniteGridEditorSystem::preRender);
-			ECSM_SUBSCRIBE_TO_EVENT("DepthForwardRender", InfiniteGridEditorSystem::render);
+			ECSM_SUBSCRIBE_TO_EVENT("PreDsForwardRender", InfiniteGridEditorSystem::preRender);
+			ECSM_SUBSCRIBE_TO_EVENT("DsForwardRender", InfiniteGridEditorSystem::render);
 		}
 	}
 
@@ -101,8 +101,16 @@ void InfiniteGridEditorSystem::deinit()
 		}
 		else
 		{
-			ECSM_UNSUBSCRIBE_FROM_EVENT("PreDepthLdrRender", InfiniteGridEditorSystem::preRender);
-			ECSM_UNSUBSCRIBE_FROM_EVENT("DepthLdrRender", InfiniteGridEditorSystem::render);
+			if (DeferredRenderSystem::Instance::has())
+			{
+				ECSM_UNSUBSCRIBE_FROM_EVENT("PreDsLdrRender", InfiniteGridEditorSystem::preRender);
+				ECSM_UNSUBSCRIBE_FROM_EVENT("DsLdrRender", InfiniteGridEditorSystem::render);
+			}
+			else
+			{
+				ECSM_UNSUBSCRIBE_FROM_EVENT("PreDsForwardRender", InfiniteGridEditorSystem::preRender);
+				ECSM_UNSUBSCRIBE_FROM_EVENT("DsForwardRender", InfiniteGridEditorSystem::render);
+			}
 		}
 
 		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorSettings", InfiniteGridEditorSystem::editorSettings);
@@ -131,7 +139,7 @@ void InfiniteGridEditorSystem::preRender()
 			ID<Framebuffer> framebuffer; bool useAsyncRecording;
 			if (DeferredRenderSystem::Instance::has())
 			{
-				framebuffer = DeferredRenderSystem::Instance::get()->getDepthLdrFB();
+				framebuffer = DeferredRenderSystem::Instance::get()->getDepthStencilLdrFB();
 				useAsyncRecording = false;
 			}
 			else

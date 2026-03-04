@@ -65,7 +65,7 @@ private:
 	void init();
 	void deinit();
 	void imageLoaded();
-	void depthHdrRender();
+	void dsHdrRender();
 
 	void resetComponent(View<Component> component, bool full) final;
 	void copyComponent(View<Component> source, View<Component> destination) final;

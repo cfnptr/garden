@@ -124,7 +124,7 @@ public:
 	}
 	/**
 	 * @brief Creates and writes a new temporary file.
-	 * @return Temprorary file path on success, otherwise empty.
+	 * @return Temporary file path on success, otherwise empty.
 	 * @param[in] data target binary data buffer
 	 * @throw GardenError if failed to store file data.
 	 */

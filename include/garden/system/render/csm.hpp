@@ -42,13 +42,6 @@ public:
 	 */
 	static constexpr uint8 cascadeCount = 3;
 
-	static constexpr Image::Format depthFormat = Image::Format::UnormD16;
-	static constexpr Image::Format transparentFormat = Image::Format::SrgbR8G8B8A8;
-
-	static constexpr Framebuffer::OutputAttachment::Flags shadowFlags = { true, false, true };
-	static constexpr Framebuffer::OutputAttachment::Flags transDepthFlags = { false, true, false };
-	static constexpr Framebuffer::OutputAttachment::Flags transColorFlags = { true, false, true };
-
 	struct ShadowData final
 	{
 		float4x4 viewProj[cascadeCount];
@@ -57,6 +50,9 @@ public:
 		float3 starDir;
 		float normBias;
 	};
+
+	static constexpr Image::Format depthFormat = Image::Format::UnormD16;
+	static constexpr Image::Format transparentFormat = Image::Format::SrgbR8G8B8A8;
 private:
 	f32x4 farPlanes = f32x4::zero;
 	vector<ID<Framebuffer>> shadowFramebuffers;

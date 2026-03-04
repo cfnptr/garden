@@ -405,7 +405,7 @@ public:
 	
 	/*******************************************************************************************************************
 	 * @brief Creates a new text instance.
-	 * @return Text instance on succes, otherwise null.
+	 * @return Text instance on success, otherwise null.
 	 *
 	 * @param value target text string value
 	 * @param[in] fontAtlas font texture atlas
@@ -416,7 +416,7 @@ public:
 		Text::Properties properties = {}, bool isAtlasShared = false);
 	/**
 	 * @brief Creates a new text instance.
-	 * @return Text instance on succes, otherwise null.
+	 * @return Text instance on success, otherwise null.
 	 *
 	 * @param value target text string value
 	 * @param[in] fontAtlas font texture atlas
@@ -434,7 +434,7 @@ public:
 
 	/**
 	 * @brief Creates a new text instance.
-	 * @return Text instance on succes, otherwise null.
+	 * @return Text instance on success, otherwise null.
 	 *
 	 * @param value target text string value
 	 * @param[in] fonts text font array
@@ -452,7 +452,7 @@ public:
 	}
 	/**
 	 * @brief Creates a new text instance.
-	 * @return Text instance on succes, otherwise null.
+	 * @return Text instance on success, otherwise null.
 	 *
 	 * @param value target text string value
 	 * @param[in] fonts text font array

@@ -328,15 +328,15 @@ void EditorRenderSystem::showOptionsWindow()
 		ImGui::EndDisabled();
 		
 		auto scaledSize = graphicsSystem->getScaledFrameSize();
-		auto framebufferSize = graphicsSystem->getFramebufferSize();
+		auto frameSize = graphicsSystem->getFramebufferSize();
 		auto isFrameSizeScaled = graphicsSystem->isFrameSizeScaled();
 
 		ImGui::BeginDisabled(graphicsSystem->useUpscaling || !isFrameSizeScaled);
 		if (ImGui::DragInt("Scaled Size X", (int*)&scaledSize.x, 1.0f,
-			GraphicsAPI::minFramebufferSize, framebufferSize.x * 2))
+			GraphicsAPI::minFramebufferSize, frameSize.x * 2))
 		{
 			scaledSize.x = max(scaledSize.x, (uint32)GraphicsAPI::minFramebufferSize);
-			scaledSize.y = ((float)scaledSize.x / framebufferSize.x) * framebufferSize.y;
+			scaledSize.y = ((float)scaledSize.x / frameSize.x) * frameSize.y;
 			graphicsSystem->setScaledFrameSize(scaledSize);
 		}
 		if (graphicsSystem->useUpscaling)

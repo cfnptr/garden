@@ -51,7 +51,7 @@ enum class PipelineStage : uint32
 	AnyHit        = 0x0040, /**< Invoked for every potential hit along a ray. */
 	ClosestHit    = 0x0080, /**< Executed on a geometry hit, closes along the ray. */
 	Miss          = 0x0100, /**< Handles rays that don't hit anything in the scene. */
-	Callable      = 0x0200, /**< Invokable user defined ray tracing shader function. */
+	Callable      = 0x0200, /**< Invocable user defined ray tracing shader function. */
 	Mesh          = 0x0400, /**< Generates group of meshlets. (vertices and primitives) */
 	Task          = 0x0800  /**< Generates and dispatches work for mesh shader. */
 };

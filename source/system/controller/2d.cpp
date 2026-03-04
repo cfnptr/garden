@@ -71,8 +71,8 @@ void Controller2DSystem::init()
 	linkView->setTag("MainCamera");
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto framebufferSize = graphicsSystem->getFramebufferSize();
-	auto aspectRatio = (float)framebufferSize.x / (float)framebufferSize.y;
+	auto frameSize = graphicsSystem->getFramebufferSize();
+	auto aspectRatio = (float)frameSize.x / (float)frameSize.y;
 	constexpr auto defaultSize = 2.0f;
 
 	auto cameraView = manager->add<CameraComponent>(camera);
@@ -124,8 +124,8 @@ void Controller2DSystem::swapchainRecreate()
 		auto cameraView = Manager::Instance::get()->tryGet<CameraComponent>(camera);
 		if (cameraView)
 		{
-			auto framebufferSize = graphicsSystem->getFramebufferSize();
-			auto aspectRatio = (float)framebufferSize.x / (float)framebufferSize.y;
+			auto frameSize = graphicsSystem->getFramebufferSize();
+			auto aspectRatio = (float)frameSize.x / (float)frameSize.y;
 			cameraView->p.orthographic.width = cameraView->p.orthographic.height * aspectRatio;
 		}
 	}
@@ -135,7 +135,7 @@ void Controller2DSystem::swapchainRecreate()
 void Controller2DSystem::updateCameraControl()
 {
 	auto inputSystem = InputSystem::Instance::get();
-	auto uiTranformSystem = UiTriggerSystem::Instance::tryGet();
+	auto uiTransformSystem = UiTriggerSystem::Instance::tryGet();
 
 	#if GARDEN_EDITOR
 	auto wantCaptureMouse = ImGui::GetIO().WantCaptureMouse;
@@ -144,7 +144,7 @@ void Controller2DSystem::updateCameraControl()
 	#endif
 
 	wantCaptureMouse |= inputSystem->getCursorMode() != CursorMode::Normal || 
-		(uiTranformSystem && uiTranformSystem->getHovered());
+		(uiTransformSystem && uiTransformSystem->getHovered());
 	if (wantCaptureMouse)
 		return;
 
@@ -175,8 +175,8 @@ void Controller2DSystem::updateCameraControl()
 	{
 		mouseScrollY *= scrollSensitivity * 0.5f;
 
-		auto framebufferSize = (float2)GraphicsSystem::Instance::get()->getFramebufferSize();
-		auto aspectRatio = framebufferSize.x / framebufferSize.y;
+		auto frameSize = (float2)GraphicsSystem::Instance::get()->getFramebufferSize();
+		auto aspectRatio = frameSize.x / frameSize.y;
 		cameraView->p.orthographic.height.x += mouseScrollY;
 		cameraView->p.orthographic.height.y -= mouseScrollY;
 		if (cameraView->p.orthographic.height.x >= 0.0f)

@@ -33,7 +33,7 @@ using namespace garden;
 
 #if GARDEN_DEBUG
 constexpr vk::DebugUtilsMessageSeverityFlagsEXT debugMessageSeverity =
-	//vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo |
+	// vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo |
 	vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning |
 	vk::DebugUtilsMessageSeverityFlagBitsEXT::eError;
 constexpr vk::DebugUtilsMessageTypeFlagsEXT debugMessageType =
@@ -70,8 +70,7 @@ static vk::Bool32 VKAPI_PTR vkDebugMessengerCallback(
 		severity = "WARNING";
 	else if (messageSeverity & vk::DebugUtilsMessageSeverityFlagBitsEXT::eError)
 		severity = "ERROR";
-	else
-		severity = "UNKNOWN";
+	else severity = "UNKNOWN";
 	cout << "VULKAN::" + string(severity) + ": ";
 
 	for (int32 i = callbackData->cmdBufLabelCount - 1; i >= 0; i--)
@@ -94,7 +93,6 @@ static bool hasExtension(const vector<const char*>& extensions, const char* exte
 		if (strcmp(check, extension) == 0)
 			return true;
 	}
-
 	return false;
 }
 
@@ -116,7 +114,6 @@ static NVSDK_NGX_FeatureDiscoveryInfo getDlssDiscoveryInfo()
 	discoveryInfo.Identifier.IdentifierType = NVSDK_NGX_Application_Identifier_Type_Application_Id;
 	discoveryInfo.Identifier.v.ApplicationId = GARDEN_NVIDIA_DLSS_APP_ID;
 	#endif
-
 	return discoveryInfo;
 }
 #endif
@@ -133,7 +130,7 @@ static vk::Instance createVkInstance(const string& appName, Version appVersion,
 	uint32 installedVersion = 0;
 	auto vkResult = (vk::Result)getInstanceVersion(&installedVersion);
 	if (vkResult != vk::Result::eSuccess)
-		throw GardenError("Failed to get Vulkan version.");
+		throw GardenError("Failed to get Vulkan API version.");
 
 	instanceVersionMajor = VK_API_VERSION_MAJOR(installedVersion);
 	instanceVersionMinor = VK_API_VERSION_MINOR(installedVersion);
@@ -141,24 +138,17 @@ static vk::Instance createVkInstance(const string& appName, Version appVersion,
 	if (instanceVersionMajor <= 1 && instanceVersionMinor <= 1)
 		throw GardenError("Vulkan API 1.1 version is not supported.");
 
-	auto vkEngineVersion = VK_MAKE_API_VERSION(0,
-		GARDEN_VERSION_MAJOR, GARDEN_VERSION_MINOR, GARDEN_VERSION_PATCH);
-	auto vkAppVersion = VK_MAKE_API_VERSION(0,
-		appVersion.major, appVersion.minor, appVersion.patch);
-	auto instanceVersion = VK_MAKE_API_VERSION(0,
-		instanceVersionMajor, instanceVersionMinor, 0);
-	vk::ApplicationInfo appInfo(appName.c_str(), vkAppVersion,
-		GARDEN_NAME_STRING, vkEngineVersion, instanceVersion);
+	auto vkEngineVersion = VK_MAKE_API_VERSION(0, GARDEN_VERSION_MAJOR, GARDEN_VERSION_MINOR, GARDEN_VERSION_PATCH);
+	auto vkAppVersion = VK_MAKE_API_VERSION(0, appVersion.major, appVersion.minor, appVersion.patch);
+	auto instanceVersion = VK_MAKE_API_VERSION(0, instanceVersionMajor, instanceVersionMinor, 0);
+	vk::ApplicationInfo appInfo(appName.c_str(), vkAppVersion, GARDEN_NAME_STRING, vkEngineVersion, instanceVersion);
 	
 	vector<const char*> extensions;
 	vector<const char*> layers;
 
 	uint32 glfwExtensionCount = 0;
 	auto glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
-	extensions.reserve(glfwExtensionCount);
-
-	for (uint32 i = 0; i < glfwExtensionCount; i++)
-		extensions.push_back(glfwExtensions[i]);
+	extensions.assign(glfwExtensions, glfwExtensions + glfwExtensionCount);
 
 	#if GARDEN_OS_MACOS
 	if (!hasExtension(extensions, VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME))
@@ -178,11 +168,8 @@ static vk::Instance createVkInstance(const string& appName, Version appVersion,
 		else if (layerName == "VK_LAYER_KHRONOS_validation")
 			layers.push_back("VK_LAYER_KHRONOS_validation");
 		#endif
-
-		#if GARDEN_NVIDIA_DLSS
-		if (layerName.find("VK_LAYER_NV_") != string::npos)
+		else if (layerName.find("VK_LAYER_NV_") != string::npos)
 			isNvidiaGPU = true;
-		#endif
 	}
 
 	const void* instanceInfoNext = nullptr;
@@ -192,11 +179,8 @@ static vk::Instance createVkInstance(const string& appName, Version appVersion,
 		auto extensionName = string_view(properties.extensionName);
 		if (extensionName == VK_EXT_DEBUG_UTILS_EXTENSION_NAME)
 			features.debugUtils = true;
-
-		#if GARDEN_NVIDIA_DLSS
-		if (extensionName.find("VK_NV_") != string::npos)
+		else if (extensionName.find("VK_NV_") != string::npos)
 			isNvidiaGPU = true;
-		#endif
 	}
 
 	vk::DebugUtilsMessengerCreateInfoEXT debugUtilsInfo;
@@ -279,47 +263,42 @@ static vk::DebugUtilsMessengerEXT createVkDebugMessenger(vk::Instance instance)
 static vk::PhysicalDevice getBestPhysicalDevice(vk::Instance instance)
 {
 	auto devices = instance.enumeratePhysicalDevices();
-
 	if (devices.empty())
-		throw GardenError("No suitable physical device.");
+		throw GardenError("No GPUs with Vulkan API support.");
+
+	const auto deviceData = devices.data();
+	auto deviceCount = (uint32)devices.size();
 
 	uint32 targetIndex = 0, targetScore = 0;
-
-	if (devices.size() > 1)
+	for (uint32 i = 0; i < deviceCount; i++)
 	{
-		for (uint32 i = 0; i < (uint32)devices.size(); i++)
+		auto properties = deviceData[i].getProperties();
+
+		uint32 score;
+		switch (properties.deviceType)
 		{
-			auto properties = devices[i].getProperties();
+			case vk::PhysicalDeviceType::eDiscreteGpu: score = 100000; break;
+			case vk::PhysicalDeviceType::eVirtualGpu: score = 90000; break;
+			case vk::PhysicalDeviceType::eIntegratedGpu: score = 80000; break;
+			case vk::PhysicalDeviceType::eCpu: score = 70000; break;
+			default: score = 0;
+		}
+		score += properties.limits.maxImageDimension2D;
 
-			uint32 score;
-			switch (properties.deviceType)
-			{
-				case vk::PhysicalDeviceType::eDiscreteGpu: score = 100000; break;
-				case vk::PhysicalDeviceType::eVirtualGpu: score = 90000; break;
-				case vk::PhysicalDeviceType::eIntegratedGpu: score = 80000; break;
-				case vk::PhysicalDeviceType::eCpu: score = 70000; break;
-				default: score = 0;
-			}
-
-			score += properties.limits.maxImageDimension2D;
-			// TODO: add other tests
-
-			if (score > targetScore)
-			{
-				targetIndex = i;
-				targetScore = score;
-			}
+		if (score > targetScore)
+		{
+			targetIndex = i;
+			targetScore = score;
 		}
 	}
-
-	return devices[targetIndex];
+	return deviceData[targetIndex];
 }
 
 static vk::SurfaceKHR createVkSurface(vk::Instance instance, GLFWwindow* window)
 {
 	VkSurfaceKHR surface = nullptr;
 	if (glfwCreateWindowSurface(instance, window, nullptr, &surface) != VK_SUCCESS)
-		throw GardenError("Failed to create window surface.");
+		throw GardenError("Failed to create Vulkan window surface.");
 	return vk::SurfaceKHR(surface);
 }
 
@@ -330,10 +309,12 @@ static void getVkQueueFamilyIndices(vk::PhysicalDevice physicalDevice, vk::Surfa
 {
 	uint32 graphicsIndex = UINT32_MAX, transferIndex = UINT32_MAX, computeIndex = UINT32_MAX;
 	auto properties = physicalDevice.getQueueFamilyProperties();
+	auto propertyCount = (uint32)properties.size();
+	const auto propertyData = properties.data();
 
-	for (uint32 i = 0; i < (uint32)properties.size(); i++)
+	for (uint32 i = 0; i < propertyCount; i++)
 	{
-		if (properties[i].queueFlags & vk::QueueFlagBits::eGraphics &&
+		if (propertyData[i].queueFlags & vk::QueueFlagBits::eGraphics &&
 			physicalDevice.getSurfaceSupportKHR(i, surface))
 		{
 			graphicsIndex = i;
@@ -342,11 +323,11 @@ static void getVkQueueFamilyIndices(vk::PhysicalDevice physicalDevice, vk::Surfa
 	}
 
 	if (graphicsIndex == UINT32_MAX)
-		throw GardenError("No graphics queue with present on this GPU.");
+		throw GardenError("No Vulkan graphics queue with present feature on this GPU.");
 
-	for (uint32 i = 0; i < (uint32)properties.size(); i++)
+	for (uint32 i = 0; i < propertyCount; i++)
 	{
-		if (properties[i].queueFlags & vk::QueueFlagBits::eTransfer && graphicsIndex != i)
+		if (propertyData[i].queueFlags & vk::QueueFlagBits::eTransfer && graphicsIndex != i)
 		{
 			transferIndex = i;
 			break;
@@ -355,9 +336,9 @@ static void getVkQueueFamilyIndices(vk::PhysicalDevice physicalDevice, vk::Surfa
 
 	if (transferIndex == UINT32_MAX)
 	{
-		for (uint32 i = 0; i < (uint32)properties.size(); i++)
+		for (uint32 i = 0; i < propertyCount; i++)
 		{
-			if (properties[i].queueFlags & vk::QueueFlagBits::eTransfer)
+			if (propertyData[i].queueFlags & vk::QueueFlagBits::eTransfer)
 			{
 				transferIndex = i;
 				break;
@@ -365,12 +346,12 @@ static void getVkQueueFamilyIndices(vk::PhysicalDevice physicalDevice, vk::Surfa
 		}
 
 		if (transferIndex == UINT32_MAX)
-			throw GardenError("No transfer queue on this GPU.");
+			throw GardenError("No Vulkan transfer queue on this GPU.");
 	}
 
-	for (uint32 i = 0; i < (uint32)properties.size(); i++)
+	for (uint32 i = 0; i < propertyCount; i++)
 	{
-		if (properties[i].queueFlags & (vk::QueueFlagBits::eCompute | 
+		if (propertyData[i].queueFlags & (vk::QueueFlagBits::eCompute | 
 			vk::QueueFlagBits::eTransfer) && graphicsIndex != i && transferIndex != i)
 		{
 			computeIndex = i;
@@ -380,9 +361,9 @@ static void getVkQueueFamilyIndices(vk::PhysicalDevice physicalDevice, vk::Surfa
 
 	if (computeIndex == UINT32_MAX)
 	{
-		for (uint32 i = 0; i < (uint32)properties.size(); i++)
+		for (uint32 i = 0; i < propertyCount; i++)
 		{
-			if (properties[i].queueFlags & (vk::QueueFlagBits::eCompute | 
+			if (propertyData[i].queueFlags & (vk::QueueFlagBits::eCompute | 
 				vk::QueueFlagBits::eTransfer) && graphicsIndex != i)
 			{
 				computeIndex = i;
@@ -392,9 +373,9 @@ static void getVkQueueFamilyIndices(vk::PhysicalDevice physicalDevice, vk::Surfa
 
 		if (computeIndex == UINT32_MAX)
 		{
-			for (uint32 i = 0; i < (uint32)properties.size(); i++)
+			for (uint32 i = 0; i < propertyCount; i++)
 			{
-				if (properties[i].queueFlags & (vk::QueueFlagBits::eCompute | vk::QueueFlagBits::eTransfer))
+				if (propertyData[i].queueFlags & (vk::QueueFlagBits::eCompute | vk::QueueFlagBits::eTransfer))
 				{
 					computeIndex = i;
 					break;
@@ -402,7 +383,7 @@ static void getVkQueueFamilyIndices(vk::PhysicalDevice physicalDevice, vk::Surfa
 			}
 
 			if (computeIndex == UINT32_MAX)
-				throw GardenError("No compute queue with transfer on this GPU.");
+				throw GardenError("No Vulkan compute queue with transfer feature on this GPU.");
 		}
 	}
 
@@ -410,9 +391,9 @@ static void getVkQueueFamilyIndices(vk::PhysicalDevice physicalDevice, vk::Surfa
 	transferQueueFamilyIndex = transferIndex;
 	computeQueueFamilyIndex = computeIndex;
 
-	graphicsQueueMaxCount = properties[graphicsIndex].queueCount;
-	transferQueueMaxCount = properties[transferIndex].queueCount;
-	computeQueueMaxCount = properties[computeIndex].queueCount;
+	graphicsQueueMaxCount = propertyData[graphicsIndex].queueCount;
+	transferQueueMaxCount = propertyData[transferIndex].queueCount;
+	computeQueueMaxCount = propertyData[computeIndex].queueCount;
 }
 
 //**********************************************************************************************************************
@@ -432,8 +413,7 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 	{
 		if (graphicsQueueCount < graphicsQueueMaxCount)
 			transferQueueIndex = graphicsQueueCount++;
-		else
-			transferQueueIndex = graphicsQueueIndex;
+		else transferQueueIndex = graphicsQueueIndex;
 	}
 	else
 	{
@@ -445,15 +425,13 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 	{
 		if (graphicsQueueCount < graphicsQueueMaxCount)
 			computeQueueIndex = graphicsQueueCount++;
-		else
-			computeQueueIndex = graphicsQueueIndex;
+		else computeQueueIndex = graphicsQueueIndex;
 	}
 	else if (computeQueueFamilyIndex == transferQueueFamilyIndex)
 	{
 		if (transferQueueCount < transferQueueMaxCount)
 			computeQueueIndex = transferQueueCount++;
-		else
-			computeQueueIndex = transferQueueCount;
+		else computeQueueIndex = transferQueueCount;
 	}
 	else
 	{
@@ -641,10 +619,7 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 			else features.maintenance6 = false;
 		}
 	}
-	else
-	{
-		features.maintenance5 = features.maintenance6 = true;
-	}
+	else features.maintenance5 = features.maintenance6 = true;
 
 	if (hasDeferredHostOperations && hasAccelerationStructure)
 	{
@@ -673,15 +648,9 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 				else features.rayQuery = false;
 			}
 		}
-		else
-		{
-			features.rayTracing = features.rayQuery = false;
-		}
+		else features.rayTracing = features.rayQuery = false;
 	}
-	else
-	{
-		features.rayTracing = features.rayQuery = false;
-	}
+	else features.rayTracing = features.rayQuery = false;
 
 	if (hasDemoteToHelperInv)
 	{
@@ -935,11 +904,11 @@ static vk::DescriptorPool createVkDescriptorPool(vk::Device device, const Vulkan
 	}
 	
 	uint32 maxSetCount = 0;
-	for (auto& size : sizes)
+	for (auto size : sizes)
 		maxSetCount += size.descriptorCount;
 
 	vk::DescriptorPoolCreateInfo descriptorPoolInfo(
-		vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
+		vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet, 
 		maxSetCount, (uint32)sizes.size(), sizes.data());
 	return device.createDescriptorPool(descriptorPoolInfo);
 }
@@ -1039,8 +1008,7 @@ VulkanAPI::VulkanAPI(const string& appName, const string& appDataName, Version a
 	uint32 frameQueueIndex = 0, graphicsQueueIndex = 0, transferQueueIndex = 0, computeQueueIndex = 0;
 
 	if (volkInitialize() != VK_SUCCESS)
-		throw GardenError("Failed to load Vulkan loader.");
-
+		throw GardenError("Failed to initialize Vulkan API loader.");
 	instance = createVkInstance(appName, appVersion, versionMajor, versionMinor, features);
 
 	#if GARDEN_DEBUG
@@ -1138,7 +1106,6 @@ VulkanAPI::~VulkanAPI()
 	graphicsPipelinePool.clear();
 	samplerPool.clear();
 	framebufferPool.clear();
-	renderPasses.clear();
 	imageViewPool.clear();
 	imagePool.clear();
 	bufferPool.clear();
@@ -1222,10 +1189,6 @@ void VulkanAPI::flushDestroyBuffer()
 			break;
 		case GraphicsAPI::DestroyResourceType::Sampler:
 			device.destroySampler((VkSampler)resource.data0);
-			break;
-		case GraphicsAPI::DestroyResourceType::Framebuffer:
-			device.destroyFramebuffer((VkFramebuffer)resource.data0);
-			device.destroyRenderPass((VkRenderPass)resource.data1);
 			break;
 		case GraphicsAPI::DestroyResourceType::ImageView:
 			device.destroyImageView((VkImageView)resource.data0);

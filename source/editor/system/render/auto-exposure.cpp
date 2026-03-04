@@ -124,9 +124,10 @@ void AutoExposureEditorSystem::preUiRender()
 				maxHistogramValue = histogram[i];
 		}
 
-		histogramSamples[0] = 0.0f; // Note: Reserved for too dark.
+		auto histogramSampleData = histogramSamples.data();
+		histogramSampleData[0] = 0.0f; // Note: Reserved for too dark.
 		for (uint16 i = 1; i < AutoExposureSystem::histogramSize; i++)
-			histogramSamples[i] = (float)histogram[i] / maxHistogramValue;
+			histogramSampleData[i] = (float)histogram[i] / maxHistogramValue;
 
 		ImGui::SeparatorText("Visualizer");
 		ImGui::Checkbox("Visualize Luminance Limits", &visualizeLimits);
@@ -146,7 +147,7 @@ void AutoExposureEditorSystem::preUiRender()
 			ImGui::EndTooltip();
 		}
 
-		ImGui::PlotHistogram("Histogram", histogramSamples.data(),
+		ImGui::PlotHistogram("Histogram", histogramSampleData,
 			AutoExposureSystem::histogramSize, 0, nullptr, 0.0f, 1.0f, { 320.0f, 64.0f });
 
 		if (visualizeLimits)

@@ -28,7 +28,7 @@
 #include "math/brdf.hpp"
 #include "math/sh.hpp"
 
-// TOOD: !!! Take into account planet position for an atmosphere!!!
+// TODO: !!! Take into account planet position for an atmosphere!!!
 
 using namespace garden;
 
@@ -37,41 +37,43 @@ static constexpr int32 shBinarySize = 3 * 4 * sizeof(f16x4);
 
 static ID<Image> createTransLUT(GraphicsSystem* graphicsSystem, Image::Format format)
 {
-	auto transLUT = graphicsSystem->createImage(format, Image::Usage::Sampled | Image::Usage::ColorAttachment, 
+	auto image = graphicsSystem->createImage(format, Image::Usage::Sampled | Image::Usage::ColorAttachment, 
 		{ { nullptr } }, uint2(TRANSMITTANCE_LUT_WIDTH, TRANSMITTANCE_LUT_HEIGHT), Image::Strategy::Size);
-	SET_RESOURCE_DEBUG_NAME(transLUT, "image.atmosphere.transLUT");
-	return transLUT;
+	SET_RESOURCE_DEBUG_NAME(image, "image.atmosphere.transLUT");
+	return image;
 }
 static ID<Image> createMultiScattLUT(GraphicsSystem* graphicsSystem)
 {
-	auto multiScattLUT = graphicsSystem->createImage(Image::Format::SfloatR16G16B16A16, Image::Usage::Sampled | 
-		Image::Usage::Storage, { { nullptr } }, uint2(MULTI_SCATT_LUT_LENGTH), Image::Strategy::Size);
-	SET_RESOURCE_DEBUG_NAME(multiScattLUT, "image.atmosphere.multiScattLUT");
-	return multiScattLUT;
+	auto image = graphicsSystem->createImage(AtmosphereRenderSystem::multiScattLutFormat, 
+		Image::Usage::Sampled | Image::Usage::Storage, { { nullptr } }, 
+		uint2(MULTI_SCATT_LUT_LENGTH), Image::Strategy::Size);
+	SET_RESOURCE_DEBUG_NAME(image, "image.atmosphere.multiScattLUT");
+	return image;
 }
 static ID<Image> createCameraVolume(GraphicsSystem* graphicsSystem)
 {
-	auto cameraVolume = graphicsSystem->createImage(Image::Format::SfloatR16G16B16A16, Image::Usage::Sampled | 
-		Image::Usage::Storage, { { nullptr } }, uint3(CAMERA_VOLUME_LENGTH), Image::Strategy::Size);
-	SET_RESOURCE_DEBUG_NAME(cameraVolume, "image.atmosphere.cameraVolume");
-	return cameraVolume;
+	auto image = graphicsSystem->createImage(AtmosphereRenderSystem::cameraVolumeFormat, 
+		Image::Usage::Sampled | Image::Usage::Storage, { { nullptr } }, 
+		uint3(CAMERA_VOLUME_LENGTH), Image::Strategy::Size);
+	SET_RESOURCE_DEBUG_NAME(image, "image.atmosphere.cameraVolume");
+	return image;
 }
 static ID<Image> createSkyViewLUT(GraphicsSystem* graphicsSystem)
 {
-	auto size = max(graphicsSystem->getScaledFrameSize() / 10, uint2::one);
-	auto skyViewLUT = graphicsSystem->createImage(Image::Format::UfloatB10G11R11, Image::Usage::Sampled | 
-		Image::Usage::ColorAttachment, { { nullptr } }, size, Image::Strategy::Size);
-	SET_RESOURCE_DEBUG_NAME(skyViewLUT, "image.atmosphere.skyViewLUT");
-	return skyViewLUT;
+	auto frameSize = max(graphicsSystem->getScaledFrameSize() / 10, uint2::one);
+	auto image = graphicsSystem->createImage(Image::Format::UfloatB10G11R11, Image::Usage::Sampled | 
+		Image::Usage::ColorAttachment, { { nullptr } }, frameSize, Image::Strategy::Size);
+	SET_RESOURCE_DEBUG_NAME(image, "image.atmosphere.skyViewLUT");
+	return image;
 }
 
 static ID<ImageView> createSkyboxShView(GraphicsSystem* graphicsSystem, ID<Image> skybox)
 {
 	auto skyboxView = graphicsSystem->get(skybox);
-	auto skyboxShView = graphicsSystem->createImageView(skybox, 
+	auto imageView = graphicsSystem->createImageView(skybox, 
 		Image::Type::Texture2DArray, Image::Format::Undefined, 0, 0, 0, 1);
-	SET_RESOURCE_DEBUG_NAME(skyboxShView, "imageView.atmosphere.skyboxSH");
-	return skyboxShView;
+	SET_RESOURCE_DEBUG_NAME(imageView, "imageView.atmosphere.skyboxSH");
+	return imageView;
 }
 static void createShCaches(GraphicsSystem* graphicsSystem, uint32 skyboxSize,
 	View<ComputePipeline> shGenPipelineView, DescriptorSet::Buffers& shCaches)
@@ -118,8 +120,10 @@ static constexpr Image::Format getTransLutFormat(GraphicsQuality quality) noexce
 static ID<Framebuffer> createLutFramebuffer(GraphicsSystem* graphicsSystem, ID<Image> lut, const char* debugName)
 {
 	auto lutView = graphicsSystem->get(lut);
-	vector<Framebuffer::OutputAttachment> colorAttachments =
-	{ Framebuffer::OutputAttachment(lutView->getView(), AtmosphereRenderSystem::framebufferFlags) };
+	vector<Framebuffer::Attachment> colorAttachments =
+	{
+		Framebuffer::Attachment(lutView->getView(), Framebuffer::LoadOp::DontCare, Framebuffer::StoreOp::Store)
+	};
 	auto framebuffer = graphicsSystem->createFramebuffer((uint2)lutView->getSize(), std::move(colorAttachments));
 	SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.atmosphere." + string(debugName));
 	return framebuffer;
@@ -129,9 +133,11 @@ static void createSkyboxFramebuffers(GraphicsSystem* graphicsSystem, ID<Framebuf
 {
 	for (uint8 i = 0; i < Image::cubemapFaceCount; i++)
 	{
-		vector<Framebuffer::OutputAttachment> colorAttachments =
-		{ Framebuffer::OutputAttachment({}, AtmosphereRenderSystem::framebufferFlags) };
-		auto framebuffer = graphicsSystem->createFramebuffer(uint2(16), std::move(colorAttachments));
+		vector<Framebuffer::Attachment> colorAttachments =
+		{
+			Framebuffer::Attachment({}, Framebuffer::LoadOp::DontCare, Framebuffer::StoreOp::Store)
+		};
+		auto framebuffer = graphicsSystem->createFramebuffer(uint2(1), std::move(colorAttachments));
 		SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.atmosphere.skybox" + to_string(i));
 		framebuffers[i] = framebuffer;
 	}
@@ -312,7 +318,7 @@ static DescriptorSet::Uniforms getSkyUniforms(GraphicsSystem* graphicsSystem,
 	ID<Image> transLUT, ID<Image> skyViewLUT, ID<Image> cameraVolume)
 {
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
-	auto depthBufferView = deferredSystem->getDepthImageView();
+	auto depthBufferView = deferredSystem->getDepthOnlyIV();
 	auto gFramebufferView = graphicsSystem->get(deferredSystem->getGFramebuffer());
 	auto transLutView = graphicsSystem->get(transLUT)->getView();
 	auto skyViewLutView = graphicsSystem->get(skyViewLUT)->getView();
@@ -440,15 +446,15 @@ static f32x4 calcAmbientLight(f32x4 starDir, f32x4x4* shCoeffs)
 {
 	starDir.setY(max(starDir.getY(), 0.0f));
 	auto tbn = approximateTBN(normalize3(starDir));
-	auto amientLight = f32x4::zero;
+	auto ambientLight = f32x4::zero;
 
 	for (uint8 i = 1; i < diffuseConeCount; i++)
 	{
 		auto sampleDir = normalize3(tbn * f32x4(diffuseConeDirs[i]));
-		amientLight += brdf::diffuseIrradiance(sampleDir, shCoeffs) * diffuseConeWeights[i];
+		ambientLight += brdf::diffuseIrradiance(sampleDir, shCoeffs) * diffuseConeWeights[i];
 	}
 
-	return amientLight;
+	return ambientLight;
 }
 
 //**********************************************************************************************************************
@@ -523,7 +529,7 @@ void AtmosphereRenderSystem::preDeferredRender()
 	auto cameraHeight = calcCameraHeight(cc.cameraPos.y, groundRadius);
 	auto cameraPos = float3(0.0f, cameraHeight, 0.0f);
 	auto topRadius = groundRadius + atmosphereHeight;
-	auto rayDensityExpScale = -1.0f / rayleightScaleHeight;
+	auto rayDensityExpScale = -1.0f / rayleighScaleHeight;
 	auto mieExtinction = mieScattering + mieAbsorption;
 	auto mieDensityExpScale = -1.0f / mieScaleHeight;
 	auto absDensity0ConstantTerm = ozoneLayerTip - ozoneLayerWidth * ozoneLayerSlope;
@@ -681,14 +687,12 @@ void AtmosphereRenderSystem::updateSkybox()
 			lastSkybox = pbrLightingView->skybox; lastSpecular = pbrLightingView->specular;
 
 			auto skyboxView = graphicsSystem->get(lastSkybox);
-			auto framebufferSize = (uint2)skyboxView->getSize();
-			Framebuffer::OutputAttachment colorAttachment = Framebuffer::OutputAttachment({}, framebufferFlags);
+			auto frameSize = (uint2)skyboxView->getSize();
 
 			for (uint8 i = 0; i < Image::cubemapFaceCount; i++)
 			{
 				auto framebufferView = graphicsSystem->get(skyboxFramebuffers[i]);
-				colorAttachment.imageView = skyboxView->getView(i, 0);
-				framebufferView->update(framebufferSize, &colorAttachment, 1);
+				framebufferView->update(frameSize, skyboxView->getView(i, 0));
 			}
 
 			auto pbrLightingSystem = PbrLightingSystem::Instance::get();
@@ -704,12 +708,11 @@ void AtmosphereRenderSystem::updateSkybox()
 		}
 		else if (skyboxFramebuffers[0])
 		{
-			auto framebufferSize = graphicsSystem->get(skyboxFramebuffers[0])->getSize();
-			Framebuffer::OutputAttachment colorAttachment = Framebuffer::OutputAttachment({}, framebufferFlags);
+			auto frameSize = graphicsSystem->get(skyboxFramebuffers[0])->getSize();
 			for (uint8 i = 0; i < Image::cubemapFaceCount; i++)
 			{
 				auto framebufferView = graphicsSystem->get(skyboxFramebuffers[i]);
-				framebufferView->update(framebufferSize, &colorAttachment, 1);
+				framebufferView->update(frameSize, ID<ImageView>());
 			}
 		}
 	}
@@ -968,8 +971,7 @@ void AtmosphereRenderSystem::gBufferRecreate()
 	{
 		auto skyViewLutView = graphicsSystem->get(skyViewLUT);
 		auto framebufferView = graphicsSystem->get(skyViewLutFramebuffer);
-		Framebuffer::OutputAttachment colorAttachment(skyViewLutView->getView(), framebufferFlags);
-		framebufferView->update((uint2)skyViewLutView->getSize(), &colorAttachment, 1);
+		framebufferView->update((uint2)skyViewLutView->getSize(), skyViewLutView->getView());
 	}
 }
 

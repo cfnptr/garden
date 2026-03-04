@@ -108,7 +108,7 @@ public:
 		uint8 anisoFiltering : 1;                                     /**< Is anisotropic filtering enabled. */
 		uint8 comparison : 1;                                         /**< Is comparison during lookups enabled. */
 		uint8 unnormCoords : 1;                                       /**< Is unnormalized coordinates enabled. */
-		uint8 _unused : 5;                                            /**< [reserved for future use] */
+		uint8 _reserved0 : 5;                                         /**< [reserved for future use] */
 		Filter minFilter = Filter::Nearest;                           /**< Minification filter to apply to lookups. */
 		Filter magFilter = Filter::Nearest;                           /**< Magnification filter to apply to lookups. */
 		Filter mipmapFilter = Filter::Nearest;                        /**< Mipmap filter to apply to lookups. */
@@ -121,23 +121,22 @@ public:
 		float minLod = 0.0f;                                          /**< Used to clamp the minimum of the computed LOD value. */
 		float maxLod = INFINITY;                                      /**< Used to clamp the maximum of the computed LOD value. */
 		BorderColor borderColor = BorderColor::FloatTransparentBlack; /**< Predefined border color to use. */
-		uint8 _alignment0 = 0;                                        /**< [structure alignment] */
-		uint16 _alignment1 = 0;                                       /**< [structure alignment] */
-		// should be aligned.
+		uint8 _reserved1 = 0;                                         /**< [reserved for future use] */
+		uint16 _reserved2 = 0;                                        /**< [reserved for future use] */
  
 		/**
 		 * @brief Creates a new default sampler state.
 		 */
-		State() noexcept : anisoFiltering(0), comparison(0), unnormCoords(0), _unused(0) { }
+		constexpr State() noexcept : anisoFiltering(0), comparison(0), unnormCoords(0), _reserved0(0) { }
 		
 		/**
 		 * @brief Sets sampler minification, magnification and mipmap filter type.
 		 */
-		void setFilter(Filter filter) noexcept { minFilter = magFilter = mipmapFilter = filter; }
+		constexpr void setFilter(Filter filter) noexcept { minFilter = magFilter = mipmapFilter = filter; }
 		/**
 		 * @brief Sets sampler U, V and W coordinates addressing mode.
 		 */
-		void setAddressMode(AddressMode mode) noexcept { addressModeX = addressModeY = addressModeZ = mode; }
+		constexpr void setAddressMode(AddressMode mode) noexcept { addressModeX = addressModeY = addressModeZ = mode; }
 	};
 private:
 	State state = {};

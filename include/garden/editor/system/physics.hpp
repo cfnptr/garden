@@ -71,8 +71,8 @@ private:
 
 	void init();
 	void deinit();
-	void preDepthLdrRender();
-	void depthLdrRender();
+	void preDsLdrRender();
+	void dsLdrRender();
 	void editorBarTool();
 
 	void onRigidbodyInspector(ID<Entity> entity, bool isOpened);

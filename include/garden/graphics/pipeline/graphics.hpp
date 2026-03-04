@@ -69,7 +69,7 @@ public:
 	 * Polygon rasterization mode refers to how the interior of polygons (typically triangles in 
 	 * modern graphics) is filled during the rasterization process in computer graphics.
 	 */
-	enum class Polygon : uint8
+	enum class PolygonMode : uint8
 	{
 		Fill,  /**< Polygons are rendered using the polygon rasterization rules. */
 		Line,  /**< Polygon edges are drawn as line segments. */
@@ -225,7 +225,12 @@ public:
 		BlendFactor dstAlphaFactor = BlendFactor::Zero;             /**< Destination alpha blending factor. */
 		BlendOp alphaOperation = BlendOp::Add;                      /**< Alpha component (A) blending operation. */
 		ColorComponent colorMask = ColorComponent::All;             /**< Bitmask of the color components to write. */
-		BlendState(bool blending = false) : blending(blending) { }
+
+		/**
+		 * @brief Creates a new graphics pipeline blend state.
+		 * @param blending is blending enabled for the attachment
+		 */
+		constexpr BlendState(bool blending = false) noexcept : blending(blending) { }
 	};
 
 	/**
@@ -243,9 +248,9 @@ public:
 		StencilOp failOperation = StencilOp::Keep;      /**< Performed when the fragment fails the stencil test. */
 		StencilOp passOperation = StencilOp::Keep;      /**< Performed when the fragment passes both the stencil and depth tests. */
 		StencilOp depthFailOperation = StencilOp::Keep; /**< Performed when the fragment passes the stencil test but fails the depth test. */
-		CompareOp compareOperation = CompareOp::Less;   /**< Comparison operator used to test the reference value. */
-		uint8 compareMask = 0x00; /**< Selects which bits of the stencil buffer and reference value participate in the comparison. */
-		uint8 writeMask = 0x00;   /**< Controls which bits in the stencil buffer can be modified by the update operations. */
+		CompareOp compareOperator = CompareOp::Always;  /**< Comparison operator used to test the reference value. */
+		uint8 compareMask = 0xFF; /**< Selects which bits of the stencil buffer and reference value participate in the comparison. */
+		uint8 writeMask = 0xFF;   /**< Controls which bits in the stencil buffer can be modified by the update operations. */
 		uint8 reference = 0x00;   /**< Value used as the static source for the stencil comparison and the replace operation. */
 		uint8 _alignment = 0;     /**< Stencil state structure alignment. */
 	};
@@ -268,9 +273,9 @@ public:
 		uint8 depthBounding : 1;                           /**< Is depth bounds testing enabled. */
 		uint8 stencilTesting : 1;                          /**< Is stencil value testing enabled. */
 		uint8 discarding : 1;                              /**< Is fragment discarding enabled. */
-		uint8 _unused : 1;                                 /**< [reserved for future use] */
+		uint8 _reserved0 : 1;                             /**< [reserved for future use] */
 		Topology topology = Topology::TriangleList;        /**< Primitive topology type. */
-		Polygon polygon = Polygon::Fill;                   /**< Polygon rasterization mode. */
+		PolygonMode polygonMode = PolygonMode::Fill;       /**< Polygon rasterization mode. */
 		CompareOp depthCompare = CompareOp::Greater;       /**< Depth compare operator. */
 		float depthBiasConst = 0.0f;                       /**< Depth bias constant value. */
 		float depthBiasClamp = 0.0f;                       /**< Depth bias clamp value. */
@@ -281,12 +286,14 @@ public:
 		StencilState backFaceStencil = {};                 /**< Back-facing polygons stencil state. */
 		CullFace cullFace = CullFace::Back;                /**< Triangle culling mode. */
 		FrontFace frontFace = FrontFace::CounterClockwise; /**< Polygon front-facing orientation. */
-		uint16 _reserved0 = 0;                             /**< [reserved for future use] */
-		uint32 _reserved1 = 0;                             /**< [reserved for future use] */
-		// Note: Should be aligned!
+		uint16 _reserved1 = 0;                             /**< [reserved for future use] */
+		uint32 _reserved2 = 0;                             /**< [reserved for future use] */
 
-		State() noexcept : depthTesting(0), depthWriting(0), depthClamping(0), depthBiasing(0), 
-			depthBounding(0), stencilTesting(0), discarding(0), _unused(0) { }
+		/**
+		 * @brief Creates a new graphics pipeline state.
+		 */
+		constexpr State() noexcept : depthTesting(0), depthWriting(0), depthClamping(0), 
+			depthBiasing(0), depthBounding(0), stencilTesting(0), discarding(0), _reserved0(0) { }
 	};
 
 	using PipelineStates = tsl::robin_map<uint8, State>;
@@ -324,9 +331,6 @@ public:
 	 */
 	struct GraphicsCreateData : public CreateData
 	{
-		uint8 subpassIndex = 0;
-		Image::Format depthStencilFormat = {};
-		uint8 _alignment = 0;
 		vector<uint8> vertexCode;
 		vector<uint8> fragmentCode;
 		vector<VertexAttribute> vertexAttributes;
@@ -334,20 +338,20 @@ public:
 		vector<Image::Format> colorFormats;
 		PipelineStates pipelineStateOverrides;
 		BlendStates blendStateOverrides;
-		void* renderPass = nullptr;
 		State pipelineState = {};
 		uint16 vertexAttributesSize = 0;
+		Image::Format depthStencilFormat = {};
+		uint8 _alignment = 0;
 	};
 private:
 	uint8 _alignment = 0;
 	uint8 attachmentCount = 0;
-	uint8 subpassIndex = 0;
 	ID<Framebuffer> framebuffer = {};
 
 	GraphicsPipeline(const fs::path& path, uint32 maxBindlessCount, bool useAsyncRecording,
-		uint64 pipelineVersion, ID<Framebuffer> framebuffer, uint8 subpassIndex) noexcept :
-		Pipeline(PipelineType::Graphics, path, maxBindlessCount, useAsyncRecording, pipelineVersion),
-		subpassIndex(subpassIndex), framebuffer(framebuffer) { }
+		uint64 pipelineVersion, ID<Framebuffer> framebuffer) noexcept : Pipeline(
+		PipelineType::Graphics, path, maxBindlessCount, useAsyncRecording, pipelineVersion), 
+		framebuffer(framebuffer) { }
 	GraphicsPipeline(GraphicsCreateData& createData, bool useAsyncRecording);
 
 	void createVkInstance(GraphicsCreateData& createData);
@@ -362,7 +366,7 @@ public:
 	GraphicsPipeline() noexcept = default;
 
 	/**
-	 * @brief Returns graphics pipeline parent framebuffer.
+	 * @brief Returns graphics pipeline parent framebuffer instance.
 	 * @note We can use graphics pipeline only inside this framebuffer.
 	 */
 	ID<Framebuffer> getFramebuffer() const noexcept { return framebuffer; }
@@ -371,11 +375,6 @@ public:
 	 * @note It should be the same as target rendering framebuffer.
 	 */
 	uint8 getAttachmentCount() const noexcept { return attachmentCount; }
-	/**
-	 * @brief Returns graphics pipeline subpass index inside framebuffer pass.
-	 * @details Sub passes help graphics API to optimize resources sharing, especially on tile-based GPUs.
-	 */
-	uint8 getSubpassIndex() const noexcept { return subpassIndex; }
 
 	/**
 	 * @brief Updates graphics pipeline parent framebuffer.
@@ -559,15 +558,15 @@ static GraphicsPipeline::Topology toTopology(string_view topology)
 }
 /**
  * @brief Returns polygon rasterization mode.
- * @param polygon target polygon rasterization mode name string (camelCase)
+ * @param polygonMode target polygon rasterization mode name string (camelCase)
  * @throw GardenError on unknown polygon rasterization mode.
  */
-static GraphicsPipeline::Polygon toPolygon(string_view polygon)
+static GraphicsPipeline::PolygonMode toPolygonMode(string_view polygonMode)
 {
-	if (polygon == "fill") return GraphicsPipeline::Polygon::Fill;
-	if (polygon == "line") return GraphicsPipeline::Polygon::Line;
-	if (polygon == "point") return GraphicsPipeline::Polygon::Point;
-	throw GardenError("Unknown pipeline polygon type. (" + string(polygon) + ")");
+	if (polygonMode == "fill") return GraphicsPipeline::PolygonMode::Fill;
+	if (polygonMode == "line") return GraphicsPipeline::PolygonMode::Line;
+	if (polygonMode == "point") return GraphicsPipeline::PolygonMode::Point;
+	throw GardenError("Unknown pipeline polygon mode. (" + string(polygonMode) + ")");
 }
 /**
  * @brief Returns triangle culling mode.
@@ -637,6 +636,24 @@ static GraphicsPipeline::BlendOp toBlendOp(string_view blendOperation)
 	throw GardenError("Unknown pipeline blend operation type. (" + string(blendOperation) + ")");
 }
 
+/**
+ * @brief Returns stencil comparison operation.
+ * @param stencilOperation target stencil comparison operation name string (camelCase)
+ * @throw GardenError on unknown stencil comparison operation.
+ */
+static GraphicsPipeline::StencilOp toStencilOp(string_view stencilOperation)
+{
+	if (stencilOperation == "keep") return GraphicsPipeline::StencilOp::Keep;
+	if (stencilOperation == "zero") return GraphicsPipeline::StencilOp::Zero;
+	if (stencilOperation == "replace") return GraphicsPipeline::StencilOp::Replace;
+	if (stencilOperation == "incrClamp") return GraphicsPipeline::StencilOp::IncrClamp;
+	if (stencilOperation == "decrClamp") return GraphicsPipeline::StencilOp::DecrClamp;
+	if (stencilOperation == "invert") return GraphicsPipeline::StencilOp::Invert;
+	if (stencilOperation == "incrWrap") return GraphicsPipeline::StencilOp::IncrWrap;
+	if (stencilOperation == "decrWrap") return GraphicsPipeline::StencilOp::DecrWrap;
+	throw GardenError("Unknown pipeline stencil operation type. (" + string(stencilOperation) + ")");
+}
+
 /***********************************************************************************************************************
  * @brief Graphics pipeline resource extension mechanism.
  * @warning Use only if you know what you are doing!
@@ -651,13 +668,7 @@ public:
 	 */
 	static uint8& getAttachmentCount(GraphicsPipeline& pipeline) { return pipeline.attachmentCount; }
 	/**
-	 * @brief Returns graphics pipeline parent framebuffer.
-	 * @warning In most cases you should use @ref GraphicsPipeline functions.
-	 * @param[in] pipeline target graphics pipeline instance
-	 */
-	static uint8& getSubpassIndex(GraphicsPipeline& pipeline) { return pipeline.subpassIndex; }
-	/**
-	 * @brief Returns graphics pipeline subpass index inside framebuffer pass.
+	 * @brief Returns graphics pipeline parent framebuffer instance.
 	 * @warning In most cases you should use @ref GraphicsPipeline functions.
 	 * @param[in] pipeline target graphics pipeline instance
 	 */

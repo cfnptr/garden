@@ -156,14 +156,14 @@ static void createBuffers(GraphicsSystem* graphicsSystem,
 	vector<ID<Buffer>>& buffers, uint64 bufferSize, Buffer::Usage usage)
 {
 	auto inFlightCount = graphicsSystem->getInFlightCount();
-	buffers.resize(inFlightCount);
+	buffers.resize(inFlightCount); auto bufferData = buffers.data();
 
 	for (uint32 i = 0; i < inFlightCount; i++)
 	{
 		auto buffer = graphicsSystem->createBuffer(usage, Buffer::CpuAccess::SequentialWrite,
 			bufferSize, Buffer::Location::Auto, Buffer::Strategy::Size);
 		SET_RESOURCE_DEBUG_NAME(buffer, "buffer.imgui." + string(toString(usage)) + to_string(i));
-		buffers[i] = buffer;
+		bufferData[i] = buffer;
 	}
 }
 
@@ -763,7 +763,7 @@ void ImGuiRenderSystem::uiRender()
 
 	const auto indexType = sizeof(ImDrawIdx) == 2 ? IndexType::Uint16 : IndexType::Uint32;
 	auto framebufferView = graphicsSystem->get(pipelineView->getFramebuffer());
-	auto framebufferSize = (float2)framebufferView->getSize();
+	auto frameSize = (float2)framebufferView->getSize();
 	auto isCurrentRenderPassAsync = graphicsSystem->isCurrentRenderPassAsync();
 	auto threadSystem = ThreadSystem::Instance::tryGet();
 
@@ -805,13 +805,13 @@ void ImGuiRenderSystem::uiRender()
 
 			if (clipMin.x < 0.0f) clipMin.x = 0.0f;
 			if (clipMin.y < 0.0f) clipMin.y = 0.0f;
-			if (clipMax.x > framebufferSize.x) clipMax.x = framebufferSize.x;
-			if (clipMax.y > framebufferSize.y) clipMax.y = framebufferSize.y;
+			if (clipMax.x > frameSize.x) clipMax.x = frameSize.x;
+			if (clipMax.y > frameSize.y) clipMax.y = frameSize.y;
 			if (clipMax.x <= clipMin.x || clipMax.y <= clipMin.y)
 				continue;
 
 			auto scissor = int4(clipMin.x, clipMin.y, clipMax.x - clipMin.x, clipMax.y - clipMin.y);
-			scissor.y = framebufferSize.y - (scissor.y + scissor.w);
+			scissor.y = frameSize.y - (scissor.y + scissor.w);
 
 			if (isCurrentRenderPassAsync)
 				pipelineView->setScissorAsync(scissor, INT32_MAX);

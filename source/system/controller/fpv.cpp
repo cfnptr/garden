@@ -69,11 +69,11 @@ void FpvControllerSystem::init()
 	linkView->setTag("MainCamera");
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto framebufferSize = graphicsSystem->getFramebufferSize();
+	auto frameSize = graphicsSystem->getFramebufferSize();
 
 	auto cameraView = manager->add<CameraComponent>(camera);
 	cameraView->type = ProjectionType::Perspective;
-	cameraView->p.perspective.aspectRatio = (float)framebufferSize.x / (float)framebufferSize.y;
+	cameraView->p.perspective.aspectRatio = (float)frameSize.x / (float)frameSize.y;
 
 	GARDEN_ASSERT_MSG(!graphicsSystem->camera, "Detected several main cameras");
 	graphicsSystem->camera = camera;
@@ -110,8 +110,8 @@ void FpvControllerSystem::swapchainRecreate()
 		auto cameraView = Manager::Instance::get()->tryGet<CameraComponent>(camera);
 		if (cameraView)
 		{
-			auto framebufferSize = graphicsSystem->getFramebufferSize();
-			cameraView->p.perspective.aspectRatio = (float)framebufferSize.x / (float)framebufferSize.y;
+			auto frameSize = graphicsSystem->getFramebufferSize();
+			cameraView->p.perspective.aspectRatio = (float)frameSize.x / (float)frameSize.y;
 		}
 	}
 }
@@ -284,7 +284,7 @@ void FpvControllerSystem::updateCharacterControl()
 		{
 			if (isJumping) linearVelocity.setY(swimSpeed * boostFactor);
 			else linearVelocity += gravity * deltaTime;
-			linearVelocity *= swimpResist;
+			linearVelocity *= swimResist;
 		}
 		else
 		{

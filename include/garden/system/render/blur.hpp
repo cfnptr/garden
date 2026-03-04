@@ -40,8 +40,6 @@ public:
 	{
 		float intensity;
 	};
-
-	static constexpr Framebuffer::OutputAttachment::Flags framebufferFlags = { false, false, true };
 private:
 	ID<GraphicsPipeline> ldrGgxPipeline = {};
 	ID<DescriptorSet> ldrGgxDS = {};
@@ -59,13 +57,18 @@ private:
 
 	void init();
 	void deinit();
-	void preDepthLdrRender();
+	void preDsLdrRender();
 	void gBufferRecreate();
 
 	friend class ecsm::Manager;
 public:
 	float intensity = 1.0f;
 	bool ldrGgxBlur = false;
+
+	/**
+	 * @brief Returns LDR GGX image view.
+	 */
+	static ID<ImageView> getLdrGgxView();
 };
 
 } // namespace garden

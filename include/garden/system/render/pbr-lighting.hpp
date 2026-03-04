@@ -126,7 +126,6 @@ public:
 	static constexpr uint8 baseReflIndex = 0;
 	static constexpr uint8 baseGiIndex = 0;
 
-	static constexpr Framebuffer::OutputAttachment::Flags procFbFlags = { false, true, true };
 	static constexpr Image::Format shadBufferFormat = Image::Format::UnormR8G8B8A8;
 	static constexpr Image::Format aoBufferFormat = Image::Format::UnormR8;
 	static constexpr Image::Format reflBufferFormat = Image::Format::SfloatR16G16B16A16;
@@ -138,22 +137,20 @@ private:
 	ID<Image> shadBaseBuffer = {}, shadBlurBuffer = {};
 	ID<Image> aoBaseBuffer = {}, aoBlurBuffer = {};
 	ID<Image> reflBuffer = {}, giBuffer = {};
+	ID<Framebuffer> pbrLightingFB = {};
 	ID<Framebuffer> reflFramebuffer = {}, giFramebuffer = {};
 	ID<Framebuffer> shadFramebuffers[procBufferCount] = {};
 	ID<Framebuffer> aoFramebuffers[procBufferCount] = {};
-	ID<GraphicsPipeline> lightingPipeline = {};
+	ID<GraphicsPipeline> pbrLightingPipeline = {};
 	ID<ComputePipeline> iblSpecularPipeline = {};
 	ID<GraphicsPipeline> shadBlurPipeline = {};
 	ID<GraphicsPipeline> aoBlurPipeline = {};
 	ID<GraphicsPipeline> reflBlurPipeline = {};
-	ID<DescriptorSet> lightingDS = {}, shadBlurDS = {}, aoBlurDS = {};
+	ID<DescriptorSet> pbrLightingDS = {}, shadBlurDS = {}, aoBlurDS = {};
 	Options options = {};
 	GraphicsQuality quality = GraphicsQuality::High;
-	bool hasFbShad = false;
-	bool hasAnyShad = false;
-	bool hasAnyAO = false;
-	bool hasAnyRefl = false;
-	bool hasAnyGI = false;
+	bool hasFbShad = false, anyShad = false;
+	bool anyAO = false, anyRefl = false, anyGI = false;
 	uint8 _alignment = 0;
 
 	/**
@@ -171,7 +168,7 @@ private:
 	void init();
 	void deinit();
 	void preHdrRender();
-	void hdrRender();
+	void dsHdrRender();
 	void gBufferRecreate();
 	void qualityChange();
 
@@ -208,7 +205,7 @@ public:
 	/**
 	 * @brief Returns PBR lighting graphics pipeline.
 	 */
-	ID<GraphicsPipeline> getLightingPipeline();
+	ID<GraphicsPipeline> getPbrLightingPipeline();
 	/**
 	 * @brief Returns PBR lighting IBL specular compute pipeline. (Image Based Lighting)
 	 */
@@ -226,6 +223,10 @@ public:
 	 * @brief Returns PBR lighting blur reflection framebuffer array.
 	 */
 	const vector<ID<Framebuffer>>& getReflFramebuffers();
+	/**
+	 * @brief Returns PBR lighting evaluate framebuffer.
+	 */
+	ID<Framebuffer> getPbrLightingFB();
 	/**
 	 * @brief Returns PBR lighting reflection framebuffer.
 	 */
@@ -462,32 +463,32 @@ public:
 	 * @brief Returns true if there is rendered framebuffer shadow data on the current frame.
 	 */
 	bool isFbShadow() const noexcept { return hasFbShad; }
-
 	/**
 	 * @brief Marks that there is rendered framebuffer shadow data on the current frame.
 	 * @details See the @ref Options::useShadBuffer.
 	 */
 	void markFbShadow() noexcept { hasFbShad = true; }
+
 	/**
 	 * @brief Marks that there is rendered shadow data on the current frame.
 	 * @details See the @ref Options::useShadBuffer.
 	 */
-	void markAnyShadow() noexcept { hasAnyShad = true; }
+	void markAnyShadow() noexcept { anyShad = true; }
 	/**
 	 * @brief Marks that there is rendered AO data on the current frame.
 	 * @details See the @ref Options::useAoBuffer.
 	 */
-	void markAnyAO() noexcept { hasAnyAO = true; }
+	void markAnyAO() noexcept { anyAO = true; }
 	/**
 	 * @brief Marks that there is rendered reflection data on the current frame.
 	 * @details See the @ref Options::useReflBuffer.
 	 */
-	void markAnyReflection() noexcept { hasAnyRefl = true; }
+	void markAnyReflection() noexcept { anyRefl = true; }
 	/**
 	 * @brief Marks that there is rendered global illumination data on the current frame.
 	 * @details See the @ref Options::useGiBuffer.
 	 */
-	void markAnyGI() noexcept { hasAnyGI = true; }
+	void markAnyGI() noexcept { anyGI = true; }
 };
 
 } // namespace garden

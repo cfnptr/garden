@@ -41,8 +41,6 @@ public:
 	{
 		float2 invFrameSize;
 	};
-
-	static constexpr Framebuffer::OutputAttachment::Flags framebufferFlags = { false, true, true };
 private:
 	ID<Framebuffer> framebuffer = {};
 	ID<GraphicsPipeline> pipeline = {};

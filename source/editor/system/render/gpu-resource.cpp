@@ -542,8 +542,8 @@ static void renderImageViews(uint32& selectedItem, string& searchString,
 			for (const auto& dsUniform : dsUniforms)
 			{
 				auto pipelineUniform = pipelineUniforms.find(dsUniform.first);
-				if (pipelineUniform == pipelineUniforms.end() || (!isSamplerType(
-					pipelineUniform->second.type) && !isImageType(pipelineUniform->second.type)))
+				if (pipelineUniform == pipelineUniforms.end() || 
+					(!pipelineUniform->second.isSamplerType && !pipelineUniform->second.isImageType))
 				{
 					continue;
 				}
@@ -619,14 +619,75 @@ static void renderFramebuffers(uint32& selectedItem, string& searchString,
 {
 	auto graphicsAPI = GraphicsAPI::get();
 	auto framebuffers = graphicsAPI->framebufferPool.getData();
+	auto count = graphicsAPI->framebufferPool.getCount();
+	auto occupancy = graphicsAPI->framebufferPool.getOccupancy();
 
+	if (ImGui::IsKeyPressed(ImGuiKey_DownArrow))
+	{
+		for (uint32 i = selectedItem + 1; i < occupancy; i++)
+		{
+			auto framebuffer = &framebuffers[i];
+			if (!framebuffer->isValid())
+				continue;
+			selectedItem = i;
+			break;
+		}
+	}
+	else if (ImGui::IsKeyPressed(ImGuiKey_UpArrow))
+	{
+		for (int64 i = (int64)selectedItem - 1; i >= 0; i--)
+		{
+			auto framebuffer = &framebuffers[i];
+			if (!framebuffer->isValid())
+				continue;
+			selectedItem = (uint32)i;
+			break;
+		}
+	}
+
+	ImGui::TextWrapped("%lu/%lu (count/occupancy)", (unsigned long)count, (unsigned long)occupancy);
+	ImGui::BeginChild("##itemList", ImVec2(256.0f, -(ImGui::GetFrameHeightWithSpacing() + 4.0f)),
+		ImGuiChildFlags_Borders | ImGuiChildFlags_ResizeX);
+	ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyle().Colors[ImGuiCol_Button]);
+	
 	string framebufferName;
-	renderItemList(graphicsAPI->framebufferPool.getCount(), graphicsAPI->framebufferPool.getOccupancy(), selectedItem,
-		searchString, searchCaseSensitive, framebuffers, sizeof(Framebuffer), framebufferName, "Framebuffer ");
+	for (uint32 i = 0; i < occupancy; i++)
+	{
+		auto framebuffer = &framebuffers[i];
+		if (!framebuffer->isValid())
+			continue;
+		
+		auto name = framebuffer->getDebugName().empty() ? 
+			"Framebuffer " + to_string(i + 1) : framebuffer->getDebugName();
+		if (!searchString.empty())
+		{
+			if (!find(name, searchString, i + 1, searchCaseSensitive))
+				continue;
+		}
+
+		ImGui::PushID(to_string(i + 1).c_str());
+		if (ImGui::Selectable(name.c_str(), selectedItem == i))
+			selectedItem = i;
+		ImGui::PopID();
+
+		if (selectedItem == i)
+			framebufferName = name;
+
+		if (ImGui::BeginPopupContextItem())
+		{
+			if (ImGui::MenuItem("Copy Name"))
+				ImGui::SetClipboardText(name.c_str());
+			ImGui::EndPopup();
+		}
+	}
+
+	ImGui::PopStyleColor();
+	ImGui::EndChild();
+	ImGui::SameLine();
 
 	ImGui::BeginChild("##itemView", ImVec2(0.0f, -(ImGui::GetFrameHeightWithSpacing() + 4.0f)));
-	if (graphicsAPI->framebufferPool.getCount() == 0 || selectedItem >= graphicsAPI->framebufferPool.getOccupancy() ||
-		!ResourceExt::getInstance(framebuffers[selectedItem]))
+	if (graphicsAPI->framebufferPool.getCount() == 0 || selectedItem >= 
+		graphicsAPI->framebufferPool.getOccupancy() || !framebuffers[selectedItem].isValid())
 	{
 		ImGui::TextDisabled("None");
 		ImGui::EndChild();
@@ -637,7 +698,6 @@ static void renderFramebuffers(uint32& selectedItem, string& searchString,
 	auto& framebuffer = framebuffers[selectedItem];
 	ImGui::SeparatorText(framebufferName.c_str());
 	ImGui::TextWrapped("Runtime ID: %lu", (unsigned long)(selectedItem + 1));
-	ImGui::TextWrapped("Busy lock: %lu", (unsigned long)ResourceExt::getBusyLock(framebuffer));
 	ImGui::TextWrapped("Size: %lux%lu", (unsigned long)framebuffer.getSize().x, (unsigned long)framebuffer.getSize().y);
 	ImGui::Spacing();
 
@@ -645,12 +705,13 @@ static void renderFramebuffers(uint32& selectedItem, string& searchString,
 	{
 		ImGui::Indent();
 
-		const auto& colorAttachments = framebuffer.getColorAttachments().data();
+		const auto& colorAttachments = framebuffer.getColorAttachments();
+		auto colorAttachmentData = framebuffer.getColorAttachments().data();
 		auto colorAttachmentCount = (uint32)framebuffer.getColorAttachments().size();
 		
 		for (uint32 i = 0; i < colorAttachmentCount; i++)
 		{
-			auto attachment = colorAttachments[i];
+			auto attachment = colorAttachmentData[i];
 			if (!attachment.imageView)
 			{
 				ImGui::Text("[unused]");
@@ -664,12 +725,8 @@ static void renderFramebuffers(uint32& selectedItem, string& searchString,
 			ImGui::Text("%s", viewName.c_str());
 			ImGui::PushID(viewName.c_str());
 
-			auto value = attachment.flags.clear;
-			ImGui::Checkbox("Clear", &value); ImGui::SameLine();
-			value = attachment.flags.load;
-			ImGui::Checkbox("Load", &value); ImGui::SameLine();
-			value = attachment.flags.store;
-			ImGui::Checkbox("Store", &value); ImGui::SameLine();
+			ImGui::Text("Load Operation: %s", toString(attachment.loadOperation).data());
+			ImGui::Text("Store Operation: %s", toString(attachment.storeOperation).data());
 			
 			if (ImGui::Button("Select image view")) 
 			{
@@ -679,7 +736,7 @@ static void renderFramebuffers(uint32& selectedItem, string& searchString,
 			ImGui::PopID();
 		}
 
-		if (framebuffer.getColorAttachments().empty())
+		if (colorAttachments.empty())
 			ImGui::TextDisabled("None");
 		
 		ImGui::Unindent();
@@ -699,12 +756,8 @@ static void renderFramebuffers(uint32& selectedItem, string& searchString,
 			ImGui::Text("%s", viewName.c_str());
 			ImGui::PushID(viewName.c_str());
 
-			auto value = depthStencilAttachment.flags.clear;
-			ImGui::Checkbox("Clear", &value); ImGui::SameLine();
-			value = depthStencilAttachment.flags.load;
-			ImGui::Checkbox("Load", &value); ImGui::SameLine();
-			value = depthStencilAttachment.flags.store;
-			ImGui::Checkbox("Store", &value); ImGui::SameLine();
+			ImGui::Text("Load Operation: %s", toString(depthStencilAttachment.loadOperation).data());
+			ImGui::Text("Store Operation: %s", toString(depthStencilAttachment.storeOperation).data());
 
 			if (ImGui::Button("Select image view"))
 			{
@@ -718,30 +771,6 @@ static void renderFramebuffers(uint32& selectedItem, string& searchString,
 			ImGui::TextDisabled("None");
 		}
 
-		ImGui::Unindent();
-		ImGui::Spacing();
-	}
-
-	if (ImGui::CollapsingHeader("Subpasses"))
-	{
-		ImGui::Indent();
-
-		const auto& subpasses = framebuffer.getSubpasses().data();
-		auto subpassCount = (uint32)framebuffer.getSubpasses().size();
-
-		for (uint32 i = 0; i < subpassCount; i++)
-		{
-			const auto& subpass = subpasses[i];
-			ImGui::SeparatorText(to_string(i).c_str());
-			ImGui::TextWrapped("Pipeline type: %s", toString(subpass.pipelineType).data());
-			ImGui::TextWrapped("Input attachment count: %lu", (unsigned long)subpass.inputAttachments.size());
-			ImGui::TextWrapped("Output attachment count: %lu", (unsigned long)subpass.outputAttachments.size());
-			// TODO: render input and output attachment list.
-		}
-
-		if (framebuffer.getSubpasses().empty())
-			ImGui::TextDisabled("None");
-		
 		ImGui::Unindent();
 		ImGui::Spacing();
 	}
@@ -824,14 +853,14 @@ static void renderDescriptorSets(uint32& selectedItem, string& searchString,
 	}
 
 	auto& descriptorSet = descriptorSets[selectedItem];
-	const Pipeline::Uniforms* uniforms = nullptr; string pipelineName;
+	const Pipeline::Uniforms* pipelineUniforms = nullptr; string pipelineName;
 	if (descriptorSet.getPipeline())
 	{
 		auto pipelineView = graphicsAPI->getPipelineView(
 			descriptorSet.getPipelineType(), descriptorSet.getPipeline());
 		pipelineName = pipelineView->getDebugName().empty() ? "Pipeline " +
 			to_string(*descriptorSet.getPipeline()) : pipelineView->getDebugName();
-		uniforms = &pipelineView->getUniforms();
+		pipelineUniforms = &pipelineView->getUniforms();
 	}
 
 	ImGui::SeparatorText(descriptorSetName.c_str());
@@ -850,9 +879,9 @@ static void renderDescriptorSets(uint32& selectedItem, string& searchString,
 		const auto& descriptorUniforms = descriptorSet.getUniforms();
 		for (const auto& pair : descriptorUniforms)
 		{
-			const auto uniform = uniforms->find(pair.first);
-			if (uniform == uniforms->end() ||
-				uniform->second.descriptorSetIndex != descriptorSet.getIndex())
+			const auto uniformPair = pipelineUniforms->find(pair.first);
+			if (uniformPair == pipelineUniforms->end() ||
+				uniformPair->second.descriptorSetIndex != descriptorSet.getIndex())
 			{
 				continue;
 			}
@@ -862,9 +891,9 @@ static void renderDescriptorSets(uint32& selectedItem, string& searchString,
 
 			const auto& resourceSets = pair.second.resourceSets.data();
 			auto resourceSetCount = (uint32)pair.second.resourceSets.size();
+			auto pipelineUniform = uniformPair->second;
 
-			auto type = uniform->second.type;
-			if (isBufferType(type))
+			if (pipelineUniform.isBufferType)
 			{
 				for (uint32 i = 0; i < resourceSetCount; i++)
 				{
@@ -901,7 +930,7 @@ static void renderDescriptorSets(uint32& selectedItem, string& searchString,
 					}
 				}
 			}
-			else if (isSamplerType(type) || isImageType(type))
+			else if (pipelineUniform.isSamplerType | pipelineUniform.isImageType)
 			{
 				for (uint32 i = 0; i < resourceSetCount; i++)
 				{
@@ -938,7 +967,7 @@ static void renderDescriptorSets(uint32& selectedItem, string& searchString,
 					}
 				}
 			}
-			else if (type == GslUniformType::AccelerationStructure)
+			else if (pipelineUniform.type == GslUniformType::AccelerationStructure)
 			{
 				for (uint32 i = 0; i < resourceSetCount; i++)
 				{
@@ -1025,10 +1054,10 @@ static void renderPipelineDetails(const Pipeline& pipeline, ID<Pipeline> instanc
 		for (const auto& pair : uniforms)
 		{
 			auto uniform = pair.second;
-			auto readAccess = uniform.readAccess;
-			auto writeAccess = uniform.writeAccess;
-			auto isMutable = uniform.isMutable;
-			auto isNoncoherent = uniform.isNoncoherent;
+			auto readAccess = (bool)uniform.readAccess;
+			auto writeAccess = (bool)uniform.writeAccess;
+			auto isMutable = (bool)uniform.isMutable;
+			auto isNoncoherent = (bool)uniform.isNoncoherent;
 
 			ImGui::SeparatorText(pair.first.c_str());
 			ImGui::TextWrapped("Type: %s", toString(uniform.type).data());
@@ -1141,7 +1170,6 @@ static void renderGraphicsPipelines(uint32& selectedItem, string& searchString,
 	ImGui::TextWrapped("Runtime ID: %lu", (unsigned long)(selectedItem + 1));
 	ImGui::TextWrapped("Busy lock: %lu", (unsigned long)ResourceExt::getBusyLock(graphicsPipeline));
 	ImGui::TextWrapped("Framebuffer: %s", framebufferName.c_str());
-	ImGui::TextWrapped("Subpass index: %lu", (unsigned long)graphicsPipeline.getSubpassIndex());
 	auto instance = ID<Pipeline>(graphicsAPI->graphicsPipelinePool.getID(&graphicsPipeline));
 	renderPipelineDetails(graphicsPipeline, instance, openNextTab, selectedItem);
 	ImGui::Spacing();

@@ -170,8 +170,7 @@ public:
 		Storage                = 0x0020, /**< Image can be used as storage buffer in shaders. (Read and write) */
 		ColorAttachment        = 0x0040, /**< Image can be used as the framebuffer color attachment. */
 		DepthStencilAttachment = 0x0080, /**< Image can be used as the framebuffer depth or/and stencil attachment. */
-		InputAttachment        = 0x0100, /**< Image can be used as the framebuffer subpass input attachment. */
-		Fullscreen             = 0x0200, /**< Image will be the size of the window or larger. (Better optimization) */
+		Fullscreen             = 0x0100, /**< Image will be the size of the window or larger. (Better optimization) */
 	};
 
 	static constexpr uint8 usageCount = 8; /**< Image usage type count. */
@@ -248,7 +247,6 @@ public:
 	using Layers = vector<const void*>;
 	using Mips = vector<Layers>;
 private:
-	uint8 _alignment = 0;
 	Type type = {};
 	Format format = {};
 	bool swapchain = false;
@@ -257,6 +255,7 @@ private:
 	ID<ImageView> imageView = {};
 	u32x4 size = u32x4::zero;
 	vector<LayoutState> barrierStates;
+	uint32 aspectFlags = 0;
 
 	Image(Type type, Format format, Usage usage, Strategy strategy, u32x4 size, uint64 version);
 	Image(Usage usage, Strategy strategy, uint64 version) noexcept :
@@ -842,6 +841,8 @@ class ImageView final : public Resource
 	uint8 mipCount = 0;
 	Image::Type type = {};
 	Image::Format format = {};
+	uint32 apiFormat = 0;
+	uint32 aspectFlags = 0;
 	bool _default = false;
 
 	ImageView(bool isDefault, ID<Image> image, Image::Type type, Image::Format format,
@@ -858,37 +859,37 @@ public:
 	ImageView() noexcept = default;
 
 	/**
-	 * @brief Returns parent image.
+	 * @brief Returns parent image instance.
 	 * @details See the @ref Image.
 	 */
 	ID<Image> getImage() const noexcept { return image; }
 	/**
-	 * @brief Returns image base array layer.
+	 * @brief Returns image view base array layer.
 	 * @details See the @ref Image.
 	 */
 	uint32 getBaseLayer() const noexcept { return baseLayer; }
 	/**
-	 * @brief Returns image array layer count.
+	 * @brief Returns image view array layer count.
 	 * @details See the @ref Image.
 	 */
 	uint32 getLayerCount() const noexcept { return layerCount; }
 	/**
-	 * @brief Returns image base mipmap level.
+	 * @brief Returns image view base mipmap level.
 	 * @details See the @ref Image.
 	 */
 	uint8 getBaseMip() const noexcept { return baseMip; }
 	/**
-	 * @brief Returns image mipmap level count.
+	 * @brief Returns image view mipmap level count.
 	 * @details See the @ref Image.
 	 */
 	uint8 getMipCount() const noexcept { return mipCount; }
 	/**
-	 * @brief Returns image dimensionality type.
+	 * @brief Returns image view dimensionality type.
 	 * @details See the @ref Image.
 	 */
 	Image::Type getType() const noexcept { return type; }
 	/**
-	 * @brief Returns image data format.
+	 * @brief Returns image view data format.
 	 * @details See the @ref Image.
 	 */
 	Image::Format getFormat() const noexcept { return format; }
@@ -1249,7 +1250,6 @@ static string_view toString(Image::Usage imageUsage) noexcept
 	if (hasOneFlag(imageUsage, Image::Usage::Storage)) return "Storage";
 	if (hasOneFlag(imageUsage, Image::Usage::ColorAttachment)) return "ColorAttachment";
 	if (hasOneFlag(imageUsage, Image::Usage::DepthStencilAttachment)) return "DepthStencilAttachment";
-	if (hasOneFlag(imageUsage, Image::Usage::InputAttachment)) return "InputAttachment";
 	if (hasOneFlag(imageUsage, Image::Usage::Fullscreen)) return "Fullscreen";
 	return "None";
 }
@@ -1268,7 +1268,6 @@ static string toStringList(Image::Usage imageUsage) noexcept
 	if (hasAnyFlag(imageUsage, Image::Usage::Storage)) list += "Storage | ";
 	if (hasAnyFlag(imageUsage, Image::Usage::ColorAttachment)) list += "ColorAttachment | ";
 	if (hasAnyFlag(imageUsage, Image::Usage::DepthStencilAttachment)) list += "DepthStencilAttachment | ";
-	if (hasAnyFlag(imageUsage, Image::Usage::InputAttachment)) list += "InputAttachment | ";
 	if (hasAnyFlag(imageUsage, Image::Usage::Fullscreen)) list += "Fullscreen | ";
 	if (list.length() >= 3) list.resize(list.length() - 3);
 	else return "None";
@@ -1384,6 +1383,12 @@ public:
 	 * @param[in] image target image instance
 	 */
 	static vector<Image::LayoutState>& getBarrierStates(Image& image) noexcept { return image.barrierStates; }
+	/**
+	 * @brief Returns image aspect flags.
+	 * @warning In most cases you should use @ref Image functions.
+	 * @param[in] image target image instance
+	 */
+	static uint32& getAspectFlags(Image& image) noexcept { return image.aspectFlags; }
 
 	/**
 	 * @brief Creates a new image data.
@@ -1418,6 +1423,7 @@ public:
 		ImageExt::getFormat(destination) = ImageExt::getFormat(source);
 		ImageExt::getSize(destination) = ImageExt::getSize(source);
 		ImageExt::getBarrierStates(destination) = std::move(ImageExt::getBarrierStates(source));
+		ImageExt::getAspectFlags(destination) = std::move(ImageExt::getAspectFlags(source));
 		ResourceExt::getInstance(source) = nullptr;
 	}
 	/**
@@ -1436,19 +1442,19 @@ class ImageViewExt final
 {
 public:
 	/**
-	 * @brief Returns parent image.
+	 * @brief Returns parent image instance.
 	 * @warning In most cases you should use @ref ImageView functions.
 	 * @param[in] imageView target image view instance
 	 */
 	static ID<Image>& getImage(ImageView& imageView) noexcept { return imageView.image; }
 	/**
-	 * @brief Returns image base array layer.
+	 * @brief Returns image view base array layer.
 	 * @warning In most cases you should use @ref ImageView functions.
 	 * @param[in] imageView target image view instance
 	 */
 	static uint32& getBaseLayer(ImageView& imageView) noexcept { return imageView.baseLayer; }
 	/**
-	 * @brief Returns image array layer count.
+	 * @brief Returns image view array layer count.
 	 * @warning In most cases you should use @ref ImageView functions.
 	 * @param[in] imageView target image view instance
 	 */
@@ -1460,23 +1466,35 @@ public:
 	 */
 	static uint8& getBaseMip(ImageView& imageView) noexcept { return imageView.baseMip; }
 	/**
-	 * @brief Returns image mipmap level count.
+	 * @brief Returns image view mipmap level count.
 	 * @warning In most cases you should use @ref ImageView functions.
 	 * @param[in] imageView target image view instance
 	 */
 	static uint8& getMipCount(ImageView& imageView) noexcept { return imageView.mipCount; }
 	/**
-	 * @brief Returns image dimensionality type.
+	 * @brief Returns image view dimensionality type.
 	 * @warning In most cases you should use @ref ImageView functions.
 	 * @param[in] imageView target image view instance
 	 */
 	static Image::Type& getType(ImageView& imageView) noexcept { return imageView.type; }
 	/**
-	 * @brief Returns image data format.
+	 * @brief Returns image view data format.
 	 * @warning In most cases you should use @ref ImageView functions.
 	 * @param[in] imageView target image view instance
 	 */
 	static Image::Format& getFormat(ImageView& imageView) noexcept { return imageView.format; }
+	/**
+	 * @brief Returns image view graphics API format.
+	 * @warning In most cases you should use @ref ImageView functions.
+	 * @param[in] imageView target image view instance
+	 */
+	static uint32& getApiFormat(ImageView& image) noexcept { return image.apiFormat; }
+	/**
+	 * @brief Returns image view aspect flags.
+	 * @warning In most cases you should use @ref ImageView functions.
+	 * @param[in] imageView target image view instance
+	 */
+	static uint32& getAspectFlags(ImageView& image) noexcept { return image.aspectFlags; }
 	/**
 	 * @brief Is image view default.
 	 * @warning In most cases you should use @ref ImageView functions.

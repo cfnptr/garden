@@ -36,8 +36,8 @@ class PipelineExt;
 class Pipeline : public Resource
 {
 public:
-	/*******************************************************************************************************************
-	 * @brief Uniform variable description.
+	/**
+	 * @brief Shader uniform variable description.
 	 * 
 	 * @details
 	 * Uniform is a type of variable used in shader programs to represent data that remains constant for an entire 
@@ -50,17 +50,27 @@ public:
 	struct Uniform final
 	{
 		PipelineStage pipelineStages = {}; /**< Pipeline stages where uniform is used. */
-		GslUniformType type = {};          /**< Uniform variable type. */
+		GslUniformType type = {};          /**< Shader uniform variable type. */
 		uint8 bindingIndex = 0;            /**< Binding index inside the descriptor set. */
 		uint8 descriptorSetIndex = 0;      /**< Index of the descriptor set. */
 		uint8 arraySize = 0;               /**< Number of descriptors contained in the binding. */
-		bool readAccess = true;            /**< Is variable read access allowed. */
-		bool writeAccess = true;           /**< Is variable write access allowed. */
-		bool isMutable = false;            /**< Is uniform resource can be assigned dynamically. */
-		bool isNoncoherent = false;        /**< Does shaders access different memory parts. */
+		uint32 readAccess : 1;             /**< Is shader variable read access allowed. */
+		uint32 writeAccess : 1;            /**< Is shader variable write access allowed. */
+		uint32 isMutable : 1;              /**< Is uniform resource can be assigned dynamically. */
+		uint32 isNoncoherent : 1;          /**< Does shaders access different memory parts. */
+		uint32 isSamplerType : 1;          /**< Does shader variable have sampler type. */
+		uint32 isImageType : 1;            /**< Does shader variable have image type. */
+		uint32 isBufferType : 1;           /**< Does shader variable have buffer type. */
+		uint32 _reserved : 25;             /**< [reserved for future use] */
+		
+		/**
+		 * @brief Creates a new pipeline uniform.
+		 */
+		constexpr Uniform() noexcept : readAccess(true), writeAccess(true), isMutable(false), isNoncoherent(false), 
+			isSamplerType(false), isImageType(false), isBufferType(false), _reserved(0) { }
 	};
 
-	/*******************************************************************************************************************
+	/**
 	 * @brief Specialization constant variable description.
 	 * 
 	 * @details
@@ -129,6 +139,7 @@ public:
 		uint8 variantCount = 0;
 	};
 protected:
+	uint32 maxBindlessCount = 0;
 	Uniforms uniforms;
 	vector<void*> samplers;
 	vector<void*> descriptorSetLayouts;
@@ -136,12 +147,12 @@ protected:
 	fs::path pipelinePath;
 	void* pipelineLayout = nullptr; 
 	uint64 pipelineVersion = 0;
-	uint32 maxBindlessCount = 0;
 	uint32 pushConstantsMask = 0;
 	uint16 pushConstantsSize = 0;
 	PipelineType type = {};
 	uint8 variantCount = 0;
 	bool asyncRecording = false;
+
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	Pipeline::SpecConstValues specConstValues;
 	#endif

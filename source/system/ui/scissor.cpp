@@ -111,10 +111,10 @@ int4 UiScissorSystem::calcScissor(ID<Entity> entity) const noexcept
 	auto inputSystem = InputSystem::Instance::get();
 	auto uiTransformSystem = UiTransformSystem::Instance::get();
 	auto windowScale = inputSystem->getWindowScale();
-	auto framebufferSize = inputSystem->getFramebufferSize();
+	auto frameSize = (int2)inputSystem->getFramebufferSize();
 	auto uiHalfSize = uiTransformSystem->getUiSize() * 0.5f;
 	auto uiScale = 1.0f / uiTransformSystem->uiScale;
-	auto scissor = int4(int2::zero, framebufferSize);
+	auto scissor = int4(int2::zero, frameSize);
 
 	auto uiScissorView = manager->tryGet<UiScissorComponent>(entity);
 	if (uiScissorView && uiScissorView->useItsels)
@@ -139,5 +139,5 @@ int4 UiScissorSystem::calcScissor(ID<Entity> entity) const noexcept
 	}
 
 	scissor.z = scissor.z - scissor.x; scissor.w = scissor.w - scissor.y;
-	return clamp(scissor, int4::zero, int4(framebufferSize, framebufferSize));
+	return clamp(scissor, int4::zero, int4(frameSize, frameSize));
 }

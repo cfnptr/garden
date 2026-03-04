@@ -126,7 +126,7 @@ static void createVkBuffer(Buffer::Usage usage, Buffer::CpuAccess cpuAccess, Buf
 	if (cpuAccess != Buffer::CpuAccess::None)
 		allocationCreateInfo.flags |= VMA_ALLOCATION_CREATE_MAPPED_BIT;
 
-	// TODO: suport for systems without proper BAR memory. VMA_ALLOCATION_CREATE_HOST_ACCESS_ALLOW_TRANSFER_INSTEAD_BIT
+	// TODO: support for systems without proper BAR memory. VMA_ALLOCATION_CREATE_HOST_ACCESS_ALLOW_TRANSFER_INSTEAD_BIT
 
 	VkBuffer vmaInstance; VmaAllocation vmaAllocation;
 	auto result = vmaCreateBuffer(vulkanAPI->memoryAllocator,

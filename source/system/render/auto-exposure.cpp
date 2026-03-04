@@ -157,7 +157,7 @@ void AutoExposureSystem::render()
 	}
 
 	auto inputSystem = InputSystem::Instance::get();
-	auto framebufferSize = graphicsSystem->getScaledFrameSize();
+	auto frameSize = graphicsSystem->getScaledFrameSize();
 	auto logLumRange = maxLogLum - minLogLum;
 	auto deltaTime = (float)inputSystem->getDeltaTime();
 
@@ -175,13 +175,13 @@ void AutoExposureSystem::render()
 			histogramPipelineView->bind();
 			histogramPipelineView->bindDescriptorSet(histogramDS);
 			histogramPipelineView->pushConstants(&pc);
-			histogramPipelineView->dispatch(framebufferSize);
+			histogramPipelineView->dispatch(frameSize);
 		}
 		{
 			AveragePC pc;
 			pc.minLogLum = minLogLum;
 			pc.logLumRange = logLumRange;
-			pc.pixelCount = (float)framebufferSize.x * framebufferSize.y;
+			pc.pixelCount = (float)frameSize.x * frameSize.y;
 			pc.darkAdaptRate = calcTimeCoeff(darkAdaptRate, deltaTime);
 			pc.brightAdaptRate = calcTimeCoeff(brightAdaptRate, deltaTime);
 
