@@ -128,7 +128,6 @@ static ID<Framebuffer> createLutFramebuffer(GraphicsSystem* graphicsSystem, ID<I
 	SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.atmosphere." + string(debugName));
 	return framebuffer;
 }
-
 static void createSkyboxFramebuffers(GraphicsSystem* graphicsSystem, ID<Framebuffer>* framebuffers)
 {
 	for (uint8 i = 0; i < Image::cubemapFaceCount; i++)

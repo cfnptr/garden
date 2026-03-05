@@ -292,8 +292,14 @@ public:
 		/**
 		 * @brief Creates a new graphics pipeline state.
 		 */
-		constexpr State() noexcept : depthTesting(0), depthWriting(0), depthClamping(0), 
-			depthBiasing(0), depthBounding(0), stencilTesting(0), discarding(0), _reserved0(0) { }
+		constexpr State() noexcept : depthTesting(false), depthWriting(false), depthClamping(false), 
+			depthBiasing(false), depthBounding(false), stencilTesting(false), discarding(false), _reserved0(0) { }
+
+		/**
+		 * @brief Sets front and back facing polygons stencil state.
+		 * @param state target stencil state to set
+		 */
+		void setStencilState(StencilState state) noexcept { frontFaceStencil = backFaceStencil = state; }
 	};
 
 	using PipelineStates = tsl::robin_map<uint8, State>;

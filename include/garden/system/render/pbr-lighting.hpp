@@ -168,7 +168,6 @@ private:
 	void init();
 	void deinit();
 	void preHdrRender();
-	void dsHdrRender();
 	void gBufferRecreate();
 	void qualityChange();
 
@@ -475,20 +474,43 @@ public:
 	 */
 	void markAnyShadow() noexcept { anyShad = true; }
 	/**
-	 * @brief Marks that there is rendered AO data on the current frame.
+	 * @brief Returns if there is rendered shadow data on the current frame.
+	 * @details See the @ref Options::useShadBuffer.
+	 */
+	bool hasAnyShadow() const noexcept { return anyShad; }
+
+	/**
+	 * @brief Marks that there is rendered ambient occlusion data on the current frame.
 	 * @details See the @ref Options::useAoBuffer.
 	 */
 	void markAnyAO() noexcept { anyAO = true; }
+	/**
+	 * @brief Returns if there is rendered ambient occlusion data on the current frame.
+	 * @details See the @ref Options::useAoBuffer.
+	 */
+	bool hasAnyAO() const noexcept { return anyAO; }
+
 	/**
 	 * @brief Marks that there is rendered reflection data on the current frame.
 	 * @details See the @ref Options::useReflBuffer.
 	 */
 	void markAnyReflection() noexcept { anyRefl = true; }
 	/**
+	 * @brief Returns if there is rendered reflection data on the current frame.
+	 * @details See the @ref Options::useReflBuffer.
+	 */
+	bool hasAnyReflection() const noexcept { return anyRefl; }
+
+	/**
 	 * @brief Marks that there is rendered global illumination data on the current frame.
 	 * @details See the @ref Options::useGiBuffer.
 	 */
 	void markAnyGI() noexcept { anyGI = true; }
+	/**
+	 * @brief Returns if there is rendered global illumination data on the current frame.
+	 * @details See the @ref Options::useGiBuffer.
+	 */
+	bool hasAnyGI() const noexcept { return anyGI; }
 };
 
 } // namespace garden

@@ -55,9 +55,9 @@ void PhysicsDebugRenderer::drawLines(const f32x4x4& viewProj)
 	if (lines.empty())
 		return;
 
-	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	if (!linePipeline)
 	{
+		auto deferredSystem = DeferredRenderSystem::Instance::get();
 		ResourceSystem::GraphicsOptions options;
 		linePipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline(
 			"editor/physics/lines", deferredSystem->getDepthStencilLdrFB(), options);
@@ -83,9 +83,9 @@ void PhysicsDebugRenderer::drawTriangles(const f32x4x4& viewProj)
 	if (triangles.empty())
 		return;
 
-	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	if (!trianglePipeline)
 	{
+		auto deferredSystem = DeferredRenderSystem::Instance::get();
 		ResourceSystem::GraphicsOptions options;
 		trianglePipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline(
 			"editor/physics/triangles", deferredSystem->getDepthStencilLdrFB(), options);

@@ -73,8 +73,7 @@ void BlurRenderSystem::preDsLdrRender()
 	auto gpuProcessSystem = GpuProcessSystem::Instance::get();
 	auto frameSize = graphicsSystem->getScaledFrameSize();
 	auto kernelBuffer = gpuProcessSystem->getGgxBlurKernel();
-	auto ldrBuffer = deferredSystem->getLdrBuffer();
-	auto ldrBufferView = graphicsSystem->get(ldrBuffer)->getView();
+	auto ldrBufferView = deferredSystem->getLdrImageView();
 
 	if (!ldrGgxFramebuffers[0])
 	{
@@ -108,10 +107,9 @@ void BlurRenderSystem::gBufferRecreate()
 	if (ldrGgxFramebuffers[0])
 	{
 		auto deferredSystem = DeferredRenderSystem::Instance::get();
-		auto ldrBuffer = deferredSystem->getLdrBuffer();
 		auto frameSize = graphicsSystem->getScaledFrameSize();
 		auto framebufferView = graphicsSystem->get(ldrGgxFramebuffers[0]);
-		framebufferView->update(frameSize, graphicsSystem->get(ldrBuffer)->getView());
+		framebufferView->update(frameSize, deferredSystem->getLdrImageView());
 
 		framebufferView = graphicsSystem->get(ldrGgxFramebuffers[1]);
 		framebufferView->update(frameSize, getLdrGgxView());

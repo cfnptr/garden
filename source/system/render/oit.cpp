@@ -19,16 +19,14 @@
 
 using namespace garden;
 
-static ID<GraphicsPipeline> createPipeline()
+static ID<GraphicsPipeline> createPipeline(DeferredRenderSystem* deferredSystem)
 {
-	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	ResourceSystem::GraphicsOptions options;
 	return ResourceSystem::Instance::get()->loadGraphicsPipeline(
 		"oit", deferredSystem->getUpscaleHdrFB(), options);
 }
-static DescriptorSet::Uniforms getUniforms(GraphicsSystem* graphicsSystem)
+static DescriptorSet::Uniforms getUniforms(GraphicsSystem* graphicsSystem, DeferredRenderSystem* deferredSystem)
 {
-	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	auto accumBufferView = deferredSystem->getOitAccumIV();
 	auto revealBufferView = deferredSystem->getOitRevealIV();
 
@@ -93,7 +91,7 @@ void OitRenderSystem::preLdrRender()
 		return;
 
 	if (!pipeline)
-		pipeline = createPipeline();
+		pipeline = createPipeline(deferredSystem);
 
 	auto pipelineView = graphicsSystem->get(pipeline);
 	if (!pipelineView->isReady())
@@ -101,7 +99,7 @@ void OitRenderSystem::preLdrRender()
 
 	if (!descriptorSet)
 	{
-		auto uniforms = getUniforms(graphicsSystem);
+		auto uniforms = getUniforms(graphicsSystem, deferredSystem);
 		descriptorSet = graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms));
 		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.oit");
 	}
@@ -131,6 +129,6 @@ void OitRenderSystem::gBufferRecreate()
 ID<GraphicsPipeline> OitRenderSystem::getPipeline()
 {
 	if (!pipeline)
-		pipeline = createPipeline();
+		pipeline = createPipeline(DeferredRenderSystem::Instance::get());
 	return pipeline;
 }

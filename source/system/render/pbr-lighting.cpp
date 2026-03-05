@@ -536,7 +536,6 @@ void PbrLightingSystem::init()
 {
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("PreHdrRender", PbrLightingSystem::preHdrRender);
-	ECSM_SUBSCRIBE_TO_EVENT("DsHdrRender", PbrLightingSystem::dsHdrRender);
 	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", PbrLightingSystem::gBufferRecreate);
 	ECSM_SUBSCRIBE_TO_EVENT("QualityChange", PbrLightingSystem::qualityChange);
 
@@ -598,7 +597,6 @@ void PbrLightingSystem::deinit()
 
 		auto manager = Manager::Instance::get();
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PreHdrRender", PbrLightingSystem::preHdrRender);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("DsHdrRender", PbrLightingSystem::dsHdrRender);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("GBufferRecreate", PbrLightingSystem::gBufferRecreate);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("QualityChange", PbrLightingSystem::qualityChange);
 	}
@@ -623,7 +621,8 @@ void PbrLightingSystem::preHdrRender()
 		SET_RESOURCE_DEBUG_NAME(pbrLightingDS, "descriptorSet.pbrLighting.evaluate");
 	}
 
-	auto pbrLightingView = Manager::Instance::get()->tryGet<PbrLightingComponent>(graphicsSystem->camera);
+	auto manager = Manager::Instance::get();
+	auto pbrLightingView = manager->tryGet<PbrLightingComponent>(graphicsSystem->camera);
 	if (!pbrLightingView)
 		return;
 
@@ -663,6 +662,16 @@ void PbrLightingSystem::preHdrRender()
 		SET_RESOURCE_DEBUG_NAME(pbrLightingView->specular, 
 			"image.pbrLighting.specular" + to_string(*pbrLightingView->specular));
 	}
+
+	if (pbrLightingView->mode == PbrCubemapMode::Static)
+	{
+		auto cubemapView = graphicsSystem->get(pbrLightingView->skybox);
+		auto shDiffuseView = graphicsSystem->get(pbrLightingView->shDiffuse);
+		auto specularView = graphicsSystem->get(pbrLightingView->specular);
+		if (!cubemapView->isReady() || !shDiffuseView->isReady() || !specularView->isReady())
+			return;
+	}
+
 	if (!pbrLightingView->descriptorSet)
 	{
 		auto descriptorSet = createDescriptorSet(graphicsSystem->camera, ID<GraphicsPipeline>());
@@ -673,16 +682,6 @@ void PbrLightingSystem::preHdrRender()
 		}
 	}
 
-	if (pbrLightingView->mode == PbrCubemapMode::Static)
-	{
-		auto cubemapView = graphicsSystem->get(pbrLightingView->skybox);
-		auto shDiffuseView = graphicsSystem->get(pbrLightingView->shDiffuse);
-		auto specularView = graphicsSystem->get(pbrLightingView->specular);
-		if (!cubemapView->isReady() || !shDiffuseView->isReady() || !specularView->isReady())
-			return;
-	}
-	
-	auto manager = Manager::Instance::get();
 	if (options.useShadBuffer)
 	{
 		SET_CPU_ZONE_SCOPED("Pre Shadows Render");
@@ -806,8 +805,7 @@ void PbrLightingSystem::preHdrRender()
 			event->run();
 		}
 
-		if (anyGI)
-			anyGI = false;
+		if (anyGI) anyGI = false;
 		else
 		{
 			auto& cc = graphicsSystem->getCommonConstants();
@@ -907,11 +905,6 @@ void PbrLightingSystem::preHdrRender()
 		pipelineView->drawFullscreen();
 	}
 	graphicsSystem->stopRecording();
-}
-
-//**********************************************************************************************************************
-void PbrLightingSystem::dsHdrRender()
-{
 }
 
 //**********************************************************************************************************************

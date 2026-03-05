@@ -51,7 +51,7 @@ static ID<Image> createCloudsCamViewDepth(GraphicsSystem* graphicsSystem)
 {
 	auto frameSize = max(graphicsSystem->getScaledFrameSize() / 2, uint2::one);
 	auto image = graphicsSystem->createImage(CloudsRenderSystem::cloudsDepthFormat, Image::Usage::Sampled | 
-		Image::Usage::ColorAttachment, { { nullptr } }, frameSize, Image::Strategy::Size);
+		Image::Usage::ColorAttachment, { { nullptr, nullptr } }, frameSize, Image::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(image, "image.clouds.camViewDepth");
 	return image;
 }
@@ -64,8 +64,10 @@ static ID<Framebuffer> createCamViewFramebuffer(GraphicsSystem* graphicsSystem,
 
 	vector<Framebuffer::Attachment> colorAttachments =
 	{
-		Framebuffer::Attachment(camViewView->getView(0, 0), Framebuffer::LoadOp::DontCare, Framebuffer::StoreOp::Store),
-		Framebuffer::Attachment(viewDepthView->getView(), Framebuffer::LoadOp::DontCare, Framebuffer::StoreOp::Store),
+		Framebuffer::Attachment(camViewView->getView(0, 0), 
+			Framebuffer::LoadOp::DontCare, Framebuffer::StoreOp::Store),
+		Framebuffer::Attachment(viewDepthView->getView(0, 0), 
+			Framebuffer::LoadOp::DontCare, Framebuffer::StoreOp::Store),
 	};
 
 	auto framebuffer = graphicsSystem->createFramebuffer(
@@ -76,9 +78,10 @@ static ID<Framebuffer> createCamViewFramebuffer(GraphicsSystem* graphicsSystem,
 static void updateCamViewFramebuffer(GraphicsSystem* graphicsSystem, ID<Image> cloudsCamView, 
 	ID<Image> cloudsCamViewDepth, View<Framebuffer> framebufferView)
 {
+	auto inFlightIndex = graphicsSystem->getInFlightIndex();
 	auto camView = graphicsSystem->get(cloudsCamView);
-	auto camViewView = camView->getView(graphicsSystem->getInFlightIndex(), 0);
-	auto viewDepthView = graphicsSystem->get(cloudsCamViewDepth)->getView();
+	auto camViewView = camView->getView(inFlightIndex, 0);
+	auto viewDepthView = graphicsSystem->get(cloudsCamViewDepth)->getView(inFlightIndex, 0);
 	ID<ImageView> colorImageViews[2] = { camViewView, viewDepthView };
 	framebufferView->update((uint2)camView->getSize(), colorImageViews, 2);
 }
@@ -193,8 +196,9 @@ static ID<GraphicsPipeline> createShadowPipeline()
 }
 
 //**********************************************************************************************************************
-static DescriptorSet::Uniforms getCamViewUniforms(GraphicsSystem* graphicsSystem, ID<Image> dataFields, 
-	ID<Image> vertProfile, ID<Image> noiseShape, ID<Image> cirrusShape, ID<Image> cloudsCamView)
+static DescriptorSet::Uniforms getCamViewUniforms(GraphicsSystem* graphicsSystem, 
+	ID<Image> dataFields, ID<Image> vertProfile, ID<Image> noiseShape, 
+	ID<Image> cirrusShape, ID<Image> cloudsCamView,  ID<Image> cloudsCamViewDepth)
 {
 	auto atmosphereSystem = AtmosphereRenderSystem::Instance::get();
 	auto hizBufferView = HizRenderSystem::Instance::get()->getView(2);
@@ -206,14 +210,17 @@ static DescriptorSet::Uniforms getCamViewUniforms(GraphicsSystem* graphicsSystem
 	auto noiseShapeView = graphicsSystem->get(noiseShape)->getView();
 	auto cirrusShapeView = graphicsSystem->get(cirrusShape)->getView();
 	auto camViewView = graphicsSystem->get(cloudsCamView);
+	auto camViewDepthView = graphicsSystem->get(cloudsCamViewDepth);
 	auto inFlightCount = graphicsSystem->getInFlightCount();
 	GARDEN_ASSERT(inFlightCount == 2); // Tuned for a 2 views.
 
 	DescriptorSet::ImageViews camViews = { { camViewView->getView(1, 0) }, { camViewView->getView(0, 0) } };
+	DescriptorSet::ImageViews camDepths = { { camViewDepthView->getView(1, 0) }, { camViewDepthView->getView(0, 0) } };
 
 	DescriptorSet::Uniforms uniforms =
 	{ 
 		{ "camView", DescriptorSet::Uniform(camViews) },
+		{ "camViewDepth", DescriptorSet::Uniform(camDepths) },
 		{ "hizBuffer", DescriptorSet::Uniform(hizBufferView, 1, inFlightCount) },
 		{ "disocclMap", DescriptorSet::Uniform(disocclMapView, 1, inFlightCount) },
 		{ "transLUT", DescriptorSet::Uniform(transLutView, 1, inFlightCount) },
@@ -255,14 +262,16 @@ static DescriptorSet::Uniforms getViewBlendUniforms(GraphicsSystem* graphicsSyst
 {
 	auto depthBufferView = DeferredRenderSystem::Instance::get()->getDepthOnlyIV();
 	auto camViewView = graphicsSystem->get(cloudsCamView);
-	auto camViewDepthView = graphicsSystem->get(cloudsCamViewDepth)->getView();
+	auto camViewDepthView = graphicsSystem->get(cloudsCamViewDepth);
+
 	DescriptorSet::ImageViews camViews = { { camViewView->getView(0, 0) }, { camViewView->getView(1, 0) } };
+	DescriptorSet::ImageViews camDepths = { { camViewDepthView->getView(1, 0) }, { camViewDepthView->getView(0, 0) } };
 
 	DescriptorSet::Uniforms uniforms =
 	{
 		{ "depthBuffer", DescriptorSet::Uniform(depthBufferView, 1, 2) },
 		{ "cloudsBuffer", DescriptorSet::Uniform(camViews) },
-		{ "cloudsDepth", DescriptorSet::Uniform(camViewDepthView, 1, 2) }
+		{ "cloudsDepth", DescriptorSet::Uniform(camDepths) }
 	};
 	return uniforms;
 }
@@ -412,8 +421,8 @@ void CloudsRenderSystem::preDeferredRender()
 
 	if (!camViewDS)
 	{
-		auto uniforms = getCamViewUniforms(graphicsSystem, ID<Image>(dataFields), 
-			ID<Image>(vertProfile), ID<Image>(noiseShape), ID<Image>(cirrusShape), cloudsCamView);
+		auto uniforms = getCamViewUniforms(graphicsSystem, ID<Image>(dataFields), ID<Image>(vertProfile), 
+			ID<Image>(noiseShape), ID<Image>(cirrusShape), cloudsCamView, cloudsCamViewDepth);
 		camViewDS = graphicsSystem->createDescriptorSet(camViewPipeline, std::move(uniforms));
 		SET_RESOURCE_DEBUG_NAME(camViewDS, "descriptorSet.clouds.camView");
 	}

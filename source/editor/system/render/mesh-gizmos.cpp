@@ -97,8 +97,7 @@ void MeshGizmosEditorSystem::init()
 	ID<Framebuffer> framebuffer;
 	if (DeferredRenderSystem::Instance::has())
 		framebuffer = DeferredRenderSystem::Instance::get()->getDepthStencilLdrFB();
-	else
-		framebuffer = ForwardRenderSystem::Instance::get()->getFullFramebuffer();
+	else framebuffer = ForwardRenderSystem::Instance::get()->getFullFramebuffer();
 
 	ResourceSystem::GraphicsOptions options;
 	frontGizmosPipeline = resourceSystem->loadGraphicsPipeline("editor/gizmos-front", framebuffer, options);
@@ -228,7 +227,7 @@ void MeshGizmosEditorSystem::render()
 		dragMode = 0;
 	
 	auto manager = Manager::Instance::get();
-	auto uiTranformSystem = UiTriggerSystem::Instance::tryGet();
+	auto uiTransformSystem = UiTriggerSystem::Instance::tryGet();
 	auto transformView = manager->tryGet<TransformComponent>(selectedEntity);
 	auto frontPipelineView = graphicsSystem->get(frontGizmosPipeline);
 	auto backPipelineView = graphicsSystem->get(backGizmosPipeline);
@@ -277,7 +276,7 @@ void MeshGizmosEditorSystem::render()
 	// TODO: scale and rotation gizmos.
 	
 	if (!ImGui::GetIO().WantCaptureMouse && inputSystem->getCursorMode() == CursorMode::Normal &&
-		(!uiTranformSystem || (uiTranformSystem && !uiTranformSystem->getHovered())))
+		(!uiTransformSystem || (uiTransformSystem && !uiTransformSystem->getHovered())))
 	{
 		auto gizmosMeshData = gizmosMeshes.data();
 		auto ndcPosition = ((cursorPosition + 0.5f) / windowSize) * 2.0f - 1.0f;

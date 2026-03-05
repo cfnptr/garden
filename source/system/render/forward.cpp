@@ -263,8 +263,7 @@ void ForwardRenderSystem::render()
 
 			if (uiBufferFormat == swapchainImageView->getFormat())
 				Image::copy(_uiBuffer, swapchainImageView->getImage());
-			else
-				Image::blit(_uiBuffer, swapchainImageView->getImage(), Sampler::Filter::Nearest);
+			else Image::blit(_uiBuffer, swapchainImageView->getImage(), Sampler::Filter::Nearest);
 		}
 	}
 	graphicsSystem->stopRecording();

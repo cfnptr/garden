@@ -767,11 +767,17 @@ void DeferredRenderSystem::render()
 	if (event->hasSubscribers())
 	{
 		SET_CPU_ZONE_SCOPED("LDR Render Pass");
+
+		auto framebuffer = getLdrFramebuffer();
+		auto framebufferView = graphicsSystem->get(framebuffer);
+		framebufferView->updateColor(0, anyLDR ? Framebuffer::LoadOp::Load : 
+			Framebuffer::LoadOp::DontCare, Framebuffer::StoreOp::Store);
+
 		graphicsSystem->startRecording(CommandBufferType::Frame);
 		{
 			SET_GPU_DEBUG_LABEL("LDR Pass");
 			{
-				RenderPass renderPass(getLdrFramebuffer(), float4::zero);
+				RenderPass renderPass(framebuffer, float4::zero);
 				event->run();
 			}
 		}
@@ -812,8 +818,7 @@ void DeferredRenderSystem::render()
 		auto _uiBuffer = getUiBuffer();
 		if (!gBuffers.empty() && _uiBuffer == gBuffers[0])
 			Image::copy(ldrBuffer, _uiBuffer);
-		else
-			Image::blit(ldrBuffer, _uiBuffer, Sampler::Filter::Linear);
+		else Image::blit(ldrBuffer, _uiBuffer, Sampler::Filter::Linear);
 	}
 	graphicsSystem->stopRecording();
 
@@ -849,12 +854,11 @@ void DeferredRenderSystem::render()
 		SET_GPU_DEBUG_LABEL("Copy UI to Swapchain");
 		if (uiBufferFormat == swapchainImageView->getFormat())
 			Image::copy(uiBuffer, swapchainImageView->getImage());
-		else
-			Image::blit(uiBuffer, swapchainImageView->getImage(), Sampler::Filter::Nearest);
+		else Image::blit(uiBuffer, swapchainImageView->getImage(), Sampler::Filter::Nearest);
 	}
 	graphicsSystem->stopRecording();
 
-	anyDisoccl = anyRefr = anyOIT = anyTransDepth = false;
+	anyDisoccl = anyRefr = anyOIT = anyTransDepth = anyLDR = false;
 }
 
 //**********************************************************************************************************************
