@@ -37,7 +37,6 @@ static void validateAttachments(uint2 size, const Framebuffer::Attachment* color
 	// TODO: add checks if attachments do not overlaps and repeat.
 	// TODO: we can use attachments with different sizes, but should we?
 
-	#if GARDEN_DEBUG
 	auto graphicsAPI = GraphicsAPI::get();
 	for	(uint32 i = 0; i < colorAttachmentCount; i++)
 	{
@@ -70,7 +69,6 @@ static void validateAttachments(uint2 size, const Framebuffer::Attachment* color
 			"Missing framebuffer [" + debugName + "] depth/stencil attachment "
 			"image view [" + imageView->getDebugName() + "] flag");
 	}
-	#endif
 }
 
 static uint32 getDepthStencilLayout(Framebuffer::Attachment depthStencilAttachment) noexcept
@@ -105,7 +103,9 @@ static uint32 getDepthStencilLayout(Framebuffer::Attachment depthStencilAttachme
 
 Framebuffer::Framebuffer(uint2 size, vector<Attachment>&& colorAttachments, Attachment depthStencilAttachment)
 {
+	#if GARDEN_DEBUG
 	validateAttachments(size, colorAttachments.data(), colorAttachments.size(), depthStencilAttachment, debugName);
+	#endif
 
 	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
 	{
@@ -128,7 +128,10 @@ void Framebuffer::update(uint2 size, const Attachment* colorAttachments,
 	GARDEN_ASSERT_MSG(areAllTrue(size > uint2::zero), "Assert " + debugName);
 	GARDEN_ASSERT_MSG(colorAttachmentCount > 0 || depthStencilAttachment.imageView, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(!GraphicsAPI::get()->currentFramebuffer, "Assert " + debugName);
+
+	#if GARDEN_DEBUG
 	validateAttachments(size, colorAttachments, colorAttachmentCount, depthStencilAttachment, debugName);
+	#endif
 
 	if (this->colorAttachments.size() != colorAttachmentCount)
 		this->colorAttachments.resize(colorAttachmentCount);
@@ -148,7 +151,10 @@ void Framebuffer::update(uint2 size, vector<Attachment>&& colorAttachments, Atta
 	GARDEN_ASSERT_MSG(areAllTrue(size > uint2::zero), "Assert " + debugName);
 	GARDEN_ASSERT_MSG(!colorAttachments.empty() || depthStencilAttachment.imageView, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(!GraphicsAPI::get()->currentFramebuffer, "Assert " + debugName);
+
+	#if GARDEN_DEBUG
 	validateAttachments(size, colorAttachments.data(), colorAttachments.size(), depthStencilAttachment, debugName);
+	#endif
 
 	this->colorAttachments = std::move(colorAttachments);
 	this->depthStencilAttachment = depthStencilAttachment;
@@ -164,7 +170,6 @@ void Framebuffer::update(uint2 size, const ID<ImageView>* colorImageViews,
 	GARDEN_ASSERT_MSG(colorImageViewCount > 0 || depthStencilIV, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(colorImageViewCount == colorAttachments.size(), "Assert " + debugName);
 	GARDEN_ASSERT_MSG(!graphicsAPI->currentFramebuffer, "Assert " + debugName);
-	validateAttachments(size, colorAttachments.data(), colorAttachments.size(), depthStencilAttachment, debugName);
 
 	auto colorAttachmentData = colorAttachments.data();
 	for (uint32 i = 0; i < colorImageViewCount; i++)
@@ -186,6 +191,10 @@ void Framebuffer::update(uint2 size, const ID<ImageView>* colorImageViews,
 	this->size = size;
 	depthStencilAttachment.imageView = depthStencilIV;
 	depthStencilLayout = getDepthStencilLayout(depthStencilAttachment);
+
+	#if GARDEN_DEBUG
+	validateAttachments(size, colorAttachmentData, colorImageViewCount, depthStencilAttachment, debugName);
+	#endif
 }
 
 void Framebuffer::updateColor(uint32 index, const Attachment& colorAttachment)

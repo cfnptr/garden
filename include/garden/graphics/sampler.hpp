@@ -127,7 +127,7 @@ public:
 		/**
 		 * @brief Creates a new default sampler state.
 		 */
-		constexpr State() noexcept : anisoFiltering(0), comparison(0), unnormCoords(0), _reserved0(0) { }
+		constexpr State() noexcept : anisoFiltering(false), comparison(false), unnormCoords(false), _reserved0(0) { }
 		
 		/**
 		 * @brief Sets sampler minification, magnification and mipmap filter type.

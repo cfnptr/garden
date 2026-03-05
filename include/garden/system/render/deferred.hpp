@@ -120,7 +120,7 @@ private:
 	vector<ID<DescriptorSet>> hdrCopyBlurDSes;
 	Options options = {};
 	bool anyDisoccl = false, anyRefr = false, anyOIT = false;
-	bool anyTransDepth = false;
+	bool anyTransDepth = false, anyLDR = false;
 
 	/**
 	 * @brief Creates a new deferred rendering system instance.
@@ -191,6 +191,15 @@ public:
 	 * @brief Returns if there is rendered translucent depth data on the current frame.
 	 */
 	bool hasAnyTransDepth() const noexcept { return anyTransDepth; }
+
+	/**
+	 * @brief Marks that there is rendered LDR data on the current frame.
+	 */
+	void markAnyLDR() noexcept { anyLDR = true; }
+	/**
+	 * @brief Returns if there is rendered LDR data on the current frame.
+	 */
+	bool hasAnyLDR() const noexcept { return anyLDR; }
 
 	/**
 	 * @brief Returns deferred camera velocity graphics pipeline.

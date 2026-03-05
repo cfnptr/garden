@@ -28,13 +28,11 @@ static ID<ImageView> getLdrCopyView(GraphicsSystem* graphicsSystem, DeferredRend
 	GARDEN_ASSERT(graphicsSystem->get(gBuffer)->getFormat() == DeferredRenderSystem::ldrBufferFormat);
 	return imageView;
 }
-static ID<Framebuffer> createFramebuffer(GraphicsSystem* graphicsSystem)
+static ID<Framebuffer> createFramebuffer(GraphicsSystem* graphicsSystem, DeferredRenderSystem* deferredSystem)
 {
-	auto ldrBuffer = DeferredRenderSystem::Instance::get()->getLdrBuffer();
 	vector<Framebuffer::Attachment> colorAttachments =
 	{
-		Framebuffer::Attachment(graphicsSystem->get(ldrBuffer)->getView(),
-			Framebuffer::LoadOp::Load, Framebuffer::StoreOp::Store)
+		Framebuffer::Attachment(deferredSystem->getLdrImageView())
 	};
 	auto framebuffer = graphicsSystem->createFramebuffer(
 		graphicsSystem->getScaledFrameSize(), std::move(colorAttachments));
@@ -132,10 +130,12 @@ void FxaaRenderSystem::preUiRender()
 		return;
 	
 	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto deferredSystem = DeferredRenderSystem::Instance::get();
+
 	if (!isInitialized)
 	{
 		if (!framebuffer)
-			framebuffer = createFramebuffer(graphicsSystem);
+			framebuffer = createFramebuffer(graphicsSystem, deferredSystem);
 		if (!pipeline)
 			pipeline = createPipeline(framebuffer, quality, subpixelQuality);
 		isInitialized = true;
@@ -152,7 +152,6 @@ void FxaaRenderSystem::preUiRender()
 		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.fxaa");
 	}
 
-	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	auto framebufferView = graphicsSystem->get(framebuffer);
 	auto ldrCopyView = graphicsSystem->get(getLdrCopyView(graphicsSystem, deferredSystem));
 
@@ -181,10 +180,18 @@ void FxaaRenderSystem::preUiRender()
 	graphicsSystem->stopRecording();
 }
 
+//**********************************************************************************************************************
 void FxaaRenderSystem::gBufferRecreate()
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	graphicsSystem->destroy(descriptorSet);
+
+	if (framebuffer)
+	{
+		auto framebufferView = graphicsSystem->get(framebuffer);
+		framebufferView->update(graphicsSystem->getScaledFrameSize(), 
+			DeferredRenderSystem::Instance::get()->getLdrImageView());
+	}
 }
 void FxaaRenderSystem::qualityChange()
 {
@@ -215,7 +222,7 @@ void FxaaRenderSystem::setQuality(GraphicsQuality quality, float subpixelQuality
 ID<Framebuffer> FxaaRenderSystem::getFramebuffer()
 {
 	if (!framebuffer)
-		framebuffer = createFramebuffer(GraphicsSystem::Instance::get());
+		framebuffer = createFramebuffer(GraphicsSystem::Instance::get(), DeferredRenderSystem::Instance::get());
 	return framebuffer;
 }
 ID<GraphicsPipeline> FxaaRenderSystem::getPipeline()

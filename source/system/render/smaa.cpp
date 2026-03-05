@@ -42,16 +42,16 @@ static ID<Image> createEdgesBuffer(GraphicsSystem* graphicsSystem)
 	SET_RESOURCE_DEBUG_NAME(image, "image.smaa.edgesBuffer");
 	return image;
 }
-static ID<ImageView> getLdrCopyView(GraphicsSystem* graphicsSystem, DeferredRenderSystem* deferredSystem)
+static ID<ImageView> getLdrCopyView(GraphicsSystem* graphicsSystem)
 {
-	auto gBuffer = deferredSystem->getGBuffers()[G_BUFFER_BASE_COLOR]; 
+	auto gBuffer = DeferredRenderSystem::Instance::get()->getGBuffers()[G_BUFFER_BASE_COLOR]; 
 	auto imageView = graphicsSystem->get(gBuffer)->getView(); // Note: Reusing G-Buffer memory.
 	GARDEN_ASSERT(graphicsSystem->get(gBuffer)->getFormat() == DeferredRenderSystem::ldrBufferFormat);
 	return imageView;
 }
-static ID<ImageView> getWeightsView(GraphicsSystem* graphicsSystem, DeferredRenderSystem* deferredSystem)
+static ID<ImageView> getWeightsView(GraphicsSystem* graphicsSystem)
 {
-	auto gBuffer = deferredSystem->getGBuffers()[G_BUFFER_METALLIC]; 
+	auto gBuffer = DeferredRenderSystem::Instance::get()->getGBuffers()[G_BUFFER_METALLIC]; 
 	auto imageView = graphicsSystem->get(gBuffer)->getView(); // Note: Reusing G-Buffer memory.
 	GARDEN_ASSERT(graphicsSystem->get(gBuffer)->getFormat() == Image::Format::UnormR8G8B8A8);
 	return imageView;
@@ -71,7 +71,7 @@ static ID<Framebuffer> createEdgesFramebuffer(GraphicsSystem* graphicsSystem, ID
 }
 static ID<Framebuffer> createWeightsFramebuffer(GraphicsSystem* graphicsSystem)
 {
-	auto weightsView = getWeightsView(graphicsSystem, DeferredRenderSystem::Instance::get());
+	auto weightsView = getWeightsView(graphicsSystem);
 	vector<Framebuffer::Attachment> colorAttachments =
 	{
 		Framebuffer::Attachment(weightsView, Framebuffer::LoadOp::Clear, Framebuffer::StoreOp::Store)
@@ -83,10 +83,9 @@ static ID<Framebuffer> createWeightsFramebuffer(GraphicsSystem* graphicsSystem)
 }
 static ID<Framebuffer> createBlendFramebuffer(GraphicsSystem* graphicsSystem)
 {
-	auto ldrBuffer = DeferredRenderSystem::Instance::get()->getLdrBuffer();
 	vector<Framebuffer::Attachment> colorAttachments =
 	{
-		Framebuffer::Attachment(graphicsSystem->get(ldrBuffer)->getView())
+		Framebuffer::Attachment(DeferredRenderSystem::Instance::get()->getLdrImageView())
 	};
 	auto framebuffer = graphicsSystem->createFramebuffer(
 		graphicsSystem->getScaledFrameSize(), std::move(colorAttachments));
@@ -156,7 +155,6 @@ static DescriptorSet::Uniforms getEdgesUniforms(GraphicsSystem* graphicsSystem)
 static DescriptorSet::Uniforms getWeightsUniforms(GraphicsSystem* graphicsSystem, 
 	ID<Image> areaLUT, ID<Image> searchLUT, ID<Image> edgesBuffer)
 {
-	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	auto areaLutView = graphicsSystem->get(areaLUT)->getView();
 	auto searchLutView = graphicsSystem->get(searchLUT)->getView();
 	auto edgesView = graphicsSystem->get(edgesBuffer)->getView();
@@ -171,9 +169,8 @@ static DescriptorSet::Uniforms getWeightsUniforms(GraphicsSystem* graphicsSystem
 }
 static DescriptorSet::Uniforms getBlendUniforms(GraphicsSystem* graphicsSystem)
 {
-	auto deferredSystem = DeferredRenderSystem::Instance::get();
-	auto weightsView = getWeightsView(graphicsSystem, deferredSystem);
-	auto ldrCopyView = getLdrCopyView(graphicsSystem, deferredSystem); 
+	auto weightsView = getWeightsView(graphicsSystem);
+	auto ldrCopyView = getLdrCopyView(graphicsSystem); 
 
 	DescriptorSet::Uniforms uniforms =
 	{ 
@@ -301,7 +298,7 @@ void SmaaRenderSystem::preUiRender()
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	auto ldrFramebuffer = deferredSystem->getLdrFramebuffer();
 	auto framebufferView = graphicsSystem->get(ldrFramebuffer);
-	auto ldrCopyView = graphicsSystem->get(getLdrCopyView(graphicsSystem, deferredSystem));
+	auto ldrCopyView = graphicsSystem->get(getLdrCopyView(graphicsSystem));
 
 	PushConstants pc;
 	pc.frameSize = framebufferView->getSize();
@@ -378,8 +375,14 @@ void SmaaRenderSystem::gBufferRecreate()
 	if (weightsFramebuffer)
 	{
 		auto framebufferView = graphicsSystem->get(weightsFramebuffer);
-		auto weightsView = getWeightsView(graphicsSystem, DeferredRenderSystem::Instance::get());
+		auto weightsView = getWeightsView(graphicsSystem);
 		framebufferView->update(frameSize, weightsView);
+	}
+	if (blendFramebuffer)
+	{
+		auto framebufferView = graphicsSystem->get(blendFramebuffer);
+		framebufferView->update(graphicsSystem->getScaledFrameSize(), 
+			DeferredRenderSystem::Instance::get()->getLdrImageView());
 	}
 }
 
