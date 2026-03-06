@@ -303,8 +303,7 @@ static ID<Framebuffer> createOitFramebuffer(GraphicsSystem* graphicsSystem,
 		Framebuffer::Attachment(graphicsSystem->get(oitRevealBuffer)->getView(), 
 			Framebuffer::LoadOp::Clear, Framebuffer::StoreOp::Store)
 	};
-	Framebuffer::Attachment depthStencilAttachment(depthStencilIV, 
-		Framebuffer::LoadOp::Load, Framebuffer::StoreOp::None);
+	Framebuffer::Attachment depthStencilAttachment(depthStencilIV);
 	auto framebuffer = graphicsSystem->createFramebuffer(graphicsSystem->getScaledFrameSize(), 
 		std::move(colorAttachments), depthStencilAttachment);
 	SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.deferred.oit");
