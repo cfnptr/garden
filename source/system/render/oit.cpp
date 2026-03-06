@@ -19,11 +19,23 @@
 
 using namespace garden;
 
-static ID<GraphicsPipeline> createPipeline(DeferredRenderSystem* deferredSystem)
+static ID<Framebuffer> createFramebuffer(GraphicsSystem* graphicsSystem, DeferredRenderSystem* deferredSystem)
+{
+	vector<Framebuffer::Attachment> colorAttachments =
+	{
+		Framebuffer::Attachment(deferredSystem->getHdrImageView())
+	};
+	Framebuffer::Attachment depthStencilAttachment(deferredSystem->getDepthStencilIV(),
+		Framebuffer::LoadOp::Load, Framebuffer::StoreOp::None);
+	auto framebuffer = graphicsSystem->createFramebuffer(graphicsSystem->getScaledFrameSize(), 
+		std::move(colorAttachments), depthStencilAttachment);
+	SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.oit.compose");
+	return framebuffer;
+}
+static ID<GraphicsPipeline> createPipeline(ID<Framebuffer> framebuffer)
 {
 	ResourceSystem::GraphicsOptions options;
-	return ResourceSystem::Instance::get()->loadGraphicsPipeline(
-		"oit", deferredSystem->getUpscaleHdrFB(), options);
+	return ResourceSystem::Instance::get()->loadGraphicsPipeline("oit", framebuffer, options);
 }
 static DescriptorSet::Uniforms getUniforms(GraphicsSystem* graphicsSystem, DeferredRenderSystem* deferredSystem)
 {
@@ -77,7 +89,6 @@ void OitRenderSystem::deinit()
 	}
 }
 
-//**********************************************************************************************************************
 void OitRenderSystem::preLdrRender()
 {
 	SET_CPU_ZONE_SCOPED("OIT Pre LDR Render");
@@ -90,8 +101,13 @@ void OitRenderSystem::preLdrRender()
 	if (!graphicsSystem->camera || !deferredSystem->hasAnyOIT())
 		return;
 
-	if (!pipeline)
-		pipeline = createPipeline(deferredSystem);
+	if (!isInitialized)
+	{
+		if (!framebuffer)
+			framebuffer = createFramebuffer(graphicsSystem, deferredSystem);
+		if (!pipeline)
+			pipeline = createPipeline(framebuffer);
+	}
 
 	auto pipelineView = graphicsSystem->get(pipeline);
 	if (!pipelineView->isReady())
@@ -104,14 +120,11 @@ void OitRenderSystem::preLdrRender()
 		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.oit");
 	}
 
-	auto upscaledHdrFramebuffer = deferredSystem->getUpscaleHdrFB();
-	pipelineView->updateFramebuffer(upscaledHdrFramebuffer);
-
 	graphicsSystem->startRecording(CommandBufferType::Frame);
 	{
 		SET_GPU_DEBUG_LABEL("OIT Compose");
 		{
-			RenderPass renderPass(upscaledHdrFramebuffer, float4::zero);
+			RenderPass renderPass(framebuffer, float4::zero);
 			pipelineView->bind();
 			pipelineView->setViewportScissor();
 			pipelineView->bindDescriptorSet(descriptorSet);
@@ -121,14 +134,30 @@ void OitRenderSystem::preLdrRender()
 	graphicsSystem->stopRecording();
 }
 
+//**********************************************************************************************************************
 void OitRenderSystem::gBufferRecreate()
 {
-	GraphicsSystem::Instance::get()->destroy(descriptorSet);
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	graphicsSystem->destroy(descriptorSet);
+
+	if (framebuffer)
+	{
+		auto deferredSystem = DeferredRenderSystem::Instance::get();
+		auto framebufferView = graphicsSystem->get(framebuffer);
+		framebufferView->update(graphicsSystem->getScaledFrameSize(), 
+			deferredSystem->getHdrImageView(), deferredSystem->getDepthStencilIV());
+	}
 }
 
+ID<Framebuffer> OitRenderSystem::getFramebuffer()
+{
+	if (!framebuffer)
+		framebuffer = createFramebuffer(GraphicsSystem::Instance::get(), DeferredRenderSystem::Instance::get());
+	return framebuffer;
+}
 ID<GraphicsPipeline> OitRenderSystem::getPipeline()
 {
 	if (!pipeline)
-		pipeline = createPipeline(DeferredRenderSystem::Instance::get());
+		pipeline = createPipeline(getFramebuffer());
 	return pipeline;
 }

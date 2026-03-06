@@ -37,8 +37,10 @@ namespace garden
  */
 class OitRenderSystem final : public System, public Singleton<OitRenderSystem>
 {
+	ID<Framebuffer> framebuffer = {};
 	ID<GraphicsPipeline> pipeline = {};
 	ID<DescriptorSet> descriptorSet = {};
+	bool isInitialized = false;
 
 	/**
 	 * @brief Creates a new order independent transparency rendering system instance.
@@ -59,6 +61,10 @@ class OitRenderSystem final : public System, public Singleton<OitRenderSystem>
 public:
 	bool isEnabled = true; /**< Is order independent transparency rendering enabled. */
 
+	/**
+	 * @brief Returns order independent transparency compose framebuffer.
+	 */
+	ID<Framebuffer> getFramebuffer();
 	/**
 	 * @brief Returns order independent transparency graphics pipeline.
 	 */
