@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "garden/system/render/9-slice.hpp"
+#include "9-slice/instance-data.h"
 
 using namespace garden;
 
@@ -20,14 +21,14 @@ uint64 NineSliceRenderSystem::getBaseInstanceDataSize()
 {
 	return (uint64)sizeof(NineSliceInstanceData);
 }
-void NineSliceRenderSystem::setInstanceData(SpriteRenderComponent* spriteRenderView, BaseInstanceData* instanceData,
+void NineSliceRenderSystem::setInstanceData(SpriteRenderComponent* spriteRenderView, void* instanceData,
 	const f32x4x4& viewProj, const f32x4x4& model, uint32 instanceIndex, int32 threadIndex)
 {
 	SpriteRenderSystem::setInstanceData(spriteRenderView,
 		instanceData, viewProj, model, instanceIndex, threadIndex);
 
 	auto nineSliceView = (NineSliceComponent*)spriteRenderView;
-	auto nineSliceInstanceData = (NineSliceInstanceData*)instanceData;
+	auto nineSliceData = (NineSliceInstanceData*)instanceData;
 
 	auto imageSize = float2::one; // Note: White texture size.
 	if (nineSliceView->colorMap)
@@ -37,8 +38,8 @@ void NineSliceRenderSystem::setInstanceData(SpriteRenderComponent* spriteRenderV
 	}
 	auto scale = imageSize / extractScale2(model);
 
-	nineSliceInstanceData->textureBorder = nineSliceView->textureBorder / imageSize;
-	nineSliceInstanceData->windowBorder = nineSliceView->windowBorder / imageSize * scale;
+	nineSliceData->textureBorder = nineSliceView->textureBorder / imageSize;
+	nineSliceData->windowBorder = nineSliceView->windowBorder / imageSize * scale;
 }
 
 //**********************************************************************************************************************

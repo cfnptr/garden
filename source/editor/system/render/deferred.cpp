@@ -35,7 +35,7 @@ static DescriptorSet::Uniforms getBufferUniforms(GraphicsSystem* graphicsSystem,
 	auto emptyTexture = graphicsSystem->getEmptyTexture();
 	
 	auto pbrLightingSystem = PbrLightingSystem::Instance::tryGet();
-	ID<ImageView> shadBuffer, shadBlurBuffer, aoBuffer, aoBlurBuffer, reflBuffer, giBuffer;
+	ID<ImageView> shadBuffer, shadBlurBuffer, aoBuffer, aoBlurBuffer, giBuffer, reflBuffer;
 
 	if (pbrLightingSystem)
 	{
@@ -43,22 +43,20 @@ static DescriptorSet::Uniforms getBufferUniforms(GraphicsSystem* graphicsSystem,
 		shadBlurBuffer = pbrLightingSystem->getShadBlurView();
 		aoBuffer = pbrLightingSystem->getAoBaseView();
 		aoBlurBuffer = pbrLightingSystem->getAoBlurView();
+		giBuffer = pbrLightingSystem->getGiBaseView();
 		reflBuffer = pbrLightingSystem->getReflBaseView();
-		giBuffer = pbrLightingSystem->getGiBuffer() ? graphicsSystem->get(
-			pbrLightingSystem->getGiBuffer())->getView() : emptyTexture;
 
-		if (!shadBuffer)
-			shadBuffer = shadBlurBuffer = emptyTexture;
-		if (!aoBuffer)
-			aoBuffer = aoBlurBuffer = emptyTexture;
-		if (!reflBuffer)
-			reflBuffer = emptyTexture;
+		if (!shadBuffer) shadBuffer = shadBlurBuffer = emptyTexture;
+		if (!aoBuffer) aoBuffer = aoBlurBuffer = emptyTexture;
+		if (!giBuffer) giBuffer = emptyTexture;
+		if (!reflBuffer) reflBuffer = emptyTexture;
 	}
 	else
 	{
 		shadBuffer = shadBlurBuffer = emptyTexture;
 		aoBuffer = aoBlurBuffer = emptyTexture;
-		reflBuffer = emptyTexture; giBuffer = emptyTexture;
+		giBuffer = emptyTexture;
+		reflBuffer = emptyTexture;
 	}
 
 	DescriptorSet::Uniforms uniforms =

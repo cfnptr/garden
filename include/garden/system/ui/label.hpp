@@ -38,7 +38,7 @@ struct UiLabelComponent final : public MeshRenderComponent
 	#endif
 
 	u32string text = U"";              /**< UI label text string. */
-	Text::Properties propterties = {}; /**< UI label text properties. */
+	Text::Properties properties = {}; /**< UI label text properties. */
 	f32x4 color = f32x4::one;          /**< Text sRGB color multiplier. */
 	uint32 fontSize = 16;              /**< Text font size in pixels.*/
 private:
@@ -89,7 +89,7 @@ struct UiLabelFrame final : public AnimationFrame
 	#endif
 
 	u32string text = U"";
-	Text::Properties propterties;
+	Text::Properties properties;
 	f32x4 color = f32x4::one;
 	uint32 fontSize = 16;
 	ID<Text> textData = {};

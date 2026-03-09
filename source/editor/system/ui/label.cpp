@@ -104,15 +104,15 @@ void UiLabelEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 		ImGui::EndPopup();
 	}
 
-	if (ImGui::Combo("Alignment", &uiLabelView->propterties.alignment, textAlignmentNames, (int)Text::Alignment::Count))
+	if (ImGui::Combo("Alignment", &uiLabelView->properties.alignment, textAlignmentNames, (int)Text::Alignment::Count))
 		uiLabelView->updateText();
-	if (ImGui::Checkbox("Bold", &uiLabelView->propterties.isBold))
-		uiLabelView->updateText();
-	ImGui::SameLine();
-	if (ImGui::Checkbox("Italic", &uiLabelView->propterties.isItalic))
+	if (ImGui::Checkbox("Bold", &uiLabelView->properties.isBold))
 		uiLabelView->updateText();
 	ImGui::SameLine();
-	if (ImGui::Checkbox("Use Tags", &uiLabelView->propterties.useTags))
+	if (ImGui::Checkbox("Italic", &uiLabelView->properties.isItalic))
+		uiLabelView->updateText();
+	ImGui::SameLine();
+	if (ImGui::Checkbox("Use Tags", &uiLabelView->properties.useTags))
 		uiLabelView->updateText();
 	ImGui::Spacing();
 

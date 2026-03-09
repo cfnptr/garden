@@ -64,12 +64,6 @@ struct NineSliceFrame : public SpriteAnimFrame
  */
 class NineSliceRenderSystem : public SpriteRenderSystem
 {
-public:
-	struct NineSliceInstanceData : public BaseInstanceData
-	{
-		float2 textureBorder = float2::zero;
-		float2 windowBorder = float2::zero;
-	};
 protected:
 	/**
 	 * @brief Creates a new 9-slice sprite render system instance.
@@ -78,7 +72,7 @@ protected:
 	NineSliceRenderSystem(const fs::path& pipelinePath) : SpriteRenderSystem(pipelinePath) { }
 
 	uint64 getBaseInstanceDataSize() override;
-	void setInstanceData(SpriteRenderComponent* spriteRenderView, BaseInstanceData* instanceData,
+	void setInstanceData(SpriteRenderComponent* spriteRenderView, void* instanceData,
 		const f32x4x4& viewProj, const f32x4x4& model, uint32 instanceIndex, int32 threadIndex) override;
 
 	void serialize(ISerializer& serializer, const View<Component> component) override;

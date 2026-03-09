@@ -117,7 +117,7 @@ public:
 		bool reinhard, ID<GraphicsPipeline>& pipeline, ID<DescriptorSet>& descriptorSet);
 
 	/**
-	 * @brief Records bilateral blur command. (Depth aware)
+	 * @brief Records depth aware bilateral blur command.
 	 *
 	 * @param srcBuffer source data buffer instance
 	 * @param depthBuffer depth buffer instance
@@ -129,7 +129,7 @@ public:
 	 * @param kernelRadius radius of the blur kernel
 	 * @param useDstSize use destination buffer size for blur
 	 */
-	void bilateralBlurD(ID<ImageView> srcBuffer, ID<ImageView> depthBuffer, ID<Framebuffer> dstFramebuffer, 
+	void depthBilateralBlur(ID<ImageView> srcBuffer, ID<ImageView> depthBuffer, ID<Framebuffer> dstFramebuffer, 
 		ID<Framebuffer> tmpFramebuffer, float sharpness, ID<GraphicsPipeline>& pipeline, 
 		ID<DescriptorSet>& descriptorSet, uint8 kernelRadius = 3, bool useDstSize = false);
 

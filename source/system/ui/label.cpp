@@ -57,12 +57,12 @@ static uint32 calcTotalFontSize(uint32 fontSize, bool adjustCJK) noexcept
 }
 static uint32 calcScaledFontSize(uint32 totalFontSize) noexcept
 {
-	// TODO: take into account macOS differend window and framebuffer scale!
+	// TODO: take into account macOS different window and framebuffer scale!
 	auto uiScale = UiTransformSystem::Instance::get()->uiScale;
 	return (uint32)ceil(totalFontSize / uiScale);
 }
 
-static ID<DescriptorSet> createDescritproSet(ID<Text> textData)
+static ID<DescriptorSet> createDescriptorSet(ID<Text> textData)
 {
 	auto uniforms = getUniforms(textData);
 	auto descriptorSet = GraphicsSystem::Instance::get()->createDescriptorSet(
@@ -120,7 +120,7 @@ bool UiLabelComponent::updateText(bool shrink)
 
 		auto stopRecording = graphicsSystem->tryStartRecording(CommandBufferType::Frame);
 
-		if (!textView->update(textString, scaledFontSize, propterties, std::move(fonts), 
+		if (!textView->update(textString, scaledFontSize, properties, std::move(fonts), 
 			FontAtlas::defaultImageFlags, Text::defaultBufferFlags, shrink))
 		{
 			if (stopRecording)
@@ -138,7 +138,7 @@ bool UiLabelComponent::updateText(bool shrink)
 		if (fonts.empty())
 			return false;
 
-		textData = textSystem->createText(textString, std::move(fonts), scaledFontSize, propterties);
+		textData = textSystem->createText(textString, std::move(fonts), scaledFontSize, properties);
 		if (!textData)
 			return false;
 		#else
@@ -151,7 +151,7 @@ bool UiLabelComponent::updateText(bool shrink)
 		currFontAtlas != textSystem->get(textView->getFontAtlas())->getImage())
 	{
 		graphicsSystem->destroy(descriptorSet);
-		descriptorSet = createDescritproSet(textData);
+		descriptorSet = createDescriptorSet(textData);
 	}
 
 	aabb.setSize(f32x4(float3(textView->getSize() * totalFontSize, 1.0f)));
@@ -259,7 +259,7 @@ void UiLabelSystem::copyComponent(View<Component> source, View<Component> destin
 		}
 
 		destinationView->textData = textData;
-		destinationView->descriptorSet = createDescritproSet(textData);
+		destinationView->descriptorSet = createDescriptorSet(textData);
 	}
 }
 string_view UiLabelSystem::getComponentName() const
@@ -314,7 +314,7 @@ void UiLabelSystem::drawAsync(MeshRenderComponent* meshRenderView,
 	auto localScale = transformView->getScale() * f32x4(totalFontSize, totalFontSize, 1.0f);
 	auto localModel = scale(model, (1.0f / extractScale(model)) * localScale);
 	setTranslation(localModel, (f32x4)u32x4(getTranslation(localModel) / lastUiScale) * lastUiScale);
-	// TODO: take into account macOS differend window and framebuffer scale!
+	// TODO: take into account macOS different window and framebuffer scale!
 
 	PushConstants pc;
 	pc.mvp = (float4x4)(viewProj * localModel);
@@ -335,13 +335,13 @@ void UiLabelSystem::serialize(ISerializer& serializer, const View<Component> com
 		serializer.write("text", componentView->text);
 	if (componentView->color != f32x4::one)
 		serializer.write("color", (float4)componentView->color);
-	if (componentView->propterties.alignment != Text::Alignment::Center)
-		serializer.write("alignment", toString(componentView->propterties.alignment));
-	if (componentView->propterties.isBold)
+	if (componentView->properties.alignment != Text::Alignment::Center)
+		serializer.write("alignment", toString(componentView->properties.alignment));
+	if (componentView->properties.isBold)
 		serializer.write("isBold", true);
-	if (componentView->propterties.isItalic)
+	if (componentView->properties.isItalic)
 		serializer.write("isItalic", true);
-	if (componentView->propterties.useTags)
+	if (componentView->properties.useTags)
 		serializer.write("useTags", true);
 	if (componentView->fontSize != 16)
 		serializer.write("fontSize", componentView->fontSize);
@@ -372,15 +372,15 @@ void UiLabelSystem::deserialize(IDeserializer& deserializer, View<Component> com
 	auto componentView = View<UiLabelComponent>(component);
 	deserializer.read("text", componentView->text);
 	deserializer.read("color", componentView->color);
-	deserializer.read("isBold", componentView->propterties.isBold);
-	deserializer.read("isItalic", componentView->propterties.isItalic);
-	deserializer.read("useTags", componentView->propterties.useTags);
+	deserializer.read("isBold", componentView->properties.isBold);
+	deserializer.read("isItalic", componentView->properties.isItalic);
+	deserializer.read("useTags", componentView->properties.useTags);
 	deserializer.read("fontSize", componentView->fontSize);
 	deserializer.read("useLocale", componentView->useLocale);
 	deserializer.read("adjustCJK", componentView->adjustCJK);
 
 	if (deserializer.read("alignment", valueStringCache))
-		toTextAlignment(valueStringCache, componentView->propterties.alignment);
+		toTextAlignment(valueStringCache, componentView->properties.alignment);
 
 	vector<fs::path> fontPaths;
 	if (deserializer.beginChild("fontPaths"))
@@ -434,12 +434,12 @@ void UiLabelSystem::deserialize(IDeserializer& deserializer, View<Component> com
 
 	auto textSystem = TextSystem::Instance::get();
 	auto fonts = ResourceSystem::Instance::get()->loadFonts(fontPaths, 0, loadNoto);
-	auto textData = textSystem->createText(textString, std::move(fonts), scaledFontSize, componentView->propterties);
+	auto textData = textSystem->createText(textString, std::move(fonts), scaledFontSize, componentView->properties);
 	componentView->textData = textData;
 
 	if (textData)
 	{
-		componentView->descriptorSet = createDescritproSet(textData);
+		componentView->descriptorSet = createDescriptorSet(textData);
 		auto textSize = textSystem->get(textData)->getSize() * totalFontSize;
 		componentView->aabb.setSize(f32x4(float3(textSize, 1.0f)));
 		componentView->isEnabled = true;
@@ -454,13 +454,13 @@ void UiLabelSystem::serializeAnimation(ISerializer& serializer, View<AnimationFr
 		serializer.write("text", frameView->text);
 	if (frameView->color != f32x4::one)
 		serializer.write("color", (float4)frameView->color);
-	if (frameView->propterties.alignment != Text::Alignment::Center)
-		serializer.write("alignment", toString(frameView->propterties.alignment));
-	if (frameView->propterties.isBold)
+	if (frameView->properties.alignment != Text::Alignment::Center)
+		serializer.write("alignment", toString(frameView->properties.alignment));
+	if (frameView->properties.isBold)
 		serializer.write("isBold", true);
-	if (frameView->propterties.isItalic)
+	if (frameView->properties.isItalic)
 		serializer.write("isItalic", true);
-	if (frameView->propterties.useTags)
+	if (frameView->properties.useTags)
 		serializer.write("useTags", true);
 	if (frameView->fontSize != 16)
 		serializer.write("fontSize", frameView->fontSize);
@@ -491,19 +491,19 @@ void UiLabelSystem::deserializeAnimation(IDeserializer& deserializer, View<Anima
 	auto frameView = View<UiLabelFrame>(frame);
 	deserializer.read("text", frameView->text);
 	deserializer.read("color", frameView->color);
-	deserializer.read("isBold", frameView->propterties.isBold);
-	deserializer.read("isItalic", frameView->propterties.isItalic);
-	deserializer.read("useTags", frameView->propterties.useTags);
+	deserializer.read("isBold", frameView->properties.isBold);
+	deserializer.read("isItalic", frameView->properties.isItalic);
+	deserializer.read("useTags", frameView->properties.useTags);
 	deserializer.read("fontSize", frameView->fontSize);
 	deserializer.read("useLocale", frameView->useLocale);
 	deserializer.read("adjustCJK", frameView->adjustCJK);
 
 	string alignment;
 	if (deserializer.read("alignment", alignment))
-		toTextAlignment(alignment, frameView->propterties.alignment);
+		toTextAlignment(alignment, frameView->properties.alignment);
 
 	auto uiScale = UiTransformSystem::Instance::get()->uiScale;
-	// TODO: take into account macOS differend window and framebuffer scale!
+	// TODO: take into account macOS different window and framebuffer scale!
 	frameView->fontSize = max((uint32)ceil(frameView->fontSize / uiScale), 1u);
 
 	vector<fs::path> fontPaths;
@@ -557,11 +557,11 @@ void UiLabelSystem::deserializeAnimation(IDeserializer& deserializer, View<Anima
 
 	auto fonts = ResourceSystem::Instance::get()->loadFonts(fontPaths, 0, loadNoto);
 	auto textData = TextSystem::Instance::get()->createText(textString, 
-		std::move(fonts), scaledFontSize, frameView->propterties);
+		std::move(fonts), scaledFontSize, frameView->properties);
 	frameView->textData = textData;
 
 	if (textData)
-		frameView->descriptorSet = createDescritproSet(textData);
+		frameView->descriptorSet = createDescriptorSet(textData);
 }
 
 //**********************************************************************************************************************
@@ -576,7 +576,7 @@ void UiLabelSystem::animateAsync(View<Component> component, View<AnimationFrame>
 		if (frameB->textData)
 		{
 			componentView->text = frameB->text;
-			componentView->propterties = frameB->propterties;
+			componentView->properties = frameB->properties;
 			componentView->fontSize = frameB->fontSize;
 			componentView->textData = frameB->textData;
 			componentView->descriptorSet = frameB->descriptorSet;
@@ -593,7 +593,7 @@ void UiLabelSystem::animateAsync(View<Component> component, View<AnimationFrame>
 		if (frameA->textData)
 		{
 			componentView->text = frameA->text;
-			componentView->propterties = frameA->propterties;
+			componentView->properties = frameA->properties;
 			componentView->fontSize = frameA->fontSize;
 			componentView->textData = frameA->textData;
 			componentView->descriptorSet = frameA->descriptorSet;

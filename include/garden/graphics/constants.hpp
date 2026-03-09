@@ -35,24 +35,24 @@ struct CommonConstants final
 	f32x4 shadowColor = f32x4::zero;        /**< Shadow color and intensity. */
 	float3 cameraPos = float3::zero;        /**< Camera position in world space. */
 	float nearPlane = 0.0f;                 /**< Camera near frustum plane. */
-	float3 giBufferPos = float3::zero;      /**< Global illumination buffer position in world space. */
-	float currentTime = 0.0f;               /**< Time since start of the program. (In seconds) */
 	float3 viewDir = float3::zero;          /**< Camera view direction in world space. */
-	float deltaTime = 0.0f;                 /**< Time elapsed between two previous frames. (In seconds) */
+	float currentTime = 0.0f;               /**< Time since start of the program. (In seconds) */
 	float3 lightDir = float3::zero;         /**< Light direction in world space. (From star to world) */
+	float deltaTime = 0.0f;                 /**< Time elapsed between two previous frames. (In seconds) */
+	float3 windDir = float3::zero;          /**< Direction of the wind. (Vector) */
 	float emissiveCoeff = 0.0f;             /**< Maximum brightness coefficient. */
-	float3 starLight = float3::zero;        /**< Nearby star (Sun) light color. (Energy) */
-	float anglePerPixel = 0.0f;             /**< Vertical field-of-view per pixel. */
-	float3 ambientLight = float3::zero;     /**< World ambient light color. (Energy) */
-	float mipLodBias = 0.0f;                /**< Preferred mip-map LOD bias. */
 	float3 upDir = float3::zero;            /**< World up direction. (Inversed gravityDir) */
+	float anglePerPixel = 0.0f;             /**< Vertical field-of-view per pixel. */
+	float3 starLight = float3::zero;        /**< Nearby star (Sun) light color. (Energy) */
+	float mipLodBias = 0.0f;                /**< Preferred mip-map LOD bias. */
+	float3 ambientLight = float3::zero;     /**< World ambient light color. (Energy) */
 	float ggxLodOffset = 0.0f;              /**< Spherical GGX distribution blur LOD offset. */
 	float2 frameSize = float2::zero;        /**< Frame size in pixels. */
 	float2 invFrameSize = float2::zero;     /**< Inverse frame size in pixels. */
 	float2 invFrameSizeSq = float2::zero;   /**< Inverse frame size * 2 in pixels. */
 	float2 jitterOffset = float2::zero;     /**< Frame sub-pixel jittering offsets. */
 	float2 prevJitterOffset = float2::zero; /**< Previous frame sub-pixel jittering offsets. */
-	float3 windDir = float3::zero;          /**< Direction of the wind. (Vector) */
+	float3 giBufferPos = float3::zero;      /**< Global illumination buffer position in world space. */
 };
 
 } // namespace garden::graphics

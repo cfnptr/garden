@@ -96,8 +96,8 @@ public:
 	{
 		bool useShadBuffer = true; /**< Create and use shadow buffer for rendering. */
 		bool useAoBuffer = true;   /**< Create and use ambient occlusion buffer for rendering. */
-		bool useReflBuffer = true; /**< Create and use reflection buffer for rendering. */
 		bool useGiBuffer = true;   /**< Create and use global illumination buffer for rendering. */
+		bool useReflBuffer = true; /**< Create and use reflection buffer for rendering. */
 		bool useReflBlur = true;   /**< Create and use reflection buffer blur chain. */
 		Options() noexcept { }
 	};
@@ -124,21 +124,19 @@ public:
 	static constexpr uint8 blurProcIndex = 0;
 	static constexpr uint8 procBufferCount = 3;
 	static constexpr uint8 baseReflIndex = 0;
-	static constexpr uint8 baseGiIndex = 0;
 
 	static constexpr Image::Format shadBufferFormat = Image::Format::UnormR8G8B8A8;
 	static constexpr Image::Format aoBufferFormat = Image::Format::UnormR8;
-	static constexpr Image::Format reflBufferFormat = Image::Format::SfloatR16G16B16A16;
 	static constexpr Image::Format giBufferFormat = Image::Format::SfloatR16G16B16A16;
+	static constexpr Image::Format reflBufferFormat = Image::Format::SfloatR16G16B16A16;
 private:
 	vector<ID<Framebuffer>> reflFramebuffers;
 	vector<ID<DescriptorSet>> reflBlurDSes;
-	ID<Image> dfgLUT = {};
+	ID<Image> dfgLUT = {}, giBuffer = {}, reflBuffer = {};
 	ID<Image> shadBaseBuffer = {}, shadBlurBuffer = {};
 	ID<Image> aoBaseBuffer = {}, aoBlurBuffer = {};
-	ID<Image> reflBuffer = {}, giBuffer = {};
 	ID<Framebuffer> pbrLightingFB = {};
-	ID<Framebuffer> reflFramebuffer = {}, giFramebuffer = {};
+	ID<Framebuffer> giFramebuffer = {}, reflFramebuffer = {};
 	ID<Framebuffer> shadFramebuffers[procBufferCount] = {};
 	ID<Framebuffer> aoFramebuffers[procBufferCount] = {};
 	ID<GraphicsPipeline> pbrLightingPipeline = {};
@@ -227,13 +225,13 @@ public:
 	 */
 	ID<Framebuffer> getPbrLightingFB();
 	/**
-	 * @brief Returns PBR lighting reflection framebuffer.
-	 */
-	ID<Framebuffer> getReflFramebuffer();
-	/**
 	 * @brief Returns PBR lighting global illumination framebuffer.
 	 */
 	ID<Framebuffer> getGiFramebuffer();
+	/**
+	 * @brief Returns PBR lighting reflection framebuffer.
+	 */
+	ID<Framebuffer> getReflFramebuffer();
 
 	/**
 	 * @brief Returns PBR lighting shadow base framebuffer.
@@ -289,13 +287,13 @@ public:
 	 */
 	ID<Image> getAoBlurBuffer();
 	/**
+	 * @brief Returns PBR lighting GI buffer. (Global Illumination)
+	 */
+	ID<Image> getGiBuffer();
+	/**
 	 * @brief Returns PBR lighting reflection buffer.
 	 */
 	ID<Image> getReflBuffer();
-	/**
-	 * @brief Returns PBR lighting global illumination buffer.
-	 */
-	ID<Image> getGiBuffer();
 
 	/**
 	 * @brief Returns PBR lighting shadow base image view.
@@ -321,6 +319,10 @@ public:
 	 * @brief Returns PBR lighting AO blur image view. (Ambient Occlusion)
 	 */
 	ID<ImageView> getAoBlurView();
+	/**
+	 * @brief Returns PBR lighting GI base image view. (Global Illumination)
+	 */
+	ID<ImageView> getGiBaseView();
 	/**
 	 * @brief Returns PBR lighting reflection base image view.
 	 */

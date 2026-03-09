@@ -276,7 +276,7 @@ void GpuProcessSystem::gaussianBlur(ID<ImageView> srcBuffer, ID<Framebuffer> dst
 }
 
 //**********************************************************************************************************************
-void GpuProcessSystem::bilateralBlurD(ID<ImageView> srcBuffer, ID<ImageView> depthBuffer,
+void GpuProcessSystem::depthBilateralBlur(ID<ImageView> srcBuffer, ID<ImageView> depthBuffer,
 	ID<Framebuffer> dstFramebuffer, ID<Framebuffer> tmpFramebuffer, float sharpness, ID<GraphicsPipeline>& pipeline, 
 	ID<DescriptorSet>& descriptorSet, uint8 kernelRadius, bool useDstSize)
 {
@@ -305,7 +305,7 @@ void GpuProcessSystem::bilateralBlurD(ID<ImageView> srcBuffer, ID<ImageView> dep
 		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.bilateralBlurD" + to_string(*descriptorSet));
 	}
 
-	auto& cc = graphicsSystem->getCommonConstants();
+	const auto& cc = graphicsSystem->getCommonConstants();
 	auto texelSize = float2(1.0f) / graphicsSystem->get(useDstSize ? depthBuffer : srcBuffer)->calcSize();
 
 	BilateralBlurPC pc;

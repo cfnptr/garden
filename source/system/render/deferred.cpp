@@ -585,7 +585,7 @@ void DeferredRenderSystem::render()
 			}
 
 			auto pipelineView = graphicsSystem->get(disocclPipeline);
-			auto& cc = graphicsSystem->getCommonConstants();
+			const auto& cc = graphicsSystem->getCommonConstants();
 
 			DisocclPC pc;
 			pc.nearPlane = cc.nearPlane;

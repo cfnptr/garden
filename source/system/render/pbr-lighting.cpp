@@ -263,6 +263,26 @@ static ID<Framebuffer> createPbrLightingFB(GraphicsSystem* graphicsSystem)
 	return framebuffer;
 }
 
+static ID<Image> createGiBuffer(GraphicsSystem* graphicsSystem)
+{
+	auto image = graphicsSystem->createImage(PbrLightingSystem::giBufferFormat, 
+		Image::Usage::ColorAttachment | Image::Usage::Sampled | Image::Usage::Storage | Image::Usage::TransferDst | 
+		Image::Usage::Fullscreen, { { nullptr } }, graphicsSystem->getScaledFrameSize(), Image::Strategy::Size);
+	SET_RESOURCE_DEBUG_NAME(image, "image.pbrLighting.giBuffer");
+	return image;
+}
+static ID<Framebuffer> createGiFramebuffer(GraphicsSystem* graphicsSystem, ID<Image> giBuffer)
+{
+	vector<Framebuffer::Attachment> colorAttachments =
+	{
+		Framebuffer::Attachment(graphicsSystem->get(giBuffer)->getView())
+	};
+	auto framebuffer = graphicsSystem->createFramebuffer(
+		graphicsSystem->getScaledFrameSize(), std::move(colorAttachments));
+	SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.pbrLighting.gi");
+	return framebuffer;
+}
+
 static ID<Image> createReflBuffer(GraphicsSystem* graphicsSystem, bool useBlur)
 {
 	auto frameSize = graphicsSystem->getScaledFrameSize();
@@ -295,36 +315,15 @@ static ID<Framebuffer> createReflFramebuffer(GraphicsSystem* graphicsSystem, ID<
 	return framebuffer;
 }
 
-static ID<Image> createGiBuffer(GraphicsSystem* graphicsSystem)
-{
-	auto image = graphicsSystem->createImage(PbrLightingSystem::giBufferFormat, 
-		Image::Usage::ColorAttachment | Image::Usage::Sampled | Image::Usage::Storage | Image::Usage::TransferDst | 
-		Image::Usage::Fullscreen, { { nullptr } }, graphicsSystem->getScaledFrameSize(), Image::Strategy::Size);
-	SET_RESOURCE_DEBUG_NAME(image, "image.pbrLighting.giBuffer");
-	return image;
-}
-static ID<Framebuffer> createGiFramebuffer(GraphicsSystem* graphicsSystem, ID<Image> giBuffer)
-{
-	vector<Framebuffer::Attachment> colorAttachments =
-	{
-		Framebuffer::Attachment(graphicsSystem->get(giBuffer)->getView())
-	};
-	auto framebuffer = graphicsSystem->createFramebuffer(
-		graphicsSystem->getScaledFrameSize(), std::move(colorAttachments));
-	SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.pbrLighting.gi");
-	return framebuffer;
-}
-
 //**********************************************************************************************************************
-static DescriptorSet::Uniforms getLightingUniforms(GraphicsSystem* graphicsSystem, ID<Image> dfgLUT, 
-	ID<Image> shadBlurBuffer, ID<Image> aoBlurBuffer, ID<Image> reflBuffer, ID<Image> giBuffer)
+static DescriptorSet::Uniforms getLightingUniforms(GraphicsSystem* graphicsSystem, DeferredRenderSystem* deferredSystem,
+	ID<Image> dfgLUT, ID<Image> shadBlurBuffer, ID<Image> aoBlurBuffer, ID<Image> giBuffer, ID<Image> reflBuffer)
 {
-	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	auto depthBufferView = deferredSystem->getDepthOnlyIV();
 	auto shadBlurView = shadBlurBuffer ? graphicsSystem->get(shadBlurBuffer)->getView() : ID<ImageView>();
 	auto aoBlurView = aoBlurBuffer ? graphicsSystem->get(aoBlurBuffer)->getView() : ID<ImageView>();
-	auto reflBufferView = reflBuffer ? graphicsSystem->get(reflBuffer)->getView() : ID<ImageView>();
 	auto giBufferView = giBuffer ? graphicsSystem->get(giBuffer)->getView() : ID<ImageView>();
+	auto reflBufferView = reflBuffer ? graphicsSystem->get(reflBuffer)->getView() : ID<ImageView>();
 	auto dfgLutView = graphicsSystem->get(dfgLUT)->getView();
 	auto gFramebufferView = graphicsSystem->get(deferredSystem->getGFramebuffer());
 	const auto& gColorAttachments = gFramebufferView->getColorAttachments();
@@ -339,8 +338,8 @@ static DescriptorSet::Uniforms getLightingUniforms(GraphicsSystem* graphicsSyste
 		{ "depthBuffer", DescriptorSet::Uniform(depthBufferView) },
 		{ "shadBuffer", DescriptorSet::Uniform(shadBlurView ? shadBlurView : whiteView) },
 		{ "aoBuffer", DescriptorSet::Uniform(aoBlurView ? aoBlurView : whiteView) },
-		{ "reflBuffer", DescriptorSet::Uniform(reflBufferView ? reflBufferView : emptyView) },
 		{ "giBuffer", DescriptorSet::Uniform(giBufferView ? giBufferView : emptyView) },
+		{ "reflBuffer", DescriptorSet::Uniform(reflBufferView ? reflBufferView : emptyView) },
 		{ "dfgLUT", DescriptorSet::Uniform(dfgLutView) }
 	};
 
@@ -556,14 +555,14 @@ void PbrLightingSystem::init()
 		createProcBuffers(graphicsSystem, aoBaseBuffer, aoBlurBuffer, aoBufferFormat, "ao");
 	if (!aoFramebuffers[0])
 		createProcFramebuffers(graphicsSystem, aoBaseBuffer, aoBlurBuffer, aoFramebuffers, "ao");
-	if (!reflBuffer)
-		reflBuffer = createReflBuffer(graphicsSystem, options.useReflBlur);
-	if (!options.useReflBlur && !reflFramebuffer)
-		reflFramebuffer = createReflFramebuffer(graphicsSystem, reflBuffer);
 	if (!giBuffer)
 		giBuffer = createGiBuffer(graphicsSystem);
 	if (!giFramebuffer)
 		giFramebuffer = createGiFramebuffer(graphicsSystem, giBuffer);
+	if (!reflBuffer)
+		reflBuffer = createReflBuffer(graphicsSystem, options.useReflBlur);
+	if (!options.useReflBlur && !reflFramebuffer)
+		reflFramebuffer = createReflFramebuffer(graphicsSystem, reflBuffer);
 	if (!pbrLightingPipeline)
 		pbrLightingPipeline = createPbrLightingPipeline(options, pbrLightingFB);
 }
@@ -582,11 +581,11 @@ void PbrLightingSystem::deinit()
 		graphicsSystem->destroy(iblSpecularPipeline);
 		graphicsSystem->destroy(pbrLightingPipeline);
 		graphicsSystem->destroy(reflFramebuffers);
-		graphicsSystem->destroy(giFramebuffer);
 		graphicsSystem->destroy(reflFramebuffer);
+		graphicsSystem->destroy(giFramebuffer);
 		graphicsSystem->destroy(pbrLightingFB);
-		graphicsSystem->destroy(giBuffer);
 		graphicsSystem->destroy(reflBuffer);
+		graphicsSystem->destroy(giBuffer);
 		graphicsSystem->destroy(aoFramebuffers, procBufferCount);
 		graphicsSystem->destroy(aoBlurBuffer);
 		graphicsSystem->destroy(aoBaseBuffer);
@@ -613,10 +612,13 @@ void PbrLightingSystem::preHdrRender()
 	if (!pipelineView->isReady() || !dfgLutView->isReady())
 		return;
 
+	auto deferredSystem = DeferredRenderSystem::Instance::get();
+	auto gpuProcessSystem = GpuProcessSystem::Instance::get();
+
 	if (!pbrLightingDS)
 	{
-		auto uniforms = getLightingUniforms(graphicsSystem, dfgLUT, 
-			shadBlurBuffer, aoBlurBuffer, reflBuffer, giBuffer);
+		auto uniforms = getLightingUniforms(graphicsSystem, deferredSystem, 
+			dfgLUT, shadBlurBuffer, aoBlurBuffer, giBuffer, reflBuffer);
 		pbrLightingDS = graphicsSystem->createDescriptorSet(pbrLightingPipeline, std::move(uniforms));
 		SET_RESOURCE_DEBUG_NAME(pbrLightingDS, "descriptorSet.pbrLighting.evaluate");
 	}
@@ -740,13 +742,10 @@ void PbrLightingSystem::preHdrRender()
 		auto shadBaseView = graphicsSystem->get(shadBaseBuffer);
 		if (anyShad)
 		{
-			if (quality > GraphicsQuality::Low)
-			{
-				auto depthBuffer = DeferredRenderSystem::Instance::get()->getDepthOnlyIV();
-				GpuProcessSystem::Instance::get()->bilateralBlurD(shadBaseView->getView(0, 1),
-					depthBuffer, shadFramebuffers[blurProcIndex], shadFramebuffers[tempProcIndex], 
-					blurSharpness, shadBlurPipeline, shadBlurDS, 5, true);
-			}
+			gpuProcessSystem->depthBilateralBlur(
+				shadBaseView->getView(0, 1), deferredSystem->getDepthOnlyIV(), 
+				shadFramebuffers[blurProcIndex], shadFramebuffers[tempProcIndex], 
+				blurSharpness, shadBlurPipeline, shadBlurDS, 5, true);
 			anyShad = false;
 		}
 		else
@@ -776,9 +775,9 @@ void PbrLightingSystem::preHdrRender()
 		auto aoBaseView = graphicsSystem->get(aoBaseBuffer);
 		if (anyAO)
 		{
-			auto depthBuffer = DeferredRenderSystem::Instance::get()->getDepthOnlyIV();
-			GpuProcessSystem::Instance::get()->bilateralBlurD(aoBaseView->getView(0, 1), 
-				depthBuffer, aoFramebuffers[blurProcIndex], aoFramebuffers[tempProcIndex], 
+			gpuProcessSystem->depthBilateralBlur(
+				aoBaseView->getView(0, 1), deferredSystem->getDepthOnlyIV(), 
+				aoFramebuffers[blurProcIndex], aoFramebuffers[tempProcIndex], 
 				blurSharpness, aoBlurPipeline, aoBlurDS);
 			anyAO = false;
 		}
@@ -816,7 +815,7 @@ void PbrLightingSystem::preHdrRender()
 	if (options.useReflBuffer)
 	{
 		SET_CPU_ZONE_SCOPED("Reflections Render Pass");
-		SET_GPU_DEBUG_LABEL("Reflection Pass");
+		SET_GPU_DEBUG_LABEL("Reflections Pass");
 
 		auto event = &manager->getEvent("ReflRender");
 		if (event->hasSubscribers())
@@ -833,7 +832,6 @@ void PbrLightingSystem::preHdrRender()
 		{
 			if (options.useReflBlur)
 			{
-				auto gpuProcessSystem = GpuProcessSystem::Instance::get();
 				gpuProcessSystem->prepareGgxBlur(reflBuffer, reflFramebuffers);
 				gpuProcessSystem->ggxBlur(reflBuffer, reflFramebuffers, reflBlurPipeline, reflBlurDSes);
 			}
@@ -873,7 +871,7 @@ void PbrLightingSystem::preHdrRender()
 	}
 	if (options.useReflBuffer)
 	{
-		SET_CPU_ZONE_SCOPED("Post Reflections Render");
+		SET_CPU_ZONE_SCOPED("Post Refl Render");
 
 		auto event = &manager->getEvent("PostReflRender");
 		if (event->hasSubscribers())
@@ -911,9 +909,9 @@ void PbrLightingSystem::preHdrRender()
 void PbrLightingSystem::gBufferRecreate()
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
+	graphicsSystem->destroy(pbrLightingDS);
 	graphicsSystem->destroy(shadBlurDS);
 	graphicsSystem->destroy(aoBlurDS);
-	graphicsSystem->destroy(pbrLightingDS);
 	graphicsSystem->destroy(reflBlurDSes);
 
 	if (shadBaseBuffer)
@@ -926,15 +924,15 @@ void PbrLightingSystem::gBufferRecreate()
 		graphicsSystem->destroy(aoBaseBuffer); graphicsSystem->destroy(aoBlurBuffer);
 		createProcBuffers(graphicsSystem, aoBaseBuffer, aoBlurBuffer, aoBufferFormat, "ao");
 	}
-	if (reflBuffer)
-	{
-		graphicsSystem->destroy(reflBuffer);
-		reflBuffer = createReflBuffer(graphicsSystem, options.useReflBlur);
-	}
 	if (giBuffer)
 	{
 		graphicsSystem->destroy(giBuffer);
 		giBuffer = createGiBuffer(graphicsSystem);
+	}
+	if (reflBuffer)
+	{
+		graphicsSystem->destroy(reflBuffer);
+		reflBuffer = createReflBuffer(graphicsSystem, options.useReflBlur);
 	}
 
 	auto frameSize = graphicsSystem->getScaledFrameSize();
@@ -959,14 +957,14 @@ void PbrLightingSystem::gBufferRecreate()
 	if (aoFramebuffers[0])
 		updateProcFramebuffer(graphicsSystem, aoBaseBuffer, aoBlurBuffer, aoFramebuffers);
 
-	if (aoBaseBuffer || aoFramebuffers[0])
-		Manager::Instance::get()->runEvent("AoRecreate");
 	if (shadBaseBuffer || shadFramebuffers[0])
 		Manager::Instance::get()->runEvent("ShadowRecreate");
-	if (reflBuffer || reflFramebuffer || !reflFramebuffers.empty())
-		Manager::Instance::get()->runEvent("ReflRecreate");
+	if (aoBaseBuffer || aoFramebuffers[0])
+		Manager::Instance::get()->runEvent("AoRecreate");
 	if (giBuffer || giFramebuffer)
 		Manager::Instance::get()->runEvent("GiRecreate");
+	if (reflBuffer || reflFramebuffer || !reflFramebuffers.empty())
+		Manager::Instance::get()->runEvent("ReflRecreate");
 }
 
 void PbrLightingSystem::qualityChange()
@@ -1043,6 +1041,19 @@ void PbrLightingSystem::setOptions(Options options)
 			graphicsSystem->destroy(aoBlurBuffer);
 		}
 	}
+	if (this->options.useGiBuffer != options.useGiBuffer)
+	{
+		if (options.useGiBuffer)
+		{
+			giBuffer = createGiBuffer(graphicsSystem);
+			giFramebuffer = createGiFramebuffer(graphicsSystem, giBuffer);
+		}
+		else
+		{
+			graphicsSystem->destroy(giFramebuffer);
+			graphicsSystem->destroy(giBuffer);
+		}
+	}
 	if (this->options.useReflBuffer != options.useReflBuffer || this->options.useReflBlur != options.useReflBlur)
 	{
 		if (options.useReflBuffer)
@@ -1057,19 +1068,6 @@ void PbrLightingSystem::setOptions(Options options)
 			graphicsSystem->destroy(reflFramebuffers); reflFramebuffers = {};
 			graphicsSystem->destroy(reflFramebuffer);
 			graphicsSystem->destroy(reflBuffer);
-		}
-	}
-	if (this->options.useGiBuffer != options.useGiBuffer)
-	{
-		if (options.useGiBuffer)
-		{
-			giBuffer = createGiBuffer(graphicsSystem);
-			giFramebuffer = createGiFramebuffer(graphicsSystem, giBuffer);
-		}
-		else
-		{
-			graphicsSystem->destroy(giFramebuffer);
-			graphicsSystem->destroy(giBuffer);
 		}
 	}
 
@@ -1159,17 +1157,17 @@ ID<Framebuffer> PbrLightingSystem::getPbrLightingFB()
 		pbrLightingFB = createPbrLightingFB(GraphicsSystem::Instance::get());
 	return pbrLightingFB;
 }
-ID<Framebuffer> PbrLightingSystem::getReflFramebuffer()
-{
-	if (!reflFramebuffer && options.useReflBuffer && !options.useReflBlur)
-		reflFramebuffer = createReflFramebuffer(GraphicsSystem::Instance::get(), getReflBuffer());
-	return reflFramebuffer;
-}
 ID<Framebuffer> PbrLightingSystem::getGiFramebuffer()
 {
 	if (!giFramebuffer && options.useGiBuffer)
 		giFramebuffer = createGiFramebuffer(GraphicsSystem::Instance::get(), getGiBuffer());
 	return giFramebuffer;
+}
+ID<Framebuffer> PbrLightingSystem::getReflFramebuffer()
+{
+	if (!reflFramebuffer && options.useReflBuffer && !options.useReflBlur)
+		reflFramebuffer = createReflFramebuffer(GraphicsSystem::Instance::get(), getReflBuffer());
+	return reflFramebuffer;
 }
 
 //**********************************************************************************************************************
@@ -1188,7 +1186,7 @@ ID<Image> PbrLightingSystem::getShadBaseBuffer()
 }
 ID<Image> PbrLightingSystem::getShadBlurBuffer()
 {
-	if (!shadBaseBuffer && options.useShadBuffer)
+	if (!shadBlurBuffer && options.useShadBuffer)
 		createProcBuffers(GraphicsSystem::Instance::get(), shadBaseBuffer, shadBlurBuffer, shadBufferFormat, "shad");
 	return shadBlurBuffer;
 }
@@ -1200,15 +1198,9 @@ ID<Image> PbrLightingSystem::getAoBaseBuffer()
 }
 ID<Image> PbrLightingSystem::getAoBlurBuffer()
 {
-	if (!aoBaseBuffer && options.useAoBuffer)
+	if (!aoBlurBuffer && options.useAoBuffer)
 		createProcBuffers(GraphicsSystem::Instance::get(), aoBaseBuffer, aoBlurBuffer, aoBufferFormat, "ao");
 	return aoBlurBuffer;
-}
-ID<Image> PbrLightingSystem::getReflBuffer()
-{
-	if (!reflBuffer && options.useReflBuffer)
-		reflBuffer = createReflBuffer(GraphicsSystem::Instance::get(), options.useReflBlur);
-	return reflBuffer;
 }
 ID<Image> PbrLightingSystem::getGiBuffer()
 {
@@ -1216,7 +1208,14 @@ ID<Image> PbrLightingSystem::getGiBuffer()
 		giBuffer = createGiBuffer(GraphicsSystem::Instance::get());
 	return giBuffer;
 }
+ID<Image> PbrLightingSystem::getReflBuffer()
+{
+	if (!reflBuffer && options.useReflBuffer)
+		reflBuffer = createReflBuffer(GraphicsSystem::Instance::get(), options.useReflBlur);
+	return reflBuffer;
+}
 
+//**********************************************************************************************************************
 ID<ImageView> PbrLightingSystem::getShadBaseView()
 {
 	if (!options.useShadBuffer)
@@ -1252,6 +1251,12 @@ ID<ImageView> PbrLightingSystem::getAoBlurView()
 	if (!options.useAoBuffer)
 		return {};
 	return GraphicsSystem::Instance::get()->get(getAoBlurBuffer())->getView();
+}
+ID<ImageView> PbrLightingSystem::getGiBaseView()
+{
+	if (!options.useGiBuffer)
+		return {};
+	return GraphicsSystem::Instance::get()->get(getGiBuffer())->getView(0, 0);
 }
 ID<ImageView> PbrLightingSystem::getReflBaseView()
 {
