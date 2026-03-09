@@ -146,6 +146,7 @@ static ID<GraphicsPipeline> createBlendPipeline(ID<Framebuffer> blendFramebuffer
 	return ResourceSystem::Instance::get()->loadGraphicsPipeline("smaa/blend", blendFramebuffer, options);
 }
 
+//**********************************************************************************************************************
 static DescriptorSet::Uniforms getEdgesUniforms(GraphicsSystem* graphicsSystem)
 {
 	// TODO: support forward rendering too
@@ -155,14 +156,19 @@ static DescriptorSet::Uniforms getEdgesUniforms(GraphicsSystem* graphicsSystem)
 static DescriptorSet::Uniforms getWeightsUniforms(GraphicsSystem* graphicsSystem, 
 	ID<Image> areaLUT, ID<Image> searchLUT, ID<Image> edgesBuffer)
 {
-	auto areaLutView = graphicsSystem->get(areaLUT)->getView();
-	auto searchLutView = graphicsSystem->get(searchLUT)->getView();
+	auto areaLutView = graphicsSystem->get(areaLUT);
+	auto searchLutView = graphicsSystem->get(searchLUT);
+	if (!areaLutView->isReady() || !searchLutView->isReady())
+		return {};
+
+	auto areaLutViewView = areaLutView->getView();
+	auto searchLutViewView = searchLutView->getView();
 	auto edgesView = graphicsSystem->get(edgesBuffer)->getView();
 
 	DescriptorSet::Uniforms uniforms =
 	{ 
-		{ "areaLUT", DescriptorSet::Uniform(areaLutView) },
-		{ "searchLUT", DescriptorSet::Uniform(searchLutView) },
+		{ "areaLUT", DescriptorSet::Uniform(areaLutViewView) },
+		{ "searchLUT", DescriptorSet::Uniform(searchLutViewView) },
 		{ "edgesBuffer", DescriptorSet::Uniform(edgesView) }
 	};
 	return uniforms;
@@ -285,6 +291,8 @@ void SmaaRenderSystem::preUiRender()
 	{
 		auto uniforms = getWeightsUniforms(graphicsSystem, 
 			ID<Image>(areaLUT), ID<Image>(searchLUT), edgesBuffer);
+		if (uniforms.empty())
+			return;
 		weightsDS = graphicsSystem->createDescriptorSet(weightsPipeline, std::move(uniforms));
 		SET_RESOURCE_DEBUG_NAME(weightsDS, "descriptorSet.smaa.weights");
 	}
@@ -425,6 +433,7 @@ void SmaaRenderSystem::setQuality(GraphicsQuality quality, int cornerRounding)
 	this->cornerRounding = cornerRounding;
 }
 
+//**********************************************************************************************************************
 ID<Image> SmaaRenderSystem::getEdgesBuffer()
 {
 	if (!edgesBuffer)

@@ -759,7 +759,7 @@ void AtmosphereRenderSystem::renderSkyboxFaces()
 	auto& preSkyFaceEvent = Manager::Instance::get()->getEvent("PreSkyFaceRender");
 	auto& skyFaceEvent = Manager::Instance::get()->getEvent("SkyFaceRender");
 	auto pbrLightingSystem = PbrLightingSystem::Instance::get();
-	auto& cc = graphicsSystem->getCommonConstants();
+	const auto& cc = graphicsSystem->getCommonConstants();
 	auto cameraHeight = calcCameraHeight(cc.cameraPos.y, groundRadius);
 
 	SkyPushConstants pc;
@@ -934,7 +934,7 @@ void AtmosphereRenderSystem::hdrRender()
 		SET_RESOURCE_DEBUG_NAME(hdrSkyDS, "descriptorSet.atmosphere.hdrSky");
 	}
 
-	auto& cc = graphicsSystem->getCommonConstants();
+	const auto& cc = graphicsSystem->getCommonConstants();
 	auto cameraHeight = calcCameraHeight(cc.cameraPos.y, groundRadius);
 	pipelineView->updateFramebuffer(graphicsSystem->getCurrentFramebuffer());
 

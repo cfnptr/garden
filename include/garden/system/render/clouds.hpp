@@ -149,15 +149,15 @@ public:
 	/**
 	 * @brief Returns volumetric clouds data fields image.
 	 */
-	Ref<Image> getDataFields();
+	const Ref<Image>& getDataFields();
 	/**
 	 * @brief Returns volumetric clouds vertical profile image.
 	 */
-	Ref<Image> getVertProfile();
+	const Ref<Image>& getVertProfile();
 	/**
 	 * @brief Returns volumetric clouds noise shape image.
 	 */
-	Ref<Image> getNoiseShape();
+	const Ref<Image>& getNoiseShape();
 	/**
 	 * @brief Returns volumetric clouds camera view image.
 	 */

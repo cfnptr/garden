@@ -16,6 +16,7 @@
 #include "garden/system/render/deferred.hpp"
 #include "garden/system/render/forward.hpp"
 #include "garden/system/resource.hpp"
+#include "sprite/instance-data.h"
 
 using namespace garden;
 
@@ -131,13 +132,14 @@ uint64 SpriteRenderSystem::getBaseInstanceDataSize()
 {
 	return (uint64)sizeof(BaseInstanceData);
 }
-void SpriteRenderSystem::setInstanceData(SpriteRenderComponent* spriteRenderView, BaseInstanceData* instanceData,
+void SpriteRenderSystem::setInstanceData(SpriteRenderComponent* spriteRenderView, void* instanceData,
 	const f32x4x4& viewProj, const f32x4x4& model, uint32 instanceIndex, int32 taskIndex)
 {
-	instanceData->mvp = (float4x4)(viewProj * model);
-	instanceData->color = (float4)srgbToRgb(spriteRenderView->color);
-	instanceData->uvSize = spriteRenderView->uvSize;
-	instanceData->uvOffset = spriteRenderView->uvOffset;
+	auto spriteData = (BaseInstanceData*)instanceData;
+	spriteData->mvp = (float4x4)(viewProj * model);
+	spriteData->color = (float4)srgbToRgb(spriteRenderView->color);
+	spriteData->uvSize = spriteRenderView->uvSize;
+	spriteData->uvOffset = spriteRenderView->uvOffset;
 }
 void SpriteRenderSystem::setPushConstants(SpriteRenderComponent* spriteRenderView, PushConstants* pushConstants,
 	const f32x4x4& viewProj, const f32x4x4& model, uint32 instanceIndex, int32 taskIndex)

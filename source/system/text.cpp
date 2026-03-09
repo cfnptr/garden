@@ -18,6 +18,7 @@
 #include "garden/system/thread.hpp"
 #include "garden/system/log.hpp"
 #include "garden/profiler.hpp"
+#include "text/instance-data.h"
 
 #include "ft2build.h"
 #include FT_FREETYPE_H
@@ -301,7 +302,7 @@ bool FontAtlas::update(u32string_view chars, uint32 fontSize, Image::Usage image
 }
 
 //**********************************************************************************************************************
-static void updateTextNewLine(Text::Instance* instances, uint32 fontSize, float newLineAdvance, float2& instanceOffset, 
+static void updateTextNewLine(TextInstanceData* instances, uint32 fontSize, float newLineAdvance, float2& instanceOffset, 
 	uint32 instanceIndex, uint32& lastNewLineIndex, float2& textSize, Text::Alignment alignment) noexcept
 {
 	float offset;
@@ -335,7 +336,7 @@ static void updateTextNewLine(Text::Instance* instances, uint32 fontSize, float 
 	instanceOffset.x = 0.0f;
 }
 static bool fillTextInstances(u32string_view value, Text::Properties properties, 
-	OptView<FontAtlas> fontAtlasView, Text::Instance* instances, uint32& instanceCount, float2& textSize)
+	OptView<FontAtlas> fontAtlasView, TextInstanceData* instances, uint32& instanceCount, float2& textSize)
 {
 	auto chars = value.data(); const auto& glyphArray = fontAtlasView->getGlyphs();
 	auto fontSize = fontAtlasView->getFontSize(); auto newLineAdvance = fontAtlasView->getNewLineAdvance();
@@ -439,7 +440,7 @@ static bool fillTextInstances(u32string_view value, Text::Properties properties,
 
 		if (result->second.value != Glyph::invisible)
 		{
-			Text::Instance instance;
+			TextInstanceData instance;
 			instance.position = result->second.position + 
 				float4(instanceOffset, instanceOffset);
 			instance.texCoords = result->second.texCoords;
@@ -575,12 +576,12 @@ bool Text::update(u32string_view value, uint32 fontSize, Properties properties,
 	}
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto newBinarySize = (uint64)value.size() * sizeof(Text::Instance);
+	auto newBinarySize = (uint64)value.size() * sizeof(TextInstanceData);
 	auto stagingBuffer = graphicsSystem->createStagingBuffer(Buffer::CpuAccess::RandomReadWrite, newBinarySize);
 	SET_RESOURCE_DEBUG_NAME(stagingBuffer, "buffer.staging.textInstances" + to_string(*stagingBuffer));
 
 	auto stagingView = graphicsSystem->get(stagingBuffer);
-	auto instances = (Text::Instance*)stagingView->getMap();
+	auto instances = (TextInstanceData*)stagingView->getMap();
 
 	uint32 instanceCount; float2 textSize;
 	if (!fillTextInstances(value, properties, fontAtlasView, instances, instanceCount, textSize))

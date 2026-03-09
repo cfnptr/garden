@@ -141,6 +141,8 @@ static void getCloudsQuality(GraphicsQuality cloudsQuality, float& stepSizeFacto
 		default: abort();
 	}
 }
+
+//**********************************************************************************************************************
 static ID<GraphicsPipeline> createCamViewPipeline(ID<Framebuffer> framebuffer, GraphicsQuality quality)
 {
 	float stepSizeFactor, sliceCount, kmPerSlice;
@@ -200,15 +202,26 @@ static DescriptorSet::Uniforms getCamViewUniforms(GraphicsSystem* graphicsSystem
 	ID<Image> dataFields, ID<Image> vertProfile, ID<Image> noiseShape, 
 	ID<Image> cirrusShape, ID<Image> cloudsCamView,  ID<Image> cloudsCamViewDepth)
 {
+	auto dataFieldsView = graphicsSystem->get(dataFields);
+	auto vertProfileView = graphicsSystem->get(vertProfile);
+	auto noiseShapeView = graphicsSystem->get(noiseShape);
+	auto cirrusShapeView = graphicsSystem->get(cirrusShape);
+
+	if (!dataFieldsView->isReady() || !vertProfileView->isReady() ||
+		!noiseShapeView->isReady() || !cirrusShapeView->isReady())
+	{
+		return {};
+	}
+
 	auto atmosphereSystem = AtmosphereRenderSystem::Instance::get();
 	auto hizBufferView = HizRenderSystem::Instance::get()->getView(2);
 	auto disocclMapView = DeferredRenderSystem::Instance::get()->getDisocclView(2);
 	auto transLutView = graphicsSystem->get(atmosphereSystem->getTransLUT())->getView();
 	auto cameraVolumeView = graphicsSystem->get(atmosphereSystem->getCameraVolume())->getView();
-	auto dataFieldsView = graphicsSystem->get(dataFields)->getView();
-	auto vertProfileView = graphicsSystem->get(vertProfile)->getView();
-	auto noiseShapeView = graphicsSystem->get(noiseShape)->getView();
-	auto cirrusShapeView = graphicsSystem->get(cirrusShape)->getView();
+	auto dataFieldsViewView = dataFieldsView->getView();
+	auto vertProfileViewView = vertProfileView->getView();
+	auto noiseShapeViewView = noiseShapeView->getView();
+	auto cirrusShapeViewView = cirrusShapeView->getView();
 	auto camViewView = graphicsSystem->get(cloudsCamView);
 	auto camViewDepthView = graphicsSystem->get(cloudsCamViewDepth);
 	auto inFlightCount = graphicsSystem->getInFlightCount();
@@ -225,10 +238,10 @@ static DescriptorSet::Uniforms getCamViewUniforms(GraphicsSystem* graphicsSystem
 		{ "disocclMap", DescriptorSet::Uniform(disocclMapView, 1, inFlightCount) },
 		{ "transLUT", DescriptorSet::Uniform(transLutView, 1, inFlightCount) },
 		{ "cameraVolume", DescriptorSet::Uniform(cameraVolumeView, 1, inFlightCount) },
-		{ "dataFields", DescriptorSet::Uniform(dataFieldsView, 1, inFlightCount) },
-		{ "vertProfile", DescriptorSet::Uniform(vertProfileView, 1, inFlightCount) },
-		{ "noiseShape", DescriptorSet::Uniform(noiseShapeView, 1, inFlightCount) },
-		{ "cirrusShape", DescriptorSet::Uniform(cirrusShapeView, 1, inFlightCount) },
+		{ "dataFields", DescriptorSet::Uniform(dataFieldsViewView, 1, inFlightCount) },
+		{ "vertProfile", DescriptorSet::Uniform(vertProfileViewView, 1, inFlightCount) },
+		{ "noiseShape", DescriptorSet::Uniform(noiseShapeViewView, 1, inFlightCount) },
+		{ "cirrusShape", DescriptorSet::Uniform(cirrusShapeViewView, 1, inFlightCount) },
 		{ "cc", DescriptorSet::Uniform(graphicsSystem->getCommonConstantsBuffers()) }
 	};
 	return uniforms;
@@ -257,6 +270,8 @@ static DescriptorSet::Uniforms getSkyboxUniforms(GraphicsSystem* graphicsSystem,
 	};
 	return uniforms;
 }
+
+//**********************************************************************************************************************
 static DescriptorSet::Uniforms getViewBlendUniforms(GraphicsSystem* graphicsSystem, 
 	ID<Image> cloudsCamView, ID<Image> cloudsCamViewDepth)
 {
@@ -409,20 +424,15 @@ void CloudsRenderSystem::preDeferredRender()
 	}
 
 	auto pipelineView = graphicsSystem->get(camViewPipeline);
-	auto dataFieldsView = graphicsSystem->get(dataFields);
-	auto vertProfileView = graphicsSystem->get(vertProfile);
-	auto noiseShapeView = graphicsSystem->get(noiseShape);
-
-	if (!pipelineView->isReady() || !dataFieldsView->isReady() || 
-		!vertProfileView->isReady() || !noiseShapeView->isReady())
-	{
+	if (!pipelineView->isReady())
 		return;
-	}
 
 	if (!camViewDS)
 	{
 		auto uniforms = getCamViewUniforms(graphicsSystem, ID<Image>(dataFields), ID<Image>(vertProfile), 
 			ID<Image>(noiseShape), ID<Image>(cirrusShape), cloudsCamView, cloudsCamViewDepth);
+		if (uniforms.empty())
+			return;
 		camViewDS = graphicsSystem->createDescriptorSet(camViewPipeline, std::move(uniforms));
 		SET_RESOURCE_DEBUG_NAME(camViewDS, "descriptorSet.clouds.camView");
 	}
@@ -489,7 +499,7 @@ void CloudsRenderSystem::preSkyFaceRender()
 	auto atmosphereSystem = AtmosphereRenderSystem::Instance::get();
 	auto inFlightIndex = graphicsSystem->getInFlightIndex();
 	auto groundRadius = atmosphereSystem->groundRadius;
-	auto& cc = graphicsSystem->getCommonConstants();
+	const auto& cc = graphicsSystem->getCommonConstants();
 	pipelineView->updateFramebuffer(skyboxFramebuffer);
 
 	SkyboxPC pc;
@@ -558,7 +568,7 @@ void CloudsRenderSystem::preHdrRender()
 	auto inFlightIndex = graphicsSystem->getInFlightIndex();
 	auto currentFrameIndex = graphicsSystem->getCurrentFrameIndex();
 	auto groundRadius = atmosphereSystem->groundRadius;
-	auto& cc = graphicsSystem->getCommonConstants();
+	const auto& cc = graphicsSystem->getCommonConstants();
 	auto pipelineView = graphicsSystem->get(camViewPipeline);
 
 	auto bayerIndex = bayerIndices4x4[currentFrameIndex % 16];
@@ -660,7 +670,7 @@ void CloudsRenderSystem::shadowRender()
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto atmosphereSystem = AtmosphereRenderSystem::Instance::get();
 	auto groundRadius = atmosphereSystem->groundRadius;
-	auto& cc = graphicsSystem->getCommonConstants();
+	const auto& cc = graphicsSystem->getCommonConstants();
 	auto pipelineView = graphicsSystem->get(shadowPipeline);
 
 	ShadowsPC pc;
@@ -731,19 +741,19 @@ void CloudsRenderSystem::setQuality(GraphicsQuality quality)
 }
 
 //**********************************************************************************************************************
-Ref<Image> CloudsRenderSystem::getDataFields()
+const Ref<Image>& CloudsRenderSystem::getDataFields()
 {
 	if (!dataFields)
 		dataFields = createDataFields();
 	return dataFields;
 }
-Ref<Image> CloudsRenderSystem::getVertProfile()
+const Ref<Image>& CloudsRenderSystem::getVertProfile()
 {
 	if (!vertProfile)
 		vertProfile = createVertProfile();
 	return vertProfile;
 }
-Ref<Image> CloudsRenderSystem::getNoiseShape()
+const Ref<Image>& CloudsRenderSystem::getNoiseShape()
 {
 	if (!noiseShape)
 		noiseShape = createNoiseShape();

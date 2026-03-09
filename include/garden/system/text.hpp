@@ -135,17 +135,6 @@ public:
 		bool useTags = false;     /**< Process HTML-like tags when generating text. */
 		Properties() noexcept : maxAdvanceX(INFINITY) { }
 	};
-	/**
-	 * @brief Text quad rendering instance data.
-	 */
-	struct Instance final
-	{
-		float4 position;
-		float4 texCoords;
-		uint32 atlasIndex = 0;
-		Color srgbColor = Color::transparent;
-		uint64 _alignment = 0;
-	};
 
 	/**
 	 * @brief Default text quad instance buffer usage flags.
