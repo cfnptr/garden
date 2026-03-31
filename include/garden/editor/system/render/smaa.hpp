@@ -22,7 +22,7 @@ namespace garden
 class SmaaRenderEditorSystem final : public System
 {
 	SmaaRenderEditorSystem();
-	~SmaaRenderEditorSystem() final;
+	~SmaaRenderEditorSystem() override;
 
 	void init();
 	void deinit();

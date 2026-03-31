@@ -66,7 +66,7 @@ private:
 	/**
 	 * @brief Destroys forward rendering system instance.
 	 */
-	~ForwardRenderSystem() final;
+	~ForwardRenderSystem() override;
 
 	void init();
 	void deinit();

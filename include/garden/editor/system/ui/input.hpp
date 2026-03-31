@@ -22,7 +22,7 @@ namespace garden
 class UiInputEditorSystem final : public System, public Singleton<UiInputEditorSystem>
 {
 	UiInputEditorSystem(bool setSingleton = true);
-	~UiInputEditorSystem() final;
+	~UiInputEditorSystem() override;
 	
 	void init();
 	void deinit();

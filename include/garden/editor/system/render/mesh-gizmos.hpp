@@ -44,7 +44,7 @@ private:
 	uint32 dragMode = 0;
 
 	MeshGizmosEditorSystem();
-	~MeshGizmosEditorSystem() final;
+	~MeshGizmosEditorSystem() override;
 
 	void init();
 	void deinit();

@@ -108,7 +108,7 @@ private:
 	/**
 	 * @brief Destroys physically based volumetric clouds rendering system instance.
 	 */
-	~CloudsRenderSystem() final;
+	~CloudsRenderSystem() override;
 
 	void init();
 	void deinit();

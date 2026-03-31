@@ -142,7 +142,7 @@ class LogSystem final : public System, public Singleton<LogSystem>
 	/**
 	 * @brief Destroys logging system instance.
 	 */
-	~LogSystem() final;
+	~LogSystem() override;
 	
 	friend class ecsm::Manager;
 public:

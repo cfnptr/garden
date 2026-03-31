@@ -54,7 +54,7 @@ private:
 	/**
 	 * @brief Destroys hierarchical depth (Z) buffer rendering system instance. (Hi-Z)
 	 */
-	~HizRenderSystem() final;
+	~HizRenderSystem() override;
 
 	void init();
 	void deinit();

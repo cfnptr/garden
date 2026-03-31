@@ -66,19 +66,19 @@ private:
 	/**
 	 * @brief Destroys cutout 9-slice rendering system instance.
 	 */
-	~Cutout9SliceSystem() final;
+	~Cutout9SliceSystem() override;
 
 	void setPushConstants(SpriteRenderComponent* spriteRenderView, PushConstants* pushConstants,
-		const f32x4x4& viewProj, const f32x4x4& model, uint32 instanceIndex, int32 threadIndex) final;
+		const f32x4x4& viewProj, const f32x4x4& model, uint32 instanceIndex, int32 threadIndex) override;
 
-	string_view getComponentName() const final;
-	MeshRenderType getMeshRenderType() const final;
+	string_view getComponentName() const override;
+	MeshRenderType getMeshRenderType() const override;
 	
-	void serialize(ISerializer& serializer, const View<Component> component) final;
-	void deserialize(IDeserializer& deserializer, View<Component> component) final;
-	void serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame) final;
-	void deserializeAnimation(IDeserializer& deserializer, View<AnimationFrame> frame) final;
-	void animateAsync(View<Component> component, View<AnimationFrame> a, View<AnimationFrame> b, float t) final;
+	void serialize(ISerializer& serializer, const View<Component> component) override;
+	void deserialize(IDeserializer& deserializer, View<Component> component) override;
+	void serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame) override;
+	void deserializeAnimation(IDeserializer& deserializer, View<AnimationFrame> frame) override;
+	void animateAsync(View<Component> component, View<AnimationFrame> a, View<AnimationFrame> b, float t) override;
 	
 	friend class ecsm::Manager;
 };

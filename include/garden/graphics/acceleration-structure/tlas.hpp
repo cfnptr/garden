@@ -119,7 +119,7 @@ public:
 	 * @brief Actually builds top level acceleration structure.
 	 * @param scratchBuffer AS scratch buffer (null = auto temporary)
 	 */
-	void build(ID<Buffer> scratchBuffer = {}) final;
+	void build(ID<Buffer> scratchBuffer = {}) override;
 
 	// TODO: add TLAS compaction if needed.
 };

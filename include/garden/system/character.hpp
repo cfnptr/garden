@@ -271,20 +271,20 @@ private:
 	/**
 	 * @brief Destroys character system instance.
 	 */
-	~CharacterSystem() final;
+	~CharacterSystem() override;
 
-	ID<Component> createComponent(ID<Entity> entity) final;
-	void destroyComponent(ID<Component> instance) final;
-	void resetComponent(View<Component> component, bool full) final;
-	void copyComponent(View<Component> source, View<Component> destination) final;
-	string_view getComponentName() const final;
+	ID<Component> createComponent(ID<Entity> entity) override;
+	void destroyComponent(ID<Component> instance) override;
+	void resetComponent(View<Component> component, bool full) override;
+	void copyComponent(View<Component> source, View<Component> destination) override;
+	string_view getComponentName() const override;
 
-	void serialize(ISerializer& serializer, const View<Component> component) final;
-	void deserialize(IDeserializer& deserializer, View<Component> component) final;
+	void serialize(ISerializer& serializer, const View<Component> component) override;
+	void deserialize(IDeserializer& deserializer, View<Component> component) override;
 
-	string_view getMessageType() final;
-	int onMsgFromClient(ClientSession* session, StreamInput message) final;
-	int onMsgFromServer(StreamInput message, bool isDatagram) final;
+	string_view getMessageType() override;
+	int onMsgFromClient(ClientSession* session, StreamInput message) override;
+	int onMsgFromServer(StreamInput message, bool isDatagram) override;
 
 	friend class ecsm::Manager;
 	friend struct CharacterComponent;

@@ -24,7 +24,7 @@ class AtmosphereEditorSystem final : public System
 	bool showWindow = false;
 
 	AtmosphereEditorSystem();
-	~AtmosphereEditorSystem() final;
+	~AtmosphereEditorSystem() override;
 
 	void init();
 	void deinit();

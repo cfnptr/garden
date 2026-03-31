@@ -66,7 +66,7 @@ private:
 	/**
 	 * @brief Destroys subpixel morphological anti-aliasing rendering system instance. (FXAA)
 	 */
-	~SmaaRenderSystem() final;
+	~SmaaRenderSystem() override;
 
 	void init();
 	void deinit();

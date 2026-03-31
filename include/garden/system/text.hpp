@@ -299,7 +299,7 @@ private:
 	/**
 	 * @brief Destroys text system instance.
 	 */
-	~TextSystem() final;
+	~TextSystem() override;
 
 	void update();
 

@@ -23,7 +23,7 @@ using namespace ecsm;
 class MyCustomSystem : public System
 {
     MyCustomSystem();
-    ~MyCustomSystem() final;
+    ~MyCustomSystem() override;
 
     friend class ecsm::Manager;
 };
@@ -97,7 +97,7 @@ once every game tick (even if the game window is minimized).
 class MyCustomSystem : public System
 {
     MyCustomSystem();
-    ~MyCustomSystem() final;
+    ~MyCustomSystem() override;
 
     void update(); 
 

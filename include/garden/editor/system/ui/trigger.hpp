@@ -22,7 +22,7 @@ namespace garden
 class UiTriggerEditorSystem final : public System, public Singleton<UiTriggerEditorSystem>
 {
 	UiTriggerEditorSystem(bool setSingleton = true);
-	~UiTriggerEditorSystem() final;
+	~UiTriggerEditorSystem() override;
 	
 	void init();
 	void deinit();

@@ -204,7 +204,7 @@ private:
 	/**
 	 * @brief Destroys input system instance.
 	 */
-	~InputSystem() final;
+	~InputSystem() override;
 
 	void preInit();
 	void deinit();

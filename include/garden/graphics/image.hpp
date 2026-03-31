@@ -261,7 +261,7 @@ private:
 	Image(Usage usage, Strategy strategy, uint64 version) noexcept :
 		Memory(0, CpuAccess::None, Location::Auto, strategy, version), usage(usage) { }
 	Image(void* instance, Format format, Usage usage, Strategy strategy, uint2 size, uint8 backend);
-	bool destroy() final;
+	bool destroy() override;
 
 	friend class ImageExt;
 	friend class LinearPool<Image>;
@@ -816,7 +816,7 @@ public:
 	 * @brief Sets image debug name. (Debug Only)
 	 * @param[in] name target debug name
 	 */
-	void setDebugName(const string& name) final;
+	void setDebugName(const string& name) override;
 	#endif
 };
 
@@ -847,7 +847,7 @@ class ImageView final : public Resource
 
 	ImageView(bool isDefault, ID<Image> image, Image::Type type, Image::Format format,
 		uint32 baseLayer, uint32 layerCount, uint8 baseMip, uint8 mipCount);
-	bool destroy() final;
+	bool destroy() override;
 
 	friend class ImageViewExt;
 	friend class LinearPool<ImageView>;
@@ -915,7 +915,7 @@ public:
 	 * @brief Sets image view debug name. (Debug Only)
 	 * @param[in] name target debug name
 	 */
-	void setDebugName(const string& name) final;
+	void setDebugName(const string& name) override;
 	#endif
 };
 

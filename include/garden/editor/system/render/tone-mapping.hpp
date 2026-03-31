@@ -27,7 +27,7 @@ class ToneMappingEditorSystem final : public System
 	bool showWindow = false;
 
 	ToneMappingEditorSystem();
-	~ToneMappingEditorSystem() final;
+	~ToneMappingEditorSystem() override;
 
 	void init();
 	void deinit();

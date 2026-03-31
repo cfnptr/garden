@@ -24,7 +24,7 @@ class EcsEditorSystem final : public System
 	bool showWindow = false;
 
 	EcsEditorSystem();
-	~EcsEditorSystem() final;
+	~EcsEditorSystem() override;
 
 	void init();
 	void deinit();

@@ -24,7 +24,7 @@ class CloudsEditorSystem final : public System
 	bool showWindow = false;
 
 	CloudsEditorSystem();
-	~CloudsEditorSystem() final;
+	~CloudsEditorSystem() override;
 
 	void init();
 	void deinit();

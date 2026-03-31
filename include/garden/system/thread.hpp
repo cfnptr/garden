@@ -46,7 +46,7 @@ class ThreadSystem final : public System, public Singleton<ThreadSystem>
 	/**
 	 * @brief Destroys thread system instance.
 	 */
-	~ThreadSystem() final;
+	~ThreadSystem() override;
 
 	void preInit();
 	void preDeinit();

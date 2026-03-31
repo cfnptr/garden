@@ -32,7 +32,7 @@ class BloomRenderEditorSystem final : public System
 	bool showWindow = false;
 
 	BloomRenderEditorSystem();
-	~BloomRenderEditorSystem() final;
+	~BloomRenderEditorSystem() override;
 
 	void init();
 	void deinit();

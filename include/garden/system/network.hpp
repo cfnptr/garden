@@ -86,14 +86,14 @@ class NetworkSystem final : public ComponentSystem<NetworkComponent, false>,
 	/**
 	 * @brief Destroys network system instance.
 	 */
-	~NetworkSystem() final;
+	~NetworkSystem() override;
 
-	void resetComponent(View<Component> component, bool full) final;
-	void copyComponent(View<Component> source, View<Component> destination) final;
-	string_view getComponentName() const final;
+	void resetComponent(View<Component> component, bool full) override;
+	void copyComponent(View<Component> source, View<Component> destination) override;
+	string_view getComponentName() const override;
 	
-	void serialize(ISerializer& serializer, const View<Component> component) final;
-	void deserialize(IDeserializer& deserializer, View<Component> component) final;
+	void serialize(ISerializer& serializer, const View<Component> component) override;
+	void deserialize(IDeserializer& deserializer, View<Component> component) override;
 
 	friend class ecsm::Manager;
 	friend class NetworkComponent;

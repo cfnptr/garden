@@ -96,7 +96,7 @@ protected:
 
 	AccelerationStructure(uint32 geometryCount, BuildFlagsAS flags, Type type) noexcept : 
 		geometryCount(geometryCount), type(type), flags(flags) { }
-	bool destroy() final;
+	bool destroy() override;
 
 	friend class AccelerationStructureExt;
  public:
@@ -152,7 +152,7 @@ protected:
 	 * @brief Sets acceleration structure debug name. (Debug Only)
 	 * @param[in] name target debug name
 	 */
-	void setDebugName(const string& name) final;
+	void setDebugName(const string& name) override;
 	#endif
 
 	static void _createVkInstance(uint64 size, uint8 type, BuildFlagsAS flags, 

@@ -57,7 +57,7 @@ private:
 	/**
 	 * @brief Destroys fast approximate anti-aliasing rendering system instance. (FXAA)
 	 */
-	~FxaaRenderSystem() final;
+	~FxaaRenderSystem() override;
 
 	void init();
 	void deinit();

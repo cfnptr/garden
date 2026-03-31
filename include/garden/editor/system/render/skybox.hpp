@@ -22,7 +22,7 @@ namespace garden
 class SkyboxRenderEditorSystem final : public System
 {
 	SkyboxRenderEditorSystem();
-	~SkyboxRenderEditorSystem() final;
+	~SkyboxRenderEditorSystem() override;
 
 	void init();
 	void deinit();

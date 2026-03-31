@@ -161,7 +161,7 @@ private:
 	/**
 	 * @brief Destroys PBR lighting rendering system instance. (Physically Based Rendering)
 	 */
-	~PbrLightingSystem() final;
+	~PbrLightingSystem() override;
 
 	void init();
 	void deinit();
@@ -169,9 +169,9 @@ private:
 	void gBufferRecreate();
 	void qualityChange();
 
-	void resetComponent(View<Component> component, bool full) final;
-	void copyComponent(View<Component> source, View<Component> destination) final;
-	string_view getComponentName() const final;
+	void resetComponent(View<Component> component, bool full) override;
+	void copyComponent(View<Component> source, View<Component> destination) override;
+	string_view getComponentName() const override;
 
 	friend class ecsm::Manager;
 public:

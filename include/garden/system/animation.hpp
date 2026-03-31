@@ -113,17 +113,17 @@ private:
 	/**
 	 * @brief Destroys animation system instance.
 	 */
-	~AnimationSystem() final;
+	~AnimationSystem() override;
 
 	void update();
 
-	void resetComponent(View<Component> component, bool full) final;
-	void copyComponent(View<Component> source, View<Component> destination) final;
-	string_view getComponentName() const final;
-	void disposeComponents() final;
+	void resetComponent(View<Component> component, bool full) override;
+	void copyComponent(View<Component> source, View<Component> destination) override;
+	string_view getComponentName() const override;
+	void disposeComponents() override;
 
-	void serialize(ISerializer& serializer, const View<Component> component) final;
-	void deserialize(IDeserializer& deserializer, View<Component> component) final;
+	void serialize(ISerializer& serializer, const View<Component> component) override;
+	void deserialize(IDeserializer& deserializer, View<Component> component) override;
 	
 	friend class ecsm::Manager;
 public:

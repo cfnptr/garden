@@ -79,16 +79,16 @@ private:
 	/**
 	 * @brief Destroys network client system instance.
 	 */
-	~ClientNetworkSystem() final;
+	~ClientNetworkSystem() override;
 
 	void preInit();
 	void preDeinit();
 	void update();
 
-	void onConnectionResult(NetsResult result) final;
-	void onDisconnect(int reason) final;
-	int onStreamReceive(const uint8_t* receiveBuffer, size_t byteCount) final;
-	int onDatagramReceive(const uint8_t* receiveBuffer, size_t byteCount) final;
+	void onConnectionResult(NetsResult result) override;
+	void onDisconnect(int reason) override;
+	int onStreamReceive(const uint8_t* receiveBuffer, size_t byteCount) override;
+	int onDatagramReceive(const uint8_t* receiveBuffer, size_t byteCount) override;
 	static int onMessageReceive(::StreamMessage message, void* argument);
 
 	int onEncResponse(StreamInput response, bool isDatagram);

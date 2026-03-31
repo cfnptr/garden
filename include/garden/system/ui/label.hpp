@@ -127,32 +127,32 @@ private:
 	/**
 	 * @brief Destroys user interface label element system instance. (UI, GUI)
 	 */
-	~UiLabelSystem() final;
+	~UiLabelSystem() override;
 
 	void update();
 	void localeChange();
 
-	void resetComponent(View<Component> component, bool full) final;
-	void copyComponent(View<Component> source, View<Component> destination) final;
-	string_view getComponentName() const final;
-	MeshRenderType getMeshRenderType() const final;
+	void resetComponent(View<Component> component, bool full) override;
+	void copyComponent(View<Component> source, View<Component> destination) override;
+	string_view getComponentName() const override;
+	MeshRenderType getMeshRenderType() const override;
 
-	bool isDrawReady(int8 shadowPass) final;
+	bool isDrawReady(int8 shadowPass) override;
 	uint32 getReadyMeshesAsync(MeshRenderComponent* meshRenderView, 
 		const f32x4& cameraPosition, const Frustum& frustum, f32x4x4& model) override;
 	void prepareDraw(const f32x4x4& viewProj, uint32 drawCount, 
-		uint32 instanceCount, int8 shadowPass) final;
-	void beginDrawAsync(int32 taskIndex) final;
+		uint32 instanceCount, int8 shadowPass) override;
+	void beginDrawAsync(int32 taskIndex) override;
 	void drawAsync(MeshRenderComponent* meshRenderView, const f32x4x4& viewProj,
-		const f32x4x4& model, uint32 instanceIndex, int32 taskIndex) final;
+		const f32x4x4& model, uint32 instanceIndex, int32 taskIndex) override;
 	
-	void serialize(ISerializer& serializer, const View<Component> component) final;
-	void deserialize(IDeserializer& deserializer, View<Component> component) final;
+	void serialize(ISerializer& serializer, const View<Component> component) override;
+	void deserialize(IDeserializer& deserializer, View<Component> component) override;
 
-	void serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame) final;
-	void deserializeAnimation(IDeserializer& deserializer, View<AnimationFrame> frame) final;
-	void animateAsync(View<Component> component, View<AnimationFrame> a, View<AnimationFrame> b, float t) final;
-	void resetAnimation(View<AnimationFrame> frame, bool full) final;
+	void serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame) override;
+	void deserializeAnimation(IDeserializer& deserializer, View<AnimationFrame> frame) override;
+	void animateAsync(View<Component> component, View<AnimationFrame> a, View<AnimationFrame> b, float t) override;
+	void resetAnimation(View<AnimationFrame> frame, bool full) override;
 
 	friend class ecsm::Manager;
 public:

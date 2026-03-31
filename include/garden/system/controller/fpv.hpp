@@ -42,7 +42,7 @@ class FpvControllerSystem final : public System, public Singleton<FpvControllerS
 	/**
 	 * @brief Destroys first person view controller system instance.
 	 */
-	~FpvControllerSystem() final;
+	~FpvControllerSystem() override;
 
 	void updateMouseLock();
 	quat updateCameraRotation();

@@ -125,7 +125,7 @@ class GraphicsSystem final : public System, public Singleton<GraphicsSystem>
 	/**
 	 * @brief Destroys graphics system instance.
 	 */
-	~GraphicsSystem() final;
+	~GraphicsSystem() override;
 
 	void preInit();
 	void preDeinit();

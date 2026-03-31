@@ -20,6 +20,7 @@
 #pragma once
 #include <string>
 #include <exception>
+#include <utility>
 
 namespace garden
 {
@@ -36,14 +37,13 @@ protected:
 public:
 	/**
 	 * @brief Creates a new unspecified Garden error (exception) instance.
-	 * @param message target error message
 	 */
 	GardenError() : message("Unspecified") { }
 	/**
 	 * @brief Creates a new Garden error (exception) instance. 
 	 * @param message target error message
 	 */
-	GardenError(const string& message) : message(message) { }
+	GardenError(string  message) : message(std::move(message)) { }
 
 	/**
 	 * @brief Returns Garden error message C-string.

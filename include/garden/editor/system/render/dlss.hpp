@@ -22,7 +22,7 @@ namespace garden
 class DlssRenderEditorSystem final : public System
 {
 	DlssRenderEditorSystem();
-	~DlssRenderEditorSystem() final;
+	~DlssRenderEditorSystem() override;
 
 	void init();
 	void deinit();

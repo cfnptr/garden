@@ -24,7 +24,7 @@ namespace garden
 class SpriteRenderEditorSystem final : public System
 {
 	SpriteRenderEditorSystem();
-	~SpriteRenderEditorSystem() final;
+	~SpriteRenderEditorSystem() override;
 
 	void init();
 	void deinit();

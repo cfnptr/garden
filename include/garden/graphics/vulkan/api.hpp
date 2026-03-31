@@ -64,7 +64,7 @@ public:
 private:
 	VulkanAPI(const string& appName, const string& appDataName, Version appVersion, uint2 windowSize, 
 		ThreadPool* threadPool, bool useVsync, bool useTripleBuffering, bool isFullscreen, bool isDecorated);
-	~VulkanAPI() final;
+	~VulkanAPI() override;
 
 	friend class GraphicsAPI;
 public:
@@ -139,32 +139,32 @@ public:
 	/**
 	 * @brief Actually destroys unused GPU resources.
 	 */
-	void flushDestroyBuffer() final;
+	void flushDestroyBuffer() override;
 	/**
 	 * @brief Stores shader pipeline cache to the disk.
 	 */
-	void storePipelineCache() final;
+	void storePipelineCache() override;
 	/**
 	 * @brief Wait for a GPU to become idle.
 	 */
-	void waitIdle() final;
+	void waitIdle() override;
 
 	/**
 	 * @brief Returns shader subgroup size. (Warp or wavefront size)
 	 */
-	uint32 getSubgroupSize() const final { return subgroupProperties.subgroupSize; }
+	uint32 getSubgroupSize() const override { return subgroupProperties.subgroupSize; }
 	/**
 	 * @brief Returns true if hardware ray tracing is supported.
 	 */
-	bool hasRayTracing() const final { return features.rayTracing; }
+	bool hasRayTracing() const override { return features.rayTracing; }
 	/**
 	 * @brief Returns true if hardware ray query is supported.
 	 */
-	bool hasRayQuery() const final { return features.rayQuery; }
+	bool hasRayQuery() const override { return features.rayQuery; }
 	/**
 	 * @brief Returns true if low latency input is supported.
 	 */
-	bool hasLowLatency() const final { return features.nvLowLatency || features.amdAntiLag; }
+	bool hasLowLatency() const override { return features.nvLowLatency || features.amdAntiLag; }
 
 	/**
 	 * @brief Returns Vulkan graphics API instance.

@@ -65,17 +65,17 @@ private:
 
 	VulkanSwapchain(VulkanAPI* vulkanAPI, uint2 framebufferSize,
 		bool useVsync, bool useTripleBuffering);
-	~VulkanSwapchain() final;
+	~VulkanSwapchain() override;
 
 	friend class garden::VulkanAPI;
 public:
 	vk::SwapchainKHR getInstance() noexcept { return instance; }
 	InFlightFrame& getInFlightFrame() noexcept { return inFlightFrames[inFlightIndex]; }
 
-	void recreate(uint2 framebufferSize, bool useVsync, bool useTripleBuffering) final;
-	bool acquireNextImage() final;
-	void submit() final;
-	bool present() final;
+	void recreate(uint2 framebufferSize, bool useVsync, bool useTripleBuffering) override;
+	bool acquireNextImage() override;
+	void submit() override;
+	bool present() override;
 
 	void beginSecondaryCommandBuffers(const vector<Framebuffer::Attachment>& colorAttachments, 
 		Framebuffer::Attachment depthStencilAttachment, const string& name);

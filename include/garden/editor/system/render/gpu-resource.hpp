@@ -36,7 +36,7 @@ private:
 	TabType openNextTab = TabType::None;
 
 	GpuResourceEditorSystem();
-	~GpuResourceEditorSystem() final;
+	~GpuResourceEditorSystem() override;
 
 	void init();
 	void deinit();

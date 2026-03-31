@@ -62,12 +62,12 @@ public:
 	uint8 getServerLengthSize() const noexcept { return serverLengthSize; }
 	uint8 getClientLengthSize() const noexcept { return clientLengthSize; }
 private:
-	void* onSessionCreate(nets::StreamSessionView streamSession) final;
-	void onSessionDestroy(nets::StreamSessionView streamSession, int reason) final;
+	void* onSessionCreate(nets::StreamSessionView streamSession) override;
+	void onSessionDestroy(nets::StreamSessionView streamSession, int reason) override;
 	int onStreamReceive(nets::StreamSessionView streamSession, 
-		const uint8_t* receiveBuffer, size_t byteCount) final;
+		const uint8_t* receiveBuffer, size_t byteCount) override;
 	void onDatagramReceive(nets::SocketAddressView remoteAddress, 
-		const uint8_t* receiveBuffer, size_t byteCount) final;
+		const uint8_t* receiveBuffer, size_t byteCount) override;
 	static int onMessageReceive(::StreamMessage message, void* argument);
 
 	int onEncRequest(ClientSession* session, StreamInput request);
@@ -104,7 +104,7 @@ private:
 	/**
 	 * @brief Destroys network server system instance.
 	 */
-	~ServerNetworkSystem() final;
+	~ServerNetworkSystem() override;
 
 	void preInit();
 	void update();

@@ -108,7 +108,7 @@ private:
 	Buffer(Usage usage, CpuAccess cpuAccess, Location location, Strategy strategy, uint64 size, uint64 version);
 	Buffer(Usage usage, CpuAccess cpuAccess, Location location, Strategy strategy, uint64 version) noexcept :
 		Memory(0, cpuAccess, location, strategy, version), usage(usage) { }
-	bool destroy() final;
+	bool destroy() override;
 
 	friend class BufferExt;
 	friend class LinearPool<Buffer>;
@@ -303,7 +303,7 @@ public:
 	 * @brief Sets buffer debug name. (Debug Only)
 	 * @param[in] name target debug name
 	 */
-	void setDebugName(const string& name) final;
+	void setDebugName(const string& name) override;
 	#endif
 };
 

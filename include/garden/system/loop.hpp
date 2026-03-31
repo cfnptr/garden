@@ -41,7 +41,7 @@ class LoopSystem final : public System, public Singleton<LoopSystem>
 	/**
 	 * @brief Destroys loop system instance.
 	 */
-	~LoopSystem() final;
+	~LoopSystem() override;
 
 	void preInit();
 	void deinit();
