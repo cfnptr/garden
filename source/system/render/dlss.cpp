@@ -25,6 +25,7 @@
 #include "garden/system/log.hpp"
 #include "garden/profiler.hpp"
 #include "mpio/directory.hpp"
+#include "common/gbuffer.h"
 
 #include "nvsdk_ngx_helpers.h"
 #include "nvsdk_ngx_helpers_vk.h"

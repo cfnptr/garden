@@ -31,9 +31,6 @@
 [submodule "libraries/freetype"]
 	path = libraries/freetype
 	url = https://github.com/freetype/freetype
-[submodule "libraries/conf"]
-	path = libraries/conf
-	url = https://github.com/cfnptr/conf
 [submodule "libraries/pack"]
 	path = libraries/pack
 	url = https://github.com/cfnptr/pack
@@ -43,18 +40,12 @@
 [submodule "libraries/fastnoise2"]
 	path = libraries/fastnoise2
 	url = https://github.com/Auburn/FastNoise2
-[submodule "libraries/voxy"]
-	path = libraries/voxy
-	url = https://github.com/cfnptr/voxy
 [submodule "libraries/jolt"]
 	path = libraries/jolt
 	url = https://github.com/jrouwe/JoltPhysics
 [submodule "libraries/png"]
 	path = libraries/png
 	url = https://github.com/pnggroup/libpng
-[submodule "libraries/tinyexr"]
-	path = libraries/tinyexr
-	url = https://github.com/cfnptr/tinyexr
 [submodule "libraries/tracy"]
 	path = libraries/tracy
 	url = https://github.com/wolfpld/tracy
@@ -67,6 +58,3 @@
 [submodule "resources"]
 	path = resources
 	url = https://github.com/cfnptr/garden-resources
-[submodule "libraries/tinygltf"]
-	path = libraries/tinygltf
-	url = https://github.com/cfnptr/tinygltf

@@ -307,7 +307,7 @@ static ID<Framebuffer> createReflFramebuffer(GraphicsSystem* graphicsSystem, ID<
 {
 	vector<Framebuffer::Attachment> colorAttachments =
 	{
-		Framebuffer::Attachment(graphicsSystem->get(reflBuffer)->getView())
+		Framebuffer::Attachment(graphicsSystem->get(reflBuffer)->getView(0, 0))
 	};
 	auto framebuffer = graphicsSystem->createFramebuffer(
 		graphicsSystem->getScaledFrameSize(), std::move(colorAttachments));
@@ -323,7 +323,7 @@ static DescriptorSet::Uniforms getLightingUniforms(GraphicsSystem* graphicsSyste
 	auto shadBlurView = shadBlurBuffer ? graphicsSystem->get(shadBlurBuffer)->getView() : ID<ImageView>();
 	auto aoBlurView = aoBlurBuffer ? graphicsSystem->get(aoBlurBuffer)->getView() : ID<ImageView>();
 	auto giBufferView = giBuffer ? graphicsSystem->get(giBuffer)->getView() : ID<ImageView>();
-	auto reflBufferView = reflBuffer ? graphicsSystem->get(reflBuffer)->getView() : ID<ImageView>();
+	auto reflBufferView = reflBuffer ? graphicsSystem->get(reflBuffer)->getView(0, 0) : ID<ImageView>();
 	auto dfgLutView = graphicsSystem->get(dfgLUT)->getView();
 	auto gFramebufferView = graphicsSystem->get(deferredSystem->getGFramebuffer());
 	const auto& gColorAttachments = gFramebufferView->getColorAttachments();
@@ -944,7 +944,7 @@ void PbrLightingSystem::gBufferRecreate()
 	if (!options.useReflBlur)
 	{
 		auto framebufferView = graphicsSystem->get(reflFramebuffer);
-		framebufferView->update(frameSize, graphicsSystem->get(reflBuffer)->getView());
+		framebufferView->update(frameSize, graphicsSystem->get(reflBuffer)->getView(0, 0));
 	}
 	if (giFramebuffer)
 	{

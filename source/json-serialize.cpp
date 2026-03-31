@@ -457,7 +457,7 @@ bool JsonDeserializer::read(bool& value)
 bool JsonDeserializer::read(float& value)
 {
 	auto& object = *hierarchy.top();
-	if (!object.is_number_float() && !object.is_number_integer())
+	if (!object.is_number_float())
 		return false;
 	value = (float)object;
 	return true;
@@ -465,7 +465,7 @@ bool JsonDeserializer::read(float& value)
 bool JsonDeserializer::read(double& value)
 {
 	auto& object = *hierarchy.top();
-	if (!object.is_number_float() && !object.is_number_integer())
+	if (!object.is_number_float())
 		return false;
 	value = (double)object;
 	return true;

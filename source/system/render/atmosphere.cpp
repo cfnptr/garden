@@ -318,7 +318,6 @@ static DescriptorSet::Uniforms getSkyUniforms(GraphicsSystem* graphicsSystem,
 {
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
 	auto depthBufferView = deferredSystem->getDepthOnlyIV();
-	auto gFramebufferView = graphicsSystem->get(deferredSystem->getGFramebuffer());
 	auto transLutView = graphicsSystem->get(transLUT)->getView();
 	auto skyViewLutView = graphicsSystem->get(skyViewLUT)->getView();
 	auto cameraVolumeView = graphicsSystem->get(cameraVolume)->getView();
@@ -907,7 +906,7 @@ void AtmosphereRenderSystem::generateSkyShDiffuse(ID<Buffer> shDiffuse, f32x4x4*
 
 		auto starDir = -f32x4(graphicsSystem->getCommonConstants().lightDir);
 		auto starLight = brdf::diffuseIrradiance(starDir, shCoeffs);
-		auto starLightDiv = min(length3(starLight), 1.0f); // Cloudy light compensation.
+		auto starLightDiv = clamp(length3(starLight), 0.1f, 1.0f); // Cloudy light compensation.
 		graphicsSystem->setStarLight((float3)starLight);
 		auto ambientLight = calcAmbientLight(starDir, shCoeffs) / starLightDiv;
 		graphicsSystem->setAmbientLight(float3(ambientLight * giFactor));

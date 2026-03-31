@@ -24,7 +24,6 @@
 #include "garden/graphics/equi2cube.hpp"
 #include "garden/graphics/gslc.hpp"
 #include "garden/graphics/api.hpp"
-#include "garden/graphics/exr.hpp"
 #include "garden/json-serialize.hpp"
 #include "garden/json2bson.hpp"
 #include "garden/profiler.hpp"
@@ -1059,6 +1058,7 @@ static void writeExrImageData(const fs::path& filePath, uint32 size, const vecto
 	if (compBinarySize != 4 && !isFP16)
 		throw GardenError("Unsupported EXR image format binary size.");
 
+	/* TODO: replace with OpenEXR
 	const char* error = nullptr;
 	auto result = SaveEXR((const float*)data.data(), size, size,
 		componentCount, isFP16, filePath.generic_string().c_str(), &error);
@@ -1069,6 +1069,8 @@ static void writeExrImageData(const fs::path& filePath, uint32 size, const vecto
 		throw GardenError("Failed to store EXR image. ("
 			"path: " + filePath.generic_string() + ", error: " + errorString + ")");
 	}
+	*/
+	abort();
 }
 #endif
 
@@ -1383,6 +1385,7 @@ void ResourceSystem::loadImageData(const uint8* data, psize dataSize, ImageFileT
 		if (imageFormat != Image::Format::SfloatR32G32B32A32 & imageFormat != Image::Format::SfloatR16G16B16A16)
 			throw GardenError("Unsupported EXR image data format.");
 
+		/* TODO: replace with OpenEXR
 		int sizeX = 0, sizeY = 0; float* pixelData = nullptr; const char* error = nullptr;
 		if (LoadEXRFromMemory(&pixelData, &sizeX, &sizeY, data, dataSize, &error) != TINYEXR_SUCCESS)
 		{
@@ -1408,6 +1411,8 @@ void ResourceSystem::loadImageData(const uint8* data, psize dataSize, ImageFileT
 		
 		free(pixelData);
 		imageSize = uint2(sizeX, sizeY);
+		*/
+		abort();
 	}
 	else if (fileType == ImageFileType::Hdr)
 	{

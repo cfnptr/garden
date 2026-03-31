@@ -231,11 +231,10 @@ include(cmake/gather-git-info.cmake)
 
 #***********************************************************************************************************************
 set(GARDEN_INCLUDE_DIRS ${PROJECT_BINARY_DIR}/include ${PROJECT_SOURCE_DIR}/include resources/shaders 
-	libraries/ecsm/include libraries/voxy/include libraries/vma/include libraries/stb 
-	libraries/tinyexr libraries/tinygltf libraries/png ${PROJECT_BINARY_DIR}/libraries/png)
-set(GARDEN_LINK_LIBS Vulkan::Vulkan volk nlohmann_json::nlohmann_json xxHash::xxhash 
-	assimp::assimp ecsm-static math-static conf-static pack-static logy-static nets-static 
-	voxy glfw webp png_static tinyexr tinygltf freetype FastNoise Jolt)
+	libraries/ecsm/include libraries/vma/include libraries/stb libraries/png 
+	${PROJECT_BINARY_DIR}/libraries/png)
+set(GARDEN_LINK_LIBS Vulkan::Vulkan volk nlohmann_json::nlohmann_json xxHash::xxhash assimp::assimp ecsm-static 
+	math-static pack-static logy-static nets-static glfw webp png_static freetype FastNoise Jolt)
 set(GARDEN_LINK_DIRS)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
@@ -270,19 +269,12 @@ set(PACK_BUILD_SHARED OFF CACHE BOOL "" FORCE)
 set(PACK_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 add_subdirectory(libraries/pack)
 
-set(CONF_BUILD_SHARED OFF CACHE BOOL "" FORCE)
-set(CONF_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-add_subdirectory(libraries/conf)
-
 set(LOGY_BUILD_SHARED OFF CACHE BOOL "" FORCE)
 set(LOGY_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 add_subdirectory(libraries/logy)
 
 set(NETS_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 add_subdirectory(libraries/nets)
-
-set(VOXY_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-add_subdirectory(libraries/voxy)
 
 set(JSON_BuildTests OFF CACHE BOOL "" FORCE)
 add_subdirectory(libraries/json)
@@ -314,14 +306,6 @@ set(PNG_FRAMEWORK OFF CACHE BOOL "" FORCE)
 set(PNG_TESTS OFF CACHE BOOL "" FORCE)
 set(PNG_TOOLS OFF CACHE BOOL "" FORCE)
 add_subdirectory(libraries/png)
-
-set(TINYEXR_BUILD_SAMPLE OFF CACHE BOOL "" FORCE)
-add_subdirectory(libraries/tinyexr)
-
-set(TINYGLTF_BUILD_LOADER_EXAMPLE OFF CACHE BOOL "" FORCE)
-set(TINYGLTF_INSTALL OFF CACHE BOOL "" FORCE)
-set(TINYGLTF_INSTALL_VENDOR OFF CACHE BOOL "" FORCE)
-add_subdirectory(libraries/tinygltf)
 
 set(FASTNOISE2_NOISETOOL OFF CACHE BOOL "" FORCE)
 add_subdirectory(libraries/fastnoise2)
