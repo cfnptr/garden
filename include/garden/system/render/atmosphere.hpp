@@ -204,7 +204,7 @@ private:
 	/**
 	 * @brief Destroys physically based atmosphere rendering system instance. (Sky)
 	 */
-	~AtmosphereRenderSystem() final;
+	~AtmosphereRenderSystem() override;
 
 	void init();	
 	void deinit();

@@ -24,7 +24,7 @@ class PbrLightingEditorSystem final : public System
 	bool showWindow = false;
 	
 	PbrLightingEditorSystem();
-	~PbrLightingEditorSystem() final;
+	~PbrLightingEditorSystem() override;
 
 	void init();
 	void deinit();

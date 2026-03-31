@@ -24,7 +24,7 @@ class AnimationEditorSystem final : public System
 	bool showWindow = false;
 
 	AnimationEditorSystem();
-	~AnimationEditorSystem() final;
+	~AnimationEditorSystem() override;
 
 	void init();
 	void deinit();

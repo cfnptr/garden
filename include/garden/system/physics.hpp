@@ -761,7 +761,7 @@ private:
 	/**
 	 * @brief Destroys physics system instance.
 	 */
-	~PhysicsSystem() final;
+	~PhysicsSystem() override;
 
 	void preInit();
 	void postInit();
@@ -773,21 +773,21 @@ private:
 	void flushNetRigidbodies();
 	void sendServerMessages();
 
-	void resetComponent(View<Component> component, bool full) final;
-	void copyComponent(View<Component> source, View<Component> destination) final;
-	string_view getComponentName() const final;
-	void disposeComponents() final;
+	void resetComponent(View<Component> component, bool full) override;
+	void copyComponent(View<Component> source, View<Component> destination) override;
+	string_view getComponentName() const override;
+	void disposeComponents() override;
 	
 	void serializeDecoratedShape(ISerializer& serializer, ID<Shape> shape);
-	void serialize(ISerializer& serializer, const View<Component> component) final;
-	void postSerialize(ISerializer& serializer) final;
+	void serialize(ISerializer& serializer, const View<Component> component) override;
+	void postSerialize(ISerializer& serializer) override;
 	ID<Shape> deserializeDecoratedShape(IDeserializer& deserializer, string& valueStringCache);
-	void deserialize(IDeserializer& deserializer, View<Component> component) final;
-	void postDeserialize(IDeserializer& deserializer) final;
+	void deserialize(IDeserializer& deserializer, View<Component> component) override;
+	void postDeserialize(IDeserializer& deserializer) override;
 
-	string_view getMessageType() final;
-	int onMsgFromClient(ClientSession* session, StreamInput message) final;
-	int onMsgFromServer(StreamInput message, bool isDatagram) final;
+	string_view getMessageType() override;
+	int onMsgFromClient(ClientSession* session, StreamInput message) override;
+	int onMsgFromServer(StreamInput message, bool isDatagram) override;
 	
 	friend class ecsm::Manager;
 	friend struct RigidbodyComponent;

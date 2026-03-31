@@ -142,7 +142,7 @@ private:
 	State state = {};
 
 	Sampler(const State& state);
-	bool destroy() final;
+	bool destroy() override;
 
 	friend class SamplerExt;
 	friend class LinearPool<Sampler>;
@@ -163,7 +163,7 @@ public:
 	 * @brief Sets sampler debug name. (Debug Only)
 	 * @param[in] name target debug name
 	 */
-	void setDebugName(const string& name) final;
+	void setDebugName(const string& name) override;
 	#endif
 };
 

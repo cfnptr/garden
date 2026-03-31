@@ -22,7 +22,7 @@ namespace garden
 class UiCheckboxEditorSystem final : public System, public Singleton<UiCheckboxEditorSystem>
 {
 	UiCheckboxEditorSystem(bool setSingleton = true);
-	~UiCheckboxEditorSystem() final;
+	~UiCheckboxEditorSystem() override;
 	
 	void init();
 	void deinit();

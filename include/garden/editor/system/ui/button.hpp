@@ -22,7 +22,7 @@ namespace garden
 class UiButtonEditorSystem final : public System, public Singleton<UiButtonEditorSystem>
 {
 	UiButtonEditorSystem(bool setSingleton = true);
-	~UiButtonEditorSystem() final;
+	~UiButtonEditorSystem() override;
 	
 	void init();
 	void deinit();

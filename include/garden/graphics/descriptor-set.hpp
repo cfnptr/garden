@@ -182,7 +182,7 @@ private:
 
 	DescriptorSet(ID<Pipeline> pipeline, PipelineType pipelineType,
 		Uniforms&& uniforms, Samplers&& samplers, uint8 index);
-	bool destroy() final;
+	bool destroy() override;
 
 	friend class DescriptorSetExt;
 	friend class LinearPool<DescriptorSet>;
@@ -263,7 +263,7 @@ public:
 	 * @brief Sets descriptor set debug name. (Debug Only)
 	 * @param[in] name target debug name
 	 */
-	void setDebugName(const string& name) final;
+	void setDebugName(const string& name) override;
 
 	static uint32 combinedSamplerCount; /**< Total descriptor pool combined sampler count. */
 	static uint32 uniformBufferCount;   /**< Total descriptor pool uniform buffer count. */

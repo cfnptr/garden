@@ -65,7 +65,7 @@ private:
 	/**
 	 * @brief Destroys immediate mode GUI rendering system instance. (ImGui)
 	 */
-	~ImGuiRenderSystem() final;
+	~ImGuiRenderSystem() override;
 
 	void preInit();
 	void postInit();

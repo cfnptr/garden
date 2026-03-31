@@ -50,7 +50,7 @@ class OitRenderSystem final : public System, public Singleton<OitRenderSystem>
 	/**
 	 * @brief Destroys order independent transparency rendering system instance.
 	 */
-	~OitRenderSystem() final;
+	~OitRenderSystem() override;
 
 	void init();
 	void deinit();

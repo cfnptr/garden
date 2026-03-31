@@ -48,7 +48,7 @@ class SettingsSystem final : public System, public Singleton<SettingsSystem>
 			data(data), type(type) { }
 	};
 
-	void* confReader = nullptr;
+	void* settings = nullptr;
 	map<string, Item> items;
 
 	/**
@@ -59,7 +59,7 @@ class SettingsSystem final : public System, public Singleton<SettingsSystem>
 	/**
 	 * @brief Destroys settings system instance.
 	 */
-	~SettingsSystem() final;
+	~SettingsSystem() override;
 
 	void preInit();
 	void postDeinit();

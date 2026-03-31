@@ -59,7 +59,7 @@ class DlssRenderSystem final : public System, public Singleton<DlssRenderSystem>
 	/**
 	 * @brief Destroys Nvidia DLSS rendering system instance.
 	 */
-	~DlssRenderSystem() final;
+	~DlssRenderSystem() override;
 
 	void preInit();
 	void postDeinit();

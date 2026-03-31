@@ -26,7 +26,7 @@ class SpawnerEditorSystem final : public System
 	bool showWindow = false;
 
 	SpawnerEditorSystem();
-	~SpawnerEditorSystem() final;
+	~SpawnerEditorSystem() override;
 
 	void init();
 	void deinit();

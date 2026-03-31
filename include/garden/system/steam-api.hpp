@@ -47,7 +47,7 @@ private:
 	/**
 	 * @brief Destroys Valve Steam API system instance.
 	 */
-	~SteamApiSystem() final;
+	~SteamApiSystem() override;
 
 	void update();
 

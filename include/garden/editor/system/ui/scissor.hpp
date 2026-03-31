@@ -22,7 +22,7 @@ namespace garden
 class UiScissorEditorSystem final : public System, public Singleton<UiScissorEditorSystem>
 {
 	UiScissorEditorSystem(bool setSingleton = true);
-	~UiScissorEditorSystem() final;
+	~UiScissorEditorSystem() override;
 	
 	void init();
 	void deinit();

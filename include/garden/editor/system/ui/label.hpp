@@ -22,7 +22,7 @@ namespace garden
 class UiLabelEditorSystem final : public System, public Singleton<UiLabelEditorSystem>
 {
 	UiLabelEditorSystem(bool setSingleton = true);
-	~UiLabelEditorSystem() final;
+	~UiLabelEditorSystem() override;
 	
 	void init();
 	void deinit();

@@ -49,16 +49,16 @@ class Ui9SliceSystem final : public NineSliceCompAnimSystem<
 	/**
 	 * @brief Destroys user interface 9-slice rendering system instance. (UI)
 	 */
-	~Ui9SliceSystem() final;
+	~Ui9SliceSystem() override;
 
-	string_view getComponentName() const final;
-	MeshRenderType getMeshRenderType() const final;
+	string_view getComponentName() const override;
+	MeshRenderType getMeshRenderType() const override;
 
-	void beginDrawAsync(int32 taskIndex) final;
+	void beginDrawAsync(int32 taskIndex) override;
 	void prepareDraw(const f32x4x4& viewProj, uint32 drawCount, 
-		uint32 instanceCount, int8 shadowPass) final;
+		uint32 instanceCount, int8 shadowPass) override;
 	void drawAsync(MeshRenderComponent* meshRenderView, const f32x4x4& viewProj,
-		const f32x4x4& model, uint32 instanceIndex, int32 taskIndex) final;
+		const f32x4x4& model, uint32 instanceIndex, int32 taskIndex) override;
 	
 	friend class ecsm::Manager;
 };

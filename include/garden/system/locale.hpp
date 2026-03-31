@@ -117,7 +117,7 @@ private:
 	/**
 	 * @brief Destroys locale system instance.
 	 */
-	~LocaleSystem() final;
+	~LocaleSystem() override;
 
 	void preInit();
 

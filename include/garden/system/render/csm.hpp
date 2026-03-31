@@ -73,7 +73,7 @@ private:
 	/**
 	 * @brief Destroys cascade shadow maps rendering system instance.
 	 */
-	~CsmRenderSystem() final;
+	~CsmRenderSystem() override;
 
 	void init();
 	void deinit();
@@ -81,10 +81,10 @@ private:
 	void shadowRender();
 	void gBufferRecreate();
 
-	uint8 getShadowPassCount() final;
-	bool prepareShadowRender(uint32 passIndex, f32x4x4& viewProj, f32x4& cameraOffset) final;
-	bool beginShadowRender(uint32 passIndex, MeshRenderType renderType) final;
-	void endShadowRender(uint32 passIndex, MeshRenderType renderType) final;
+	uint8 getShadowPassCount() override;
+	bool prepareShadowRender(uint32 passIndex, f32x4x4& viewProj, f32x4& cameraOffset) override;
+	bool beginShadowRender(uint32 passIndex, MeshRenderType renderType) override;
+	void endShadowRender(uint32 passIndex, MeshRenderType renderType) override;
 	
 	friend class ecsm::Manager;
 public:

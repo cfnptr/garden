@@ -132,7 +132,7 @@ private:
 	/**
 	 * @brief Destroys deferred rendering system instance.
 	 */
-	~DeferredRenderSystem() final;
+	~DeferredRenderSystem() override;
 
 	void init();
 	void deinit();

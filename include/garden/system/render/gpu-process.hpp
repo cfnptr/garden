@@ -57,7 +57,7 @@ private:
 	/**
 	 * @brief Destroys GPU data processing system instance.
 	 */
-	~GpuProcessSystem() final;
+	~GpuProcessSystem() override;
 
 	void deinit();
 	friend class ecsm::Manager;

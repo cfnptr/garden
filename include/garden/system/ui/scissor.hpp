@@ -63,18 +63,18 @@ class UiScissorSystem final : public CompAnimSystem<UiScissorComponent, UiScisso
 	/**
 	 * @brief Destroys user interface element scissor system instance. (UI, GUI)
 	 */
-	~UiScissorSystem() final;
+	~UiScissorSystem() override;
 
 	void update();
 
-	string_view getComponentName() const final;
+	string_view getComponentName() const override;
 	
-	void serialize(ISerializer& serializer, const View<Component> component) final;
-	void deserialize(IDeserializer& deserializer, View<Component> component) final;
+	void serialize(ISerializer& serializer, const View<Component> component) override;
+	void deserialize(IDeserializer& deserializer, View<Component> component) override;
 
-	void serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame) final;
-	void deserializeAnimation(IDeserializer& deserializer, View<AnimationFrame> frame) final;
-	void animateAsync(View<Component> component, View<AnimationFrame> a, View<AnimationFrame> b, float t) final;
+	void serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame) override;
+	void deserializeAnimation(IDeserializer& deserializer, View<AnimationFrame> frame) override;
+	void animateAsync(View<Component> component, View<AnimationFrame> a, View<AnimationFrame> b, float t) override;
 
 	friend class ecsm::Manager;
 public:

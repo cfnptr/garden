@@ -46,10 +46,10 @@ class TransSpriteSystem final : public SpriteCompAnimSystem<
 	/**
 	 * @brief Destroys translucent sprite rendering system instance.
 	 */
-	~TransSpriteSystem() final;
+	~TransSpriteSystem() override;
 
-	string_view getComponentName() const final;
-	MeshRenderType getMeshRenderType() const final;
+	string_view getComponentName() const override;
+	MeshRenderType getMeshRenderType() const override;
 	
 	friend class ecsm::Manager;
 };

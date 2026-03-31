@@ -64,7 +64,7 @@ class AppInfoSystem final : public System, public Singleton<AppInfoSystem>
 	/**
 	 * @brief Destroys app info system instance.
 	 */
-	~AppInfoSystem() final;
+	~AppInfoSystem() override;
 	
 	friend class ecsm::Manager;
 public:

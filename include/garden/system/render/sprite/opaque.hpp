@@ -46,10 +46,10 @@ class OpaqueSpriteSystem final : public SpriteCompAnimSystem<
 	/**
 	 * @brief Destroys opaque sprite rendering system instance.
 	 */
-	~OpaqueSpriteSystem() final;
+	~OpaqueSpriteSystem() override;
 
-	string_view getComponentName() const final;
-	MeshRenderType getMeshRenderType() const final;
+	string_view getComponentName() const override;
+	MeshRenderType getMeshRenderType() const override;
 	
 	friend class ecsm::Manager;
 };

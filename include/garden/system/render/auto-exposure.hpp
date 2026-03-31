@@ -80,7 +80,7 @@ private:
 	/**
 	 * @brief Destroys automatic exposure (AE) rendering system instance. (Eye light adaptation)
 	 */
-	~AutoExposureSystem() final;
+	~AutoExposureSystem() override;
 
 	void init();
 	void deinit();

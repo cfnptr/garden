@@ -22,7 +22,7 @@ namespace garden
 class FxaaRenderEditorSystem final : public System
 {
 	FxaaRenderEditorSystem();
-	~FxaaRenderEditorSystem() final;
+	~FxaaRenderEditorSystem() override;
 
 	void init();
 	void deinit();

@@ -172,7 +172,7 @@ protected:
 		else abort();
 		#endif
 	}
-	bool destroy() final;
+	bool destroy() override;
 
 	static vector<void*> createShaders(const vector<uint8>* codeArray, uint8 shaderCount, const fs::path& path);
 	static void destroyShaders(const vector<void*>& shaders);

@@ -54,14 +54,14 @@ class ModelRenderSystem final : public ComponentSystem<
 	/**
 	 * @brief Destroys 3D model rendering system instance.
 	 */
-	~ModelRenderSystem() final;
+	~ModelRenderSystem() override;
 
 	void init();
 	void deinit();
 
-	void resetComponent(View<Component> component, bool full) final;
-	void copyComponent(View<Component> source, View<Component> destination) final;
-	string_view getComponentName() const final;
+	void resetComponent(View<Component> component, bool full) override;
+	void copyComponent(View<Component> source, View<Component> destination) override;
+	string_view getComponentName() const override;
 
 	friend class ecsm::Manager;
 };

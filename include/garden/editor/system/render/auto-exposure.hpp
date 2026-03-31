@@ -35,7 +35,7 @@ class AutoExposureEditorSystem final : public System
 	bool showWindow = false;
 
 	AutoExposureEditorSystem();
-	~AutoExposureEditorSystem() final;
+	~AutoExposureEditorSystem() override;
 
 	void init();
 	void deinit();

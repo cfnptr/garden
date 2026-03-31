@@ -78,19 +78,19 @@ class UiTriggerSystem final : public CompAnimSystem<UiTriggerComponent, UiTrigge
 	/**
 	 * @brief Destroys user interface element trigger system instance. (UI, GUI)
 	 */
-	~UiTriggerSystem() final;
+	~UiTriggerSystem() override;
 
 	void update();
 
-	void destroyComponent(ID<Component> instance) final;
-	string_view getComponentName() const final;
+	void destroyComponent(ID<Component> instance) override;
+	string_view getComponentName() const override;
 	
-	void serialize(ISerializer& serializer, const View<Component> component) final;
-	void deserialize(IDeserializer& deserializer, View<Component> component) final;
+	void serialize(ISerializer& serializer, const View<Component> component) override;
+	void deserialize(IDeserializer& deserializer, View<Component> component) override;
 
-	void serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame) final;
-	void deserializeAnimation(IDeserializer& deserializer, View<AnimationFrame> frame) final;
-	void animateAsync(View<Component> component, View<AnimationFrame> a, View<AnimationFrame> b, float t) final;
+	void serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame) override;
+	void deserializeAnimation(IDeserializer& deserializer, View<AnimationFrame> frame) override;
+	void animateAsync(View<Component> component, View<AnimationFrame> a, View<AnimationFrame> b, float t) override;
 
 	friend class ecsm::Manager;
 public:

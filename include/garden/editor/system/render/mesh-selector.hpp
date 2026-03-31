@@ -25,7 +25,7 @@ class MeshSelectorEditorSystem final : public System
 	bool isSkipped = false;
 
 	MeshSelectorEditorSystem();
-	~MeshSelectorEditorSystem() final;
+	~MeshSelectorEditorSystem() override;
 
 	void init();
 	void deinit();

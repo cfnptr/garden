@@ -22,7 +22,7 @@ namespace garden
 class NetworkEditorSystem final : public System
 {
 	NetworkEditorSystem();
-	~NetworkEditorSystem() final;
+	~NetworkEditorSystem() override;
 
 	void init();
 	void deinit();

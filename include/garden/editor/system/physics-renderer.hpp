@@ -61,11 +61,11 @@ public:
 	void preDraw();
 	void draw(const f32x4x4& viewProj);
 
-	void DrawLine(JPH::RVec3Arg inFrom, JPH::RVec3Arg inTo, JPH::ColorArg inColor) final;
+	void DrawLine(JPH::RVec3Arg inFrom, JPH::RVec3Arg inTo, JPH::ColorArg inColor) override;
 	void DrawTriangle(JPH::RVec3Arg inV1, JPH::RVec3Arg inV2, JPH::RVec3Arg inV3, 
-		JPH::ColorArg inColor, ECastShadow inCastShadow = ECastShadow::Off) final;
+		JPH::ColorArg inColor, ECastShadow inCastShadow = ECastShadow::Off) override;
 	void DrawText3D(JPH::RVec3Arg inPosition, const string_view& inString, 
-		JPH::ColorArg inColor, float inHeight) final;
+		JPH::ColorArg inColor, float inHeight) override;
 };
 
 } // namespace garden

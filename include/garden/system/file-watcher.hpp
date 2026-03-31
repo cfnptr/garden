@@ -52,7 +52,7 @@ class FileWatcherSystem final : public System, public Singleton<FileWatcherSyste
 	/**
 	 * @brief Destroys file watcher system instance.
 	 */
-	~FileWatcherSystem() final;
+	~FileWatcherSystem() override;
 
 	void preInit();
 	void postDeinit();

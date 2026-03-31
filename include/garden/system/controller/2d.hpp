@@ -45,7 +45,7 @@ class Controller2DSystem final : public System, public Singleton<Controller2DSys
 	/**
 	 * @brief Destroys 2D view controller system instance.
 	 */
-	~Controller2DSystem() final;
+	~Controller2DSystem() override;
 
 	void updateCameraControl();
 	void updateCameraFollowing();

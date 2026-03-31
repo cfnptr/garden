@@ -46,44 +46,44 @@ public:
 	void addRenderPassBarriersAsync(uint32 thisSize);
 	void processPipelineBarriers();
 
-	void processCommand(const BufferBarrierCommand& command) final;
-	void processCommand(const BeginRenderPassCommand& command) final;
-	void processCommand(const ExecuteCommand& command) final;
-	void processCommand(const EndRenderPassCommand& command) final;
-	void processCommand(const ClearAttachmentsCommand& command) final;
-	void processCommand(const BindPipelineCommand& command) final;
-	void processCommand(const BindDescriptorSetsCommand& command) final;
-	void processCommand(const PushConstantsCommand& command) final;
-	void processCommand(const SetViewportCommand& command) final;
-	void processCommand(const SetScissorCommand& command) final;
-	void processCommand(const SetViewportScissorCommand& command) final;
-	void processCommand(const SetDepthBiasCommand& command) final;
-	void processCommand(const DrawCommand& command) final;
-	void processCommand(const DrawIndexedCommand& command) final;
-	void processCommand(const DispatchCommand& command) final;
-	void processCommand(const FillBufferCommand& command) final;
-	void processCommand(const CopyBufferCommand& command) final;
-	void processCommand(const ClearImageCommand& command) final;
-	void processCommand(const CopyImageCommand& command) final;
-	void processCommand(const CopyBufferImageCommand& command) final;
-	void processCommand(const BlitImageCommand& command) final;
+	void processCommand(const BufferBarrierCommand& command) override;
+	void processCommand(const BeginRenderPassCommand& command) override;
+	void processCommand(const ExecuteCommand& command) override;
+	void processCommand(const EndRenderPassCommand& command) override;
+	void processCommand(const ClearAttachmentsCommand& command) override;
+	void processCommand(const BindPipelineCommand& command) override;
+	void processCommand(const BindDescriptorSetsCommand& command) override;
+	void processCommand(const PushConstantsCommand& command) override;
+	void processCommand(const SetViewportCommand& command) override;
+	void processCommand(const SetScissorCommand& command) override;
+	void processCommand(const SetViewportScissorCommand& command) override;
+	void processCommand(const SetDepthBiasCommand& command) override;
+	void processCommand(const DrawCommand& command) override;
+	void processCommand(const DrawIndexedCommand& command) override;
+	void processCommand(const DispatchCommand& command) override;
+	void processCommand(const FillBufferCommand& command) override;
+	void processCommand(const CopyBufferCommand& command) override;
+	void processCommand(const ClearImageCommand& command) override;
+	void processCommand(const CopyImageCommand& command) override;
+	void processCommand(const CopyBufferImageCommand& command) override;
+	void processCommand(const BlitImageCommand& command) override;
 	
-	void processCommand(const BuildAccelerationStructureCommand& command) final;
-	void processCommand(const CopyAccelerationStructureCommand& command) final;
-	void processCommand(const TraceRaysCommand& command) final;
-	void processCommand(const CustomRenderCommand& command) final;
+	void processCommand(const BuildAccelerationStructureCommand& command) override;
+	void processCommand(const CopyAccelerationStructureCommand& command) override;
+	void processCommand(const TraceRaysCommand& command) override;
+	void processCommand(const CustomRenderCommand& command) override;
 
 	#if GARDEN_DEBUG
-	void processCommand(const BeginLabelCommand& command) final;
-	void processCommand(const EndLabelCommand& command) final;
-	void processCommand(const InsertLabelCommand& command) final;
+	void processCommand(const BeginLabelCommand& command) override;
+	void processCommand(const EndLabelCommand& command) override;
+	void processCommand(const InsertLabelCommand& command) override;
 	#endif
 
 	VulkanCommandBuffer(VulkanAPI* vulkanAPI, CommandBufferType type);
-	~VulkanCommandBuffer() final;
+	~VulkanCommandBuffer() override;
 
-	void submit() final;
-	bool isBusy() final;
+	void submit() override;
+	bool isBusy() override;
 
 	static constexpr uint64 writeAccessMask =
 		VK_ACCESS_2_SHADER_WRITE_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | 

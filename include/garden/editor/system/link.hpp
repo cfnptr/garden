@@ -26,7 +26,7 @@ class LinkEditorSystem final : public System
 	bool showWindow = false;
 
 	LinkEditorSystem();
-	~LinkEditorSystem() final;
+	~LinkEditorSystem() override;
 
 	void init();
 	void deinit();

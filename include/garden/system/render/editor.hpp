@@ -82,7 +82,7 @@ private:
 	/**
 	 * @brief Destroys editor render system instance.
 	 */
-	~EditorRenderSystem() final;
+	~EditorRenderSystem() override;
 
 	void showMainMenuBar();
 	void showAboutWindow();

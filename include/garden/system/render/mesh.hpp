@@ -247,7 +247,7 @@ private:
 	/**
 	 * @brief Destroys mesh rendering system instance.
 	 */
-	~MeshRenderSystem() final;
+	~MeshRenderSystem() override;
 
 	void prepareSystems();
 	void sortMeshes();
@@ -327,7 +327,7 @@ class ModelStoreSystem : public ComponentSystem<ModelStoreComponent, false>, pub
 	 */
 	~ModelStoreSystem() override;
 
-	string_view getComponentName() const final;
+	string_view getComponentName() const override;
 	friend class ecsm::Manager;
 };
 

@@ -67,7 +67,7 @@ private:
 	/**
 	 * @brief Destroys screen space horizon-based ambient occlusion rendering system instance. (HBAO)
 	 */
-	~HbaoRenderSystem() final;
+	~HbaoRenderSystem() override;
 
 	void init();
 	void deinit();

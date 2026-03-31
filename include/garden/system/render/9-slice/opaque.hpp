@@ -46,10 +46,10 @@ class Opaque9SliceSystem final : public NineSliceCompAnimSystem<
 	/**
 	 * @brief Destroys opaque 9-slice rendering system instance.
 	 */
-	~Opaque9SliceSystem() final;
+	~Opaque9SliceSystem() override;
 
-	string_view getComponentName() const final;
-	MeshRenderType getMeshRenderType() const final;
+	string_view getComponentName() const override;
+	MeshRenderType getMeshRenderType() const override;
 	
 	friend class ecsm::Manager;
 };

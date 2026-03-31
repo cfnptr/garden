@@ -22,7 +22,7 @@ namespace garden
 class ModelRenderEditorSystem final : public System
 {
 	ModelRenderEditorSystem();
-	~ModelRenderEditorSystem() final;
+	~ModelRenderEditorSystem() override;
 
 	void init();
 	void deinit();

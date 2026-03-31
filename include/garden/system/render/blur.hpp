@@ -53,7 +53,7 @@ private:
 	/**
 	 * @brief Destroys blur rendering system instance.
 	 */
-	~BlurRenderSystem() final;
+	~BlurRenderSystem() override;
 
 	void init();
 	void deinit();

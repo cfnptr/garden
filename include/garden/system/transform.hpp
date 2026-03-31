@@ -476,21 +476,21 @@ class TransformSystem final : public CompAnimSystem<TransformComponent, Transfor
 	/**
 	 * @brief Destroys transformer system instance.
 	 */
-	~TransformSystem() final;
+	~TransformSystem() override;
 
-	void destroyComponent(ID<Component> instance) final;
-	void resetComponent(View<Component> component, bool full) final;
-	void copyComponent(View<Component> source, View<Component> destination) final;
-	string_view getComponentName() const final;
+	void destroyComponent(ID<Component> instance) override;
+	void resetComponent(View<Component> component, bool full) override;
+	void copyComponent(View<Component> source, View<Component> destination) override;
+	string_view getComponentName() const override;
 	
-	void serialize(ISerializer& serializer, const View<Component> component) final;
-	void postSerialize(ISerializer& serializer) final;
-	void deserialize(IDeserializer& deserializer, View<Component> component) final;
-	void postDeserialize(IDeserializer& deserializer) final;
+	void serialize(ISerializer& serializer, const View<Component> component) override;
+	void postSerialize(ISerializer& serializer) override;
+	void deserialize(IDeserializer& deserializer, View<Component> component) override;
+	void postDeserialize(IDeserializer& deserializer) override;
 
-	void serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame) final;
-	void deserializeAnimation(IDeserializer& deserializer, View<AnimationFrame> frame) final;
-	void animateAsync(View<Component> component, View<AnimationFrame> a, View<AnimationFrame> b, float t) final;
+	void serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame) override;
+	void deserializeAnimation(IDeserializer& deserializer, View<AnimationFrame> frame) override;
+	void animateAsync(View<Component> component, View<AnimationFrame> a, View<AnimationFrame> b, float t) override;
 	
 	friend class ecsm::Manager;
 public:
@@ -525,9 +525,9 @@ class StaticTransformSystem final : public ComponentSystem<StaticTransformCompon
 	/**
 	 * @brief Destroys static transform system instance.
 	 */
-	~StaticTransformSystem() final;
+	~StaticTransformSystem() override;
 
-	string_view getComponentName() const final;
+	string_view getComponentName() const override;
 	friend class ecsm::Manager;
 };
 

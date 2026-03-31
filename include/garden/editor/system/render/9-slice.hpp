@@ -24,7 +24,7 @@ namespace garden
 class NineSliceEditorSystem final : public System
 {
 	NineSliceEditorSystem();
-	~NineSliceEditorSystem() final;
+	~NineSliceEditorSystem() override;
 
 	void init();
 	void deinit();

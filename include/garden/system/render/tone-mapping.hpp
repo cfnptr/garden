@@ -77,7 +77,7 @@ private:
 	/**
 	 * @brief Destroys tone mapping rendering system instance.
 	 */
-	~ToneMappingSystem() final;
+	~ToneMappingSystem() override;
 
 	void init();
 	void deinit();

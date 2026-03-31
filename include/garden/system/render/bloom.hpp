@@ -65,7 +65,7 @@ private:
 	/**
 	 * @brief Destroys bloom (light glow) rendering system instance.
 	 */
-	~BloomRenderSystem() final;
+	~BloomRenderSystem() override;
 
 	void init();
 	void deinit();

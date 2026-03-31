@@ -32,7 +32,7 @@ private:
 	bool memoryStats = false;
 
 	GraphicsEditorSystem();
-	~GraphicsEditorSystem() final;
+	~GraphicsEditorSystem() override;
 
 	void init();
 	void deinit();

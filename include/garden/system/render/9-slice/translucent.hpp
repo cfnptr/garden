@@ -46,10 +46,10 @@ class Trans9SliceSystem final : public NineSliceCompAnimSystem<
 	/**
 	 * @brief Destroys translucent 9-slice rendering system instance.
 	 */
-	~Trans9SliceSystem() final;
+	~Trans9SliceSystem() override;
 
-	string_view getComponentName() const final;
-	MeshRenderType getMeshRenderType() const final;
+	string_view getComponentName() const override;
+	MeshRenderType getMeshRenderType() const override;
 	
 	friend class ecsm::Manager;
 };
