@@ -436,7 +436,7 @@ void EditorRenderSystem::showOptionsWindow()
 			if (ImGui::Button("Clear project cache", ImVec2(-FLT_MIN, 0.0f)))
 				fs::remove_all(appInfoSystem->getCachePath());
 			if (ImGui::Button("Delete settings file", ImVec2(-FLT_MIN, 0.0f)))
-				fs::remove(appDataPath / "settings.txt");
+				fs::remove(appDataPath / "settings.json");
 			ImGui::Unindent();
 			ImGui::Spacing();
 		}

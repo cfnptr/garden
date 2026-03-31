@@ -399,6 +399,8 @@ bool CsmRenderSystem::beginShadowRender(uint32 passIndex, MeshRenderType renderT
 
 	auto asyncRecording = MeshRenderSystem::Instance::get()->useAsyncRecording();
 	auto framebufferView = GraphicsSystem::Instance::get()->get(framebuffer);
+
+	BEGIN_GPU_DEBUG_LABEL("CSM Pass");
 	framebufferView->beginRenderPass(clearColors, clearColorCount, 0.0f, 0x00, int4::zero, asyncRecording);
 	GraphicsPipeline::setDepthBiasAsync(biasConstantFactor, biasSlopeFactor);
 	return true;
@@ -414,6 +416,7 @@ void CsmRenderSystem::endShadowRender(uint32 passIndex, MeshRenderType renderTyp
 
 	auto framebufferView = GraphicsSystem::Instance::get()->get(framebuffer);
 	framebufferView->endRenderPass();
+	END_GPU_DEBUG_LABEL();
 }
 
 void CsmRenderSystem::setShadowMapSize(uint32 size)

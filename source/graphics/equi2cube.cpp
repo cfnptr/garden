@@ -17,9 +17,6 @@
 #include "garden/file.hpp"
 #include "png.h"
 
-#define TINYEXR_IMPLEMENTATION
-#include "garden/graphics/exr.hpp"
-
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
@@ -70,6 +67,7 @@ void Equi2Cube::writeExrImageData(const fs::path& filePath, uint32 size,
 	if (formatBinarySize % 4 != 0)
 		throw GardenError("Unsupported EXR image format for writing.");
 
+	/* TODO: replace with OpenEXR
 	const char* error = nullptr;
 	auto result = SaveEXR((const float*)data.data(), size, size,
 		formatBinarySize / 4, saveAs16, filePath.generic_string().c_str(), &error);
@@ -80,6 +78,8 @@ void Equi2Cube::writeExrImageData(const fs::path& filePath, uint32 size,
 		throw GardenError("Failed to store EXR image. ("
 			"path: " + filePath.generic_string() + ", error: " + errorString + ")");
 	}
+	*/
+	abort();
 }
 
 //******************************************************************************************************************
@@ -100,6 +100,7 @@ bool Equi2Cube::convertImage(const fs::path& filePath, const fs::path& inputPath
 	auto extension = filePath.extension();
 	if (extension == ".exr")
 	{
+		/* TODO: replace with OpenEXR
 		const char* error = nullptr;
 		if (LoadEXRFromMemory((float**)&pixels, &sizeX, &sizeY, dataBuffer.data(), 
 			dataBuffer.size(), &error) != TINYEXR_SUCCESS)
@@ -109,6 +110,8 @@ bool Equi2Cube::convertImage(const fs::path& filePath, const fs::path& inputPath
 				filePath.generic_string() + ", error: " + errorString + ")");
 		}
 		binarySize = 16;
+		*/
+		abort();
 	}
 	else if (extension == ".hdr")
 	{

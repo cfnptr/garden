@@ -851,8 +851,6 @@ void MeshRenderSystem::renderShadows()
 		return;
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto hasAnyShadow = false;
-
 	for (auto system : *systemGroup)
 	{
 		auto shadowSystem = dynamic_cast<IShadowMeshRenderSystem*>(system);
@@ -873,14 +871,6 @@ void MeshRenderSystem::renderShadows()
 
 				if (shadowSystem->beginShadowRender(passIndex, MeshRenderType::Opaque))
 				{
-					#if GARDEN_DEBUG
-					if (!hasAnyShadow)
-					{
-						BEGIN_GPU_DEBUG_LABEL("Shadow Pass");
-						hasAnyShadow = true;
-					}
-					#endif
-
 					renderUnsorted(viewProj, MeshRenderType::Opaque, passIndex);
 					renderUnsorted(viewProj, MeshRenderType::Color, passIndex);
 					// Note: No TransDepth rendering for shadows, expected RT instead.
@@ -893,14 +883,6 @@ void MeshRenderSystem::renderShadows()
 
 				if (!isNonTranslucent && shadowSystem->beginShadowRender(passIndex, MeshRenderType::Translucent))
 				{
-					#if GARDEN_DEBUG
-					if (!hasAnyShadow)
-					{
-						BEGIN_GPU_DEBUG_LABEL("Shadow Pass");
-						hasAnyShadow = true;
-					}
-					#endif
-
 					renderUnsorted(viewProj, MeshRenderType::Refracted, passIndex);
 					renderUnsorted(viewProj, MeshRenderType::OIT, passIndex);
 					renderSorted(viewProj, MeshRenderType::Translucent, passIndex);
@@ -912,15 +894,6 @@ void MeshRenderSystem::renderShadows()
 
 		cleanupMeshes();
 	}
-
-	#if GARDEN_DEBUG
-	if (hasAnyShadow)
-	{
-		graphicsSystem->startRecording(CommandBufferType::Frame);
-		END_GPU_DEBUG_LABEL();
-		graphicsSystem->stopRecording();
-	}
-	#endif
 }
 
 //**********************************************************************************************************************

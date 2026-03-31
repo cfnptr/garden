@@ -16,11 +16,12 @@
 #include "garden/system/app-info.hpp"
 #include "garden/system/log.hpp"
 
-#include "conf/reader.hpp"
-#include "conf/writer.hpp"
 #include "mpio/directory.hpp"
+#include "nlohmann/json.hpp"
+#include <fstream>
 
 using namespace garden;
+using json = nlohmann::json;
 
 //**********************************************************************************************************************
 SettingsSystem::SettingsSystem(bool setSingleton) : Singleton(setSingleton)
@@ -37,13 +38,12 @@ SettingsSystem::~SettingsSystem()
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PreInit", SettingsSystem::preInit);
 		ECSM_UNSUBSCRIBE_FROM_EVENT("PostDeinit", SettingsSystem::postDeinit);
 
-		delete (conf::Reader*)confReader;
-
 		for (const auto& pair : items)
 		{
 			if (pair.second.type == Type::String)
 				delete (char*)pair.second.data;
 		}
+		delete (json*)settings;
 	}
 
 	unsetSingleton();
@@ -56,7 +56,8 @@ void SettingsSystem::preInit()
 	try
 	{
 		auto appDataPath = mpio::Directory::getAppDataPath(appInfoSystem->getAppDataName());
-		confReader = new conf::Reader(appDataPath / "settings.txt");
+
+		settings = new json(json::parse(std::ifstream(appDataPath / "settings.json")));
 		GARDEN_LOG_INFO("Loaded settings file.");
 	}
 	catch (const exception& e)
@@ -69,29 +70,28 @@ void SettingsSystem::postDeinit()
 	auto appInfoSystem = AppInfoSystem::Instance::get();
 	try
 	{
-		auto appDataPath = mpio::Directory::getAppDataPath(appInfoSystem->getAppDataName());
-		conf::Writer confWriter(appDataPath / "settings.txt");
-
-		confWriter.writeComment(appInfoSystem->getName() +
-			" Settings (v" + appInfoSystem->getVersion().toString3() + ")");
-		confWriter.writeNewLine();
+		json data;
+		data["app"] = appInfoSystem->getName();
+		data["version"] = appInfoSystem->getVersion().toString3();
+		auto& settings = data["settings"];
 
 		string hex;
 		for (const auto& pair : items)
 		{
 			switch (pair.second.type)
 			{
-			case Type::Int: confWriter.write(pair.first, *((int64*)&pair.second.data)); break;
-			case Type::Float: confWriter.write(pair.first, *((double*)&pair.second.data)); break;
-			case Type::Bool: confWriter.write(pair.first, *((bool*)&pair.second.data)); break;
-			case Type::String: confWriter.write(pair.first, string_view(*((const char**)&pair.second.data))); break;
-			case Type::Color:
-				hex = Color((uint32)pair.second.data).toHex4();
-				confWriter.write(pair.first, hex);
-				break;
+			case Type::Int: settings[pair.first] = *((int64*)&pair.second.data); break;
+			case Type::Float: settings[pair.first] = *((double*)&pair.second.data); break;
+			case Type::Bool: settings[pair.first] = *((bool*)&pair.second.data); break;
+			case Type::String: settings[pair.first] = *((const char**)&pair.second.data); break;
+			case Type::Color: settings[pair.first] = Color((uint32)pair.second.data).toHex4(); break;
 			default: abort();
 			}
 		}
+
+		auto appDataPath = mpio::Directory::getAppDataPath(appInfoSystem->getAppDataName());
+		std::ofstream fileStream(appDataPath / "settings.json");
+		fileStream << std::setw(1) << std::setfill('\t') << data;
 
 		GARDEN_LOG_INFO("Stored settings file.");
 	}
@@ -108,8 +108,12 @@ void SettingsSystem::getInt(const string& name, int64& value)
 	auto searchResult = items.find(name);
 	if (searchResult == items.end())
 	{
-		if (confReader)
-			((conf::Reader*)confReader)->get(name, value);
+		if (settings)
+		{
+			auto& data = (*((json*)settings))[name];
+			if (data.is_number_integer())
+				value = (int64)data;
+		}
 		items.emplace(name, Item(Type::Int, *((uint64*)&value)));
 		return;
 	}
@@ -124,8 +128,12 @@ void SettingsSystem::getFloat(const string& name, double& value)
 	auto searchResult = items.find(name);
 	if (searchResult == items.end())
 	{
-		if (confReader)
-			((conf::Reader*)confReader)->get(name, value);
+		if (settings)
+		{
+			auto& data = (*((json*)settings))[name];
+			if (data.is_number_float())
+				value = (double)data;
+		}
 		items.emplace(name, Item(Type::Float, *((uint64*)&value)));
 		return;
 	}
@@ -140,8 +148,12 @@ void SettingsSystem::getBool(const string& name, bool& value)
 	auto searchResult = items.find(name);
 	if (searchResult == items.end())
 	{
-		if (confReader)
-			((conf::Reader*)confReader)->get(name, value);
+		if (settings)
+		{
+			auto& data = (*((json*)settings))[name];
+			if (data.is_boolean())
+				value = (bool)data;
+		}
 		items.emplace(name, Item(Type::Bool, value));
 		return;
 	}
@@ -156,13 +168,11 @@ void SettingsSystem::getString(const string& name, string& value)
 	auto searchResult = items.find(name);
 	if (searchResult == items.end())
 	{
-		if (confReader)
+		if (settings)
 		{
-			string_view stringView;
-			if (((conf::Reader*)confReader)->get(name, stringView))
-				value = string(stringView);
-			else if (value.empty())
-				return;
+			auto& data = (*((json*)settings))[name];
+			if (data.is_string())
+				value = (string)data;
 		}
 
 		auto instance = new char[value.length() + 1];
@@ -182,11 +192,11 @@ void SettingsSystem::getColor(const string& name, Color& value)
 	auto searchResult = items.find(name);
 	if (searchResult == items.end())
 	{
-		if (confReader)
+		if (settings)
 		{
-			string_view stringView;
-			if (((conf::Reader*)confReader)->get(name, stringView))
-				value = Color(stringView);
+			auto& data = (*((json*)settings))[name];
+			if (data.is_string())
+				value = Color((const string&)data);
 		}
 		items.emplace(name, Item(Type::Color, (uint32)value));
 		return;
