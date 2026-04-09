@@ -268,10 +268,6 @@ private:
 	 * @param setSingleton set system singleton instance
 	 */
 	CharacterSystem(bool setSingleton = true);
-	/**
-	 * @brief Destroys character system instance.
-	 */
-	~CharacterSystem() override;
 
 	ID<Component> createComponent(ID<Entity> entity) override;
 	void destroyComponent(ID<Component> instance) override;

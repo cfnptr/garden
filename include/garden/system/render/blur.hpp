@@ -50,13 +50,8 @@ private:
 	 * @param setSingleton set system singleton instance
 	 */
 	BlurRenderSystem(bool setSingleton = true);
-	/**
-	 * @brief Destroys blur rendering system instance.
-	 */
-	~BlurRenderSystem() override;
 
 	void init();
-	void deinit();
 	void preDsLdrRender();
 	void gBufferRecreate();
 

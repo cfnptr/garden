@@ -133,10 +133,6 @@ private:
 	 * @param setSingleton set system singleton instance
 	 */
 	SpawnerSystem(bool setSingleton = true);
-	/**
-	 * @brief Destroys spawner system instance.
-	 */
-	~SpawnerSystem() override;
 
 	void preInit();
 	void update();
@@ -163,7 +159,7 @@ public:
 	bool hasSharedPrefab(string_view path) const noexcept { return sharedPrefabs.find(path) != sharedPrefabs.end(); }
 
 	/**
-	 * @brief Adds shared prefab to the map.
+	 * @brief Tries to add shared prefab to the map.
 	 * 
 	 * @param path target shared prefab path
 	 * @param[in] uuid target shared prefab UUID
@@ -172,7 +168,7 @@ public:
 	 */
 	bool tryAddSharedPrefab(string_view path, const Hash128& uuid);
 	/**
-	 * @brief Adds shared prefab to the map.
+	 * @brief Tries to add shared prefab to the map.
 	 *
 	 * @param path target shared prefab path
 	 * @param prefab target shared prefab entity

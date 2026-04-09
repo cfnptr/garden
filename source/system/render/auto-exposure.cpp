@@ -21,6 +21,7 @@
 
 using namespace garden;
 
+//**********************************************************************************************************************
 static ID<Buffer> createHistogramBuffer(GraphicsSystem* graphicsSystem)
 {
 	auto usage = Buffer::Usage::Storage | Buffer::Usage::TransferDst;
@@ -34,7 +35,6 @@ static ID<Buffer> createHistogramBuffer(GraphicsSystem* graphicsSystem)
 	return buffer;
 }
 
-//**********************************************************************************************************************
 static DescriptorSet::Uniforms getHistogramUniforms(GraphicsSystem* graphicsSystem, ID<Buffer> histogramBuffer)
 {
 	auto hdrBufferView = DeferredRenderSystem::Instance::get()->getHdrImageView();
@@ -75,43 +75,14 @@ AutoExposureSystem::AutoExposureSystem(bool setSingleton) : Singleton(setSinglet
 {
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", AutoExposureSystem::init);
-	ECSM_SUBSCRIBE_TO_EVENT("Deinit", AutoExposureSystem::deinit);
 }
-AutoExposureSystem::~AutoExposureSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", AutoExposureSystem::init);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", AutoExposureSystem::deinit);
-	}
-
-	unsetSingleton();
-}
-
 void AutoExposureSystem::init()
 {
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Render", AutoExposureSystem::render);
 	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", AutoExposureSystem::gBufferRecreate);
 }
-void AutoExposureSystem::deinit()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto graphicsSystem = GraphicsSystem::Instance::get();
-		graphicsSystem->destroy(averageDS);
-		graphicsSystem->destroy(histogramDS);
-		graphicsSystem->destroy(histogramPipeline);
-		graphicsSystem->destroy(histogramBuffer);
 
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Render", AutoExposureSystem::render);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("GBufferRecreate", AutoExposureSystem::gBufferRecreate);
-	}
-}
-
-//**********************************************************************************************************************
 static float calcTimeCoeff(float adaptationRate, float deltaTime) noexcept
 {
 	return saturate(1.0f - std::exp(-deltaTime * adaptationRate));
@@ -121,10 +92,10 @@ void AutoExposureSystem::render()
 {
 	SET_CPU_ZONE_SCOPED("Auto Exposure Render");
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
-	if (!isEnabled || !graphicsSystem->canRender())
+	if (!isEnabled)
 		return;
 
+	auto graphicsSystem = GraphicsSystem::Instance::get();
 	if (!isInitialized)
 	{
 		if (!histogramBuffer)

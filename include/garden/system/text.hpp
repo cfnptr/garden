@@ -296,10 +296,6 @@ private:
 	 * @param setSingleton set system singleton instance
 	 */
 	TextSystem(bool setSingleton = true);
-	/**
-	 * @brief Destroys text system instance.
-	 */
-	~TextSystem() override;
 
 	void update();
 

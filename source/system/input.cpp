@@ -25,6 +25,7 @@
 using namespace garden;
 using namespace garden::graphics;
 
+//**********************************************************************************************************************
 static void updateWindowMode()
 {
 	auto primaryMonitor = glfwGetPrimaryMonitor();
@@ -51,7 +52,6 @@ static void updateWindowMode()
 	}
 }
 
-//**********************************************************************************************************************
 void InputSystem::onKeyboardButton(void* window, int key, int scancode, int action, int mods)
 {
 	if (key == GLFW_KEY_F11 && action == GLFW_PRESS)
@@ -104,23 +104,6 @@ InputSystem::InputSystem(bool setSingleton) : Singleton(setSingleton),
 	ECSM_SUBSCRIBE_TO_EVENT("PreInit", InputSystem::preInit);
 	ECSM_SUBSCRIBE_TO_EVENT("Deinit", InputSystem::deinit);
 }
-InputSystem::~InputSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("PreInit", InputSystem::preInit);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", InputSystem::deinit);
-
-		manager->unregisterEvent("Input");
-		manager->unregisterEvent("Output");
-		manager->unregisterEvent("FileDrop");
-	}
-
-	unsetSingleton();
-}
-
-//**********************************************************************************************************************
 void InputSystem::preInit()
 {
 	auto manager = Manager::Instance::get();
@@ -210,19 +193,6 @@ void InputSystem::preInit()
 	GARDEN_LOG_INFO("Framebuffer size: " + to_string(currFramebufferSize.x) + "x" + to_string(currFramebufferSize.y) + " px");
 	GARDEN_LOG_INFO("Content scale: " + to_string(currContentScale.x) + "x" + to_string(currContentScale.y));
 	systemTime = glfwGetTime();
-}
-void InputSystem::deinit()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		for (uint8 i = 0; i < (uint8)standardCursors.size(); i++)
-			glfwDestroyCursor((GLFWcursor*)standardCursors[i]);
-		glfwDestroyCursor((GLFWcursor*)emptyCursor);
-
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Input", InputSystem::input);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Output", InputSystem::output);
-	}
 }
 
 //**********************************************************************************************************************

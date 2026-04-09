@@ -42,19 +42,13 @@ class Controller2DSystem final : public System, public Singleton<Controller2DSys
 	 * @param setSingleton set system singleton instance
 	 */
 	Controller2DSystem(bool setSingleton = true);
-	/**
-	 * @brief Destroys 2D view controller system instance.
-	 */
-	~Controller2DSystem() override;
 
 	void updateCameraControl();
 	void updateCameraFollowing();
 	void updateCharacterControl();
 
 	void init();
-	void deinit();
 	void update();
-	void swapchainRecreate();
 	
 	friend class ecsm::Manager;
 public:

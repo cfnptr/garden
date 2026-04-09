@@ -9,16 +9,7 @@ extensible architecture, built-in editor, convenient creation of rendering pipel
 shader language (GSL), and automatic placement of GPU memory barriers, which are necessary in recent 
 graphics APIs.
 
-Check out the Garden [demo](https://github.com/cfnptr/garden-demo) app.
-
-## Supported operating systems
-
-* Windows (10/11)
-* Ubuntu (22.04/24.04)
-* macOS (15/26)
-
-This list includes only those systems on which functionality testing is conducted.
-However, you can also compile it under any other Linux distribution or operating system.
+Check out the Garden [demo](https://github.com/cfnptr/garden-demo) application.
 
 ## Supported hardware
 
@@ -29,7 +20,7 @@ However, you can also compile it under any other Linux distribution or operating
 * Intel [Gen9](https://en.wikichip.org/wiki/intel/microarchitectures/gen9) microarchitecture and newer
 * Apple [M1](https://en.wikipedia.org/wiki/Apple_M1) integrated GPU and newer (partial support)
 
-At least GPU with Vulkan API 1.2 support.
+Or at least GPU with [Vulkan API](https://en.wikipedia.org/wiki/Vulkan) 1.2 support.
 
 ### Central processing unit (CPU)
 
@@ -43,9 +34,8 @@ instruction set in the x86 architecture. If you want, you can freely disable it 
 ## Build requirements ![CI](https://github.com/cfnptr/garden/actions/workflows/cmake.yml/badge.svg)
 
 * C++17 compiler
-* [Git 2.39+](https://git-scm.com)
+* [Git 2.53+](https://git-scm.com)
 * [CMake 3.25+](https://cmake.org)
-* [Vulkan SDK 1.4+](https://vulkan.lunarg.com/)
 * [vcpkg](https://learn.microsoft.com/en-us/vcpkg/) (Windows only)
 * [brew](https://brew.sh/) (macOS only)
 
@@ -108,7 +98,7 @@ Use building [instructions](BUILDING.md) to install all required tools and libra
 ## Cloning
 
 ```
-git clone --recursive https://github.com/cfnptr/garden
+git clone --recursive -j8 https://github.com/cfnptr/garden
 ```
 
 ## Garden Shading Language (GSL)
@@ -119,7 +109,6 @@ You can install **Visual Studio Code** [extension](https://marketplace.visualstu
 ## Third-party
 
 * [Assimp](https://github.com/assimp/assimp) (assimp license)
-* [Conf](https://github.com/cfnptr/conf) (Apache-2.0 license)
 * [cURL](https://github.com/curl/curl) (curl License)
 * [ECSM](https://github.com/cfnptr/ecsm) (Apache-2.0 license)
 * [FastNoise2](https://github.com/Auburn/FastNoise2) (MIT license)
@@ -135,8 +124,6 @@ You can install **Visual Studio Code** [extension](https://marketplace.visualstu
 * [Pack](https://github.com/cfnptr/pack) (Apache-2.0 license)
 * [PNG](https://github.com/pnggroup/libpng) (PNG-2 license)
 * [stb](https://github.com/nothings/stb) (MIT license)
-* [TinyEXR](https://github.com/syoyo/tinyexr) (BSD-3-Clause license)
-* [TinyGLTF](https://github.com/syoyo/tinygltf) (MIT license)
 * [Tracy](https://github.com/wolfpld/tracy) (BSD-3-Clause license)
 * [VulkanMemoryAllocator](https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator) (MIT license)
 * [Vulkan SDK](https://github.com/KhronosGroup) (Apache-2.0 license)
@@ -145,7 +132,6 @@ You can install **Visual Studio Code** [extension](https://marketplace.visualstu
 * [WebP](https://github.com/webmproject/libwebp) (BSD-3-Clause license)
 * [xxHash](https://github.com/Cyan4973/xxHash) (BSD-2-Clause license)
 * [zlib](https://github.com/madler/zlib) (zlib license)
-
 
 ## Physically Based Materials
 

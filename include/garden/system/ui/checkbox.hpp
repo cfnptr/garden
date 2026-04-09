@@ -95,13 +95,8 @@ class UiCheckboxSystem final : public CompAnimSystem<UiCheckboxComponent, UiChec
 	 * @param setSingleton set system singleton instance
 	 */
 	UiCheckboxSystem(bool setSingleton = true);
-	/**
-	 * @brief Destroys user interface checkbox element system instance. (UI, GUI)
-	 */
-	~UiCheckboxSystem() override;
 
 	void uiCheckboxClick();
-
 	string_view getComponentName() const override;
 	
 	void serialize(ISerializer& serializer, const View<Component> component) override;

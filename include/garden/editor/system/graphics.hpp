@@ -32,16 +32,12 @@ private:
 	bool memoryStats = false;
 
 	GraphicsEditorSystem();
-	~GraphicsEditorSystem() override;
-
 	void init();
-	void deinit();
 	void preUiRender();
 	void editorBarTool();
 
 	void showPerformanceStats();
 	void showMemoryStats();
-
 	friend class ecsm::Manager;
 public:
 	uint32 opaqueDrawCount = 0;

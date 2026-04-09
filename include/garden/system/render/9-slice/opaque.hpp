@@ -43,10 +43,6 @@ class Opaque9SliceSystem final : public NineSliceCompAnimSystem<
 	 * @param setSingleton set system singleton instance
 	 */
 	Opaque9SliceSystem(bool setSingleton = true);
-	/**
-	 * @brief Destroys opaque 9-slice rendering system instance.
-	 */
-	~Opaque9SliceSystem() override;
 
 	string_view getComponentName() const override;
 	MeshRenderType getMeshRenderType() const override;

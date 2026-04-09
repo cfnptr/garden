@@ -138,7 +138,7 @@ public:
 		UniformResource(ID<Tlas> tlas) noexcept : resource(ID<Resource>(tlas)) { }
 		/**
 		 * @brief Creates a new empty descriptor set uniform.
-		 * @note It can not be used to create a descriptor set.
+		 * @note It can't be used to create a descriptor set.
 		 */
 		UniformResource() noexcept = default;
 	};
@@ -164,7 +164,7 @@ public:
 			set(set), count(count), offset(offset) { }
 		/**
 		 * @brief Creates a new empty descriptor set range description.
-		 * @note It can not be used to bind descriptor set range.
+		 * @note It can't be used to bind descriptor set range.
 		 */
 		constexpr Range() noexcept = default;
 	};

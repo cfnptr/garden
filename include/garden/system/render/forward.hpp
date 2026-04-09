@@ -63,13 +63,8 @@ private:
 	 * @param setSingleton set system singleton instance
 	 */
 	ForwardRenderSystem(bool useAsyncRecording = true, bool useHdrColorBuffer = false, bool setSingleton = true);
-	/**
-	 * @brief Destroys forward rendering system instance.
-	 */
-	~ForwardRenderSystem() override;
 
 	void init();
-	void deinit();
 	void render();
 	void swapchainRecreate();
 

@@ -117,10 +117,6 @@ class UiInputSystem final : public CompAnimSystem<UiInputComponent, UiInputFrame
 	 * @param setSingleton set system singleton instance
 	 */
 	UiInputSystem(bool setSingleton = true);
-	/**
-	 * @brief Destroys user interface input element system instance. (UI, GUI)
-	 */
-	~UiInputSystem() override;
 
 	void uiInputEnter();
 	void uiInputExit();

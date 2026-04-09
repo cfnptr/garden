@@ -22,12 +22,9 @@ namespace garden
 class CameraEditorSystem final : public System
 {
 	CameraEditorSystem();
-	~CameraEditorSystem() override;
-
 	void init();
-	void deinit();
-
 	void onEntityInspector(ID<Entity> entity, bool isOpened);
+
 	friend class ecsm::Manager;
 public:
 	float inspectorPriority = 0.6f;

@@ -27,11 +27,7 @@ class UiTransformEditorSystem final : public System, public Singleton<UiTransfor
 	ID<Entity> selectedEntity = {};
 
 	UiTransformEditorSystem(bool setSingleton = true);
-	~UiTransformEditorSystem() override;
-	
 	void init();
-	void deinit();
-
 	void onEntityDestroy(ID<Entity> entity);
 	void onEntityInspector(ID<Entity> entity, bool isOpened);
 

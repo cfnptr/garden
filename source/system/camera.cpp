@@ -23,23 +23,12 @@ CameraSystem::CameraSystem(bool setSingleton) : Singleton(setSingleton)
 	manager->addGroupSystem<ISerializable>(this);
 	manager->addGroupSystem<IAnimatable>(this);
 }
-CameraSystem::~CameraSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		manager->removeGroupSystem<ISerializable>(this);
-		manager->removeGroupSystem<IAnimatable>(this);
-	}
-	unsetSingleton();
-}
 
 string_view CameraSystem::getComponentName() const
 {
 	return "Camera";
 }
 
-//**********************************************************************************************************************
 void CameraSystem::serialize(ISerializer& serializer, const View<Component> component)
 {
 	const auto componentView = View<CameraComponent>(component);

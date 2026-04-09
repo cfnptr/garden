@@ -24,13 +24,13 @@ using namespace garden::graphics;
 void DebugLabel::begin(const string& name, Color color, int32 threadIndex)
 {
 	auto graphicsAPI = GraphicsAPI::get();
-	GARDEN_ASSERT(!name.empty());
-	GARDEN_ASSERT_MSG(graphicsAPI->currentCommandBuffer, "Assert " + name);
-
 	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
+	GARDEN_ASSERT(!name.empty());
+	GARDEN_ASSERT_MSG(currentCommandBuffer, "Assert " + name);
+
 	if (threadIndex < 0)
 	{
-		GARDEN_ASSERT_MSG(!graphicsAPI->isCurrentRenderPassAsync, "Assert " + name);
+		GARDEN_ASSERT_MSG(!graphicsAPI->isRenderPassAsync, "Assert " + name);
 		BeginLabelCommand command;
 		command.color = color;
 		command.name = name.c_str();
@@ -38,7 +38,7 @@ void DebugLabel::begin(const string& name, Color color, int32 threadIndex)
 	}
 	else
 	{
-		GARDEN_ASSERT_MSG(graphicsAPI->isCurrentRenderPassAsync, "Assert " + name);
+		GARDEN_ASSERT_MSG(graphicsAPI->isRenderPassAsync, "Assert " + name);
 		graphicsAPI->calcAutoThreadIndex(threadIndex);
 		if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
 		{
@@ -52,17 +52,17 @@ void DebugLabel::begin(const string& name, Color color, int32 threadIndex)
 void DebugLabel::end(int32 threadIndex)
 {
 	auto graphicsAPI = GraphicsAPI::get();
-	GARDEN_ASSERT(graphicsAPI->currentCommandBuffer);
-
 	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
+	GARDEN_ASSERT(currentCommandBuffer);
+
 	if (threadIndex < 0)
 	{
-		GARDEN_ASSERT(!graphicsAPI->isCurrentRenderPassAsync);
+		GARDEN_ASSERT(!graphicsAPI->isRenderPassAsync);
 		currentCommandBuffer->addCommand(EndLabelCommand(), threadIndex);
 	}
 	else
 	{
-		GARDEN_ASSERT(graphicsAPI->isCurrentRenderPassAsync);
+		GARDEN_ASSERT(graphicsAPI->isRenderPassAsync);
 		graphicsAPI->calcAutoThreadIndex(threadIndex);
 		if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
 			VulkanAPI::get()->secondaryCommandBuffers[threadIndex].endDebugUtilsLabelEXT();
@@ -72,12 +72,13 @@ void DebugLabel::end(int32 threadIndex)
 void DebugLabel::insert(const string& name, Color color, int32 threadIndex)
 {
 	auto graphicsAPI = GraphicsAPI::get();
-	GARDEN_ASSERT(!name.empty());
-
 	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
+	GARDEN_ASSERT(!name.empty());
+	GARDEN_ASSERT(currentCommandBuffer);
+
 	if (threadIndex < 0)
 	{
-		GARDEN_ASSERT_MSG(!graphicsAPI->isCurrentRenderPassAsync, "Assert " + name);
+		GARDEN_ASSERT_MSG(!graphicsAPI->isRenderPassAsync, "Assert " + name);
 		InsertLabelCommand command;
 		command.color = color;
 		command.name = name.c_str();
@@ -85,7 +86,7 @@ void DebugLabel::insert(const string& name, Color color, int32 threadIndex)
 	}
 	else
 	{
-		GARDEN_ASSERT_MSG(graphicsAPI->isCurrentRenderPassAsync, "Assert " + name);
+		GARDEN_ASSERT_MSG(graphicsAPI->isRenderPassAsync, "Assert " + name);
 		graphicsAPI->calcAutoThreadIndex(threadIndex);
 		if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
 		{

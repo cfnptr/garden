@@ -24,18 +24,7 @@ SkyboxRenderEditorSystem::SkyboxRenderEditorSystem()
 {
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", SkyboxRenderEditorSystem::init);
-	ECSM_SUBSCRIBE_TO_EVENT("Deinit", SkyboxRenderEditorSystem::deinit);
 }
-SkyboxRenderEditorSystem::~SkyboxRenderEditorSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", SkyboxRenderEditorSystem::init);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", SkyboxRenderEditorSystem::deinit);
-	}
-}
-
 void SkyboxRenderEditorSystem::init()
 {
 	auto manager = Manager::Instance::get();
@@ -47,16 +36,6 @@ void SkyboxRenderEditorSystem::init()
 		onEntityInspector(entity, isOpened);
 	},
 	inspectorPriority);
-}
-void SkyboxRenderEditorSystem::deinit()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		EditorRenderSystem::Instance::get()->unregisterEntityInspector<SkyboxRenderComponent>();
-
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorSettings", SkyboxRenderEditorSystem::editorSettings);
-	}
 }
 
 void SkyboxRenderEditorSystem::editorSettings()

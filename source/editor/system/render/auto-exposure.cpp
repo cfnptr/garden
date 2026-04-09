@@ -22,6 +22,7 @@
 
 using namespace garden;
 
+//**********************************************************************************************************************
 static ID<Buffer> createReadbackBuffer(GraphicsSystem* graphicsSystem)
 {
 	auto size = (sizeof(ToneMappingSystem::LuminanceData) + 
@@ -50,18 +51,7 @@ AutoExposureEditorSystem::AutoExposureEditorSystem()
 {
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", AutoExposureEditorSystem::init);
-	ECSM_SUBSCRIBE_TO_EVENT("Deinit", AutoExposureEditorSystem::deinit);
 }
-AutoExposureEditorSystem::~AutoExposureEditorSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", AutoExposureEditorSystem::init);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", AutoExposureEditorSystem::deinit);
-	}
-}
-
 void AutoExposureEditorSystem::init()
 {
 	auto manager = Manager::Instance::get();
@@ -70,24 +60,7 @@ void AutoExposureEditorSystem::init()
 	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", AutoExposureEditorSystem::gBufferRecreate);
 	ECSM_SUBSCRIBE_TO_EVENT("EditorBarToolPP", AutoExposureEditorSystem::editorBarToolPP);
 }
-void AutoExposureEditorSystem::deinit()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto graphicsSystem = GraphicsSystem::Instance::get();
-		graphicsSystem->destroy(limitsDS);
-		graphicsSystem->destroy(limitsPipeline);
-		graphicsSystem->destroy(readbackBuffer);
-		
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("PreUiRender", AutoExposureEditorSystem::preUiRender);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("UiRender", AutoExposureEditorSystem::uiRender);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("GBufferRecreate", AutoExposureEditorSystem::gBufferRecreate);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarToolPP", AutoExposureEditorSystem::editorBarToolPP);
-	}
-}
 
-//**********************************************************************************************************************
 void AutoExposureEditorSystem::preUiRender()
 {
 	if (!showWindow)
@@ -183,6 +156,8 @@ void AutoExposureEditorSystem::preUiRender()
 	}
 	ImGui::End();
 }
+
+//**********************************************************************************************************************
 void AutoExposureEditorSystem::uiRender()
 {
 	if (!visualizeLimits)
@@ -206,7 +181,7 @@ void AutoExposureEditorSystem::uiRender()
 	pc.minLum = std::exp2(autoExposureSystem->minLogLum);
 	pc.maxLum = std::exp2(autoExposureSystem->maxLogLum);
 
-	if (graphicsSystem->isCurrentRenderPassAsync())
+	if (graphicsSystem->isRenderPassAsync())
 	{
 		SET_GPU_DEBUG_LABEL_ASYNC("Auto Exposure Limits", INT32_MAX);
 		pipelineView->bindAsync(0, INT32_MAX);

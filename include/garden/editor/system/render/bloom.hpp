@@ -32,10 +32,7 @@ class BloomRenderEditorSystem final : public System
 	bool showWindow = false;
 
 	BloomRenderEditorSystem();
-	~BloomRenderEditorSystem() override;
-
 	void init();
-	void deinit();
 	void preUiRender();
 	void uiRender();
 	void gBufferRecreate();

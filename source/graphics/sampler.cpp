@@ -19,16 +19,15 @@ using namespace math;
 using namespace garden;
 using namespace garden::graphics;
 
+//**********************************************************************************************************************
 static void destroyVkSampler(void* instance)
 {
 	auto vulkanAPI = VulkanAPI::get();
 	if (vulkanAPI->forceResourceDestroy)
 		vulkanAPI->device.destroySampler((VkSampler)instance);
-	else
-		vulkanAPI->destroyResource(GraphicsAPI::DestroyResourceType::Sampler, instance);
+	else vulkanAPI->destroyResource(GraphicsAPI::DestroyResourceType::Sampler, instance);
 }
 
-//**********************************************************************************************************************
 Sampler::Sampler(const State& state) : state(state)
 {
 	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)

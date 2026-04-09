@@ -53,13 +53,8 @@ private:
 	 * @brief Creates a new GPU data processing system instance.
 	 * @param setSingleton set system singleton instance
 	 */
-	GpuProcessSystem(bool setSingleton = true);
-	/**
-	 * @brief Destroys GPU data processing system instance.
-	 */
-	~GpuProcessSystem() override;
+	GpuProcessSystem(bool setSingleton = true) : Singleton(setSingleton) { }
 
-	void deinit();
 	friend class ecsm::Manager;
 public:
 	/**

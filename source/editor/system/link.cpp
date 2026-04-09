@@ -25,18 +25,7 @@ LinkEditorSystem::LinkEditorSystem()
 {
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", LinkEditorSystem::init);
-	ECSM_SUBSCRIBE_TO_EVENT("Deinit", LinkEditorSystem::deinit);
 }
-LinkEditorSystem::~LinkEditorSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", LinkEditorSystem::init);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", LinkEditorSystem::deinit);
-	}
-}
-
 void LinkEditorSystem::init()
 {
 	auto manager = Manager::Instance::get();
@@ -50,19 +39,7 @@ void LinkEditorSystem::init()
 	},
 	inspectorPriority);
 }
-void LinkEditorSystem::deinit()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		EditorRenderSystem::Instance::get()->unregisterEntityInspector<LinkComponent>();
 
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("PreUiRender", LinkEditorSystem::preUiRender);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarTool", LinkEditorSystem::editorBarTool);
-	}
-}
-
-//**********************************************************************************************************************
 static void renderUuidList(const string& searchString, bool searchCaseSensitive)
 {
 	auto linkSystem = LinkSystem::Instance::get();

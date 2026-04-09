@@ -20,6 +20,7 @@
 
 using namespace garden;
 
+//**********************************************************************************************************************
 StreamServerHandle::StreamServerHandle(ServerNetworkSystem* serverSystem, SocketFamily socketFamily, const char* service, 
 	size_t sessionBufferSize, size_t connectionQueueSize, size_t receiveBufferSize, size_t messageBufferSize, 
 	uint8_t serverLengthSize, double timeoutTime, nets::SslContextView sslContext)
@@ -83,6 +84,7 @@ NetsResult StreamServerHandle::sendDatagram(ClientSession* clientSession, const 
 	return result;
 }
 
+//**********************************************************************************************************************
 void* StreamServerHandle::onSessionCreate(nets::StreamSessionView streamSession)
 {
 	SET_CPU_ZONE_SCOPED("On Server Session Create");
@@ -155,6 +157,8 @@ void* StreamServerHandle::onSessionCreate(nets::StreamSessionView streamSession)
 	GARDEN_LOG_INFO("Created a new client session. (address: " + streamSession.getAddress() + ")");
 	return clientSession;
 }
+
+//**********************************************************************************************************************
 void StreamServerHandle::onSessionDestroy(nets::StreamSessionView streamSession, int reason)
 {
 	SET_CPU_ZONE_SCOPED("On Server Session Destroy");
@@ -178,8 +182,7 @@ void StreamServerHandle::onSessionDestroy(nets::StreamSessionView streamSession,
 
 	if (serverSystem->onSessionDestroy)
 		serverSystem->onSessionDestroy(clientSession, reason);
-	else
-	 	delete clientSession;
+	else delete clientSession;
 
 	GARDEN_LOG_INFO("Destroyed client session. (address: " + 
 		streamSession.getAddress() + ", reason: " + reasonToString(reason) + ")");
@@ -347,21 +350,9 @@ ServerNetworkSystem::ServerNetworkSystem(bool setSingleton) : Singleton(setSingl
 {
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("PreInit", ServerNetworkSystem::preInit);
+	ECSM_SUBSCRIBE_TO_EVENT("PreDeinit", ServerNetworkSystem::preDeinit);
 	ECSM_SUBSCRIBE_TO_EVENT("Update", ServerNetworkSystem::update);
 }
-ServerNetworkSystem::~ServerNetworkSystem()
-{
-	stop();
-
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("PreInit", ServerNetworkSystem::preInit);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Update", ServerNetworkSystem::update);
-	}
-	unsetSingleton();
-}
-
 void ServerNetworkSystem::preInit()
 {
 	if (!isNetworkInitialized())
@@ -389,6 +380,10 @@ void ServerNetworkSystem::preInit()
 	{
 		return streamServer->onPingRequest(session, request);
 	});
+}
+void ServerNetworkSystem::preDeinit()
+{
+	stop();
 }
 
 //**********************************************************************************************************************
@@ -518,8 +513,7 @@ void ServerNetworkSystem::stop()
 
 	if (streamServer->isRunning())
 		GARDEN_LOG_INFO("Stopping server...");
-	else
-		GARDEN_LOG_WARN("Server is not running.");
+	else GARDEN_LOG_WARN("Server is not running.");
 
 	auto manager = Manager::Instance::get();
 	manager->unlock();

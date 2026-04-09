@@ -70,10 +70,6 @@ private:
 	 * @param setSingleton set system singleton instance
 	 */
 	CsmRenderSystem(bool setSingleton = true);
-	/**
-	 * @brief Destroys cascade shadow maps rendering system instance.
-	 */
-	~CsmRenderSystem() override;
 
 	void init();
 	void deinit();

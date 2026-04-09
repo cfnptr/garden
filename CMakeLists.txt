@@ -13,7 +13,7 @@
 # limitations under the License.
 
 #***********************************************************************************************************************
-cmake_minimum_required(VERSION 3.24)
+cmake_minimum_required(VERSION 3.25)
 
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
 	message(FATAL_ERROR "Prevented in-tree build")
@@ -160,28 +160,6 @@ else()
 	else()
 		set(GARDEN_EDITOR 0)
 	endif()
-endif()
-
-if(CMAKE_BUILD_TYPE MATCHES "Release|RelWithDebInfo" AND NOT GARDEN_RELEASE_DEBUGGING)
-	if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-		set(GARDEN_RELEASE_LINUX 1)
-	else()
-		set(GARDEN_RELEASE_LINUX 0)
-	endif()
-	if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-		set(GARDEN_RELEASE_MACOS 1)
-	else()
-		set(GARDEN_RELEASE_MACOS 0)
-	endif()
-	if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-		set(GARDEN_RELEASE_WINDOWS 1)
-	else()
-		set(GARDEN_RELEASE_WINDOWS 0)
-	endif()
-else()
-	set(GARDEN_RELEASE_LINUX 0)
-	set(GARDEN_RELEASE_MACOS 0)
-	set(GARDEN_RELEASE_WINDOWS 0)
 endif()
 
 if(IS_BIG_ENDIAN)

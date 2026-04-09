@@ -23,6 +23,7 @@ using namespace garden;
 // TODO: add bindless support
 // TODO: Add automatic tightly packed sprite arrays (add support of this to the resource system or texture atlases).
 
+//**********************************************************************************************************************
 static constexpr auto imageFlags = ImageLoadFlags::TypeArray | ImageLoadFlags::LoadShared;
 static constexpr auto imageUsage = Image::Usage::Sampled | Image::Usage::TransferDst | Image::Usage::TransferQ;
 
@@ -39,20 +40,7 @@ void SpriteRenderSystem::init()
 	debugResourceName = pipelinePath.generic_string();
 	#endif
 }
-void SpriteRenderSystem::deinit()
-{
-	// TODO: somehow destroy default image view, maybe check it ref count?
 
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("ImageLoaded", SpriteRenderSystem::imageLoaded);
-	}
-
-	InstanceRenderSystem::deinit();
-}
-
-//**********************************************************************************************************************
 void SpriteRenderSystem::imageLoaded()
 {
 	auto resourceSystem = ResourceSystem::Instance::get();

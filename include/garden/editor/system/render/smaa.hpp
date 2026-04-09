@@ -22,10 +22,7 @@ namespace garden
 class SmaaRenderEditorSystem final : public System
 {
 	SmaaRenderEditorSystem();
-	~SmaaRenderEditorSystem() override;
-
 	void init();
-	void deinit();
 	void editorSettings();
 
 	friend class ecsm::Manager;

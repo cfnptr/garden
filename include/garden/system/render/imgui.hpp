@@ -62,14 +62,9 @@ private:
 	 * @param[in] fontPath path to the font file
 	 */
 	ImGuiRenderSystem(bool setSingleton = true, const fs::path& fontPath = defaultFontPath);
-	/**
-	 * @brief Destroys immediate mode GUI rendering system instance. (ImGui)
-	 */
-	~ImGuiRenderSystem() override;
 
 	void preInit();
 	void postInit();
-	void postDeinit();
 	void input();
 	void update();
 	void postLdrToUI();

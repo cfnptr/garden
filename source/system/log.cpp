@@ -80,9 +80,12 @@ static string getCurrentDate()
 LogSystem::LogSystem(LogLevel level, double rotationTime, bool setSingleton) : Singleton(setSingleton)
 {
 	mpmt::Thread::setName("MAIN");
+
+	auto manager = Manager::Instance::get();
+	ECSM_SUBSCRIBE_TO_EVENT("PostDeinit", LogSystem::postDeinit);
+
 	auto appInfoSystem = AppInfoSystem::Instance::get();
 	auto directoryPath = rotationTime == 0.0 ? appInfoSystem->getAppDataName() : "logs";
-
 	try
 	{
 		this->logger = logy::Logger(directoryPath, level, (bool)GARDEN_DEBUG, rotationTime, rotationTime == 0.0);
@@ -123,11 +126,9 @@ LogSystem::LogSystem(LogLevel level, double rotationTime, bool setSingleton) : S
 	info("Total RAM size: " + toBinarySizeString(mpio::OS::getTotalRamSize()));
 	info("Free RAM size: " + toBinarySizeString(mpio::OS::getFreeRamSize()));
 }
-LogSystem::~LogSystem()
+void LogSystem::postDeinit()
 {
-	// Note: Using logger here to prevent use after free of other systems.
 	logger.log(INFO_LOG_LEVEL, "Stopped logging system."); 
-	unsetSingleton();
 }
 
 void LogSystem::log(LogLevel level, string_view message) noexcept

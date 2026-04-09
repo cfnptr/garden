@@ -27,40 +27,14 @@ GraphicsEditorSystem::GraphicsEditorSystem()
 {
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", GraphicsEditorSystem::init);
-	ECSM_SUBSCRIBE_TO_EVENT("Deinit", GraphicsEditorSystem::deinit);
 }
-GraphicsEditorSystem::~GraphicsEditorSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", GraphicsEditorSystem::init);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", GraphicsEditorSystem::deinit);
-
-		delete[] gpuSortedBuffer;
-		delete[] cpuSortedBuffer;
-		delete[] gpuFpsBuffer;
-		delete[] cpuFpsBuffer;
-	}
-}
-
 void GraphicsEditorSystem::init()
 {
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("PreUiRender", GraphicsEditorSystem::preUiRender);
 	ECSM_SUBSCRIBE_TO_EVENT("EditorBarTool", GraphicsEditorSystem::editorBarTool);
 }
-void GraphicsEditorSystem::deinit()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("PreUiRender", GraphicsEditorSystem::preUiRender);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarTool", GraphicsEditorSystem::editorBarTool);
-	}
-}
 
-//**********************************************************************************************************************
 static void updateHistogram(const char* name, float* sampleBuffer, float* sortedBuffer, float deltaTime)
 {
 	auto minValue = (float)FLT_MAX;

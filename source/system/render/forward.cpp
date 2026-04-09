@@ -103,31 +103,8 @@ ForwardRenderSystem::ForwardRenderSystem(bool useAsyncRecording, bool useHdrColo
 	manager->tryRegisterEvent("PreUiRender");
 	manager->tryRegisterEvent("UiRender");
 	manager->registerEvent("ColorBufferRecreate");
-
 	ECSM_SUBSCRIBE_TO_EVENT("Init", ForwardRenderSystem::init);
-	ECSM_SUBSCRIBE_TO_EVENT("Deinit", ForwardRenderSystem::deinit);
 }
-ForwardRenderSystem::~ForwardRenderSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", ForwardRenderSystem::init);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", ForwardRenderSystem::deinit);
-		
-		manager->unregisterEvent("PreForwardRender");
-		manager->unregisterEvent("ForwardRender");
-		manager->unregisterEvent("PreDsForwardRender");
-		manager->unregisterEvent("DepthForwardRender");
-		manager->tryUnregisterEvent("PreUiRender");
-		manager->tryUnregisterEvent("UiRender");
-		manager->unregisterEvent("ColorBufferRecreate");
-	}
-
-	unsetSingleton();
-}
-
-//**********************************************************************************************************************
 void ForwardRenderSystem::init()
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
@@ -137,33 +114,13 @@ void ForwardRenderSystem::init()
 	ECSM_SUBSCRIBE_TO_EVENT("Render", ForwardRenderSystem::render);
 	ECSM_SUBSCRIBE_TO_EVENT("SwapchainRecreate", ForwardRenderSystem::swapchainRecreate);
 }
-void ForwardRenderSystem::deinit()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto graphicsSystem = GraphicsSystem::Instance::get();
-		if (uiFramebuffer != colorFramebuffer)
-			graphicsSystem->destroy(uiFramebuffer);
-		graphicsSystem->destroy(fullFramebuffer);
-		graphicsSystem->destroy(colorFramebuffer);
-		graphicsSystem->destroy(depthStencilBuffer);
-		if (uiBuffer != colorBuffer)
-			graphicsSystem->destroy(uiBuffer);
-		graphicsSystem->destroy(colorBuffer);
 
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Render", ForwardRenderSystem::render);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("SwapchainRecreate", ForwardRenderSystem::swapchainRecreate);
-	}
-}
-
-//**********************************************************************************************************************
 void ForwardRenderSystem::render()
 {
 	SET_CPU_ZONE_SCOPED("Forward Render");
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	if (!isEnabled || !graphicsSystem->canRender() || !graphicsSystem->camera)
+	if (!isEnabled || !graphicsSystem->camera)
 		return;
 
 	auto manager = Manager::Instance::get();
@@ -176,7 +133,7 @@ void ForwardRenderSystem::render()
 	if (DeferredRenderSystem::Instance::tryGet())
 	{
 		GARDEN_ASSERT_MSG(!DeferredRenderSystem::Instance::get()->isEnabled, 
-			"Can not use forward and deferred render system at the same time"); 
+			"Can't use forward and deferred render system at the same time"); 
 	}
 	#endif
 
@@ -257,7 +214,7 @@ void ForwardRenderSystem::render()
 		else
 		{
 			auto _uiBuffer = getUiBuffer();
-			auto framebufferView = graphicsSystem->get(graphicsSystem->getSwapchainFramebuffer());
+			auto framebufferView = graphicsSystem->get(graphicsSystem->getWindowFramebuffer());
 			const auto& colorAttachment = framebufferView->getColorAttachments()[0];
 			auto swapchainImageView = graphicsSystem->get(colorAttachment.imageView);
 

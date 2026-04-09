@@ -88,10 +88,6 @@ private:
 	 * @param setSingleton set system singleton instance
 	 */
 	LinkSystem(bool setSingleton = true);
-	/**
-	 * @brief Destroys link system instance.
-	 */
-	~LinkSystem() override;
 
 	void resetComponent(View<Component> component, bool full) override;
 	void copyComponent(View<Component> source, View<Component> destination) override;

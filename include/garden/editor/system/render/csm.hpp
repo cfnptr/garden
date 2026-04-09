@@ -33,10 +33,7 @@ class CsmRenderEditorSystem final : public System
 	bool showWindow = false;
 
 	CsmRenderEditorSystem();
-	~CsmRenderEditorSystem();
-
 	void init();
-	void deinit();
 	void preUiRender();
 	void uiRender();
 	void gBufferRecreate();

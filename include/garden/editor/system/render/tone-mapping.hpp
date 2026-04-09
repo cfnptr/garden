@@ -27,10 +27,7 @@ class ToneMappingEditorSystem final : public System
 	bool showWindow = false;
 
 	ToneMappingEditorSystem();
-	~ToneMappingEditorSystem() override;
-
 	void init();
-	void deinit();
 	void preUiRender();
 	void editorBarToolPP();
 

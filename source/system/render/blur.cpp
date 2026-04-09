@@ -20,47 +20,19 @@
 
 using namespace garden;
 
+//**********************************************************************************************************************
 BlurRenderSystem::BlurRenderSystem(bool setSingleton) : Singleton(setSingleton)
 {
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", BlurRenderSystem::init);
-	ECSM_SUBSCRIBE_TO_EVENT("Deinit", BlurRenderSystem::deinit);
 }
-BlurRenderSystem::~BlurRenderSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", BlurRenderSystem::init);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", BlurRenderSystem::deinit);
-	}
-
-	unsetSingleton();
-}
-
 void BlurRenderSystem::init()
 {
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("PreDsLdrRender", BlurRenderSystem::preDsLdrRender);
 	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", BlurRenderSystem::gBufferRecreate);
 }
-void BlurRenderSystem::deinit()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto graphicsSystem = GraphicsSystem::Instance::get();
-		graphicsSystem->destroy(ldrGgxFramebuffers[0]);
-		graphicsSystem->destroy(ldrGgxFramebuffers[1]);
-		graphicsSystem->destroy(ldrGgxDS);
-		graphicsSystem->destroy(ldrGgxPipeline);
 
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("PreLdrRender", BlurRenderSystem::preDsLdrRender);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("GBufferRecreate", BlurRenderSystem::gBufferRecreate);
-	}
-}
-
-//**********************************************************************************************************************
 void BlurRenderSystem::preDsLdrRender()
 {
 	SET_CPU_ZONE_SCOPED("Blur Pre Depth/Stencil LDR Render");

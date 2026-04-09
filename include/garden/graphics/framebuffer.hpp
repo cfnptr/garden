@@ -129,7 +129,7 @@ private:
 	Attachment depthStencilAttachment = {};
 	uint2 size = uint2::zero;
 	uint32 depthStencilLayout = 0;
-	bool isSwapchain = false;
+	bool swapchain = false;
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	string debugName = UNNAMED_RESOURCE;
@@ -140,7 +140,7 @@ private:
 	{
 		this->colorAttachments = { Attachment(swapchainImage, LoadOp::Load, StoreOp::Store) };
 		this->size = size;
-		this->isSwapchain = true;
+		this->swapchain = true;
 	}
 	bool destroy() { return true; }
 
@@ -177,7 +177,7 @@ public:
 	 * @brief Is this framebuffer part of the swapchain.
 	 * @details Swapchain framebuffers are provided by the graphics API.
 	 */
-	bool isSwapchainFramebuffer() const noexcept { return isSwapchain; }
+	bool isSwapchain() const noexcept { return swapchain; }
 
 	/**
 	 * @brief Updates framebuffer attachments.
@@ -612,7 +612,7 @@ public:
 	 * @warning In most cases you should use @ref Framebuffer functions.
 	 * @param[in] framebuffer target framebuffer instance
 	 */
-	static bool& isSwapchain(Framebuffer& framebuffer) noexcept { return framebuffer.isSwapchain; }
+	static bool& isSwapchain(Framebuffer& framebuffer) noexcept { return framebuffer.swapchain; }
 };
 
 } // namespace garden::graphics

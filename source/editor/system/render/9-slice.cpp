@@ -23,23 +23,12 @@
 
 using namespace garden;
 
+//**********************************************************************************************************************
 NineSliceEditorSystem::NineSliceEditorSystem()
 {
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", NineSliceEditorSystem::init);
-	ECSM_SUBSCRIBE_TO_EVENT("Deinit", NineSliceEditorSystem::deinit);
 }
-NineSliceEditorSystem::~NineSliceEditorSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", NineSliceEditorSystem::init);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", NineSliceEditorSystem::deinit);
-	}
-}
-
-//**********************************************************************************************************************
 void NineSliceEditorSystem::init()
 {
 	auto editorSystem = EditorRenderSystem::Instance::get();
@@ -74,17 +63,6 @@ void NineSliceEditorSystem::init()
 		{
 			onUiEntityInspector(entity, isOpened);
 		});
-	}
-}
-void NineSliceEditorSystem::deinit()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto editorSystem = EditorRenderSystem::Instance::get();
-		editorSystem->tryUnregisterEntityInspector<Opaque9SliceComponent>();
-		editorSystem->tryUnregisterEntityInspector<Cutout9SliceComponent>();
-		editorSystem->tryUnregisterEntityInspector<Trans9SliceComponent>();
-		editorSystem->tryUnregisterEntityInspector<Ui9SliceComponent>();
 	}
 }
 

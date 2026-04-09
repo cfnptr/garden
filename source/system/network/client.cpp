@@ -19,6 +19,7 @@
 
 using namespace garden;
 
+//**********************************************************************************************************************
 static NetsResult sendEncMessage(nets::IStreamClient* streamClient, uint8* encKey, uint8 messageLengthSize)
 {
 	constexpr uint8 bufferSize = ClientSession::keySize + 16;
@@ -251,23 +252,6 @@ ClientNetworkSystem::ClientNetworkSystem(psize receiveBufferSize, psize messageB
 	GARDEN_ASSERT(this->messageBufferSize <= receiveBufferSize);
 	this->messageBuffer = new uint8[this->messageBufferSize];
 }
-ClientNetworkSystem::~ClientNetworkSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("PreInit", ClientNetworkSystem::preInit);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("PreDeinit", ClientNetworkSystem::preDeinit);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Update", ClientNetworkSystem::update);
-
-		ClientSession::destroyEncDecContext(encContext, encKey);
-		ClientSession::destroyEncDecContext(decContext, decKey);
-		ClientSession::destroyCipher(cipher);
-		delete[] messageBuffer;
-	}
-	unsetSingleton();
-}
-
 void ClientNetworkSystem::preInit()
 {
 	if (!isNetworkInitialized())

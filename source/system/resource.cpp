@@ -130,9 +130,7 @@ ResourceSystem::ResourceSystem(bool setSingleton) : Singleton(setSingleton)
 	auto manager = Manager::Instance::get();
 	manager->registerEvent("ImageLoaded");
 	manager->registerEvent("BufferLoaded");
-
 	ECSM_SUBSCRIBE_TO_EVENT("Init", ResourceSystem::init);
-	ECSM_SUBSCRIBE_TO_EVENT("Deinit", ResourceSystem::deinit);
 
 	auto appInfoSystem = AppInfoSystem::Instance::get();
 	appVersion = appInfoSystem->getVersion();
@@ -155,22 +153,6 @@ ResourceSystem::ResourceSystem(bool setSingleton) : Singleton(setSingleton)
 	appCachePath = appInfoSystem->getCachePath();
 	#endif
 }
-ResourceSystem::~ResourceSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", ResourceSystem::init);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", ResourceSystem::deinit);
-
-		manager->unregisterEvent("ImageLoaded");
-		manager->unregisterEvent("BufferLoaded");
-	}
-
-	unsetSingleton();
-}
-
-//**********************************************************************************************************************
 void ResourceSystem::init()
 {
 	auto manager = Manager::Instance::get();
@@ -178,49 +160,6 @@ void ResourceSystem::init()
 	#if GARDEN_DEBUG || GARDEN_EDITOR || !GARDEN_PACK_RESOURCES
 	ECSM_TRY_SUBSCRIBE_TO_EVENT("FileChange", ResourceSystem::fileChange);
 	#endif
-}
-void ResourceSystem::deinit()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		GraphicsAPI::get()->forceResourceDestroy = true;
-		while (!loadedImageQueue.empty())
-		{
-			auto& item = loadedImageQueue.front();
-			BufferExt::destroy(item.staging);
-			ImageExt::destroy(item.image);
-			loadedImageQueue.pop();
-		}
-		while (!loadedBufferQueue.empty())
-		{
-			auto& item = loadedBufferQueue.front();
-			BufferExt::destroy(item.staging);
-			BufferExt::destroy(item.buffer);
-			loadedBufferQueue.pop();
-		}
-		while (!loadedRayTracingQueue.empty())
-		{
-			PipelineExt::destroy(loadedRayTracingQueue.front().pipeline);
-			loadedRayTracingQueue.pop();
-		}
-		while (!loadedComputeQueue.empty())
-		{
-			PipelineExt::destroy(loadedComputeQueue.front().pipeline);
-			loadedComputeQueue.pop();
-		}
-		while (!loadedGraphicsQueue.empty())
-		{
-			PipelineExt::destroy(loadedGraphicsQueue.front().pipeline);
-			loadedGraphicsQueue.pop();
-		}
-		GraphicsAPI::get()->forceResourceDestroy = false;
-
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Input", ResourceSystem::input);
-		#if GARDEN_DEBUG || GARDEN_EDITOR || !GARDEN_PACK_RESOURCES
-		ECSM_TRY_UNSUBSCRIBE_FROM_EVENT("FileChange", ResourceSystem::fileChange);
-		#endif
-	}
 }
 
 //**********************************************************************************************************************
@@ -998,8 +937,7 @@ void ResourceSystem::loadImageData(const fs::path& path, Image::Format format,
 	#if GARDEN_PACK_RESOURCES
 	if (threadIndex < 0)
 		threadIndex = 0;
-	else
-		threadIndex++;
+	else threadIndex++;
 
 	auto imagePath = fs::path("images") / path;
 	imagePath += ".ext";

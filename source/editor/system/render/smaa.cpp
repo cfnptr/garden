@@ -25,30 +25,11 @@ SmaaRenderEditorSystem::SmaaRenderEditorSystem()
 {
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", SmaaRenderEditorSystem::init);
-	ECSM_SUBSCRIBE_TO_EVENT("Deinit", SmaaRenderEditorSystem::deinit);
 }
-SmaaRenderEditorSystem::~SmaaRenderEditorSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", SmaaRenderEditorSystem::init);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", SmaaRenderEditorSystem::deinit);
-	}
-}
-
 void SmaaRenderEditorSystem::init()
 {
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("EditorSettings", SmaaRenderEditorSystem::editorSettings);
-}
-void SmaaRenderEditorSystem::deinit()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorSettings", SmaaRenderEditorSystem::editorSettings);
-	}
 }
 
 void SmaaRenderEditorSystem::editorSettings()

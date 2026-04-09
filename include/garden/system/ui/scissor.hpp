@@ -30,7 +30,7 @@ struct UiScissorComponent final : public Component
 {
 	float2 offset = float2::zero; /**< UI scissor zone offset. */
 	float2 scale = float2::one;   /**< UI scissor zone scale. */
-	bool useItsels = false;       /**< Use scissor on this entity itself. */
+	bool useItself = false;       /**< Use scissor on this entity itself. */
 };
 
 /**
@@ -60,13 +60,8 @@ class UiScissorSystem final : public CompAnimSystem<UiScissorComponent, UiScisso
 	 * @param setSingleton set system singleton instance
 	 */
 	UiScissorSystem(bool setSingleton = true);
-	/**
-	 * @brief Destroys user interface element scissor system instance. (UI, GUI)
-	 */
-	~UiScissorSystem() override;
 
 	void update();
-
 	string_view getComponentName() const override;
 	
 	void serialize(ISerializer& serializer, const View<Component> component) override;

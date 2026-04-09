@@ -22,12 +22,9 @@ namespace garden
 class UiButtonEditorSystem final : public System, public Singleton<UiButtonEditorSystem>
 {
 	UiButtonEditorSystem(bool setSingleton = true);
-	~UiButtonEditorSystem() override;
-	
 	void init();
-	void deinit();
-
 	void onEntityInspector(ID<Entity> entity, bool isOpened);
+
 	friend class ecsm::Manager;
 public:
 	float inspectorPriority = 0.6f;

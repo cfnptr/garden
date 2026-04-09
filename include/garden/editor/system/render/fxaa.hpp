@@ -22,10 +22,7 @@ namespace garden
 class FxaaRenderEditorSystem final : public System
 {
 	FxaaRenderEditorSystem();
-	~FxaaRenderEditorSystem() override;
-
 	void init();
-	void deinit();
 	void editorSettings();
 
 	friend class ecsm::Manager;

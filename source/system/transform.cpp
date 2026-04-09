@@ -411,20 +411,6 @@ TransformSystem::TransformSystem(bool setSingleton) : Singleton(setSingleton)
 	manager->addGroupSystem<IAnimatable>(this);
 }
 
-TransformSystem::~TransformSystem()
-{
-	auto manager = Manager::Instance::get();
-	components.clear(manager->isRunning);
-
-	if (manager->isRunning)
-	{
-		manager->removeGroupSystem<ISerializable>(this);
-		manager->removeGroupSystem<IAnimatable>(this);
-	}
-
-	unsetSingleton();
-}
-
 //**********************************************************************************************************************
 void TransformSystem::destroyComponent(ID<Component> instance)
 {
@@ -566,8 +552,7 @@ void TransformSystem::deserialize(IDeserializer& deserializer, View<Component> c
 		{
 			if (componentView->uid == parentUID)
 				GARDEN_LOG_ERROR("Deserialized entity with the same parent UID. (uid: " + uidStringCache + ")");
-			else
-				deserializedParents.emplace_back(make_pair(componentView->entity, parentUID));
+			else deserializedParents.emplace_back(make_pair(componentView->entity, parentUID));
 		}
 	}
 
@@ -732,12 +717,6 @@ ID<Entity> TransformSystem::duplicateRecursive(ID<Entity> entity)
 StaticTransformSystem::StaticTransformSystem(bool setSingleton) : Singleton(setSingleton)
 {
 	Manager::Instance::get()->addGroupSystem<ISerializable>(this);
-}
-StaticTransformSystem::~StaticTransformSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-		Manager::Instance::get()->removeGroupSystem<ISerializable>(this);
-	unsetSingleton();
 }
 
 string_view StaticTransformSystem::getComponentName() const

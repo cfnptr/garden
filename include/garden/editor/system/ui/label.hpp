@@ -22,12 +22,9 @@ namespace garden
 class UiLabelEditorSystem final : public System, public Singleton<UiLabelEditorSystem>
 {
 	UiLabelEditorSystem(bool setSingleton = true);
-	~UiLabelEditorSystem() override;
-	
 	void init();
-	void deinit();
-
 	void onEntityInspector(ID<Entity> entity, bool isOpened);
+
 	friend class ecsm::Manager;
 public:
 	float inspectorPriority = 0.6f;

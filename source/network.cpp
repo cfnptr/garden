@@ -19,6 +19,7 @@
 
 using namespace garden;
 
+//**********************************************************************************************************************
 string ClientSession::getAddress() const
 {
 	nets::StreamSessionView session((StreamSession_T*)streamSession);

@@ -74,13 +74,8 @@ private:
 	 * @param setSingleton set system singleton instance
 	 */
 	ToneMappingSystem(Options options = {}, bool setSingleton = true);
-	/**
-	 * @brief Destroys tone mapping rendering system instance.
-	 */
-	~ToneMappingSystem() override;
 
 	void init();
-	void deinit();
 	void preLdrRender();
 	void ldrRender();
 	void dsRecreate();

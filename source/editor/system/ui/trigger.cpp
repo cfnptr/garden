@@ -24,20 +24,7 @@ UiTriggerEditorSystem::UiTriggerEditorSystem(bool setSingleton) : Singleton(setS
 {
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", UiTriggerEditorSystem::init);
-	ECSM_SUBSCRIBE_TO_EVENT("Deinit", UiTriggerEditorSystem::deinit);
 }
-UiTriggerEditorSystem::~UiTriggerEditorSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", UiTriggerEditorSystem::init);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", UiTriggerEditorSystem::deinit);
-	}
-
-	unsetSingleton();
-}
-
 void UiTriggerEditorSystem::init()
 {
 	EditorRenderSystem::Instance::get()->registerEntityInspector<UiTriggerComponent>(
@@ -47,13 +34,7 @@ void UiTriggerEditorSystem::init()
 	},
 	inspectorPriority);
 }
-void UiTriggerEditorSystem::deinit()
-{
-	if (Manager::Instance::get()->isRunning)
-		EditorRenderSystem::Instance::get()->unregisterEntityInspector<UiTriggerComponent>();
-}
 
-//**********************************************************************************************************************
 void UiTriggerEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 {
 	if (!isOpened)

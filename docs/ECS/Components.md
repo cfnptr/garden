@@ -83,8 +83,8 @@ static void entryPoint()
     //...
 
     manager->initialize();
-    manager->start();
-    delete manager;
+    manager->enterLoop();
+    manager->terminate();
 }
 
 GARDEN_DECLARE_MAIN(entryPoint)

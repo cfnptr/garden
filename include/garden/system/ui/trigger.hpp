@@ -19,15 +19,19 @@
 
 #pragma once
 #include "garden/animate.hpp"
+#include "garden/graphics/window.hpp"
 
 namespace garden
 {
+
+using namespace garden::graphics;
 
 /**
  * @brief User interface element trigger data container. (UI)
  */
 struct UiTriggerComponent final : public Component
 {
+	Window* window = nullptr;     /**< UI trigger window. (null = main) */
 	float2 offset = float2::zero; /**< UI trigger zone offset. */
 	float2 scale = float2::one;   /**< UI trigger zone scale. */
 	string onEnter = "";          /**< On UI trigger cursor enter event. */
@@ -75,10 +79,6 @@ class UiTriggerSystem final : public CompAnimSystem<UiTriggerComponent, UiTrigge
 	 * @param setSingleton set system singleton instance
 	 */
 	UiTriggerSystem(bool setSingleton = true);
-	/**
-	 * @brief Destroys user interface element trigger system instance. (UI, GUI)
-	 */
-	~UiTriggerSystem() override;
 
 	void update();
 

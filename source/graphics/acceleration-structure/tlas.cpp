@@ -20,6 +20,7 @@ using namespace math;
 using namespace garden;
 using namespace garden::graphics;
 
+//**********************************************************************************************************************
 static constexpr VkGeometryInstanceFlagsKHR toVkInstanceFlagsAS(Tlas::InstanceFlags tlasInstanceFlags) noexcept
 {
 	VkGeometryInstanceFlagsKHR flags = 0;
@@ -34,7 +35,6 @@ static constexpr VkGeometryInstanceFlagsKHR toVkInstanceFlagsAS(Tlas::InstanceFl
 	return flags;
 }
 
-//**********************************************************************************************************************
 static void createVkTlas(ID<Buffer> instanceBuffer, BuildFlagsAS flags, 
 	ID<Buffer>& storageBuffer, void*& instance, uint64& deviceAddress, void*& _buildData)
 {
@@ -141,9 +141,9 @@ void Tlas::fillInstanceData(const InstanceData* instanceArray, uint32 instanceCo
 void Tlas::build(ID<Buffer> scratchBuffer)
 {
 	AccelerationStructure::build(scratchBuffer);
+
 	auto graphicsAPI = GraphicsAPI::get();
 	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
-
 	for (const auto& instance : instances)
 	{
 		auto blasView = graphicsAPI->blasPool.get(instance.blas);

@@ -26,10 +26,7 @@ class HierarchyEditorSystem final : public System
 	bool showWindow = false;
 
 	HierarchyEditorSystem();
-	~HierarchyEditorSystem() override;
-
 	void init();
-	void deinit();
 	void preUiRender();
 	void editorBarTool();
 

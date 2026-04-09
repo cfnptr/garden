@@ -22,12 +22,6 @@ TransSpriteSystem::TransSpriteSystem(bool setSingleton) :
 {
 	Manager::Instance::get()->addGroupSystem<IMeshRenderSystem>(this);
 }
-TransSpriteSystem::~TransSpriteSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-		Manager::Instance::get()->removeGroupSystem<IMeshRenderSystem>(this);
-	unsetSingleton();
-}
 
 string_view TransSpriteSystem::getComponentName() const
 {

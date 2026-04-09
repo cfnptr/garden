@@ -40,10 +40,7 @@ class LogEditorSystem final : public System, public Singleton<LogEditorSystem>
 	bool isDirty = true;
 
 	LogEditorSystem(bool setSingleton = true);
-	~LogEditorSystem() override;
-
 	void init();
-	void deinit();
 	void preUiRender();
 	void editorBarTool();
 

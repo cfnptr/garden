@@ -21,6 +21,7 @@
 
 using namespace garden;
 
+//**********************************************************************************************************************
 static Ref<Image> createSearchLUT()
 {
 	return ResourceSystem::Instance::get()->loadImage("smaa/search", Image::Format::UnormR8, // TODO: BC4_UNORM
@@ -191,20 +192,7 @@ SmaaRenderSystem::SmaaRenderSystem(bool setSingleton) : Singleton(setSingleton)
 {
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", SmaaRenderSystem::init);
-	ECSM_SUBSCRIBE_TO_EVENT("Deinit", SmaaRenderSystem::deinit);
 }
-SmaaRenderSystem::~SmaaRenderSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", SmaaRenderSystem::init);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", SmaaRenderSystem::deinit);
-	}
-
-	unsetSingleton();
-}
-
 void SmaaRenderSystem::init()
 {
 	auto manager = Manager::Instance::get();
@@ -219,31 +207,7 @@ void SmaaRenderSystem::init()
 		settingsSystem->getType("smaa.quality", quality, graphicsQualityNames, (uint32)GraphicsQuality::Count);
 	}
 }
-void SmaaRenderSystem::deinit()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto graphicsSystem = GraphicsSystem::Instance::get();
-		graphicsSystem->destroy(blendDS);
-		graphicsSystem->destroy(weightsDS);
-		graphicsSystem->destroy(edgesDS);
-		graphicsSystem->destroy(edgesBuffer);
-		graphicsSystem->destroy(weightsFramebuffer);
-		graphicsSystem->destroy(edgesFramebuffer);
-		graphicsSystem->destroy(blendPipeline);
-		graphicsSystem->destroy(weightsPipeline);
-		graphicsSystem->destroy(edgesPipeline);
-		graphicsSystem->destroy(areaLUT);
-		graphicsSystem->destroy(searchLUT);
 
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("PreUiRender", SmaaRenderSystem::preUiRender);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("GBufferRecreate", SmaaRenderSystem::gBufferRecreate);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("QualityChange", SmaaRenderSystem::qualityChange);
-	}
-}
-
-//**********************************************************************************************************************
 void SmaaRenderSystem::preUiRender()
 {
 	SET_CPU_ZONE_SCOPED("SMAA Pre UI Render");

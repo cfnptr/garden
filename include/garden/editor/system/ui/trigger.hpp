@@ -22,12 +22,9 @@ namespace garden
 class UiTriggerEditorSystem final : public System, public Singleton<UiTriggerEditorSystem>
 {
 	UiTriggerEditorSystem(bool setSingleton = true);
-	~UiTriggerEditorSystem() override;
-	
 	void init();
-	void deinit();
-
 	void onEntityInspector(ID<Entity> entity, bool isOpened);
+
 	friend class ecsm::Manager;
 public:
 	float inspectorPriority = 0.7f;

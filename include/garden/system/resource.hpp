@@ -193,17 +193,11 @@ protected:
 	 * @param setSingleton set system singleton instance
 	 */
 	ResourceSystem(bool setSingleton = true);
-	/**
-	 * @brief Destroys resource system instance.
-	 */
-	~ResourceSystem() override;
-
 	void dequeuePipelines();
 	void dequeueBuffers();
 	void dequeueImages();
 
 	virtual void init();
-	virtual void deinit();
 	virtual void input();
 	virtual void fileChange();
 	

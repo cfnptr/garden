@@ -19,6 +19,7 @@
 
 using namespace garden;
 
+//**********************************************************************************************************************
 static ID<Framebuffer> createFramebuffer(GraphicsSystem* graphicsSystem, DeferredRenderSystem* deferredSystem)
 {
 	vector<Framebuffer::Attachment> colorAttachments =
@@ -54,41 +55,15 @@ OitRenderSystem::OitRenderSystem(bool setSingleton) : Singleton(setSingleton)
 {
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", OitRenderSystem::init);
-	ECSM_SUBSCRIBE_TO_EVENT("Deinit", OitRenderSystem::deinit);
 }
-OitRenderSystem::~OitRenderSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", OitRenderSystem::init);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", OitRenderSystem::deinit);
-	}
-
-	unsetSingleton();
-}
-
-//**********************************************************************************************************************
 void OitRenderSystem::init()
 {
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("PreLdrRender", OitRenderSystem::preLdrRender);
 	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", OitRenderSystem::gBufferRecreate);
 }
-void OitRenderSystem::deinit()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto graphicsSystem = GraphicsSystem::Instance::get();
-		graphicsSystem->destroy(descriptorSet);
-		graphicsSystem->destroy(pipeline);
 
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("PreLdrRender", OitRenderSystem::preLdrRender);
-		ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", OitRenderSystem::gBufferRecreate);
-	}
-}
-
+//**********************************************************************************************************************
 void OitRenderSystem::preLdrRender()
 {
 	SET_CPU_ZONE_SCOPED("OIT Pre LDR Render");

@@ -24,18 +24,7 @@ NetworkEditorSystem::NetworkEditorSystem()
 {
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", NetworkEditorSystem::init);
-	ECSM_SUBSCRIBE_TO_EVENT("Deinit", NetworkEditorSystem::deinit);
 }
-NetworkEditorSystem::~NetworkEditorSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", NetworkEditorSystem::init);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", NetworkEditorSystem::deinit);
-	}
-}
-
 void NetworkEditorSystem::init()
 {
 	EditorRenderSystem::Instance::get()->registerEntityInspector<NetworkComponent>(
@@ -45,13 +34,7 @@ void NetworkEditorSystem::init()
 	},
 	inspectorPriority);
 }
-void NetworkEditorSystem::deinit()
-{
-	if (Manager::Instance::get()->isRunning)
-		EditorRenderSystem::Instance::get()->unregisterEntityInspector<NetworkComponent>();
-}
 
-//**********************************************************************************************************************
 void NetworkEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 {
 	if (ImGui::BeginItemTooltip())

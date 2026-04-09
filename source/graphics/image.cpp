@@ -253,8 +253,7 @@ bool Image::destroy()
 		{
 			if (vulkanAPI->forceResourceDestroy)
 				vmaDestroyImage(vulkanAPI->memoryAllocator, (VkImage)instance, (VmaAllocation)allocation);
-			else
-				vulkanAPI->destroyResource(GraphicsAPI::DestroyResourceType::Image, instance, allocation);
+			else vulkanAPI->destroyResource(GraphicsAPI::DestroyResourceType::Image, instance, allocation);
 		}
 	}
 	else abort();
@@ -367,12 +366,13 @@ void Image::generateMips(Sampler::Filter filter)
 	GARDEN_ASSERT_MSG(instance, "Image [" + debugName + "] is not ready");
 
 	#if GARDEN_DEBUG
-	if (graphicsAPI->currentCommandBuffer == graphicsAPI->transferCommandBuffer)
+	auto commandBufferType = graphicsAPI->currentCommandBuffer->getType();
+	if (commandBufferType == CommandBufferType::TransferOnly)
 	{
 		GARDEN_ASSERT_MSG(hasAnyFlag(usage, Usage::TransferQ), 
 			"Image [" + debugName + "] does not have transfer queue flag");
 	}
-	if (graphicsAPI->currentCommandBuffer == graphicsAPI->computeCommandBuffer)
+	if (commandBufferType == CommandBufferType::Compute)
 	{
 		GARDEN_ASSERT_MSG(hasAnyFlag(usage, Usage::ComputeQ), 
 			"Image [" + debugName + "] does not have compute queue flag");
@@ -413,15 +413,17 @@ void Image::generateMips(Sampler::Filter filter)
 void Image::clear(float4 color, const ClearRegion* regions, uint32 count)
 {
 	auto graphicsAPI = GraphicsAPI::get();
+	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
 	GARDEN_ASSERT_MSG(regions, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(count > 0, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(currentCommandBuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(!graphicsAPI->currentFramebuffer, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(graphicsAPI->currentCommandBuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(isFormatFloat(format) || isFormatSrgb(format) || isFormatNorm(format), "Assert " + debugName);
 	GARDEN_ASSERT_MSG(hasAnyFlag(usage, Usage::TransferDst), "Assert " + debugName);
 
+	auto commandBufferType = currentCommandBuffer->getType();
 	#if GARDEN_DEBUG
-	if (graphicsAPI->currentCommandBuffer == graphicsAPI->computeCommandBuffer)
+	if (commandBufferType == CommandBufferType::Compute)
 	{
 		GARDEN_ASSERT_MSG(hasAnyFlag(usage, Usage::ComputeQ), 
 			"Image [" + debugName + "] does not have compute queue flag");
@@ -434,26 +436,28 @@ void Image::clear(float4 color, const ClearRegion* regions, uint32 count)
 	command.image = graphicsAPI->imagePool.getID(this);
 	command.color = color;
 	command.regions = regions;
-	graphicsAPI->currentCommandBuffer->addCommand(command);
+	currentCommandBuffer->addCommand(command);
 
-	if (graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer)
+	if (commandBufferType != CommandBufferType::Frame)
 	{
 		busyLock++;
-		graphicsAPI->currentCommandBuffer->addLockedResource(command.image);
+		currentCommandBuffer->addLockedResource(command.image);
 	}
 }
 void Image::clear(int4 color, const ClearRegion* regions, uint32 count)
 {
 	auto graphicsAPI = GraphicsAPI::get();
+	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
 	GARDEN_ASSERT_MSG(regions, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(count > 0, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(currentCommandBuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(!graphicsAPI->currentFramebuffer, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(graphicsAPI->currentCommandBuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(isFormatSint(format), "Assert " + debugName);
 	GARDEN_ASSERT_MSG(hasAnyFlag(usage, Usage::TransferDst), "Assert " + debugName);
 
+	auto commandBufferType = currentCommandBuffer->getType();
 	#if GARDEN_DEBUG
-	if (graphicsAPI->currentCommandBuffer == graphicsAPI->computeCommandBuffer)
+	if (commandBufferType == CommandBufferType::Compute)
 	{
 		GARDEN_ASSERT_MSG(hasAnyFlag(usage, Usage::ComputeQ), 
 			"Image [" + debugName + "] does not have compute queue flag");
@@ -466,26 +470,28 @@ void Image::clear(int4 color, const ClearRegion* regions, uint32 count)
 	command.image = graphicsAPI->imagePool.getID(this);
 	*(int4*)&command.color = color;
 	command.regions = regions;
-	graphicsAPI->currentCommandBuffer->addCommand(command);
+	currentCommandBuffer->addCommand(command);
 
-	if (graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer)
+	if (commandBufferType != CommandBufferType::Frame)
 	{
 		busyLock++;
-		graphicsAPI->currentCommandBuffer->addLockedResource(command.image);
+		currentCommandBuffer->addLockedResource(command.image);
 	}
 }
 void Image::clear(uint4 color, const ClearRegion* regions, uint32 count)
 {
 	auto graphicsAPI = GraphicsAPI::get();
+	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
 	GARDEN_ASSERT_MSG(regions, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(count > 0, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(currentCommandBuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(!graphicsAPI->currentFramebuffer, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(graphicsAPI->currentCommandBuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(isFormatUint(format), "Assert " + debugName);
 	GARDEN_ASSERT_MSG(hasAnyFlag(usage, Usage::TransferDst), "Assert " + debugName);
 
+	auto commandBufferType = currentCommandBuffer->getType();
 	#if GARDEN_DEBUG
-	if (graphicsAPI->currentCommandBuffer == graphicsAPI->computeCommandBuffer)
+	if (commandBufferType == CommandBufferType::Compute)
 	{
 		GARDEN_ASSERT_MSG(hasAnyFlag(usage, Usage::ComputeQ), 
 			"Image [" + debugName + "] does not have compute queue flag");
@@ -498,26 +504,28 @@ void Image::clear(uint4 color, const ClearRegion* regions, uint32 count)
 	command.image = graphicsAPI->imagePool.getID(this);
 	*(uint4*)&command.color = color;
 	command.regions = regions;
-	graphicsAPI->currentCommandBuffer->addCommand(command);
+	currentCommandBuffer->addCommand(command);
 
-	if (graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer)
+	if (commandBufferType != CommandBufferType::Frame)
 	{
 		busyLock++;
-		graphicsAPI->currentCommandBuffer->addLockedResource(command.image);
+		currentCommandBuffer->addLockedResource(command.image);
 	}
 }
 void Image::clear(float depth, uint32 stencil, const ClearRegion* regions, uint32 count)
 {
 	auto graphicsAPI = GraphicsAPI::get();
+	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
 	GARDEN_ASSERT_MSG(regions, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(count > 0, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(currentCommandBuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(!graphicsAPI->currentFramebuffer, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(graphicsAPI->currentCommandBuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(isFormatDepthOrStencil(format), "Assert " + debugName);
 	GARDEN_ASSERT_MSG(hasAnyFlag(usage, Usage::TransferDst), "Assert " + debugName);
 
+	auto commandBufferType = currentCommandBuffer->getType();
 	#if GARDEN_DEBUG
-	if (graphicsAPI->currentCommandBuffer == graphicsAPI->computeCommandBuffer)
+	if (commandBufferType == CommandBufferType::Compute)
 	{
 		GARDEN_ASSERT_MSG(hasAnyFlag(usage, Usage::ComputeQ), 
 			"Image [" + debugName + "] does not have compute queue flag");
@@ -530,12 +538,12 @@ void Image::clear(float depth, uint32 stencil, const ClearRegion* regions, uint3
 	command.color.x = depth;
 	*(uint32*)&command.color.y = stencil;
 	command.regions = regions;
-	graphicsAPI->currentCommandBuffer->addCommand(command);
+	currentCommandBuffer->addCommand(command);
 
-	if (graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer)
+	if (commandBufferType != CommandBufferType::Frame)
 	{
 		busyLock++;
-		graphicsAPI->currentCommandBuffer->addLockedResource(command.image);
+		currentCommandBuffer->addLockedResource(command.image);
 	}
 }
 
@@ -543,12 +551,13 @@ void Image::clear(float depth, uint32 stencil, const ClearRegion* regions, uint3
 void Image::copy(ID<Image> source, ID<Image> destination, const CopyImageRegion* regions, uint32 count)
 {
 	auto graphicsAPI = GraphicsAPI::get();
+	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
 	GARDEN_ASSERT(source);
 	GARDEN_ASSERT(destination);
 	GARDEN_ASSERT(regions);
 	GARDEN_ASSERT(count > 0);
+	GARDEN_ASSERT(currentCommandBuffer);
 	GARDEN_ASSERT(!graphicsAPI->currentFramebuffer);
-	GARDEN_ASSERT(graphicsAPI->currentCommandBuffer);
 
 	auto srcView = graphicsAPI->imagePool.get(source);
 	GARDEN_ASSERT_MSG(hasAnyFlag(srcView->usage, Usage::TransferSrc), 
@@ -562,24 +571,19 @@ void Image::copy(ID<Image> source, ID<Image> destination, const CopyImageRegion*
 		srcView->getDebugName() + "] and destination [" + dstView->getDebugName() + "] image format binary sizes");
 	GARDEN_ASSERT_MSG(dstView->instance, "Destination image [" + dstView->getDebugName() + "] is not ready");
 
+	auto commandBufferType = currentCommandBuffer->getType();
 	#if GARDEN_DEBUG
-	if (graphicsAPI->currentCommandBuffer == graphicsAPI->transferCommandBuffer)
+	if (commandBufferType == CommandBufferType::TransferOnly)
 	{
 		GARDEN_ASSERT_MSG(hasAnyFlag(srcView->getUsage(), Usage::TransferQ),
 			"Source image [" + srcView->getDebugName() + "] does not have transfer queue flag");
-	}
-	if (graphicsAPI->currentCommandBuffer == graphicsAPI->computeCommandBuffer)
-	{
-		GARDEN_ASSERT_MSG(hasAnyFlag(srcView->getUsage(), Usage::ComputeQ),
-			"Source image [" + srcView->getDebugName() + "] does not have compute queue flag");
-	}
-	if (graphicsAPI->currentCommandBuffer == graphicsAPI->transferCommandBuffer)
-	{
 		GARDEN_ASSERT_MSG(hasAnyFlag(dstView->getUsage(), Usage::TransferQ),
 			"Destination image [" + dstView->getDebugName() + "] does not have transfer queue flag");
 	}
-	if (graphicsAPI->currentCommandBuffer == graphicsAPI->computeCommandBuffer)
+	if (commandBufferType == CommandBufferType::Compute)
 	{
+		GARDEN_ASSERT_MSG(hasAnyFlag(srcView->getUsage(), Usage::ComputeQ),
+			"Source image [" + srcView->getDebugName() + "] does not have compute queue flag");
 		GARDEN_ASSERT_MSG(hasAnyFlag(dstView->getUsage(), Usage::ComputeQ),
 			"Destination image [" + dstView->getDebugName() + "] does not have compute queue flag");
 	}
@@ -616,14 +620,14 @@ void Image::copy(ID<Image> source, ID<Image> destination, const CopyImageRegion*
 	command.source = source;
 	command.destination = destination;
 	command.regions = regions;
-	graphicsAPI->currentCommandBuffer->addCommand(command);
+	currentCommandBuffer->addCommand(command);
 
-	if (graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer)
+	if (commandBufferType != CommandBufferType::Frame)
 	{
 		srcView->busyLock++;
 		dstView->busyLock++;
-		graphicsAPI->currentCommandBuffer->addLockedResource(source);
-		graphicsAPI->currentCommandBuffer->addLockedResource(destination);
+		currentCommandBuffer->addLockedResource(source);
+		currentCommandBuffer->addLockedResource(destination);
 	}
 }
 
@@ -631,12 +635,13 @@ void Image::copy(ID<Image> source, ID<Image> destination, const CopyImageRegion*
 void Image::copy(ID<Buffer> source, ID<Image> destination, const CopyBufferRegion* regions, uint32 count)
 {
 	auto graphicsAPI = GraphicsAPI::get();
+	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
 	GARDEN_ASSERT(source);
 	GARDEN_ASSERT(destination);
 	GARDEN_ASSERT(regions);
 	GARDEN_ASSERT(count > 0);
+	GARDEN_ASSERT(currentCommandBuffer);
 	GARDEN_ASSERT(!graphicsAPI->currentFramebuffer);
-	GARDEN_ASSERT(graphicsAPI->currentCommandBuffer);
 
 	auto bufferView = graphicsAPI->bufferPool.get(source);
 	GARDEN_ASSERT_MSG(hasAnyFlag(bufferView->getUsage(), Buffer::Usage::TransferSrc),
@@ -649,24 +654,19 @@ void Image::copy(ID<Buffer> source, ID<Image> destination, const CopyBufferRegio
 		"Missing destination image [" + imageView->getDebugName() + "] flag");
 	GARDEN_ASSERT_MSG(imageView->instance, "Image [" + imageView->getDebugName() + "] is not ready");
 	
+	auto commandBufferType = currentCommandBuffer->getType();
 	#if GARDEN_DEBUG
-	if (graphicsAPI->currentCommandBuffer == graphicsAPI->transferCommandBuffer)
+	if (commandBufferType == CommandBufferType::TransferOnly)
 	{
 		GARDEN_ASSERT_MSG(hasAnyFlag(bufferView->getUsage(), Buffer::Usage::TransferQ),
 			"Source buffer [" + bufferView->getDebugName() + "] does not have transfer queue flag");
-	}
-	if (graphicsAPI->currentCommandBuffer == graphicsAPI->computeCommandBuffer)
-	{
-		GARDEN_ASSERT_MSG(hasAnyFlag(bufferView->getUsage(), Buffer::Usage::ComputeQ),
-			"Source buffer [" + bufferView->getDebugName() + "] does not have compute queue flag");
-	}
-	if (graphicsAPI->currentCommandBuffer == graphicsAPI->transferCommandBuffer)
-	{
 		GARDEN_ASSERT_MSG(hasAnyFlag(imageView->getUsage(), Usage::TransferQ),
 			"Destination image [" + imageView->getDebugName() + "] does not have transfer queue flag");
 	}
-	if (graphicsAPI->currentCommandBuffer == graphicsAPI->computeCommandBuffer)
+	if (commandBufferType == CommandBufferType::Compute)
 	{
+		GARDEN_ASSERT_MSG(hasAnyFlag(bufferView->getUsage(), Buffer::Usage::ComputeQ),
+			"Source buffer [" + bufferView->getDebugName() + "] does not have compute queue flag");
 		GARDEN_ASSERT_MSG(hasAnyFlag(imageView->getUsage(), Usage::ComputeQ),
 			"Destination image [" + imageView->getDebugName() + "] does not have compute queue flag");
 	}
@@ -709,14 +709,14 @@ void Image::copy(ID<Buffer> source, ID<Image> destination, const CopyBufferRegio
 	command.buffer = source;
 	command.image = destination;
 	command.regions = regions;
-	graphicsAPI->currentCommandBuffer->addCommand(command);
+	currentCommandBuffer->addCommand(command);
 
-	if (graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer)
+	if (commandBufferType != CommandBufferType::Frame)
 	{
 		ResourceExt::getBusyLock(**bufferView)++;
 		ResourceExt::getBusyLock(**imageView)++;
-		graphicsAPI->currentCommandBuffer->addLockedResource(source);
-		graphicsAPI->currentCommandBuffer->addLockedResource(destination);
+		currentCommandBuffer->addLockedResource(source);
+		currentCommandBuffer->addLockedResource(destination);
 	}
 }
 
@@ -724,12 +724,13 @@ void Image::copy(ID<Buffer> source, ID<Image> destination, const CopyBufferRegio
 void Image::copy(ID<Image> source, ID<Buffer> destination, const CopyBufferRegion* regions, uint32 count)
 {
 	auto graphicsAPI = GraphicsAPI::get();
+	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
 	GARDEN_ASSERT(source);
 	GARDEN_ASSERT(destination);
 	GARDEN_ASSERT(regions);
 	GARDEN_ASSERT(count > 0);
+	GARDEN_ASSERT(currentCommandBuffer);
 	GARDEN_ASSERT(!graphicsAPI->currentFramebuffer);
-	GARDEN_ASSERT(graphicsAPI->currentCommandBuffer);
 
 	auto imageView = graphicsAPI->imagePool.get(source);
 	GARDEN_ASSERT_MSG(hasAnyFlag(imageView->getUsage(), Usage::TransferSrc),
@@ -742,24 +743,19 @@ void Image::copy(ID<Image> source, ID<Buffer> destination, const CopyBufferRegio
 	GARDEN_ASSERT_MSG(ResourceExt::getInstance(**bufferView), "Buffer [" + 
 		bufferView->getDebugName() + "] is not ready");
 
+	auto commandBufferType = currentCommandBuffer->getType();
 	#if GARDEN_DEBUG
-	if (graphicsAPI->currentCommandBuffer == graphicsAPI->transferCommandBuffer)
+	if (commandBufferType == CommandBufferType::TransferOnly)
 	{
 		GARDEN_ASSERT_MSG(hasAnyFlag(imageView->getUsage(), Usage::TransferQ),
 			"Source image [" + imageView->getDebugName() + "] does not have transfer queue flag");
-	}
-	if (graphicsAPI->currentCommandBuffer == graphicsAPI->computeCommandBuffer)
-	{
-		GARDEN_ASSERT_MSG(hasAnyFlag(imageView->getUsage(), Usage::ComputeQ),
-			"Source image [" + imageView->getDebugName() + "] does not have compute queue flag");
-	}
-	if (graphicsAPI->currentCommandBuffer == graphicsAPI->transferCommandBuffer)
-	{
 		GARDEN_ASSERT_MSG(hasAnyFlag(bufferView->getUsage(), Buffer::Usage::TransferQ),
 			"Destination buffer [" + bufferView->getDebugName() + "] does not have transfer queue flag");
 	}
-	if (graphicsAPI->currentCommandBuffer == graphicsAPI->computeCommandBuffer)
+	if (commandBufferType == CommandBufferType::Compute)
 	{
+		GARDEN_ASSERT_MSG(hasAnyFlag(imageView->getUsage(), Usage::ComputeQ),
+			"Source image [" + imageView->getDebugName() + "] does not have compute queue flag");
 		GARDEN_ASSERT_MSG(hasAnyFlag(bufferView->getUsage(), Buffer::Usage::ComputeQ),
 			"Destination buffer [" + bufferView->getDebugName() + "] does not have compute queue flag");
 	}
@@ -802,14 +798,14 @@ void Image::copy(ID<Image> source, ID<Buffer> destination, const CopyBufferRegio
 	command.buffer = destination;
 	command.image = source;
 	command.regions = regions;
-	graphicsAPI->currentCommandBuffer->addCommand(command);
+	currentCommandBuffer->addCommand(command);
 
-	if (graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer)
+	if (commandBufferType != CommandBufferType::Frame)
 	{
 		ResourceExt::getBusyLock(**imageView)++;
 		ResourceExt::getBusyLock(**bufferView)++;
-		graphicsAPI->currentCommandBuffer->addLockedResource(source);
-		graphicsAPI->currentCommandBuffer->addLockedResource(destination);
+		currentCommandBuffer->addLockedResource(source);
+		currentCommandBuffer->addLockedResource(destination);
 	}
 }
 
@@ -818,12 +814,13 @@ void Image::blit(ID<Image> source, ID<Image> destination,
 	const BlitRegion* regions, uint32 count, Sampler::Filter filter)
 {
 	auto graphicsAPI = GraphicsAPI::get();
+	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
 	GARDEN_ASSERT(source);
 	GARDEN_ASSERT(destination);
 	GARDEN_ASSERT(regions);
 	GARDEN_ASSERT(count > 0);
+	GARDEN_ASSERT(currentCommandBuffer);
 	GARDEN_ASSERT(!graphicsAPI->currentFramebuffer);
-	GARDEN_ASSERT(graphicsAPI->currentCommandBuffer);
 
 	auto srcView = graphicsAPI->imagePool.get(source);
 	GARDEN_ASSERT_MSG(hasAnyFlag(srcView->usage, Usage::TransferSrc),
@@ -877,14 +874,14 @@ void Image::blit(ID<Image> source, ID<Image> destination,
 	command.source = source;
 	command.destination = destination;
 	command.regions = regions;
-	graphicsAPI->currentCommandBuffer->addCommand(command);
+	currentCommandBuffer->addCommand(command);
 
-	if (graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer)
+	if (currentCommandBuffer->getType() != CommandBufferType::Frame)
 	{
 		ResourceExt::getBusyLock(**srcView)++;
 		ResourceExt::getBusyLock(**dstView)++;
-		graphicsAPI->currentCommandBuffer->addLockedResource(source);
-		graphicsAPI->currentCommandBuffer->addLockedResource(destination);
+		currentCommandBuffer->addLockedResource(source);
+		currentCommandBuffer->addLockedResource(destination);
 	}
 }
 
@@ -1027,8 +1024,7 @@ bool ImageView::destroy()
 		auto vulkanAPI = VulkanAPI::get();
 		if (vulkanAPI->forceResourceDestroy)
 			vulkanAPI->device.destroyImageView((VkImageView)instance);
-		else
-			vulkanAPI->destroyResource(GraphicsAPI::DestroyResourceType::ImageView, instance);
+		else vulkanAPI->destroyResource(GraphicsAPI::DestroyResourceType::ImageView, instance);
 	}
 	else abort();
 

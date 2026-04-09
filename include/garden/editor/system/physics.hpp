@@ -67,14 +67,10 @@ private:
 	bool showWindow = false;
 
 	PhysicsEditorSystem();
-	~PhysicsEditorSystem() override;
-
 	void init();
-	void deinit();
 	void preDsLdrRender();
 	void dsLdrRender();
 	void editorBarTool();
-
 	void onRigidbodyInspector(ID<Entity> entity, bool isOpened);
 	void onCharacterInspector(ID<Entity> entity, bool isOpened);
 

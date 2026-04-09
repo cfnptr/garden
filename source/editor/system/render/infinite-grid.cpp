@@ -23,33 +23,17 @@
 
 using namespace garden;
 
+//**********************************************************************************************************************
 static DescriptorSet::Uniforms getUniforms(GraphicsSystem* graphicsSystem)
 {
 	return { { "cc", DescriptorSet::Uniform(graphicsSystem->getCommonConstantsBuffers()) } };
 }
 
-//**********************************************************************************************************************
 InfiniteGridEditorSystem::InfiniteGridEditorSystem()
 {
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", InfiniteGridEditorSystem::init);
-	ECSM_SUBSCRIBE_TO_EVENT("Deinit", InfiniteGridEditorSystem::deinit);
 }
-InfiniteGridEditorSystem::~InfiniteGridEditorSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto graphicsSystem = GraphicsSystem::Instance::get();
-		graphicsSystem->destroy(descriptorSet);
-		graphicsSystem->destroy(pipeline);
-
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", InfiniteGridEditorSystem::init);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", InfiniteGridEditorSystem::deinit);
-	}
-}
-
-//**********************************************************************************************************************
 void InfiniteGridEditorSystem::init()
 {
 	auto manager = Manager::Instance::get();
@@ -83,37 +67,6 @@ void InfiniteGridEditorSystem::init()
 		settingsSystem->getColor("infiniteGrid.meshColor", meshColor);
 		settingsSystem->getColor("infiniteGrid.axisColorX", axisColorX);
 		settingsSystem->getColor("infiniteGrid.axisColorYZ", axisColorYZ);
-	}
-}
-void InfiniteGridEditorSystem::deinit()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto graphicsSystem = GraphicsSystem::Instance::get();
-		graphicsSystem->destroy(descriptorSet);
-		graphicsSystem->destroy(pipeline);
-
-		auto manager = Manager::Instance::get();
-		if (OitRenderSystem::Instance::has())
-		{
-			ECSM_UNSUBSCRIBE_FROM_EVENT("PreOitRender", InfiniteGridEditorSystem::preRender);
-			ECSM_UNSUBSCRIBE_FROM_EVENT("OitRender", InfiniteGridEditorSystem::render);
-		}
-		else
-		{
-			if (DeferredRenderSystem::Instance::has())
-			{
-				ECSM_UNSUBSCRIBE_FROM_EVENT("PreDsLdrRender", InfiniteGridEditorSystem::preRender);
-				ECSM_UNSUBSCRIBE_FROM_EVENT("DsLdrRender", InfiniteGridEditorSystem::render);
-			}
-			else
-			{
-				ECSM_UNSUBSCRIBE_FROM_EVENT("PreDsForwardRender", InfiniteGridEditorSystem::preRender);
-				ECSM_UNSUBSCRIBE_FROM_EVENT("DsForwardRender", InfiniteGridEditorSystem::render);
-			}
-		}
-
-		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorSettings", InfiniteGridEditorSystem::editorSettings);
 	}
 }
 
@@ -174,7 +127,7 @@ void InfiniteGridEditorSystem::preRender()
 void InfiniteGridEditorSystem::render()
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	if (!isEnabled || !graphicsSystem->canRender() || !graphicsSystem->camera)
+	if (!isEnabled || !graphicsSystem->camera)
 		return;
 
 	auto pipelineView = graphicsSystem->get(pipeline);
@@ -199,7 +152,7 @@ void InfiniteGridEditorSystem::render()
 
 	auto inFlightIndex = graphicsSystem->getInFlightIndex();
 
-	if (graphicsSystem->isCurrentRenderPassAsync())
+	if (graphicsSystem->isRenderPassAsync())
 	{
 		SET_GPU_DEBUG_LABEL_ASYNC("Infinite Grid", 0);
 		pipelineView->bindAsync(0);

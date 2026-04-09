@@ -17,8 +17,8 @@
 
 using namespace garden;
 
+//**********************************************************************************************************************
 DoNotSerializeSystem::DoNotSerializeSystem(bool setSingleton) : Singleton(setSingleton) { }
-DoNotSerializeSystem::~DoNotSerializeSystem() { unsetSingleton(); }
 
 string_view DoNotSerializeSystem::getComponentName() const
 {

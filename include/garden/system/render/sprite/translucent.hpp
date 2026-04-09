@@ -43,10 +43,6 @@ class TransSpriteSystem final : public SpriteCompAnimSystem<
 	 * @param setSingleton set system singleton instance
 	 */
 	TransSpriteSystem(bool setSingleton = true);
-	/**
-	 * @brief Destroys translucent sprite rendering system instance.
-	 */
-	~TransSpriteSystem() override;
 
 	string_view getComponentName() const override;
 	MeshRenderType getMeshRenderType() const override;

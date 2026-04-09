@@ -25,32 +25,12 @@ HbaoRenderEditorSystem::HbaoRenderEditorSystem()
 {
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", HbaoRenderEditorSystem::init);
-	ECSM_SUBSCRIBE_TO_EVENT("Deinit", HbaoRenderEditorSystem::deinit);
 }
-HbaoRenderEditorSystem::~HbaoRenderEditorSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", HbaoRenderEditorSystem::init);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", HbaoRenderEditorSystem::deinit);
-	}
-}
-
 void HbaoRenderEditorSystem::init()
 {
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("PreUiRender", HbaoRenderEditorSystem::preUiRender);
 	ECSM_SUBSCRIBE_TO_EVENT("EditorBarToolPP", HbaoRenderEditorSystem::editorBarToolPP);
-}
-void HbaoRenderEditorSystem::deinit()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("PreUiRender", HbaoRenderEditorSystem::preUiRender);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarToolPP", HbaoRenderEditorSystem::editorBarToolPP);
-	}
 }
 
 void HbaoRenderEditorSystem::preUiRender()

@@ -29,6 +29,7 @@ using namespace math::sh;
 using namespace math::ibl;
 using namespace math::brdf;
 
+//**********************************************************************************************************************
 namespace garden::graphics
 {
 	struct SpecularData final
@@ -42,7 +43,6 @@ namespace garden::graphics
 #if 0 // Note: Used to precompute Ki coeffs.
 #include <iostream>
 
-//**********************************************************************************************************************
 static uint32 factorial(uint32 x) noexcept
 {
 	return x == 0 ? 1 : x * factorial(x - 1);
@@ -493,44 +493,7 @@ PbrLightingSystem::PbrLightingSystem(Options options, bool setSingleton) : Singl
 	manager->registerEvent("GiRecreate");
 
 	ECSM_SUBSCRIBE_TO_EVENT("Init", PbrLightingSystem::init);
-	ECSM_SUBSCRIBE_TO_EVENT("Deinit", PbrLightingSystem::deinit);
 }
-PbrLightingSystem::~PbrLightingSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", PbrLightingSystem::init);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", PbrLightingSystem::deinit);
-
-		manager->unregisterEvent("DfgLutRecreate");
-		manager->unregisterEvent("PbrIblRecreate");
-
-		manager->unregisterEvent("PreShadowRender");
-		manager->unregisterEvent("ShadowRender");
-		manager->unregisterEvent("PostShadowRender");
-		manager->unregisterEvent("ShadowRecreate");
-
-		manager->unregisterEvent("PreAoRender");
-		manager->unregisterEvent("AoRender");
-		manager->unregisterEvent("PostAoRender");
-		manager->unregisterEvent("AoRecreate");
-
-		manager->unregisterEvent("PreReflRender");
-		manager->unregisterEvent("ReflRender");
-		manager->unregisterEvent("PostReflRender");
-		manager->unregisterEvent("ReflRecreate");
-		
-		manager->unregisterEvent("PreGiRender");
-		manager->unregisterEvent("GiRender");
-		manager->unregisterEvent("PostGiRender");
-		manager->unregisterEvent("GiRecreate");
-	}
-
-	unsetSingleton();
-}
-
-//**********************************************************************************************************************
 void PbrLightingSystem::init()
 {
 	auto manager = Manager::Instance::get();
@@ -565,40 +528,6 @@ void PbrLightingSystem::init()
 		reflFramebuffer = createReflFramebuffer(graphicsSystem, reflBuffer);
 	if (!pbrLightingPipeline)
 		pbrLightingPipeline = createPbrLightingPipeline(options, pbrLightingFB);
-}
-void PbrLightingSystem::deinit()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto graphicsSystem = GraphicsSystem::Instance::get();
-		graphicsSystem->destroy(reflBlurDSes);
-		graphicsSystem->destroy(aoBlurDS);
-		graphicsSystem->destroy(shadBlurDS);
-		graphicsSystem->destroy(pbrLightingDS);
-		graphicsSystem->destroy(reflBlurPipeline);
-		graphicsSystem->destroy(aoBlurPipeline);
-		graphicsSystem->destroy(shadBlurPipeline);
-		graphicsSystem->destroy(iblSpecularPipeline);
-		graphicsSystem->destroy(pbrLightingPipeline);
-		graphicsSystem->destroy(reflFramebuffers);
-		graphicsSystem->destroy(reflFramebuffer);
-		graphicsSystem->destroy(giFramebuffer);
-		graphicsSystem->destroy(pbrLightingFB);
-		graphicsSystem->destroy(reflBuffer);
-		graphicsSystem->destroy(giBuffer);
-		graphicsSystem->destroy(aoFramebuffers, procBufferCount);
-		graphicsSystem->destroy(aoBlurBuffer);
-		graphicsSystem->destroy(aoBaseBuffer);
-		graphicsSystem->destroy(shadFramebuffers, procBufferCount);
-		graphicsSystem->destroy(shadBlurBuffer);
-		graphicsSystem->destroy(shadBaseBuffer);
-		graphicsSystem->destroy(dfgLUT);
-
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("PreHdrRender", PbrLightingSystem::preHdrRender);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("GBufferRecreate", PbrLightingSystem::gBufferRecreate);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("QualityChange", PbrLightingSystem::qualityChange);
-	}
 }
 
 //**********************************************************************************************************************

@@ -522,10 +522,6 @@ class StaticTransformSystem final : public ComponentSystem<StaticTransformCompon
 	 * @param setSingleton set system singleton instance
 	 */
 	StaticTransformSystem(bool setSingleton = true);
-	/**
-	 * @brief Destroys static transform system instance.
-	 */
-	~StaticTransformSystem() override;
 
 	string_view getComponentName() const override;
 	friend class ecsm::Manager;

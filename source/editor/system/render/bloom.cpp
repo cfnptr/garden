@@ -22,29 +22,18 @@
 
 using namespace garden;
 
+//**********************************************************************************************************************
 static DescriptorSet::Uniforms getThresholdUniforms(GraphicsSystem* graphicsSystem)
 {
 	auto hdrBufferView = DeferredRenderSystem::Instance::get()->getHdrImageView();
 	return { { "hdrBuffer", DescriptorSet::Uniform(hdrBufferView) } };
 }
 
-//**********************************************************************************************************************
 BloomRenderEditorSystem::BloomRenderEditorSystem()
 {
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", BloomRenderEditorSystem::init);
-	ECSM_SUBSCRIBE_TO_EVENT("Deinit", BloomRenderEditorSystem::deinit);
 }
-BloomRenderEditorSystem::~BloomRenderEditorSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", BloomRenderEditorSystem::init);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", BloomRenderEditorSystem::deinit);
-	}
-}
-
 void BloomRenderEditorSystem::init()
 {
 	auto manager = Manager::Instance::get();
@@ -53,23 +42,6 @@ void BloomRenderEditorSystem::init()
 	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", BloomRenderEditorSystem::gBufferRecreate);
 	ECSM_SUBSCRIBE_TO_EVENT("EditorBarToolPP", BloomRenderEditorSystem::editorBarToolPP);
 }
-void BloomRenderEditorSystem::deinit()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto graphicsSystem = GraphicsSystem::Instance::get();
-		graphicsSystem->destroy(thresholdDS);
-		graphicsSystem->destroy(thresholdPipeline);
-
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("PreUiRender", BloomRenderEditorSystem::preUiRender);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("UiRender", BloomRenderEditorSystem::uiRender);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("GBufferRecreate", BloomRenderEditorSystem::gBufferRecreate);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarToolPP", BloomRenderEditorSystem::editorBarToolPP);
-	}
-}
-
-//**********************************************************************************************************************
 void BloomRenderEditorSystem::preUiRender()
 {
 	if (!showWindow)
@@ -129,6 +101,8 @@ void BloomRenderEditorSystem::preUiRender()
 	}
 	ImGui::End();
 }
+
+//**********************************************************************************************************************
 void BloomRenderEditorSystem::uiRender()
 {
 	if (!visualizeThreshold)
@@ -149,7 +123,7 @@ void BloomRenderEditorSystem::uiRender()
 	PushConstants pc;
 	pc.threshold = BloomRenderSystem::Instance::get()->threshold;
 
-	if (graphicsSystem->isCurrentRenderPassAsync())
+	if (graphicsSystem->isRenderPassAsync())
 	{
 		SET_GPU_DEBUG_LABEL_ASYNC("Bloom Threshold", INT32_MAX);
 		pipelineView->bindAsync(0, INT32_MAX);

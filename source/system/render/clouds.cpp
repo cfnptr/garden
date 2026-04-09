@@ -23,6 +23,7 @@
 
 using namespace garden;
 
+//**********************************************************************************************************************
 static const uint32 bayerIndices4x4[16] = 
 {
 	 0,  8,  2, 10,
@@ -313,20 +314,7 @@ CloudsRenderSystem::CloudsRenderSystem(bool setSingleton) : Singleton(setSinglet
 {
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", CloudsRenderSystem::init);
-	ECSM_SUBSCRIBE_TO_EVENT("Deinit", CloudsRenderSystem::deinit);
 }
-CloudsRenderSystem::~CloudsRenderSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", CloudsRenderSystem::init);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", CloudsRenderSystem::deinit);
-	}
-
-	unsetSingleton();
-}
-
 void CloudsRenderSystem::init()
 {
 	auto manager = Manager::Instance::get();
@@ -339,43 +327,6 @@ void CloudsRenderSystem::init()
 	ECSM_SUBSCRIBE_TO_EVENT("ShadowRender", CloudsRenderSystem::shadowRender);
 	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", CloudsRenderSystem::gBufferRecreate);
 	ECSM_SUBSCRIBE_TO_EVENT("QualityChange", CloudsRenderSystem::qualityChange);
-}
-void CloudsRenderSystem::deinit()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto graphicsSystem = GraphicsSystem::Instance::get();
-		graphicsSystem->destroy(shadowDS);
-		graphicsSystem->destroy(skyBlendDS);
-		graphicsSystem->destroy(viewBlendDS);
-		graphicsSystem->destroy(skyboxDS);
-		graphicsSystem->destroy(camViewDS);
-		graphicsSystem->destroy(skyboxFramebuffer);
-		graphicsSystem->destroy(camViewFramebuffer);
-		graphicsSystem->destroy(cloudsSkybox);
-		graphicsSystem->destroy(cloudsCamViewDepth);
-		graphicsSystem->destroy(cloudsCamView);
-		graphicsSystem->destroy(cirrusShape);
-		graphicsSystem->destroy(noiseShape);
-		graphicsSystem->destroy(vertProfile);
-		graphicsSystem->destroy(dataFields);
-		graphicsSystem->destroy(shadowPipeline);
-		graphicsSystem->destroy(skyBlendPipeline);
-		graphicsSystem->destroy(viewBlendPipeline);
-		graphicsSystem->destroy(skyboxPipeline);
-		graphicsSystem->destroy(camViewPipeline);
-
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("PreDeferredRender", CloudsRenderSystem::preDeferredRender);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("PreSkyFaceRender", CloudsRenderSystem::preSkyFaceRender);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("SkyFaceRender", CloudsRenderSystem::skyFaceRender);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("PreHdrRender", CloudsRenderSystem::preHdrRender);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("HdrRender", CloudsRenderSystem::hdrRender);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("PreShadowRender", CloudsRenderSystem::preShadowRender);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("ShadowRender", CloudsRenderSystem::shadowRender);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("GBufferRecreate", CloudsRenderSystem::gBufferRecreate);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("QualityChange", CloudsRenderSystem::qualityChange);
-	}
 }
 
 static float3 calcCameraPos(const CommonConstants& cc, float groundRadius)
@@ -391,7 +342,6 @@ static float calcCurrentTime(const CommonConstants& cc, float currentTime) noexc
 static float calcCoverage(float coverage) noexcept { return 1.0f - pow(saturate(coverage), 2.0f); }
 static float calcTemperatureDiff(float temperatureDiff) noexcept { return pow(saturate(temperatureDiff), 2.0f); }
 
-//**********************************************************************************************************************
 void CloudsRenderSystem::preDeferredRender()
 {
 	SET_CPU_ZONE_SCOPED("Clouds Pre Deferred Render");
@@ -532,7 +482,7 @@ void CloudsRenderSystem::skyFaceRender()
 		return;
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto skyboxFramebuffer = graphicsSystem->getCurrentFramebuffer();
+	auto skyboxFramebuffer = graphicsSystem->getRenderPassFB();
 	if (!skyBlendPipeline)
 		skyBlendPipeline = createSkyBlendPipeline(skyboxFramebuffer);
 

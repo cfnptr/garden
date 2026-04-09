@@ -36,6 +36,7 @@
 using namespace garden;
 using namespace garden::primitive;
 
+//**********************************************************************************************************************
 namespace garden::graphics
 {
 	struct LinePC
@@ -110,29 +111,6 @@ GraphicsSystem::GraphicsSystem(uint2 windowSize, bool isFullscreen, bool isDecor
 		SET_RESOURCE_DEBUG_NAME(constantsBuffer, "buffer.uniform.commonConstants" + to_string(i));
 		commonConstantsBuffers[i].resize(1); commonConstantsBuffers[i][0] = constantsBuffer;
 	}
-}
-GraphicsSystem::~GraphicsSystem()
-{
-	GraphicsAPI::get()->storePipelineCache();
-
-	if (Manager::Instance::get()->isRunning)
-	{
-		// Note: Constants buffers and other resources will destroyed by terminating graphics API.
-
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("PreInit", GraphicsSystem::preInit);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("PreDeinit", GraphicsSystem::preDeinit);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Update", GraphicsSystem::update);
-
-		manager->unregisterEvent("Render");
-		manager->unregisterEvent("Present");
-		manager->unregisterEvent("SwapchainRecreate");
-		manager->unregisterEvent("QualityChange");
-
-		GraphicsAPI::terminate();
-	}
-	
-	unsetSingleton();
 }
 
 //**********************************************************************************************************************
@@ -865,7 +843,7 @@ void GraphicsSystem::destroy(ID<Image>& image)
 	if (image)
 	{
 		auto imageView = graphicsAPI->imagePool.get(image);
-		GARDEN_ASSERT_MSG(!imageView->isSwapchain(), "Can not destroy swapchain image");
+		GARDEN_ASSERT_MSG(!imageView->isSwapchain(), "Can't destroy swapchain image");
 		imageView->freeAllViews();
 	}
 	graphicsAPI->imagePool.destroy(image);
@@ -896,7 +874,7 @@ ID<ImageView> GraphicsSystem::createImageView(ID<Image> image, Image::Type type,
 		mipCount = _image->getMipCount();
 
 	if (type != Image::Type::Texture1DArray && type != Image::Type::Texture2DArray)
-		GARDEN_ASSERT_MSG(layerCount == 1, "Texture array can not have layers");
+		GARDEN_ASSERT_MSG(layerCount == 1, "Texture array can't have layers");
 
 	auto imageView = graphicsAPI->imageViewPool.create(false, image,
 		type, format, baseLayer, layerCount, baseMip, mipCount);
@@ -909,7 +887,7 @@ void GraphicsSystem::destroy(ID<ImageView>& imageView)
 	if (imageView)
 	{
 		auto imageViewView = GraphicsAPI::get()->imageViewPool.get(imageView);
-		GARDEN_ASSERT_MSG(!imageViewView->isDefault(), "Can not destroy "
+		GARDEN_ASSERT_MSG(!imageViewView->isDefault(), "Can't destroy "
 			"default image view [" + imageViewView->getDebugName() + "]");
 	}
 	#endif
@@ -939,7 +917,7 @@ void GraphicsSystem::destroy(ID<Framebuffer>& framebuffer)
 	if (framebuffer)
 	{
 		auto framebufferView = GraphicsAPI::get()->framebufferPool.get(framebuffer);
-		GARDEN_ASSERT_MSG(!framebufferView->isSwapchainFramebuffer(), "Can not destroy swapchain framebuffer");
+		GARDEN_ASSERT_MSG(!framebufferView->isSwapchain(), "Can't destroy swapchain framebuffer");
 	}
 	#endif
 	GraphicsAPI::get()->framebufferPool.destroy(framebuffer);
@@ -1140,14 +1118,10 @@ void GraphicsSystem::startRecording(CommandBufferType commandBufferType) noexcep
 	
 	switch (commandBufferType)
 	{
-	case CommandBufferType::Frame:
-		graphicsAPI->currentCommandBuffer = graphicsAPI->frameCommandBuffer; break;
-	case CommandBufferType::Graphics:
-		graphicsAPI->currentCommandBuffer = graphicsAPI->graphicsCommandBuffer; break;
-	case CommandBufferType::TransferOnly:
-		graphicsAPI->currentCommandBuffer = graphicsAPI->transferCommandBuffer; break;
-	case CommandBufferType::Compute:
-		graphicsAPI->currentCommandBuffer = graphicsAPI->computeCommandBuffer; break;
+	case CommandBufferType::Frame: graphicsAPI->currentCommandBuffer = window->getCommandBuffer(); break;
+	case CommandBufferType::Graphics: graphicsAPI->currentCommandBuffer = graphicsAPI->graphicsCommandBuffer; break;
+	case CommandBufferType::TransferOnly: graphicsAPI->currentCommandBuffer = graphicsAPI->transferCommandBuffer; break;
+	case CommandBufferType::Compute: graphicsAPI->currentCommandBuffer = graphicsAPI->computeCommandBuffer; break;
 	default: abort();
 	}
 }
@@ -1178,21 +1152,23 @@ bool GraphicsSystem::isBusy(CommandBufferType commandBufferType)
 
 Buffer::Usage GraphicsSystem::getBufferQ() const noexcept
 {
-	auto graphicsAPI = GraphicsAPI::get();
-	GARDEN_ASSERT_MSG(graphicsAPI->currentCommandBuffer, "Not recording");
-	if (graphicsAPI->currentCommandBuffer == graphicsAPI->transferCommandBuffer)
+	auto currentCommandBuffer = GraphicsAPI::get()->currentCommandBuffer;
+	GARDEN_ASSERT_MSG(currentCommandBuffer, "Not recording");
+	auto commandBufferType = currentCommandBuffer->getType();
+	if (commandBufferType == CommandBufferType::TransferOnly)
 		return Buffer::Usage::TransferQ;
-	if (graphicsAPI->currentCommandBuffer == graphicsAPI->computeCommandBuffer)
+	if (commandBufferType == CommandBufferType::Compute)
 		return Buffer::Usage::ComputeQ;
 	return Buffer::Usage::None;
 }
 Image::Usage GraphicsSystem::getImageQ() const noexcept
 {
-	auto graphicsAPI = GraphicsAPI::get();
-	GARDEN_ASSERT_MSG(graphicsAPI->currentCommandBuffer, "Not recording");
-	if (graphicsAPI->currentCommandBuffer == graphicsAPI->transferCommandBuffer)
+	auto currentCommandBuffer = GraphicsAPI::get()->currentCommandBuffer;
+	GARDEN_ASSERT_MSG(currentCommandBuffer, "Not recording");
+	auto commandBufferType = currentCommandBuffer->getType();
+	if (commandBufferType == CommandBufferType::TransferOnly)
 		return Image::Usage::TransferQ;
-	if (graphicsAPI->currentCommandBuffer == graphicsAPI->computeCommandBuffer)
+	if (commandBufferType == CommandBufferType::Compute)
 		return Image::Usage::ComputeQ;
 	return Image::Usage::None;
 }
@@ -1200,13 +1176,14 @@ Image::Usage GraphicsSystem::getImageQ() const noexcept
 void GraphicsSystem::addBarriers(Buffer::BarrierState newState, const ID<Buffer>* buffers, uint32 bufferCount)
 {
 	auto graphicsAPI = GraphicsAPI::get();
-
+	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
 	GARDEN_ASSERT(buffers);
 	GARDEN_ASSERT(bufferCount);
-	GARDEN_ASSERT(graphicsAPI->currentCommandBuffer);
+	GARDEN_ASSERT(currentCommandBuffer);
 
 	#if GARDEN_DEBUG
-	if (graphicsAPI->currentCommandBuffer == graphicsAPI->transferCommandBuffer)
+	auto commandBufferType = currentCommandBuffer->getType();
+	if (commandBufferType == CommandBufferType::TransferOnly)
 	{
 		for (uint32 i = 0; i < bufferCount; i++)
 		{
@@ -1215,7 +1192,7 @@ void GraphicsSystem::addBarriers(Buffer::BarrierState newState, const ID<Buffer>
 				"Buffer [" + bufferView->getDebugName() + "] does not have transfer queue flag");
 		}
 	}
-	else if (graphicsAPI->currentCommandBuffer == graphicsAPI->computeCommandBuffer)
+	else if (commandBufferType == CommandBufferType::Compute)
 	{
 		for (uint32 i = 0; i < bufferCount; i++)
 		{
@@ -1241,19 +1218,20 @@ void GraphicsSystem::addBarriers(Buffer::BarrierState newState, const ID<Buffer>
 	command.newState = newState;
 	command.bufferCount = (uint32)barrierBuffers.size();
 	command.buffers = barrierBuffers.data();
-	graphicsAPI->currentCommandBuffer->addCommand(command);
+	currentCommandBuffer->addCommand(command);
 	barrierBuffers.clear();
 }
 
 void GraphicsSystem::customCommand(void(*onCommand)(void*, void*), void* argument)
 {
 	GARDEN_ASSERT(onCommand);
-	GARDEN_ASSERT(GraphicsAPI::get()->currentCommandBuffer);
+	auto currentCommandBuffer = GraphicsAPI::get()->currentCommandBuffer;
+	GARDEN_ASSERT(currentCommandBuffer);
 	
 	CustomRenderCommand command;
 	command.onCommand = onCommand;
 	command.argument = argument;
-	GraphicsAPI::get()->currentCommandBuffer->addCommand(command);
+	currentCommandBuffer->addCommand(command);
 }
 
 #if GARDEN_DEBUG || GARDEN_EDITOR

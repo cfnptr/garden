@@ -132,13 +132,8 @@ class UiTransformSystem final : public CompAnimSystem<UiTransformComponent, UiTr
 	 * @param setSingleton set system singleton instance
 	 */
 	UiTransformSystem(bool setSingleton = true);
-	/**
-	 * @brief Destroys user interface element transformation system instance. (UI, GUI)
-	 */
-	~UiTransformSystem() override;
 
 	void update();
-
 	string_view getComponentName() const override;
 	
 	void serialize(ISerializer& serializer, const View<Component> component) override;

@@ -244,10 +244,6 @@ private:
 	 */
 	MeshRenderSystem(bool useOIT = true, bool useAsyncRecording = true, 
 		bool useAsyncPreparing = true, bool setSingleton = true);
-	/**
-	 * @brief Destroys mesh rendering system instance.
-	 */
-	~MeshRenderSystem() override;
 
 	void prepareSystems();
 	void sortMeshes();
@@ -258,7 +254,6 @@ private:
 	void renderShadows();
 
 	void init();
-	void deinit();
 	void preForwardRender();
 	void forwardRender();
 	void preDeferredRender();
@@ -322,10 +317,6 @@ class ModelStoreSystem : public ComponentSystem<ModelStoreComponent, false>, pub
 	 * @param setSingleton set system singleton instance
 	 */
 	ModelStoreSystem(bool setSingleton = true);
-	/**
-	 * @brief Destroys model matrix container system instance.
-	 */
-	~ModelStoreSystem() override;
 
 	string_view getComponentName() const override;
 	friend class ecsm::Manager;

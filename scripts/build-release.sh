@@ -1,17 +1,21 @@
 #!/bin/bash
 cd "$(dirname "$BASH_SOURCE")"
 
-cmake --version > /dev/null
-status=$?
-
-if [ $status -ne 0 ]; then
+if ! cmake --version &> /dev/null; then
     echo "Failed to get CMake version, please check if it's installed."
-    exit $status
+    exit 1
 fi
 
 echo "Configuring project..."
 
-cmake -DCMAKE_BUILD_TYPE=Release -S ../ -B ../build-release/
+if [[ "$OSTYPE" == "msys" ]]; then
+    cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -T ClangCL -A x64 -S ../ -B ../build-release/
+elif [[ "$OSTYPE" == "darwin"* ]]; then
+    cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -S ../ -B ../build-release/
+else
+    cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -D GARDEN_USE_CLANG=TRUE -S ../ -B ../build-release/
+fi
+
 status=$?
 
 if [ $status -ne 0 ]; then

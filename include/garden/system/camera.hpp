@@ -193,10 +193,6 @@ class CameraSystem final : public CompAnimSystem<CameraComponent, CameraFrame, f
 	 * @param setSingleton set system singleton instance
 	 */
 	CameraSystem(bool setSingleton = true);
-	/**
-	 * @brief Destroys camera system instance.
-	 */
-	~CameraSystem() override;
 
 	string_view getComponentName() const override;
 	

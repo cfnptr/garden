@@ -27,11 +27,7 @@ class TransformEditorSystem final : public System, public Singleton<TransformEdi
 	ID<Entity> selectedEntity = {};
 
 	TransformEditorSystem(bool setSingleton = true);
-	~TransformEditorSystem() override;
-	
 	void init();
-	void deinit();
-
 	void onEntityDestroy(ID<Entity> entity);
 	void onEntityInspector(ID<Entity> entity, bool isOpened);
 

@@ -24,6 +24,7 @@ using namespace ecsm;
 using namespace garden;
 using namespace garden::physics;
 
+//**********************************************************************************************************************
 void CharacterComponent::setShape(ID<Shape> shape, float mass, float maxPenetrationDepth)
 {
 	if (this->shape == shape)
@@ -387,15 +388,6 @@ CharacterSystem::CharacterSystem(bool setSingleton) : Singleton(setSingleton)
 	manager->addGroupSystem<INetworkable>(this);
 
 	this->charVsCharCollision = new JPH::CharacterVsCharacterCollisionSimple();
-}
-CharacterSystem::~CharacterSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		delete (JPH::CharacterVsCharacterCollisionSimple*)charVsCharCollision;
-		Manager::Instance::get()->removeGroupSystem<ISerializable>(this);
-	}
-	unsetSingleton();
 }
 
 ID<Component> CharacterSystem::createComponent(ID<Entity> entity)

@@ -61,10 +61,6 @@ private:
 	 * @param setSingleton set system singleton instance
 	 */
 	CutoutSpriteSystem(bool setSingleton = true);
-	/**
-	 * @brief Destroys cutout sprite rendering system instance.
-	 */
-	~CutoutSpriteSystem() override;
 
 	void setPushConstants(SpriteRenderComponent* spriteRenderView, PushConstants* pushConstants,
 		const f32x4x4& viewProj, const f32x4x4& model, uint32 instanceIndex, int32 threadIndex) override;

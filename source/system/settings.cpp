@@ -30,34 +30,17 @@ SettingsSystem::SettingsSystem(bool setSingleton) : Singleton(setSingleton)
 	ECSM_SUBSCRIBE_TO_EVENT("PreInit", SettingsSystem::preInit);
 	ECSM_SUBSCRIBE_TO_EVENT("PostDeinit", SettingsSystem::postDeinit);
 }
-SettingsSystem::~SettingsSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("PreInit", SettingsSystem::preInit);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("PostDeinit", SettingsSystem::postDeinit);
 
-		for (const auto& pair : items)
-		{
-			if (pair.second.type == Type::String)
-				delete (char*)pair.second.data;
-		}
-		delete (json*)settings;
-	}
-
-	unsetSingleton();
-}
-
-//**********************************************************************************************************************
 void SettingsSystem::preInit()
 {
 	auto appInfoSystem = AppInfoSystem::Instance::get();
 	try
 	{
 		auto appDataPath = mpio::Directory::getAppDataPath(appInfoSystem->getAppDataName());
-
-		settings = new json(json::parse(std::ifstream(appDataPath / "settings.json")));
+		std::ifstream inputStream(appDataPath / "settings.json");
+		if (!inputStream.is_open())
+			throw GardenError("File does not exist.");
+		settings = new json(json::parse(inputStream));
 		GARDEN_LOG_INFO("Loaded settings file.");
 	}
 	catch (const exception& e)

@@ -44,10 +44,6 @@ private:
 	 * @param setSingleton set system singleton instance
 	 */
 	SteamApiSystem(bool setSingleton = true);
-	/**
-	 * @brief Destroys Valve Steam API system instance.
-	 */
-	~SteamApiSystem() override;
 
 	void update();
 

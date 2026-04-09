@@ -139,11 +139,8 @@ class LogSystem final : public System, public Singleton<LogSystem>
 	 * @param setSingleton set system singleton instance
 	 */
 	LogSystem(LogLevel level = GARDEN_LOG_LEVEL, double rotationTime = 0.0, bool setSingleton = true);
-	/**
-	 * @brief Destroys logging system instance.
-	 */
-	~LogSystem() override;
 	
+	void postDeinit();
 	friend class ecsm::Manager;
 public:
 	/**

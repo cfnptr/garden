@@ -33,6 +33,7 @@ using namespace math;
 using namespace garden;
 
 #if GARDEN_OS_LINUX
+//**********************************************************************************************************************
 static void flushChanges(void* instance, tsl::robin_map<int, fs::path>& watchers,
 	vector<fs::path>& changedFiles, vector<fs::path>& createdFiles)
 {
@@ -122,23 +123,7 @@ FileWatcherSystem::FileWatcherSystem(bool setSingleton) : Singleton(setSingleton
 	manager->registerEvent("FileCreate");
 
 	ECSM_SUBSCRIBE_TO_EVENT("PreInit", FileWatcherSystem::preInit);
-	ECSM_SUBSCRIBE_TO_EVENT("PostDeinit", FileWatcherSystem::postDeinit);
 	ECSM_SUBSCRIBE_TO_EVENT("Update", FileWatcherSystem::update);
-}
-FileWatcherSystem::~FileWatcherSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		manager->unregisterEvent("FileChange");
-		manager->unregisterEvent("FileCreate");
-
-		ECSM_UNSUBSCRIBE_FROM_EVENT("PreInit", FileWatcherSystem::preInit);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("PostDeinit", FileWatcherSystem::postDeinit);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Update", FileWatcherSystem::update);
-	}
-
-	unsetSingleton();
 }
 
 #if GARDEN_OS_LINUX
@@ -187,7 +172,7 @@ void FileWatcherSystem::preInit()
 	auto fd = inotify_init1(IN_NONBLOCK | IN_CLOEXEC); // TODO: we can use separate thread instead?
 	if (fd == -1)
 	{
-		GARDEN_LOG_ERROR("Failed to initilize inotify. (error: " + to_string(errno) + ")");
+		GARDEN_LOG_ERROR("Failed to initialize inotify. (error: " + to_string(errno) + ")");
 		return;
 	}
 	instance = (void*)(size_t)fd;
@@ -219,22 +204,6 @@ void FileWatcherSystem::preInit()
 	#elif GARDEN_OS_WINDOWS
 	// TODO:
 	#endif
-}
-void FileWatcherSystem::postDeinit()
-{
-	if (instance)
-	{
-		#if GARDEN_OS_LINUX
-		close((int)(size_t)instance);
-		#elif GARDEN_OS_MACOS
-		auto stream = (FSEventStreamRef)instance;
-		FSEventStreamStop(stream);
-		FSEventStreamInvalidate(stream);
-		FSEventStreamRelease(stream);
-		#elif GARDEN_OS_WINDOWS
-		// TODO:
-		#endif
-	}
 }
 
 //**********************************************************************************************************************

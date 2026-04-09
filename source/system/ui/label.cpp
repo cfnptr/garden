@@ -22,6 +22,7 @@
 
 using namespace garden;
 
+//**********************************************************************************************************************
 static ID<GraphicsPipeline> createPipeline()
 {
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
@@ -169,20 +170,6 @@ UiLabelSystem::UiLabelSystem(bool setSingleton) : Singleton(setSingleton)
 
 	ECSM_SUBSCRIBE_TO_EVENT("Update", UiLabelSystem::update);
 	ECSM_TRY_SUBSCRIBE_TO_EVENT("LocaleChange", UiLabelSystem::localeChange);
-}
-UiLabelSystem::~UiLabelSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		manager->removeGroupSystem<ISerializable>(this);
-		manager->removeGroupSystem<IAnimatable>(this);
-		manager->removeGroupSystem<IMeshRenderSystem>(this);
-
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Update", UiLabelSystem::update);
-		ECSM_TRY_UNSUBSCRIBE_FROM_EVENT("LocaleChange", UiLabelSystem::localeChange);
-	}
-	unsetSingleton();
 }
 
 void UiLabelSystem::update()

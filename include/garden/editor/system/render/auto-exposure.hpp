@@ -35,10 +35,7 @@ class AutoExposureEditorSystem final : public System
 	bool showWindow = false;
 
 	AutoExposureEditorSystem();
-	~AutoExposureEditorSystem() override;
-
 	void init();
-	void deinit();
 	void preUiRender();
 	void uiRender();
 	void gBufferRecreate();

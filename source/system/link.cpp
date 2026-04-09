@@ -17,6 +17,7 @@
 
 using namespace garden;
 
+//**********************************************************************************************************************
 static void eraseEntityTag(LinkSystem::TagMap& tagMap, ID<Entity> entity, string_view tag)
 {
 	auto range = tagMap.equal_range(tag);
@@ -29,7 +30,6 @@ static void eraseEntityTag(LinkSystem::TagMap& tagMap, ID<Entity> entity, string
 	}
 }
 
-//**********************************************************************************************************************
 void LinkComponent::regenerateUUID()
 {
 	auto linkSystem = LinkSystem::Instance::get();
@@ -87,12 +87,6 @@ void LinkComponent::setTag(string_view tag)
 LinkSystem::LinkSystem(bool setSingleton) : Singleton(setSingleton)
 {
 	Manager::Instance::get()->addGroupSystem<ISerializable>(this);
-}
-LinkSystem::~LinkSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-		Manager::Instance::get()->removeGroupSystem<ISerializable>(this);
-	unsetSingleton();
 }
 
 void LinkSystem::resetComponent(View<Component> component, bool full)

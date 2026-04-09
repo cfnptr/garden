@@ -25,6 +25,7 @@
 
 using namespace garden;
 
+//**********************************************************************************************************************
 static ID<Image> createBloomBuffer(GraphicsSystem* graphicsSystem, uint8 maxMipCount)
 {
 	auto frameSize = max(graphicsSystem->getFramebufferSize() / 2u, uint2::one);
@@ -153,25 +154,9 @@ BloomRenderSystem::BloomRenderSystem(bool useThreshold, bool setSingleton) :
 	Singleton(setSingleton), useThreshold(useThreshold)
 {
 	auto manager = Manager::Instance::get();
-	ECSM_SUBSCRIBE_TO_EVENT("Init", BloomRenderSystem::init);
-	ECSM_SUBSCRIBE_TO_EVENT("Deinit", BloomRenderSystem::deinit);
-
 	manager->registerEvent("BloomRecreate");
+	ECSM_SUBSCRIBE_TO_EVENT("Init", BloomRenderSystem::init);
 }
-BloomRenderSystem::~BloomRenderSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		manager->unregisterEvent("BloomRecreate");
-
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", BloomRenderSystem::init);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", BloomRenderSystem::deinit);
-	}
-
-	unsetSingleton();
-}
-
 void BloomRenderSystem::init()
 {
 	auto manager = Manager::Instance::get();
@@ -186,24 +171,7 @@ void BloomRenderSystem::init()
 		settingsSystem->getType("bloom.quality", quality, graphicsQualityNames, (uint32)GraphicsQuality::Count);
 	}
 }
-void BloomRenderSystem::deinit()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto graphicsSystem = GraphicsSystem::Instance::get();
-		graphicsSystem->destroy(upsamplePipeline);
-		graphicsSystem->destroy(downsamplePipeline);
-		graphicsSystem->destroy(framebuffers);
-		graphicsSystem->destroy(bloomBuffer);
 
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("PreLdrRender", BloomRenderSystem::preLdrRender);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("GBufferRecreate", BloomRenderSystem::gBufferRecreate);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("QualityChange", BloomRenderSystem::qualityChange);
-	}
-}
-
-//**********************************************************************************************************************
 void BloomRenderSystem::preLdrRender()
 {
 	SET_CPU_ZONE_SCOPED("Bloom Pre LDR Render");

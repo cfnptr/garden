@@ -31,4 +31,3 @@ AppInfoSystem::AppInfoSystem(string_view name, string_view nameLowercase, string
 	this->resourcesPath = resourcesPath;
 	#endif
 }
-AppInfoSystem::~AppInfoSystem() { unsetSingleton(); }

@@ -10,7 +10,7 @@ IF NOT %ERRORLEVEL% == 0 (
 
 ECHO Configuring project...
 
-cmake -DCMAKE_BUILD_TYPE=Release -S ../ -B ../build-release/
+cmake -DCMAKE_BUILD_TYPE=Release -T ClangCL -A x64 -S ../ -B ../build-release-clang/
 
 IF NOT %ERRORLEVEL% == 0 (
     ECHO Failed to configure CMake project.
@@ -20,7 +20,7 @@ IF NOT %ERRORLEVEL% == 0 (
 ECHO(
 ECHO Building project...
 
-cmake --build ../build-release/ --config Release --parallel
+cmake --build ../build-release-clang/ --config Release --parallel
 
 IF NOT %ERRORLEVEL% == 0 (
     ECHO Failed to build CMake project.

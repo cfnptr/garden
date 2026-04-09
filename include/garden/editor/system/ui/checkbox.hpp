@@ -22,12 +22,9 @@ namespace garden
 class UiCheckboxEditorSystem final : public System, public Singleton<UiCheckboxEditorSystem>
 {
 	UiCheckboxEditorSystem(bool setSingleton = true);
-	~UiCheckboxEditorSystem() override;
-	
 	void init();
-	void deinit();
-
 	void onEntityInspector(ID<Entity> entity, bool isOpened);
+
 	friend class ecsm::Manager;
 public:
 	float inspectorPriority = 0.6f;

@@ -43,10 +43,6 @@ class OpaqueSpriteSystem final : public SpriteCompAnimSystem<
 	 * @param setSingleton set system singleton instance
 	 */
 	OpaqueSpriteSystem(bool setSingleton = true);
-	/**
-	 * @brief Destroys opaque sprite rendering system instance.
-	 */
-	~OpaqueSpriteSystem() override;
 
 	string_view getComponentName() const override;
 	MeshRenderType getMeshRenderType() const override;

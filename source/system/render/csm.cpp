@@ -26,6 +26,7 @@
 
 using namespace garden;
 
+//**********************************************************************************************************************
 static void createDataBuffers(GraphicsSystem* graphicsSystem, DescriptorSet::Buffers& dataBuffers)
 {
 	auto inFlightCount = graphicsSystem->getInFlightCount();
@@ -168,24 +169,8 @@ CsmRenderSystem::CsmRenderSystem(bool setSingleton) : Singleton(setSingleton)
 {
 	auto manager = Manager::Instance::get();
 	manager->addGroupSystem<IShadowMeshRenderSystem>(this);
-
 	ECSM_SUBSCRIBE_TO_EVENT("Init", CsmRenderSystem::init);
-	ECSM_SUBSCRIBE_TO_EVENT("Deinit", CsmRenderSystem::deinit);
 }
-CsmRenderSystem::~CsmRenderSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		manager->removeGroupSystem<IShadowMeshRenderSystem>(this);
-
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", CsmRenderSystem::init);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", CsmRenderSystem::deinit);
-	}
-
-	unsetSingleton();
-}
-
 void CsmRenderSystem::init()
 {
 	auto manager = Manager::Instance::get();
@@ -197,27 +182,7 @@ void CsmRenderSystem::init()
 	if (settingsSystem)
 		settingsSystem->getInt("csm.shadowMapSize", shadowMapSize);
 }
-void CsmRenderSystem::deinit()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto graphicsSystem = GraphicsSystem::Instance::get();
-		graphicsSystem->destroy(descriptorSet);
-		graphicsSystem->destroy(transFramebuffers);
-		graphicsSystem->destroy(shadowFramebuffers);
-		graphicsSystem->destroy(transMap);
-		graphicsSystem->destroy(depthMap);
-		graphicsSystem->destroy(dataBuffers);
-		graphicsSystem->destroy(pipeline);
 
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("PreShadowRender", CsmRenderSystem::preShadowRender);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("ShadowRender", CsmRenderSystem::shadowRender);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("GBufferRecreate", CsmRenderSystem::gBufferRecreate);
-	}
-}
-
-//**********************************************************************************************************************
 void CsmRenderSystem::preShadowRender()
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();

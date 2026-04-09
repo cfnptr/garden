@@ -24,6 +24,7 @@
 
 using namespace garden;
 
+//**********************************************************************************************************************
 static void setUiInputAnimation(ID<Entity> element, string_view animationPath, u32string_view text, string_view state)
 {
 	if (animationPath.empty())
@@ -205,27 +206,7 @@ UiInputSystem::UiInputSystem(bool setSingleton) : Singleton(setSingleton)
 	ECSM_SUBSCRIBE_TO_EVENT("UiInputStay", UiInputSystem::uiInputStay);
 	ECSM_SUBSCRIBE_TO_EVENT("Update", UiInputSystem::update);
 }
-UiInputSystem::~UiInputSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		manager->removeGroupSystem<ISerializable>(this);
-		manager->removeGroupSystem<IAnimatable>(this);
 
-		ECSM_UNSUBSCRIBE_FROM_EVENT("UiInputEnter", UiInputSystem::uiInputEnter);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("UiInputExit", UiInputSystem::uiInputExit);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("UiInputStay", UiInputSystem::uiInputStay);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Update", UiInputSystem::update);
-
-		manager->unregisterEvent("UiInputEnter");
-		manager->unregisterEvent("UiInputExit");
-		manager->unregisterEvent("UiInputStay");
-	}
-	unsetSingleton();
-}
-
-//**********************************************************************************************************************
 void UiInputSystem::uiInputEnter()
 {
 	auto hoveredElement = UiTriggerSystem::Instance::get()->getHovered();

@@ -19,6 +19,7 @@ using namespace math;
 using namespace garden;
 using namespace garden::graphics;
 
+//**********************************************************************************************************************
 #if GARDEN_DEBUG || GARDEN_EDITOR
 uint32 DescriptorSet::combinedSamplerCount = 0;
 uint32 DescriptorSet::uniformBufferCount = 0;
@@ -28,7 +29,6 @@ uint32 DescriptorSet::inputAttachmentCount = 0;
 uint32 DescriptorSet::accelStructureCount = 0;
 #endif
 
-//**********************************************************************************************************************
 static void* createVkDescriptorSet(ID<Pipeline> pipeline, PipelineType pipelineType, 
 	const DescriptorSet::Uniforms& uniforms, uint8& setCount, uint8 setIndex)
 {
@@ -180,7 +180,7 @@ static vk::ImageLayout getVkDsImageLayout(VulkanAPI* vulkanAPI, View<ImageView> 
 		imageLayout == vk::ImageLayout::eDepthAttachmentOptimal || 
 		imageLayout == vk::ImageLayout::eStencilAttachmentOptimal)
 	{
-		throw GardenError("Can not render and sample image at the same time.");
+		throw GardenError("Can't render and sample image at the same time.");
 	}
 	#endif
 	return imageLayout;

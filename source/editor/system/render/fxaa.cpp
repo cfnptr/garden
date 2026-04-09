@@ -25,30 +25,11 @@ FxaaRenderEditorSystem::FxaaRenderEditorSystem()
 {
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", FxaaRenderEditorSystem::init);
-	ECSM_SUBSCRIBE_TO_EVENT("Deinit", FxaaRenderEditorSystem::deinit);
 }
-FxaaRenderEditorSystem::~FxaaRenderEditorSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", FxaaRenderEditorSystem::init);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", FxaaRenderEditorSystem::deinit);
-	}
-}
-
 void FxaaRenderEditorSystem::init()
 {
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("EditorSettings", FxaaRenderEditorSystem::editorSettings);
-}
-void FxaaRenderEditorSystem::deinit()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorSettings", FxaaRenderEditorSystem::editorSettings);
-	}
 }
 
 void FxaaRenderEditorSystem::editorSettings()

@@ -25,35 +25,14 @@ CloudsEditorSystem::CloudsEditorSystem()
 {
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", CloudsEditorSystem::init);
-	ECSM_SUBSCRIBE_TO_EVENT("Deinit", CloudsEditorSystem::deinit);
 }
-CloudsEditorSystem::~CloudsEditorSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", CloudsEditorSystem::init);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", CloudsEditorSystem::deinit);
-	}
-}
-
 void CloudsEditorSystem::init()
 {
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("PreUiRender", CloudsEditorSystem::preUiRender);
 	ECSM_SUBSCRIBE_TO_EVENT("EditorBarToolPP", CloudsEditorSystem::editorBarToolPP);
 }
-void CloudsEditorSystem::deinit()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("PreUiRender", CloudsEditorSystem::preUiRender);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarToolPP", CloudsEditorSystem::editorBarToolPP);
-	}
-}
 
-//**********************************************************************************************************************
 void CloudsEditorSystem::preUiRender()
 {
 	if (!showWindow)
@@ -135,7 +114,6 @@ void CloudsEditorSystem::preUiRender()
 	}
 	ImGui::End();
 }
-
 void CloudsEditorSystem::editorBarToolPP()
 {
 	if (ImGui::MenuItem("Volumetric Clouds"))

@@ -1,24 +1,22 @@
 # Build instructions
 
-## Operating Systems
-
 * [Window](BUILDING.md#windows)
 * [macOS](BUILDING.md#macos)
-* [Ubuntu](BUILDING.md#ubuntu)
-* [Fedora](BUILDING.md#fedora)
-* [Build Project](BUILDING.md#build-project)
+* [Linux](BUILDING.md#linux)
 
 
 # Windows
 
-### 1. Install Visual Studio Community (Or any other IDE)
+### 1. Install Visual Studio Community
 
 1. Download latest version from [visualstudio.microsoft.com](https://visualstudio.microsoft.com/downloads)
 2. Launch downloaded Visual Studio installer
 3. Select "Desktop development with C++" before installation
-4. Add "C++ Clang tools for Windows" inside **Installation details** (optional)
-5. Unselect "vcpkg package manager" inside **Installation details** we will use our own! <---
+4. Add "C++ Clang tools for Windows" inside **Installation details**
+5. Unselect "vcpkg package manager" inside **Installation details**, we will use our own! <---
 6. Finally click **Install** button to begin installation
+
+Alternatively you can install and use [CLion](https://www.jetbrains.com/clion/), [VSCode](https://code.visualstudio.com/) or any other IDE.
 
 ### 2. Install Git
 
@@ -37,14 +35,14 @@ You may use default Git install options or chose any other default Git editor in
 
 To build the project you will only need **The Vulkan SDK Core** components.
 
-### 5. Clone Repository
+### 5. Clone repository
 
 1. Open **Terminal** or **CMD** app to execute following commands
 2. Change current working directory using ```cd``` command where to clone the project. (Google it)
-3. Run ```git clone --recursive https://github.com/cfnptr/garden``` command to download the project
+3. Run ```git clone --recursive -j8 https://github.com/cfnptr/garden``` command to download the project
 4. Run ```cd garden/``` to enter the project directory
 
-Note! Use appropriate github link if Garden engine is used as a third-party library.
+Note! Use appropriate github link if **Garden** engine is used as a third-party library.
 
 ### 6. Install vcpkg package manager
 
@@ -67,55 +65,51 @@ Alternatively run ```install-packages.bat``` from the project **scripts/** direc
 
 # macOS
 
-### 1. Install Xcode (Or any other IDE)
+### 1. Install Xcode
 
-1. Download and install latest version from the built-in **App Store**
+1. Download and install latest version from the built-in [App Store](https://apps.apple.com/app/xcode/id497799835)
 2. Run ```xcode-select --install``` command using **Terminal** app to install Xcode tools
 
 ### 2. Install required packages
 
 1. Install **Homebrew** package manager from [brew.sh](https://brew.sh)
 2. Run ```brew update``` command using **Terminal** app to update package list
-3. Run ```brew install git cmake zlib openssl curl assimp``` to install packages
+3. And run ```brew install git cmake zlib openssl curl assimp``` command to install packages
 
 ### 3. Install Vulkan SDK
 
 1. Download latest version from [vulkan.lunarg.com](https://vulkan.lunarg.com) for **macOS**
 2. During **Select Components** screen "System Global Installation" should be checked
 
-To build the project you will only need The Vulkan SDK Core components.
+To build the project you will only need The **Vulkan SDK Core** components.
 
 
-# Ubuntu
+# Linux
 
-### 1. Install Visual Studio Code
+### 1. Install Visual Studio Code IDE
 
-1. Install [Visual Studio Code](https://code.visualstudio.com/) from the built-in [App Center](snap://code)
-2. Install "[C/C++](vscode:extension/ms-vscode.cpptools)" and "[CMake Tools](vscode:extension/ms-vscode.cmake-tools)" extensions inside the **VS Code**
+1. Download and install latest version from [code.visualstudio.com](https://code.visualstudio.com/download) or from built-in store
+2. Install "[C/C++](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools)" and "[CMake Tools](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cmake-tools)" extensions inside the **VS Code**
 
-Alternatively you can install and use [CLion](https://www.jetbrains.com/clion/), [VSCodium](https://vscodium.com/) or any other IDE.
+Or 
+
+1. Download and install from [vscodium.com](https://vscodium.com/) or from built-in store (Non-flatpack version!)
+2. Install "[clangd](https://open-vsx.org/extension/llvm-vs-code-extensions/vscode-clangd)", "[CodeLLDB](https://open-vsx.org/extension/vadimcn/vscode-lldb)" an "[CMake Tools](https://open-vsx.org/extension/ms-vscode/cmake-tools)" extensions inside the **VSCodium**
+
+
+Alternatively you can install and use [CLion](https://www.jetbrains.com/clion/) or any other IDE.
 
 ### 2. Install required packages
+
+* Execute [scripts/install-packages.sh](scripts/install-packages.sh) script or
+
+### For Ubuntu/Debian
 
 1. Run ```sudo apt update``` command using **Terminal** app to update package list
-2. Run ```sudo apt install build-essential gdb ninja-build git cmake clang lld lldb glslc libvulkan-dev vulkan-validationlayers zlib1g-dev libssl-dev libcurl4-openssl-dev libwayland-dev libxkbcommon-dev xorg-dev libassimp-dev``` to install packages
+2. And ```sudo apt install build-essential gdb ninja-build git cmake clang lld lldb glslc libvulkan-dev vulkan-validationlayers zlib1g-dev libssl-dev libcurl4-openssl-dev libwayland-dev libxkbcommon-dev xorg-dev libassimp-dev```
 
 
-# Fedora
-
-1. Download and install [VSCodium](https://vscodium.com/) IDE (Non-flatpack version!)
-2. Install "[clangd](vscodium:extension/llvm-vs-code-extensions.vscode-clangd)", "[CodeLLDB](vscodium:extension/vadimcn.vscode-lldb)" an "[CMake Tools](
-vscodium:extension/ms-vscode.cmake-tools)" extensions inside the **VSCodium**
-
-Alternatively you can install and use [CLion](https://www.jetbrains.com/clion/) or [Visual Studio Code](https://code.visualstudio.com/) IDE.
-
-### 2. Install required packages
-
-1. Run ```sudo dnf check-update``` command using **Terminal** or **Konsole** app to update package list
-2. Run ```sudo dnf install @c-development ninja-build git cmake clang clang-tools-extra lld lldb glslc vulkan-loader-devel vulkan-headers vulkan-validation-layers-devel zlib-devel openssl-devel libcurl-devel wayland-devel libxkbcommon-devel libXcursor-devel libXi-devel libXinerama-devel libXrandr-devel assimp-devel``` to install packages
-
-
-# Build Project (Compile)
+# Build project (Compile)
 
 Before building the project you should clone it: ```git clone --recursive -j8 <project-url>```<br>
 To build the project run one of the [scripts](scripts/) using **Terminal**, **Git Bash** or build it using **IDE**.

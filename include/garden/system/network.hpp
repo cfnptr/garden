@@ -83,10 +83,6 @@ class NetworkSystem final : public ComponentSystem<NetworkComponent, false>,
 	 * @param setSingleton set system singleton instance
 	 */
 	NetworkSystem(bool setSingleton = true);
-	/**
-	 * @brief Destroys network system instance.
-	 */
-	~NetworkSystem() override;
 
 	void resetComponent(View<Component> component, bool full) override;
 	void copyComponent(View<Component> source, View<Component> destination) override;

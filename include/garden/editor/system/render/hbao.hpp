@@ -24,10 +24,7 @@ class HbaoRenderEditorSystem final : public System
 	bool showWindow = false;
 
 	HbaoRenderEditorSystem();
-	~HbaoRenderEditorSystem();
-
 	void init();
-	void deinit();
 	void preUiRender();
 	void editorBarToolPP();
 	

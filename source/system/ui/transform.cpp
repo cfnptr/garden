@@ -29,20 +29,7 @@ UiTransformSystem::UiTransformSystem(bool setSingleton) : Singleton(setSingleton
 
 	ECSM_SUBSCRIBE_TO_EVENT("Update", UiTransformSystem::update);
 }
-UiTransformSystem::~UiTransformSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		manager->removeGroupSystem<ISerializable>(this);
-		manager->removeGroupSystem<IAnimatable>(this);
 
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Update", UiTransformSystem::update);
-	}
-	unsetSingleton();
-}
-
-//**********************************************************************************************************************
 static void transformUiComponent(Manager* manager, float2 uiHalfSize, UiTransformComponent& uiTransformComp)
 {
 	auto entity = uiTransformComp.getEntity();
@@ -81,6 +68,7 @@ static void transformUiComponent(Manager* manager, float2 uiHalfSize, UiTransfor
 	transformView->setRotation(uiTransformComp.rotation);
 }
 
+//**********************************************************************************************************************
 void UiTransformSystem::update()
 {
 	SET_CPU_ZONE_SCOPED("UI Transform Update");

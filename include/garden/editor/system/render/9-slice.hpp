@@ -24,11 +24,7 @@ namespace garden
 class NineSliceEditorSystem final : public System
 {
 	NineSliceEditorSystem();
-	~NineSliceEditorSystem() override;
-
 	void init();
-	void deinit();
-
 	void onOpaqueEntityInspector(ID<Entity> entity, bool isOpened);
 	void onCutoutEntityInspector(ID<Entity> entity, bool isOpened);
 	void onTransEntityInspector(ID<Entity> entity, bool isOpened);

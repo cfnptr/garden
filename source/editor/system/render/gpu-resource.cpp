@@ -29,35 +29,14 @@ GpuResourceEditorSystem::GpuResourceEditorSystem()
 {
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", GpuResourceEditorSystem::init);
-	ECSM_SUBSCRIBE_TO_EVENT("Deinit", GpuResourceEditorSystem::deinit);
 }
-GpuResourceEditorSystem::~GpuResourceEditorSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", GpuResourceEditorSystem::init);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", GpuResourceEditorSystem::deinit);
-	}
-}
-
 void GpuResourceEditorSystem::init()
 {
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("PreUiRender", GpuResourceEditorSystem::preUiRender);
 	ECSM_SUBSCRIBE_TO_EVENT("EditorBarTool", GpuResourceEditorSystem::editorBarTool);
 }
-void GpuResourceEditorSystem::deinit()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("PreUiRender", GpuResourceEditorSystem::preUiRender);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarTool", GpuResourceEditorSystem::editorBarTool);
-	}
-}
 
-//**********************************************************************************************************************
 static void renderItemList(uint32 count, uint32 occupancy, uint32& selectedItem, string& searchString,
 	bool& searchCaseSensitive, Resource* items, psize itemSize, string& debugName, const char* resourceName)
 {
@@ -1023,8 +1002,7 @@ static void renderDescriptorSets(uint32& selectedItem, string& searchString,
 			openNextTab = GpuResourceEditorSystem::TabType::GraphicsPipelines;
 		else if (descriptorSet.getPipelineType() == PipelineType::Compute)
 			openNextTab = GpuResourceEditorSystem::TabType::ComputePipelines;
-		else
-			openNextTab = GpuResourceEditorSystem::TabType::RayTracingPipelines;
+		else openNextTab = GpuResourceEditorSystem::TabType::RayTracingPipelines;
 		selectedItem = *descriptorSet.getPipeline() - 1;
 	}
 

@@ -51,13 +51,8 @@ private:
 	 * @param setSingleton set system singleton instance
 	 */
 	HizRenderSystem(bool setSingleton = true);
-	/**
-	 * @brief Destroys hierarchical depth (Z) buffer rendering system instance. (Hi-Z)
-	 */
-	~HizRenderSystem() override;
 
 	void init();
-	void deinit();
 	void preHdrRender();
 	void gBufferRecreate();
 

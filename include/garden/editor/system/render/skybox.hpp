@@ -22,13 +22,10 @@ namespace garden
 class SkyboxRenderEditorSystem final : public System
 {
 	SkyboxRenderEditorSystem();
-	~SkyboxRenderEditorSystem() override;
-
 	void init();
-	void deinit();
 	void editorSettings();
-
 	void onEntityInspector(ID<Entity> entity, bool isOpened);
+
 	friend class ecsm::Manager;
 public:
 	float inspectorPriority = 0.1f;

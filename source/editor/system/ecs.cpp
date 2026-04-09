@@ -22,35 +22,14 @@ EcsEditorSystem::EcsEditorSystem()
 {
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", EcsEditorSystem::init);
-	ECSM_SUBSCRIBE_TO_EVENT("Deinit", EcsEditorSystem::deinit);
 }
-EcsEditorSystem::~EcsEditorSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", EcsEditorSystem::init);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", EcsEditorSystem::deinit);
-	}
-}
-
 void EcsEditorSystem::init()
 {
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("PreUiRender", EcsEditorSystem::preUiRender);
 	ECSM_SUBSCRIBE_TO_EVENT("EditorBarTool", EcsEditorSystem::editorBarTool);
 }
-void EcsEditorSystem::deinit()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("PreUiRender", EcsEditorSystem::preUiRender);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarTool", EcsEditorSystem::editorBarTool);
-	}
-}
 
-//**********************************************************************************************************************
 static void renderOrderedEvents()
 {
 	ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyle().Colors[ImGuiCol_Button]);
@@ -207,7 +186,6 @@ void EcsEditorSystem::preUiRender()
 	ImGui::End();
 }
 
-//**********************************************************************************************************************
 void EcsEditorSystem::editorBarTool()
 {
 	if (ImGui::MenuItem("ECS Viewer"))

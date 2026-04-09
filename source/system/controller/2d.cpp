@@ -32,22 +32,8 @@ Controller2DSystem::Controller2DSystem(bool setSingleton) : Singleton(setSinglet
 {
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", Controller2DSystem::init);
-	ECSM_SUBSCRIBE_TO_EVENT("Deinit", Controller2DSystem::deinit);
 	ECSM_SUBSCRIBE_TO_EVENT("Update", Controller2DSystem::update);
 }
-Controller2DSystem::~Controller2DSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", Controller2DSystem::init);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", Controller2DSystem::deinit);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Update", Controller2DSystem::update);
-	}
-
-	unsetSingleton();
-}
-
 void Controller2DSystem::init()
 {
 	auto manager = Manager::Instance::get();
@@ -89,17 +75,6 @@ void Controller2DSystem::init()
 	if (infiniteGridSystem)
 		infiniteGridSystem->isHorizontal = false;
 	#endif
-}
-void Controller2DSystem::deinit()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		GraphicsSystem::Instance::get()->camera = {};
-		manager->destroy(camera);
-		
-		ECSM_UNSUBSCRIBE_FROM_EVENT("SwapchainRecreate", Controller2DSystem::swapchainRecreate);
-	}
 }
 
 //**********************************************************************************************************************

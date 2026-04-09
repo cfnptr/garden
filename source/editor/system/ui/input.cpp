@@ -25,20 +25,7 @@ UiInputEditorSystem::UiInputEditorSystem(bool setSingleton) : Singleton(setSingl
 {
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", UiInputEditorSystem::init);
-	ECSM_SUBSCRIBE_TO_EVENT("Deinit", UiInputEditorSystem::deinit);
 }
-UiInputEditorSystem::~UiInputEditorSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", UiInputEditorSystem::init);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", UiInputEditorSystem::deinit);
-	}
-
-	unsetSingleton();
-}
-
 void UiInputEditorSystem::init()
 {
 	EditorRenderSystem::Instance::get()->registerEntityInspector<UiInputComponent>(
@@ -48,13 +35,7 @@ void UiInputEditorSystem::init()
 	},
 	inspectorPriority);
 }
-void UiInputEditorSystem::deinit()
-{
-	if (Manager::Instance::get()->isRunning)
-		EditorRenderSystem::Instance::get()->unregisterEntityInspector<UiInputComponent>();
-}
 
-//**********************************************************************************************************************
 void UiInputEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 {
 	if (!isOpened)

@@ -19,6 +19,7 @@
 using namespace math;
 using namespace garden;
 
+//**********************************************************************************************************************
 static vk::CommandBuffer createVkCommandBuffer(vk::Device device, vk::CommandPool commandPool)
 {
 	vk::CommandBufferAllocateInfo commandBufferInfo(commandPool, vk::CommandBufferLevel::ePrimary, 1);
@@ -28,7 +29,6 @@ static vk::CommandBuffer createVkCommandBuffer(vk::Device device, vk::CommandPoo
 	return commandBuffer;
 }
 
-//**********************************************************************************************************************
 VulkanCommandBuffer::VulkanCommandBuffer(VulkanAPI* vulkanAPI, CommandBufferType type) : 
 	CommandBuffer(vulkanAPI->getThreadPool(), type), vulkanAPI(vulkanAPI)
 {
