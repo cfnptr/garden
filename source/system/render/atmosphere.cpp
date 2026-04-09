@@ -32,6 +32,7 @@
 
 using namespace garden;
 
+//**********************************************************************************************************************
 static constexpr int32 shCacheBinarySize = sh3Count * sizeof(f32x4);
 static constexpr int32 shBinarySize = 3 * 4 * sizeof(f16x4);
 
@@ -355,29 +356,12 @@ AtmosphereRenderSystem::AtmosphereRenderSystem(bool setSingleton) :Singleton(set
 	auto manager = Manager::Instance::get();
 	manager->registerEvent("PreSkyFaceRender");
 	manager->registerEvent("SkyFaceRender");
-
 	ECSM_SUBSCRIBE_TO_EVENT("Init", AtmosphereRenderSystem::init);
-	ECSM_SUBSCRIBE_TO_EVENT("Deinit", AtmosphereRenderSystem::deinit);
 
 	auto settingsSystem = SettingsSystem::Instance::tryGet();
 	if (settingsSystem)
 		settingsSystem->getType("atmosphere.quality", quality, graphicsQualityNames, (uint32)GraphicsQuality::Count);
 }
-AtmosphereRenderSystem::~AtmosphereRenderSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		manager->unregisterEvent("PreSkyFaceRender");
-		manager->unregisterEvent("SkyFaceRender");
-
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", AtmosphereRenderSystem::init);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", AtmosphereRenderSystem::deinit);
-	}
-
-	unsetSingleton();
-}
-
 void AtmosphereRenderSystem::init()
 {
 	auto manager = Manager::Instance::get();
@@ -385,49 +369,6 @@ void AtmosphereRenderSystem::init()
 	ECSM_SUBSCRIBE_TO_EVENT("HdrRender", AtmosphereRenderSystem::hdrRender);
 	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", AtmosphereRenderSystem::gBufferRecreate);
 	ECSM_SUBSCRIBE_TO_EVENT("QualityChange", AtmosphereRenderSystem::qualityChange);
-}
-void AtmosphereRenderSystem::deinit()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto graphicsSystem = GraphicsSystem::Instance::get();
-		graphicsSystem->destroy(iblDescriptorSets);
-		graphicsSystem->destroy(shReduceDS);
-		graphicsSystem->destroy(shGenerateDS);
-		graphicsSystem->destroy(skyboxDS);
-		graphicsSystem->destroy(hdrSkyDS);
-		graphicsSystem->destroy(skyViewLutDS);
-		graphicsSystem->destroy(cameraVolumeDS);
-		graphicsSystem->destroy(multiScattLutDS);
-		graphicsSystem->destroy(shReducePipeline);
-		graphicsSystem->destroy(shGeneratePipeline);
-		graphicsSystem->destroy(skyboxPipeline);
-		graphicsSystem->destroy(hdrSkyPipeline);
-		graphicsSystem->destroy(skyViewLutPipeline);
-		graphicsSystem->destroy(cameraVolumePipeline);
-		graphicsSystem->destroy(multiScattLutPipeline);
-		graphicsSystem->destroy(transLutPipeline);
-		graphicsSystem->destroy(skyboxFramebuffers, Image::cubemapFaceCount);
-		graphicsSystem->destroy(skyViewLutFramebuffer);
-		graphicsSystem->destroy(transLutFramebuffer);
-		graphicsSystem->destroy(shStagings);
-		graphicsSystem->destroy(shCaches);
-		graphicsSystem->destroy(specularCache);
-		graphicsSystem->destroy(specularViews);
-		graphicsSystem->destroy(lastSkyboxShView);
-		graphicsSystem->destroy(lastSpecular);
-		graphicsSystem->destroy(lastSkybox);
-		graphicsSystem->destroy(skyViewLUT);
-		graphicsSystem->destroy(cameraVolume);
-		graphicsSystem->destroy(multiScattLUT);
-		graphicsSystem->destroy(transLUT);
-
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("PreDeferredRender", AtmosphereRenderSystem::preDeferredRender);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("HdrRender", AtmosphereRenderSystem::hdrRender);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("GBufferRecreate", AtmosphereRenderSystem::gBufferRecreate);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("QualityChange", AtmosphereRenderSystem::qualityChange);
-	}
 }
 
 static float calcCameraHeight(float cameraPosY, float groundRadius) noexcept

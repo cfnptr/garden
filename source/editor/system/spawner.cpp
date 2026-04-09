@@ -26,18 +26,7 @@ SpawnerEditorSystem::SpawnerEditorSystem()
 {
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", SpawnerEditorSystem::init);
-	ECSM_SUBSCRIBE_TO_EVENT("Deinit", SpawnerEditorSystem::deinit);
 }
-SpawnerEditorSystem::~SpawnerEditorSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", SpawnerEditorSystem::init);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", SpawnerEditorSystem::deinit);
-	}
-}
-
 void SpawnerEditorSystem::init()
 {
 	auto manager = Manager::Instance::get();
@@ -51,19 +40,7 @@ void SpawnerEditorSystem::init()
 	},
 	inspectorPriority);
 }
-void SpawnerEditorSystem::deinit()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		EditorRenderSystem::Instance::get()->unregisterEntityInspector<SpawnerComponent>();
 
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("PreUiRender", SpawnerEditorSystem::preUiRender);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarTool", SpawnerEditorSystem::editorBarTool);
-	}
-}
-
-//**********************************************************************************************************************
 static void renderSpawners(const string& searchString, bool searchCaseSensitive)
 {
 	auto manager = Manager::Instance::get();

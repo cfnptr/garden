@@ -20,6 +20,7 @@
 
 using namespace garden;
 
+//**********************************************************************************************************************
 static ID<Buffer> createLuminanceBuffer(GraphicsSystem* graphicsSystem)
 {
 	#if GARDEN_EDITOR
@@ -36,7 +37,6 @@ static ID<Buffer> createLuminanceBuffer(GraphicsSystem* graphicsSystem)
 	return buffer;
 }
 
-//**********************************************************************************************************************
 static DescriptorSet::Uniforms getUniforms(GraphicsSystem* graphicsSystem, 
 	ID<Buffer> luminanceBuffer, bool useBloomBuffer, bool useLightAbsorption)
 {
@@ -82,23 +82,9 @@ static ID<GraphicsPipeline> createPipeline(ToneMappingSystem::Options tmOptions)
 ToneMappingSystem::ToneMappingSystem(Options options, bool setSingleton) : Singleton(setSingleton), options(options)
 {
 	GARDEN_ASSERT(options.toneMapper < TONE_MAPPER_COUNT);
-
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", ToneMappingSystem::init);
-	ECSM_SUBSCRIBE_TO_EVENT("Deinit", ToneMappingSystem::deinit);
 }
-ToneMappingSystem::~ToneMappingSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", ToneMappingSystem::init);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", ToneMappingSystem::deinit);
-	}
-
-	unsetSingleton();
-}
-
 void ToneMappingSystem::init()
 {
 	auto manager = Manager::Instance::get();
@@ -112,24 +98,7 @@ void ToneMappingSystem::init()
 	if (!pipeline)
 		pipeline = createPipeline(options);
 }
-void ToneMappingSystem::deinit()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto graphicsSystem = GraphicsSystem::Instance::get();
-		graphicsSystem->destroy(descriptorSet);
-		graphicsSystem->destroy(pipeline);
-		graphicsSystem->destroy(luminanceBuffer);
 
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("PreLdrRender", ToneMappingSystem::preLdrRender);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("LdrRender", ToneMappingSystem::ldrRender);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("GBufferRecreate", ToneMappingSystem::dsRecreate);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("BloomRecreate", ToneMappingSystem::dsRecreate);
-	}
-}
-
-//**********************************************************************************************************************
 void ToneMappingSystem::preLdrRender()
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();

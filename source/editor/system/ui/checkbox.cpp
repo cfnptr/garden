@@ -24,20 +24,7 @@ UiCheckboxEditorSystem::UiCheckboxEditorSystem(bool setSingleton) : Singleton(se
 {
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", UiCheckboxEditorSystem::init);
-	ECSM_SUBSCRIBE_TO_EVENT("Deinit", UiCheckboxEditorSystem::deinit);
 }
-UiCheckboxEditorSystem::~UiCheckboxEditorSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", UiCheckboxEditorSystem::init);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", UiCheckboxEditorSystem::deinit);
-	}
-
-	unsetSingleton();
-}
-
 void UiCheckboxEditorSystem::init()
 {
 	EditorRenderSystem::Instance::get()->registerEntityInspector<UiCheckboxComponent>(
@@ -47,13 +34,7 @@ void UiCheckboxEditorSystem::init()
 	},
 	inspectorPriority);
 }
-void UiCheckboxEditorSystem::deinit()
-{
-	if (Manager::Instance::get()->isRunning)
-		EditorRenderSystem::Instance::get()->unregisterEntityInspector<UiCheckboxComponent>();
-}
 
-//**********************************************************************************************************************
 void UiCheckboxEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 {
 	if (!isOpened)

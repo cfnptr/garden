@@ -101,12 +101,9 @@ private:
 	 * @param setSingleton set system singleton instance
 	 */
 	ServerNetworkSystem(bool setSingleton = true);
-	/**
-	 * @brief Destroys network server system instance.
-	 */
-	~ServerNetworkSystem() override;
 
 	void preInit();
+	void preDeinit();
 	void update();
 
 	friend class ecsm::Manager;

@@ -114,13 +114,8 @@ private:
 	 * @param setSingleton set system singleton instance
 	 */
 	LocaleSystem(bool setSingleton = true);
-	/**
-	 * @brief Destroys locale system instance.
-	 */
-	~LocaleSystem() override;
 
 	void preInit();
-
 	friend class ecsm::Manager;
 public:
 	/**

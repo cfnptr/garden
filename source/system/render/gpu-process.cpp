@@ -20,6 +20,7 @@
 
 using namespace garden;
 
+//**********************************************************************************************************************
 static ID<Buffer> createGgxKernel(GraphicsSystem* graphicsSystem)
 {
 	float2 coeffs[brdf::ggxCoeffCount];
@@ -32,7 +33,6 @@ static ID<Buffer> createGgxKernel(GraphicsSystem* graphicsSystem)
 	return buffer;
 }
 
-//**********************************************************************************************************************
 static ID<ComputePipeline> createDownsampleNorm()
 {
 	ResourceSystem::ComputeOptions options;
@@ -71,32 +71,6 @@ static ID<GraphicsPipeline> createGaussianBlur(ID<Framebuffer> framebuffer, uint
 }
 
 //**********************************************************************************************************************
-GpuProcessSystem::GpuProcessSystem(bool setSingleton)
-{
-	auto manager = Manager::Instance::get();
-	ECSM_SUBSCRIBE_TO_EVENT("Deinit", GpuProcessSystem::deinit);
-}
-GpuProcessSystem::~GpuProcessSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", GpuProcessSystem::deinit);
-	}
-	unsetSingleton();
-}
-
-void GpuProcessSystem::deinit()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto graphicsSystem = GraphicsSystem::Instance::get();
-		graphicsSystem->destroy(downsampleNormAPipeline);
-		graphicsSystem->destroy(downsampleNormPipeline);
-		graphicsSystem->destroy(ggxBlurKernel);
-	}
-}
-
 ID<Buffer> GpuProcessSystem::getGgxBlurKernel()
 {
 	if (!ggxBlurKernel)
@@ -116,7 +90,6 @@ ID<ComputePipeline> GpuProcessSystem::getDownsampleNormA()
 	return downsampleNormAPipeline;
 }
 
-//**********************************************************************************************************************
 void GpuProcessSystem::generateMips(ID<Image> image, ID<ComputePipeline> pipeline)
 {
 	GARDEN_ASSERT(image);

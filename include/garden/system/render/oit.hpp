@@ -47,13 +47,8 @@ class OitRenderSystem final : public System, public Singleton<OitRenderSystem>
 	 * @param setSingleton set system singleton instance
 	 */
 	OitRenderSystem(bool setSingleton = true);
-	/**
-	 * @brief Destroys order independent transparency rendering system instance.
-	 */
-	~OitRenderSystem() override;
 
 	void init();
-	void deinit();
 	void preLdrRender();
 	void gBufferRecreate();
 

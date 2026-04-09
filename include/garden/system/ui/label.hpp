@@ -124,10 +124,6 @@ private:
 	 * @param setSingleton set system singleton instance
 	 */
 	UiLabelSystem(bool setSingleton = true);
-	/**
-	 * @brief Destroys user interface label element system instance. (UI, GUI)
-	 */
-	~UiLabelSystem() override;
 
 	void update();
 	void localeChange();

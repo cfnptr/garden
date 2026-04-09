@@ -223,8 +223,7 @@ bool Buffer::destroy()
 		auto vulkanAPI = VulkanAPI::get();
 		if (vulkanAPI->forceResourceDestroy)
 			vmaDestroyBuffer(vulkanAPI->memoryAllocator, (VkBuffer)instance, (VmaAllocation)allocation);
-		else
-			vulkanAPI->destroyResource(GraphicsAPI::DestroyResourceType::Buffer, instance, allocation);
+		else vulkanAPI->destroyResource(GraphicsAPI::DestroyResourceType::Buffer, instance, allocation);
 	}
 	else abort();
 
@@ -295,19 +294,21 @@ void Buffer::writeData(const void* data, uint64 size, uint64 offset)
 void Buffer::fill(uint32 data, uint64 size, uint64 offset)
 {
 	auto graphicsAPI = GraphicsAPI::get();
+	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
 	GARDEN_ASSERT_MSG(size == 0 || size % 4 == 0, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(size == 0 || size + offset <= binarySize, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(hasAnyFlag(usage, Usage::TransferDst), "Assert " + debugName);
+	GARDEN_ASSERT_MSG(currentCommandBuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(!graphicsAPI->currentFramebuffer, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(graphicsAPI->currentCommandBuffer, "Assert " + debugName);
 
+	auto commandBufferType = currentCommandBuffer->getType();
 	#if GARDEN_DEBUG
-	if (graphicsAPI->currentCommandBuffer == graphicsAPI->transferCommandBuffer)
+	if (commandBufferType == CommandBufferType::TransferOnly)
 	{
 		GARDEN_ASSERT_MSG(hasAnyFlag(usage, Usage::TransferQ), 
 			"Buffer [" + debugName + "] does not have transfer queue flag");
 	}
-	if (graphicsAPI->currentCommandBuffer == graphicsAPI->computeCommandBuffer)
+	if (commandBufferType == CommandBufferType::Compute)
 	{
 		GARDEN_ASSERT_MSG(hasAnyFlag(usage, Usage::ComputeQ), 
 			"Buffer [" + debugName + "] does not have compute queue flag");
@@ -319,12 +320,12 @@ void Buffer::fill(uint32 data, uint64 size, uint64 offset)
 	command.data = data;
 	command.size = size;
 	command.offset = offset;
-	graphicsAPI->currentCommandBuffer->addCommand(command);
+	currentCommandBuffer->addCommand(command);
 
-	if (graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer)
+	if (commandBufferType != CommandBufferType::Frame)
 	{
 		busyLock++;
-		graphicsAPI->currentCommandBuffer->addLockedResource(command.buffer);
+		currentCommandBuffer->addLockedResource(command.buffer);
 	}
 }
 
@@ -332,12 +333,13 @@ void Buffer::fill(uint32 data, uint64 size, uint64 offset)
 void Buffer::copy(ID<Buffer> source, ID<Buffer> destination, const CopyRegion* regions, uint32 count)
 {
 	auto graphicsAPI = GraphicsAPI::get();
+	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
 	GARDEN_ASSERT(source);
 	GARDEN_ASSERT(destination);
 	GARDEN_ASSERT(regions);
 	GARDEN_ASSERT(count > 0);
+	GARDEN_ASSERT(currentCommandBuffer);
 	GARDEN_ASSERT(!graphicsAPI->currentFramebuffer);
-	GARDEN_ASSERT(graphicsAPI->currentCommandBuffer);
 
 	auto srcView = graphicsAPI->bufferPool.get(source);
 	GARDEN_ASSERT_MSG(hasAnyFlag(srcView->usage, Usage::TransferSrc), 
@@ -349,24 +351,19 @@ void Buffer::copy(ID<Buffer> source, ID<Buffer> destination, const CopyRegion* r
 		"Missing destination buffer [" + dstView->getDebugName() + "] flag");
 	GARDEN_ASSERT_MSG(dstView->instance, "Destination buffer [" + dstView->getDebugName() + "] is not ready");
 	
+	auto commandBufferType = currentCommandBuffer->getType();
 	#if GARDEN_DEBUG
-	if (graphicsAPI->currentCommandBuffer == graphicsAPI->transferCommandBuffer)
+	if (commandBufferType == CommandBufferType::TransferOnly)
 	{
 		GARDEN_ASSERT_MSG(hasAnyFlag(srcView->getUsage(), Usage::TransferQ),
 			"Source buffer [" + srcView->getDebugName() + "] does not have transfer queue flag");
-	}
-	if (graphicsAPI->currentCommandBuffer == graphicsAPI->computeCommandBuffer)
-	{
-		GARDEN_ASSERT_MSG(hasAnyFlag(srcView->getUsage(), Usage::ComputeQ),
-			"Source buffer [" + srcView->getDebugName() + "] does not have compute queue flag");
-	}
-	if (graphicsAPI->currentCommandBuffer == graphicsAPI->transferCommandBuffer)
-	{
 		GARDEN_ASSERT_MSG(hasAnyFlag(dstView->getUsage(), Usage::TransferQ),
 			"Destination buffer [" + dstView->getDebugName() + "] does not have transfer queue flag");
 	}
-	if (graphicsAPI->currentCommandBuffer == graphicsAPI->computeCommandBuffer)
+	if (commandBufferType == CommandBufferType::Compute)
 	{
+		GARDEN_ASSERT_MSG(hasAnyFlag(srcView->getUsage(), Usage::ComputeQ),
+			"Source buffer [" + srcView->getDebugName() + "] does not have compute queue flag");
 		GARDEN_ASSERT_MSG(hasAnyFlag(dstView->getUsage(), Usage::ComputeQ),
 			"Destination buffer [" + dstView->getDebugName() + "] does not have compute queue flag");
 	}
@@ -395,14 +392,14 @@ void Buffer::copy(ID<Buffer> source, ID<Buffer> destination, const CopyRegion* r
 	command.source = source;
 	command.destination = destination;
 	command.regions = regions;
-	graphicsAPI->currentCommandBuffer->addCommand(command);
+	currentCommandBuffer->addCommand(command);
 
-	if (graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer)
+	if (commandBufferType != CommandBufferType::Frame)
 	{
 		srcView->busyLock++;
 		dstView->busyLock++;
-		graphicsAPI->currentCommandBuffer->addLockedResource(source);
-		graphicsAPI->currentCommandBuffer->addLockedResource(destination);
+		currentCommandBuffer->addLockedResource(source);
+		currentCommandBuffer->addLockedResource(destination);
 	}
 }
 

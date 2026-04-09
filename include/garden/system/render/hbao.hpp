@@ -64,13 +64,8 @@ private:
 	 * @param setSingleton set system singleton instance
 	 */
 	HbaoRenderSystem(bool setSingleton = true);
-	/**
-	 * @brief Destroys screen space horizon-based ambient occlusion rendering system instance. (HBAO)
-	 */
-	~HbaoRenderSystem() override;
 
 	void init();
-	void deinit();
 	void preAoRender();
 	void aoRender();
 	void gBufferRecreate();

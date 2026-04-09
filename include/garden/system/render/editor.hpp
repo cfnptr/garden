@@ -55,7 +55,6 @@ public:
 			onComponent(onComponent), priority(priority) { }
 	};
 
-	
 	using OnComponents = unordered_multimap<float, pair<System*, OnComponent>>;
 	using EntityInspectors = tsl::robin_map<type_index, Inspector>;
 private:
@@ -79,10 +78,6 @@ private:
 	 * @param setSingleton set system singleton instance
 	 */
 	EditorRenderSystem(bool setSingleton = true);
-	/**
-	 * @brief Destroys editor render system instance.
-	 */
-	~EditorRenderSystem() override;
 
 	void showMainMenuBar();
 	void showAboutWindow();
@@ -93,7 +88,6 @@ private:
 	void showFileSelector();
 
 	void init();
-	void deinit();
 	void preUiRender();
 	
 	friend class ecsm::Manager;

@@ -56,13 +56,8 @@ class DlssRenderSystem final : public System, public Singleton<DlssRenderSystem>
 	 * @param setSingleton set system singleton instance
 	 */
 	DlssRenderSystem(bool setSingleton = true);
-	/**
-	 * @brief Destroys Nvidia DLSS rendering system instance.
-	 */
-	~DlssRenderSystem() override;
 
 	void preInit();
-	void postDeinit();
 	void preLdrRender();
 	void swapchainRecreate();
 	

@@ -56,10 +56,6 @@ class SettingsSystem final : public System, public Singleton<SettingsSystem>
 	 * @param setSingleton set system singleton instance
 	 */
 	SettingsSystem(bool setSingleton = true);
-	/**
-	 * @brief Destroys settings system instance.
-	 */
-	~SettingsSystem() override;
 
 	void preInit();
 	void postDeinit();

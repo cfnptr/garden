@@ -23,8 +23,6 @@ using namespace ecsm;
 class MyCustomSystem : public System
 {
     MyCustomSystem();
-    ~MyCustomSystem() override;
-
     friend class ecsm::Manager;
 };
 
@@ -41,10 +39,6 @@ using namespace my::app;
 MyCustomSystem::MyCustomSystem()
 {
     // Initalize your system...
-}
-~MyCustomSystem::MyCustomSystem()
-{
-    // Deinitalize your system...
 }
 ```
 
@@ -69,8 +63,8 @@ static void entryPoint()
     //...
 
     manager->initialize();
-    manager->start();
-    delete manager;
+    manager->enterLoop();
+    manager->terminate();
 }
 
 GARDEN_DECLARE_MAIN(entryPoint)
@@ -97,9 +91,7 @@ once every game tick (even if the game window is minimized).
 class MyCustomSystem : public System
 {
     MyCustomSystem();
-    ~MyCustomSystem() override;
-
-    void update(); 
+    void update();
 
     friend class ecsm::Manager;
 };
@@ -117,12 +109,6 @@ MyCustomSystem::MyCustomSystem()
     auto manager = Manager::Instance::get();
     ECSM_SUBSCRIBE_TO_EVENT("Update", MyCustomSystem::update);
 }
-~MyCustomSystem::MyCustomSystem()
-{
-    auto manager = Manager::Instance::get();
-    ECSM_UNSUBSCRIBE_FROM_EVENT("Update", MyCustomSystem::update);
-}
-
 void MyCustomSystem::update()
 {
     // Your system update logic

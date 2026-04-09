@@ -22,10 +22,7 @@ namespace garden
 class DlssRenderEditorSystem final : public System
 {
 	DlssRenderEditorSystem();
-	~DlssRenderEditorSystem() override;
-
 	void init();
-	void deinit();
 	void editorSettings();
 
 	friend class ecsm::Manager;

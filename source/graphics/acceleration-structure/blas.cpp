@@ -212,9 +212,10 @@ Blas::Blas(uint64 size, BuildFlagsAS flags)
 ID<Blas> Blas::compact()
 {
 	auto graphicsAPI = GraphicsAPI::get();
+	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
+	GARDEN_ASSERT_MSG(currentCommandBuffer, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(currentCommandBuffer->getType() != CommandBufferType::Frame, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(!graphicsAPI->currentFramebuffer, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(graphicsAPI->currentCommandBuffer, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(hasAnyFlag(flags, BuildFlagsAS::AllowCompaction), 
 		"BLAS [" + debugName + "] compaction is not allowed");
 	GARDEN_ASSERT_MSG(buildData, "BLAS [" + debugName + "] is already compacted");
@@ -259,7 +260,6 @@ ID<Blas> Blas::compact()
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	compactBlasView->setDebugName(thisDebugName);
 	#endif
-	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
 
 	CopyAccelerationStructureCommand command;
 	command.isCompact = true;

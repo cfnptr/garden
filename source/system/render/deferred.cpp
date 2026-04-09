@@ -26,6 +26,7 @@
 
 using namespace garden;
 
+//**********************************************************************************************************************
 static void createGBuffers(GraphicsSystem* graphicsSystem, 
 	vector<ID<Image>>& gBuffers, const DeferredRenderSystem::Options& options)
 {
@@ -382,46 +383,8 @@ DeferredRenderSystem::DeferredRenderSystem(Options options,
 	manager->tryRegisterEvent("PreUiRender");
 	manager->tryRegisterEvent("UiRender");
 	manager->registerEvent("GBufferRecreate");
-
 	ECSM_SUBSCRIBE_TO_EVENT("Init", DeferredRenderSystem::init);
-	ECSM_SUBSCRIBE_TO_EVENT("Deinit", DeferredRenderSystem::deinit);
 }
-DeferredRenderSystem::~DeferredRenderSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", DeferredRenderSystem::init);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", DeferredRenderSystem::deinit);
-
-		manager->unregisterEvent("PreDeferredRender");
-		manager->unregisterEvent("DeferredRender");
-		manager->unregisterEvent("PreHdrRender");
-		manager->unregisterEvent("HdrRender");
-		manager->unregisterEvent("PreDsHdrRender");
-		manager->unregisterEvent("DsHdrRender");
-		manager->unregisterEvent("PreRefrRender");
-		manager->unregisterEvent("RefrRender");
-		manager->unregisterEvent("PreTransRender");
-		manager->unregisterEvent("TransRender");
-		manager->unregisterEvent("PreTransDepthRender");
-		manager->unregisterEvent("TransDepthRender");
-		manager->unregisterEvent("PreOitRender");
-		manager->unregisterEvent("OitRender");
-		manager->unregisterEvent("PreLdrRender");
-		manager->unregisterEvent("LdrRender");
-		manager->unregisterEvent("PreDsLdrRender");
-		manager->unregisterEvent("DsLdrRender");
-		manager->unregisterEvent("PostLdrToUI");
-		manager->tryUnregisterEvent("PreUiRender");
-		manager->tryUnregisterEvent("UiRender");
-		manager->unregisterEvent("GBufferRecreate");
-	}
-
-	unsetSingleton();
-}
-
-//**********************************************************************************************************************
 void DeferredRenderSystem::init()
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
@@ -440,53 +403,6 @@ void DeferredRenderSystem::init()
 	ECSM_SUBSCRIBE_TO_EVENT("Render", DeferredRenderSystem::render);
 	ECSM_SUBSCRIBE_TO_EVENT("SwapchainRecreate", DeferredRenderSystem::swapchainRecreate);
 }
-void DeferredRenderSystem::deinit()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto graphicsSystem = GraphicsSystem::Instance::get();
-		graphicsSystem->destroy(disocclDS);
-		graphicsSystem->destroy(velocityDS);
-		graphicsSystem->destroy(disocclusionFB);
-		graphicsSystem->destroy(upscaleHdrFB);
-		graphicsSystem->destroy(transDepthFB);
-		graphicsSystem->destroy(oitFramebuffer);
-		graphicsSystem->destroy(uiFramebuffer);
-		graphicsSystem->destroy(depthStencilLdrFB);
-		graphicsSystem->destroy(ldrFramebuffer);
-		graphicsSystem->destroy(depthStencilHdrFB);
-		graphicsSystem->destroy(hdrFramebuffer);
-		graphicsSystem->destroy(gFramebuffer);
-		graphicsSystem->destroy(hdrCopyIV);
-		graphicsSystem->destroy(stencilOnlyIV);
-		graphicsSystem->destroy(depthOnlyIV);
-		graphicsSystem->destroy(depthCopyIV);
-		graphicsSystem->destroy(depthStencilIV);
-		if (upscaleHdrBuffer != hdrBuffer)
-			graphicsSystem->destroy(upscaleHdrBuffer);
-		graphicsSystem->destroy(transBuffer);
-		graphicsSystem->destroy(depthCopyBuffer);
-		graphicsSystem->destroy(depthStencilBuffer);
-		graphicsSystem->destroy(oitRevealBuffer);
-		graphicsSystem->destroy(oitAccumBuffer);
-		graphicsSystem->destroy(disocclMap);
-		if (!gBuffers.empty() && uiBuffer != gBuffers[0])
-			graphicsSystem->destroy(uiBuffer);
-		graphicsSystem->destroy(ldrBuffer);
-		graphicsSystem->destroy(hdrCopyBlurDSes);
-		graphicsSystem->destroy(hdrCopyBlurFBs);
-		graphicsSystem->destroy(hdrCopyBlurPipeline);
-		graphicsSystem->destroy(disocclPipeline);
-		graphicsSystem->destroy(velocityPipeline);
-		graphicsSystem->destroy(hdrCopyBuffer);
-		graphicsSystem->destroy(hdrBuffer);
-		graphicsSystem->destroy(gBuffers);
-
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Render", DeferredRenderSystem::render);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("SwapchainRecreate", DeferredRenderSystem::swapchainRecreate);
-	}
-}
 
 //**********************************************************************************************************************
 void DeferredRenderSystem::render()
@@ -494,7 +410,7 @@ void DeferredRenderSystem::render()
 	SET_CPU_ZONE_SCOPED("Deferred Render");
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	if (!isEnabled || !graphicsSystem->canRender() || !graphicsSystem->camera)
+	if (!isEnabled || !graphicsSystem->camera)
 		return;
 
 	auto manager = Manager::Instance::get();
@@ -518,7 +434,7 @@ void DeferredRenderSystem::render()
 	if (ForwardRenderSystem::Instance::tryGet())
 	{
 		GARDEN_ASSERT_MSG(!ForwardRenderSystem::Instance::get()->isEnabled, 
-			"Can not use deferred and forward render system at the same time"); 
+			"Can't' use deferred and forward render system at the same time"); 
 	}
 	#endif
 

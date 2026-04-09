@@ -62,13 +62,8 @@ private:
 	 * @param setSingleton set system singleton instance
 	 */
 	BloomRenderSystem(bool useThreshold = false, bool setSingleton = true);
-	/**
-	 * @brief Destroys bloom (light glow) rendering system instance.
-	 */
-	~BloomRenderSystem() override;
 
 	void init();
-	void deinit();
 	void preLdrRender();
 	void gBufferRecreate();
 	void qualityChange();

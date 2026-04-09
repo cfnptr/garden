@@ -28,20 +28,7 @@ TransformEditorSystem::TransformEditorSystem(bool setSingleton) : Singleton(setS
 {
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", TransformEditorSystem::init);
-	ECSM_SUBSCRIBE_TO_EVENT("Deinit", TransformEditorSystem::deinit);
 }
-TransformEditorSystem::~TransformEditorSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", TransformEditorSystem::init);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", TransformEditorSystem::deinit);
-	}
-
-	unsetSingleton();
-}
-
 void TransformEditorSystem::init()
 {
 	EditorRenderSystem::Instance::get()->registerEntityInspector<TransformComponent>(
@@ -51,13 +38,7 @@ void TransformEditorSystem::init()
 	},
 	inspectorPriority);
 }
-void TransformEditorSystem::deinit()
-{
-	if (Manager::Instance::get()->isRunning)
-		EditorRenderSystem::Instance::get()->unregisterEntityInspector<TransformComponent>();
-}
 
-//**********************************************************************************************************************
 void TransformEditorSystem::onEntityDestroy(ID<Entity> entity)
 {
 	auto editorSystem = EditorRenderSystem::Instance::get();

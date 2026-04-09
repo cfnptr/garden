@@ -30,22 +30,8 @@ FpvControllerSystem::FpvControllerSystem(bool setSingleton) : Singleton(setSingl
 {
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", FpvControllerSystem::init);
-	ECSM_SUBSCRIBE_TO_EVENT("Deinit", FpvControllerSystem::deinit);
 	ECSM_SUBSCRIBE_TO_EVENT("Update", FpvControllerSystem::update);
 }
-FpvControllerSystem::~FpvControllerSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", FpvControllerSystem::init);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", FpvControllerSystem::deinit);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Update", FpvControllerSystem::update);
-	}
-
-	unsetSingleton();
-}
-
 void FpvControllerSystem::init()
 {
 	auto manager = Manager::Instance::get();
@@ -77,17 +63,6 @@ void FpvControllerSystem::init()
 
 	GARDEN_ASSERT_MSG(!graphicsSystem->camera, "Detected several main cameras");
 	graphicsSystem->camera = camera;
-}
-void FpvControllerSystem::deinit()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		GraphicsSystem::Instance::get()->camera = {};
-		manager->destroy(camera);
-
-		ECSM_UNSUBSCRIBE_FROM_EVENT("SwapchainRecreate", FpvControllerSystem::swapchainRecreate);
-	}
 }
 
 //**********************************************************************************************************************

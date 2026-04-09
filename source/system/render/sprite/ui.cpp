@@ -22,12 +22,6 @@ UiSpriteSystem::UiSpriteSystem(bool setSingleton) :
 {
 	Manager::Instance::get()->addGroupSystem<IMeshRenderSystem>(this);
 }
-UiSpriteSystem::~UiSpriteSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-		Manager::Instance::get()->removeGroupSystem<IMeshRenderSystem>(this);
-	unsetSingleton();
-}
 
 string_view UiSpriteSystem::getComponentName() const
 {

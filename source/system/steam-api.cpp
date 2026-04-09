@@ -21,6 +21,7 @@
 
 using namespace garden;
 
+//**********************************************************************************************************************
 namespace garden
 {
 
@@ -57,7 +58,6 @@ void SteamEventHandler::GetTicketForWebApiResponse(GetTicketForWebApiResponse_t*
 	steamApiSystem->onAuthTicket = nullptr;
 }
 
-//**********************************************************************************************************************
 SteamApiSystem::SteamApiSystem(bool setSingleton) : Singleton(setSingleton)
 {
 	if (SteamAPI_RestartAppIfNecessary(GARDEN_STEAMWORKS_APP_ID))
@@ -71,18 +71,6 @@ SteamApiSystem::SteamApiSystem(bool setSingleton) : Singleton(setSingleton)
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Update", SteamApiSystem::update);
 }
-SteamApiSystem::~SteamApiSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Update", SteamApiSystem::update);
-	}
-
-	delete (SteamEventHandler*)eventHandler;
-	SteamAPI_Shutdown();
-	unsetSingleton();
-}
 
 void SteamApiSystem::update()
 {
@@ -90,6 +78,7 @@ void SteamApiSystem::update()
 	SteamAPI_RunCallbacks();
 }
 
+//**********************************************************************************************************************
 Language SteamApiSystem::getGameLanguage() const noexcept
 {
 	auto language = string_view(SteamApps()->GetCurrentGameLanguage());

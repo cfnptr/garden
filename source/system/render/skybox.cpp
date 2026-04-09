@@ -21,6 +21,7 @@
 using namespace garden;
 using namespace garden::primitive;
 
+//**********************************************************************************************************************
 static ID<GraphicsPipeline> createPipeline()
 {
 	auto deferredSystem = DeferredRenderSystem::Instance::get();
@@ -41,18 +42,12 @@ SkyboxRenderSystem::SkyboxRenderSystem(bool setSingleton) : Singleton(setSinglet
 {
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", SkyboxRenderSystem::init);
-	ECSM_SUBSCRIBE_TO_EVENT("Deinit", SkyboxRenderSystem::deinit);
 }
-SkyboxRenderSystem::~SkyboxRenderSystem()
+void SkyboxRenderSystem::init()
 {
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", SkyboxRenderSystem::init);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", SkyboxRenderSystem::deinit);
-	}
-
-	unsetSingleton();
+	auto manager = Manager::Instance::get();
+	ECSM_SUBSCRIBE_TO_EVENT("ImageLoaded", SkyboxRenderSystem::imageLoaded);
+	ECSM_SUBSCRIBE_TO_EVENT("DdHdrRender", SkyboxRenderSystem::dsHdrRender);
 }
 
 void SkyboxRenderSystem::resetComponent(View<Component> component, bool full)
@@ -76,24 +71,6 @@ string_view SkyboxRenderSystem::getComponentName() const
 }
 
 //**********************************************************************************************************************
-void SkyboxRenderSystem::init()
-{
-	auto manager = Manager::Instance::get();
-	ECSM_SUBSCRIBE_TO_EVENT("ImageLoaded", SkyboxRenderSystem::imageLoaded);
-	ECSM_SUBSCRIBE_TO_EVENT("DdHdrRender", SkyboxRenderSystem::dsHdrRender);
-}
-void SkyboxRenderSystem::deinit()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		GraphicsSystem::Instance::get()->destroy(pipeline);
-
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("ImageLoaded", SkyboxRenderSystem::imageLoaded);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("DsHdrRender", SkyboxRenderSystem::dsHdrRender);
-	}
-}
-
 void SkyboxRenderSystem::imageLoaded()
 {
 	auto resourceSystem = ResourceSystem::Instance::get();
@@ -111,7 +88,6 @@ void SkyboxRenderSystem::imageLoaded()
 	}
 }
 
-//**********************************************************************************************************************
 void SkyboxRenderSystem::dsHdrRender()
 {
 	SET_CPU_ZONE_SCOPED("Skybox Depth/Stencil HDR Render");
@@ -145,7 +121,7 @@ void SkyboxRenderSystem::dsHdrRender()
 	PushConstants pc;
 	pc.viewProj = (float4x4)cc.viewProj;
 
-	if (graphicsSystem->isCurrentRenderPassAsync())
+	if (graphicsSystem->isRenderPassAsync())
 	{
 		SET_GPU_DEBUG_LABEL_ASYNC("Skybox", 0);
 		pipelineView->bindAsync(0, 0);

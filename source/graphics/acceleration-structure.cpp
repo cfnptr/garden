@@ -129,15 +129,16 @@ bool AccelerationStructure::isStorageReady() const noexcept
 void AccelerationStructure::build(ID<Buffer> scratchBuffer)
 {
 	auto graphicsAPI = GraphicsAPI::get();
+	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
+	GARDEN_ASSERT_MSG(currentCommandBuffer, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(currentCommandBuffer->getType() != CommandBufferType::Frame, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(!graphicsAPI->currentFramebuffer, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(graphicsAPI->currentCommandBuffer, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(buildData, "Acceleration structure [" + debugName + "] is already build");
 
 	auto buildDataHeader = (const BuildDataHeader*)buildData;
 
 	#if GARDEN_DEBUG
-	if (graphicsAPI->currentCommandBuffer == graphicsAPI->computeCommandBuffer)
+	if (currentCommandBuffer->getType() == CommandBufferType::Compute)
 	{
 		GARDEN_ASSERT_MSG(hasAnyFlag(flags, BuildFlagsAS::ComputeQ), 
 			"Acceleration structure [" + debugName + "] does not have compute queue flag");
@@ -172,7 +173,7 @@ void AccelerationStructure::build(ID<Buffer> scratchBuffer)
 		command.dstAS = ID<AccelerationStructure>(graphicsAPI->blasPool.getID((const Blas*)this));
 	else command.dstAS = ID<AccelerationStructure>(graphicsAPI->tlasPool.getID((const Tlas*)this));
 	command.scratchBuffer = scratchBuffer;
-	graphicsAPI->currentCommandBuffer->addCommand(command);
+	currentCommandBuffer->addCommand(command);
 
 	auto bufferView = graphicsAPI->bufferPool.get(storageBuffer);
 	ResourceExt::getBusyLock(**bufferView)++;
@@ -180,7 +181,6 @@ void AccelerationStructure::build(ID<Buffer> scratchBuffer)
 	ResourceExt::getBusyLock(**bufferView)++;
 	busyLock++;
 
-	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
 	currentCommandBuffer->addLockedResource(storageBuffer);
 	currentCommandBuffer->addLockedResource(scratchBuffer);
 

@@ -22,12 +22,9 @@ namespace garden
 class NetworkEditorSystem final : public System
 {
 	NetworkEditorSystem();
-	~NetworkEditorSystem() override;
-
 	void init();
-	void deinit();
-
 	void onEntityInspector(ID<Entity> entity, bool isOpened);
+
 	friend class ecsm::Manager;
 public:
 	float inspectorPriority = 0.7f;

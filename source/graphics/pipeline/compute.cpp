@@ -63,16 +63,16 @@ ComputePipeline::ComputePipeline(ComputeCreateData& createData, bool asyncRecord
 	else abort();
 }
 
-//**********************************************************************************************************************
 void ComputePipeline::dispatch(uint3 count, bool isGlobalCount)
 {
 	auto graphicsAPI = GraphicsAPI::get();
+	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
 	GARDEN_ASSERT_MSG(areAllTrue(count > uint3::zero), "Assert " + debugName);
+	GARDEN_ASSERT_MSG(currentCommandBuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(!graphicsAPI->currentFramebuffer, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(graphicsAPI->currentCommandBuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(instance, "Compute pipeline [" + debugName + "] is not ready");
 
 	DispatchCommand command;
 	command.groupCount = isGlobalCount ?  (uint3)ceil((float3)count / localSize) : count;
-	graphicsAPI->currentCommandBuffer->addCommand(command);
+	currentCommandBuffer->addCommand(command);
 }

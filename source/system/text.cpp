@@ -26,6 +26,7 @@
 
 using namespace garden;
 
+//**********************************************************************************************************************
 static void prepareGlyphs(u32string_view chars, FontAtlas::GlyphMap& glyphs)
 {
 	Glyph glyph; glyph.value = '\0';
@@ -44,7 +45,6 @@ static constexpr float fixedToFloat(FT_Fixed fixed) noexcept { return (float)fix
 static constexpr FT_Fixed floatToFixed(float f) noexcept { return (FT_Fixed)(f * 65536.0f + 0.5f); }
 static uint32 calcGlyphLength(psize glyphCount) noexcept { return (uint32)ceil(sqrt((double)glyphCount)); }
 
-//**********************************************************************************************************************
 static bool fillFontAtlas(const LinearPool<Font>& fontPool, FT_Library ftLibrary, const vector<Ref<Font>>& fonts, 
 	FontAtlas::GlyphMap& glyphs, uint8* pixels, uint32 fontSize, uint32 glyphLength, uint2 pixelSize, 
 	uint8 fontIndex, uint32 itemOffset, uint32 itemCount, uint32 threadIndex)
@@ -792,21 +792,6 @@ TextSystem::TextSystem(bool setSingleton) : Singleton(setSingleton)
 	if (result != 0)
 		throw GardenError("Failed to initialize FreeType. (error: " + string(FT_Error_String(result)) + ")");
 	this->ftLibrary = ftLibrary;
-}
-TextSystem::~TextSystem()
-{
-	auto manager = Manager::Instance::get();
-	texts.clear(manager->isRunning);
-	fontAtlases.clear(manager->isRunning);
-	fonts.clear(manager->isRunning);
-
-	if (manager->isRunning)
-	{
-		auto result = FT_Done_FreeType((FT_Library)ftLibrary);
-		GARDEN_ASSERT_MSG(!result, "Failed to deinitialize FreeType");
-	}
-
-	unsetSingleton();
 }
 
 void TextSystem::update()

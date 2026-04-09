@@ -24,11 +24,7 @@ namespace garden
 class SpriteRenderEditorSystem final : public System
 {
 	SpriteRenderEditorSystem();
-	~SpriteRenderEditorSystem() override;
-
 	void init();
-	void deinit();
-
 	void onOpaqueEntityInspector(ID<Entity> entity, bool isOpened);
 	void onCutoutEntityInspector(ID<Entity> entity, bool isOpened);
 	void onTransEntityInspector(ID<Entity> entity, bool isOpened);

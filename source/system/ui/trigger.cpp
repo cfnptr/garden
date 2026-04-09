@@ -22,6 +22,7 @@
 
 using namespace garden;
 
+//**********************************************************************************************************************
 UiTriggerSystem::UiTriggerSystem(bool setSingleton) : Singleton(setSingleton)
 {
 	auto manager = Manager::Instance::get();
@@ -30,21 +31,8 @@ UiTriggerSystem::UiTriggerSystem(bool setSingleton) : Singleton(setSingleton)
 
 	ECSM_SUBSCRIBE_TO_EVENT("Update", UiTriggerSystem::update);
 }
-UiTriggerSystem::~UiTriggerSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		manager->removeGroupSystem<ISerializable>(this);
-		manager->removeGroupSystem<IAnimatable>(this);
 
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Update", UiTriggerSystem::update);
-	}
-	unsetSingleton();
-}
-
-//**********************************************************************************************************************
-static void triggerUiComponent(Manager* manager, ID<Entity>& newElement, 
+static void triggerUiComponent(Manager* manager, Window* window, ID<Entity>& newElement, 
 	float& newPosZ, UiTriggerComponent& uiTriggerComp, float2 cursorPosition)
 {
 	auto entity = uiTriggerComp.getEntity();
@@ -55,7 +43,6 @@ static void triggerUiComponent(Manager* manager, ID<Entity>& newElement,
 	if (!transformView || !transformView->isActive())
 		return;
 
-	auto inputSystem = InputSystem::Instance::get(); 
 	auto model = transformView->calcModel(); auto modelPosZ = getTranslation(model).getZ();
 	auto invModel = inverse4x4(model * scale(translate(
 		f32x4(uiTriggerComp.offset.x, uiTriggerComp.offset.y, 1.0f)), 
@@ -64,9 +51,10 @@ static void triggerUiComponent(Manager* manager, ID<Entity>& newElement,
 
 	if (abs(modelCursorPos.x) > 0.5f || abs(modelCursorPos.y) > 0.5f || modelPosZ >= newPosZ)
 		return;
-	newElement = uiTriggerComp.getEntity(); newPosZ = modelPosZ;
+	newElement = entity; newPosZ = modelPosZ;
 }
 
+//**********************************************************************************************************************
 void UiTriggerSystem::update()
 {
 	SET_CPU_ZONE_SCOPED("UI Trigger Update");

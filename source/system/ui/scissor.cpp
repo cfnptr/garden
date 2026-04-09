@@ -19,21 +19,12 @@
 
 using namespace garden;
 
+//**********************************************************************************************************************
 UiScissorSystem::UiScissorSystem(bool setSingleton) : Singleton(setSingleton)
 {
 	auto manager = Manager::Instance::get();
 	manager->addGroupSystem<ISerializable>(this);
 	manager->addGroupSystem<IAnimatable>(this);
-}
-UiScissorSystem::~UiScissorSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		manager->removeGroupSystem<ISerializable>(this);
-		manager->removeGroupSystem<IAnimatable>(this);
-	}
-	unsetSingleton();
 }
 
 string_view UiScissorSystem::getComponentName() const
@@ -48,15 +39,15 @@ void UiScissorSystem::serialize(ISerializer& serializer, const View<Component> c
 		serializer.write("offset", componentView->offset);
 	if (componentView->scale != float2::one)
 		serializer.write("scale", componentView->scale);
-	if (componentView->useItsels)
-		serializer.write("useItsels", true);
+	if (componentView->useItself)
+		serializer.write("useItself", true);
 }
 void UiScissorSystem::deserialize(IDeserializer& deserializer, View<Component> component)
 {
 	auto componentView = View<UiScissorComponent>(component);
 	deserializer.read("offset", componentView->offset);
 	deserializer.read("scale", componentView->scale);
-	deserializer.read("useItsels", componentView->useItsels);
+	deserializer.read("useItself", componentView->useItself);
 }
 
 //**********************************************************************************************************************
@@ -117,7 +108,7 @@ int4 UiScissorSystem::calcScissor(ID<Entity> entity) const noexcept
 	auto scissor = int4(int2::zero, frameSize);
 
 	auto uiScissorView = manager->tryGet<UiScissorComponent>(entity);
-	if (uiScissorView && uiScissorView->useItsels)
+	if (uiScissorView && uiScissorView->useItself)
 	{
 		auto newScissor = calcUiScissor(*uiScissorView, *transformView, windowScale, uiHalfSize, uiScale);
 		scissor = int4(max((int2)scissor, (int2)newScissor), min(

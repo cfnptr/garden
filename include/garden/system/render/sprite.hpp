@@ -112,7 +112,6 @@ protected:
 	SpriteRenderSystem(const fs::path& pipelinePath);
 
 	void init() override;
-	void deinit() override;
 	virtual void imageLoaded();
 
 	static void resetComponent(View<Component> component);
@@ -177,10 +176,6 @@ protected:
 	 * @param[in] pipelinePath target rendering pipeline path
 	 */
 	SpriteCompAnimSystem(const fs::path& pipelinePath) : SpriteRenderSystem(pipelinePath) { }
-	/**
-	 * @brief Destroys sprite mesh render system instance.
-	 */
-	~SpriteCompAnimSystem() override { }
 
 	void resetComponent(View<Component> component, bool full) override
 	{ SpriteRenderSystem::resetComponent(component); if (full) **View<C>(component) = C(); }

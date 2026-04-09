@@ -13,11 +13,12 @@
 // limitations under the License.
 
 #include "garden/graphics/address-pool.hpp"
-#include "garden/graphics/vulkan/command-buffer.hpp"
+#include "garden/graphics/vulkan/api.hpp"
 
 using namespace garden;
 using namespace garden::graphics;
 
+//**********************************************************************************************************************
 static DescriptorSet::Buffers createAddressBuffers(uint32 capacity, 
 	uint32 inFlightCount, Buffer::Usage addressBufferUsage)
 {
@@ -92,6 +93,8 @@ uint32 AddressPool::allocate(ID<Buffer> buffer)
 	memset(isFlushed.data(), 0, inFlightCount);
 	return allocation;
 }
+
+//**********************************************************************************************************************
 void AddressPool::update(uint32 allocation, ID<Buffer> newBuffer)
 {
 	GARDEN_ASSERT(allocation < resources.size());
@@ -205,10 +208,12 @@ void AddressPool::destroy()
 void AddressPool::addBufferBarriers(Buffer::BarrierState newState)
 {
 	auto graphicsAPI = GraphicsAPI::get();
-	GARDEN_ASSERT(graphicsAPI->currentCommandBuffer);
+	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
+	GARDEN_ASSERT_MSG(currentCommandBuffer, "Assert " + debugName);
 
 	#if GARDEN_DEBUG
-	if (graphicsAPI->currentCommandBuffer == graphicsAPI->transferCommandBuffer)
+	auto commandBufferType = currentCommandBuffer->getType();
+	if (commandBufferType == CommandBufferType::TransferOnly)
 	{
 		for (auto resource : resources)
 		{
@@ -219,7 +224,7 @@ void AddressPool::addBufferBarriers(Buffer::BarrierState newState)
 				"Buffer [" + bufferView->getDebugName() + "] does not have transfer queue flag");
 		}
 	}
-	else if (graphicsAPI->currentCommandBuffer == graphicsAPI->computeCommandBuffer)
+	else if (commandBufferType == CommandBufferType::Compute)
 	{
 		for (auto resource : resources)
 		{
@@ -257,5 +262,5 @@ void AddressPool::addBufferBarriers(Buffer::BarrierState newState)
 	command.newState = newState;
 	command.bufferCount = barrierCount;
 	command.buffers = barriers;
-	graphicsAPI->currentCommandBuffer->addCommand(command);
+	currentCommandBuffer->addCommand(command);
 }

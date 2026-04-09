@@ -24,23 +24,12 @@
 
 using namespace garden;
 
+//**********************************************************************************************************************
 SpriteRenderEditorSystem::SpriteRenderEditorSystem()
 {
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", SpriteRenderEditorSystem::init);
-	ECSM_SUBSCRIBE_TO_EVENT("Deinit", SpriteRenderEditorSystem::deinit);
 }
-SpriteRenderEditorSystem::~SpriteRenderEditorSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", SpriteRenderEditorSystem::init);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", SpriteRenderEditorSystem::deinit);
-	}
-}
-
-//**********************************************************************************************************************
 void SpriteRenderEditorSystem::init()
 {
 	auto editorSystem = EditorRenderSystem::Instance::get();
@@ -75,17 +64,6 @@ void SpriteRenderEditorSystem::init()
 		{
 			onUiEntityInspector(entity, isOpened);
 		});
-	}
-}
-void SpriteRenderEditorSystem::deinit()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto editorSystem = EditorRenderSystem::Instance::get();
-		editorSystem->tryUnregisterEntityInspector<OpaqueSpriteComponent>();
-		editorSystem->tryUnregisterEntityInspector<CutoutSpriteComponent>();
-		editorSystem->tryUnregisterEntityInspector<TransSpriteComponent>();
-		editorSystem->tryUnregisterEntityInspector<UiSpriteComponent>();
 	}
 }
 
@@ -161,9 +139,9 @@ void SpriteRenderEditorSystem::renderComponent(SpriteRenderComponent* componentV
 		componentView->descriptorSet, componentView->getEntity(), componentType, maxMipCount, flags);
 	editorSystem->drawResource(componentView->descriptorSet);
 
-	auto isEnabed = componentView->isEnabled;
-	if (ImGui::Checkbox("Enabled", &isEnabed))
-		componentView->isEnabled = isEnabed;
+	auto isEnabled = componentView->isEnabled;
+	if (ImGui::Checkbox("Enabled", &isEnabled))
+		componentView->isEnabled = isEnabled;
 	ImGui::SameLine();
 
 	auto reloadImage = false;

@@ -24,20 +24,7 @@ UiLabelEditorSystem::UiLabelEditorSystem(bool setSingleton) : Singleton(setSingl
 {
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", UiLabelEditorSystem::init);
-	ECSM_SUBSCRIBE_TO_EVENT("Deinit", UiLabelEditorSystem::deinit);
 }
-UiLabelEditorSystem::~UiLabelEditorSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", UiLabelEditorSystem::init);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", UiLabelEditorSystem::deinit);
-	}
-
-	unsetSingleton();
-}
-
 void UiLabelEditorSystem::init()
 {
 	EditorRenderSystem::Instance::get()->registerEntityInspector<UiLabelComponent>(
@@ -47,13 +34,7 @@ void UiLabelEditorSystem::init()
 	},
 	inspectorPriority);
 }
-void UiLabelEditorSystem::deinit()
-{
-	if (Manager::Instance::get()->isRunning)
-		EditorRenderSystem::Instance::get()->unregisterEntityInspector<UiLabelComponent>();
-}
 
-//**********************************************************************************************************************
 void UiLabelEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 {
 	if (!isOpened)

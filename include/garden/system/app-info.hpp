@@ -61,10 +61,6 @@ class AppInfoSystem final : public System, public Singleton<AppInfoSystem>
 		const fs::path& cachePath, const fs::path& resourcesPath,
 		#endif
 		bool setSingleton = true);
-	/**
-	 * @brief Destroys app info system instance.
-	 */
-	~AppInfoSystem() override;
 	
 	friend class ecsm::Manager;
 public:

@@ -20,6 +20,7 @@
 
 using namespace garden;
 
+//**********************************************************************************************************************
 psize File::getFileSize(const fs::path& filePath)
 {
 	GARDEN_ASSERT(!filePath.empty());

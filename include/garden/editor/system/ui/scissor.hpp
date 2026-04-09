@@ -22,12 +22,9 @@ namespace garden
 class UiScissorEditorSystem final : public System, public Singleton<UiScissorEditorSystem>
 {
 	UiScissorEditorSystem(bool setSingleton = true);
-	~UiScissorEditorSystem() override;
-	
 	void init();
-	void deinit();
-
 	void onEntityInspector(ID<Entity> entity, bool isOpened);
+
 	friend class ecsm::Manager;
 public:
 	float inspectorPriority = 0.7f;

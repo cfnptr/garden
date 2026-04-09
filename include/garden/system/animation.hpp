@@ -110,10 +110,6 @@ private:
 	 * @param setSingleton set system singleton instance
 	 */
 	AnimationSystem(bool animateAsync = true, bool setSingleton = true);
-	/**
-	 * @brief Destroys animation system instance.
-	 */
-	~AnimationSystem() override;
 
 	void update();
 

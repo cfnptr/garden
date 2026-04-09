@@ -22,12 +22,6 @@ OpaqueSpriteSystem::OpaqueSpriteSystem(bool setSingleton) :
 {
 	Manager::Instance::get()->addGroupSystem<IMeshRenderSystem>(this);
 }
-OpaqueSpriteSystem::~OpaqueSpriteSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-		Manager::Instance::get()->removeGroupSystem<IMeshRenderSystem>(this);
-	unsetSingleton();
-}
 
 string_view OpaqueSpriteSystem::getComponentName() const
 {

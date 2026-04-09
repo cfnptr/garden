@@ -24,6 +24,7 @@
 using namespace garden;
 using namespace garden::physics;
 
+//**********************************************************************************************************************
 static ID<Buffer> createVertexBuffer(GraphicsSystem* graphicsSystem, uint64 size, const void* data)
 {
 	auto buffer = graphicsSystem->createBuffer(Buffer::Usage::Vertex | Buffer::Usage::TransferDst,
@@ -49,7 +50,6 @@ bool PhysicsDebugRenderer::isReady()
 	return result;
 }
 
-//**********************************************************************************************************************
 void PhysicsDebugRenderer::drawLines(const f32x4x4& viewProj)
 {
 	if (lines.empty())
@@ -78,6 +78,8 @@ void PhysicsDebugRenderer::drawLines(const f32x4x4& viewProj)
 	graphicsSystem->destroy(linesBuffer);
 	lines.clear();
 }
+
+//**********************************************************************************************************************
 void PhysicsDebugRenderer::drawTriangles(const f32x4x4& viewProj)
 {
 	if (triangles.empty())

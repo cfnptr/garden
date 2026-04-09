@@ -76,10 +76,6 @@ private:
 	 */
 	ClientNetworkSystem(psize receiveBufferSize = UINT16_MAX + sizeof(uint16), psize messageBufferSize = UINT16_MAX, 
 		uint8 clientLengthSize = sizeof(uint8), double timeoutTime = 5.0f, bool setSingleton = true);
-	/**
-	 * @brief Destroys network client system instance.
-	 */
-	~ClientNetworkSystem() override;
 
 	void preInit();
 	void preDeinit();

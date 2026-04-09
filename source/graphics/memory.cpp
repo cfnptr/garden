@@ -17,6 +17,7 @@
 
 using namespace garden::graphics;
 
+//**********************************************************************************************************************
 Memory::BarrierState Memory::toBarrierState(AccessFlags accessFlags, PipelineStage pipelineStages) noexcept
 {
 	BarrierState state;

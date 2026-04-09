@@ -39,10 +39,6 @@ class FpvControllerSystem final : public System, public Singleton<FpvControllerS
 	 * @param setSingleton set system singleton instance
 	 */
 	FpvControllerSystem(bool setSingleton = true);
-	/**
-	 * @brief Destroys first person view controller system instance.
-	 */
-	~FpvControllerSystem() override;
 
 	void updateMouseLock();
 	quat updateCameraRotation();
@@ -50,9 +46,7 @@ class FpvControllerSystem final : public System, public Singleton<FpvControllerS
 	void updateCharacterControl();
 
 	void init();
-	void deinit();
 	void update();
-	void swapchainRecreate();
 	
 	friend class ecsm::Manager;
 public:

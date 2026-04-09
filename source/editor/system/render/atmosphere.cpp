@@ -25,35 +25,14 @@ AtmosphereEditorSystem::AtmosphereEditorSystem()
 {
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", AtmosphereEditorSystem::init);
-	ECSM_SUBSCRIBE_TO_EVENT("Deinit", AtmosphereEditorSystem::deinit);
 }
-AtmosphereEditorSystem::~AtmosphereEditorSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", AtmosphereEditorSystem::init);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", AtmosphereEditorSystem::deinit);
-	}
-}
-
 void AtmosphereEditorSystem::init()
 {
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("PreUiRender", AtmosphereEditorSystem::preUiRender);
 	ECSM_SUBSCRIBE_TO_EVENT("EditorBarToolPP", AtmosphereEditorSystem::editorBarToolPP);
 }
-void AtmosphereEditorSystem::deinit()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("PreUiRender", AtmosphereEditorSystem::preUiRender);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarToolPP", AtmosphereEditorSystem::editorBarToolPP);
-	}
-}
 
-//**********************************************************************************************************************
 void AtmosphereEditorSystem::preUiRender()
 {
 	if (!showWindow)

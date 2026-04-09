@@ -105,13 +105,8 @@ private:
 	 * @param setSingleton set system singleton instance
 	 */
 	CloudsRenderSystem(bool setSingleton = true);
-	/**
-	 * @brief Destroys physically based volumetric clouds rendering system instance.
-	 */
-	~CloudsRenderSystem() override;
 
 	void init();
-	void deinit();
 	void preDeferredRender();
 	void preSkyFaceRender();
 	void skyFaceRender();

@@ -21,6 +21,7 @@
 
 using namespace garden;
 
+//**********************************************************************************************************************
 static bool loadLocaleStrings(LocaleSystem::StringMap& strings, string_view module, Language language)
 {
 	strings = {};
@@ -79,16 +80,6 @@ LocaleSystem::LocaleSystem(bool setSingleton) : Singleton(setSingleton)
 	auto manager = Manager::Instance::get();
 	manager->registerEvent("LocaleChange");
 	ECSM_SUBSCRIBE_TO_EVENT("PreInit", LocaleSystem::preInit);
-}
-LocaleSystem::~LocaleSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("PreInit", LocaleSystem::preInit);
-		manager->unregisterEvent("LocaleChange");
-	}
-	unsetSingleton();
 }
 
 void LocaleSystem::preInit()

@@ -57,13 +57,8 @@ private:
 	 * @param setSingleton set system singleton instance
 	 */
 	SkyboxRenderSystem(bool setSingleton = true);
-	/**
-	 * @brief Destroys skybox rendering system instance.
-	 */
-	~SkyboxRenderSystem() override;
 
 	void init();
-	void deinit();
 	void imageLoaded();
 	void dsHdrRender();
 

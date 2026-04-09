@@ -87,18 +87,7 @@ DeferredRenderEditorSystem::DeferredRenderEditorSystem()
 {
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", DeferredRenderEditorSystem::init);
-	ECSM_SUBSCRIBE_TO_EVENT("Deinit", DeferredRenderEditorSystem::deinit);
 }
-DeferredRenderEditorSystem::~DeferredRenderEditorSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", DeferredRenderEditorSystem::init);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", DeferredRenderEditorSystem::deinit);
-	}
-}
-
 void DeferredRenderEditorSystem::init()
 {
 	auto manager = Manager::Instance::get();
@@ -108,26 +97,7 @@ void DeferredRenderEditorSystem::init()
 	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", DeferredRenderEditorSystem::gBufferRecreate);
 	ECSM_SUBSCRIBE_TO_EVENT("EditorBarTool", DeferredRenderEditorSystem::editorBarTool);
 }
-void DeferredRenderEditorSystem::deinit()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto graphicsSystem = GraphicsSystem::Instance::get();
-		graphicsSystem->destroy(bufferDescriptorSet);
-		graphicsSystem->destroy(pbrLightingPipeline);
-		graphicsSystem->destroy(bufferPipeline);
-		graphicsSystem->destroy(blackPlaceholder);
 
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("DeferredRender", DeferredRenderEditorSystem::deferredRender);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("PreLdrRender", DeferredRenderEditorSystem::preLdrRender);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("LdrRender", DeferredRenderEditorSystem::ldrRender);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("GBufferRecreate", DeferredRenderEditorSystem::gBufferRecreate);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarTool", DeferredRenderEditorSystem::editorBarTool);
-	}
-}
-
-//**********************************************************************************************************************
 void DeferredRenderEditorSystem::deferredRender()
 {
 	if (drawMode != G_BUFFER_DRAW_MODE_LIGHTING_DEBUG)
@@ -148,7 +118,7 @@ void DeferredRenderEditorSystem::deferredRender()
 	if (!pipelineView->isReady())
 		return;
 
-	if (graphicsSystem->isCurrentRenderPassAsync())
+	if (graphicsSystem->isRenderPassAsync())
 	{
 		SET_GPU_DEBUG_LABEL_ASYNC("PBR Lighting Visualizer", INT32_MAX);
 		pipelineView->bindAsync(0, INT32_MAX);

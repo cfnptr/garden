@@ -63,10 +63,6 @@ private:
 	 * @param setSingleton set system singleton instance
 	 */
 	Cutout9SliceSystem(bool setSingleton = true);
-	/**
-	 * @brief Destroys cutout 9-slice rendering system instance.
-	 */
-	~Cutout9SliceSystem() override;
 
 	void setPushConstants(SpriteRenderComponent* spriteRenderView, PushConstants* pushConstants,
 		const f32x4x4& viewProj, const f32x4x4& model, uint32 instanceIndex, int32 threadIndex) override;

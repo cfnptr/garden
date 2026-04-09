@@ -23,29 +23,18 @@
 
 using namespace garden;
 
+//**********************************************************************************************************************
 static DescriptorSet::Uniforms getCascadesUniforms()
 {
 	auto hizBufferView = HizRenderSystem::Instance::get()->getView(1);
 	return { { "hizBuffer", DescriptorSet::Uniform(hizBufferView) } };
 }
 
-//**********************************************************************************************************************
 CsmRenderEditorSystem::CsmRenderEditorSystem()
 {
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", CsmRenderEditorSystem::init);
-	ECSM_SUBSCRIBE_TO_EVENT("Deinit", CsmRenderEditorSystem::deinit);
 }
-CsmRenderEditorSystem::~CsmRenderEditorSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", CsmRenderEditorSystem::init);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", CsmRenderEditorSystem::deinit);
-	}
-}
-
 void CsmRenderEditorSystem::init()
 {
 	auto manager = Manager::Instance::get();
@@ -53,21 +42,6 @@ void CsmRenderEditorSystem::init()
 	ECSM_SUBSCRIBE_TO_EVENT("UiRender", CsmRenderEditorSystem::uiRender);
 	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", CsmRenderEditorSystem::gBufferRecreate);
 	ECSM_SUBSCRIBE_TO_EVENT("EditorBarToolPP", CsmRenderEditorSystem::editorBarToolPP);
-}
-void CsmRenderEditorSystem::deinit()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto graphicsSystem = GraphicsSystem::Instance::get();
-		graphicsSystem->destroy(cascadesDS);
-		graphicsSystem->destroy(cascadesPipeline);
-
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("PreUiRender", CsmRenderEditorSystem::preUiRender);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("UiRender", CsmRenderEditorSystem::uiRender);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("GBufferRecreate", CsmRenderEditorSystem::gBufferRecreate);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarToolPP", CsmRenderEditorSystem::editorBarToolPP);
-	}
 }
 
 static uint32 shadowMapTypeToSize(int sizeType) noexcept
@@ -213,7 +187,7 @@ void CsmRenderEditorSystem::uiRender()
 	PushConstants pc;
 	pc.farPlanes = (float3)(cc.nearPlane / csmSystem->getFarPlanes());
 
-	if (graphicsSystem->isCurrentRenderPassAsync())
+	if (graphicsSystem->isRenderPassAsync())
 	{
 		SET_GPU_DEBUG_LABEL_ASYNC("Shadow Map Cascades", INT32_MAX);
 		pipelineView->bindAsync(0, INT32_MAX);

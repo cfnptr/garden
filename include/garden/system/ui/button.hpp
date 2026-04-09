@@ -88,10 +88,6 @@ class UiButtonSystem final : public CompAnimSystem<UiButtonComponent, UiButtonFr
 	 * @param setSingleton set system singleton instance
 	 */
 	UiButtonSystem(bool setSingleton = true);
-	/**
-	 * @brief Destroys user interface button element system instance. (UI, GUI)
-	 */
-	~UiButtonSystem() override;
 
 	void uiButtonEnter();
 	void uiButtonExit();

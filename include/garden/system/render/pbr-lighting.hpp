@@ -158,13 +158,8 @@ private:
 	 * @param setSingleton set system singleton instance
 	 */
 	PbrLightingSystem(Options options = {}, bool setSingleton = true);
-	/**
-	 * @brief Destroys PBR lighting rendering system instance. (Physically Based Rendering)
-	 */
-	~PbrLightingSystem() override;
 
 	void init();
-	void deinit();
 	void preHdrRender();
 	void gBufferRecreate();
 	void qualityChange();

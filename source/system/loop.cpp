@@ -72,19 +72,6 @@ LoopSystem::LoopSystem(bool setSingleton) : Singleton(setSingleton)
 	SetConsoleCtrlHandler(consoleHandler, TRUE);
 	#endif
 }
-LoopSystem::~LoopSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("PreInit", LoopSystem::preInit);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", LoopSystem::deinit);
-
-		manager->unregisterEvent("Input");
-		manager->unregisterEvent("Output");
-	}
-	unsetSingleton();
-}
 
 void LoopSystem::preInit()
 {

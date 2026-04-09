@@ -21,6 +21,7 @@
 
 using namespace garden;
 
+//**********************************************************************************************************************
 bool AnimationComponent::getActiveLooped(bool& isLooped) const
 {
 	if (active.empty())
@@ -35,7 +36,6 @@ bool AnimationComponent::getActiveLooped(bool& isLooped) const
 	return true;
 }
 
-//**********************************************************************************************************************
 AnimationSystem::AnimationSystem(bool animateAsync, bool setSingleton) : 
 	Singleton(setSingleton), animateAsync(animateAsync)
 {
@@ -45,17 +45,6 @@ AnimationSystem::AnimationSystem(bool animateAsync, bool setSingleton) :
 	auto manager = Manager::Instance::get();
 	manager->addGroupSystem<ISerializable>(this);
 	ECSM_SUBSCRIBE_TO_EVENT("Update", AnimationSystem::update);
-}
-AnimationSystem::~AnimationSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		manager->removeGroupSystem<ISerializable>(this);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Update", AnimationSystem::update);
-	}
-
-	unsetSingleton();
 }
 
 //**********************************************************************************************************************

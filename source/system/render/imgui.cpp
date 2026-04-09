@@ -38,6 +38,7 @@
 
 using namespace garden;
 
+//**********************************************************************************************************************
 static void setImGuiStyle()
 {
 	auto& style = ImGui::GetStyle();
@@ -108,6 +109,7 @@ static void setImGuiStyle()
 	// TODO: others undeclared
 }
 
+//**********************************************************************************************************************
 static ID<GraphicsPipeline> createPipeline()
 {
 	ID<Framebuffer> framebuffer; bool asyncRecording;
@@ -174,26 +176,11 @@ ImGuiRenderSystem::ImGuiRenderSystem(bool setSingleton,
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("PreInit", ImGuiRenderSystem::preInit);
 	ECSM_SUBSCRIBE_TO_EVENT("PostInit", ImGuiRenderSystem::postInit);
-	ECSM_SUBSCRIBE_TO_EVENT("PostDeinit", ImGuiRenderSystem::postDeinit);
 	ECSM_SUBSCRIBE_TO_EVENT("Update", ImGuiRenderSystem::update);
 
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	setImGuiStyle();
-}
-ImGuiRenderSystem::~ImGuiRenderSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		ImGui::DestroyContext();
-
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("PreInit", ImGuiRenderSystem::preInit);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("PostInit", ImGuiRenderSystem::postInit);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("PostDeinit", ImGuiRenderSystem::postDeinit);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Update", ImGuiRenderSystem::update);
-	}
-	unsetSingleton();
 }
 
 #ifdef _WIN32
@@ -299,42 +286,7 @@ void ImGuiRenderSystem::postInit()
 }
 
 //**********************************************************************************************************************
-void ImGuiRenderSystem::postDeinit()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto graphicsSystem = GraphicsSystem::Instance::get();
-		graphicsSystem->destroy(indexBuffers);
-		graphicsSystem->destroy(vertexBuffers);
-		graphicsSystem->destroy(pipeline);
-
-		if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
-		{
-			auto& io = ImGui::GetIO();
-			io.BackendRendererName = nullptr;
-			io.BackendFlags &= ~ImGuiBackendFlags_RendererHasVtxOffset;
-		}
-
-		#ifdef _WIN32
-		auto mainViewport = ImGui::GetMainViewport();
-		::SetWindowLongPtrW((HWND)mainViewport->PlatformHandleRaw, GWLP_WNDPROC, (LONG_PTR)prevWndProc);
-		prevWndProc = nullptr;
-		#endif
-
-		auto& io = ImGui::GetIO();
-		io.BackendPlatformName = nullptr;
-		io.BackendFlags &= ~(ImGuiBackendFlags_HasMouseCursors | 
-			ImGuiBackendFlags_HasSetMousePos | ImGuiBackendFlags_HasGamepad);
-
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Input", ImGuiRenderSystem::input);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("PostLdrToUI", ImGuiRenderSystem::postLdrToUI);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("UiRender", ImGuiRenderSystem::uiRender);
-	}
-}
-
-//**********************************************************************************************************************
-static ImGuiKey keyToImGuiKey(int keycode, int scancode)
+static ImGuiKey buttonToImGuiKey(KeyboardButton button, int scancode)
 {
 	IM_UNUSED(scancode);
 	switch (keycode)
@@ -764,7 +716,7 @@ void ImGuiRenderSystem::uiRender()
 	const auto indexType = sizeof(ImDrawIdx) == 2 ? IndexType::Uint16 : IndexType::Uint32;
 	auto framebufferView = graphicsSystem->get(pipelineView->getFramebuffer());
 	auto frameSize = (float2)framebufferView->getSize();
-	auto isCurrentRenderPassAsync = graphicsSystem->isCurrentRenderPassAsync();
+	auto isRenderPassAsync = graphicsSystem->isRenderPassAsync();
 	auto threadSystem = ThreadSystem::Instance::tryGet();
 
 	PushConstants pc;
@@ -772,7 +724,7 @@ void ImGuiRenderSystem::uiRender()
 	pc.translate = float2(-1.0f - drawData->DisplayPos.x * pc.scale.x,
 		-1.0f - drawData->DisplayPos.y * pc.scale.y);
 
-	if (isCurrentRenderPassAsync)
+	if (isRenderPassAsync)
 	{
 		BEGIN_GPU_DEBUG_LABEL_ASYNC("ImGui", INT32_MAX);
 		pipelineView->bindAsync(0, INT32_MAX);
@@ -813,7 +765,7 @@ void ImGuiRenderSystem::uiRender()
 			auto scissor = int4(clipMin.x, clipMin.y, clipMax.x - clipMin.x, clipMax.y - clipMin.y);
 			scissor.y = frameSize.y - (scissor.y + scissor.w);
 
-			if (isCurrentRenderPassAsync)
+			if (isRenderPassAsync)
 				pipelineView->setScissorAsync(scissor, INT32_MAX);
 			else pipelineView->setScissor(scissor);
 
@@ -841,7 +793,7 @@ void ImGuiRenderSystem::uiRender()
 				}
 			}
 
-			if (isCurrentRenderPassAsync)
+			if (isRenderPassAsync)
 			{
 				pipelineView->bindDescriptorSetAsync(descriptorSet, 0, INT32_MAX);
 				pipelineView->drawIndexedAsync(INT32_MAX, vertexBuffer, indexBuffer, indexType, 
@@ -858,7 +810,7 @@ void ImGuiRenderSystem::uiRender()
 		globalVtxOffset += cmdList->VtxBuffer.Size;
 	}
 
-	if (isCurrentRenderPassAsync)
+	if (isRenderPassAsync)
 		END_GPU_DEBUG_LABEL_ASYNC(INT32_MAX);
 	else END_GPU_DEBUG_LABEL();
 	

@@ -56,10 +56,7 @@ class DeferredRenderEditorSystem final : public System
 	bool showWindow = false;
 
 	DeferredRenderEditorSystem();
-	~DeferredRenderEditorSystem() override;
-
 	void init();
-	void deinit();
 	void deferredRender();
 	void preLdrRender();
 	void ldrRender();

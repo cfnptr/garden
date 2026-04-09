@@ -32,6 +32,7 @@ using namespace garden;
 
 // TODO: rewrite with winding arrow order CCW
 
+//**********************************************************************************************************************
 constexpr array<float3, 18> arrowVertices =
 {
 	// -X side
@@ -59,36 +60,17 @@ constexpr array<float3, 18> arrowVertices =
 	float3( 0.0f,  0.5f,  0.0f),
 };
 
-//**********************************************************************************************************************
 MeshGizmosEditorSystem::MeshGizmosEditorSystem()
 {
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", MeshGizmosEditorSystem::init);
-	ECSM_SUBSCRIBE_TO_EVENT("Deinit", MeshGizmosEditorSystem::deinit);
 }
-MeshGizmosEditorSystem::~MeshGizmosEditorSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto graphicsSystem = GraphicsSystem::Instance::get();
-		graphicsSystem->destroy(arrowVertexBuffer);
-		graphicsSystem->destroy(backGizmosPipeline);
-		graphicsSystem->destroy(frontGizmosPipeline);
-
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", MeshGizmosEditorSystem::init);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", MeshGizmosEditorSystem::deinit);
-	}
-}
-
-//**********************************************************************************************************************
 void MeshGizmosEditorSystem::init()
 {
 	auto manager = Manager::Instance::get();
 	if (DeferredRenderSystem::Instance::has())
 		ECSM_SUBSCRIBE_TO_EVENT("DsLdrRender", MeshGizmosEditorSystem::render);
-	else
-		ECSM_SUBSCRIBE_TO_EVENT("DsForwardRender", MeshGizmosEditorSystem::render);
+	else ECSM_SUBSCRIBE_TO_EVENT("DsForwardRender", MeshGizmosEditorSystem::render);
 	ECSM_SUBSCRIBE_TO_EVENT("EditorSettings", MeshGizmosEditorSystem::editorSettings);
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
@@ -118,23 +100,6 @@ void MeshGizmosEditorSystem::init()
 		settingsSystem->getColor("meshGizmos.axisColorZ", axisColorZ);
 		settingsSystem->getFloat("meshGizmos.highlightFactor", highlightFactor);
 		settingsSystem->getFloat("meshGizmos.patternScale", patternScale);
-	}
-}
-void MeshGizmosEditorSystem::deinit()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto graphicsSystem = GraphicsSystem::Instance::get();
-		graphicsSystem->destroy(arrowVertexBuffer);
-		graphicsSystem->destroy(backGizmosPipeline);
-		graphicsSystem->destroy(frontGizmosPipeline);
-
-		auto manager = Manager::Instance::get();
-		if (DeferredRenderSystem::Instance::has())
-			ECSM_UNSUBSCRIBE_FROM_EVENT("DsLdrRender", MeshGizmosEditorSystem::render);
-		else
-			ECSM_UNSUBSCRIBE_FROM_EVENT("DsForwardRender", MeshGizmosEditorSystem::render);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorSettings", MeshGizmosEditorSystem::editorSettings);
 	}
 }
 
@@ -216,12 +181,10 @@ void MeshGizmosEditorSystem::render()
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto selectedEntity = EditorRenderSystem::Instance::get()->selectedEntity;
-	if (!isEnabled || !selectedEntity || !graphicsSystem->canRender() || 
-		!graphicsSystem->camera || selectedEntity == graphicsSystem->camera)
-	{
+	if (!isEnabled || !selectedEntity || !graphicsSystem->camera || selectedEntity == graphicsSystem->camera)
 		return;
-	}
 
+	/* TODO:
 	auto inputSystem = InputSystem::Instance::get();
 	if (!inputSystem->getMouseState(MouseButton::Left))
 		dragMode = 0;
@@ -358,7 +321,7 @@ void MeshGizmosEditorSystem::render()
 			if (rigidbodyView->getMotionType() == MotionType::Kinematic)
 			{
 				rigidbodyView->moveKinematic(rigidbodyView->getPosition() + cursorTrans,
-					rigidbodyView->getRotation(), inputSystem->getDeltaTime());
+					rigidbodyView->getRotation(), (float)inputSystem->getDeltaTime());
 			}
 			else
 			{
@@ -379,6 +342,8 @@ void MeshGizmosEditorSystem::render()
 	renderGizmosMeshes(gizmosMeshes, backPipelineView, cc.viewProj, patternScale, false);
 	renderGizmosMeshes(gizmosMeshes, frontPipelineView, cc.viewProj, patternScale, true);
 	gizmosMeshes.clear();
+
+	*/
 }
 
 //**********************************************************************************************************************

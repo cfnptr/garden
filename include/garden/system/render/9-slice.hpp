@@ -104,10 +104,6 @@ protected:
 	 * @param[in] pipelinePath target rendering pipeline path
 	 */
 	NineSliceCompAnimSystem(const fs::path& pipelinePath) : NineSliceRenderSystem(pipelinePath) { }
-	/**
-	 * @brief Destroys 9-slice sprite render system instance.
-	 */
-	~NineSliceCompAnimSystem() override { }
 
 	void resetComponent(View<Component> component, bool full) override
 	{ NineSliceRenderSystem::resetComponent(component); if (full) **View<C>(component) = C(); }

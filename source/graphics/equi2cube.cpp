@@ -31,6 +31,7 @@ using namespace garden::graphics;
 using namespace math::ibl;
 
 #if GARDEN_DEBUG || defined(EQUI2CUBE)
+//**********************************************************************************************************************
 f32x4 Equi2Cube::filterCubeMap(float2 coords, const f32x4* pixels, uint2 sizeMinus1, uint32 sizeX) noexcept
 {
 	auto coords0 = min((uint2)coords, sizeMinus1);

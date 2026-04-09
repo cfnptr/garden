@@ -17,7 +17,7 @@
  * @brief Graphics resource device address pool functions.
  */
 
-// TODO: add some king of BarrierResources command to synchronize buffer reference resources.
+// TODO: add some kind of BarrierResources command to synchronize buffer reference resources.
 
 #pragma once
 #include "garden/graphics/descriptor-set.hpp"

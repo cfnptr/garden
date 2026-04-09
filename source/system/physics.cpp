@@ -436,8 +436,7 @@ void RigidbodyComponent::setInSimulation(bool inSimulation)
 
 		if (inSimulation)
 			bodyInterface->AddBody(body->GetID(), JPH::EActivation::Activate);
-		else
-			bodyInterface->RemoveBody(body->GetID());
+		else bodyInterface->RemoveBody(body->GetID());
 	}
 	
 	this->inSimulation = inSimulation;
@@ -719,8 +718,7 @@ static JPH::RVec3 calcOtherPoint(ID<Entity> otherBody, f32x4 otherBodyPoint,
 {
 	if (otherBody)
 		return toRVec3(otherBodyPoint);
-	else
-		return toRVec3(thisView->getPosition() + thisView->getRotation() * (otherBodyPoint + thisBodyPoint));
+	else return toRVec3(thisView->getPosition() + thisView->getRotation() * (otherBodyPoint + thisBodyPoint));
 }
 
 void RigidbodyComponent::createConstraint(ID<Entity> otherBody, 
@@ -753,8 +751,7 @@ void RigidbodyComponent::createConstraint(ID<Entity> otherBody,
 		{
 			if (otherBody)
 				settings.mAutoDetectPoint = true;
-			else
-				settings.mPoint2 = toRVec3(getPosition());
+			else settings.mPoint2 = toRVec3(getPosition());
 		}
 		else
 		{
@@ -904,39 +901,6 @@ PhysicsSystem::PhysicsSystem(const Properties& properties, bool setSingleton) : 
 	// based on their name or hash and is mainly used for deserialization of saved data.
 	JPH::Factory::sInstance = new JPH::Factory();
 }
-PhysicsSystem::~PhysicsSystem()
-{
-	auto manager = Manager::Instance::get();
-	shapes.clear(manager->isRunning);
-
-	if (manager->isRunning)
-	{
-		ECSM_UNSUBSCRIBE_FROM_EVENT("PreInit", PhysicsSystem::preInit);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("PostInit", PhysicsSystem::postInit);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Simulate", PhysicsSystem::simulate);
-
-		manager->unregisterEvent("Simulate");
-		manager->removeGroupSystem<ISerializable>(this);
-
-		delete (JPH::JobSystemThreadPool*)jobSystem;
-		delete (JPH::PhysicsSystem*)physicsInstance;
-		delete (GardenContactListener*)contactListener;
-		delete (GardenBodyActivationListener*)bodyListener;
-		delete (JPH::ObjectVsBroadPhaseLayerFilterTable*)objVsBpLayerFilter;
-		delete (JPH::BroadPhaseLayerInterfaceTable*)bpLayerInterface;
-		delete (JPH::ObjectLayerPairFilterTable*)objVsObjLayerFilter;
-		#ifdef JPH_DISABLE_TEMP_ALLOCATOR
-		delete (JPH::TempAllocatorMalloc*)tempAllocator;
-		#else
-		delete (JPH::TempAllocatorImpl*)tempAllocator;
-		#endif	
-		delete JPH::Factory::sInstance;
-	}
-
-	JPH::UnregisterTypes();
-	JPH::Factory::sInstance = nullptr;
-	unsetSingleton();
-}	
 
 //**********************************************************************************************************************
 void PhysicsSystem::preInit()
@@ -1215,8 +1179,7 @@ void PhysicsSystem::simulate()
 		{
 			if (stepCount > 1)
 				cascadeLagCount++;
-			else
-				cascadeLagCount = 0;
+			else cascadeLagCount = 0;
 			deltaTimeAccum /= (float)stepCount;
 		}
 
@@ -1674,17 +1637,17 @@ void PhysicsSystem::deserialize(IDeserializer& deserializer, View<Component> com
 			auto allowedDOF = AllowedDOF::All;
 			auto allowedDofValue = true;
 			if (deserializer.read("allowedDofTransX", allowedDofValue))
-			{ if (!allowedDofValue) allowedDOF &= ~AllowedDOF::TranslationX; }
+			{ if (!allowedDofValue) unsetFlags(allowedDOF, AllowedDOF::TranslationX); }
 			if (deserializer.read("allowedDofTransY", allowedDofValue))
-			{ if (!allowedDofValue) allowedDOF &= ~AllowedDOF::TranslationY; }
+			{ if (!allowedDofValue) unsetFlags(allowedDOF, AllowedDOF::TranslationY); }
 			if (deserializer.read("allowedDofTransZ", allowedDofValue))
-			{ if (!allowedDofValue) allowedDOF &= ~AllowedDOF::TranslationZ; }
+			{ if (!allowedDofValue) unsetFlags(allowedDOF, AllowedDOF::TranslationZ); }
 			if (deserializer.read("allowedDofRotX", allowedDofValue))
-			{ if (!allowedDofValue) allowedDOF &= ~AllowedDOF::RotationX; }
+			{ if (!allowedDofValue) unsetFlags(allowedDOF, AllowedDOF::RotationX); }
 			if (deserializer.read("allowedDofRotY", allowedDofValue))
-			{ if (!allowedDofValue) allowedDOF &= ~AllowedDOF::RotationY; }
+			{ if (!allowedDofValue) unsetFlags(allowedDOF, AllowedDOF::RotationY); }
 			if (deserializer.read("allowedDofRotZ", allowedDofValue))
-			{ if (!allowedDofValue) allowedDOF &= ~AllowedDOF::RotationZ; }
+			{ if (!allowedDofValue) unsetFlags(allowedDOF, AllowedDOF::RotationZ); }
 
 			componentView->setShape(shape, motionType, collisionLayer,
 				isActive, allowDynamicOrKinematic, allowedDOF);

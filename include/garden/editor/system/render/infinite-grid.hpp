@@ -35,10 +35,7 @@ private:
 	ID<DescriptorSet> descriptorSet;
 
 	InfiniteGridEditorSystem();
-	~InfiniteGridEditorSystem() override;
-
 	void init();
-	void deinit();
 	void preRender();
 	void render();
 	void editorSettings();

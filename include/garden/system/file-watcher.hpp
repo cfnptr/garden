@@ -40,7 +40,7 @@ class FileWatcherSystem final : public System, public Singleton<FileWatcherSyste
 	#if GARDEN_OS_LINUX
 	tsl::robin_map<int, fs::path> watchers;
 	#endif
-	#if GARDEN_OS_MACOS
+	#if GARDEN_OS_APPLE
 	mutex locker = {};
 	#endif
 
@@ -49,13 +49,8 @@ class FileWatcherSystem final : public System, public Singleton<FileWatcherSyste
 	 * @param setSingleton set system singleton instance
 	 */
 	FileWatcherSystem(bool setSingleton = true);
-	/**
-	 * @brief Destroys file watcher system instance.
-	 */
-	~FileWatcherSystem() override;
 
 	void preInit();
-	void postDeinit();
 	void update();
 
 	friend class ecsm::Manager;

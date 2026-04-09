@@ -33,26 +33,13 @@
 
 using namespace garden;
 
+//**********************************************************************************************************************
 DlssRenderSystem::DlssRenderSystem(bool setSingleton) : Singleton(setSingleton)
 {
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("PreInit", DlssRenderSystem::preInit);
-	ECSM_SUBSCRIBE_TO_EVENT("PostDeinit", DlssRenderSystem::postDeinit);
 	ECSM_SUBSCRIBE_TO_EVENT("PreLdrRender", DlssRenderSystem::preLdrRender);
 	ECSM_SUBSCRIBE_TO_EVENT("SwapchainRecreate", DlssRenderSystem::swapchainRecreate);
-}
-DlssRenderSystem::~DlssRenderSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("PreInit", DlssRenderSystem::preInit);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("PostDeinit", DlssRenderSystem::postDeinit);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("PreLdrRender", DlssRenderSystem::preLdrRender);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("SwapchainRecreate", DlssRenderSystem::swapchainRecreate);
-	}
-
-	unsetSingleton();
 }
 
 static NVSDK_NGX_PerfQuality_Value toNgxPerfQuality(DlssQuality quality)
@@ -338,11 +325,6 @@ void DlssRenderSystem::preInit()
 	if (!parameters)
 		return;
 	GARDEN_LOG_INFO("Initialized Nvidia DLSS.");
-}
-void DlssRenderSystem::postDeinit()
-{
-	destroyDlssFeature((NVSDK_NGX_Handle*)feature);
-	terminateDlss((NVSDK_NGX_Parameter*)parameters);
 }
 
 //**********************************************************************************************************************

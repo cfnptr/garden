@@ -26,14 +26,11 @@ class SpawnerEditorSystem final : public System
 	bool showWindow = false;
 
 	SpawnerEditorSystem();
-	~SpawnerEditorSystem() override;
-
 	void init();
-	void deinit();
 	void preUiRender();
 	void editorBarTool();
-
 	void onEntityInspector(ID<Entity> entity, bool isOpened);
+
 	friend class ecsm::Manager;
 public:
 	float inspectorPriority = 0.6f;

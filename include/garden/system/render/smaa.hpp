@@ -63,13 +63,8 @@ private:
 	 * @param setSingleton set system singleton instance
 	 */
 	SmaaRenderSystem(bool setSingleton = true);
-	/**
-	 * @brief Destroys subpixel morphological anti-aliasing rendering system instance. (FXAA)
-	 */
-	~SmaaRenderSystem() override;
 
 	void init();
-	void deinit();
 	void preUiRender();
 	void gBufferRecreate();
 	void qualityChange();

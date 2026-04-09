@@ -47,13 +47,8 @@ protected:
 	 * @brief Creates a new mesh instance rendering system instance.
 	 */
 	InstanceRenderSystem();
-	/**
-	 * @brief Destroys mesh instance rendering system instance.
-	 */
-	~InstanceRenderSystem();
 
 	virtual void init();
-	virtual void deinit();
 	virtual void gBufferRecreate();
 	
 	bool isDrawReady(int8 shadowPass) override;
@@ -107,11 +102,6 @@ class InstCompAnimSystem : public CompAnimSystem<C, F,
 	DestroyComponents, DestroyAnimationFrames>, public InstanceRenderSystem
 {
 public:
-	/**
-	 * @brief Destroys mesh instance render system instance.
-	 */
-	~InstCompAnimSystem() override { }
-
 	/**
 	 * @brief Returns system mesh component pool.
 	 */

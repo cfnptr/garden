@@ -20,6 +20,7 @@ using namespace math;
 using namespace garden;
 using namespace garden::graphics;
 
+//**********************************************************************************************************************
 static constexpr uint32 getBestVkImageCount(
 	const vk::SurfaceCapabilitiesKHR& capabilities, bool useTripleBuffering) noexcept
 {
@@ -32,7 +33,6 @@ static constexpr uint32 getBestVkImageCount(
 	return imageCount;
 }
 
-//**********************************************************************************************************************
 static vk::SurfaceFormatKHR getBestVkSurfaceFormat(
 	vk::PhysicalDevice physicalDevice, vk::SurfaceKHR surface, bool useHDR)
 {
@@ -305,11 +305,12 @@ void VulkanSwapchain::recreate(uint2 framebufferSize, bool useVsync, bool useTri
 			renderFinishedSemaphores.push_back(vulkanAPI->device.createSemaphore(semaphoreInfo));
 	}
 
-	this->framebufferSize = framebufferSize;
+	// Note: Do not reset inFlightIndex here, temporal systems use it.
+	this->imageIndex = 0;
 	this->vsync = useVsync;
 	this->tripleBuffering = useTripleBuffering;
 	this->instance = newInstance;
-	// Note: Do not reset frameIndex here, temporal systems use it.
+	return true;
 }
 
 //**********************************************************************************************************************
@@ -317,8 +318,9 @@ bool VulkanSwapchain::acquireNextImage()
 {
 	SET_CPU_ZONE_SCOPED("Next Image Acquire");
 
+	static constexpr uint64 timeout = 10000000000; // 10s
 	auto& inFlightFrame = inFlightFrames[inFlightIndex];
-	auto waitResult = vulkanAPI->device.waitForFences(1, &inFlightFrame.fence, VK_TRUE, 10000000000); // Note: Emergency 10 seconds timeout.
+	auto waitResult = vulkanAPI->device.waitForFences(1, &inFlightFrame.fence, VK_TRUE, timeout);
 	vk::detail::resultCheck(waitResult, "vk::Device::waitForFences");
 	
 	auto result = vulkanAPI->device.acquireNextImageKHR(instance, UINT64_MAX, 
@@ -340,6 +342,8 @@ bool VulkanSwapchain::acquireNextImage()
 //**********************************************************************************************************************
 void VulkanSwapchain::submit()
 {
+	SET_CPU_ZONE_SCOPED("Command Buffer Submit");
+
 	auto& inFlightFrame = inFlightFrames[inFlightIndex];
 	if (vulkanAPI->features.synchronization2)
 	{
@@ -361,6 +365,8 @@ void VulkanSwapchain::submit()
 }
 bool VulkanSwapchain::present()
 {
+	SET_CPU_ZONE_SCOPED("Front Image Present");
+
 	vk::PresentInfoKHR presentInfo(1, &renderFinishedSemaphores[imageIndex], 1, &instance, &imageIndex);
 	auto result = vulkanAPI->frameQueue.presentKHR(&presentInfo); // Note: & is required here.
 	inFlightIndex = (inFlightIndex + 1u) % inFlightCount;
@@ -509,6 +515,9 @@ void VulkanSwapchain::beginSecondaryCommandBuffers(const vector<Framebuffer::Att
 void VulkanSwapchain::endSecondaryCommandBuffers()
 {
 	SET_CPU_ZONE_SCOPED("Secondary Command Buffers End");
+
+	if (vulkanAPI->secondaryCommandBuffers.empty())
+		return;
 
 	auto threadPool = vulkanAPI->getThreadPool();
 	threadPool->addTasks([this](const ThreadPool::Task& task)

@@ -25,30 +25,11 @@ DlssRenderEditorSystem::DlssRenderEditorSystem()
 {
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", DlssRenderEditorSystem::init);
-	ECSM_SUBSCRIBE_TO_EVENT("Deinit", DlssRenderEditorSystem::deinit);
 }
-DlssRenderEditorSystem::~DlssRenderEditorSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", DlssRenderEditorSystem::init);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", DlssRenderEditorSystem::deinit);
-	}
-}
-
 void DlssRenderEditorSystem::init()
 {
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("EditorSettings", DlssRenderEditorSystem::editorSettings);
-}
-void DlssRenderEditorSystem::deinit()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarToolPP", DlssRenderEditorSystem::editorSettings);
-	}
 }
 
 void DlssRenderEditorSystem::editorSettings()

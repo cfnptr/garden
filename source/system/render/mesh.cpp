@@ -33,19 +33,7 @@ MeshRenderSystem::MeshRenderSystem(bool useOIT, bool useAsyncRecording, bool use
 {
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", MeshRenderSystem::init);
-	ECSM_SUBSCRIBE_TO_EVENT("Deinit", MeshRenderSystem::deinit);
 }
-MeshRenderSystem::~MeshRenderSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", MeshRenderSystem::init);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", MeshRenderSystem::deinit);
-	}
-}
-
-//**********************************************************************************************************************
 void MeshRenderSystem::init()
 {
 	auto manager = Manager::Instance::get();
@@ -74,44 +62,6 @@ void MeshRenderSystem::init()
 		{
 			ECSM_SUBSCRIBE_TO_EVENT("TransRender", MeshRenderSystem::transRender);
 		}
-	}
-}
-void MeshRenderSystem::deinit()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		if (ForwardRenderSystem::Instance::has())
-		{
-			ECSM_UNSUBSCRIBE_FROM_EVENT("PreForwardRender", MeshRenderSystem::preForwardRender);
-			ECSM_UNSUBSCRIBE_FROM_EVENT("ForwardRender", MeshRenderSystem::forwardRender);
-		}
-		if (DeferredRenderSystem::Instance::has())
-		{
-			ECSM_UNSUBSCRIBE_FROM_EVENT("PreDeferredRender", MeshRenderSystem::preDeferredRender);
-			ECSM_UNSUBSCRIBE_FROM_EVENT("DeferredRender", MeshRenderSystem::deferredRender);
-			ECSM_UNSUBSCRIBE_FROM_EVENT("DsHdrRender", MeshRenderSystem::dsHdrRender);
-			ECSM_UNSUBSCRIBE_FROM_EVENT("PreRefrRender", MeshRenderSystem::preRefrRender);
-			ECSM_UNSUBSCRIBE_FROM_EVENT("RefrRender", MeshRenderSystem::refrRender);
-			ECSM_UNSUBSCRIBE_FROM_EVENT("PreTransDepthRender", MeshRenderSystem::preTransDepthRender);
-			ECSM_UNSUBSCRIBE_FROM_EVENT("TransDepthRender", MeshRenderSystem::transDepthRender);
-			ECSM_UNSUBSCRIBE_FROM_EVENT("UiRender", MeshRenderSystem::uiRender);
-
-			if (hasOIT)
-			{
-				ECSM_UNSUBSCRIBE_FROM_EVENT("PreOitRender", MeshRenderSystem::preOitRender);
-				ECSM_UNSUBSCRIBE_FROM_EVENT("OitRender", MeshRenderSystem::oitRender);
-			}
-			else
-			{
-				ECSM_UNSUBSCRIBE_FROM_EVENT("TransRender", MeshRenderSystem::transRender);
-			}
-		}
-
-		for (auto buffer : sortedBuffers)
-			delete buffer;
-		for (auto buffer : unsortedBuffers)
-			delete buffer;
 	}
 }
 
@@ -1039,5 +989,4 @@ void MeshRenderSystem::uiRender()
 
 //**********************************************************************************************************************
 ModelStoreSystem::ModelStoreSystem(bool setSingleton) : Singleton(setSingleton) { }
-ModelStoreSystem::~ModelStoreSystem() { unsetSingleton(); }
 string_view ModelStoreSystem::getComponentName() const { return "Model Store"; }

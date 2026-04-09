@@ -46,10 +46,6 @@ class UiSpriteSystem final : public SpriteCompAnimSystem<
 	 * @param setSingleton set system singleton instance
 	 */
 	UiSpriteSystem(bool setSingleton = true);
-	/**
-	 * @brief Destroys user interface sprite rendering system instance. (UI)
-	 */
-	~UiSpriteSystem() override;
 
 	string_view getComponentName() const override;
 	MeshRenderType getMeshRenderType() const override;

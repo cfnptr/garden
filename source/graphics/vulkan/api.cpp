@@ -31,6 +31,7 @@
 
 using namespace garden;
 
+//**********************************************************************************************************************
 #if GARDEN_DEBUG
 constexpr vk::DebugUtilsMessageSeverityFlagsEXT debugMessageSeverity =
 	// vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo |
@@ -43,7 +44,6 @@ constexpr vk::DebugUtilsMessageTypeFlagsEXT debugMessageType =
 #endif
 
 #if GARDEN_DEBUG
-//**********************************************************************************************************************
 static vk::Bool32 VKAPI_PTR vkDebugMessengerCallback(
 	vk::DebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
 	vk::DebugUtilsMessageTypeFlagsEXT messageTypes,
@@ -1083,6 +1083,7 @@ VulkanAPI::VulkanAPI(const string& appName, const string& appDataName, Version a
 //**********************************************************************************************************************
 VulkanAPI::~VulkanAPI()
 {
+	GARDEN_ASSERT_MSG(vulkanInstance, "Graphics API is not initialized");
 	// Note: Should be set here, to destroy resources.
 	forceResourceDestroy = false;
 
@@ -1132,8 +1133,6 @@ VulkanAPI::~VulkanAPI()
 
 	instance.destroy();
 	volkFinalize();
-
-	GARDEN_ASSERT_MSG(vulkanInstance, "Graphics API is not initialized");
 	vulkanInstance = nullptr;
 }
 

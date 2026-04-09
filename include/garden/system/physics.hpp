@@ -758,10 +758,6 @@ private:
 	 * @param setSingleton set system singleton instance
 	 */
 	PhysicsSystem(const Properties& properties = {}, bool setSingleton = true);
-	/**
-	 * @brief Destroys physics system instance.
-	 */
-	~PhysicsSystem() override;
 
 	void preInit();
 	void postInit();

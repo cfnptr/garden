@@ -24,14 +24,11 @@ class PbrLightingEditorSystem final : public System
 	bool showWindow = false;
 	
 	PbrLightingEditorSystem();
-	~PbrLightingEditorSystem() override;
-
 	void init();
-	void deinit();
 	void preUiRender();
 	void editorBarToolPP();
-	
 	void onEntityInspector(ID<Entity> entity, bool isOpened);
+
 	friend class ecsm::Manager;
 public:
 	float inspectorPriority = 0.1f;

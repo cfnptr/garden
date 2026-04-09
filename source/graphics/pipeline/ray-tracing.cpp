@@ -155,13 +155,13 @@ RayTracingPipeline::RayTracingPipeline(RayTracingCreateData& createData,
 	else abort();
 }
 
-//**********************************************************************************************************************
 RayTracingPipeline::SBT RayTracingPipeline::createSBT(Buffer::Usage flags)
 {
 	auto graphicsAPI = GraphicsAPI::get();
+	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
+	GARDEN_ASSERT_MSG(currentCommandBuffer, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(currentCommandBuffer->getType() != CommandBufferType::Frame, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(!graphicsAPI->currentFramebuffer, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(graphicsAPI->currentCommandBuffer, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(graphicsAPI->currentCommandBuffer != graphicsAPI->frameCommandBuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(instance, "Ray tracing pipeline [" + debugName + "] is not ready");
 
 	SBT sbt; sbt.groupRegions.resize(variantCount);
@@ -288,21 +288,23 @@ RayTracingPipeline::SBT RayTracingPipeline::createSBT(Buffer::Usage flags)
 void RayTracingPipeline::traceRays(const SBT& sbt, uint3 count)
 {
 	auto graphicsAPI = GraphicsAPI::get();
+	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
 	GARDEN_ASSERT_MSG(sbt.buffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(!sbt.groupRegions.empty(), "Assert " + debugName);
 	GARDEN_ASSERT_MSG(areAllTrue(count > uint3::zero), "Assert " + debugName);
+	GARDEN_ASSERT_MSG(currentCommandBuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(!graphicsAPI->currentFramebuffer, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(graphicsAPI->currentCommandBuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(instance, "Ray tracing pipeline [" + debugName + "] is not ready");
 	
 	#if GARDEN_DEBUG
+	auto commandBufferType = currentCommandBuffer->getType();
 	auto bufferView = graphicsAPI->bufferPool.get(sbt.buffer);
-	if (graphicsAPI->currentCommandBuffer == graphicsAPI->transferCommandBuffer)
+	if (commandBufferType == CommandBufferType::TransferOnly)
 	{
 		GARDEN_ASSERT_MSG(hasAnyFlag(bufferView->getUsage(), Buffer::Usage::TransferQ),
 			"SBT buffer [" + bufferView->getDebugName() + "] does not have transfer queue flag");
 	}
-	if (graphicsAPI->currentCommandBuffer == graphicsAPI->computeCommandBuffer)
+	if (commandBufferType == CommandBufferType::Compute)
 	{
 		GARDEN_ASSERT_MSG(hasAnyFlag(bufferView->getUsage(), Buffer::Usage::ComputeQ),
 			"SBT buffer [" + bufferView->getDebugName() + "] does not have compute queue flag");
@@ -315,5 +317,5 @@ void RayTracingPipeline::traceRays(const SBT& sbt, uint3 count)
 	command.groupCount = count;
 	command.sbtRegions = sbt.groupRegions[currentVariant];
 	command.sbtBuffer = sbt.buffer;
-	graphicsAPI->currentCommandBuffer->addCommand(command);
+	currentCommandBuffer->addCommand(command);
 }

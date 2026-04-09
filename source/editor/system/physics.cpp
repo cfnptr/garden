@@ -28,18 +28,7 @@ PhysicsEditorSystem::PhysicsEditorSystem()
 {
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", PhysicsEditorSystem::init);
-	ECSM_SUBSCRIBE_TO_EVENT("Deinit", PhysicsEditorSystem::deinit);
 }
-PhysicsEditorSystem::~PhysicsEditorSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", PhysicsEditorSystem::init);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", PhysicsEditorSystem::deinit);
-	}
-}
-
 void PhysicsEditorSystem::init()
 {
 	auto manager = Manager::Instance::get();
@@ -62,22 +51,6 @@ void PhysicsEditorSystem::init()
 			onCharacterInspector(entity, isOpened);
 		},
 		characterInspectorPriority);
-	}
-}
-void PhysicsEditorSystem::deinit()
-{
-	delete (PhysicsDebugRenderer*)debugRenderer; // Note: Always destroying!
-
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto editorSystem = EditorRenderSystem::Instance::get();
-		editorSystem->unregisterEntityInspector<RigidbodyComponent>();
-		editorSystem->tryUnregisterEntityInspector<CharacterComponent>();
-
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("PreDsLdrRender", PhysicsEditorSystem::preDsLdrRender);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("DsLdrRender", PhysicsEditorSystem::dsLdrRender);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarTool", PhysicsEditorSystem::editorBarTool);
 	}
 }
 
@@ -630,8 +603,7 @@ static void renderConstraints(View<RigidbodyComponent> rigidbodyView, PhysicsEdi
 				auto transformView = Manager::Instance::get()->tryGet<TransformComponent>(constraint.otherBody);
 				if (transformView && !transformView->debugName.empty())
 					name = transformView->debugName;
-				else
-					name = "Entity " + to_string(*constraint.otherBody);
+				else name = "Entity " + to_string(*constraint.otherBody);
 			}
 			else
 			{
@@ -873,8 +845,7 @@ void PhysicsEditorSystem::onRigidbodyInspector(ID<Entity> entity, bool isOpened)
 	{
 		if (isActive)
 			rigidbodyView->activate();
-		else
-			rigidbodyView->deactivate();
+		else rigidbodyView->deactivate();
 	}
 	ImGui::EndDisabled();
 

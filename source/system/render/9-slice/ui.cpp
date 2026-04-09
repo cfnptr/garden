@@ -22,12 +22,6 @@ Ui9SliceSystem::Ui9SliceSystem(bool setSingleton) :
 {
 	Manager::Instance::get()->addGroupSystem<IMeshRenderSystem>(this);
 }
-Ui9SliceSystem::~Ui9SliceSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-		Manager::Instance::get()->removeGroupSystem<IMeshRenderSystem>(this);
-	unsetSingleton();
-}
 
 string_view Ui9SliceSystem::getComponentName() const
 {

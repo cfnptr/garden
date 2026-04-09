@@ -54,13 +54,8 @@ private:
 	 * @param setSingleton set system singleton instance
 	 */
 	FxaaRenderSystem(bool setSingleton = true);
-	/**
-	 * @brief Destroys fast approximate anti-aliasing rendering system instance. (FXAA)
-	 */
-	~FxaaRenderSystem() override;
 
 	void init();
-	void deinit();
 	void preUiRender();
 	void gBufferRecreate();
 	void qualityChange();

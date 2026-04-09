@@ -21,6 +21,7 @@
 
 using namespace garden;
 
+//**********************************************************************************************************************
 static ID<ImageView> getLdrCopyView(GraphicsSystem* graphicsSystem, DeferredRenderSystem* deferredSystem)
 {
 	auto gBuffer = deferredSystem->getGBuffers()[G_BUFFER_BASE_COLOR];
@@ -76,20 +77,7 @@ FxaaRenderSystem::FxaaRenderSystem(bool setSingleton) : Singleton(setSingleton)
 {
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", FxaaRenderSystem::init);
-	ECSM_SUBSCRIBE_TO_EVENT("Deinit", FxaaRenderSystem::deinit);
 }
-FxaaRenderSystem::~FxaaRenderSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", FxaaRenderSystem::init);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", FxaaRenderSystem::deinit);
-	}
-
-	unsetSingleton();
-}
-
 void FxaaRenderSystem::init()
 {
 	auto manager = Manager::Instance::get();
@@ -105,23 +93,8 @@ void FxaaRenderSystem::init()
 		settingsSystem->getFloat("fxaa.subpixelQuality", subpixelQuality);
 	}
 }
-void FxaaRenderSystem::deinit()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto graphicsSystem = GraphicsSystem::Instance::get();
-		graphicsSystem->destroy(descriptorSet);
-		graphicsSystem->destroy(framebuffer);
-		graphicsSystem->destroy(pipeline);
 
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("PreUiRender", FxaaRenderSystem::preUiRender);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("GBufferRecreate", FxaaRenderSystem::gBufferRecreate);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("QualityChange", FxaaRenderSystem::qualityChange);
-	}
-}
 
-//**********************************************************************************************************************
 void FxaaRenderSystem::preUiRender()
 {
 	SET_CPU_ZONE_SCOPED("FXAA Pre UI Render");

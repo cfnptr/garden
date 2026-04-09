@@ -26,18 +26,7 @@ AnimationEditorSystem::AnimationEditorSystem()
 {
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", AnimationEditorSystem::init);
-	ECSM_SUBSCRIBE_TO_EVENT("Deinit", AnimationEditorSystem::deinit);
 }
-AnimationEditorSystem::~AnimationEditorSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", AnimationEditorSystem::init);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", AnimationEditorSystem::deinit);
-	}
-}
-
 void AnimationEditorSystem::init()
 {
 	auto manager = Manager::Instance::get();
@@ -51,19 +40,7 @@ void AnimationEditorSystem::init()
 	},
 	inspectorPriority);
 }
-void AnimationEditorSystem::deinit()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		EditorRenderSystem::Instance::get()->unregisterEntityInspector<AnimationComponent>();
 
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("PreUiRender", AnimationEditorSystem::preUiRender);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarTool", AnimationEditorSystem::editorBarTool);
-	}
-}
-
-//**********************************************************************************************************************
 void AnimationEditorSystem::preUiRender()
 {
 	if (!showWindow)

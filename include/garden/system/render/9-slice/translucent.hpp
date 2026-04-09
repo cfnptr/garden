@@ -43,10 +43,6 @@ class Trans9SliceSystem final : public NineSliceCompAnimSystem<
 	 * @param setSingleton set system singleton instance
 	 */
 	Trans9SliceSystem(bool setSingleton = true);
-	/**
-	 * @brief Destroys translucent 9-slice rendering system instance.
-	 */
-	~Trans9SliceSystem() override;
 
 	string_view getComponentName() const override;
 	MeshRenderType getMeshRenderType() const override;

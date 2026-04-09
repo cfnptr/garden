@@ -216,10 +216,6 @@ protected:
 	 * @param setSingleton set system singleton instance
 	 */
 	DoNotSerializeSystem(bool setSingleton = true);
-	/**
-	 * @brief Destroys DoNotSerialize system instance.
-	 */
-	~DoNotSerializeSystem() override;
 
 	string_view getComponentName() const override;
 	friend class ecsm::Manager;

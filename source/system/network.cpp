@@ -63,14 +63,6 @@ NetworkSystem::NetworkSystem(bool setSingleton) : Singleton(setSingleton)
 	if (!initializeNetwork())
 		GardenError("Failed to initialize network subsystems.");
 }
-NetworkSystem::~NetworkSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-		Manager::Instance::get()->removeGroupSystem<ISerializable>(this);
-
-	terminateNetwork();
-	unsetSingleton();
-}
 
 void NetworkSystem::resetComponent(View<Component> component, bool full)
 {

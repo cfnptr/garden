@@ -77,13 +77,8 @@ private:
 	 * @param setSingleton set system singleton instance
 	 */
 	AutoExposureSystem(bool setSingleton = true);
-	/**
-	 * @brief Destroys automatic exposure (AE) rendering system instance. (Eye light adaptation)
-	 */
-	~AutoExposureSystem() override;
 
 	void init();
-	void deinit();
 	void render();
 	void gBufferRecreate();
 

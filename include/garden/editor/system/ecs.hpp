@@ -24,10 +24,7 @@ class EcsEditorSystem final : public System
 	bool showWindow = false;
 
 	EcsEditorSystem();
-	~EcsEditorSystem() override;
-
 	void init();
-	void deinit();
 	void preUiRender();
 	void editorBarTool();
 

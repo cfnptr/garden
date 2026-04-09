@@ -20,7 +20,9 @@
 
 using namespace garden;
 
-static void setUiButtonAnimation(ID<Entity> element, string_view animationPath, string_view currState, string_view newState)
+//**********************************************************************************************************************
+static void setUiButtonAnimation(ID<Entity> element, string_view animationPath, 
+	string_view currState, string_view newState)
 {
 	if (animationPath.empty())
 		return;
@@ -65,6 +67,7 @@ void UiButtonComponent::setEnabled(bool state)
 	enabled = state;
 }
 
+//**********************************************************************************************************************
 UiButtonSystem::UiButtonSystem(bool setSingleton) : Singleton(setSingleton)
 {
 	auto manager = Manager::Instance::get();
@@ -79,26 +82,7 @@ UiButtonSystem::UiButtonSystem(bool setSingleton) : Singleton(setSingleton)
 	ECSM_SUBSCRIBE_TO_EVENT("UiButtonExit", UiButtonSystem::uiButtonExit);
 	ECSM_SUBSCRIBE_TO_EVENT("UiButtonStay", UiButtonSystem::uiButtonStay);
 }
-UiButtonSystem::~UiButtonSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		manager->removeGroupSystem<ISerializable>(this);
-		manager->removeGroupSystem<IAnimatable>(this);
 
-		ECSM_UNSUBSCRIBE_FROM_EVENT("UiButtonEnter", UiButtonSystem::uiButtonEnter);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("UiButtonExit", UiButtonSystem::uiButtonExit);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("UiButtonStay", UiButtonSystem::uiButtonStay);
-
-		manager->unregisterEvent("UiButtonEnter");
-		manager->unregisterEvent("UiButtonExit");
-		manager->unregisterEvent("UiButtonStay");
-	}
-	unsetSingleton();
-}
-
-//**********************************************************************************************************************
 void UiButtonSystem::uiButtonEnter()
 {
 	auto hoveredElement = UiTriggerSystem::Instance::get()->getHovered();

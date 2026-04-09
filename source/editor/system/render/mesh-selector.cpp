@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "garden/editor/system/render/mesh-selector.hpp"
-#include "garden/system/render/deferred.hpp"
 
 #if GARDEN_EDITOR
 #include "garden/system/ui/trigger.hpp"
@@ -28,49 +27,24 @@ MeshSelectorEditorSystem::MeshSelectorEditorSystem()
 {
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", MeshSelectorEditorSystem::init);
-	ECSM_SUBSCRIBE_TO_EVENT("Deinit", MeshSelectorEditorSystem::deinit);
 }
-MeshSelectorEditorSystem::~MeshSelectorEditorSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", MeshSelectorEditorSystem::init);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", MeshSelectorEditorSystem::deinit);
-	}
-}
-
 void MeshSelectorEditorSystem::init()
 {
 	auto manager = Manager::Instance::get();
 	if (DeferredRenderSystem::Instance::has())
 		ECSM_SUBSCRIBE_TO_EVENT("DsLdrRender", MeshSelectorEditorSystem::render);
-	else
-		ECSM_SUBSCRIBE_TO_EVENT("DsForwardRender", MeshSelectorEditorSystem::render);
+	else ECSM_SUBSCRIBE_TO_EVENT("DsForwardRender", MeshSelectorEditorSystem::render);
 	ECSM_SUBSCRIBE_TO_EVENT("EditorSettings", MeshSelectorEditorSystem::editorSettings);
 
 	auto settingsSystem = SettingsSystem::Instance::tryGet();
 	if (settingsSystem)
 		settingsSystem->getColor("meshSelector.aabbColor", aabbColor);
 }
-void MeshSelectorEditorSystem::deinit()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		if (DeferredRenderSystem::Instance::has())
-			ECSM_UNSUBSCRIBE_FROM_EVENT("DsLdrRender", MeshSelectorEditorSystem::render);
-		else
-			ECSM_UNSUBSCRIBE_FROM_EVENT("DsForwardRender", MeshSelectorEditorSystem::render);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorSettings", MeshSelectorEditorSystem::editorSettings);
-	}
-}
 
-//**********************************************************************************************************************
 void MeshSelectorEditorSystem::render()
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	if (!isEnabled || !graphicsSystem->camera || !graphicsSystem->canRender())
+	if (!isEnabled || !graphicsSystem->camera)
 		return;
 
 	auto manager = Manager::Instance::get();
@@ -143,8 +117,7 @@ void MeshSelectorEditorSystem::render()
 
 		if (newSelected)
 			editorSystem->selectedEntity = newSelected;
-		else
-			editorSystem->selectedEntity = {};
+		else editorSystem->selectedEntity = {};
 	}
 
 	if (isSkipped)

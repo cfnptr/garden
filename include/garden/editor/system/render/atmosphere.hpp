@@ -22,12 +22,9 @@ namespace garden
 class AtmosphereEditorSystem final : public System
 {
 	bool showWindow = false;
-
 	AtmosphereEditorSystem();
-	~AtmosphereEditorSystem() override;
 
 	void init();
-	void deinit();
 	void preUiRender();
 	void editorBarToolPP();
 	

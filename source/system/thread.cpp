@@ -31,16 +31,6 @@ ThreadSystem::ThreadSystem(bool setSingleton) : Singleton(setSingleton),
 	ECSM_SUBSCRIBE_TO_EVENT("PreInit", ThreadSystem::preInit);
 	ECSM_SUBSCRIBE_TO_EVENT("PreDeinit", ThreadSystem::preDeinit);
 }
-ThreadSystem::~ThreadSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("PreInit", ThreadSystem::preInit);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("PreDeinit", ThreadSystem::preDeinit);
-	}
-	unsetSingleton();
-}
 
 void ThreadSystem::preInit()
 {

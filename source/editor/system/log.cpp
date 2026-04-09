@@ -25,37 +25,14 @@ LogEditorSystem::LogEditorSystem(bool setSingleton) : Singleton(setSingleton)
 {
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", LogEditorSystem::init);
-	ECSM_SUBSCRIBE_TO_EVENT("Deinit", LogEditorSystem::deinit);
 }
-LogEditorSystem::~LogEditorSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", LogEditorSystem::init);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", LogEditorSystem::deinit);
-	}
-
-	unsetSingleton();
-}
-
 void LogEditorSystem::init()
 {
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("PreUiRender", LogEditorSystem::preUiRender);
 	ECSM_SUBSCRIBE_TO_EVENT("EditorBarTool", LogEditorSystem::editorBarTool);
 }
-void LogEditorSystem::deinit()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("PreUiRender", LogEditorSystem::preUiRender);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("EditorBarTool", LogEditorSystem::editorBarTool);
-	}
-}
 
-//**********************************************************************************************************************
 static void updateTextBuffer(string& textBuffer,
 	stringstream& logBuffer, string& logLine, const string& searchString, bool searchCaseSensitive,
 	bool includeFatal, bool includeError, bool includeWarn, bool includeInfo, bool includeDebug, bool includeTrace)

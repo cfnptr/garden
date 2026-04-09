@@ -201,13 +201,8 @@ private:
 	 * @param setSingleton set system singleton instance
 	 */
 	AtmosphereRenderSystem(bool setSingleton = true);
-	/**
-	 * @brief Destroys physically based atmosphere rendering system instance. (Sky)
-	 */
-	~AtmosphereRenderSystem() override;
 
 	void init();	
-	void deinit();
 	void preDeferredRender();
 	void hdrRender();
 	void gBufferRecreate();

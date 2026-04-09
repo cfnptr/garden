@@ -1,12 +1,9 @@
 #!/bin/bash
 cd "$(dirname "$BASH_SOURCE")"
 
-cmake --version > /dev/null
-status=$?
-
-if [ $status -ne 0 ]; then
+if ! cmake --version &> /dev/null; then
     echo "Failed to get CMake version, please check if it's installed."
-    exit $status
+    exit 1
 fi
 
 echo "Configuring project..."

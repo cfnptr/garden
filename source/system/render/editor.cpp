@@ -46,32 +46,18 @@ EditorRenderSystem::EditorRenderSystem(bool setSingleton) : Singleton(setSinglet
 	manager->registerEvent("EditorBarToolPP");
 	manager->registerEvent("EditorBar");
 	manager->registerEvent("EditorSettings");
-
 	ECSM_SUBSCRIBE_TO_EVENT("Init", EditorRenderSystem::init);
-	ECSM_SUBSCRIBE_TO_EVENT("Deinit", EditorRenderSystem::deinit);
 }
-EditorRenderSystem::~EditorRenderSystem()
+void EditorRenderSystem::init()
 {
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", EditorRenderSystem::init);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", EditorRenderSystem::deinit);
+	auto manager = Manager::Instance::get();
+	ECSM_SUBSCRIBE_TO_EVENT("PreUiRender", EditorRenderSystem::preUiRender);
 
-		manager->unregisterEvent("EditorPlayStart");
-		manager->unregisterEvent("EditorPlayStop");
-		manager->unregisterEvent("EditorBarFile");
-		manager->unregisterEvent("EditorBarCreate");
-		manager->unregisterEvent("EditorBarTool");
-		manager->unregisterEvent("EditorBarToolPP");
-		manager->unregisterEvent("EditorBar");
-		manager->unregisterEvent("EditorSettings");
-	}
-
-	unsetSingleton();
+	auto settingsSystem = SettingsSystem::Instance::get();
+	if (settingsSystem)
+		settingsSystem->getFloat("editor.unitScale", unitScale);
 }
 
-//**********************************************************************************************************************
 static void renderSceneSelector(EditorRenderSystem* editorSystem, fs::path& exportScenePath)
 {
 	static const vector<string_view> extensions = { ".scene" };
@@ -134,8 +120,7 @@ void EditorRenderSystem::showMainMenuBar()
 		const auto& event = manager->getEvent("EditorBarCreate");
 		if (event.hasSubscribers())
 			event.run();
-		else
-			ImGui::TextDisabled("Nothing here");
+		else ImGui::TextDisabled("Nothing here");
 		ImGui::EndMenu();
 	}
 	if (ImGui::BeginMenu("Tools"))
@@ -555,6 +540,7 @@ static void renderAddComponent(const EditorRenderSystem::EntityInspectors& entit
 	wordNodes.clear();
 }
 
+//**********************************************************************************************************************
 static bool renderInspectorWindowPopup(const EditorRenderSystem::EntityInspectors& 
 	entityInspectors, ID<Entity>& selectedEntity)
 {

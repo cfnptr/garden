@@ -7,9 +7,6 @@
 [submodule "libraries/logy"]
 	path = libraries/logy
 	url = https://github.com/cfnptr/logy
-[submodule "libraries/glfw"]
-	path = libraries/glfw
-	url = https://github.com/glfw/glfw
 [submodule "libraries/vma"]
 	path = libraries/vma
 	url = https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator
@@ -49,9 +46,6 @@
 [submodule "libraries/tracy"]
 	path = libraries/tracy
 	url = https://github.com/wolfpld/tracy
-[submodule "libraries/plan"]
-	path = libraries/plan
-	url = https://github.com/cfnptr/plan
 [submodule "libraries/volk"]
 	path = libraries/volk
 	url = https://github.com/zeux/volk

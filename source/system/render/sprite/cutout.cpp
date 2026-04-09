@@ -22,12 +22,6 @@ CutoutSpriteSystem::CutoutSpriteSystem(bool setSingleton) :
 {
 	Manager::Instance::get()->addGroupSystem<IMeshRenderSystem>(this);
 }
-CutoutSpriteSystem::~CutoutSpriteSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-		Manager::Instance::get()->removeGroupSystem<IMeshRenderSystem>(this);
-	unsetSingleton();
-}
 
 void CutoutSpriteSystem::setPushConstants(SpriteRenderComponent* spriteRenderView, PushConstants* pushConstants,
 	const f32x4x4& viewProj, const f32x4x4& model, uint32 instanceIndex, int32 threadIndex)

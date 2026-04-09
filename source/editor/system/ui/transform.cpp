@@ -28,20 +28,7 @@ UiTransformEditorSystem::UiTransformEditorSystem(bool setSingleton) : Singleton(
 {
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", UiTransformEditorSystem::init);
-	ECSM_SUBSCRIBE_TO_EVENT("Deinit", UiTransformEditorSystem::deinit);
 }
-UiTransformEditorSystem::~UiTransformEditorSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", UiTransformEditorSystem::init);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", UiTransformEditorSystem::deinit);
-	}
-
-	unsetSingleton();
-}
-
 void UiTransformEditorSystem::init()
 {
 	EditorRenderSystem::Instance::get()->registerEntityInspector<UiTransformComponent>(
@@ -50,11 +37,6 @@ void UiTransformEditorSystem::init()
 		onEntityInspector(entity, isOpened);
 	},
 	inspectorPriority);
-}
-void UiTransformEditorSystem::deinit()
-{
-	if (Manager::Instance::get()->isRunning)
-		EditorRenderSystem::Instance::get()->unregisterEntityInspector<UiTransformComponent>();
 }
 
 void UiTransformEditorSystem::onEntityDestroy(ID<Entity> entity)

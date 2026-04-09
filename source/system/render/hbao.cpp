@@ -25,6 +25,7 @@
 
 using namespace garden;
 
+//**********************************************************************************************************************
 static ID<Image> createNoiseImage(GraphicsSystem* graphicsSystem)
 {
 	std::mt19937 rmt;
@@ -45,7 +46,6 @@ static ID<Image> createNoiseImage(GraphicsSystem* graphicsSystem)
 	return image;
 }
 
-//**********************************************************************************************************************
 static ID<GraphicsPipeline> createPipeline(uint32 stepCount)
 {
 	auto pbrLightingSystem = PbrLightingSystem::Instance::get();
@@ -76,20 +76,7 @@ HbaoRenderSystem::HbaoRenderSystem(bool setSingleton) : Singleton(setSingleton)
 {
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", HbaoRenderSystem::init);
-	ECSM_SUBSCRIBE_TO_EVENT("Deinit", HbaoRenderSystem::deinit);
 }
-HbaoRenderSystem::~HbaoRenderSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", HbaoRenderSystem::init);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", HbaoRenderSystem::deinit);
-	}
-
-	unsetSingleton();
-}
-
 void HbaoRenderSystem::init()
 {
 	auto manager = Manager::Instance::get();
@@ -101,23 +88,7 @@ void HbaoRenderSystem::init()
 	if (settingsSystem)
 		settingsSystem->getBool("hbao.enabled", isEnabled);
 }
-void HbaoRenderSystem::deinit()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto graphicsSystem = GraphicsSystem::Instance::get();
-		graphicsSystem->destroy(descriptorSet);
-		graphicsSystem->destroy(pipeline);
-		graphicsSystem->destroy(noiseImage);
 
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("PreAoRender", HbaoRenderSystem::preAoRender);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("AoRender", HbaoRenderSystem::aoRender);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("GBufferRecreate", HbaoRenderSystem::gBufferRecreate);
-	}
-}
-
-//**********************************************************************************************************************
 void HbaoRenderSystem::preAoRender()
 {
 	SET_CPU_ZONE_SCOPED("HBAO Pre AO Render");
@@ -211,12 +182,12 @@ void HbaoRenderSystem::aoRender()
 	PbrLightingSystem::Instance::get()->markAnyAO();
 }
 
+//**********************************************************************************************************************
 void HbaoRenderSystem::gBufferRecreate()
 {
 	GraphicsSystem::Instance::get()->destroy(descriptorSet);
 }
 
-//**********************************************************************************************************************
 void HbaoRenderSystem::setConsts(uint32 stepCount)
 {
 	if (this->stepCount == stepCount)

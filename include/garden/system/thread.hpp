@@ -43,10 +43,6 @@ class ThreadSystem final : public System, public Singleton<ThreadSystem>
 	 * @param setSingleton set system singleton instance
 	 */
 	ThreadSystem(bool setSingleton = true);
-	/**
-	 * @brief Destroys thread system instance.
-	 */
-	~ThreadSystem() override;
 
 	void preInit();
 	void preDeinit();

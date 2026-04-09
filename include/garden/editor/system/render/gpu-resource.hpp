@@ -36,10 +36,7 @@ private:
 	TabType openNextTab = TabType::None;
 
 	GpuResourceEditorSystem();
-	~GpuResourceEditorSystem() override;
-
 	void init();
-	void deinit();
 	void preUiRender();
 	void editorBarTool();
 

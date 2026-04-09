@@ -129,13 +129,8 @@ private:
 	 * @param setSingleton set system singleton instance
 	 */
 	DeferredRenderSystem(Options options = {}, bool setSingleton = true);
-	/**
-	 * @brief Destroys deferred rendering system instance.
-	 */
-	~DeferredRenderSystem() override;
 
 	void init();
-	void deinit();
 	void render();
 	void swapchainRecreate();
 

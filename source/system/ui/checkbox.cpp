@@ -19,6 +19,7 @@
 
 using namespace garden;
 
+//**********************************************************************************************************************
 static void setUiCheckboxAnimation(ID<Entity> element, string_view animationPath, bool state)
 {
 	if (animationPath.empty())
@@ -60,6 +61,7 @@ void UiCheckboxComponent::setChecked(bool state)
 	checked = state;
 }
 
+//**********************************************************************************************************************
 UiCheckboxSystem::UiCheckboxSystem(bool setSingleton) : Singleton(setSingleton)
 {
 	auto manager = Manager::Instance::get();
@@ -69,21 +71,7 @@ UiCheckboxSystem::UiCheckboxSystem(bool setSingleton) : Singleton(setSingleton)
 	manager->registerEvent("UiCheckboxClick");
 	ECSM_SUBSCRIBE_TO_EVENT("UiCheckboxClick", UiCheckboxSystem::uiCheckboxClick);
 }
-UiCheckboxSystem::~UiCheckboxSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		manager->removeGroupSystem<ISerializable>(this);
-		manager->removeGroupSystem<IAnimatable>(this);
 
-		ECSM_UNSUBSCRIBE_FROM_EVENT("UiCheckboxClick", UiCheckboxSystem::uiCheckboxClick);
-		manager->unregisterEvent("UiCheckboxClick");
-	}
-	unsetSingleton();
-}
-
-//**********************************************************************************************************************
 void UiCheckboxSystem::uiCheckboxClick()
 {
 	auto manager = Manager::Instance::get();

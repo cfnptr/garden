@@ -17,6 +17,7 @@
 
 using namespace garden;
 
+//**********************************************************************************************************************
 uint64 NineSliceRenderSystem::getBaseInstanceDataSize()
 {
 	return (uint64)sizeof(NineSliceInstanceData);
@@ -42,7 +43,6 @@ void NineSliceRenderSystem::setInstanceData(SpriteRenderComponent* spriteRenderV
 	nineSliceData->windowBorder = nineSliceView->windowBorder / imageSize * scale;
 }
 
-//**********************************************************************************************************************
 void NineSliceRenderSystem::serialize(ISerializer& serializer, const View<Component> component)
 {
 	SpriteRenderSystem::serialize(serializer, component);
@@ -60,6 +60,7 @@ void NineSliceRenderSystem::deserialize(IDeserializer& deserializer, View<Compon
 	deserializer.read("windowBorder", componentView->windowBorder);
 }
 
+//**********************************************************************************************************************
 void NineSliceRenderSystem::serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame)
 {
 	SpriteRenderSystem::serializeAnimation(serializer, frame);

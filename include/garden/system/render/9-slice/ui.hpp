@@ -46,10 +46,6 @@ class Ui9SliceSystem final : public NineSliceCompAnimSystem<
 	 * @param setSingleton set system singleton instance
 	 */
 	Ui9SliceSystem(bool setSingleton = true);
-	/**
-	 * @brief Destroys user interface 9-slice rendering system instance. (UI)
-	 */
-	~Ui9SliceSystem() override;
 
 	string_view getComponentName() const override;
 	MeshRenderType getMeshRenderType() const override;

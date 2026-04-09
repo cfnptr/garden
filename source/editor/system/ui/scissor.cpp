@@ -24,20 +24,7 @@ UiScissorEditorSystem::UiScissorEditorSystem(bool setSingleton) : Singleton(setS
 {
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", UiScissorEditorSystem::init);
-	ECSM_SUBSCRIBE_TO_EVENT("Deinit", UiScissorEditorSystem::deinit);
 }
-UiScissorEditorSystem::~UiScissorEditorSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", UiScissorEditorSystem::init);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", UiScissorEditorSystem::deinit);
-	}
-
-	unsetSingleton();
-}
-
 void UiScissorEditorSystem::init()
 {
 	EditorRenderSystem::Instance::get()->registerEntityInspector<UiScissorComponent>(
@@ -47,13 +34,7 @@ void UiScissorEditorSystem::init()
 	},
 	inspectorPriority);
 }
-void UiScissorEditorSystem::deinit()
-{
-	if (Manager::Instance::get()->isRunning)
-		EditorRenderSystem::Instance::get()->unregisterEntityInspector<UiScissorComponent>();
-}
 
-//**********************************************************************************************************************
 void UiScissorEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 {
 	if (!isOpened)
@@ -77,6 +58,6 @@ void UiScissorEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 		ImGui::EndPopup();
 	}
 
-	ImGui::Checkbox("Use Itself", &uiLabelView->useItsels);
+	ImGui::Checkbox("Use Itself", &uiLabelView->useItself);
 }
 #endif

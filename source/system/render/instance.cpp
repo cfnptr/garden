@@ -16,6 +16,7 @@
 
 using namespace garden;
 
+//**********************************************************************************************************************
 static void createInstanceBuffers(uint64 bufferSize, DescriptorSet::Buffers& instanceBuffers, 
 	bool isShadow, InstanceRenderSystem* system)
 {
@@ -43,49 +44,17 @@ static void createInstanceBuffers(uint64 bufferSize, DescriptorSet::Buffers& ins
 	}
 }
 
-//**********************************************************************************************************************
 InstanceRenderSystem::InstanceRenderSystem()
 {
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", InstanceRenderSystem::init);
-	ECSM_SUBSCRIBE_TO_EVENT("Deinit", InstanceRenderSystem::deinit);
 }
-InstanceRenderSystem::~InstanceRenderSystem()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Init", InstanceRenderSystem::init);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Deinit", InstanceRenderSystem::deinit);
-	}
-}
-
 void InstanceRenderSystem::init()
 {
 	auto manager = Manager::Instance::get();
 	if (manager->hasEvent("GBufferRecreate"))
 		ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", InstanceRenderSystem::gBufferRecreate);
-	else
-		ECSM_SUBSCRIBE_TO_EVENT("SwapchainRecreate", InstanceRenderSystem::gBufferRecreate);
-}
-void InstanceRenderSystem::deinit()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto graphicsSystem = GraphicsSystem::Instance::get();
-		graphicsSystem->destroy(shadowDescriptorSet);
-		graphicsSystem->destroy(baseDescriptorSet);
-		graphicsSystem->destroy(shadowInstanceBuffers);
-		graphicsSystem->destroy(baseInstanceBuffers);
-		graphicsSystem->destroy(shadowPipeline);
-		graphicsSystem->destroy(basePipeline);
-
-		auto manager = Manager::Instance::get();
-		if (manager->hasEvent("GBufferRecreate"))
-			ECSM_UNSUBSCRIBE_FROM_EVENT("GBufferRecreate", InstanceRenderSystem::gBufferRecreate);
-		else
-			ECSM_UNSUBSCRIBE_FROM_EVENT("SwapchainRecreate", InstanceRenderSystem::gBufferRecreate);
-	}
+	else ECSM_SUBSCRIBE_TO_EVENT("SwapchainRecreate", InstanceRenderSystem::gBufferRecreate);
 }
 
 //**********************************************************************************************************************
