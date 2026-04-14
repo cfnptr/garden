@@ -47,6 +47,7 @@ class FpvControllerSystem final : public System, public Singleton<FpvControllerS
 
 	void init();
 	void update();
+	void swapchainRecreate();
 	
 	friend class ecsm::Manager;
 public:

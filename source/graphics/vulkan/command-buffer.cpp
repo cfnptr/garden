@@ -54,7 +54,7 @@ VulkanCommandBuffer::VulkanCommandBuffer(VulkanAPI* vulkanAPI, CommandBufferType
 			case CommandBufferType::TransferOnly: name = "commandBuffer.transferOnly"; break;
 			case CommandBufferType::Compute: name = "commandBuffer.compute"; break;
 			case CommandBufferType::AsyncCompute: name = "commandBuffer.asyncCompute"; break;
-			case CommandBufferType::Frame: break;
+			case CommandBufferType::Frame: break; // Note: Instance is dynamic for a frame.
 			default: abort();
 		}
 
@@ -410,8 +410,7 @@ void VulkanCommandBuffer::submit()
 			queue = vulkanAPI->transferQueue;
 		else if (type == CommandBufferType::Compute)
 			queue = vulkanAPI->computeQueue;
-		else
-			queue = vulkanAPI->graphicsQueue;
+		else queue = vulkanAPI->graphicsQueue;
 	}
 
 	vk::CommandBufferBeginInfo beginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);

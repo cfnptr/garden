@@ -69,13 +69,11 @@ static void calcJitterOffsets(vector<float2>& jitterOffsets,
 }
 
 //**********************************************************************************************************************
-GraphicsSystem::GraphicsSystem(uint2 windowSize, bool isFullscreen, bool isDecorated, bool useVsync, 
-	bool useTripleBuffering, bool useAsyncRecording, bool setSingleton) : Singleton(setSingleton),
-	asyncRecording(useAsyncRecording), useVsync(useVsync), useTripleBuffering(useTripleBuffering)
+GraphicsSystem::GraphicsSystem(uint2 windowSize, bool isFullscreen, bool isDecorated,
+	bool useAsyncRecording, bool setSingleton) : Singleton(setSingleton), asyncRecording(useAsyncRecording)
 {
 	auto manager = Manager::Instance::get();
-	manager->registerEventAfter("Render", "Update");
-	manager->registerEventAfter("Present", "Render");
+	manager->registerEvent("Render");
 	manager->registerEvent("SwapchainRecreate");
 	manager->registerEvent("QualityChange");
 
@@ -133,11 +131,16 @@ void GraphicsSystem::preInit()
 {
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("Input", GraphicsSystem::input);
-	ECSM_SUBSCRIBE_TO_EVENT("Present", GraphicsSystem::present);
+	ECSM_SUBSCRIBE_TO_EVENT("Output", GraphicsSystem::present);
 
-	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+	auto graphicsAPI = GraphicsAPI::get();
+	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
 		logVkGpuInfo();
 	else abort();
+
+	auto inputSystem = InputSystem::Instance::get();
+	auto displayRefreshRate = inputSystem->getDisplayRefreshRate();
+	if (displayRefreshRate > 0) maxFrameRate = displayRefreshRate;
 
 	auto settingsSystem = SettingsSystem::Instance::tryGet();
 	if (settingsSystem)
@@ -147,17 +150,15 @@ void GraphicsSystem::preInit()
 		settingsSystem->getInt("render.maxFrameRate", maxFrameRate);
 		settingsSystem->getType("render.quality", quality, graphicsQualityNames, (uint32)GraphicsQuality::Count);
 	}
+
+	if (maxFrameRate != inputSystem->getDisplayRefreshRate())
+		GARDEN_LOG_WARN("Different display refresh rate and max frame rate!");
+	if (useVsync && graphicsAPI->getDisplayProtocol() == DisplayProtocol::Wayland)
+		GARDEN_LOG_WARN("You should't use V-Sync with Wayland display server!");
 }
 void GraphicsSystem::preDeinit()
 {
 	GraphicsAPI::get()->waitIdle();
-
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Input", GraphicsSystem::input);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Present", GraphicsSystem::present);
-	}
 }
 
 //**********************************************************************************************************************
@@ -182,15 +183,6 @@ static f32x4x4 calcRelativeView(const TransformComponent* transform)
 	}
 
 	return view;
-}
-
-static void updateCurrentFramebuffer(GraphicsAPI* graphicsAPI, 
-	ID<Framebuffer> swapchainFramebuffer, uint2 framebufferSize)
-{
-	auto framebufferView = graphicsAPI->framebufferPool.get(swapchainFramebuffer);
-	auto swapchainView = graphicsAPI->imagePool.get(graphicsAPI->getSwapchain()->getCurrentImage());
-	FramebufferExt::getSize(**framebufferView) = framebufferSize;
-	FramebufferExt::getColorAttachments(**framebufferView)[0].imageView = swapchainView->getView();
 }
 
 //**********************************************************************************************************************
@@ -273,16 +265,22 @@ void GraphicsSystem::prepareCommonConstants()
 	commonConstants.windDir = normalize(windDirection);
 }
 
-static void limitFrameRate(double beginSleepClock, uint16 maxFrameRate)
+static void limitFrameRate(double beginSleepClock, uint32 maxFrameRate)
 {
 	if (maxFrameRate == 0)
 		return;
 
 	auto deltaClock = mpio::OS::getCurrentClock() - beginSleepClock;
-	auto delayTime = (1.0 / maxFrameRate) - deltaClock - 0.001;
+	auto delayTime = (1.0 / maxFrameRate) - deltaClock;
+
+	#if GARDEN_OS_WINDOWS
+	delayTime -= 0.001;
+	#else
+	delayTime -= 0.0005;
+	#endif
+
 	if (delayTime > 0.0)
 		mpmt::Thread::sleep(delayTime);
-	// TODO: use loop with empty cycles to improve sleep precision.
 }
 
 static void disposeGpuResources(GraphicsAPI* graphicsAPI)
@@ -333,7 +331,7 @@ void GraphicsSystem::update()
 		SET_CPU_ZONE_SCOPED("Swapchain Recreate");
 
 		swapchain->recreate(inputSystem->getFramebufferSize(), useVsync, useTripleBuffering);
-		outOfDateSwapchain = false; nvMaxFrameRate = UINT16_MAX;
+		outOfDateSwapchain = false; nvMaxFrameRate = UINT32_MAX;
 
 		auto frameSize = swapchain->getFramebufferSize();
 		GARDEN_LOG_INFO("Recreated swapchain. (" + to_string(frameSize.x) + "x" +
@@ -346,7 +344,7 @@ void GraphicsSystem::update()
 		if (vulkanAPI->features.nvLowLatency && (nvLowLatency != useLowLatency || nvMaxFrameRate != maxFrameRate))
 		{
 			vk::LatencySleepModeInfoNV sleepModeInfo(useLowLatency, useLowLatency, 
-				useVsync ? 0u : 1000000u / (uint32)maxFrameRate);
+				useVsync ? 0u : 1000000u / maxFrameRate);
 			vulkanAPI->device.setLatencySleepModeNV(vulkanAPI->vulkanSwapchain->getInstance(), sleepModeInfo);
 			nvLowLatency = useLowLatency; nvMaxFrameRate = maxFrameRate; 
 		}
@@ -362,9 +360,13 @@ void GraphicsSystem::update()
 			GARDEN_LOG_INFO("Out of date swapchain. [Acquire]");
 		}
 
-		updateCurrentFramebuffer(graphicsAPI, swapchainFramebuffer, swapchain->getFramebufferSize());
+		auto framebufferView = graphicsAPI->framebufferPool.get(swapchainFramebuffer);
+		auto swapchainView = graphicsAPI->imagePool.get(graphicsAPI->getSwapchain()->getCurrentImage());
+		FramebufferExt::getColorAttachments(**framebufferView)[0].imageView = swapchainView->getView();
+		FramebufferExt::getSize(**framebufferView) = swapchain->getFramebufferSize();
 	}
 	
+	auto manager = Manager::Instance::get();
 	if (swapchainRecreated || forceRecreateSwapchain)
 	{
 		SET_CPU_ZONE_SCOPED("Swapchain Recreate");
@@ -379,25 +381,28 @@ void GraphicsSystem::update()
 			forceRecreateSwapchain = false;
 		}
 
-		Manager::Instance::get()->runEvent("SwapchainRecreate");
+		// Note: Do not force resource dispose! It breaks already written stagings.
+		manager->runEvent("SwapchainRecreate");
 		swapchainChanges = {};
-
-		// Note: Do not force resource dispose!
-		//       It breaks already written stagings.
-	}
-
-	if (camera && isFramebufferSizeValid)
-	{
-		prepareCommonConstants();
-		auto cameraBuffer = graphicsAPI->bufferPool.get(commonConstantsBuffers[swapchain->getInFlightIndex()][0]);
-		cameraBuffer->writeData(&commonConstants);
 	}
 
 	if (lastQuality != quality)
 	{
 		GARDEN_LOG_INFO("Changed quality level: " + string(toString(quality)));
-		Manager::Instance::get()->runEvent("QualityChange");
+		manager->runEvent("QualityChange");
 		lastQuality = quality;
+	}
+
+	if (isFramebufferSizeValid)
+	{
+		if (camera)
+		{
+			prepareCommonConstants();
+			auto cameraBuffer = graphicsAPI->bufferPool.get(
+				commonConstantsBuffers[swapchain->getInFlightIndex()][0]);
+			cameraBuffer->writeData(&commonConstants);
+		}
+		manager->runEvent("Render");
 	}
 }
 
@@ -443,7 +448,7 @@ void GraphicsSystem::present()
 	wasTeleported = false;
 	tickIndex++;
 
-	#if GARDEN_TRACY_PROFILER
+	#if GARDEN_USE_TRACY_PROFILER
 	FrameMark;
 	#endif
 }
@@ -472,13 +477,13 @@ uint2 GraphicsSystem::getFramebufferSize() const noexcept
 	return GraphicsAPI::get()->getSwapchain()->getFramebufferSize();
 }
 
-ID<Framebuffer> GraphicsSystem::getCurrentFramebuffer() const noexcept
+ID<Framebuffer> GraphicsSystem::getRenderPassFB() const noexcept
 {
-	return GraphicsAPI::get()->currentFramebuffer;
+	return GraphicsAPI::get()->renderPassFramebuffer;
 }
-bool GraphicsSystem::isCurrentRenderPassAsync() const noexcept
+bool GraphicsSystem::isRenderPassAsync() const noexcept
 {
-	return GraphicsAPI::get()->isCurrentRenderPassAsync;
+	return GraphicsAPI::get()->isRenderPassAsync;
 }
 
 bool GraphicsSystem::hasRayTracing() const { return GraphicsAPI::get()->hasRayTracing(); }
@@ -1118,7 +1123,7 @@ void GraphicsSystem::startRecording(CommandBufferType commandBufferType) noexcep
 	
 	switch (commandBufferType)
 	{
-	case CommandBufferType::Frame: graphicsAPI->currentCommandBuffer = window->getCommandBuffer(); break;
+	case CommandBufferType::Frame: graphicsAPI->currentCommandBuffer = graphicsAPI->frameCommandBuffer; break;
 	case CommandBufferType::Graphics: graphicsAPI->currentCommandBuffer = graphicsAPI->graphicsCommandBuffer; break;
 	case CommandBufferType::TransferOnly: graphicsAPI->currentCommandBuffer = graphicsAPI->transferCommandBuffer; break;
 	case CommandBufferType::Compute: graphicsAPI->currentCommandBuffer = graphicsAPI->computeCommandBuffer; break;
@@ -1248,7 +1253,7 @@ void GraphicsSystem::drawLine(const f32x4x4& mvp, f32x4 startPoint, f32x4 endPoi
 	}
 
 	auto pipelineView = GraphicsAPI::get()->graphicsPipelinePool.get(linePipeline);
-	pipelineView->updateFramebuffer(GraphicsAPI::get()->currentFramebuffer);
+	pipelineView->updateFramebuffer(GraphicsAPI::get()->renderPassFramebuffer);
 
 	LinePC pc;
 	pc.mvp = (float4x4)mvp;
@@ -1269,11 +1274,11 @@ void GraphicsSystem::drawAabb(const f32x4x4& mvp, f32x4 color)
 		options.loadAsync = false;
 
 		aabbPipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline(
-			"editor/aabb-lines", GraphicsAPI::get()->currentFramebuffer, options);
+			"editor/aabb-lines", GraphicsAPI::get()->renderPassFramebuffer, options);
 	}
 
 	auto pipelineView = GraphicsAPI::get()->graphicsPipelinePool.get(aabbPipeline);
-	pipelineView->updateFramebuffer(GraphicsAPI::get()->currentFramebuffer);
+	pipelineView->updateFramebuffer(GraphicsAPI::get()->renderPassFramebuffer);
 
 	AabbPC pc;
 	pc.mvp = (float4x4)mvp;

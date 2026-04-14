@@ -21,7 +21,7 @@
 #if GARDEN_OS_LINUX
 #include <unistd.h>
 #include <sys/inotify.h>
-#elif GARDEN_OS_MACOS
+#elif GARDEN_OS_APPLE
 #include <CoreServices/CoreServices.h>
 #elif GARDEN_OS_WINDOWS
 //#error TODO: implement
@@ -84,7 +84,7 @@ static void flushChanges(void* instance, tsl::robin_map<int, fs::path>& watchers
 		}
 	}
 }
-#elif GARDEN_OS_MACOS
+#elif GARDEN_OS_APPLE
 //**********************************************************************************************************************
 static void onChange(ConstFSEventStreamRef streamRef,
 	void* clientCallBackInfo, psize numEvents, void* eventPaths,
@@ -179,7 +179,7 @@ void FileWatcherSystem::preInit()
 
 	addDirWatchers(fd, GARDEN_RESOURCES_PATH, watchers);
 	addDirWatchers(fd, appResourcesPath, watchers);
-	#elif GARDEN_OS_MACOS
+	#elif GARDEN_OS_APPLE
 	auto pathToWatch = CFStringCreateWithCString(kCFAllocatorDefault, 
 		appResourcesPath.c_str(), kCFStringEncodingUTF8);
 	// TODO: also watch for the GARDEN_RESOURCES_PATH!
@@ -209,7 +209,7 @@ void FileWatcherSystem::preInit()
 //**********************************************************************************************************************
 void FileWatcherSystem::update()
 {
-	#if GARDEN_OS_MACOS
+	#if GARDEN_OS_APPLE
 	locker.lock();
 	#endif
 
@@ -247,7 +247,7 @@ void FileWatcherSystem::update()
 		createdFiles.clear();
 	}
 
-	#if GARDEN_OS_MACOS
+	#if GARDEN_OS_APPLE
 	locker.unlock();
 	#endif
 }

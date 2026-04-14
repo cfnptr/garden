@@ -129,7 +129,7 @@ void Framebuffer::update(uint2 size, const Attachment* colorAttachments,
 {
 	GARDEN_ASSERT_MSG(areAllTrue(size > uint2::zero), "Assert " + debugName);
 	GARDEN_ASSERT_MSG(colorAttachmentCount > 0 || depthStencilAttachment.imageView, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(!GraphicsAPI::get()->currentFramebuffer, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(!GraphicsAPI::get()->renderPassFramebuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(!swapchain, "Can't update swapchain framebuffer");
 
 	#if GARDEN_DEBUG
@@ -153,7 +153,7 @@ void Framebuffer::update(uint2 size, vector<Attachment>&& colorAttachments, Atta
 {
 	GARDEN_ASSERT_MSG(areAllTrue(size > uint2::zero), "Assert " + debugName);
 	GARDEN_ASSERT_MSG(!colorAttachments.empty() || depthStencilAttachment.imageView, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(!GraphicsAPI::get()->currentFramebuffer, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(!GraphicsAPI::get()->renderPassFramebuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(!swapchain, "Can't update swapchain framebuffer");
 
 	#if GARDEN_DEBUG
@@ -174,7 +174,7 @@ void Framebuffer::update(uint2 size, const ID<ImageView>* colorImageViews,
 	GARDEN_ASSERT_MSG(areAllTrue(size > uint2::zero), "Assert " + debugName);
 	GARDEN_ASSERT_MSG(colorImageViewCount > 0 || depthStencilIV, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(colorImageViewCount == colorAttachments.size(), "Assert " + debugName);
-	GARDEN_ASSERT_MSG(!graphicsAPI->currentFramebuffer, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(!graphicsAPI->renderPassFramebuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(!swapchain, "Can't update swapchain framebuffer");
 
 	auto colorAttachmentData = colorAttachments.data();
@@ -286,9 +286,9 @@ void Framebuffer::beginRenderPass(const float4* clearColors, uint8 clearColorCou
 	GARDEN_ASSERT_MSG(region.x + region.z <= size.x, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(region.y + region.w <= size.y, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(currentCommandBuffer, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(!graphicsAPI->currentFramebuffer, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(!graphicsAPI->renderPassFramebuffer, "Assert " + debugName);
 
-	graphicsAPI->currentFramebuffer = graphicsAPI->framebufferPool.getID(this);
+	graphicsAPI->renderPassFramebuffer = graphicsAPI->framebufferPool.getID(this);
 
 	if (asyncRecording)
 	{
@@ -300,8 +300,8 @@ void Framebuffer::beginRenderPass(const float4* clearColors, uint8 clearColorCou
 			string name;
 			#endif
 
-			auto swapchain = (VulkanSwapchain*)graphicsAPI->currentSwapchain;
-			swapchain->beginSecondaryCommandBuffers(colorAttachments, depthStencilAttachment, name);
+			VulkanAPI::get()->vulkanSwapchain->beginSecondaryCommandBuffers(
+				colorAttachments, depthStencilAttachment, name);
 		}
 		else abort();
 
@@ -340,22 +340,19 @@ void Framebuffer::endRenderPass()
 {
 	auto graphicsAPI = GraphicsAPI::get();
 	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
-	GARDEN_ASSERT_MSG(graphicsAPI->currentFramebuffer == 
+	GARDEN_ASSERT_MSG(graphicsAPI->renderPassFramebuffer == 
 		graphicsAPI->framebufferPool.getID(this), "Assert " + debugName);
 	GARDEN_ASSERT_MSG(currentCommandBuffer, "Assert " + debugName);
 
 	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
-	{
-		auto swapchain = (VulkanSwapchain*)graphicsAPI->currentSwapchain;
-		swapchain->endSecondaryCommandBuffers();
-	}
+		VulkanAPI::get()->vulkanSwapchain->endSecondaryCommandBuffers();
 	else abort();
 
 	EndRenderPassCommand command;
 	currentCommandBuffer->addCommand(command);
 
 	graphicsAPI->isRenderPassAsync = false;
-	graphicsAPI->currentFramebuffer = {};
+	graphicsAPI->renderPassFramebuffer = {};
 }
 
 //**********************************************************************************************************************
@@ -364,7 +361,7 @@ void Framebuffer::clearAttachments(const ClearAttachment* attachments,
 {
 	auto graphicsAPI = GraphicsAPI::get();
 	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
-	GARDEN_ASSERT_MSG(graphicsAPI->currentFramebuffer == 
+	GARDEN_ASSERT_MSG(graphicsAPI->renderPassFramebuffer == 
 		graphicsAPI->framebufferPool.getID(this), "Assert " + debugName);
 	GARDEN_ASSERT_MSG(currentCommandBuffer, "Assert " + debugName);
 

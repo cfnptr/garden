@@ -184,7 +184,6 @@ void MeshGizmosEditorSystem::render()
 	if (!isEnabled || !selectedEntity || !graphicsSystem->camera || selectedEntity == graphicsSystem->camera)
 		return;
 
-	/* TODO:
 	auto inputSystem = InputSystem::Instance::get();
 	if (!inputSystem->getMouseState(MouseButton::Left))
 		dragMode = 0;
@@ -211,8 +210,8 @@ void MeshGizmosEditorSystem::render()
 	
 	auto windowSize = inputSystem->getWindowSize();
 	auto cursorPosition = inputSystem->getCursorPosition();
-	auto rotation = (inputSystem->getKeyboardState(KeyboardButton::LeftShift) ||
-		inputSystem->getKeyboardState(KeyboardButton::RightShift)) &&
+	auto rotation = (inputSystem->getKeyState(KeyboardButton::LeftShift) ||
+		inputSystem->getKeyState(KeyboardButton::RightShift)) &&
 		inputSystem->getCursorMode() == CursorMode::Normal ?
 		quat::identity : extractQuat(extractRotation(model));
 	auto translation = getTranslation(model);
@@ -302,8 +301,8 @@ void MeshGizmosEditorSystem::render()
 			case 4: cursorTrans.setX(0.0f); cursorTrans.setY(0.0f); break;
 		}
 
-		if (dragMode != 1 && !inputSystem->getKeyboardState(KeyboardButton::LeftShift) &&
-			!inputSystem->getKeyboardState(KeyboardButton::RightShift))
+		if (dragMode != 1 && !inputSystem->getKeyState(KeyboardButton::LeftShift) &&
+			!inputSystem->getKeyState(KeyboardButton::RightShift))
 		{
 			cursorTrans = dot3x3(rotate(transformView->getRotation()), cursorTrans);
 		}
@@ -342,8 +341,6 @@ void MeshGizmosEditorSystem::render()
 	renderGizmosMeshes(gizmosMeshes, backPipelineView, cc.viewProj, patternScale, false);
 	renderGizmosMeshes(gizmosMeshes, frontPipelineView, cc.viewProj, patternScale, true);
 	gizmosMeshes.clear();
-
-	*/
 }
 
 //**********************************************************************************************************************

@@ -28,10 +28,10 @@
 #endif
 
 #if __APPLE__
-#define GARDEN_OS_MACOS 1
-#define GARDEN_OS_NAME "macOS"
+#define GARDEN_OS_APPLE 1
+#define GARDEN_OS_NAME "Apple"
 #else
-#define GARDEN_OS_MACOS 0
+#define GARDEN_OS_APPLE 0
 #endif
 
 #if __linux__
@@ -41,7 +41,7 @@
 #define GARDEN_OS_LINUX 0
 #endif
 
-#if !GARDEN_OS_WINDOWS && !GARDEN_OS_MACOS && !GARDEN_OS_LINUX
+#if !GARDEN_OS_WINDOWS && !GARDEN_OS_APPLE && !GARDEN_OS_LINUX
 #error Unknown operating system
 #endif
 

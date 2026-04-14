@@ -53,7 +53,7 @@ GraphicsAPI::GraphicsAPI(const string& appName, uint2 windowSize,
 		if (!isDecorated)
 			glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
 	}
-	
+
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 	auto window = glfwCreateWindow(windowSize.x, windowSize.y,
 		appName.c_str(), primaryMonitor, nullptr);
@@ -61,16 +61,26 @@ GraphicsAPI::GraphicsAPI(const string& appName, uint2 windowSize,
 		throw GardenError("Failed to create GLFW window.");
 	this->window = window;
 
-	#if GARDEN_OS_WINDOWS
-	BOOL value = TRUE;
-	auto hwnd = glfwGetWin32Window(window);
-	::DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &value, sizeof(value));
-	#endif
-
 	if (glfwRawMouseMotionSupported())
 		glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
 	glfwSetWindowSizeLimits(window, GraphicsAPI::minFramebufferSize, 
 		GraphicsAPI::minFramebufferSize, GLFW_DONT_CARE, GLFW_DONT_CARE);
+
+	#if GARDEN_OS_WINDOWS
+	BOOL value = TRUE; auto hwnd = glfwGetWin32Window(window);
+	::DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &value, sizeof(value));
+	displayProtocol = DisplayProtocol::Win32;
+	#elif GARDEN_OS_APPLE
+	displayProtocol = DisplayProtocol::Metal;
+	#elif GARDEN_OS_LINUX
+	switch(glfwGetPlatform())
+	{
+		case GLFW_PLATFORM_X11: displayProtocol = DisplayProtocol::X11; break;
+		case GLFW_PLATFORM_WAYLAND: displayProtocol = DisplayProtocol::Wayland; break;
+		default: abort();
+	}
+	// TODO: android
+	#endif
 }
 GraphicsAPI::~GraphicsAPI()
 {

@@ -215,7 +215,7 @@ ID<Blas> Blas::compact()
 	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
 	GARDEN_ASSERT_MSG(currentCommandBuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(currentCommandBuffer->getType() != CommandBufferType::Frame, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(!graphicsAPI->currentFramebuffer, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(!graphicsAPI->renderPassFramebuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(hasAnyFlag(flags, BuildFlagsAS::AllowCompaction), 
 		"BLAS [" + debugName + "] compaction is not allowed");
 	GARDEN_ASSERT_MSG(buildData, "BLAS [" + debugName + "] is already compacted");

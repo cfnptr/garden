@@ -32,7 +32,7 @@ UiTriggerSystem::UiTriggerSystem(bool setSingleton) : Singleton(setSingleton)
 	ECSM_SUBSCRIBE_TO_EVENT("Update", UiTriggerSystem::update);
 }
 
-static void triggerUiComponent(Manager* manager, Window* window, ID<Entity>& newElement, 
+static void triggerUiComponent(Manager* manager, ID<Entity>& newElement, 
 	float& newPosZ, UiTriggerComponent& uiTriggerComp, float2 cursorPosition)
 {
 	auto entity = uiTriggerComp.getEntity();

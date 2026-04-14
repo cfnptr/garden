@@ -30,7 +30,7 @@ namespace garden
 using namespace garden::graphics;
 
 /**
- * @brief Graphics API backend types.
+ * @brief Graphics API backend type.
  */
 enum class GraphicsBackend : uint8
 {
@@ -42,6 +42,13 @@ enum class GraphicsBackend : uint8
 enum class GpuVendor : uint8
 {
 	Unknown, Nvidia, AMD, Intel, Apple, ARM, Qualcomm, ImgTec, Count
+};
+/**
+ * @brief Display server protocol type.
+ */
+enum class DisplayProtocol : uint8
+{
+	None, Win32, Metal, X11, Wayland, Android, Count
 };
 
 /**
@@ -94,6 +101,7 @@ protected:
 	Swapchain* swapchain = nullptr;
 	GraphicsBackend backendType = {};
 	GpuVendor gpuVendor = {};
+	DisplayProtocol displayProtocol = {};
 	uint8 fillDestroyIndex = 0;
 	uint8 flushDestroyIndex = 1;
 	bool deviceIntegrated = false;
@@ -105,6 +113,8 @@ protected:
 public:
 	virtual ~GraphicsAPI();
 
+	bool isRenderPassAsync = false;
+	bool forceResourceDestroy = false;
 	LinearPool<Buffer> bufferPool;
 	LinearPool<Image> imagePool;
 	LinearPool<ImageView> imageViewPool;
@@ -126,14 +136,12 @@ public:
 	CommandBuffer* transferCommandBuffer;
 	CommandBuffer* computeCommandBuffer;
 	CommandBuffer* currentCommandBuffer = nullptr;
-	ID<Framebuffer> currentFramebuffer = {};
+	ID<Framebuffer> renderPassFramebuffer = {};
 	vector<ID<Pipeline>> currentPipelines;
 	vector<PipelineType> currentPipelineTypes;
 	vector<uint8> currentPipelineVariants;
 	vector<ID<Buffer>> currentVertexBuffers;
 	vector<ID<Buffer>> currentIndexBuffers;
-	bool isCurrentRenderPassAsync = false;
-	bool forceResourceDestroy = false;
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	bool recordGpuTime = false;
@@ -147,6 +155,10 @@ public:
 	 * @brief Returns current GPU vendor. (Company, Manufacturer)
 	 */
 	GpuVendor getGpuVendor() const noexcept { return gpuVendor; }
+	/**
+	 * @brief Returns current display server protocol.
+	 */
+	DisplayProtocol getDisplayProtocol() const noexcept { return displayProtocol; }
 	/**
 	 * @brief Returns true if GPU is integrated. (Not discrete)
 	 */

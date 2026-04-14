@@ -299,7 +299,7 @@ void Buffer::fill(uint32 data, uint64 size, uint64 offset)
 	GARDEN_ASSERT_MSG(size == 0 || size + offset <= binarySize, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(hasAnyFlag(usage, Usage::TransferDst), "Assert " + debugName);
 	GARDEN_ASSERT_MSG(currentCommandBuffer, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(!graphicsAPI->currentFramebuffer, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(!graphicsAPI->renderPassFramebuffer, "Assert " + debugName);
 
 	auto commandBufferType = currentCommandBuffer->getType();
 	#if GARDEN_DEBUG
@@ -339,7 +339,7 @@ void Buffer::copy(ID<Buffer> source, ID<Buffer> destination, const CopyRegion* r
 	GARDEN_ASSERT(regions);
 	GARDEN_ASSERT(count > 0);
 	GARDEN_ASSERT(currentCommandBuffer);
-	GARDEN_ASSERT(!graphicsAPI->currentFramebuffer);
+	GARDEN_ASSERT(!graphicsAPI->renderPassFramebuffer);
 
 	auto srcView = graphicsAPI->bufferPool.get(source);
 	GARDEN_ASSERT_MSG(hasAnyFlag(srcView->usage, Usage::TransferSrc), 

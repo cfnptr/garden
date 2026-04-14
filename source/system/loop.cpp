@@ -42,7 +42,7 @@ static BOOL WINAPI consoleHandler(DWORD ctrlType)
 	default: return FALSE;
 	}
 }
-#elif GARDEN_OS_LINUX || GARDEN_OS_MACOS
+#elif GARDEN_OS_LINUX || GARDEN_OS_APPLE
 #include <csignal>
 
 static void signalHandler(int signum)
@@ -60,11 +60,9 @@ LoopSystem::LoopSystem(bool setSingleton) : Singleton(setSingleton)
 	auto manager = Manager::Instance::get(); 
 	manager->registerEventBefore("Input", "Update");
 	manager->registerEventAfter("Output", "Update");
-
 	ECSM_SUBSCRIBE_TO_EVENT("PreInit", LoopSystem::preInit);
-	ECSM_SUBSCRIBE_TO_EVENT("Deinit", LoopSystem::deinit);
 
-	#if GARDEN_OS_LINUX || GARDEN_OS_MACOS
+	#if GARDEN_OS_LINUX || GARDEN_OS_APPLE
 	signal(SIGINT, signalHandler);
     signal(SIGHUP, signalHandler);
     signal(SIGTERM, signalHandler);
@@ -72,7 +70,6 @@ LoopSystem::LoopSystem(bool setSingleton) : Singleton(setSingleton)
 	SetConsoleCtrlHandler(consoleHandler, TRUE);
 	#endif
 }
-
 void LoopSystem::preInit()
 {
 	auto manager = Manager::Instance::get();
@@ -80,15 +77,6 @@ void LoopSystem::preInit()
 	ECSM_SUBSCRIBE_TO_EVENT("Output", LoopSystem::output);
 
 	systemTime = mpio::OS::getCurrentClock();
-}
-void LoopSystem::deinit()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Input", LoopSystem::input);
-		ECSM_UNSUBSCRIBE_FROM_EVENT("Output", LoopSystem::output);
-	}
 }
 
 void LoopSystem::input()

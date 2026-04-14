@@ -1,15 +1,19 @@
-# Garden
+# Garden Engine
 
 ![Engine screenshot](docs/engine-screenshot.png)
 
-Garden is an open source, cross platform game engine designed for efficiency and flexibility. Written in 
-modern C++ and utilizing the Vulkan API for rendering, it is aimed at providing developers with a robust 
-toolset for creating high-performance, visually stunning games. The main features of the engine include 
-extensible architecture, built-in editor, convenient creation of rendering pipelines using a custom 
-shader language (GSL), and automatic placement of GPU memory barriers, which are necessary in recent 
-graphics APIs.
+Garden is an open-source, cross-platform game engine written in [C++](https://en.wikipedia.org/wiki/C%2B%2B) that utilizes the 
+Entity-Component-System ([ECS](https://en.wikipedia.org/wiki/Entity_component_system)) architectural pattern. The renderer is 
+built on the [Vulkan](https://en.wikipedia.org/wiki/Vulkan) graphics API and features a custom shading language [GSL](docs/GSL.md) 
+(a [GLSL](https://en.wikipedia.org/wiki/OpenGL_Shading_Language) dialect). The engine's primary goal is the creation of open, 
+[procedurally](https://en.wikipedia.org/wiki/Procedural_generation) generated worlds, leveraging the latest GPU technologies and 
+advanced rendering techniques, such as ray tracing and advanced compute shaders. Garden's architecture is designed to utilize 
+all available hardware resources to reach maximum performance while remaining as developer-friendly and easy to use as possible.
 
-Check out the Garden [demo](https://github.com/cfnptr/garden-demo) application.
+### !!! Work in progress !!!
+
+The engine is under development right now, expect major architecture changes and instabilities. <br>
+If you need stable and production ready solution it's better to use [Godot](https://godotengine.org/) or [Unreal Engine](https://www.unrealengine.com/).
 
 ## Supported hardware
 
@@ -20,7 +24,7 @@ Check out the Garden [demo](https://github.com/cfnptr/garden-demo) application.
 * Intel [Gen9](https://en.wikichip.org/wiki/intel/microarchitectures/gen9) microarchitecture and newer
 * Apple [M1](https://en.wikipedia.org/wiki/Apple_M1) integrated GPU and newer (partial support)
 
-Or at least GPU with [Vulkan API](https://en.wikipedia.org/wiki/Vulkan) 1.2 support.
+Or at least GPU with [Vulkan API](https://vulkan.gpuinfo.org/listreports.php?property=apiversion&value=1.2&platform=all) 1.2 support.
 
 ### Central processing unit (CPU)
 
@@ -46,13 +50,13 @@ Use building [instructions](BUILDING.md) to install all required tools and libra
 | Name                        | Description                                      | Default value |
 |-----------------------------|--------------------------------------------------|---------------|
 | GARDEN_USE_AVX2             | Use AVX2 instruction set (Better perf)           | `ON`          |
+| GARDEN_BUILD_EDITOR         | Build base Garden editor                         | `ON`          |
 | GARDEN_BUILD_GSLC           | Build GSL shader compiler                        | `ON`          |
 | GARDEN_BUILD_MODELC         | Build Garden model converter                     | `ON`          |
 | GARDEN_BUILD_JSON2BSON      | Build JSON to binary JSON converter              | `ON`          |
 | GARDEN_BUILD_EQUI2CUBE      | Build equirectangular to cubemap converter       | `ON`          |
 | GARDEN_RELEASE_EDITOR       | Build Garden editor in the release build         | `OFF`         |
 | GARDEN_RELEASE_DEBUGGING    | Build Garden debugging code in the release build | `OFF`         |
-| GARDEN_DEBUG_BUILD_TOOLS    | Build Garden tools in the debug build            | `OFF`         |
 | GARDEN_DEBUG_PACK_RESOURCES | Pack and load resources in the debug build       | `OFF`         |
 | GARDEN_USE_GAPI_VALIDATIONS | Use graphics API validation layers               | `ON`          |
 | GARDEN_USE_TRACY_PROFILER   | Use Tracy frame profiler                         | `OFF`         |
@@ -63,30 +67,30 @@ Use building [instructions](BUILDING.md) to install all required tools and libra
 
 ### CMake variables
 
-| Name                          | Description                        | Default value                          |
-|-------------------------------|------------------------------------|----------------------------------------|
-| GARDEN_APP_NAME               | Application name                   | `Garden App`                           |
-| GARDEN_APP_NAME_LOWERCASE     | Application lowercase name         | `garden-app`                           |
-| GARDEN_APP_NAMESPACE          | Application C++ namespace name     | `garden::app`                          |
-| GARDEN_APP_FILE_NAME          | Application file name (executable) | `Garden App`                           |
-| GARDEN_APP_ICON_PATH          | Application icon file path         |                                        |
-| GARDEN_APP_DESCRIPTION        | Application description            | `Made using Garden engine.`            |
-| GARDEN_APP_CREATOR            | Application creator (company)      | `Garden`                               |
-| GARDEN_APP_COPYRIGHT          | Application copyright (license)    | `20XX {name}. All rights reserved.`    |
-| GARDEN_APP_VERSION_MAJOR      | Application major version          | `1`                                    |
-| GARDEN_APP_VERSION_MINOR      | Application minor version          | `0`                                    |
-| GARDEN_APP_VERSION_PATCH      | Application patch version          | `0`                                    |
-| GARDEN_APP_RESOURCES_DIR      | Application resources directory    | `garden/resources/default`             |
-| GARDEN_APP_CACHE_DIR          | Application cache directory        | `garden/.cache`                        |
-| GARDEN_STEAMWORKS_SDK_DIR     | Valve Steamworks SDK directory     | `libraries/steamworks-sdk`             |
-| GARDEN_NVIDIA_DLSS_APP_ID     | Nvidia DLSS application ID         |                                        |
-| GARDEN_NVIDIA_DLSS_PROJECT_ID | Nvidia DLSS project ID (GUID)      | `5df9fb9c-bec4-4cf0-99c4-27b54fd7237e` |
+| Name                          | Description                        | Default value                              |
+|-------------------------------|------------------------------------|--------------------------------------------|
+| GARDEN_APP_NAME               | Application name                   | `Garden Editor`                            |
+| GARDEN_APP_NAME_LOWERCASE     | Application lowercase name         | `garden-editor`                            |
+| GARDEN_APP_NAMESPACE          | Application C++ namespace name     | `garden::editor`                           |
+| GARDEN_APP_FILE_NAME          | Application file name (executable) | `garden-editor`                            |
+| GARDEN_APP_ICON_PATH          | Application icon file path         |                                            |
+| GARDEN_APP_DESCRIPTION        | Application description            | `Made using Garden engine.`                |
+| GARDEN_APP_CREATOR            | Application creator (company)      | `{creator} Team`                           |
+| GARDEN_APP_COPYRIGHT          | Application copyright (license)    | `(C) 20XX {creator}. All rights reserved.` |
+| GARDEN_APP_VERSION_MAJOR      | Application major version          | `1`                                        |
+| GARDEN_APP_VERSION_MINOR      | Application minor version          | `0`                                        |
+| GARDEN_APP_VERSION_PATCH      | Application patch version          | `0`                                        |
+| GARDEN_APP_RESOURCES_DIR      | Application resources directory    | `garden/resources/default`                 |
+| GARDEN_APP_CACHE_DIR          | Application cache directory        | `garden/.cache`                            |
+| GARDEN_STEAMWORKS_SDK_DIR     | Valve Steamworks SDK directory     | `libraries/steamworks-sdk`                 |
+| GARDEN_NVIDIA_DLSS_APP_ID     | Nvidia DLSS application ID         |                                            |
+| GARDEN_NVIDIA_DLSS_PROJECT_ID | Nvidia DLSS project ID (GUID)      | `5df9fb9c-bec4-4cf0-99c4-27b54fd7237e`     |
 
 ### Environment variable
 
-| Name                          | Description                        |
-|-------------------------------|------------------------------------|
-| GLFW_PLATFORM                 | Force specific window system (x11) |
+| Name          | Description                     | Values |
+|---------------|---------------------------------|--------|
+| GLFW_PLATFORM | Force specific display protocol | `x11`  |
 
 ### CMake targets
 
@@ -101,10 +105,13 @@ Use building [instructions](BUILDING.md) to install all required tools and libra
 git clone --recursive -j8 https://github.com/cfnptr/garden
 ```
 
+* `--recursive`: recursively clones all required git submodules
+* `-j`: number of git submodules fetched in parallel
+
 ## Garden Shading Language (GSL)
 
-Documentation with all GLSL changes is [here](docs/GSL.md).
-You can install **Visual Studio Code** [extension](https://marketplace.visualstudio.com/items?itemName=cfnptr.gsl-linter) to highlight GSL code.
+You can find documentation with all GLSL changes [here](docs/GSL.md).
+Also you can install **Visual Studio Code** [extension](https://marketplace.visualstudio.com/items?itemName=cfnptr.gsl-linter) to highlight GSL code.
 
 ## Third-party
 
@@ -135,8 +142,7 @@ You can install **Visual Studio Code** [extension](https://marketplace.visualstu
 
 ## Physically Based Materials
 
-![Material chart](https://google.github.io/filament/images/material_chart.jpg)
-
+![PBR material chart](https://google.github.io/filament/images/material_chart.jpg)
 
 ## Trademarks
 

@@ -92,7 +92,7 @@ class GraphicsSystem final : public System, public Singleton<GraphicsSystem>
 	ID<ImageView> normalMapTexture = {};
 	ID<Framebuffer> swapchainFramebuffer = {};
 	uint2 scaledFrameSize = uint2::zero;
-	uint16 nvMaxFrameRate = UINT16_MAX;
+	uint32 nvMaxFrameRate = UINT16_MAX;
 	bool asyncRecording = false;
 	bool forceRecreateSwapchain = false;
 	bool isFramebufferSizeValid = false;
@@ -113,19 +113,12 @@ class GraphicsSystem final : public System, public Singleton<GraphicsSystem>
 	 * @param windowSize target OS window size (in units)
 	 * @param isFullscreen create a fullscreen window
 	 * @param isDecorated decorate window with top bar and borders
-	 * @param useVsync use vertical synchronization (V-Sync)
-	 * @param useTripleBuffering use swapchain triple buffering
 	 * @param useAsyncRecording use multithreaded render commands recording
 	 * @param setSingleton set system singleton instance
 	 */
 	GraphicsSystem(uint2 windowSize = InputSystem::defaultWindowSize, 
 		bool isFullscreen = !GARDEN_DEBUG & !GARDEN_OS_LINUX, bool isDecorated = true,
-		bool useVsync = true, bool useTripleBuffering = true, bool useAsyncRecording = true, 
-		bool setSingleton = true);
-	/**
-	 * @brief Destroys graphics system instance.
-	 */
-	~GraphicsSystem() override;
+		bool useAsyncRecording = true, bool setSingleton = true);
 
 	void preInit();
 	void preDeinit();
@@ -140,9 +133,9 @@ public:
 	float3 windDirection = float3::right; /**< Direction of the wind. (Vector) */
 	ID<Entity> camera = {};               /**< Current main render camera. */
 	ID<Entity> directionalLight = {};     /**< Current main directional light. (Sun) */
-	uint16 maxFrameRate = 60;             /**< Maximum frames per second count. (FPS) */
+	uint32 maxFrameRate = 60;             /**< Maximum frames per second count. (FPS) */
 	bool useVsync = false;                /**< Vertical synchronization state. (V-Sync) */
-	bool useTripleBuffering = false;      /**< Swapchain triple buffering state. */
+	bool useTripleBuffering = true;       /**< Swapchain triple buffering state. */
 	bool useUpscaling = false;            /**< Use image upscaling. (DLSS, FSR, XeSS, etc.) */
 	bool useJittering = false;            /**< Use sub pixel jittering. (Temporal anti aliasing) */
 	bool useLowLatency = false;           /**< Use low input latency feature. (Reflex, Anti-lag) */
@@ -237,12 +230,12 @@ public:
 	 * @brief Returns current render pass framebuffer.
 	 * @details Set by the @ref Framebuffer::beginRenderPass().
 	 */
-	ID<Framebuffer> getCurrentFramebuffer() const noexcept;
+	ID<Framebuffer> getRenderPassFB() const noexcept;
 	/**
 	 * @brief Is current render pass use multithreaded commands recording.
 	 * @details Set by the @ref Framebuffer::beginRenderPass().
 	 */
-	bool isCurrentRenderPassAsync() const noexcept;
+	bool isRenderPassAsync() const noexcept;
 
 	/**
 	 * @brief Returns current frame index since the application launch.
@@ -255,17 +248,12 @@ public:
 	 */
 	uint64 getCurrentTickIndex() const noexcept { return tickIndex; }
 
-	/*******************************************************************************************************************
-	 * @brief Can a frame be rendered on the current tick.
-	 * @details In some cases we can't render to the window. (ex. it may be hidden) 
-	 */
-	bool canRender() const noexcept { return isFramebufferSizeValid; }
+
 	/**
 	 * @brief Use multithreaded command buffer recording.
 	 * @warning Be careful when writing asynchronous code!
 	 */
 	bool useAsyncRecording() const noexcept { return asyncRecording; }
-
 	/**
 	 * @brief Returns true if current GPU has ray tracing support.
 	 * @note Without hardware support we can't use ray tracing pipelines.
@@ -363,7 +351,7 @@ public:
 	 * @brief Returns current swapchain framebuffer.
 	 * @warning Swapchain framebuffer image can be reallocated on swapchain resize.
 	 */
-	ID<Framebuffer> getSwapchainFramebuffer() const noexcept { return swapchainFramebuffer; }
+	ID<Framebuffer> getSwapchainFB() const noexcept { return swapchainFramebuffer; }
 	/**
 	 * @brief Returns current render common constants buffer.
 	 * @details Use it to access common camera properties inside shader. 

@@ -15,6 +15,7 @@
 #include "garden/system/render/atmosphere.hpp"
 #include "garden/system/render/pbr-lighting.hpp"
 #include "garden/system/render/deferred.hpp"
+#include "garden/system/transform.hpp"
 #include "garden/system/resource.hpp"
 #include "garden/system/settings.hpp"
 #include "garden/system/camera.hpp"
@@ -369,6 +370,22 @@ void AtmosphereRenderSystem::init()
 	ECSM_SUBSCRIBE_TO_EVENT("HdrRender", AtmosphereRenderSystem::hdrRender);
 	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", AtmosphereRenderSystem::gBufferRecreate);
 	ECSM_SUBSCRIBE_TO_EVENT("QualityChange", AtmosphereRenderSystem::qualityChange);
+
+	auto graphicsSystem = GraphicsSystem::Instance::get();
+	if (!graphicsSystem->directionalLight)
+	{
+		auto directionalLight = manager->createEntity();
+		manager->reserveComponents(directionalLight, 4);
+
+		auto transformView = manager->add<TransformComponent>(directionalLight);
+		transformView->setRotation(lookAtQuat(normalize3(-f32x4(1.0f, 6.0f, 2.0f))));
+		#if GARDEN_DEBUG || GARDEN_EDITOR
+		transformView->debugName = "Directional Light";
+		manager->add<DoNotDestroyComponent>(directionalLight);
+		manager->add<DoNotSerializeComponent>(directionalLight);
+		#endif
+		graphicsSystem->directionalLight = directionalLight;
+	}
 }
 
 static float calcCameraHeight(float cameraPosY, float groundRadius) noexcept
@@ -876,7 +893,7 @@ void AtmosphereRenderSystem::hdrRender()
 
 	const auto& cc = graphicsSystem->getCommonConstants();
 	auto cameraHeight = calcCameraHeight(cc.cameraPos.y, groundRadius);
-	pipelineView->updateFramebuffer(graphicsSystem->getCurrentFramebuffer());
+	pipelineView->updateFramebuffer(graphicsSystem->getRenderPassFB());
 
 	SkyPushConstants pc;
 	pc.invViewProj = (float4x4)cc.invViewProj;

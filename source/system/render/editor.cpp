@@ -296,9 +296,9 @@ void EditorRenderSystem::showOptionsWindow()
 
 		ImGui::BeginDisabled(graphicsSystem->useVsync);
 		auto frameRate = (int)graphicsSystem->maxFrameRate;
-		if (ImGui::DragInt("Max Frame Rate", &frameRate, 1, 1, UINT16_MAX))
+		if (ImGui::DragInt("Max Frame Rate", &frameRate, 1, 0, INT32_MAX))
 		{
-			graphicsSystem->maxFrameRate = (uint16)frameRate;
+			graphicsSystem->maxFrameRate = (uint32)frameRate;
 			if (settingsSystem)
 				settingsSystem->setInt("render.maxFrameRate", frameRate);
 		}
@@ -777,7 +777,7 @@ void EditorRenderSystem::showEntityInspector()
 	}
 	ImGui::End();
 
-	if (InputSystem::Instance::get()->isKeyboardPressed(KeyboardButton::Delete) &&
+	if (InputSystem::Instance::get()->isKeyPressed(KeyboardButton::Delete) &&
 		!Manager::Instance::get()->has<DoNotDestroyComponent>(selectedEntity))
 	{
 		TransformSystem::Instance::get()->destroyRecursive(selectedEntity);
@@ -856,7 +856,7 @@ static void openExplorer(const fs::path& path) // TODO: make this function publi
 {
 	#if GARDEN_OS_WINDOWS
 	std::system(("start " + path.generic_string()).c_str());
-	#elif GARDEN_OS_MACOS
+	#elif GARDEN_OS_APPLE
 	std::system(("open " + path.generic_string()).c_str());
 	#elif GARDEN_OS_LINUX
 	std::system(("xdg-open " + path.generic_string()).c_str());
@@ -1075,24 +1075,6 @@ void EditorRenderSystem::showFileSelector()
 }
 
 //**********************************************************************************************************************
-void EditorRenderSystem::init()
-{
-	auto manager = Manager::Instance::get();
-	ECSM_SUBSCRIBE_TO_EVENT("PreUiRender", EditorRenderSystem::preUiRender);
-
-	auto settingsSystem = SettingsSystem::Instance::get();
-	if (settingsSystem)
-		settingsSystem->getFloat("editor.unitScale", unitScale);
-}
-void EditorRenderSystem::deinit()
-{
-	if (Manager::Instance::get()->isRunning)
-	{
-		auto manager = Manager::Instance::get();
-		ECSM_UNSUBSCRIBE_FROM_EVENT("PreUiRender", EditorRenderSystem::preUiRender);
-	}
-}
-
 void EditorRenderSystem::preUiRender()
 {
 	SET_CPU_ZONE_SCOPED("Pre UI Render");

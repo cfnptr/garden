@@ -57,7 +57,7 @@ static void setImGuiStyle()
 	style.TabRounding = 5.0f;
 	style.SeparatorTextBorderSize = 2.0f;
 
-	#if GARDEN_OS_MACOS
+	#if GARDEN_OS_APPLE
 	style.AntiAliasedFill = false;
 	#endif
 
@@ -286,7 +286,7 @@ void ImGuiRenderSystem::postInit()
 }
 
 //**********************************************************************************************************************
-static ImGuiKey buttonToImGuiKey(KeyboardButton button, int scancode)
+static ImGuiKey keyToImGuiKey(int keycode, int scancode)
 {
 	IM_UNUSED(scancode);
 	switch (keycode)
@@ -415,14 +415,14 @@ static ImGuiKey buttonToImGuiKey(KeyboardButton button, int scancode)
 //**********************************************************************************************************************
 static void updateImGuiKeyModifiers(InputSystem* inputSystem, ImGuiIO& io)
 {
-	io.AddKeyEvent(ImGuiMod_Ctrl, inputSystem->getKeyboardState(KeyboardButton::LeftControl) ||
-		inputSystem->getKeyboardState(KeyboardButton::RightControl));
-	io.AddKeyEvent(ImGuiMod_Shift, inputSystem->getKeyboardState(KeyboardButton::LeftShift) ||
-		inputSystem->getKeyboardState(KeyboardButton::RightShift));
-	io.AddKeyEvent(ImGuiMod_Alt, inputSystem->getKeyboardState(KeyboardButton::LeftAlt) ||
-		inputSystem->getKeyboardState(KeyboardButton::RightAlt));
-	io.AddKeyEvent(ImGuiMod_Super, inputSystem->getKeyboardState(KeyboardButton::LeftSuper) ||
-		inputSystem->getKeyboardState(KeyboardButton::RightSuper));
+	io.AddKeyEvent(ImGuiMod_Ctrl, inputSystem->getKeyState(KeyboardButton::LeftControl) ||
+		inputSystem->getKeyState(KeyboardButton::RightControl));
+	io.AddKeyEvent(ImGuiMod_Shift, inputSystem->getKeyState(KeyboardButton::LeftShift) ||
+		inputSystem->getKeyState(KeyboardButton::RightShift));
+	io.AddKeyEvent(ImGuiMod_Alt, inputSystem->getKeyState(KeyboardButton::LeftAlt) ||
+		inputSystem->getKeyState(KeyboardButton::RightAlt));
+	io.AddKeyEvent(ImGuiMod_Super, inputSystem->getKeyState(KeyboardButton::LeftSuper) ||
+		inputSystem->getKeyState(KeyboardButton::RightSuper));
 }
 
 void ImGuiRenderSystem::input()
@@ -462,9 +462,9 @@ void ImGuiRenderSystem::input()
 		auto button = allKeyboardButtons[i];
 
 		int action = -1;
-		if (inputSystem->isKeyboardPressed(button))
+		if (inputSystem->isKeyPressed(button))
 			action = GLFW_PRESS;
-		else if (inputSystem->isKeyboardReleased(button))
+		else if (inputSystem->isKeyReleased(button))
 			action = GLFW_RELEASE;
 
 		if (action != -1)
@@ -502,8 +502,7 @@ void ImGuiRenderSystem::update()
 {
 	SET_CPU_ZONE_SCOPED("ImGui Update");
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
-	if (!isEnabled || !graphicsSystem->canRender())
+	if (!isEnabled)
 		return;
 
 	auto& io = ImGui::GetIO();

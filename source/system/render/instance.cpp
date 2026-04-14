@@ -189,7 +189,7 @@ void InstanceRenderSystem::prepareDraw(const f32x4x4& viewProj, uint32 drawCount
 		
 		descriptorSet = shadowDescriptorSet;
 		pipelineView = OptView<GraphicsPipeline>(graphicsSystem->get(shadowPipeline));
-		pipelineView->updateFramebuffer(graphicsSystem->getCurrentFramebuffer());
+		pipelineView->updateFramebuffer(graphicsSystem->getRenderPassFB());
 	}
 }
 

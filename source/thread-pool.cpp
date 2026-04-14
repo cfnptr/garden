@@ -18,7 +18,7 @@
 #include "mpmt/thread.hpp"
 #include <cmath>
 
-#if GARDEN_OS_LINUX || GARDEN_OS_MACOS
+#if GARDEN_OS_LINUX || GARDEN_OS_APPLE
 #include <signal.h>
 #endif
 
@@ -38,7 +38,7 @@ void ThreadPool::threadFunction(uint32 threadIndex)
 		mpmt::Thread::setBackgroundPriority();
 	else mpmt::Thread::setForegroundPriority();
 
-	#if GARDEN_OS_LINUX || GARDEN_OS_MACOS
+	#if GARDEN_OS_LINUX || GARDEN_OS_APPLE
 	signal(SIGPIPE, SIG_IGN);
 	#endif
 
@@ -53,13 +53,13 @@ void ThreadPool::threadFunction(uint32 threadIndex)
 		if (!isRunning)
 			return;
 
-		#if GARDEN_TRACY_PROFILER
+		#if GARDEN_USE_TRACY_PROFILER
 		TracyFiberEnterHint(threadName.c_str(), threadIndex);
 		#endif
 
 		executeTask(threadIndex);
 
-		#if GARDEN_TRACY_PROFILER
+		#if GARDEN_USE_TRACY_PROFILER
 		TracyFiberLeave;
 		#endif
 

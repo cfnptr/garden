@@ -19,8 +19,9 @@
 
 #pragma once
 #include "garden/defines.hpp"
-#include "ecsm.hpp"
+#include "math/packed-vector.hpp"
 #include "math/vector.hpp"
+#include "ecsm.hpp"
 
 namespace garden
 {
@@ -32,34 +33,38 @@ using namespace ecsm;
  */
 enum class KeyboardButton : int16
 {
-	Unknown = -1,
-	Space = 32, Apostrophe = 39, Comma = 44, Minus = 45, Period = 46, Slash = 47,
-	N0 = 48, N1 = 49, N2 = 50, N3 = 51, N4 = 52, N5 = 53, N6 = 54, N7 = 55, N8 = 56, N9 = 57,
-	Semicolon = 59, Equal = 61,
-	A = 65, B = 66, C = 67, D = 68, E = 69, F = 70, G = 71, H = 72, I = 73, J = 74, K = 75, L = 76, M = 77, N = 78, 
-	O = 79, P = 80, Q = 81, R = 82, S = 83, T = 84, U = 85, V = 86, W = 87, X = 88, Y = 89, Z = 90,
-	LeftBracket = 91, Backslash = 92, RightBracket = 93, GraveAccent = 96,
-	World1 = 161, World2 = 162,
-	Escape = 256, Enter = 257, Tab = 258, Backspace = 259, Insert = 260, Delete = 261,
-	Right = 262, Left = 263, Down = 264, Up = 265, PageUp = 266, PageDown = 267, Home = 268, End = 269,
-	CapsLock = 280, ScrollLock = 281, NumLock = 282, PrintScreen = 283, Pause = 284,
+	Unknown = -1, 
+	Space = ' ', Apostrophe = '\'', Comma = ',', Minus = '-', Period = '.', Slash = '/', 
+	N0 = '0', N1 = '1', N2 = '2', N3 = '3', N4 = '4', N5 = '5', N6 = '6', N7 = '7', N8 = '8', N9 = '9', 
+	Semicolon = ';', Equal = '=',
+	A = 'A', B = 'B', C = 'C', D = 'D', E = 'E', F = 'F', G = 'G', H = 'H', I = 'I', J = 'J', K = 'K', L = 'L', M = 'M', 
+	N = 'N', O = 'O', P = 'P', Q = 'Q', R = 'R', S = 'S', T = 'T', U = 'U', V = 'V', W = 'W', X = 'X', Y = 'Y', Z = 'Z', 
+	LeftBracket = '[', Backslash = '\\', RightBracket = ']', GraveAccent = '`', World1 = 161, World2 = 162, 
+	Escape = 256, Enter = 257, Tab = 258, Backspace = 259, Insert = 260, Delete = 261, 
+	Right = 262, Left = 263, Down = 264, Up = 265, PageUp = 266, PageDown = 267, Home = 268, End = 269, 
+	CapsLock = 280, ScrollLock = 281, NumLock = 282, PrintScreen = 283, Pause = 284, 
 	F1 = 290, F2 = 291, F3 = 292, F4 = 293, F5 = 294, F6 = 295, F7 = 296, F8 = 297, F9 = 298, F10 = 299, F11 = 300, 
-	F12 = 301, F13 = 302, F14 = 303, F15 = 304, F16 = 305, F17 = 306, F18 = 307, F19 = 308, F20 = 309,
-	F21 = 310, F22 = 311, F23 = 312, F24 = 313, F25 = 314,
-	KP_0 = 320, KP_1 = 321, KP_2 = 322, KP_3 = 323, KP_4 = 324, KP_5 = 325, KP_6 = 326,
-	KP_7 = 327, KP_8 = 328, KP_9 = 329, KP_Decimal = 330, KP_Divide = 331, KP_Multiply = 332, 
-	KP_Subtract = 333, KP_Add = 334, KP_Enter = 335, KP_Equal = 336,
-	LeftShift = 340, LeftControl = 341, LeftAlt = 342, LeftSuper = 343,
-	RightShift = 344, RightControl = 345, RightAlt = 346, RightSuper = 347, Menu = 348,
+	F12 = 301, F13 = 302, F14 = 303, F15 = 304, F16 = 305, F17 = 306, F18 = 307, F19 = 308, F20 = 309, F21 = 310, 
+	F22 = 311, F23 = 312, F24 = 313, F25 = 314, 
+	KP_0 = 320, KP_1 = 321, KP_2 = 322, KP_3 = 323, KP_4 = 324, KP_5 = 325, KP_6 = 326, 
+	KP_7 = 327, KP_8 = 328, KP_9 = 329, KP_Decimal = 330, KP_Divide = 331, KP_Multiply = 332,  
+	KP_Subtract = 333, KP_Add = 334, KP_Enter = 335, KP_Equal = 336, 
+	LeftShift = 340, LeftControl = 341, LeftAlt = 342, LeftSuper = 343, 
+	RightShift = 344, RightControl = 345, RightAlt = 346, RightSuper = 347, Menu = 348, 
 	Last = Menu
 };
+/**
+ * @brief Defined keyboard button count. (GLFW)
+ */
+constexpr uint8 keyboardButtonCount = 120;
+
 /**
  * @brief Mouse button key codes. (GLFW)
  */
 enum class MouseButton : uint8
 {
 	N1 = 0, N2 = 1, N3 = 2, N4 = 3, N5 = 4, N6 = 5, N7 = 6, N8 = 7,
-	Last = N8, Left = N1, Right = N2, Middle = N3
+	Last = N8, Left = N1, Right = N2, Middle = N3, Count = 8
 };
 
 /**
@@ -76,47 +81,6 @@ enum class CursorType : uint8
 {
 	Default = 0, Arrow = 1, Ibeam = 2, Crosshair = 3, PointingHand = 4, ResizeEW = 5, 
 	ResizeNS = 6, ResizeNWSE = 7, ResizeNESW = 8, ResizeAll = 9, NotAllowed = 10, Count = 11,
-};
-
-/***********************************************************************************************************************
- * @brief Defined keyboard button count. (GLFW)
- */
-constexpr uint8 keyboardButtonCount = 120;
-
-/**
- * @brief All defined keyboard buttons array. (GLFW)
- */
-constexpr KeyboardButton allKeyboardButtons[keyboardButtonCount] =
-{
-	KeyboardButton::Space, KeyboardButton::Apostrophe, KeyboardButton::Comma,
-	KeyboardButton::Minus, KeyboardButton::Period, KeyboardButton::Slash,
-	KeyboardButton::N0, KeyboardButton::N1, KeyboardButton::N2, KeyboardButton::N3, KeyboardButton::N4,
-	KeyboardButton::N5, KeyboardButton::N6, KeyboardButton::N7, KeyboardButton::N8, KeyboardButton::N9,
-	KeyboardButton::Semicolon, KeyboardButton::Equal,
-	KeyboardButton::A, KeyboardButton::B, KeyboardButton::C, KeyboardButton::D, KeyboardButton::E, KeyboardButton::F,
-	KeyboardButton::G, KeyboardButton::H, KeyboardButton::I, KeyboardButton::J, KeyboardButton::K, KeyboardButton::L,
-	KeyboardButton::M, KeyboardButton::N, KeyboardButton::O, KeyboardButton::P, KeyboardButton::Q, KeyboardButton::R, 
-	KeyboardButton::S, KeyboardButton::T, KeyboardButton::U, KeyboardButton::V, KeyboardButton::W, KeyboardButton::X,
-	KeyboardButton::Y, KeyboardButton::Z,
-	KeyboardButton::LeftBracket, KeyboardButton::Backslash, KeyboardButton::RightBracket, KeyboardButton::GraveAccent,
-	KeyboardButton::World1, KeyboardButton::World2,
-	KeyboardButton::Escape, KeyboardButton::Enter, KeyboardButton::Tab, KeyboardButton::Backspace,
-	KeyboardButton::Insert, KeyboardButton::Delete, KeyboardButton::Right, KeyboardButton::Left, KeyboardButton::Down,
-	KeyboardButton::Up, KeyboardButton::PageUp, KeyboardButton::PageDown, KeyboardButton::Home, KeyboardButton::End,
-	KeyboardButton::CapsLock, KeyboardButton::ScrollLock, KeyboardButton::NumLock, KeyboardButton::PrintScreen,
-	KeyboardButton::Pause,
-	KeyboardButton::F1, KeyboardButton::F2, KeyboardButton::F3, KeyboardButton::F4, KeyboardButton::F5,
-	KeyboardButton::F6, KeyboardButton::F7, KeyboardButton::F8, KeyboardButton::F9, KeyboardButton::F10,
-	KeyboardButton::F11, KeyboardButton::F12, KeyboardButton::F13, KeyboardButton::F14, KeyboardButton::F15,
-	KeyboardButton::F16, KeyboardButton::F17, KeyboardButton::F18, KeyboardButton::F19, KeyboardButton::F20,
-	KeyboardButton::F21, KeyboardButton::F22, KeyboardButton::F23, KeyboardButton::F24, KeyboardButton::F25,
-	KeyboardButton::KP_0, KeyboardButton::KP_1, KeyboardButton::KP_2, KeyboardButton::KP_3, KeyboardButton::KP_4,
-	KeyboardButton::KP_5, KeyboardButton::KP_6, KeyboardButton::KP_7, KeyboardButton::KP_8, KeyboardButton::KP_9,
-	KeyboardButton::KP_Decimal, KeyboardButton::KP_Divide, KeyboardButton::KP_Multiply, KeyboardButton::KP_Subtract,
-	KeyboardButton::KP_Add, KeyboardButton::KP_Enter, KeyboardButton::KP_Equal,
-	KeyboardButton::LeftShift, KeyboardButton::LeftControl, KeyboardButton::LeftAlt, KeyboardButton::LeftSuper,
-	KeyboardButton::RightShift, KeyboardButton::RightControl, KeyboardButton::RightAlt, KeyboardButton::RightSuper,
-	KeyboardButton::Menu,
 };
 
 /***********************************************************************************************************************
@@ -148,12 +112,12 @@ private:
 	mutex eventLocker;
 	#endif
 	vector<void*> standardCursors;
-	vector<bool> newKeyboardStates;
-	vector<bool> lastKeyboardStates;
-	vector<bool> currKeyboardStates;
-	vector<bool> newMouseStates;
-	vector<bool> lastMouseStates;
-	vector<bool> currMouseStates;
+	PackedVector<1> newKeyboardStates;
+	PackedVector<1> lastKeyboardStates;
+	PackedVector<1> currKeyboardStates;
+	PackedVector<1> newMouseStates;
+	PackedVector<1> lastMouseStates;
+	PackedVector<1> currMouseStates;
 	u32string accumKeyboardChars;
 	u32string newKeyboardChars;
 	u32string currKeyboardChars;
@@ -168,6 +132,7 @@ private:
 	string newClipboard;
 	string lastClipboard;
 	string currClipboard;
+	const fs::path* currFileDropPath = nullptr;
 	void* emptyCursor = nullptr;
 	uint2 newFramebufferSize = uint2::zero;
 	uint2 currFramebufferSize = uint2::zero;
@@ -183,7 +148,7 @@ private:
 	float2 newMouseScroll = float2::zero;
 	float2 currMouseScroll = float2::zero;
 	double currentTime = 0.0, systemTime = 0.0, deltaTime = 0.0;
-	const fs::path* currFileDropPath = nullptr;
+	uint32 displayRefreshRate = 0;
 	CursorMode newCursorMode = CursorMode::Normal;
 	CursorMode currCursorMode = CursorMode::Normal;
 	CursorType newCursorType = CursorType::Default;
@@ -201,13 +166,8 @@ private:
 	 * @param setSingleton set system singleton instance
 	 */
 	InputSystem(bool setSingleton = true);
-	/**
-	 * @brief Destroys input system instance.
-	 */
-	~InputSystem() override;
 
 	void preInit();
-	void deinit();
 	void input();
 	void output();
 
@@ -266,8 +226,12 @@ public:
 	 * @details It can change by the display settings.
 	 */
 	float2 getContentScale() const noexcept { return currContentScale; }
-
 	/**
+	 * @brief Returns primary display refresh rate in Hz.
+	 */
+	uint32 getDisplayRefreshRate() const noexcept { return displayRefreshRate; }
+
+	/*******************************************************************************************************************
 	 * @brief Is windows currently in focus.
 	 */
 	bool isWindowInFocus() const noexcept { return currWindowInFocus; }
@@ -310,61 +274,65 @@ public:
 	 */
 	float2 getMouseScroll() const noexcept { return currMouseScroll; }
 
-	/**
-	 * @brief Has the keyboard button been pressed.
+	/*******************************************************************************************************************
+	 * @brief Returns true if keyboard button has been pressed.
 	 * @param button target keyboard button
 	 */
-	bool isKeyboardPressed(KeyboardButton button) const noexcept
+	bool isKeyPressed(KeyboardButton button) const noexcept
 	{
-		GARDEN_ASSERT((int16)button >= 0 && button <= KeyboardButton::Last);
-		return !lastKeyboardStates[(int16)button] && currKeyboardStates[(int16)button];
+		GARDEN_ASSERT(button > KeyboardButton::Unknown && button <= KeyboardButton::Last);
+		return (currKeyboardStates.unsafeGet((psize)button) & 
+			!lastKeyboardStates.unsafeGet((psize)button)) ? true : false;
 	}
 	/**
-	 * @brief Has the keyboard button been released.
+	 * @brief Returns true if keyboard button has been released.
 	 * @param button target keyboard button
 	 */
-	bool isKeyboardReleased(KeyboardButton button) const noexcept
+	bool isKeyReleased(KeyboardButton button) const noexcept
 	{
-		GARDEN_ASSERT((int16)button >= 0 && button <= KeyboardButton::Last);
-		return lastKeyboardStates[(int)button] && !currKeyboardStates[(int)button];
+		GARDEN_ASSERT(button > KeyboardButton::Unknown && button <= KeyboardButton::Last);
+		return (lastKeyboardStates.unsafeGet((psize)button) & 
+			!currKeyboardStates.unsafeGet((psize)button)) ? true : false;
 	}
 
 	/**
-	 * @brief Has the mouse button been pressed.
+	 * @brief Returns true if mouse button has been pressed.
 	 * @param button target mouse button
 	 */
 	bool isMousePressed(MouseButton button) const noexcept
 	{
-		GARDEN_ASSERT(button <= MouseButton::Last);
-		return !lastMouseStates[(uint8)button] && currMouseStates[(uint8)button];
+		GARDEN_ASSERT(button < MouseButton::Count);
+		return (currMouseStates.unsafeGet((psize)button) & 
+			!lastMouseStates.unsafeGet((psize)button)) ? true : false;
 	}
 	/**
-	 * @brief Has the mouse button been released.
+	 * @brief Returns true if mouse button has been released.
 	 * @param button target mouse button
 	 */
 	bool isMouseReleased(MouseButton button) const noexcept
 	{
-		GARDEN_ASSERT(button <= MouseButton::Last);
-		return lastMouseStates[(uint8)button] && !currMouseStates[(uint8)button];
+		GARDEN_ASSERT(button < MouseButton::Count);
+		return (lastMouseStates.unsafeGet((psize)button) & 
+			!currMouseStates.unsafeGet((psize)button)) ? true : false;
 	}
 
 	/**
-	 * @brief Is keyboard button in the pressed state.
+	 * @brief Returns current keyboard button pressed state.
 	 * @param button target keyboard button
 	 */
-	bool getKeyboardState(KeyboardButton button) const noexcept
+	bool getKeyState(KeyboardButton button) const noexcept
 	{
-		GARDEN_ASSERT((int16)button >= 0 && button <= KeyboardButton::Last);
-		return currKeyboardStates[(int16)button];
+		GARDEN_ASSERT(button > KeyboardButton::Unknown && button <= KeyboardButton::Last);
+		return currKeyboardStates.unsafeGet((psize)button) ? true : false;
 	}
 	/**
-	 * @brief Is mouse button in the pressed state.
+	 * @brief Returns current mouse button pressed state.
 	 * @param button target keyboard button
 	 */
 	bool getMouseState(MouseButton button) const noexcept
 	{
-		GARDEN_ASSERT(button <= MouseButton::Last);
-		return currMouseStates[(uint8)button];
+		GARDEN_ASSERT(button < MouseButton::Count);
+		return currMouseStates.unsafeGet((psize)button) ? true : false;
 	}
 
 	/**
@@ -468,5 +436,41 @@ static constexpr double timeToHours(double time) noexcept { return time / 3600.0
  * @param time target time in seconds
  */
 static constexpr double timeToDays(double time) noexcept { return time / 86400.0; }
+
+/**
+ * @brief All defined keyboard buttons array. (GLFW)
+ */
+constexpr KeyboardButton allKeyboardButtons[keyboardButtonCount] =
+{
+	KeyboardButton::Space, KeyboardButton::Apostrophe, KeyboardButton::Comma,
+	KeyboardButton::Minus, KeyboardButton::Period, KeyboardButton::Slash,
+	KeyboardButton::N0, KeyboardButton::N1, KeyboardButton::N2, KeyboardButton::N3, KeyboardButton::N4,
+	KeyboardButton::N5, KeyboardButton::N6, KeyboardButton::N7, KeyboardButton::N8, KeyboardButton::N9,
+	KeyboardButton::Semicolon, KeyboardButton::Equal,
+	KeyboardButton::A, KeyboardButton::B, KeyboardButton::C, KeyboardButton::D, KeyboardButton::E, KeyboardButton::F,
+	KeyboardButton::G, KeyboardButton::H, KeyboardButton::I, KeyboardButton::J, KeyboardButton::K, KeyboardButton::L,
+	KeyboardButton::M, KeyboardButton::N, KeyboardButton::O, KeyboardButton::P, KeyboardButton::Q, KeyboardButton::R, 
+	KeyboardButton::S, KeyboardButton::T, KeyboardButton::U, KeyboardButton::V, KeyboardButton::W, KeyboardButton::X,
+	KeyboardButton::Y, KeyboardButton::Z,
+	KeyboardButton::LeftBracket, KeyboardButton::Backslash, KeyboardButton::RightBracket, KeyboardButton::GraveAccent,
+	KeyboardButton::World1, KeyboardButton::World2,
+	KeyboardButton::Escape, KeyboardButton::Enter, KeyboardButton::Tab, KeyboardButton::Backspace,
+	KeyboardButton::Insert, KeyboardButton::Delete, KeyboardButton::Right, KeyboardButton::Left, KeyboardButton::Down,
+	KeyboardButton::Up, KeyboardButton::PageUp, KeyboardButton::PageDown, KeyboardButton::Home, KeyboardButton::End,
+	KeyboardButton::CapsLock, KeyboardButton::ScrollLock, KeyboardButton::NumLock, KeyboardButton::PrintScreen,
+	KeyboardButton::Pause,
+	KeyboardButton::F1, KeyboardButton::F2, KeyboardButton::F3, KeyboardButton::F4, KeyboardButton::F5,
+	KeyboardButton::F6, KeyboardButton::F7, KeyboardButton::F8, KeyboardButton::F9, KeyboardButton::F10,
+	KeyboardButton::F11, KeyboardButton::F12, KeyboardButton::F13, KeyboardButton::F14, KeyboardButton::F15,
+	KeyboardButton::F16, KeyboardButton::F17, KeyboardButton::F18, KeyboardButton::F19, KeyboardButton::F20,
+	KeyboardButton::F21, KeyboardButton::F22, KeyboardButton::F23, KeyboardButton::F24, KeyboardButton::F25,
+	KeyboardButton::KP_0, KeyboardButton::KP_1, KeyboardButton::KP_2, KeyboardButton::KP_3, KeyboardButton::KP_4,
+	KeyboardButton::KP_5, KeyboardButton::KP_6, KeyboardButton::KP_7, KeyboardButton::KP_8, KeyboardButton::KP_9,
+	KeyboardButton::KP_Decimal, KeyboardButton::KP_Divide, KeyboardButton::KP_Multiply, KeyboardButton::KP_Subtract,
+	KeyboardButton::KP_Add, KeyboardButton::KP_Enter, KeyboardButton::KP_Equal,
+	KeyboardButton::LeftShift, KeyboardButton::LeftControl, KeyboardButton::LeftAlt, KeyboardButton::LeftSuper,
+	KeyboardButton::RightShift, KeyboardButton::RightControl, KeyboardButton::RightAlt, KeyboardButton::RightSuper,
+	KeyboardButton::Menu,
+};
 
 } // namespace garden

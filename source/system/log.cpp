@@ -24,7 +24,7 @@
 #include "mpmt/thread.hpp"
 #include <chrono>
 
-#if GARDEN_OS_LINUX || GARDEN_OS_MACOS
+#if GARDEN_OS_LINUX || GARDEN_OS_APPLE
 #include <sys/utsname.h>
 #elif GARDEN_OS_WINDOWS
 #include <windows.h>
@@ -36,7 +36,7 @@ using namespace garden;
 //**********************************************************************************************************************
 static void logKernelInfo(LogSystem* logSystem)
 {
-	#if GARDEN_OS_LINUX || GARDEN_OS_MACOS
+	#if GARDEN_OS_LINUX || GARDEN_OS_APPLE
 	struct utsname info;
 	memset(&info, 0, sizeof(struct utsname));
 	auto result = uname(&info);

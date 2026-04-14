@@ -133,7 +133,7 @@ void LogEditorSystem::log(LogLevel level, string_view message)
 	time_t rawTime;
 	time(&rawTime);
 
-	#if GARDEN_OS_LINUX || GARDEN_OS_MACOS
+	#if GARDEN_OS_LINUX || GARDEN_OS_APPLE
 	struct tm timeInfo = *localtime(&rawTime);
 	#elif GARDEN_OS_WINDOWS
 	struct tm timeInfo;
