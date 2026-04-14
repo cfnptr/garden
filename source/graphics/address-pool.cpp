@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "garden/graphics/address-pool.hpp"
-#include "garden/graphics/vulkan/api.hpp"
+#include "garden/graphics/vulkan/command-buffer.hpp"
 
 using namespace garden;
 using namespace garden::graphics;

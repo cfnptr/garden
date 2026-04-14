@@ -150,7 +150,7 @@ static vk::Instance createVkInstance(const string& appName, Version appVersion,
 	auto glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 	extensions.assign(glfwExtensions, glfwExtensions + glfwExtensionCount);
 
-	#if GARDEN_OS_MACOS
+	#if GARDEN_OS_APPLE
 	if (!hasExtension(extensions, VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME))
 		extensions.push_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
 	#endif
@@ -164,7 +164,7 @@ static vk::Instance createVkInstance(const string& appName, Version appVersion,
 		auto layerName = string_view(properties.layerName);
 		if (layerName == "VK_LAYER_MESA_anti_lag")
 			layers.push_back("VK_LAYER_MESA_anti_lag");
-		#if GARDEN_GAPI_VALIDATIONS
+		#if GARDEN_USE_GAPI_VALIDATIONS
 		else if (layerName == "VK_LAYER_KHRONOS_validation")
 			layers.push_back("VK_LAYER_KHRONOS_validation");
 		#endif
@@ -236,7 +236,7 @@ static vk::Instance createVkInstance(const string& appName, Version appVersion,
 	}
 	#endif
 
-	#if GARDEN_OS_MACOS
+	#if GARDEN_OS_APPLE
 	auto flags = vk::InstanceCreateFlagBits::eEnumeratePortabilityKHR;
 	#else
 	auto flags = vk::InstanceCreateFlags();
@@ -463,7 +463,7 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 	vector<const char*> extensions =
 	{
 		VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-		#if GARDEN_OS_MACOS
+		#if GARDEN_OS_APPLE
 		VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME,
 		#endif
 	};
@@ -536,7 +536,7 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 		vk::PhysicalDeviceRayQueryFeaturesKHR rayQuery;
 		vk::PhysicalDeviceShaderDemoteToHelperInvocationFeatures demoteToHelper;
 		vk::PhysicalDeviceAntiLagFeaturesAMD amdAntiLag;
-		#if GARDEN_OS_MACOS
+		#if GARDEN_OS_APPLE
 		vk::PhysicalDevicePortabilitySubsetFeaturesKHR portability;
 		#endif
 	};
@@ -730,7 +730,7 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 	*lastPNext = &vkFeatures->vulkanMemoryModel;
 	lastPNext = &vkFeatures->vulkanMemoryModel.pNext;
 
-	#if GARDEN_OS_MACOS
+	#if GARDEN_OS_APPLE
 	vkFeatures->portability.mutableComparisonSamplers = VK_TRUE;
 	*lastPNext = &vkFeatures->portability;
 	lastPNext = &vkFeatures->portability.pNext;

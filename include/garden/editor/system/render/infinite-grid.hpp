@@ -42,7 +42,7 @@ private:
 	
 	friend class ecsm::Manager;
 public:
-	Color meshColor = rgba(16, 16, 16, 1);
+	Color meshColor = rgba(8, 8, 8, 1);
 	Color axisColorX = rgba(255, 16, 16, 1);
 	Color axisColorYZ = rgba(16, 16, 255, 1);
 	float meshScale = 1.0f;

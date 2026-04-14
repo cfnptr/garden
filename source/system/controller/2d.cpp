@@ -221,20 +221,14 @@ void Controller2DSystem::updateCharacterControl()
 	auto manager = Manager::Instance::get();
 	auto inputSystem = InputSystem::Instance::get();
 	auto deltaTime = (float)inputSystem->getDeltaTime();
-	auto isJumping = inputSystem->getKeyboardState(KeyboardButton::Space);
+	auto isJumping = inputSystem->getKeyState(KeyboardButton::Space);
 	auto gravity = PhysicsSystem::Instance::get()->getGravity();
 
 	auto horizontalVelocity = 0.0f;
-	if (inputSystem->getKeyboardState(KeyboardButton::A) ||
-		inputSystem->getKeyboardState(KeyboardButton::Left))
-	{
+	if (inputSystem->getKeyState(KeyboardButton::A) || inputSystem->getKeyState(KeyboardButton::Left))
 		horizontalVelocity = -horizontalSpeed;
-	}
-	if (inputSystem->getKeyboardState(KeyboardButton::D) ||
-		inputSystem->getKeyboardState(KeyboardButton::Right))
-	{
+	if (inputSystem->getKeyState(KeyboardButton::D) || inputSystem->getKeyState(KeyboardButton::Right))
 		horizontalVelocity += horizontalSpeed;
-	}
 
 	for (auto i = characterEntities.first; i != characterEntities.second; i++)
 	{

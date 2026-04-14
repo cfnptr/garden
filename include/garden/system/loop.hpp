@@ -38,13 +38,8 @@ class LoopSystem final : public System, public Singleton<LoopSystem>
 	 * @param setSingleton set system singleton instance
 	 */
 	LoopSystem(bool setSingleton = true);
-	/**
-	 * @brief Destroys loop system instance.
-	 */
-	~LoopSystem() override;
 
 	void preInit();
-	void deinit();
 	void input();
 	void output();
 	

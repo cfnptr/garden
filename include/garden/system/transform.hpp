@@ -473,10 +473,6 @@ class TransformSystem final : public CompAnimSystem<TransformComponent, Transfor
 	 * @param setSingleton set system singleton instance
 	 */
 	TransformSystem(bool setSingleton = true);
-	/**
-	 * @brief Destroys transformer system instance.
-	 */
-	~TransformSystem() override;
 
 	void destroyComponent(ID<Component> instance) override;
 	void resetComponent(View<Component> component, bool full) override;

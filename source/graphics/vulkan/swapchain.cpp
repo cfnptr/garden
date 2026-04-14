@@ -306,11 +306,11 @@ void VulkanSwapchain::recreate(uint2 framebufferSize, bool useVsync, bool useTri
 	}
 
 	// Note: Do not reset inFlightIndex here, temporal systems use it.
+	this->framebufferSize = framebufferSize;
 	this->imageIndex = 0;
 	this->vsync = useVsync;
 	this->tripleBuffering = useTripleBuffering;
 	this->instance = newInstance;
-	return true;
 }
 
 //**********************************************************************************************************************

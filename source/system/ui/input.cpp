@@ -286,10 +286,8 @@ void UiInputSystem::updateActive()
 		return;
 
 	auto isRepeated = false;
-	if (inputSystem->getKeyboardState(KeyboardButton::Left) ||
-		inputSystem->getKeyboardState(KeyboardButton::Right) ||
-		inputSystem->getKeyboardState(KeyboardButton::Backspace) ||
-		inputSystem->getKeyboardState(KeyboardButton::Delete))
+	if (inputSystem->getKeyState(KeyboardButton::Left) || inputSystem->getKeyState(KeyboardButton::Right) ||
+		inputSystem->getKeyState(KeyboardButton::Backspace) || inputSystem->getKeyState(KeyboardButton::Delete))
 	{
 		if (repeatTime < inputSystem->getSystemTime())
 		{
@@ -303,20 +301,20 @@ void UiInputSystem::updateActive()
 	{
 		uiInputView->updateCaret();
 	}
-	else if (inputSystem->isKeyboardPressed(KeyboardButton::Right) ||
-		(isRepeated && inputSystem->getKeyboardState(KeyboardButton::Right)))
+	else if (inputSystem->isKeyPressed(KeyboardButton::Right) ||
+		(isRepeated && inputSystem->getKeyState(KeyboardButton::Right)))
 	{
 		uiInputView->updateCaret(uiInputView->caretIndex + 1);
 	}
-	else if (inputSystem->isKeyboardPressed(KeyboardButton::Left) ||
-		(isRepeated && inputSystem->getKeyboardState(KeyboardButton::Left)))
+	else if (inputSystem->isKeyPressed(KeyboardButton::Left) ||
+		(isRepeated && inputSystem->getKeyState(KeyboardButton::Left)))
 	{
 		if (uiInputView->caretIndex > 0)
 			uiInputView->updateCaret(uiInputView->caretIndex - 1);
 	}
 
-	if (inputSystem->isKeyboardPressed(KeyboardButton::Backspace) || 
-		(isRepeated && inputSystem->getKeyboardState(KeyboardButton::Backspace)))
+	if (inputSystem->isKeyPressed(KeyboardButton::Backspace) || 
+		(isRepeated && inputSystem->getKeyState(KeyboardButton::Backspace)))
 	{
 		if (uiInputView->caretIndex > 0 && uiInputView->caretIndex <= uiInputView->text.length())
 		{
@@ -328,8 +326,8 @@ void UiInputSystem::updateActive()
 				Manager::Instance::get()->tryRunEvent(uiInputView->onChange);
 		}
 	}
-	if (inputSystem->isKeyboardPressed(KeyboardButton::Delete) ||
-		(isRepeated && inputSystem->getKeyboardState(KeyboardButton::Delete)))
+	if (inputSystem->isKeyPressed(KeyboardButton::Delete) ||
+		(isRepeated && inputSystem->getKeyState(KeyboardButton::Delete)))
 	{
 		if (uiInputView->caretIndex < uiInputView->text.length())
 		{

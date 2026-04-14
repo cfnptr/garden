@@ -126,7 +126,7 @@ void HbaoRenderSystem::aoRender()
 	}
 
 	auto cameraView = Manager::Instance::get()->get<CameraComponent>(graphicsSystem->camera);
-	auto framebufferView = graphicsSystem->get(graphicsSystem->getCurrentFramebuffer());
+	auto framebufferView = graphicsSystem->get(graphicsSystem->getRenderPassFB());
 	auto aoFrameSize = framebufferView->getSize();
 	const auto& cc = graphicsSystem->getCommonConstants();
 	auto& proj = cc.projection;

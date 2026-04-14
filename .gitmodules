@@ -1,54 +1,57 @@
 [submodule "libraries/ecsm"]
 	path = libraries/ecsm
 	url = https://github.com/cfnptr/ecsm
-[submodule "libraries/math"]
-	path = libraries/math
-	url = https://github.com/cfnptr/math
-[submodule "libraries/logy"]
-	path = libraries/logy
-	url = https://github.com/cfnptr/logy
-[submodule "libraries/vma"]
-	path = libraries/vma
-	url = https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator
-[submodule "libraries/xxhash"]
-	path = libraries/xxhash
-	url = https://github.com/Cyan4973/xxHash
-[submodule "libraries/imgui"]
-	path = libraries/imgui
-	url = https://github.com/ocornut/imgui
-[submodule "libraries/stb"]
-	path = libraries/stb
-	url = https://github.com/nothings/stb
-[submodule "libraries/webp"]
-	path = libraries/webp
-	url = https://github.com/webmproject/libwebp
-[submodule "libraries/json"]
-	path = libraries/json
-	url = https://github.com/nlohmann/json
-[submodule "libraries/freetype"]
-	path = libraries/freetype
-	url = https://github.com/freetype/freetype
-[submodule "libraries/pack"]
-	path = libraries/pack
-	url = https://github.com/cfnptr/pack
-[submodule "libraries/nets"]
-	path = libraries/nets
-	url = https://github.com/cfnptr/nets
 [submodule "libraries/fastnoise2"]
 	path = libraries/fastnoise2
 	url = https://github.com/Auburn/FastNoise2
+[submodule "libraries/freetype"]
+	path = libraries/freetype
+	url = https://github.com/freetype/freetype
+[submodule "libraries/glfw"]
+	path = libraries/glfw
+	url = https://github.com/glfw/glfw
+[submodule "libraries/imgui"]
+	path = libraries/imgui
+	url = https://github.com/ocornut/imgui
 [submodule "libraries/jolt"]
 	path = libraries/jolt
 	url = https://github.com/jrouwe/JoltPhysics
+[submodule "libraries/json"]
+	path = libraries/json
+	url = https://github.com/nlohmann/json
+[submodule "libraries/logy"]
+	path = libraries/logy
+	url = https://github.com/cfnptr/logy
+[submodule "libraries/math"]
+	path = libraries/math
+	url = https://github.com/cfnptr/math
+[submodule "libraries/nets"]
+	path = libraries/nets
+	url = https://github.com/cfnptr/nets
+[submodule "libraries/pack"]
+	path = libraries/pack
+	url = https://github.com/cfnptr/pack
 [submodule "libraries/png"]
 	path = libraries/png
 	url = https://github.com/pnggroup/libpng
+[submodule "libraries/stb"]
+	path = libraries/stb
+	url = https://github.com/nothings/stb
 [submodule "libraries/tracy"]
 	path = libraries/tracy
 	url = https://github.com/wolfpld/tracy
+[submodule "libraries/vma"]
+	path = libraries/vma
+	url = https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator
 [submodule "libraries/volk"]
 	path = libraries/volk
 	url = https://github.com/zeux/volk
+[submodule "libraries/webp"]
+	path = libraries/webp
+	url = https://github.com/webmproject/libwebp
+[submodule "libraries/xxhash"]
+	path = libraries/xxhash
+	url = https://github.com/Cyan4973/xxHash
 [submodule "resources"]
 	path = resources
 	url = https://github.com/cfnptr/garden-resources

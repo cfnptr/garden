@@ -760,7 +760,7 @@ void DeferredRenderSystem::render()
 		graphicsSystem->stopRecording();
 	}
 
-	auto framebufferView = graphicsSystem->get(graphicsSystem->getSwapchainFramebuffer());
+	auto framebufferView = graphicsSystem->get(graphicsSystem->getSwapchainFB());
 	const auto& colorAttachment = framebufferView->getColorAttachments()[0];
 	auto swapchainImageView = graphicsSystem->get(colorAttachment.imageView);
 

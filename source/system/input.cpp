@@ -87,12 +87,12 @@ void InputSystem::renderThread()
 
 //**********************************************************************************************************************
 InputSystem::InputSystem(bool setSingleton) : Singleton(setSingleton),
-	newKeyboardStates((psize)KeyboardButton::Last + 1, false),
-	lastKeyboardStates((psize)KeyboardButton::Last + 1, false),
-	currKeyboardStates((psize)KeyboardButton::Last + 1, false),
-	newMouseStates((psize)MouseButton::Last + 1, false),
-	lastMouseStates((psize)MouseButton::Last + 1, false),
-	currMouseStates((psize)MouseButton::Last + 1, false)
+	newKeyboardStates((psize)KeyboardButton::Last + 1),
+	lastKeyboardStates((psize)KeyboardButton::Last + 1),
+	currKeyboardStates((psize)KeyboardButton::Last + 1),
+	newMouseStates((psize)MouseButton::Last + 1),
+	lastMouseStates((psize)MouseButton::Last + 1),
+	currMouseStates((psize)MouseButton::Last + 1)
 {
 	mpmt::Thread::setForegroundPriority();
 	
@@ -100,9 +100,7 @@ InputSystem::InputSystem(bool setSingleton) : Singleton(setSingleton),
 	manager->registerEventBefore("Input", "Update");
 	manager->registerEventAfter("Output", "Update");
 	manager->registerEvent("FileDrop");
-
 	ECSM_SUBSCRIBE_TO_EVENT("PreInit", InputSystem::preInit);
-	ECSM_SUBSCRIBE_TO_EVENT("Deinit", InputSystem::deinit);
 }
 void InputSystem::preInit()
 {
@@ -138,14 +136,18 @@ void InputSystem::preInit()
 	for (uint8 i = 0; i < keyboardButtonCount; i++)
 	{
 		auto button = (int)allKeyboardButtons[i];
-		auto state = glfwGetKey(window, button);
-		newKeyboardStates[button] = lastKeyboardStates[button] = currKeyboardStates[button] = state;
+		auto state = glfwGetKey(window, button) == GLFW_PRESS ? 1 : 0;
+		newKeyboardStates.unsafeSet(button, state);
+		lastKeyboardStates.unsafeSet(button, state);
+		currKeyboardStates.unsafeSet(button, state);
 	}
 
 	for (int i = 0; i < (int)MouseButton::Last + 1; i++)
 	{
-		auto state = glfwGetMouseButton(window, i);
-		newMouseStates[i] = lastMouseStates[i] = currMouseStates[i] = state;
+		auto state = glfwGetMouseButton(window, i) == GLFW_PRESS ? 1 : 0;
+		newMouseStates.unsafeSet(i, state);
+		lastMouseStates.unsafeSet(i, state);
+		currMouseStates.unsafeSet(i, state);
 	}
 
 	auto currentCallback = glfwSetErrorCallback(nullptr);
@@ -186,6 +188,7 @@ void InputSystem::preInit()
 			GARDEN_LOG_INFO("Monitor resolution: " + to_string(videoMode->width) + 
 				"x" + to_string(videoMode->height) + " sc");
 			GARDEN_LOG_INFO("Monitor refresh rate: " + to_string(videoMode->refreshRate) + " Hz");
+			displayRefreshRate = videoMode->refreshRate;
 		}
 	}
 
@@ -415,12 +418,16 @@ void InputSystem::startRenderThread()
 		for (uint8 i = 0; i < keyboardButtonCount; i++)
 		{
 			auto button = (int)allKeyboardButtons[i];
-			newKeyboardStates[button] = glfwGetKey(window, button);
+			auto state = glfwGetKey(window, button) == GLFW_PRESS ? 1 : 0;
+			newKeyboardStates.unsafeSet(button, state);
 		}
 
 		auto& newMouseStates = inputSystem->newMouseStates;
 		for (int i = 0; i < (int)MouseButton::Last + 1; i++)
-			newMouseStates[i] = glfwGetMouseButton(window, i);
+		{
+			auto state = glfwGetMouseButton(window, i) == GLFW_PRESS ? 1 : 0;
+			newMouseStates.unsafeSet(i, state);
+		}
 
 		if (!inputSystem->accumKeyboardChars.empty())
 		{

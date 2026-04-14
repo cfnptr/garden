@@ -645,7 +645,7 @@ void Pipeline::bind(uint8 variant)
 		busyLock++;
 		if (type == PipelineType::Graphics)
 		{
-			GARDEN_ASSERT_MSG(graphicsAPI->currentFramebuffer, "Assert " + debugName);
+			GARDEN_ASSERT_MSG(graphicsAPI->renderPassFramebuffer, "Assert " + debugName);
 			currentCommandBuffer->addLockedResource(ID<GraphicsPipeline>(pipeline));
 		}
 		else if (type == PipelineType::Compute)

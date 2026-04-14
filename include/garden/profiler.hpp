@@ -15,7 +15,7 @@
 #pragma once
 #include "garden/defines.hpp"
 
-#if GARDEN_TRACY_PROFILER
+#if GARDEN_USE_TRACY_PROFILER
 #include "tracy/Tracy.hpp"
 
 #define SET_CPU_ZONE_SCOPED(name) ZoneScopedNS(name, 16)

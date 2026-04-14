@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "garden/system/controller/fpv.hpp"
+#include "garden/system/render/pbr-lighting.hpp"
 #include "garden/system/transform.hpp"
 #include "garden/system/graphics.hpp"
 #include "garden/system/camera.hpp"
@@ -44,6 +45,8 @@ void FpvControllerSystem::init()
 		manager->add<DoNotDestroyComponent>(camera);
 	if (DoNotSerializeSystem::Instance::has())
 		manager->add<DoNotSerializeComponent>(camera);
+	if (PbrLightingSystem::Instance::has())
+		manager->add<PbrLightingComponent>(camera);
 
 	auto transformView = manager->add<TransformComponent>(camera);
 	transformView->setPosition(f32x4(0.0f, 2.0f, -2.0f));
@@ -102,7 +105,7 @@ void FpvControllerSystem::updateMouseLock()
 	#endif
 
 	// TODO: && get the exact button from the input system
-	if (!wantCaptureMouse && inputSystem->isKeyboardPressed(KeyboardButton::Tab)) 
+	if (!wantCaptureMouse && inputSystem->isKeyPressed(KeyboardButton::Tab)) 
 		isMouseLocked = !isMouseLocked;
 
 	if (isMouseLocked)
@@ -163,7 +166,7 @@ void FpvControllerSystem::updateCameraControl(quat cameraRotation)
 	if (isMouseLocked)
 	{
 		float boost = 1.0f;
-		if (inputSystem->getKeyboardState(KeyboardButton::LeftShift))
+		if (inputSystem->getKeyState(KeyboardButton::LeftShift))
 		{
 			boost = boostFactor * boostAccum;
 			boostAccum += deltaTime * boostFactor;
@@ -173,17 +176,17 @@ void FpvControllerSystem::updateCameraControl(quat cameraRotation)
 			boostAccum = 1.0f;
 		}
 
-		if (inputSystem->getKeyboardState(KeyboardButton::A))
+		if (inputSystem->getKeyState(KeyboardButton::A))
 			flyVector.setX(-moveSpeed);
-		else if (inputSystem->getKeyboardState(KeyboardButton::D))
+		else if (inputSystem->getKeyState(KeyboardButton::D))
 			flyVector.setX(moveSpeed);
-		if (inputSystem->getKeyboardState(KeyboardButton::Q) || inputSystem->getKeyboardState(KeyboardButton::LeftControl))
+		if (inputSystem->getKeyState(KeyboardButton::Q) || inputSystem->getKeyState(KeyboardButton::LeftControl))
 			flyVector.setY(-moveSpeed);
-		else if (inputSystem->getKeyboardState(KeyboardButton::E) || inputSystem->getKeyboardState(KeyboardButton::Space))
+		else if (inputSystem->getKeyState(KeyboardButton::E) || inputSystem->getKeyState(KeyboardButton::Space))
 			flyVector.setY(moveSpeed);
-		if (inputSystem->getKeyboardState(KeyboardButton::S))
+		if (inputSystem->getKeyState(KeyboardButton::S))
 			flyVector.setZ(-moveSpeed);
-		else if (inputSystem->getKeyboardState(KeyboardButton::W))
+		else if (inputSystem->getKeyState(KeyboardButton::W))
 			flyVector.setZ(moveSpeed);
 		flyVector = (flyVector * boost) * cameraRotation;
 	}
@@ -208,14 +211,14 @@ void FpvControllerSystem::updateCharacterControl()
 	auto manager = Manager::Instance::get();
 	auto inputSystem = InputSystem::Instance::get();
 	auto deltaTime = (float)inputSystem->getDeltaTime();
-	auto isJumping = inputSystem->getKeyboardState(KeyboardButton::Space);
+	auto isJumping = inputSystem->getKeyState(KeyboardButton::Space);
 	const auto& gravity = PhysicsSystem::Instance::get()->getGravity();
 	const auto& cc = GraphicsSystem::Instance::get()->getCommonConstants();
 
 	auto velocity = f32x4::zero;
-	if (inputSystem->getKeyboardState(KeyboardButton::W))
+	if (inputSystem->getKeyState(KeyboardButton::W))
 		velocity = (f32x4)cc.viewDir;
-	if (inputSystem->getKeyboardState(KeyboardButton::S))
+	if (inputSystem->getKeyState(KeyboardButton::S))
 		velocity -= (f32x4)cc.viewDir;
 	if (velocity != f32x4::zero)
 	{
@@ -223,9 +226,9 @@ void FpvControllerSystem::updateCharacterControl()
 		velocity = normalize3(velocity);
 	}
 
-	if (inputSystem->getKeyboardState(KeyboardButton::D))
+	if (inputSystem->getKeyState(KeyboardButton::D))
 		velocity += cc.inverseView * f32x4(f32x4::right, 1.0f);
-	if (inputSystem->getKeyboardState(KeyboardButton::A))
+	if (inputSystem->getKeyState(KeyboardButton::A))
 		velocity -= cc.inverseView * f32x4(f32x4::right, 1.0f);
 	if (velocity != f32x4::zero)
 	{
@@ -234,7 +237,7 @@ void FpvControllerSystem::updateCharacterControl()
 		velocity *= moveSpeed;
 	}
 
-	if (inputSystem->getKeyboardState(KeyboardButton::LeftShift))
+	if (inputSystem->getKeyState(KeyboardButton::LeftShift))
 		velocity *= boostFactor;
 
 	for (auto i = characterEntities.first; i != characterEntities.second; i++)

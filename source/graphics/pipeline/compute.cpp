@@ -69,7 +69,7 @@ void ComputePipeline::dispatch(uint3 count, bool isGlobalCount)
 	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
 	GARDEN_ASSERT_MSG(areAllTrue(count > uint3::zero), "Assert " + debugName);
 	GARDEN_ASSERT_MSG(currentCommandBuffer, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(!graphicsAPI->currentFramebuffer, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(!graphicsAPI->renderPassFramebuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(instance, "Compute pipeline [" + debugName + "] is not ready");
 
 	DispatchCommand command;

@@ -49,6 +49,7 @@ class Controller2DSystem final : public System, public Singleton<Controller2DSys
 
 	void init();
 	void update();
+	void swapchainRecreate();
 	
 	friend class ecsm::Manager;
 public:
