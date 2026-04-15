@@ -179,6 +179,12 @@ include(FetchContent)
 find_package(Vulkan REQUIRED)
 find_package(assimp REQUIRED)
 
+find_package(ZLIB)
+if(NOT ZLIB_FOUND AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
+	set(ZLIB_LIBRARY /usr/lib64/libz.so)
+	find_package(ZLIB REQUIRED)
+endif()
+
 if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 	set(VOLK_STATIC_DEFINES VK_USE_PLATFORM_METAL_MVK)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")

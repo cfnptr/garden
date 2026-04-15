@@ -101,7 +101,9 @@ Alternatively you can install and use [CLion](https://www.jetbrains.com/clion/) 
 
 ### 2. Install required packages
 
-* Execute [scripts/install-packages.sh](scripts/install-packages.sh) script or
+* Execute [scripts/install-packages.sh](scripts/install-packages.sh) script
+
+Or
 
 ### For Ubuntu/Debian
 

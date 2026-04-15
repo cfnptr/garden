@@ -172,7 +172,7 @@ function(packResources PACK_EXE_NAME PACK_CACHE_DIR PACK_APP_RES_DIR PACK_GARDEN
 	collectPackResources(PACK_APP_RES_DIR INCLUDE_EDITOR INCLUDE_DEBUG PACK_APP_RES_PATHS APP_RESOURCES)
 
 	add_custom_command(TARGET ${PACK_EXE_NAME} POST_BUILD VERBATIM
-		COMMAND ${CMAKE_COMMAND} -E echo "Cleaning up cache..."
+		COMMAND ${CMAKE_COMMAND} -E echo "Cleaning up editor cache..."
 		COMMAND ${CMAKE_COMMAND} -E remove_directory ${PACK_CACHE_DIR}
 
 		COMMAND ${CMAKE_COMMAND} -E echo "Compiling Garden shaders..."
