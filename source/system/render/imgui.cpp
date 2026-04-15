@@ -495,6 +495,23 @@ void ImGuiRenderSystem::input()
 	const auto& keyboardChars = inputSystem->getKeyboardChars32();
 	for (auto keyboardChar : keyboardChars)
 		io.AddInputCharacter(keyboardChar);
+
+	if (io.WantCaptureMouse)
+	{
+		if (!lastCursorCapture)
+		{
+			inputSystem->cursorCapturers++;
+			lastCursorCapture = true;
+		}
+	}
+	else
+	{
+		if (lastCursorCapture)
+		{
+			inputSystem->cursorCapturers--;
+			lastCursorCapture = false;
+		}
+	}
 }
 
 //**********************************************************************************************************************

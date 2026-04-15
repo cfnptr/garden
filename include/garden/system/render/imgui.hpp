@@ -52,6 +52,7 @@ private:
 	ID<Sampler> linearSampler = {};
 	ID<Sampler> nearestSampler = {};
 	CursorType lastCursorType = CursorType::Default;
+	bool lastCursorCapture = false;
 	bool isInitialized = false;
 	bool isRendered = true;
 

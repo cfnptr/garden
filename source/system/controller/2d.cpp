@@ -112,16 +112,11 @@ void Controller2DSystem::updateCameraControl()
 	auto inputSystem = InputSystem::Instance::get();
 	auto uiTransformSystem = UiTriggerSystem::Instance::tryGet();
 
-	#if GARDEN_EDITOR
-	auto wantCaptureMouse = ImGui::GetIO().WantCaptureMouse;
-	#else
-	auto wantCaptureMouse = false;
-	#endif
-
-	wantCaptureMouse |= inputSystem->getCursorMode() != CursorMode::Normal || 
-		(uiTransformSystem && uiTransformSystem->getHovered());
-	if (wantCaptureMouse)
+	if (inputSystem->cursorCapturers > 0 || inputSystem->getCursorMode() != CursorMode::Normal || 
+		(uiTransformSystem && uiTransformSystem->getHovered()))
+	{
 		return;
+	}
 
 	auto manager = Manager::Instance::get();
 	auto transformView = manager->tryGet<TransformComponent>(camera);
