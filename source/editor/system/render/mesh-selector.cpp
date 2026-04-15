@@ -60,7 +60,7 @@ void MeshSelectorEditorSystem::render()
 	auto cameraPosition = (f32x4)commonConstants.cameraPos;
 	auto selectedEntity = editorSystem->selectedEntity;
 
-	auto updateSelector = !lastDragging && !ImGui::GetIO().WantCaptureMouse && 
+	auto updateSelector = !lastDragging && inputSystem->cursorCapturers == 0 && 
 		inputSystem->getCursorMode() == CursorMode::Normal && inputSystem->isMouseReleased(MouseButton::Left) &&
 		(!uiTransformSystem || (uiTransformSystem && !uiTransformSystem->getHovered()));
 	lastDragging = ImGui::IsMouseDragging(ImGuiMouseButton_Left);

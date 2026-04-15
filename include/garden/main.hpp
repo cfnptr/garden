@@ -27,7 +27,7 @@
  * @brief Shows an OS error message with target C string.
  * @param[in] cstr target error message C string
  */
-#define GARDEN_MESSAGE_ERROR(cstr) MessageBoxA(nullptr, cstr, "Error", MB_ICONERROR | MB_SYSTEMMODAL)
+#define GARDEN_MESSAGE_ERROR(title, body) MessageBoxA(nullptr, body, title, MB_ICONERROR | MB_SYSTEMMODAL)
 #elif GARDEN_OS_LINUX
 #include <cstdlib>
 
@@ -35,14 +35,14 @@
  * @brief Shows an OS error message with target C string.
  * @param[in] cstr target error message C string
  */
-#define GARDEN_MESSAGE_ERROR(cstr) std::system(("zenity --error --text=\"" + \
-	std::string(cstr) + "\" --title=\"Error\"").c_str());
+#define GARDEN_MESSAGE_ERROR(title, body) std::system(("notify-send -a \"Garden Engine\" " \
+	"-u critical \"" + std::string(title) + "\" \"" + std::string(body) + "\"").c_str());
 #else
 /**
  * @brief Shows an OS error message with target C string.
  * @param[in] cstr target error message C string
  */
-#define GARDEN_MESSAGE_ERROR(cstr) (void)0
+#define GARDEN_MESSAGE_ERROR(title, body) (void)0
 #endif
 
 #if GARDEN_OS_WINDOWS && !GARDEN_DEBUG && !defined(GARDEN_NO_GRAPHICS)
@@ -73,18 +73,18 @@ GARDEN_MAIN                             \
  * @brief Declares application main function. (Entry point)
  * @param[in] entryPoint program entry point callback.
  */
-#define GARDEN_DECLARE_MAIN(entryPoint) \
-GARDEN_MAIN                             \
-{                                       \
-	try                                 \
-	{                                   \
-		entryPoint();                   \
-	}                                   \
-	catch (const std::exception& e)     \
-	{                                   \
-		GARDEN_MESSAGE_ERROR(e.what()); \
-		return EXIT_FAILURE;            \
-	}                                   \
-	return EXIT_SUCCESS;                \
+#define GARDEN_DECLARE_MAIN(entryPoint)          \
+GARDEN_MAIN                                      \
+{                                                \
+	try                                          \
+	{                                            \
+		entryPoint();                            \
+	}                                            \
+	catch (const std::exception& e)              \
+	{                                            \
+		GARDEN_MESSAGE_ERROR("Crash", e.what()); \
+		return EXIT_FAILURE;                     \
+	}                                            \
+	return EXIT_SUCCESS;                         \
 }
 #endif

@@ -98,14 +98,8 @@ void FpvControllerSystem::updateMouseLock()
 {
 	auto inputSystem = InputSystem::Instance::get();
 
-	#if GARDEN_EDITOR
-	auto wantCaptureMouse = ImGui::GetIO().WantCaptureMouse;
-	#else
-	auto wantCaptureMouse = false;
-	#endif
-
 	// TODO: && get the exact button from the input system
-	if (!wantCaptureMouse && inputSystem->isKeyPressed(KeyboardButton::Tab)) 
+	if (inputSystem->cursorCapturers == 0 && inputSystem->isKeyPressed(KeyboardButton::Tab)) 
 		isMouseLocked = !isMouseLocked;
 
 	if (isMouseLocked)

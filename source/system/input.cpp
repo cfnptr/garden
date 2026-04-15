@@ -132,6 +132,7 @@ void InputSystem::preInit()
 	newCursorMode = currCursorMode = (CursorMode)(glfwGetInputMode(window, GLFW_CURSOR) - 0x00034001);
 	newCursorInWindow = lastCursorInWindow = currCursorInWindow = glfwGetWindowAttrib(window, GLFW_HOVERED);
 	newWindowInFocus = lastWindowInFocus = currWindowInFocus = glfwGetWindowAttrib(window, GLFW_FOCUSED);
+	if (!currCursorInWindow) cursorCapturers++;
 
 	for (uint8 i = 0; i < keyboardButtonCount; i++)
 	{
@@ -256,6 +257,11 @@ void InputSystem::input()
 		else abort();
 	}
 
+	if (newCursorInWindow && !currCursorInWindow)
+		cursorCapturers--;
+	else if (!newCursorInWindow && currCursorInWindow)
+		cursorCapturers++;
+
 	currFramebufferSize = newFramebufferSize;
 	currWindowSize = newWindowSize;
 	currWindowScale = (float2)currFramebufferSize / currWindowSize;
@@ -280,7 +286,6 @@ void InputSystem::input()
 	if (!currKeyboardChars.empty())
 		UTF::convert(currKeyboardChars, currKeyboardChars8);
 	else currKeyboardChars8.clear();
-
 	swap(newFileDrops, currFileDrops);
 
 	if (currClipboard != newClipboard)

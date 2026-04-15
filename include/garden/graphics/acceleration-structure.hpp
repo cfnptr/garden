@@ -132,7 +132,7 @@ protected:
 	 */
 	uint64 getScratchSize() const noexcept
 	{
-		GARDEN_ASSERT_MSG(buildData, "Acceleration structure already built");
+		GARDEN_ASSERT_MSG(buildData, "Acceleration structure is already built");
 		auto header = (const BuildDataHeader*)buildData;
 		return header->scratchSize;
 	}

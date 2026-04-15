@@ -133,7 +133,7 @@ void AccelerationStructure::build(ID<Buffer> scratchBuffer)
 	GARDEN_ASSERT_MSG(currentCommandBuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(currentCommandBuffer->getType() != CommandBufferType::Frame, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(!graphicsAPI->renderPassFramebuffer, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(buildData, "Acceleration structure [" + debugName + "] is already build");
+	GARDEN_ASSERT_MSG(buildData, "Acceleration structure [" + debugName + "] is already built");
 
 	auto buildDataHeader = (const BuildDataHeader*)buildData;
 

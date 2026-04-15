@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "garden/system/ui/trigger.hpp"
-#include "garden/system/render/editor.hpp"
 #include "garden/system/ui/transform.hpp"
 #include "garden/system/transform.hpp"
 #include "garden/system/thread.hpp"
@@ -62,14 +61,8 @@ void UiTriggerSystem::update()
 	if (components.getCount() == 0)
 		return;
 
-	#if GARDEN_EDITOR
-	auto wantCaptureMouse = ImGui::GetIO().WantCaptureMouse;
-	#else
-	constexpr auto wantCaptureMouse = false;
-	#endif
-
 	auto inputSystem = InputSystem::Instance::get();
-	if (wantCaptureMouse || !inputSystem->isCursorInWindow() || inputSystem->getCursorMode() != CursorMode::Normal)
+	if (inputSystem->cursorCapturers > 0 || inputSystem->getCursorMode() != CursorMode::Normal)
 	{
 		if (currElement)
 		{

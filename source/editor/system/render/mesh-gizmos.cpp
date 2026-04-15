@@ -237,7 +237,7 @@ void MeshGizmosEditorSystem::render()
 		handleColor, axisColorX, axisColorY, axisColorZ);
 	// TODO: scale and rotation gizmos.
 	
-	if (!ImGui::GetIO().WantCaptureMouse && inputSystem->getCursorMode() == CursorMode::Normal &&
+	if (inputSystem->cursorCapturers == 0 && inputSystem->getCursorMode() == CursorMode::Normal &&
 		(!uiTransformSystem || (uiTransformSystem && !uiTransformSystem->getHovered())))
 	{
 		auto gizmosMeshData = gizmosMeshes.data();
