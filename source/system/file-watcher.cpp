@@ -84,14 +84,13 @@ static void flushChanges(void* instance, tsl::robin_map<int, fs::path>& watchers
 }
 #elif GARDEN_OS_APPLE
 //**********************************************************************************************************************
-static void onChange(ConstFSEventStreamRef streamRef,
-	void* clientCallBackInfo, psize numEvents, void* eventPaths,
+static void onChange(ConstFSEventStreamRef streamRef, void* clientCallBackInfo, psize numEvents, void* eventPaths,
 	const FSEventStreamEventFlags eventFlags[], const FSEventStreamEventId eventIds[])
 {
 	auto fileWatcherSystem = (FileWatcherSystem*)clientCallBackInfo;
 	auto& changedFiles = fileWatcherSystem->getChangedFiles();
 	auto& createdFiles = fileWatcherSystem->getCreatedFiles();
-	auto& locker = fileWatcherSystem->getLocker();
+	auto& locker = fileWatcherSystem->getLocker_();
 	auto paths = (const char**)eventPaths;
 
 	locker.lock();
@@ -178,10 +177,14 @@ void FileWatcherSystem::preInit()
 	addDirWatchers(fd, GARDEN_RESOURCES_PATH, watchers);
 	addDirWatchers(fd, appResourcesPath, watchers);
 	#elif GARDEN_OS_APPLE
-	auto pathToWatch = CFStringCreateWithCString(kCFAllocatorDefault, 
-		appResourcesPath.c_str(), kCFStringEncodingUTF8);
-	// TODO: also watch for the GARDEN_RESOURCES_PATH!
-	auto pathsToWatch = CFArrayCreate(nullptr, (const void**)&pathToWatch, 1, nullptr);
+	CFStringRef paths[2] =
+	{
+		CFStringCreateWithCString(kCFAllocatorDefault, 
+			GARDEN_RESOURCES_PATH.c_str(), kCFStringEncodingUTF8),
+		CFStringCreateWithCString(kCFAllocatorDefault, 
+			appResourcesPath.c_str(), kCFStringEncodingUTF8)
+	};
+	auto pathsToWatch = CFArrayCreate(nullptr, (const void**)paths, 2, nullptr);
 
 	FSEventStreamContext context;
 	context.version = 0;
@@ -194,11 +197,10 @@ void FileWatcherSystem::preInit()
 		kFSEventStreamEventIdSinceNow, 1.0, kFSEventStreamCreateFlagFileEvents);
 	this->instance = stream;
 
-	dispatch_queue_t queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
+	auto queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
 	FSEventStreamSetDispatchQueue(stream, queue);
 	FSEventStreamStart(stream);
-	CFRelease(pathsToWatch);
-	CFRelease(pathToWatch);
+	CFRelease(pathsToWatch); CFRelease(paths[1]); CFRelease(paths[0]);
 	#elif GARDEN_OS_WINDOWS
 	// TODO:
 	#endif

@@ -33,9 +33,9 @@ void ModelRenderSystem::resetComponent(View<Component> component, bool full)
 	auto resourceSystem = ResourceSystem::Instance::get();
 	auto componentView = View<ModelRenderComponent>(component);
 
-	if (!componentView->levels.empty())
+	if (!componentView->lods.empty())
 	{
-		for (auto& lod : componentView->levels)
+		for (auto& lod : componentView->lods)
 		{
 			resourceSystem->destroyShared(lod.vertexBuffer);
 			resourceSystem->destroyShared(lod.indexBuffer);
@@ -49,7 +49,7 @@ void ModelRenderSystem::copyComponent(View<Component> source, View<Component> de
 {
 	auto destinationView = View<ModelRenderComponent>(destination);
 	const auto sourceView = View<ModelRenderComponent>(source);
-	destinationView->levels = sourceView->levels;
+	destinationView->lods = sourceView->lods;
 }
 string_view ModelRenderSystem::getComponentName() const
 {
