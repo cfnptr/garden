@@ -138,8 +138,6 @@ void LogEditorSystem::log(LogLevel level, string_view message)
 	#elif GARDEN_OS_WINDOWS
 	struct tm timeInfo;
 	if (gmtime_s(&timeInfo, &rawTime) != 0) abort();
-	#else
-	#error Unknown operating system
 	#endif
 
 	double clock = mpio::OS::getCurrentClock();

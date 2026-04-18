@@ -313,6 +313,10 @@ public:
 	 */
 	virtual bool hasRayQuery() const { return false; }
 	/**
+	 * @brief Returns true if mesh shaders are supported.
+	 */
+	virtual bool hasMeshShader() const { return false; }
+	/**
 	 * @brief Returns true low latency input is supported.
 	 */
 	virtual bool hasLowLatency() const { return false; }

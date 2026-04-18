@@ -27,7 +27,13 @@
 
 using namespace garden;
 
-#if GARDEN_OS_WINDOWS
+#if GARDEN_OS_LINUX || GARDEN_OS_APPLE
+#include <csignal>
+static void signalHandler(int signum)
+{
+	Manager::Instance::get()->isRunning = false;
+}
+#elif GARDEN_OS_WINDOWS
 static BOOL WINAPI consoleHandler(DWORD ctrlType)
 {
 	switch (ctrlType)
@@ -42,15 +48,6 @@ static BOOL WINAPI consoleHandler(DWORD ctrlType)
 	default: return FALSE;
 	}
 }
-#elif GARDEN_OS_LINUX || GARDEN_OS_APPLE
-#include <csignal>
-
-static void signalHandler(int signum)
-{
-	Manager::Instance::get()->isRunning = false;
-}
-#else
-#error Unknown operating system
 #endif
 
 LoopSystem::LoopSystem(bool setSingleton) : Singleton(setSingleton)
@@ -66,7 +63,7 @@ LoopSystem::LoopSystem(bool setSingleton) : Singleton(setSingleton)
 	signal(SIGINT, signalHandler);
     signal(SIGHUP, signalHandler);
     signal(SIGTERM, signalHandler);
-	#else
+	#elif GARDEN_OS_WINDOWS
 	SetConsoleCtrlHandler(consoleHandler, TRUE);
 	#endif
 }

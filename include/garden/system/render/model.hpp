@@ -14,7 +14,7 @@
 
 /***********************************************************************************************************************
  * @file
- * @brief Model level of detail (LOD) rendering functions.
+ * @brief 3D model rendering functions.
  */
 
 #pragma once
@@ -37,7 +37,7 @@ struct ModelLOD final
  */
 struct ModelRenderComponent final : public Component
 {
-	vector<ModelLOD> levels;
+	vector<ModelLOD> lods;
 };
 
 /**

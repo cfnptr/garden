@@ -368,12 +368,8 @@ void GraphicsPipeline::createVkInstance(GraphicsCreateData& createData)
 		else this->instance = result.value;
 	}
 
-	for (const auto& info : specializationInfos)
-	{
-		free((void*)info.pMapEntries);
-		free((void*)info.pData);
-	}
-
+	for (auto& info : specializationInfos)
+		freeVkSpecConsts(&info);
 	destroyShaders(shaders);
 }
 

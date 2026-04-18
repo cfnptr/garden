@@ -17,7 +17,6 @@
 #if GARDEN_EDITOR
 #include "garden/file.hpp"
 #include "garden/json-serialize.hpp"
-#include "garden/system/log.hpp"
 #include "garden/system/thread.hpp"
 #include "garden/system/locale.hpp"
 #include "garden/system/graphics.hpp"
@@ -30,6 +29,7 @@
 #include "garden/editor/system/render/gpu-resource.hpp"
 #include "garden/profiler.hpp"
 
+#include "mpio/os.hpp"
 #include "mpio/directory.hpp"
 
 using namespace garden;
@@ -852,16 +852,6 @@ void EditorRenderSystem::showExportScene()
 }
 
 //**********************************************************************************************************************
-static void openExplorer(const fs::path& path) // TODO: make this function public, move it to the mpio library
-{
-	#if GARDEN_OS_WINDOWS
-	std::system(("start " + path.generic_string()).c_str());
-	#elif GARDEN_OS_APPLE
-	std::system(("open " + path.generic_string()).c_str());
-	#elif GARDEN_OS_LINUX
-	std::system(("xdg-open " + path.generic_string()).c_str());
-	#endif
-}
 static bool isHasDirectories(const fs::path& path)
 {
 	auto dirIterator = fs::directory_iterator(path);
@@ -884,7 +874,7 @@ static void updateDirectoryClick(const string& filename, const fs::directory_ent
 		if (ImGui::MenuItem("Copy Path"))
 			ImGui::SetClipboardText(entry.path().generic_string().c_str());
 		if (ImGui::MenuItem("Open Explorer"))
-			openExplorer(entry.path());
+			mpio::OS::openFileManager(entry.path().generic_string());
 		ImGui::EndPopup();
 	}
 }
@@ -1013,7 +1003,7 @@ void EditorRenderSystem::showFileSelector()
 						if (ImGui::MenuItem("Copy Path"))
 							ImGui::SetClipboardText(entry.path().generic_string().c_str());
 						if (ImGui::MenuItem("Open Explorer"))
-							openExplorer(entry.path());
+							mpio::OS::openFileManager(entry.path().generic_string());
 						ImGui::EndPopup();
 					}
 

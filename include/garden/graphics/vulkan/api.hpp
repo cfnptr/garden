@@ -54,6 +54,7 @@ public:
 		bool dynamicRendering = false;
 		bool rayTracing = false;
 		bool rayQuery = false;
+		bool meshShader = false;
 		bool maintenance4 = false;
 		bool maintenance5 = false;
 		bool maintenance6 = false;
@@ -161,6 +162,10 @@ public:
 	 * @brief Returns true if hardware ray query is supported.
 	 */
 	bool hasRayQuery() const override { return features.rayQuery; }
+	/**
+	 * @brief Returns true if mesh shaders are supported.
+	 */
+	bool hasMeshShader() const override { return features.meshShader; }
 	/**
 	 * @brief Returns true if low latency input is supported.
 	 */

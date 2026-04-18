@@ -78,7 +78,7 @@ jobs:
       if: matrix.os == 'ubuntu-latest'
       working-directory: ${{runner.workspace}}/build
       shell: bash
-      run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE -D GARDEN_USE_CLANG=TRUE
+      run: cmake $GITHUB_WORKSPACE -G Ninja -DCMAKE_BUILD_TYPE=$BUILD_TYPE -D GARDEN_USE_CLANG=TRUE
 
     - name: Configure CMake
       if: matrix.os != 'ubuntu-latest'

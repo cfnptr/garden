@@ -463,14 +463,15 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 	vector<const char*> extensions =
 	{
 		VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-		#if GARDEN_OS_APPLE
-		VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME,
-		#endif
 	};
 
 	auto extensionProperties = physicalDevice.enumerateDeviceExtensionProperties();
 	auto hasDeferredHostOperations = false, hasAccelerationStructure = false;
 	auto hasDemoteToHelperInv = false;
+
+	#if GARDEN_OS_APPLE
+	auto portabilitySubset = false;
+	#endif
 
 	for (const auto& properties : extensionProperties)
 	{
@@ -491,10 +492,16 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 			features.rayTracing = true;
 		else if (extensionName == VK_KHR_RAY_QUERY_EXTENSION_NAME)
 			features.rayQuery = true;
+		else if (extensionName == VK_EXT_MESH_SHADER_EXTENSION_NAME)
+			features.meshShader = true;
 		else if (extensionName == VK_AMD_ANTI_LAG_EXTENSION_NAME)
 			features.amdAntiLag = true;
 		else if (extensionName == VK_NV_LOW_LATENCY_2_EXTENSION_NAME)
-			features.nvLowLatency = true; 
+			features.nvLowLatency = true;
+		#if GARDEN_OS_APPLE
+		else if (extensionName == VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME)
+			portabilitySubset = true;
+		#endif
 
 		if (versionMinor < 3)
 		{
@@ -534,10 +541,11 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 		vk::PhysicalDeviceAccelerationStructureFeaturesKHR accelerationStructure;
 		vk::PhysicalDeviceRayTracingPipelineFeaturesKHR rayTracingPipeline;
 		vk::PhysicalDeviceRayQueryFeaturesKHR rayQuery;
+		vk::PhysicalDeviceMeshShaderFeaturesEXT meshShader;
 		vk::PhysicalDeviceShaderDemoteToHelperInvocationFeatures demoteToHelper;
 		vk::PhysicalDeviceAntiLagFeaturesAMD amdAntiLag;
 		#if GARDEN_OS_APPLE
-		vk::PhysicalDevicePortabilitySubsetFeaturesKHR portability;
+		vk::PhysicalDevicePortabilitySubsetFeaturesKHR portabilitySubset;
 		#endif
 	};
 
@@ -558,6 +566,10 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 		extensions.push_back(VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME);
 	if (features.nvLowLatency)
 		extensions.push_back(VK_NV_LOW_LATENCY_2_EXTENSION_NAME);
+	#if GARDEN_OS_APPLE
+	if (portabilitySubset)
+		extensions.push_back(VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME);
+	#endif
 
 	if (features.pageableMemory)
 	{
@@ -652,6 +664,14 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 	}
 	else features.rayTracing = features.rayQuery = false;
 
+	if (features.meshShader)
+	{
+		vkFeatures->device.pNext = &vkFeatures->meshShader;
+		physicalDevice.getFeatures2(&vkFeatures->device);
+		if (vkFeatures->meshShader.meshShader && vkFeatures->meshShader.taskShader)
+			extensions.push_back(VK_EXT_MESH_SHADER_EXTENSION_NAME);
+		else features.meshShader = false;
+	}
 	if (hasDemoteToHelperInv)
 	{
 		vkFeatures->device.pNext = &vkFeatures->demoteToHelper;
@@ -729,12 +749,6 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 	lastPNext = &vkFeatures->timelineSemaphore.pNext;
 	*lastPNext = &vkFeatures->vulkanMemoryModel;
 	lastPNext = &vkFeatures->vulkanMemoryModel.pNext;
-
-	#if GARDEN_OS_APPLE
-	vkFeatures->portability.mutableComparisonSamplers = VK_TRUE;
-	*lastPNext = &vkFeatures->portability;
-	lastPNext = &vkFeatures->portability.pNext;
-	#endif
 	*lastPNext = nullptr;
 
 	if (features.maintenance4)
@@ -800,6 +814,14 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 		*lastPNext = &vkFeatures->rayQuery;
 		lastPNext = &vkFeatures->rayQuery.pNext;
 	}
+	if (features.meshShader)
+	{
+		vkFeatures->meshShader = vk::PhysicalDeviceMeshShaderFeaturesEXT();
+		vkFeatures->meshShader.meshShader = VK_TRUE;
+		vkFeatures->meshShader.taskShader = VK_TRUE;
+		*lastPNext = &vkFeatures->meshShader;
+		lastPNext = &vkFeatures->meshShader.pNext;
+	}
 	if (hasDemoteToHelperInv)
 	{
 		vkFeatures->demoteToHelper = vk::PhysicalDeviceShaderDemoteToHelperInvocationFeaturesEXT();
@@ -814,6 +836,16 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 		*lastPNext = &vkFeatures->amdAntiLag;
 		lastPNext = &vkFeatures->amdAntiLag.pNext;
 	}
+
+	#if GARDEN_OS_APPLE
+	if (portabilitySubset)
+	{
+		vkFeatures->portabilitySubset = vk::PhysicalDevicePortabilitySubsetFeaturesKHR;
+		vkFeatures->portabilitySubset.mutableComparisonSamplers = VK_TRUE;
+		*lastPNext = &vkFeatures->portabilitySubset;
+		lastPNext = &vkFeatures->portabilitySubset.pNext;
+	}
+	#endif
 
 	#if 0 // Debug only
 	vk::PhysicalDeviceRayTracingValidationFeaturesNV rayTracingValidationFeatures;

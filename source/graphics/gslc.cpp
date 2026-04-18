@@ -1385,32 +1385,35 @@ static bool openShaderFileStream(const fs::path& inputFilePath,
 }
 static void compileShaderFile(const fs::path& filePath, const vector<fs::path>& includePaths)
 {
-	auto command = "glslc --target-env=" GARDEN_VULKAN_SHADER_VERSION_STRING 
+	vector<const char*> glslcArgs = { "glslc", "--target-env=" GARDEN_VULKAN_SHADER_VERSION_STRING };
 	#if GARDEN_DEBUG
-		" -g -O0 "
+	glslcArgs.push_back("-g");
+	glslcArgs.push_back("-O0");
 	#else
-		" -O "
+	glslcArgs.push_back("-O");
 	#endif
-		"-c \"" + filePath.generic_string() + "\" -o \"" + filePath.generic_string() + ".spv\"";
+
+	auto inputFilePath = filePath.generic_string();
+	auto outputFilePath = filePath.generic_string() + ".spv";
+	glslcArgs.push_back("-c");
+	glslcArgs.push_back(inputFilePath.c_str());
+	glslcArgs.push_back("-o");
+	glslcArgs.push_back(outputFilePath.c_str());
 	
-	for (auto& path : includePaths)
-		command += " -I \"" + path.generic_string() + "\"";
+	vector<string> iclPathStrings;
+	for (const auto& path : includePaths)
+	{
+		iclPathStrings.push_back(path.generic_string());
+		glslcArgs.push_back("-I");
+		glslcArgs.push_back(iclPathStrings.back().c_str());
+	}
+	glslcArgs.push_back(nullptr);
 
 	std::cout << std::flush;
-	auto result = std::system(command.c_str());
+	auto result = mpio::OS::executeFile("glslc", (char**)glslcArgs.data());
 	if (result != 0)
 		throw GardenError("_GLSLC");
-
-	// On some systems file can be still locked.
-	auto attemptCount = 0;
-	while (attemptCount < 10)
-	{
-		error_code errorCode;
-		fs::remove(filePath, errorCode);
-		if (errorCode)
-			this_thread::sleep_for(chrono::milliseconds(1));
-		else break;
-	}
+	fs::remove(filePath);
 }
 
 //******************************************************************************************************************

@@ -50,12 +50,10 @@ static void logKernelInfo(LogSystem* logSystem)
 	auto kernelDLL = L"kernel32.dll"; DWORD dummy = 0;
 	auto infoSize = GetFileVersionInfoSizeExW(FILE_VER_GET_NEUTRAL, kernelDLL, &dummy);
 	vector<char> buffer(infoSize);
-	auto result = GetFileVersionInfoExW(FILE_VER_GET_NEUTRAL, kernelDLL, dummy, buffer.size(), buffer.data());
-	if (!result)
+	if (! GetFileVersionInfoExW(FILE_VER_GET_NEUTRAL, kernelDLL, dummy, buffer.size(), buffer.data()))
 		throw GardenError("Failed to get kernel file version information.");
 	void* info = nullptr; UINT size = 0;
-	result = VerQueryValueW(buffer.data(), L"\\", &info, &size);
-	if (!result)
+	if (!VerQueryValueW(buffer.data(), L"\\", &info, &size))
 		throw GardenError("Failed to get kernel version.");
 	auto fileInfo = (const VS_FIXEDFILEINFO*)info;
 	auto osName = HIWORD(fileInfo->dwFileVersionMS) == 10 && HIWORD(fileInfo->dwFileVersionLS) >= 22000 ?

@@ -66,13 +66,7 @@ GraphicsAPI::GraphicsAPI(const string& appName, uint2 windowSize,
 	glfwSetWindowSizeLimits(window, GraphicsAPI::minFramebufferSize, 
 		GraphicsAPI::minFramebufferSize, GLFW_DONT_CARE, GLFW_DONT_CARE);
 
-	#if GARDEN_OS_WINDOWS
-	BOOL value = TRUE; auto hwnd = glfwGetWin32Window(window);
-	::DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &value, sizeof(value));
-	displayProtocol = DisplayProtocol::Win32;
-	#elif GARDEN_OS_APPLE
-	displayProtocol = DisplayProtocol::Metal;
-	#elif GARDEN_OS_LINUX
+	#if GARDEN_OS_LINUX
 	switch(glfwGetPlatform())
 	{
 		case GLFW_PLATFORM_X11: displayProtocol = DisplayProtocol::X11; break;
@@ -80,6 +74,12 @@ GraphicsAPI::GraphicsAPI(const string& appName, uint2 windowSize,
 		default: abort();
 	}
 	// TODO: android
+	#elif GARDEN_OS_APPLE
+	displayProtocol = DisplayProtocol::Metal;
+	#elif GARDEN_OS_WINDOWS
+	BOOL value = TRUE; auto hwnd = glfwGetWin32Window(window);
+	::DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &value, sizeof(value));
+	displayProtocol = DisplayProtocol::Win32;
 	#endif
 }
 GraphicsAPI::~GraphicsAPI()
@@ -113,11 +113,11 @@ void GraphicsAPI::initialize(GraphicsBackend backendType, const string& appName,
 	setenv("XCURSOR_SIZE", "24", 0);
 	// TODO: remove cursor size after fixing: https://github.com/glfw/glfw/issues/2668
 
-	#if GARDEN_MESA_RGP
-	const auto forceX11 = true;
-	#else
-	const auto forceX11 = false;
-	#endif
+		#if GARDEN_MESA_RGP
+		const auto forceX11 = true;
+		#else
+		const auto forceX11 = false;
+		#endif
 
 	if (isEnv("GLFW_PLATFORM", "x11") || forceX11)
 		glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_X11);

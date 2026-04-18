@@ -25,8 +25,6 @@
 #include <CoreServices/CoreServices.h>
 #elif GARDEN_OS_WINDOWS
 //#error TODO: implement
-#else
-#error Unknown operating system
 #endif
 
 using namespace math;
