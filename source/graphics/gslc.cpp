@@ -1413,7 +1413,20 @@ static void compileShaderFile(const fs::path& filePath, const vector<fs::path>& 
 	auto result = mpio::OS::executeFile("glslc", (char**)glslcArgs.data());
 	if (result != 0)
 		throw GardenError("_GLSLC");
+
+	#if GARDEN_OS_WINDOWS
+	auto attemptCount = 0;
+	while (attemptCount < 10) // File can be still locked.
+	{
+		error_code errorCode;
+		fs::remove(filePath, errorCode);
+		if (errorCode)
+			this_thread::sleep_for(chrono::milliseconds(1));
+		else break;
+	}
+	#else
 	fs::remove(filePath);
+	#endif
 }
 
 //******************************************************************************************************************
