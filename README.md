@@ -38,7 +38,7 @@ If you want, you can freely disable it and compile for older x86 CPUs, or any ot
 
 ## Garden Shading Language (GSL)
 
-GSL is a GLSL dialect, created to simplify the usage of Vulkan GLSL [subset](https://github.com/KhronosGroup/GLSL/blob/main/extensions/khr/GL_KHR_vulkan_glsl.txt). Documentation with all changes is [here](docs/GSL.md). <br>
+GSL is a GLSL dialect, created to simplify the usage of Vulkan [subset](https://github.com/KhronosGroup/GLSL/blob/main/extensions/khr/GL_KHR_vulkan_glsl.txt). Documentation with all changes is [here](docs/GSL.md). <br>
 Also you can install the **Visual Studio Code** [extension](https://marketplace.visualstudio.com/items?itemName=cfnptr.gsl-linter) to highlight GSL code and see functions description.
 
 ## Cloning
