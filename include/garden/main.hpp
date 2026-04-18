@@ -19,31 +19,7 @@
 
 #pragma once
 #include "garden/defines.hpp"
-
-#if GARDEN_OS_WINDOWS
-#include <windows.h>
-
-/**
- * @brief Shows an OS error message with target C string.
- * @param[in] cstr target error message C string
- */
-#define GARDEN_MESSAGE_ERROR(title, body) MessageBoxA(nullptr, body, title, MB_ICONERROR | MB_SYSTEMMODAL)
-#elif GARDEN_OS_LINUX
-#include <cstdlib>
-
-/**
- * @brief Shows an OS error message with target C string.
- * @param[in] cstr target error message C string
- */
-#define GARDEN_MESSAGE_ERROR(title, body) std::system(("notify-send -a \"Garden Engine\" " \
-	"-u critical \"" + std::string(title) + "\" \"" + std::string(body) + "\"").c_str());
-#else
-/**
- * @brief Shows an OS error message with target C string.
- * @param[in] cstr target error message C string
- */
-#define GARDEN_MESSAGE_ERROR(title, body) (void)0
-#endif
+#include "mpio/os.hpp"
 
 #if GARDEN_OS_WINDOWS && !GARDEN_DEBUG && !defined(GARDEN_NO_GRAPHICS)
 /**
@@ -73,18 +49,18 @@ GARDEN_MAIN                             \
  * @brief Declares application main function. (Entry point)
  * @param[in] entryPoint program entry point callback.
  */
-#define GARDEN_DECLARE_MAIN(entryPoint)          \
-GARDEN_MAIN                                      \
-{                                                \
-	try                                          \
-	{                                            \
-		entryPoint();                            \
-	}                                            \
-	catch (const std::exception& e)              \
-	{                                            \
-		GARDEN_MESSAGE_ERROR("Crash", e.what()); \
-		return EXIT_FAILURE;                     \
-	}                                            \
-	return EXIT_SUCCESS;                         \
+#define GARDEN_DECLARE_MAIN(entryPoint)                 \
+GARDEN_MAIN                                             \
+{                                                       \
+	try                                                 \
+	{                                                   \
+		entryPoint();                                   \
+	}                                                   \
+	catch (const std::exception& e)                     \
+	{                                                   \
+		mpio::OS::showError("Runtime Error", e.what()); \
+		return EXIT_FAILURE;                            \
+	}                                                   \
+	return EXIT_SUCCESS;                                \
 }
 #endif

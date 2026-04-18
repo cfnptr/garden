@@ -138,6 +138,8 @@ void RayTracingPipeline::createVkInstance(RayTracingCreateData& createData)
 		else this->instance = result.value;
 	}
 
+	for (auto& info : specializationInfos)
+		freeVkSpecConsts(&info);
 	destroyShaders(shaders);
 }
 

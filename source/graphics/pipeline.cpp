@@ -494,6 +494,11 @@ void Pipeline::fillVkSpecConsts(const fs::path& path, void* specInfo, const Pipe
 	info->dataSize = dataSize;
 	info->pData = data;
 }
+void Pipeline::freeVkSpecConsts(void* specInfo)
+{
+	auto info = (vk::SpecializationInfo*)specInfo;
+	free((void*)info->pData); free((void*)info->pMapEntries);
+}
 void Pipeline::setVkVariantIndex(void* specInfo, uint8 variantIndex) noexcept
 {
 	auto info = (vk::SpecializationInfo*)specInfo;

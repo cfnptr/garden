@@ -179,6 +179,7 @@ protected:
 
 	static void fillVkSpecConsts(const fs::path& path, void* specInfo, const SpecConsts& specConsts, 
 		const SpecConstValues& specConstValues, PipelineStage pipelineStage, uint8 variantCount);
+	static void freeVkSpecConsts(void* specInfo);
 	static void setVkVariantIndex(void* specInfo, uint8 variantIndex) noexcept;
 	static void updateDescriptorsLock(const DescriptorSet::Range* 
 		descriptorSetRanges, uint8 rangeCount, int32 threadIndex = -1);

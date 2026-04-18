@@ -184,6 +184,11 @@ public:
 	 * @details Can be used to simulate slow motion or speed up effects.
 	 */
 	double timeMultiplier = 1.0;
+	/**
+	 * @brief Number of systems who captured the mouse.
+	 * @details Used to coordinate in-game and editor UI.
+	 */
+	int32 cursorCapturers = 0; 
 
 	/**
 	 * @brief Returns time since start of the program. (in seconds)

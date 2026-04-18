@@ -33,9 +33,10 @@
 #include "garden/system/render/csm.hpp"
 #include "garden/system/render/mesh.hpp"
 #include "garden/system/render/smaa.hpp"
-#include "garden/system/render/hbao.hpp"
 #include "garden/system/render/dlss.hpp"
+#include "garden/system/render/hbao.hpp"
 #include "garden/system/render/blur.hpp"
+#include "garden/system/render/model.hpp"
 #include "garden/system/render/bloom.hpp"
 #include "garden/system/render/clouds.hpp"
 #include "garden/system/render/deferred.hpp"
@@ -61,6 +62,7 @@
 #include "garden/editor/system/render/smaa.hpp"
 #include "garden/editor/system/render/dlss.hpp"
 #include "garden/editor/system/render/hbao.hpp"
+#include "garden/editor/system/render/model.hpp"
 #include "garden/editor/system/render/bloom.hpp"
 #include "garden/editor/system/render/clouds.hpp"
 #include "garden/editor/system/render/sprite.hpp"
@@ -146,7 +148,7 @@ static void entryPoint()
 	manager->createSystem<SmaaRenderSystem>();
 	// manager->createSystem<NetworkSystem>();
 
-		#if GARDEN_EDITOR
+	#if GARDEN_EDITOR
 	manager->createSystem<EditorRenderSystem>();
 	manager->createSystem<HierarchyEditorSystem>();
 	manager->createSystem<EcsEditorSystem>();

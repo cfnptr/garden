@@ -20,11 +20,11 @@
 #pragma once
 #include "mpio/os.hpp"
 
-#if _WIN32
-#define GARDEN_OS_WINDOWS 1
-#define GARDEN_OS_NAME "Windows"
+#if __linux__
+#define GARDEN_OS_LINUX 1
+#define GARDEN_OS_NAME "Linux"
 #else
-#define GARDEN_OS_WINDOWS 0
+#define GARDEN_OS_LINUX 0
 #endif
 
 #if __APPLE__
@@ -34,14 +34,14 @@
 #define GARDEN_OS_APPLE 0
 #endif
 
-#if __linux__
-#define GARDEN_OS_LINUX 1
-#define GARDEN_OS_NAME "Linux"
+#if _WIN32
+#define GARDEN_OS_WINDOWS 1
+#define GARDEN_OS_NAME "Windows"
 #else
-#define GARDEN_OS_LINUX 0
+#define GARDEN_OS_WINDOWS 0
 #endif
 
-#if !GARDEN_OS_WINDOWS && !GARDEN_OS_APPLE && !GARDEN_OS_LINUX
+#if !GARDEN_OS_LINUX && !GARDEN_OS_APPLE && !GARDEN_OS_WINDOWS
 #error Unknown operating system
 #endif
 

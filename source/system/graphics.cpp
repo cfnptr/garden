@@ -125,6 +125,7 @@ static void logVkGpuInfo()
 		"Loaded existing pipeline cache." : "Created a new pipeline cache.");
 	GARDEN_LOG_INFO("Has ray tracing support: " + string(vulkanAPI->features.rayTracing ? "yes" : "no"));
 	GARDEN_LOG_INFO("Has ray query support: " + string(vulkanAPI->features.rayQuery ? "yes" : "no"));
+	GARDEN_LOG_INFO("Has mesh shader support: " + string(vulkanAPI->features.meshShader ? "yes" : "no"));
 }
 
 void GraphicsSystem::preInit()

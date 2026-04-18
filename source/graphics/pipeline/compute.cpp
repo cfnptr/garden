@@ -51,6 +51,7 @@ void ComputePipeline::createVkInstance(ComputeCreateData& createData)
 		else this->instance = result.value;
 	}
 
+	freeVkSpecConsts(&specializationInfo);
 	destroyShaders(shaders);
 }
 

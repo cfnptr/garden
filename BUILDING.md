@@ -108,7 +108,7 @@ Or
 ### For Ubuntu/Debian
 
 1. Run ```sudo apt update``` command using **Terminal** app to update package list
-2. And ```sudo apt install build-essential gdb ninja-build git cmake clang lld lldb glslc libvulkan-dev vulkan-validationlayers zlib1g-dev libssl-dev libcurl4-openssl-dev libwayland-dev libxkbcommon-dev xorg-dev libassimp-dev```
+2. And ```sudo apt install build-essential ninja-build git cmake clang lld lldb glslc libvulkan-dev vulkan-validationlayers zlib1g-dev libssl-dev libcurl4-openssl-dev libwayland-dev libxkbcommon-dev xorg-dev libassimp-dev```
 
 
 # Build project (Compile)

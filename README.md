@@ -32,8 +32,23 @@ Or at least GPU with [Vulkan API](https://vulkan.gpuinfo.org/listreports.php?pro
 * AMD [Excavator](https://en.wikipedia.org/wiki/Excavator_(microarchitecture)) microarchitecture and newer
 * Apple [M1](https://en.wikipedia.org/wiki/Apple_M1) processor and newer
 
-These requirements are based on the support of the [AVX2](https://en.wikipedia.org/wiki/Advanced_Vector_Extensions) 
-instruction set in the x86 architecture. If you want, you can freely disable it and compile for older x86 CPUs.
+These requirements are based on support of the [AVX2](https://en.wikipedia.org/wiki/Advanced_Vector_Extensions) 
+instruction set in the x86 architecture. <br>
+If you want, you can freely disable it and compile for older x86 CPUs, or any other architecture.
+
+## Garden Shading Language (GSL)
+
+GSL is a GLSL dialect, created to simplify the usage of Vulkan GLSL [subset](https://github.com/KhronosGroup/GLSL/blob/main/extensions/khr/GL_KHR_vulkan_glsl.txt). Documentation with all changes is [here](docs/GSL.md). <br>
+Also you can install the **Visual Studio Code** [extension](https://marketplace.visualstudio.com/items?itemName=cfnptr.gsl-linter) to highlight GSL code and see functions description.
+
+## Cloning
+
+```
+git clone --recursive -j8 https://github.com/cfnptr/garden
+```
+
+* `--recursive`: recursively clones all required git submodules
+* `-j`: number of git submodules fetched in parallel
 
 ## Build requirements ![CI](https://github.com/cfnptr/garden/actions/workflows/cmake.yml/badge.svg)
 
@@ -99,20 +114,6 @@ Use building [instructions](BUILDING.md) to install all required tools and libra
 | garden | Static Garden library  | `.lib`  | `.a`   | `.a`  |
 | {name} | Application executable | `.exe`  | `.app` |       |
 
-## Cloning
-
-```
-git clone --recursive -j8 https://github.com/cfnptr/garden
-```
-
-* `--recursive`: recursively clones all required git submodules
-* `-j`: number of git submodules fetched in parallel
-
-## Garden Shading Language (GSL)
-
-You can find documentation with all GLSL changes [here](docs/GSL.md).
-Also you can install **Visual Studio Code** [extension](https://marketplace.visualstudio.com/items?itemName=cfnptr.gsl-linter) to highlight GSL code.
-
 ## Third-party
 
 * [Assimp](https://github.com/assimp/assimp) (assimp license)
@@ -127,6 +128,7 @@ Also you can install **Visual Studio Code** [extension](https://marketplace.visu
 * [Logy](https://github.com/cfnptr/logy) (Apache-2.0 license)
 * [Math](https://github.com/cfnptr/math) (Apache-2.0 license)
 * [Nets](https://github.com/cfnptr/nets) (Apache-2.0 license)
+* [OpenEXR](https://github.com/AcademySoftwareFoundation/openexr) (BSD-3-Clause license)
 * [OpenSSL](https://github.com/openssl/openssl) (Apache-2.0 license)
 * [Pack](https://github.com/cfnptr/pack) (Apache-2.0 license)
 * [PNG](https://github.com/pnggroup/libpng) (PNG-2 license)
@@ -135,7 +137,6 @@ Also you can install **Visual Studio Code** [extension](https://marketplace.visu
 * [VulkanMemoryAllocator](https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator) (MIT license)
 * [Vulkan SDK](https://github.com/KhronosGroup) (Apache-2.0 license)
 * [volk](https://github.com/zeux/volk) (MIT license)
-* [Voxy](https://github.com/cfnptr/voxy) (Apache-2.0 license)
 * [WebP](https://github.com/webmproject/libwebp) (BSD-3-Clause license)
 * [xxHash](https://github.com/Cyan4973/xxHash) (BSD-2-Clause license)
 * [zlib](https://github.com/madler/zlib) (zlib license)
