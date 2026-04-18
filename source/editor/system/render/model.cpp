@@ -42,10 +42,10 @@ void ModelRenderEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened
 
 	auto modelView = Manager::Instance::get()->get<ModelRenderComponent>(entity);
 	auto editorSystem = EditorRenderSystem::Instance::get();
-	auto& levels = modelView->levels; auto levelData = levels.data();
-	auto levelCount = (uint32)levels.size();
+	auto& lods = modelView->lods; auto levelData = lods.data();
+	auto levelCount = (uint32)lods.size();
 
-	if (!levels.empty())
+	if (!lods.empty())
 	{
 		for (uint32 i = 0; i < levelCount; i++)
 		{
@@ -64,9 +64,9 @@ void ModelRenderEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened
 	}
 
 	if (ImGui::SmallButton(" + "))
-		levels.push_back({});
+		lods.push_back({});
 	ImGui::SameLine();
-	if (ImGui::SmallButton(" - ") && !levels.empty())
-		levels.resize(levels.size() - 1);
+	if (ImGui::SmallButton(" - ") && !lods.empty())
+		lods.resize(lods.size() - 1);
 }
 #endif

@@ -840,7 +840,7 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 	#if GARDEN_OS_APPLE
 	if (portabilitySubset)
 	{
-		vkFeatures->portabilitySubset = vk::PhysicalDevicePortabilitySubsetFeaturesKHR;
+		vkFeatures->portabilitySubset = vk::PhysicalDevicePortabilitySubsetFeaturesKHR();
 		vkFeatures->portabilitySubset.mutableComparisonSamplers = VK_TRUE;
 		*lastPNext = &vkFeatures->portabilitySubset;
 		lastPNext = &vkFeatures->portabilitySubset.pNext;

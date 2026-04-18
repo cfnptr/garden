@@ -69,6 +69,10 @@ public:
 	 * @brief Returns current changed file paths.
 	 */
 	vector<fs::path>& getCreatedFiles() noexcept { return createdFiles; }
+
+	#if GARDEN_OS_APPLE
+	mutex& getLocker_() { return locker; }
+	#endif
 };
 
 } // namespace garden
