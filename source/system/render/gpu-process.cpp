@@ -201,7 +201,7 @@ void GpuProcessSystem::gaussianBlur(ID<ImageView> srcBuffer, ID<Framebuffer> dst
 		auto kernelBufferView = graphicsSystem->get(kernelBuffer);
 		GARDEN_ASSERT(kernelBufferView->getBinarySize() % sizeof(float2) == 0);
 		auto coeffCount = kernelBufferView->getBinarySize() / sizeof(float2);
-		pipeline = createGaussianBlur(dstFramebuffer, coeffCount);
+		pipeline = createGaussianBlur(dstFramebuffer, (uint32)coeffCount);
 	}
 
 	if (!descriptorSet)

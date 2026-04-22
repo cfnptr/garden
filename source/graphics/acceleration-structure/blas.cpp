@@ -54,7 +54,7 @@ static void prepareVkBlas(VulkanAPI* vulkanAPI,
 		as.geometry.triangles.vertexData.deviceAddress = vertexBufferView->getDeviceAddress(); // TODO: support case when pos is not first component.
 		as.geometry.triangles.vertexStride = geometry.vertexSize;
 		as.geometry.triangles.maxVertex = (geometry.vertexCount > 0 ?  geometry.vertexCount : 
-			vertexBufferView->getBinarySize() / geometry.vertexSize - geometry.vertexOffset) - 1; // Note: -1 required!
+			(uint32)(vertexBufferView->getBinarySize() / geometry.vertexSize) - geometry.vertexOffset) - 1; // Note: -1 required!
 		as.geometry.triangles.indexType = toVkIndexType(geometry.indexType);
 		as.geometry.triangles.indexData.deviceAddress = indexBufferView->getDeviceAddress();
 		as.geometry.triangles.transformData = nullptr; // Identity transform TODO:
@@ -67,7 +67,7 @@ static void prepareVkBlas(VulkanAPI* vulkanAPI,
 
 		vk::AccelerationStructureBuildRangeInfoKHR rangeInfo;
 		rangeInfo.primitiveCount = geometry.primitiveCount > 0 ? geometry.primitiveCount :
-			indexBufferView->getBinarySize() / (toBinarySize(geometry.indexType) * 3) - geometry.primitiveOffset;
+			(uint32)(indexBufferView->getBinarySize() / (toBinarySize(geometry.indexType) * 3)) - geometry.primitiveOffset;
 		rangeInfo.primitiveOffset = geometry.primitiveOffset;
 		rangeInfo.firstVertex = geometry.vertexOffset;
 		rangeInfo.transformOffset = 0; // TODO:
@@ -111,7 +111,7 @@ static void prepareVkBlas(VulkanAPI* vulkanAPI,
 
 		vk::AccelerationStructureBuildRangeInfoKHR rangeInfo;
 		rangeInfo.primitiveCount = geometry.aabbCount > 0 ? geometry.aabbCount :
-			aabbBufferView->getBinarySize() / geometry.aabbStride - geometry.aabbOffset;
+			(uint32)(aabbBufferView->getBinarySize() / geometry.aabbStride) - geometry.aabbOffset;
 		rangeInfo.primitiveOffset = geometry.aabbOffset;
 		rangeInfo.firstVertex = 0;
 		rangeInfo.transformOffset = 0;
@@ -231,7 +231,7 @@ ID<Blas> Blas::compact()
 		if (!data->queryResults[0])
 		{
 			auto vkResult = vulkanAPI->device.getQueryPoolResults((VkQueryPool)data->queryPool, 
-				0, data->queryResults.size(), sizeof(uint64), data->queryResults.data(), 
+				0, (uint32)data->queryResults.size(), sizeof(uint64), data->queryResults.data(),
 				sizeof(uint64), vk::QueryResultFlagBits::eWait);
 			if (vkResult != vk::Result::eSuccess)
 				throw GardenError("Failed to get compacted BLAS sizes.");

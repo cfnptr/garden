@@ -520,7 +520,7 @@ void InputSystem::startRenderThread()
 		if (newWindowTitle != "")
 			glfwSetWindowTitle(window, newWindowTitle.c_str());
 		if (!images.empty())
-			glfwSetWindowIcon(window, images.size(), images.data());
+			glfwSetWindowIcon(window, (int)images.size(), images.data());
 
 		#if !GARDEN_OS_WINDOWS
 		manager->update();

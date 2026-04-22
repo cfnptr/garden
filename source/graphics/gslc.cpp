@@ -187,13 +187,13 @@ static string_view toStringState(bool state) noexcept
 
 static int32 toIntValue(string_view value, uint32 lineIndex)
 {
-	try { return stol(string(value), nullptr, 0); }
+	try { return (int32)stol(string(value), nullptr, 0); }
 	catch (const exception&)
 	{ throw CompileError("invalid signed integer value", lineIndex, string(value)); }
 }
 static uint32 toUintValue(string_view value, uint32 lineIndex)
 {
-	try { return stoul(string(value), nullptr, 0); }
+	try { return (uint32)stoul(string(value), nullptr, 0); }
 	catch (const exception&)
 	{ throw CompileError("invalid unsigned integer value", lineIndex, string(value)); }
 }
@@ -1897,7 +1897,7 @@ bool GslCompiler::compileComputeShader(const fs::path& inputPath,
 				{
 					if (lineData.word.find_first_of(';') == string::npos)
 						throw CompileError("no ';' after local size", fileData.lineIndex);
-					data.localSize.z = strtoul(lineData.word.c_str(), nullptr, 10);
+					data.localSize.z = (uint32)strtoul(lineData.word.c_str(), nullptr, 10);
 					if (data.localSize.z <= 0)
 						throw CompileError("local size 'z' can not be less than one", fileData.lineIndex);
 					fileData.outputFileStream << "layout(local_size_x = " <<
@@ -1912,14 +1912,14 @@ bool GslCompiler::compileComputeShader(const fs::path& inputPath,
 
 					if (lineData.isLocalSize == 2)
 					{
-						data.localSize.x = strtoul(lineData.word.c_str(), nullptr, 10);
+						data.localSize.x = (uint32)strtoul(lineData.word.c_str(), nullptr, 10);
 						if (data.localSize.x <= 0)
 							throw CompileError("local size 'x' can not be less than one", fileData.lineIndex);
 						lineData.isLocalSize = 3;
 					}
 					else if (lineData.isLocalSize == 3)
 					{
-						data.localSize.y = strtoul(lineData.word.c_str(), nullptr, 10);
+						data.localSize.y = (uint32)strtoul(lineData.word.c_str(), nullptr, 10);
 						if (data.localSize.y <= 0)
 							throw CompileError("local size 'y' can not be less than one", fileData.lineIndex);
 						lineData.isLocalSize = 4;

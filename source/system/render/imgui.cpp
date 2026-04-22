@@ -786,7 +786,7 @@ void ImGuiRenderSystem::uiRender()
 			else pipelineView->setScissor(scissor);
 
 			ID<DescriptorSet> descriptorSet;
-			ID<ImageView> imageView; *imageView = cmd.GetTexID();
+			ID<ImageView> imageView; *imageView = (uint32)cmd.GetTexID();
 			auto searchResult = dsCache.find(imageView);
 			if (searchResult != dsCache.end())
 				descriptorSet = searchResult->second;

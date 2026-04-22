@@ -9,7 +9,7 @@
 	url = https://github.com/freetype/freetype
 [submodule "libraries/glfw"]
 	path = libraries/glfw
-	url = https://github.com/glfw/glfw
+	url = https://github.com/cfnptr/glfw
 [submodule "libraries/imgui"]
 	path = libraries/imgui
 	url = https://github.com/ocornut/imgui

@@ -55,7 +55,7 @@ static void createVkTlas(ID<Buffer> instanceBuffer, BuildFlagsAS flags,
 	GARDEN_ASSERT(hasAnyFlag(instanceBufferView->getUsage(), Buffer::Usage::DeviceAddress));
 	GARDEN_ASSERT_MSG(instanceBufferView->getDeviceAddress(), "Instance buffer [" + 
 		instanceBufferView->getDebugName() + "] is not ready");
-	auto instanceCount = instanceBufferView->getBinarySize() / sizeof(vk::AccelerationStructureInstanceKHR);
+	auto instanceCount = (uint32)(instanceBufferView->getBinarySize() / sizeof(vk::AccelerationStructureInstanceKHR));
 
 	vk::AccelerationStructureGeometryKHR geometry;
 	geometry.geometryType = vk::GeometryTypeKHR::eInstances;

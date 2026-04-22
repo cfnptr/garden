@@ -184,7 +184,7 @@ public:
 class ServerSessionLocker final
 {
 	nets::StreamSessionView* sessions = nullptr;
-	uint32 sessionCount = 0;
+	psize sessionCount = 0;
 public:
 	/**
 	 * @brief Locks stream server session buffer access.
@@ -216,7 +216,7 @@ public:
 	/**
 	 * @brief Returns server stream session count.
 	 */
-	uint32 count() const noexcept { return sessionCount; }
+	psize count() const noexcept { return sessionCount; }
 	/**
 	 * @brief Returns server client session at specified index.
 	 * @warning Session may be null if socket is not fully connected!

@@ -1310,7 +1310,7 @@ void ResourceSystem::loadImageData(const uint8* data, psize dataSize, ImageFileT
 
 		int sizeX = 0, sizeY = 0;
 		auto pixelData = stbi_load_from_memory(data, (int)dataSize, 
-			&sizeX, &sizeY, nullptr, toComponentCount(imageFormat));
+			&sizeX, &sizeY, nullptr, (int)toComponentCount(imageFormat));
 		if (!pixelData)
 			throw GardenError("Invalid JPG/BMP/... image data.");
 
@@ -1359,7 +1359,7 @@ void ResourceSystem::loadImageData(const uint8* data, psize dataSize, ImageFileT
 
 		int sizeX = 0, sizeY = 0;
 		auto pixelData = stbi_loadf_from_memory(data, (int)dataSize, 
-			&sizeX, &sizeY, nullptr, toComponentCount(imageFormat));
+			&sizeX, &sizeY, nullptr, (int)toComponentCount(imageFormat));
 		if (!pixelData)
 			throw GardenError("Invalid HDR image data.");
 
@@ -1819,7 +1819,8 @@ void ResourceSystem::combineImages(const vector<fs::path>& inputPaths, const fs:
 		}
 	}
 
-	storeImage(outputPath, outBuffer.data(), uint2(inSize.x * inputPaths.size(), inSize.y), fileType, imageFormat);
+    auto outSize = uint2(inSize.x * (uint32)inputPaths.size(), inSize.y);
+	storeImage(outputPath, outBuffer.data(), outSize, fileType, imageFormat);
 }
 void ResourceSystem::renormalizeImage(const fs::path& path, ImageFileType fileType, int32 threadIndex)
 {

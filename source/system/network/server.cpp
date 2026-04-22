@@ -435,7 +435,7 @@ static void updateSessions(StreamServerHandle* streamServer, std::function<int(C
 				}
 			}
 		},
-		sessionCount);
+		(uint32)sessionCount);
 
 		threadPool.wait();
 		manager->lock();
