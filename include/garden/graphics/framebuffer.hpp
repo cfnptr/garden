@@ -226,9 +226,9 @@ public:
 	 * @param[in] colorImageViews a new color image view array or empty
 	 * @param depthStencilIV a new depth stencil image view or empty
 	 */
-	void update(uint2 size, const vector<ID<ImageView>>& colorImageViews, ID<ImageView> depthStencilIV= {})
+	void update(uint2 size, const vector<ID<ImageView>>& colorImageViews, ID<ImageView> depthStencilIV = {})
 	{
-		update(size, colorImageViews.data(), colorImageViews.size(), depthStencilIV);
+		update(size, colorImageViews.data(), (uint32)colorImageViews.size(), depthStencilIV);
 	}
 	/**
 	 * @brief Updates framebuffer attachments.

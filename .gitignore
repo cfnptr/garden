@@ -10,6 +10,7 @@ build-debug-clang/
 build-release-clang/
 build-xcode/
 libraries/steamworks-sdk/
+imgui.ini
 
 ### Common ###
 .vs/

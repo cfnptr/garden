@@ -462,11 +462,11 @@ void VulkanCommandBuffer::submit()
 			{
 				newImageState.stage = (uint64)vk::PipelineStageFlagBits2::eTransfer;
 				vk::ImageMemoryBarrier imageMemoryBarrier(
-					vk::AccessFlags(oldImageState.access), vk::AccessFlags(newImageState.access),
+					vk::AccessFlags((uint32)oldImageState.access), vk::AccessFlags((uint32)newImageState.access),
 					(vk::ImageLayout)oldImageState.layout, (vk::ImageLayout)newImageState.layout,
 					VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED, vkImage, subresourceRange);
 				instance.pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlags(
-					newImageState.stage), vk::DependencyFlagBits::eByRegion, {}, {}, imageMemoryBarrier);
+					(uint32)newImageState.stage), vk::DependencyFlagBits::eByRegion, {}, {}, imageMemoryBarrier);
 			}
 
 			auto imageView = oldImageState.view;
@@ -500,11 +500,11 @@ void VulkanCommandBuffer::submit()
 			auto oldImageStage = oldImageState.stage == (uint64)vk::PipelineStageFlagBits2::eNone ?
 				(uint64)vk::PipelineStageFlagBits2::eTopOfPipe : oldImageState.stage;
 			vk::ImageMemoryBarrier imageMemoryBarrier(
-				vk::AccessFlags(oldImageState.access), vk::AccessFlags(newImageState.access),
+				vk::AccessFlags((uint32)oldImageState.access), vk::AccessFlags((uint32)newImageState.access),
 				(vk::ImageLayout)oldImageState.layout, (vk::ImageLayout)newImageState.layout,
 				VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED, vkImage, subresourceRange);
 			instance.pipelineBarrier(vk::PipelineStageFlagBits(oldImageStage), vk::PipelineStageFlags(
-				newImageState.stage), vk::DependencyFlagBits::eByRegion, {}, {}, imageMemoryBarrier);
+				(uint32)newImageState.stage), vk::DependencyFlagBits::eByRegion, {}, {}, imageMemoryBarrier);
 		}
 		oldImageState = newImageState;
 
@@ -1520,7 +1520,7 @@ void VulkanCommandBuffer::processCommand(const BuildAccelerationStructureCommand
 	{
 		processPipelineBarriers();
 
-		instance.buildAccelerationStructuresKHR(vulkanAPI->asGeometryInfos.size(), 
+		instance.buildAccelerationStructuresKHR((uint32)vulkanAPI->asGeometryInfos.size(),
 			vulkanAPI->asGeometryInfos.data(), vulkanAPI->asRangeInfos.data());
 
 		if (!vulkanAPI->asWriteProperties.empty())

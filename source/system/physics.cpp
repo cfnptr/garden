@@ -154,7 +154,7 @@ public:
 
 	void OnBodyActivated(const JPH::BodyID& inBodyID, JPH::uint64 inBodyUserData) final
 	{
-		ID<Entity> entity; *entity = inBodyUserData;
+		ID<Entity> entity; *entity = (uint32)inBodyUserData;
 		auto rigidbodyView = manager->tryGet<RigidbodyComponent>(entity);
 
 		if (rigidbodyView && !rigidbodyView->eventListener.empty())
@@ -162,7 +162,7 @@ public:
 	}
 	void OnBodyDeactivated(const JPH::BodyID& inBodyID, JPH::uint64 inBodyUserData) final
 	{
-		ID<Entity> entity; *entity = inBodyUserData;
+		ID<Entity> entity; *entity = (uint32)inBodyUserData;
 		if (!entity)
 			return;
 
@@ -1362,7 +1362,7 @@ void PhysicsSystem::sendServerMessages()
 			rigidbodyViews.clear();
 		}
 	},
-	sessions.count());
+	(uint32)sessions.count());
 	threadPool.wait();
 }
 

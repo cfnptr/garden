@@ -211,7 +211,7 @@ void SpawnerSystem::update()
 		{
 			auto difference = (int64)spawner.maxCount - spawner.spawnedEntities.size();
 			if (difference > 0)
-				spawner.spawn(difference);
+				spawner.spawn((uint32)difference);
 		}
 	}
 }

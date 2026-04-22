@@ -33,13 +33,13 @@ namespace garden::graphics
 }
 
 static void validateAttachments(uint2 size, const Framebuffer::Attachment* colorAttachments,
-	uint32 colorAttachmentCount, Framebuffer::Attachment depthStencilAttachment, const string& debugName)
+	psize colorAttachmentCount, Framebuffer::Attachment depthStencilAttachment, const string& debugName)
 {
 	// TODO: add checks if attachments do not overlaps and repeat.
 	// TODO: we can use attachments with different sizes, but should we?
 
 	auto graphicsAPI = GraphicsAPI::get();
-	for	(uint32 i = 0; i < colorAttachmentCount; i++)
+	for	(psize i = 0; i < colorAttachmentCount; i++)
 	{
 		const auto& colorAttachment = colorAttachments[i];
 		if (!colorAttachment.imageView)
@@ -106,7 +106,8 @@ static uint32 getDepthStencilLayout(Framebuffer::Attachment depthStencilAttachme
 Framebuffer::Framebuffer(uint2 size, vector<Attachment>&& colorAttachments, Attachment depthStencilAttachment)
 {
 	#if GARDEN_DEBUG
-	validateAttachments(size, colorAttachments.data(), colorAttachments.size(), depthStencilAttachment, debugName);
+	validateAttachments(size, colorAttachments.data(), 
+		(uint32)colorAttachments.size(), depthStencilAttachment, debugName);
 	#endif
 
 	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)

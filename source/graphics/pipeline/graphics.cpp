@@ -208,7 +208,7 @@ void GraphicsPipeline::createVkInstance(GraphicsCreateData& createData)
 		vk::SampleCountFlagBits::e1, VK_FALSE, 1.0f, nullptr, VK_FALSE, VK_FALSE);
 
 	const auto& colorFormats = createData.colorFormats;
-	auto colorFormatCount = colorFormats.size();
+	auto colorFormatCount = (uint32)colorFormats.size();
 	vk::PipelineRenderingCreateInfoKHR dynamicRenderingInfo;
 	vector<vk::Format> dynamicColorFormats;
 

@@ -188,11 +188,11 @@ psize ClientSession::encryptDatagram(const void* plainData, psize size, void* en
 		return 0;
 	GARDEN_ASSERT(tmpSize == sizeof(uint64));
 
-	if (!EVP_EncryptUpdate(context, outBuffer + ivSize, &tmpSize, (const uint8*)plainData, size))
+	if (!EVP_EncryptUpdate(context, outBuffer + ivSize, &tmpSize, (const uint8*)plainData, (int)size))
 		return 0;
 	GARDEN_ASSERT(tmpSize == size);
 
-	int totalSize = ivSize + size;
+	auto totalSize = ivSize + size;
 	if (!EVP_EncryptFinal_ex(context, outBuffer + totalSize, &tmpSize))
 		return 0;
 	GARDEN_ASSERT(tmpSize == 0);
@@ -236,7 +236,7 @@ psize ClientSession::decryptDatagram(const uint8* encData,
 	auto outBuffer = datagramBuffer.data();
 
 	if (!EVP_DecryptUpdate(context, outBuffer, &tmpSize, 
-		encData + ivSize, dataSize) || tmpSize != dataSize)
+		encData + ivSize, (int)dataSize) || tmpSize != dataSize)
 	{
 		return 0;
 	}

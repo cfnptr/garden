@@ -433,15 +433,14 @@ protected:
 	vector<AsyncData> asyncData;
 	ThreadPool* threadPool = nullptr;
 	uint8* data = nullptr;
-	psize size = 0, capacity = 16;
+	uint32 size = 0, lastSize = 0, capacity = 16;
 	uint8* dataIter = nullptr, *dataEnd = nullptr;
-	uint32 lastSize = 0;
 	CommandBufferType type = {};
 	bool isRunning = false;
 	volatile bool hasAnyCommand = false;
 
 	template<class T = Command>
-	T* allocateCommand(const T& command, psize size, int32 threadIndex = -1)
+	T* allocateCommand(const T& command, uint32 size, int32 threadIndex = -1)
 	{
 		T* allocation;
 		if (threadIndex < 0)
@@ -534,14 +533,14 @@ public:
 	void addCommand(const BufferBarrierCommand& command)
 	{
 		auto commandSize = sizeof(BufferBarrierCommandBase) + command.bufferCount * sizeof(ID<Buffer>);
-		auto allocation = allocateCommand<BufferBarrierCommandBase>(command, commandSize);
+		auto allocation = allocateCommand<BufferBarrierCommandBase>(command, (uint32)commandSize);
 		memcpy(allocation + 1, command.buffers, command.bufferCount * sizeof(ID<Buffer>));
 	}
 	void addCommand(const BeginRenderPassCommand& command)
 	{
 		GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Graphics);
 		auto commandSize = sizeof(BeginRenderPassCommandBase) + command.clearColorCount * sizeof(float4);
-		auto allocation = allocateCommand<BeginRenderPassCommandBase>(command, commandSize);
+		auto allocation = allocateCommand<BeginRenderPassCommandBase>(command, (uint32)commandSize);
 		if (command.clearColorCount > 0)
 			memcpy(allocation + 1, command.clearColors, command.clearColorCount * sizeof(float4));
 		hasAnyCommand = true;
@@ -556,8 +555,8 @@ public:
 		GARDEN_ASSERT(asyncSize % asyncCommandSize == 0);
 		auto bufferBinarySize = command.bufferCount * sizeof(void*);
 		auto commandSize = sizeof(ExecuteCommandBase) + bufferBinarySize + asyncSize;
-		auto allocation = allocateCommand<ExecuteCommandBase>(command, commandSize);
-		allocation->asyncCommandCount = asyncSize / asyncCommandSize;
+		auto allocation = allocateCommand<ExecuteCommandBase>(command, (uint32)commandSize);
+		allocation->asyncCommandCount = (uint32)(asyncSize / asyncCommandSize);
 
 		auto data = (uint8*)allocation + sizeof(ExecuteCommandBase);
 		memcpy(data, command.buffers, bufferBinarySize);
@@ -593,7 +592,7 @@ public:
 		auto attachmentsSize = command.attachmentCount * sizeof(Framebuffer::ClearAttachment);
 		auto commandSize = sizeof(ClearAttachmentsCommandBase) +
 			attachmentsSize + command.regionCount * sizeof(Framebuffer::ClearRegion);
-		auto allocation = allocateCommand<ClearAttachmentsCommandBase>(command, commandSize);
+		auto allocation = allocateCommand<ClearAttachmentsCommandBase>(command, (uint32)commandSize);
 		memcpy((uint8*)allocation + sizeof(ClearAttachmentsCommandBase),
 			command.attachments, command.attachmentCount * sizeof(Framebuffer::ClearAttachment));
 		memcpy((uint8*)allocation + sizeof(ClearAttachmentsCommandBase) + attachmentsSize,
@@ -610,7 +609,7 @@ public:
 		GARDEN_ASSERT(type == CommandBufferType::Frame ||
 			type == CommandBufferType::Graphics || type == CommandBufferType::Compute);
 		auto commandSize = sizeof(BindDescriptorSetsCommandBase) + command.rangeCount * sizeof(DescriptorSet::Range);
-		auto allocation = allocateCommand<BindDescriptorSetsCommandBase>(command, commandSize);
+		auto allocation = allocateCommand<BindDescriptorSetsCommandBase>(command, (uint32)commandSize);
 		memcpy(allocation + 1, command.descriptorSetRanges, command.rangeCount * sizeof(DescriptorSet::Range));
 	}
 	void addCommand(const BindDescriptorSetsAsyncCommand& command, int32 threadIndex = -1)
@@ -624,7 +623,7 @@ public:
 		GARDEN_ASSERT(type == CommandBufferType::Frame ||
 			type == CommandBufferType::Graphics || type == CommandBufferType::Compute);
 		auto commandSize = sizeof(PushConstantsCommandBase) + alignSize((psize)command.dataSize, dataAlignment);
-		auto allocation = allocateCommand<PushConstantsCommandBase>(command, commandSize);
+		auto allocation = allocateCommand<PushConstantsCommandBase>(command, (uint32)commandSize);
 		memcpy(allocation + 1, command.data, command.dataSize);
 	}
 
@@ -674,7 +673,7 @@ public:
 	void addCommand(const CopyBufferCommand& command)
 	{
 		auto commandSize = sizeof(CopyBufferCommandBase) + command.regionCount * sizeof(Buffer::CopyRegion);
-		auto allocation = allocateCommand<CopyBufferCommandBase>(command, commandSize);
+		auto allocation = allocateCommand<CopyBufferCommandBase>(command, (uint32)commandSize);
 		memcpy(allocation + 1, command.regions, command.regionCount * sizeof(Buffer::CopyRegion));
 		hasAnyCommand = true;
 	}
@@ -683,21 +682,21 @@ public:
 		GARDEN_ASSERT(type == CommandBufferType::Frame ||
 			type == CommandBufferType::Graphics || type == CommandBufferType::Compute);
 		auto commandSize = sizeof(ClearImageCommandBase) + command.regionCount * sizeof(Image::ClearRegion);
-		auto allocation = allocateCommand<ClearImageCommandBase>(command, commandSize);
+		auto allocation = allocateCommand<ClearImageCommandBase>(command, (uint32)commandSize);
 		memcpy(allocation + 1, command.regions, command.regionCount * sizeof(Image::ClearRegion));
 		hasAnyCommand = true;
 	}
 	void addCommand(const CopyImageCommand& command)
 	{
 		auto commandSize = sizeof(CopyImageCommandBase) + command.regionCount * sizeof(Image::CopyImageRegion);
-		auto allocation = allocateCommand<CopyImageCommandBase>(command, commandSize);
+		auto allocation = allocateCommand<CopyImageCommandBase>(command, (uint32)commandSize);
 		memcpy(allocation + 1, command.regions, command.regionCount * sizeof(Image::CopyImageRegion));
 		hasAnyCommand = true;
 	}
 	void addCommand(const CopyBufferImageCommand& command)
 	{
 		auto commandSize = sizeof(CopyBufferImageCommandBase) + command.regionCount * sizeof(Image::CopyBufferRegion);
-		auto allocation = allocateCommand<CopyBufferImageCommandBase>(command, commandSize);
+		auto allocation = allocateCommand<CopyBufferImageCommandBase>(command, (uint32)commandSize);
 		memcpy(allocation + 1, command.regions, command.regionCount * sizeof(Image::CopyBufferRegion));
 		hasAnyCommand = true;
 	}
@@ -705,7 +704,7 @@ public:
 	{
 		GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Graphics);
 		auto commandSize = sizeof(BlitImageCommandBase) + command.regionCount * sizeof(Image::BlitRegion);
-		auto allocation = allocateCommand<BlitImageCommandBase>(command, commandSize);
+		auto allocation = allocateCommand<BlitImageCommandBase>(command, (uint32)commandSize);
 		memcpy(allocation + 1, command.regions, command.regionCount * sizeof(Image::BlitRegion));
 		hasAnyCommand = true;
 	}
@@ -752,7 +751,7 @@ public:
 	{
 		auto nameLength = strlen(command.name) + 1;
 		auto commandSize = sizeof(BeginLabelCommandBase) + alignSize(nameLength, dataAlignment);
-		auto allocation = allocateCommand<BeginLabelCommandBase>(command, commandSize, threadIndex);
+		auto allocation = allocateCommand<BeginLabelCommandBase>(command, (uint32)commandSize, threadIndex);
 		memcpy(allocation + 1, command.name, nameLength);
 	}
 	void addCommand(const EndLabelCommand& command, int32 threadIndex)
@@ -763,7 +762,7 @@ public:
 	{
 		auto nameLength = strlen(command.name) + 1;
 		auto commandSize = sizeof(InsertLabelCommandBase) + alignSize(nameLength, dataAlignment);
-		auto allocation = allocateCommand<InsertLabelCommandBase>(command, commandSize, threadIndex);
+		auto allocation = allocateCommand<InsertLabelCommandBase>(command, (uint32)commandSize, threadIndex);
 		memcpy(allocation + 1, command.name, nameLength);
 	}
 	#endif

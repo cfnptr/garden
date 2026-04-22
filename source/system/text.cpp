@@ -197,14 +197,14 @@ static bool fillFontAtlas(const LinearPool<Font>& fontPool, FT_Library ftLibrary
 					result += task.getItemCount() - task.getItemOffset();
 				}
 			},
-			glyphMap.size());
+			(uint32)glyphMap.size());
 		}
 
 		threadPool.wait();
 		return result == glyphs[0].size() * 4;
 	}
 
-	auto glyphCount = glyphs[0].size();
+	auto glyphCount = (uint32)glyphs[0].size();
 	for (uint8 i = 0; i < 4; i++)
 	{
 		if (!fillFontAtlas(fontPool, ftLibrary, fonts[i], glyphs[i], pixels, 

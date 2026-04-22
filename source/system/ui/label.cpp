@@ -89,7 +89,7 @@ bool UiLabelComponent::updateText(bool shrink)
 
 	if (text.empty() || scaledFontSize == 0
 		#if GARDEN_DEBUG || GARDEN_EDITOR
-		|| fontPaths.empty() && !loadNoto
+		|| (fontPaths.empty() && !loadNoto)
 		#endif
 		)
 	{
@@ -402,7 +402,7 @@ void UiLabelSystem::deserialize(IDeserializer& deserializer, View<Component> com
 
 	if (componentView->text.empty() || scaledFontSize == 0
 		#if GARDEN_DEBUG || GARDEN_EDITOR
-		|| componentView->fontPaths.empty() && !componentView->loadNoto
+		|| (componentView->fontPaths.empty() && !componentView->loadNoto)
 		#endif
 		)
 	{
@@ -525,7 +525,7 @@ void UiLabelSystem::deserializeAnimation(IDeserializer& deserializer, View<Anima
 
 	if (frameView->text.empty() || scaledFontSize == 0
 		#if GARDEN_DEBUG || GARDEN_EDITOR
-		|| frameView->fontPaths.empty() && !frameView->loadNoto
+		|| (frameView->fontPaths.empty() && !frameView->loadNoto)
 		#endif
 		)
 	{
