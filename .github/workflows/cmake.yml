@@ -56,7 +56,7 @@ jobs:
 
     - name: Install Windows packages
       if: ${{matrix.os == 'windows-latest' && steps.vcpkg-cache.outputs.cache-hit != 'true'}}
-      run: vcpkg install zlib:x64-windows-static openssl:x64-windows-static curl:x64-windows-static assimp:x64-windows-static
+      run: vcpkg install zlib openssl curl assimp openexr --triplet x64-windows-static
 
     - name: Install Windows VulkanSDK
       if: matrix.os == 'windows-latest'

@@ -58,7 +58,7 @@ Or
 
 ### 7. Install required packages
 
-1. Run ```vcpkg install zlib:x64-windows-static openssl:x64-windows-static curl:x64-windows-static assimp:x64-windows-static``` using **Terminal** or **CMD** app
+1. Run ```vcpkg install zlib openssl curl assimp openexr --triplet x64-windows-static``` using **Terminal** or **CMD** app
 
 Alternatively run ```install-packages.bat``` from the project **scripts/** directory
 
@@ -74,7 +74,7 @@ Alternatively run ```install-packages.bat``` from the project **scripts/** direc
 
 1. Install **Homebrew** package manager from [brew.sh](https://brew.sh)
 2. Run ```brew update``` command using **Terminal** app to update package list
-3. And run ```brew install git cmake zlib openssl curl assimp``` command to install packages
+3. And run ```brew install git cmake zlib openssl curl assimp openexr``` command to install packages
 
 ### 3. Install Vulkan SDK
 
@@ -108,7 +108,7 @@ Or
 ### For Ubuntu/Debian
 
 1. Run ```sudo apt update``` command using **Terminal** app to update package list
-2. And ```sudo apt install build-essential ninja-build git cmake clang lld lldb glslc libvulkan-dev vulkan-validationlayers zlib1g-dev libssl-dev libcurl4-openssl-dev libwayland-dev libxkbcommon-dev xorg-dev libassimp-dev```
+2. And ```sudo apt install build-essential ninja-build git cmake clang lld lldb glslc libvulkan-dev vulkan-validationlayers zlib1g-dev libssl-dev libcurl4-openssl-dev libwayland-dev libxkbcommon-dev xorg-dev libassimp-dev libopenexr-dev```
 
 
 # Build project (Compile)

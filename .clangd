@@ -1,2 +1,4 @@
+InlayHints:
+  Enabled: No
 Documentation:
   CommentFormat: Doxygen
