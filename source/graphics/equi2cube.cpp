@@ -23,12 +23,101 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 
+#include <ImfRgbaFile.h>
+#include <ImfArray.h>
+
 #include <atomic>
 #include <iostream>
 
 using namespace garden;
 using namespace garden::graphics;
 using namespace math::ibl;
+
+//**********************************************************************************************************************
+namespace
+{
+	class ExrMemoryStream final : public Imf::IStream
+	{
+		vector<uint8> fileData;
+		uint64 dataPos = 0;
+	public:
+		ExrMemoryStream(vector<uint8>&& fileData) : 
+			Imf::IStream("memory"), fileData(std::move(fileData)) { }
+		~ExrMemoryStream() override { }
+
+		bool isMemoryMapped() const override { return true; }
+
+		bool read(char c[/*n*/], int n) override
+		{
+			if (dataPos + n >= fileData.size())
+				throw runtime_error("Out of EXR file bounds.");
+			memcpy(c, fileData.data(), n); dataPos += n;
+			return dataPos != fileData.size();
+		}
+		char* readMemoryMapped(int n) override
+		{
+			if (dataPos + n >= fileData.size())
+				throw runtime_error("Out of EXR file bounds.");
+			auto memory = (char*)fileData.data() + dataPos; dataPos += n;
+			return memory;
+		}
+
+		uint64_t tellg() override { return dataPos; }
+		void seekg(uint64_t pos) override { dataPos = pos; }
+		void clear() override { }
+		int64_t size() override { return (int64_t)fileData.size(); }
+		bool isStatelessRead() const override { return true; }
+
+		int64_t read(void* buf, uint64_t sz, uint64_t offset) override
+		{
+			if (offset >= fileData.size())
+				return 0;
+			auto remaining = fileData.size() - offset;
+    		auto bytesToRead = (sz < remaining) ? sz : remaining;
+			memcpy(buf, fileData.data() + offset, bytesToRead);
+			return bytesToRead;
+		}
+	};
+}
+
+//**********************************************************************************************************************
+static f32x4 imfToRgb(Imf::Rgba imf) noexcept { return f32x4(imf.r, imf.g, imf.b, imf.a); }
+static Imf::Rgba rgbToImf(f32x4 rgb) noexcept { return Imf::Rgba(rgb.getX(), rgb.getY(), rgb.getZ(), rgb.getW()); }
+
+static Imf::Rgba filterCubeMap(float2 coords, const Imf::Rgba* pixels, uint2 sizeMinus1, uint32 sizeX) noexcept
+{
+	auto coords0 = min((uint2)coords, sizeMinus1);
+	auto coords1 = min(coords0 + uint2::one, sizeMinus1);
+	auto uv = coords - coords0, invUV = 1.0f - uv;
+
+	auto s0 = imfToRgb(pixels[coords0.y * sizeX + coords0.x]);
+	auto s1 = imfToRgb(pixels[coords0.y * sizeX + coords1.x]);
+	auto s2 = imfToRgb(pixels[coords1.y * sizeX + coords0.x]);
+	auto s3 = imfToRgb(pixels[coords1.y * sizeX + coords1.x]);
+
+	return rgbToImf(fma(s0, f32x4(invUV.x * invUV.y), fma(s1, f32x4(uv.x * invUV.y),
+		fma(s2, f32x4(invUV.x * uv.y), s3 * (uv.x * uv.y)))));
+}
+static void convert(Imf::Rgba** cubeFaces, uint32 cubemapSize, uint2 equiSize,
+	uint2 equiSizeMinus1, const Imf::Rgba* equiPixels, float invDim) noexcept
+{
+	for (uint32 face = 0; face < Image::cubemapFaceCount; face++)
+	{
+		auto cubePixels = cubeFaces[face];
+		for (uint32 y = 0; y < cubemapSize; y++)
+		{
+			for (uint32 x = 0; x < cubemapSize; x++)
+			{
+				auto coords = uint3(x, y, face);
+				auto dir = ibl::coordsToDir(coords, invDim);
+				auto uv = ibl::toSphericalMapUV(dir);
+
+				cubePixels[coords.y * cubemapSize + coords.x] = filterCubeMap(
+					uv * equiSize, equiPixels, equiSizeMinus1, equiSize.x);
+			}
+		}
+	}
+}
 
 #if GARDEN_DEBUG || defined(EQUI2CUBE)
 //**********************************************************************************************************************
@@ -91,34 +180,43 @@ bool Equi2Cube::convertImage(const fs::path& filePath, const fs::path& inputPath
 	GARDEN_ASSERT(!outputPath.empty());
 
 	auto path = inputPath / filePath;
-	vector<uint8> dataBuffer, equiData; uint2 equiSize;
-	uint8* pixels = nullptr; // Note: width * height * RGBA
-	int sizeX = 0, sizeY = 0, binarySize = 0;
+	vector<uint8> dataBuffer;
 
 	if (!File::tryLoadBinary(path, dataBuffer))
 		return false;
 
 	auto extension = filePath.extension();
+	uint8* equiPixels = nullptr; // Note: width * height * RGBA
+	int sizeX = 0, sizeY = 0, binarySize = 0;
+
 	if (extension == ".exr")
 	{
-		/* TODO: replace with OpenEXR
-		const char* error = nullptr;
-		if (LoadEXRFromMemory((float**)&pixels, &sizeX, &sizeY, dataBuffer.data(), 
-			dataBuffer.size(), &error) != TINYEXR_SUCCESS)
+		try
 		{
-			auto errorString = string(error); FreeEXRErrorMessage(error);
-			throw GardenError("Failed to load EXR image. (path: " + 
-				filePath.generic_string() + ", error: " + errorString + ")");
+			ExrMemoryStream exrStream(std::move(dataBuffer));
+			Imf::RgbaInputFile exrFile(exrStream);
+		
+			auto dw = exrFile.dataWindow();
+			sizeX = dw.max.x - dw.min.x + 1;
+			sizeY = dw.max.y - dw.min.y + 1;
+			binarySize = 8;
+
+			equiPixels = malloc<uint8>((psize)sizeX * sizeY * binarySize);
+			exrFile.setFrameBuffer((Imf::Rgba*)equiPixels - dw.min.x - dw.min.y * sizeX, 1, sizeX);
+			exrFile.readPixels(dw.min.y, dw.max.y);
 		}
-		binarySize = 16;
-		*/
-		abort();
+		catch (exception& e)
+		{
+			free(equiPixels);
+			throw GardenError("Failed to load EXR image. ("
+				"path: " + filePath.generic_string() + ", error: " + string(e.what()) + ")");
+		}
 	}
 	else if (extension == ".hdr")
 	{
-		pixels = (uint8*)stbi_loadf_from_memory(dataBuffer.data(),
+		equiPixels = (uint8*)stbi_loadf_from_memory(dataBuffer.data(),
 			(int)dataBuffer.size(), &sizeX, &sizeY, nullptr, 4);
-		if (!pixels)
+		if (!equiPixels)
 			throw GardenError("Failed to load HDR image. (path: " + filePath.generic_string() + ")");
 		binarySize = 16;
 	}
@@ -129,29 +227,41 @@ bool Equi2Cube::convertImage(const fs::path& filePath, const fs::path& inputPath
 	}
 	// TODO: also convert png/jpg cubemaps.
 
-	equiSize = uint2((uint32)sizeX, (uint32)sizeY);
-	equiData.assign((const uint8*)pixels, (const uint8*)pixels + 
-		equiSize.x * equiSize.y * binarySize);
-	free(pixels);
-
+	auto equiSize = uint2((uint32)sizeX, (uint32)sizeY);
 	auto cubemapSize = equiSize.x / 4;
+
 	if (equiSize.x / 2 != equiSize.y || cubemapSize % 32 != 0)
+	{
+		free(equiPixels);
 		throw GardenError("Image is not a cubemap. (path: " + filePath.generic_string() + ")");
+	}
 
 	auto invDim = 1.0f / cubemapSize;
 	auto equiSizeMinus1 = equiSize - 1u;
-	auto equiPixels = (f32x4*)equiData.data();
-	auto pixelsSize = cubemapSize * cubemapSize * binarySize;
+	auto pixelsSize = (psize)cubemapSize * cubemapSize * binarySize;
 
 	vector<uint8> left(pixelsSize), right(pixelsSize), bottom(pixelsSize),
 		top(pixelsSize), back(pixelsSize), front(pixelsSize);
 
-	f32x4* cubeFaces[6] =
+	if (binarySize == 8) // half
 	{
-		(f32x4*)left.data(), (f32x4*)right.data(), (f32x4*)bottom.data(), 
-		(f32x4*)top.data(), (f32x4*)back.data(), (f32x4*)front.data(),
-	};
-	convert(cubeFaces, cubemapSize, equiSize, equiSizeMinus1, equiPixels, invDim);
+		Imf::Rgba* cubeFaces[6] =
+		{
+			(Imf::Rgba*)left.data(), (Imf::Rgba*)right.data(), (Imf::Rgba*)bottom.data(), 
+			(Imf::Rgba*)top.data(), (Imf::Rgba*)back.data(), (Imf::Rgba*)front.data(),
+		};
+		::convert(cubeFaces, cubemapSize, equiSize, equiSizeMinus1, (Imf::Rgba*)equiPixels, invDim);
+	}
+	else if (binarySize == 16) // float
+	{
+		f32x4* cubeFaces[6] =
+		{
+			(f32x4*)left.data(), (f32x4*)right.data(), (f32x4*)bottom.data(), 
+			(f32x4*)top.data(), (f32x4*)back.data(), (f32x4*)front.data(),
+		};
+		convert(cubeFaces, cubemapSize, equiSize, equiSizeMinus1, (f32x4*)equiPixels, invDim);
+	}
+	else abort();
 
 	constexpr auto imageFormat = Image::Format::SfloatR16G16B16A16;
 	auto cacheFilePath = (outputPath / filePath).generic_string();
