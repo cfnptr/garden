@@ -24,7 +24,7 @@
 #elif GARDEN_OS_APPLE
 #include <CoreServices/CoreServices.h>
 #elif GARDEN_OS_WINDOWS
-//#error TODO: implement
+#include <windows.h>
 #endif
 
 using namespace math;
@@ -109,7 +109,91 @@ static void onChange(ConstFSEventStreamRef streamRef, void* clientCallBackInfo, 
 	locker.unlock();
 }
 #elif GARDEN_OS_WINDOWS
-// TODO:
+namespace
+{
+	struct WatcherDir final
+	{
+		OVERLAPPED overlapped;
+		HANDLE dirHandle;
+		vector<char> buffer;
+		fs::path path;
+	};
+	struct WatcherData final
+	{
+		vector<WatcherDir> watchers;
+		thread thread;
+		FileWatcherSystem* system;
+	};
+}
+
+static bool enqueueDirWatcher(WatcherDir& watcher)
+{
+	auto result = ReadDirectoryChangesW(watcher.dirHandle, watcher.buffer.data(),
+		(DWORD)watcher.buffer.size(), TRUE, FILE_NOTIFY_CHANGE_FILE_NAME | 
+		FILE_NOTIFY_CHANGE_LAST_WRITE, NULL, &watcher.overlapped, NULL);
+	if (!result)
+	{
+		GARDEN_LOG_ERROR("Failed to enqueue directory watcher. (error: " + to_string(GetLastError()) + ")");
+		return false;
+	}
+	return true;
+}
+static void fileWatcherThread(WatcherData* data)
+{
+	auto& watchers = data->watchers;
+	vector<HANDLE> events(watchers.size());
+
+	for (psize i = 0; i < watchers.size(); i++)
+	{
+		auto& watcher = watchers[i];
+		if (!enqueueDirWatcher(watcher))
+			return;
+		events[i] = watcher.overlapped.hEvent;
+	}
+
+	auto fileWatcherSystem = data->system;
+	auto& locker = fileWatcherSystem->getLocker_();
+	auto& changedFiles = fileWatcherSystem->getChangedFiles();
+	auto& createdFiles = fileWatcherSystem->getCreatedFiles();
+
+	while (true)
+	{
+		auto status = WaitForMultipleObjects((DWORD)events.size(), events.data(), FALSE, INFINITE);
+		auto index = status - WAIT_OBJECT_0;
+
+		if (index < 0 || index >= events.size())
+		{
+			GARDEN_LOG_ERROR("Failed to wait for file watcher events. (error: " + to_string(GetLastError()) + ")");
+			break;
+		}
+
+		auto& watcher = watchers[index];
+		auto notifyInfo = (FILE_NOTIFY_INFORMATION*)watcher.buffer.data();
+
+		locker.lock();
+		do
+		{
+			auto filePathLength = WideCharToMultiByte(CP_UTF8, 0, notifyInfo->FileName, 
+				(int)notifyInfo->FileNameLength / sizeof(WCHAR), NULL, 0, NULL, NULL);
+			std::string filePath(filePathLength, 0);
+			WideCharToMultiByte(CP_UTF8, 0, notifyInfo->FileName, (int)notifyInfo->FileNameLength / 
+				sizeof(WCHAR), filePath.data(), filePathLength, NULL, NULL);
+
+			if (notifyInfo->Action == FILE_ACTION_MODIFIED)
+				changedFiles.push_back(watcher.path / filePath);
+			else if (notifyInfo->Action == FILE_ACTION_ADDED)
+				createdFiles.push_back(watcher.path / filePath);
+			else continue; // TODO: moved and renamed files
+
+			notifyInfo = (FILE_NOTIFY_INFORMATION*)((char*)notifyInfo + notifyInfo->NextEntryOffset);
+		} while (notifyInfo->NextEntryOffset != 0);
+		locker.unlock();
+
+		ResetEvent(watcher.overlapped.hEvent);
+		if (!enqueueDirWatcher(watcher))
+			break;
+	}
+}
 #endif
 
 //**********************************************************************************************************************
@@ -158,6 +242,32 @@ static bool addDirWatchers(int fd, const fs::path& resourcesPath, tsl::robin_map
 	}
 	return true;
 }
+#elif GARDEN_OS_WINDOWS
+static bool createDirWatcher(const fs::path& path, WatcherDir& watcher)
+{
+	watcher.dirHandle = CreateFileW(path.generic_wstring().c_str(), FILE_LIST_DIRECTORY, 
+		FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL, OPEN_EXISTING, 
+		FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED, NULL);
+	if (watcher.dirHandle == INVALID_HANDLE_VALUE)
+	{
+		GARDEN_LOG_ERROR("Failed to create a directory watcher. (error: " + to_string(GetLastError()) + ")");
+		return false;
+	}
+
+	watcher.overlapped = {};
+	watcher.overlapped.hEvent = CreateEventW(NULL, TRUE, FALSE, NULL);
+
+	if (!watcher.overlapped.hEvent)
+	{
+		CloseHandle(watcher.dirHandle);
+		GARDEN_LOG_ERROR("Failed to create a directory watcher event. (error: " + to_string(GetLastError()) + ")");
+		return false;
+	}
+
+	watcher.buffer.resize(1024);
+	watcher.path = path;
+	return true;
+}
 #endif
 
 void FileWatcherSystem::preInit()
@@ -199,17 +309,32 @@ void FileWatcherSystem::preInit()
 
 	auto queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
 	FSEventStreamSetDispatchQueue(stream, queue);
-	FSEventStreamStart(stream);
+	if (!FSEventStreamStart(stream))
+		GARDEN_LOG_ERROR("Failed to start FSEventStream.");
 	CFRelease(pathsToWatch); CFRelease(paths[1]); CFRelease(paths[0]);
 	#elif GARDEN_OS_WINDOWS
-	// TODO:
+	auto data = new WatcherData();
+	this->instance = data;
+
+	data->system = this;
+	data->watchers.resize(2);
+
+	if (!createDirWatcher(GARDEN_RESOURCES_PATH, data->watchers[0]) ||
+		!createDirWatcher(appResourcesPath, data->watchers[1]))
+	{
+		GARDEN_LOG_ERROR("Failed to create directory watchers.");
+		return;
+	}
+
+	data->thread = thread(fileWatcherThread, data);
+	data->thread.detach();
 	#endif
 }
 
 //**********************************************************************************************************************
 void FileWatcherSystem::update()
 {
-	#if GARDEN_OS_APPLE
+	#if GARDEN_OS_APPLE | GARDEN_OS_WINDOWS
 	locker.lock();
 	#endif
 
@@ -247,7 +372,7 @@ void FileWatcherSystem::update()
 		createdFiles.clear();
 	}
 
-	#if GARDEN_OS_APPLE
+	#if GARDEN_OS_APPLE | GARDEN_OS_WINDOWS
 	locker.unlock();
 	#endif
 }
