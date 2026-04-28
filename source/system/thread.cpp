@@ -34,6 +34,10 @@ ThreadSystem::ThreadSystem(bool setSingleton) : Singleton(setSingleton),
 
 void ThreadSystem::preInit()
 {
+	#if GARDEN_OS_WINDOWS
+	mpmt::Thread::setName("MAIN"); // Something resets main thread name on Windows.
+	#endif
+
 	GARDEN_LOG_INFO("Background thread pool size: " + to_string(backgroundPool.getThreadCount()));
 	GARDEN_LOG_INFO("Foreground thread pool size: " + to_string(foregroundPool.getThreadCount()));
 }

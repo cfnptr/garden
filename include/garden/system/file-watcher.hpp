@@ -39,8 +39,7 @@ class FileWatcherSystem final : public System, public Singleton<FileWatcherSyste
 	fs::path currentFilePath = {};
 	#if GARDEN_OS_LINUX
 	tsl::robin_map<int, fs::path> watchers;
-	#endif
-	#if GARDEN_OS_APPLE
+	#elif GARDEN_OS_APPLE | GARDEN_OS_WINDOWS
 	mutex locker = {};
 	#endif
 
@@ -70,7 +69,7 @@ public:
 	 */
 	vector<fs::path>& getCreatedFiles() noexcept { return createdFiles; }
 
-	#if GARDEN_OS_APPLE
+	#if GARDEN_OS_APPLE | GARDEN_OS_WINDOWS
 	mutex& getLocker_() { return locker; }
 	#endif
 };
