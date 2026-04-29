@@ -60,7 +60,7 @@ public:
 	}
 
 	static void writeExrImageData(const fs::path& filePath, uint32 size, 
-		const vector<uint8>& data, Image::Format imageForamt, bool saveAs16);
+		const vector<uint8>& data, Image::Format imageForamt);
 
 	#if GARDEN_DEBUG || defined(EQUI2CUBE)
 	/**

@@ -33,7 +33,7 @@ using namespace garden;
 #if GARDEN_OS_LINUX
 //**********************************************************************************************************************
 static void flushChanges(void* instance, tsl::robin_map<int, fs::path>& watchers,
-	vector<fs::path>& changedFiles, vector<fs::path>& createdFiles)
+	set<fs::path>& changedFiles, set<fs::path>& createdFiles)
 {
 	if (!instance)
 		return;
@@ -72,9 +72,9 @@ static void flushChanges(void* instance, tsl::robin_map<int, fs::path>& watchers
 				if (searchResult != watchers.end())
 				{
 					if (event->mask & IN_CREATE)
-						createdFiles.push_back(searchResult->second / event->name);
+						createdFiles.emplace(searchResult->second / event->name);
 					else if (event->mask & IN_MODIFY)
-						changedFiles.push_back(searchResult->second /event->name);
+						changedFiles.emplace(searchResult->second /event->name);
 					// TODO: moved files
 				}
 			}
@@ -101,9 +101,9 @@ static void onChange(ConstFSEventStreamRef streamRef, void* clientCallBackInfo, 
 			continue;
 
 		if (flags & kFSEventStreamEventFlagItemCreated)
-			createdFiles.push_back(string(paths[i]));
+			createdFiles.emplace(string(paths[i]));
 		else if (flags & kFSEventStreamEventFlagItemModified)
-			changedFiles.push_back(string(paths[i]));
+			changedFiles.emplace(string(paths[i]));
 		// TODO: moved files
 	}
 	locker.unlock();
@@ -180,9 +180,9 @@ static void fileWatcherThread(WatcherData* data)
 				sizeof(WCHAR), filePath.data(), filePathLength, NULL, NULL);
 
 			if (notifyInfo->Action == FILE_ACTION_MODIFIED)
-				changedFiles.push_back(watcher.path / filePath);
+				changedFiles.emplace(watcher.path / filePath);
 			else if (notifyInfo->Action == FILE_ACTION_ADDED)
-				createdFiles.push_back(watcher.path / filePath);
+				createdFiles.emplace(watcher.path / filePath);
 			else continue; // TODO: moved and renamed files
 
 			notifyInfo = (FILE_NOTIFY_INFORMATION*)((char*)notifyInfo + notifyInfo->NextEntryOffset);
