@@ -26,7 +26,7 @@ jobs:
     - name: Cache vcpkg packages
       uses: actions/cache@v4
       if: matrix.os == 'windows-latest'
-      id: vcpkg-cache
+      id: vcpkg-cache-v2
       with:
         path: C:/vcpkg/installed
         key: ${{env.VCPKG_CACHE}}
@@ -55,7 +55,7 @@ jobs:
         brew update && brew install zlib openssl curl assimp openexr
 
     - name: Install Windows packages
-      if: ${{matrix.os == 'windows-latest' && steps.vcpkg-cache.outputs.cache-hit != 'true'}}
+      if: ${{matrix.os == 'windows-latest' && steps.vcpkg-cache-v2.outputs.cache-hit != 'true'}}
       run: vcpkg install zlib openssl curl assimp openexr --triplet x64-windows-static
 
     - name: Install Windows VulkanSDK

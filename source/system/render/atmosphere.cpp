@@ -623,7 +623,7 @@ void AtmosphereRenderSystem::updateSkybox()
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	auto pbrLightingView = manager->tryGet<PbrLightingComponent>(graphicsSystem->camera);
 
-	if (!pbrLightingView)
+	if (!pbrLightingView || pbrLightingView->getCubemapMode() != PbrCubemapMode::Dynamic)
 		return;
 
 	if (lastSkybox != pbrLightingView->skybox || lastSpecular != pbrLightingView->specular)
@@ -915,8 +915,8 @@ void AtmosphereRenderSystem::hdrRender()
 void AtmosphereRenderSystem::gBufferRecreate()
 {
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	graphicsSystem->destroy(skyboxDS); skyboxDS = {};
-	graphicsSystem->destroy(hdrSkyDS); hdrSkyDS = {};
+	graphicsSystem->destroy(skyboxDS);
+	graphicsSystem->destroy(hdrSkyDS);
 
 	if (skyViewLUT)
 	{

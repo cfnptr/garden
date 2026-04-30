@@ -492,9 +492,9 @@ class TransformSystem final : public CompAnimSystem<TransformComponent, Transfor
 public:
 	/**
 	 * @brief Destroys the entity and all it descendants.
-	 * @param entity target entity to destroy
+	 * @param[in,out] entity target entity to destroy or null
 	 */
-	void destroyRecursive(ID<Entity> entity);
+	void destroyRecursive(ID<Entity>& entity);
 	/**
 	 * @brief Creates a duplicate of entity with all descendants.
 	 * @param entity target entity to duplicate from

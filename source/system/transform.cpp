@@ -623,7 +623,7 @@ void TransformSystem::animateAsync(View<Component> component, View<AnimationFram
 }
 
 //**********************************************************************************************************************
-void TransformSystem::destroyRecursive(ID<Entity> entity)
+void TransformSystem::destroyRecursive(ID<Entity>& entity)
 {
 	if (!entity)
 		return;
@@ -649,13 +649,13 @@ void TransformSystem::destroyRecursive(ID<Entity> entity)
 
 	while (!entityStack.empty())
 	{
-		auto entity = entityStack.top();
+		auto child = entityStack.top();
 		entityStack.pop();
 
-		if (manager->has<DoNotDestroyComponent>(entity))
+		if (manager->has<DoNotDestroyComponent>(child))
 			continue;
 
-		auto childTransformView = manager->get<TransformComponent>(entity);
+		auto childTransformView = manager->get<TransformComponent>(child);
 		transformChildCount = childTransformView->childCount();
 		transformChilds = childTransformView->childs;
 
@@ -666,7 +666,7 @@ void TransformSystem::destroyRecursive(ID<Entity> entity)
 		childTransformView->childCount() = 0;
 		childTransformView->selfActive = false;
 		childTransformView->ancestorsActive = true;		
-		manager->destroy(entity);
+		manager->destroy(child);
 	}
 	
 	manager->destroy(entity);

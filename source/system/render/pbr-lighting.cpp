@@ -461,6 +461,7 @@ void PbrLightingComponent::setCubemapMode(PbrCubemapMode mode)
 	auto graphicsSystem = GraphicsSystem::Instance::get();
 	graphicsSystem->destroy(descriptorSet);
 	graphicsSystem->destroy(specular);
+	graphicsSystem->destroy(shDiffuse);
 	graphicsSystem->destroy(skybox);
 	this->mode = mode;
 }
@@ -541,21 +542,22 @@ void PbrLightingSystem::preHdrRender()
 	if (!pipelineView->isReady() || !dfgLutView->isReady())
 		return;
 
-	auto deferredSystem = DeferredRenderSystem::Instance::get();
-	auto gpuProcessSystem = GpuProcessSystem::Instance::get();
-
-	if (!pbrLightingDS)
-	{
-		auto uniforms = getLightingUniforms(graphicsSystem, deferredSystem, 
-			dfgLUT, shadBlurBuffer, aoBlurBuffer, giBuffer, reflBuffer);
-		pbrLightingDS = graphicsSystem->createDescriptorSet(pbrLightingPipeline, std::move(uniforms));
-		SET_RESOURCE_DEBUG_NAME(pbrLightingDS, "descriptorSet.pbrLighting.evaluate");
-	}
-
 	auto manager = Manager::Instance::get();
 	auto pbrLightingView = manager->tryGet<PbrLightingComponent>(graphicsSystem->camera);
 	if (!pbrLightingView)
 		return;
+
+	if (pbrLightingView->mode == PbrCubemapMode::Static)
+	{
+		if (!pbrLightingView->skybox || !pbrLightingView->shDiffuse || !pbrLightingView->specular)
+			return;
+
+		auto cubemapView = graphicsSystem->get(pbrLightingView->skybox);
+		auto shDiffuseView = graphicsSystem->get(pbrLightingView->shDiffuse);
+		auto specularView = graphicsSystem->get(pbrLightingView->specular);
+		if (!cubemapView->isReady() || !shDiffuseView->isReady() || !specularView->isReady())
+			return;
+	}
 
 	if (!pbrLightingView->skybox)
 	{
@@ -594,23 +596,23 @@ void PbrLightingSystem::preHdrRender()
 			"image.pbrLighting.specular" + to_string(*pbrLightingView->specular));
 	}
 
-	if (pbrLightingView->mode == PbrCubemapMode::Static)
-	{
-		auto cubemapView = graphicsSystem->get(pbrLightingView->skybox);
-		auto shDiffuseView = graphicsSystem->get(pbrLightingView->shDiffuse);
-		auto specularView = graphicsSystem->get(pbrLightingView->specular);
-		if (!cubemapView->isReady() || !shDiffuseView->isReady() || !specularView->isReady())
-			return;
-	}
+	auto deferredSystem = DeferredRenderSystem::Instance::get();
+	auto gpuProcessSystem = GpuProcessSystem::Instance::get();
 
 	if (!pbrLightingView->descriptorSet)
 	{
 		auto descriptorSet = createDescriptorSet(graphicsSystem->camera, ID<GraphicsPipeline>());
-		if (descriptorSet)
-		{
-			SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.pbrLighting" + to_string(*descriptorSet));
-			pbrLightingView->descriptorSet = descriptorSet;
-		}
+		if (!descriptorSet)
+			return;
+		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.pbrLighting" + to_string(*descriptorSet));
+		pbrLightingView->descriptorSet = descriptorSet;
+	}
+	if (!pbrLightingDS)
+	{
+		auto uniforms = getLightingUniforms(graphicsSystem, deferredSystem, 
+			dfgLUT, shadBlurBuffer, aoBlurBuffer, giBuffer, reflBuffer);
+		pbrLightingDS = graphicsSystem->createDescriptorSet(pbrLightingPipeline, std::move(uniforms));
+		SET_RESOURCE_DEBUG_NAME(pbrLightingDS, "descriptorSet.pbrLighting.evaluate");
 	}
 
 	if (options.useShadBuffer)
@@ -993,8 +995,8 @@ void PbrLightingSystem::setOptions(Options options)
 		}
 		else
 		{
-			graphicsSystem->destroy(reflBlurDSes); reflBlurDSes = {};
-			graphicsSystem->destroy(reflFramebuffers); reflFramebuffers = {};
+			graphicsSystem->destroy(reflBlurDSes);
+			graphicsSystem->destroy(reflFramebuffers);
 			graphicsSystem->destroy(reflFramebuffer);
 			graphicsSystem->destroy(reflBuffer);
 		}
@@ -1596,7 +1598,7 @@ Ref<DescriptorSet> PbrLightingSystem::createDescriptorSet(ID<Entity> entity,
 	GARDEN_ASSERT(entity);
 
 	auto pbrLightingView = Manager::Instance::get()->tryGet<PbrLightingComponent>(entity);
-	if (!pbrLightingDS || !pbrLightingView || !pbrLightingView->shDiffuse || !pbrLightingView->specular)
+	if (!pbrLightingView || !pbrLightingView->shDiffuse || !pbrLightingView->specular)
 		return {};
 
 	auto graphicsSystem = GraphicsSystem::Instance::get();
