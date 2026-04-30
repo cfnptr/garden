@@ -82,6 +82,7 @@ void PbrLightingEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened
 	auto cubemapMode = pbrLightingView->getCubemapMode();
 	if (ImGui::Combo("Cubemap Mode", &cubemapMode, cubemapModes, (int)PbrCubemapMode::Count))
 		pbrLightingView->setCubemapMode(cubemapMode);
+	ImGui::Spacing();
 	
 	if (cubemapMode == PbrCubemapMode::Static)
 	{
@@ -94,7 +95,6 @@ void PbrLightingEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened
 	{
 		editorSystem->drawResource(pbrLightingView->skybox, "Skybox");
 	}
-	ImGui::Spacing();
 
 	editorSystem->drawResource(pbrLightingView->shDiffuse, "Diffuse SH");
 	editorSystem->drawResource(pbrLightingView->specular, "Specular");
