@@ -181,18 +181,18 @@ void Framebuffer::update(uint2 size, const ID<ImageView>* colorImageViews,
 	auto colorAttachmentData = colorAttachments.data();
 	for (uint32 i = 0; i < colorImageViewCount; i++)
 	{
+		auto colorImageView = colorImageViews[i];
 		auto& colorAttachment = colorAttachmentData[i];
+
 		#if GARDEN_DEBUG
-		if (colorAttachment.imageView)
+		if (colorImageView && colorAttachment.imageView)
 		{
-			auto colorImageView = colorImageViews[i];
-			GARDEN_ASSERT_MSG(colorImageView, "Assert " + debugName);
 			auto oldImageView = graphicsAPI->imageViewPool.get(colorAttachment.imageView);
 			auto newImageView = graphicsAPI->imageViewPool.get(colorImageView);
 			GARDEN_ASSERT_MSG(oldImageView->getFormat() == newImageView->getFormat(), "Assert " + debugName);
 		}
 		#endif
-		colorAttachment.imageView = colorImageViews[i];
+		colorAttachment.imageView = colorImageView;
 	}
 
 	this->size = size;

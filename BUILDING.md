@@ -130,3 +130,5 @@ To build the project run one of the [scripts](scripts/) using **Terminal**, **Gi
 4. Select one of the compiler **Kits** in the opened window (Clang or GCC)
 5. Wait for project CMake generation to finish (may take some time)
 6. Click **Build** button at the bottom bar to build the project
+
+Note: On Windows Clang (GNU CLI) works best.
