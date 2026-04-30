@@ -77,11 +77,27 @@ void PbrLightingEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened
 
 	auto pbrLightingView = Manager::Instance::get()->get<PbrLightingComponent>(entity);
 	auto editorSystem = EditorRenderSystem::Instance::get();
-	editorSystem->drawResource(pbrLightingView->skybox, "Skybox");
+
+	constexpr const char* cubemapModes[] = { "Static", "Dynamic" };
+	auto cubemapMode = pbrLightingView->getCubemapMode();
+	if (ImGui::Combo("Cubemap Mode", &cubemapMode, cubemapModes, (int)PbrCubemapMode::Count))
+		pbrLightingView->setCubemapMode(cubemapMode);
+	
+	if (cubemapMode == PbrCubemapMode::Static)
+	{
+		constexpr auto flags = ImageLoadFlags::TypeCubemap | ImageLoadFlags::LoadShared;
+		editorSystem->drawImageSelector("Skybox", 
+			pbrLightingView->skyboxPath, Image::Format::SfloatR16G16B16A16, pbrLightingView->skybox,
+			pbrLightingView->descriptorSet, pbrLightingView->getEntity(), typeid(PbrLightingComponent), 1, flags);
+	}
+	else if (cubemapMode == PbrCubemapMode::Dynamic)
+	{
+		editorSystem->drawResource(pbrLightingView->skybox, "Skybox");
+	}
+	ImGui::Spacing();
+
 	editorSystem->drawResource(pbrLightingView->shDiffuse, "Diffuse SH");
 	editorSystem->drawResource(pbrLightingView->specular, "Specular");
 	editorSystem->drawResource(pbrLightingView->descriptorSet);
-
-	// TODO: allow to select cubemap from file
 }
 #endif

@@ -601,7 +601,6 @@ static bool renderInspectorWindowPopup(const EditorRenderSystem::EntityInspector
 		if (ImGui::MenuItem("Destroy Entity", nullptr, false, !manager->has<DoNotDestroyComponent>(selectedEntity)))
 		{
 			TransformSystem::Instance::get()->destroyRecursive(selectedEntity);
-			selectedEntity = {};
 			ImGui::EndPopup();
 			return false;
 		}
@@ -1110,8 +1109,7 @@ void EditorRenderSystem::openFileSelector(const OnFileSelect& onSelect,
 {
 	fileSelectDirectory = selectedEntry = directory.empty() ?
 		AppInfoSystem::Instance::get()->getResourcesPath() : directory;
-	fileExtensions = extensions;
-	onFileSelect = onSelect;
+	fileExtensions = extensions; onFileSelect = onSelect;
 }
 
 void EditorRenderSystem::drawFileSelector(const char* name, fs::path& path, ID<Entity> entity,
@@ -1184,7 +1182,6 @@ void EditorRenderSystem::drawImageSelector(const char* name, fs::path& path, Ima
 				if (maxMipCount == 0) usage |= Image::Usage::TransferSrc;
 				image = resourceSystem->loadImage(path, format, usage, 
 					maxMipCount, Image::Strategy::Default, loadFlags);
-				descriptorSet = {};
 			},
 			AppInfoSystem::Instance::get()->getResourcesPath() / "images", ResourceSystem::imageFileExts);
 		}
@@ -1197,7 +1194,7 @@ void EditorRenderSystem::drawImageSelector(const char* name, fs::path& path, Ima
 			auto resourceSystem = ResourceSystem::Instance::get();
 			resourceSystem->destroyShared(image);
 			resourceSystem->destroyShared(descriptorSet);
-			path = ""; image = {}; descriptorSet = {};
+			path = "";
 		}
 		ImGui::EndPopup();
 	}
@@ -1249,7 +1246,7 @@ void EditorRenderSystem::drawModelSelector(const char* name, fs::path& path, Ref
 			auto resourceSystem = ResourceSystem::Instance::get();
 			resourceSystem->destroyShared(vertexBuffer);
 			resourceSystem->destroyShared(indexBuffer);
-			path = ""; vertexBuffer = {}; indexBuffer = {};
+			path = "";
 		}
 		ImGui::EndPopup();
 	}

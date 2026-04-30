@@ -54,8 +54,12 @@ struct PbrLightingComponent final : public Component
 	Ref<Buffer> shDiffuse = {};            /**< Diffuse irradiance SH buffer. */
 	Ref<Image> specular = {};              /**< Specular cubemap image. */
 	Ref<DescriptorSet> descriptorSet = {}; /**< PBR lighting descriptor set. */
+	#if GARDEN_DEBUG || GARDEN_EDITOR
+	fs::path skyboxPath = "";              /**< Skybox cubemap texture path. */
+	float taskPriority = 0.0f;             /**< Texture load task priority. */
+	#endif
 private:
-	PbrCubemapMode mode = PbrCubemapMode::Static;
+	PbrCubemapMode mode = PbrCubemapMode::Dynamic;
 	friend class PbrLightingSystem;
 public:
 	f32x4x4 shCoeffs[3]; /**< Diffuse irradiance SH coefficients. */

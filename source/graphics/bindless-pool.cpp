@@ -48,8 +48,6 @@ BindlessPool::BindlessPool(ID<Pipeline> pipeline, PipelineType pipelineType,
 void BindlessPool::destroy()
 {
 	GraphicsAPI::get()->descriptorSetPool.destroy(descriptorSet);
-	
-	descriptorSet = {};
 	uniformData.clear();
 }
 

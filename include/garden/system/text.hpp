@@ -384,8 +384,9 @@ public:
 		if (fontAtlas.isLastRef())
 		{
 			auto item = ID<FontAtlas>(fontAtlas);
-			destroy(item); fontAtlas = {};
+			destroy(item);
 		}
+		fontAtlas = {};
 	}
 	
 	/*******************************************************************************************************************
@@ -479,8 +480,9 @@ public:
 		if (text.isLastRef())
 		{
 			auto item = ID<Text>(text);
-			destroy(item); text = {};
+			destroy(item);
 		}
+		text = {};
 	}
 };
 

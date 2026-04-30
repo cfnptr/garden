@@ -56,7 +56,6 @@ void SkyboxRenderSystem::resetComponent(View<Component> component, bool full)
 	auto componentView = View<SkyboxRenderComponent>(component);
 	resourceSystem->destroyShared(componentView->cubemap);
 	resourceSystem->destroyShared(componentView->descriptorSet);
-	componentView->cubemap = {}; componentView->descriptorSet = {}; 
 }
 void SkyboxRenderSystem::copyComponent(View<Component> source, View<Component> destination)
 {

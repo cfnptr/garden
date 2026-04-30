@@ -84,7 +84,6 @@ void SpriteRenderSystem::resetComponent(View<Component> component)
 	auto componentView = View<SpriteRenderComponent>(component);
 	resourceSystem->destroyShared(componentView->colorMap);
 	resourceSystem->destroyShared(componentView->descriptorSet);
-	componentView->colorMap = {}; componentView->descriptorSet = {};
 }
 
 //**********************************************************************************************************************
@@ -357,7 +356,6 @@ void SpriteRenderSystem::resetAnimation(View<AnimationFrame> frame)
 	auto frameView = View<SpriteAnimFrame>(frame);
 	resourceSystem->destroyShared(frameView->colorMap);
 	resourceSystem->destroyShared(frameView->descriptorSet);
-	frameView->colorMap = {}; frameView->descriptorSet = {};
 }
 
 //**********************************************************************************************************************

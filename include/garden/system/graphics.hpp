@@ -483,8 +483,9 @@ public:
 		if (buffer.isLastRef())
 		{
 			auto item = ID<Buffer>(buffer);
-			destroy(item); buffer = {};
+			destroy(item);
 		}
+		buffer = {};
 	}
 	/**
 	 * @brief Destroys array of buffer instances. (Does not free pointer!)
@@ -504,8 +505,9 @@ public:
 	 */
 	void destroy(vector<ID<Buffer>>& buffers)
 	{
-		for (auto& buffer : buffers)
+		for (auto buffer : buffers)
 			destroy(buffer);
+		buffers.clear();
 	}
 	/**
 	 * @brief Destroys descriptor set buffer instances for each swapchain.
@@ -515,9 +517,10 @@ public:
 	{
 		for (auto& buffers : dsBuffer)
 		{
-			for (auto& buffer : buffers)
+			for (auto buffer : buffers)
 				destroy(buffer);
 		}
+		dsBuffer.clear();
 	}
 
 	/**
@@ -647,8 +650,9 @@ public:
 		if (image.isLastRef())
 		{
 			auto item = ID<Image>(image);
-			destroy(item); image = {};
+			destroy(item);
 		}
+		image = {};
 	}
 	/**
 	 * @brief Destroys array of image instances. (Does not free pointer!)
@@ -668,8 +672,9 @@ public:
 	 */
 	void destroy(vector<ID<Image>>& images)
 	{
-		for (auto& image : images)
+		for (auto image : images)
 			destroy(image);
+		images.clear();
 	}
 
 	/**
@@ -711,8 +716,9 @@ public:
 		if (imageView.isLastRef())
 		{
 			auto item = ID<ImageView>(imageView);
-			destroy(item); imageView = {};
+			destroy(item);
 		}
+		imageView = {};
 	}
 	/**
 	 * @brief Destroys array of image view instances. (Does not free pointer!)
@@ -771,8 +777,9 @@ public:
 		if (framebuffer.isLastRef())
 		{
 			auto item = ID<Framebuffer>(framebuffer);
-			destroy(item); framebuffer = {};
+			destroy(item);
 		}
+		framebuffer = {};
 	}
 	/**
 	 * @brief Destroys array of framebuffer instances. (Does not free pointer!)
@@ -792,8 +799,9 @@ public:
 	 */
 	void destroy(vector<ID<Framebuffer>>& framebuffers)
 	{
-		for (auto& framebuffer : framebuffers)
+		for (auto framebuffer : framebuffers)
 			destroy(framebuffer);
+		framebuffers.clear();
 	}
 
 	/**
@@ -829,8 +837,9 @@ public:
 		if (sampler.isLastRef())
 		{
 			auto item = ID<Sampler>(sampler);
-			destroy(item); sampler = {};
+			destroy(item);
 		}
+		sampler = {};
 	}
 	/**
 	 * @brief Destroys array of sampler instances. (Does not free pointer!)
@@ -850,8 +859,9 @@ public:
 	 */
 	void destroy(vector<ID<Sampler>>& samplers)
 	{
-		for (auto& sampler : samplers)
+		for (auto sampler : samplers)
 			destroy(sampler);
+		samplers.clear();
 	}
 
 	/**
@@ -879,8 +889,9 @@ public:
 		if (graphicsPipeline.isLastRef())
 		{
 			auto item = ID<GraphicsPipeline>(graphicsPipeline);
-			destroy(item); graphicsPipeline = {};
+			destroy(item);
 		}
+		graphicsPipeline = {};
 	}
 	/**
 	 * @brief Destroys array of graphics pipeline instances. (Does not free pointer!)
@@ -900,8 +911,9 @@ public:
 	 */
 	void destroy(vector<ID<GraphicsPipeline>>& graphicsPipelines)
 	{
-		for (auto& graphicsPipeline : graphicsPipelines)
+		for (auto graphicsPipeline : graphicsPipelines)
 			destroy(graphicsPipeline);
+		graphicsPipelines.clear();
 	}
 
 	/**
@@ -932,8 +944,9 @@ public:
 		if (computePipeline.isLastRef())
 		{
 			auto item = ID<ComputePipeline>(computePipeline);
-			destroy(item); commonConstants = {};
+			destroy(item);
 		}
+		commonConstants = {};
 	}
 	/**
 	 * @brief Destroys array of compute pipeline instances. (Does not free pointer!)
@@ -953,8 +966,9 @@ public:
 	 */
 	void destroy(vector<ID<ComputePipeline>>& computePipelines)
 	{
-		for (auto& computePipeline : computePipelines)
+		for (auto computePipeline : computePipelines)
 			destroy(computePipeline);
+		computePipelines.clear();
 	}
 
 	/**
@@ -985,8 +999,9 @@ public:
 		if (rayTracingPipeline.isLastRef())
 		{
 			auto item = ID<RayTracingPipeline>(rayTracingPipeline);
-			destroy(item); rayTracingPipeline = {};
+			destroy(item);
 		}
+		rayTracingPipeline = {};
 	}
 	/**
 	 * @brief Destroys array of ray tracing pipeline instances. (Does not free pointer!)
@@ -1006,8 +1021,9 @@ public:
 	 */
 	void destroy(vector<ID<RayTracingPipeline>>& rayTracingPipelines)
 	{
-		for (auto& rayTracingPipeline : rayTracingPipelines)
+		for (auto rayTracingPipeline : rayTracingPipelines)
 			destroy(rayTracingPipeline);
+		rayTracingPipelines.clear();
 	}
 
 	/**
@@ -1069,8 +1085,9 @@ public:
 		if (descriptorSet.isLastRef())
 		{
 			auto item = ID<DescriptorSet>(descriptorSet);
-			destroy(item); descriptorSet = {};
+			destroy(item);
 		}
+		descriptorSet = {};
 	}
 	/**
 	 * @brief Destroys array of descriptor set instances. (Does not free pointer!)
@@ -1090,8 +1107,9 @@ public:
 	 */
 	void destroy(vector<ID<DescriptorSet>>& descriptorSets)
 	{
-		for (auto& descriptorSet : descriptorSets)
+		for (auto descriptorSet : descriptorSets)
 			destroy(descriptorSet);
+		descriptorSets.clear();
 	}
 
 	/**
@@ -1139,8 +1157,9 @@ public:
 		if (blas.isLastRef())
 		{
 			auto item = ID<Blas>(blas);
-			destroy(item); blas = {};
+			destroy(item);
 		}
+		blas = {};
 	}
 	/**
 	 * @brief Destroys array of BLAS instances. (Does not free pointer!)
@@ -1160,8 +1179,9 @@ public:
 	 */
 	void destroy(vector<ID<Blas>>& blases)
 	{
-		for (auto& blas : blases)
+		for (auto blas : blases)
 			destroy(blas);
+		blases.clear();
 	}
 
 	/**
@@ -1198,8 +1218,9 @@ public:
 		if (tlas.isLastRef())
 		{
 			auto item = ID<Tlas>(tlas);
-			destroy(item); tlas = {};
+			destroy(item);
 		}
+		tlas = {};
 	}
 	/**
 	 * @brief Destroys array of TLAS instances. (Does not free pointer!)
@@ -1219,8 +1240,9 @@ public:
 	 */
 	void destroy(vector<ID<Tlas>>& tlases)
 	{
-		for (auto& tlas : tlases)
+		for (auto tlas : tlases)
 			destroy(tlas);
+		tlases.clear();
 	}
 
 	/**

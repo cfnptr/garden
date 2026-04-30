@@ -38,7 +38,7 @@ static bool loadLocaleStrings(LocaleSystem::StringMap& strings, string_view modu
 	localeData = {};
 
 	string line;
-	while (std::getline(stream, line))
+	while (std::getline(stream, line)) // TODO: get pointer to the line instead of allocating string
 	{
 		if (line.empty())
 			continue;

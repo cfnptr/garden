@@ -163,8 +163,9 @@ public:
 		if (animation.isLastRef())
 		{
 			auto item = ID<Animation>(animation);
-			animations.destroy(item); animation = {};
+			animations.destroy(item);
 		}
+		animation = {};
 	}
 };
 

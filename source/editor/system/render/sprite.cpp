@@ -166,7 +166,6 @@ void SpriteRenderEditorSystem::renderComponent(SpriteRenderComponent* componentV
 		componentView->colorMap = resourceSystem->loadImage(
 			componentView->colorMapPath, Image::Format::SrgbR8G8B8A8, usage, 
 			maxMipCount, Image::Strategy::Default, flags, componentView->taskPriority);
-		componentView->descriptorSet = {};
 	}
 
 	ImGui::BeginDisabled();
@@ -184,7 +183,7 @@ void SpriteRenderEditorSystem::renderComponent(SpriteRenderComponent* componentV
 		if (colorMapView->getType() != Image::Type::Texture2DArray)
 		{
 			ResourceSystem::Instance::get()->destroyShared(componentView->colorMap);
-			componentView->colorMap = {}; componentView->colorMapPath = "";
+			componentView->colorMapPath = "";
 		}
 	}
 
