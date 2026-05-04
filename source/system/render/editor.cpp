@@ -1160,7 +1160,17 @@ void EditorRenderSystem::drawImageSelector(const char* name, fs::path& path, Ima
 
 	if (ImGui::BeginPopupContextItem())
 	{
-		if (ImGui::MenuItem("Select Image"))
+		fs::path resourcesPath;
+		if (ImGui::BeginMenu("Select Image"))
+		{
+			if (ImGui::MenuItem("App"))
+				resourcesPath = AppInfoSystem::Instance::get()->getResourcesPath() / "images";
+			if (ImGui::MenuItem("Engine"))
+				resourcesPath = GARDEN_RESOURCES_PATH / "images";
+			ImGui::EndMenu();
+		}
+
+		if (!resourcesPath.empty())
 		{
 			openFileSelector([format, &path, &image, &descriptorSet, entity, 
 				componentType, maxMipCount, loadFlags](const fs::path& selectedFile)
@@ -1170,7 +1180,7 @@ void EditorRenderSystem::drawImageSelector(const char* name, fs::path& path, Ima
 				{
 					return;
 				}
-			
+				
 				auto resourceSystem = ResourceSystem::Instance::get();
 				resourceSystem->destroyShared(image);
 				resourceSystem->destroyShared(descriptorSet);
@@ -1183,7 +1193,7 @@ void EditorRenderSystem::drawImageSelector(const char* name, fs::path& path, Ima
 				image = resourceSystem->loadImage(path, format, usage, 
 					maxMipCount, Image::Strategy::Default, loadFlags);
 			},
-			AppInfoSystem::Instance::get()->getResourcesPath() / "images", ResourceSystem::imageFileExts);
+			resourcesPath, ResourceSystem::imageFileExts);
 		}
 
 		auto gpuResourceSystem = Manager::Instance::get()->tryGet<GpuResourceEditorSystem>();

@@ -1509,19 +1509,19 @@ void PbrLightingSystem::generateShDiffuse(const float4* const* skyboxFaces,
 }
 
 //**********************************************************************************************************************
-void PbrLightingSystem::loadCubemap(const fs::path& path, Image::Format format, Ref<Image>& cubemap,
+void PbrLightingSystem::loadCubemap(const fs::path& path, Image::Format& format, Ref<Image>& cubemap,
 	Ref<Buffer>& shDiffuse, Ref<Image>& specular, Memory::Strategy strategy, f32x4x4* shCoeffs, vector<f32x4>* shCache)
 {
 	GARDEN_ASSERT(!path.empty());
 	SET_CPU_ZONE_SCOPED("PBR Cubemap Load");
 	
-	vector<uint8> left, right, bottom, top, back, front; uint2 size;
-	ResourceSystem::Instance::get()->loadCubemapData(path, format, left, right, bottom, top, back, front, size, true);
+	vector<uint8> nx, px, ny, py, nz, pz; uint2 size;
+	ResourceSystem::Instance::get()->loadCubemapData(path, nx, px, ny, py, nz, pz, size, format, true);
 	auto cubemapSize = size.x;
 
 	auto mipCount = calcMipCount(cubemapSize);
 	Image::Mips mips(mipCount);
-	mips[0] = { left.data(), right.data(), bottom.data(), top.data(), back.data(), front.data() };
+	mips[0] = { nx.data(), px.data(), ny.data(), py.data(), nz.data(), pz.data() };
 
 	for (uint8 i = 1; i < mipCount; i++)
 		mips[i].resize(Image::cubemapFaceCount);
@@ -1560,10 +1560,11 @@ void PbrLightingSystem::loadCubemap(const fs::path& path, Image::Format format, 
 		vector<float> iblWeightBuffer; vector<uint32> iblCountBuffer;
 		auto specularCache = createSpecularCache(cubemapSize, iblWeightBuffer, iblCountBuffer);
 
-		cubemap = Ref<Image>(graphicsSystem->createCubemap(Image::Format::SfloatR16G16B16A16, 
-			Image::Usage::Sampled | Image::Usage::TransferDst | Image::Usage::TransferSrc, 
-			mips, size, strategy, Image::Format::SfloatR32G32B32A32));
+		cubemap = Ref<Image>(graphicsSystem->createCubemap(format, Image::Usage::Sampled | 
+			Image::Usage::TransferDst | Image::Usage::TransferSrc, mips, size, strategy));
 		SET_RESOURCE_DEBUG_NAME(cubemap, "image.cubemap." + path.generic_string());
+
+		nx = {}; px = {}; ny = {}; py = {}; nz = {}; pz = {}; // Cleaning up memory.
 
 		auto cubemapView = graphicsSystem->get(cubemap);
 		cubemapView->generateMips(Sampler::Filter::Linear);		

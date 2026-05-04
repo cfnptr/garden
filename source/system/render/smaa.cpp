@@ -26,13 +26,13 @@ static Ref<Image> createSearchLUT()
 {
 	return ResourceSystem::Instance::get()->loadImage("smaa/search", Image::Format::UnormR8, // TODO: BC4_UNORM
 		Image::Usage::Sampled | Image::Usage::TransferDst | Image::Usage::TransferQ, 1, 
-		Image::Strategy::Size, ImageLoadFlags::LoadShared, 9.0f);
+		Image::Strategy::Size, ImageLoadFlags::LoadShared | ImageLoadFlags::LoadAsSrgb, 9.0f);
 }
 static Ref<Image> createAreaLUT()
 {
 	return ResourceSystem::Instance::get()->loadImage("smaa/area", Image::Format::UnormR8G8, // TODO: BC5_UNORM
 		Image::Usage::Sampled | Image::Usage::TransferDst | Image::Usage::TransferQ, 1, 
-		Image::Strategy::Size, ImageLoadFlags::LoadShared, 9.0f);
+		Image::Strategy::Size, ImageLoadFlags::LoadShared | ImageLoadFlags::LoadAsSrgb, 9.0f);
 }
 
 static ID<Image> createEdgesBuffer(GraphicsSystem* graphicsSystem)

@@ -20,7 +20,6 @@
 #include "garden/hash.hpp"
 #include "garden/font.hpp"
 #include "garden/animate.hpp"
-#include "garden/resource/image.hpp"
 #include "garden/graphics/pipeline/compute.hpp"
 #include "garden/graphics/pipeline/graphics.hpp"
 #include "garden/graphics/pipeline/ray-tracing.hpp"
@@ -56,11 +55,12 @@ enum class ImageLoadFlags : uint8
 	None        = 0x00, /**< No additional image load flags. */
 	LoadSync    = 0x01, /**< Load image synchronously. (Blocking call) */
 	LoadShared  = 0x02, /**< Load and share instance on second load call. */
-	LoadArray   = 0x04, /**< Load as image array. (Slice to layers) */
-	Load3D      = 0x08, /**< Load as 3D image. (Slice to layers) */
-	TypeArray   = 0x10, /**< Load with array image type. (Texture2DArray) */
-	Type3D      = 0x20, /**< Load with 3D image type. (Texture3D) */
-	TypeCubemap = 0x40, /**< Load with cubemap image type. (Cubemap) */
+	LoadAsArray = 0x04, /**< Load as image array. (Slice to layers) */
+	LoadAs3D    = 0x08, /**< Load as 3D image. (Slice to layers) */
+	LoadAsSrgb  = 0x10, /**< Load as sRGB data. (No format conversion) */
+	TypeArray   = 0x20, /**< Load with array image type. (Texture2DArray) */
+	Type3D      = 0x40, /**< Load with 3D image type. (Texture3D) */
+	TypeCubemap = 0x80, /**< Load with cubemap image type. (Cubemap) */
 };
 
 DECLARE_ENUM_CLASS_FLAG_OPERATORS(ImageLoadFlags)
@@ -77,9 +77,9 @@ DECLARE_ENUM_CLASS_FLAG_OPERATORS(ImageLoadFlags)
 class ResourceSystem : public System, public Singleton<ResourceSystem>
 {
 public:
-	static const vector<string_view> imageFileExts;    /**< Supported image file extensions. */
-	static const vector<ImageFileType> imageFileTypes; /**< Supported image file types. */
-	static const vector<string_view> modelFileExts;    /**< Supported model file extensions. */
+	static const vector<string_view> imageFileExts;      /**< Supported image file extensions. */
+	static const vector<Image::FileType> imageFileTypes; /**< Supported image file types. */
+	static const vector<string_view> modelFileExts;      /**< Supported model file extensions. */
 
 	/**
 	 * @brief Pipeline load options container.
@@ -193,6 +193,7 @@ protected:
 	 * @param setSingleton set system singleton instance
 	 */
 	ResourceSystem(bool setSingleton = true);
+
 	void dequeuePipelines();
 	void dequeueBuffers();
 	void dequeueImages();
@@ -218,53 +219,51 @@ public:
 	};
 
 	/**
-	 * @brief Loads image data (pixels) from the resource pack.
+	 * @brief Loads image pixels from the resource pack.
 	 * @note Loads from the images directory in debug build.
 	 * 
 	 * @param[in] path target image resource path
-	 * @param format required image data format
-	 * @param[out] data image pixel data container
+	 * @param[out] pixels loaded image pixel data
 	 * @param[out] size loaded image size in pixels
+	 * @param[in,out] format image data format or undefined
 	 * @param threadIndex thread index in the pool (-1 = single threaded)
 	 */
-	void loadImageData(const fs::path& path, Image::Format format, 
-		vector<uint8>& data, uint2& size, int32 threadIndex = -1) const;
+	void loadImageData(const fs::path& path, vector<uint8>& pixels, 
+		uint2& size, Image::Format& format, int32 threadIndex = -1) const noexcept;
+	/**
+	 * @brief Loads image pixels from the resource pack.
+	 * @note Loads from the images directory in debug build.
+	 * 
+	 * @param[in] path target image resource path array
+	 * @param[out] pixelArrays loaded image pixel data arrays
+	 * @param[out] size loaded image size in pixels
+	 * @param[in,out] format image data format or undefined
+	 * @param threadIndex thread index in the pool (-1 = single threaded)
+	 */
+	void loadImageData(const vector<fs::path>& paths, vector<vector<uint8>>& pixelArrays, 
+		uint2& size, Image::Format& format, int32 threadIndex = -1) const noexcept;
 
 	/**
-	 * @brief Loads cubemap image data (pixels) the resource pack.
+	 * @brief Loads cubemap image pixels the resource pack.
 	 * @note Loads from the images directory in debug build.
 	 * 
 	 * @param[in] path target cubemap image resource path
-	 * @param format required image data format
-	 * @param[out] left left cubemap image pixel data container
-	 * @param[out] right right cubemap image pixel data container
-	 * @param[out] bottom bottom cubemap image pixel data container
-	 * @param[out] top top cubemap image pixel data container
-	 * @param[out] back back cubemap image pixel data container
-	 * @param[out] front front cubemap image pixel data container
+	 * @param[out] nx negative X side image pixel data container
+	 * @param[out] px positive X side image pixel data container
+	 * @param[out] ny negative Y side image pixel data container
+	 * @param[out] py positive Y side image pixel data container
+	 * @param[out] nz negative Z side image pixel data container
+	 * @param[out] px positive Z side image pixel data container
 	 * @param[out] size loaded cubemap image size in pixels
-	 * @param clamp16 clamp color values to a 16-bit range
+	 * @param[in,out] format image data format or undefined
 	 * @param threadIndex thread index the pool (-1 = single threaded)
 	 */
-	void loadCubemapData(const fs::path& path, Image::Format format, vector<uint8>& left, 
-		vector<uint8>& right, vector<uint8>& bottom, vector<uint8>& top, vector<uint8>& back, 
-		vector<uint8>& front, uint2& size, bool clamp16 = false, int32 threadIndex = -1) const;
-	
-	/**
-	 * @brief Loads image data (pixels) from the memory file. (MT-Safe)
-	 * 
-	 * @param[in] data image file data 
-	 * @param dataSize image file data size in bytes
-	 * @param fileType image file data type (container)
-	 * @param imageFormat required image data format
-	 * @param[out] pixels image pixel data container
-	 * @param[out] imageSize loaded image size in pixels
-	 */
-	static void loadImageData(const uint8* data, psize dataSize, ImageFileType fileType,
-		Image::Format imageFormat, vector<uint8>& pixels, uint2& imageSize);
+	void loadCubemapData(const fs::path& path, vector<uint8>& nx, vector<uint8>& px, 
+		vector<uint8>& ny, vector<uint8>& py, vector<uint8>& nz, vector<uint8>& pz, 
+		uint2& size, Image::Format& format, int32 threadIndex = -1) const noexcept;
 
 	/*******************************************************************************************************************
-	 * @brief Loads image from the resource pack.
+	 * @brief Loads image pixels from the resource pack.
 	 * @note Loads from the images directory in debug build.
 	 *
 	 * @param[in] paths target image resource path array
@@ -280,7 +279,7 @@ public:
 		ImageLoadFlags flags = ImageLoadFlags::None, float taskPriority = 0.0f);
 
 	/**
-	 * @brief Loads image from the resource pack.
+	 * @brief Loads image pixels from the resource pack.
 	 * @note Loads from the images directory in debug build.
 	 *
 	 * @param[in] path target image resource path
@@ -302,31 +301,31 @@ public:
 	 * @brief Stores specified image to the images directory.
 	 * 
 	 * @param[in] path target image resource path
-	 * @param[in] data image pixel data container
+	 * @param[in] pixels image pixel data
 	 * @param size image size in pixels
-	 * @param fileType image file type (container)
+	 * @param fileType image file container type
 	 * @param imageFormat required image data format
 	 * @param quality image quality (0.0 - 1.0)
 	 * @param[in] directory scene resource directory
 	 */
-	void storeImage(const fs::path& path, const void* data, uint2 size, ImageFileType fileType, 
+	void storeImage(const fs::path& path, const void* pixels, uint2 size, Image::FileType fileType, 
 		Image::Format imageFormat, float quality = 1.0f, const fs::path& directory = "");
 	/**
 	 * @brief Stores specified image to the images directory.
 	 * 
 	 * @param[in] path target image resource path
-	 * @param[in] data image pixel data vector
+	 * @param[in] pixels image pixel data
 	 * @param size image size in pixels
-	 * @param fileType image file type (container)
+	 * @param fileType image file container type
 	 * @param imageFormat required image data format
 	 * @param quality image quality (0.0 - 1.0)
 	 * @param[in] directory scene resource directory
 	 */
-	void storeImage(const fs::path& path, const vector<uint8>& data, uint2 size, ImageFileType fileType, 
+	void storeImage(const fs::path& path, const vector<uint8>& pixels, uint2 size, Image::FileType fileType, 
 		Image::Format imageFormat, float quality = 1.0f, const fs::path& directory = "")
 	{
-		GARDEN_ASSERT(data.size() == toBinarySize(imageFormat) * size.x * size.y);
-		storeImage(path, data.data(), size, fileType, imageFormat, quality, directory);
+		GARDEN_ASSERT(pixels.size() == toBinarySize(imageFormat) * size.x * size.y);
+		storeImage(path, pixels.data(), size, fileType, imageFormat, quality, directory);
 	}
 
 	/**
@@ -334,20 +333,20 @@ public:
 	 *
 	 * @param[in] inputPaths input image path array
 	 * @param[in] outputPath output image path
-	 * @param fileType output image file type (container)
+	 * @param fileType output image file container type
 	 * @param imageFormat required image data format
 	 * @param threadIndex thread index in the pool (-1 = single threaded)
 	 */
 	void combineImages(const vector<fs::path>& inputPaths, const fs::path& outputPath, 
-		ImageFileType fileType, Image::Format imageFormat, int32 threadIndex = -1);
+		Image::FileType fileType, Image::Format imageFormat, int32 threadIndex = -1);
 	/**
 	 * @brief Renormalizes specified normal map image.
 	 *
 	 * @param[in] path target image resource path
-	 * @param fileType output image file type (container)
+	 * @param fileType output image file container type
 	 * @param threadIndex thread index in the pool (-1 = single threaded)
 	 */
-	void renormalizeImage(const fs::path& path, ImageFileType fileType, int32 threadIndex = -1);
+	void renormalizeImage(const fs::path& path, Image::FileType fileType, int32 threadIndex = -1);
 
 	/**
 	 * @brief Destroys shared image if it's the last one.

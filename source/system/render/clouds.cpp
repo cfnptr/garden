@@ -105,26 +105,27 @@ static ID<Framebuffer> createSkyboxFramebuffer(GraphicsSystem* graphicsSystem, I
 static Ref<Image> createDataFields()
 {
 	return ResourceSystem::Instance::get()->loadImage("clouds/data-fields", Image::Format::UnormR8G8B8A8,
-		Image::Usage::Sampled | Image::Usage::TransferSrc | Image::Usage::TransferDst | 
-		Image::Usage::TransferQ, 0, Image::Strategy::Size, ImageLoadFlags::LoadShared, 9.0f);
+		Image::Usage::Sampled | Image::Usage::TransferSrc | Image::Usage::TransferDst | Image::Usage::TransferQ, 
+		0, Image::Strategy::Size, ImageLoadFlags::LoadShared | ImageLoadFlags::LoadAsSrgb, 9.0f);
 }
 static Ref<Image> createVertProfile()
 {
-	return ResourceSystem::Instance::get()->loadImage("clouds/vert-profile", 
-		Image::Format::UnormR8G8, Image::Usage::Sampled | Image::Usage::TransferDst | 
-		Image::Usage::TransferQ, 1, Image::Strategy::Size, ImageLoadFlags::LoadShared, 9.0f);
+	return ResourceSystem::Instance::get()->loadImage("clouds/vert-profile", Image::Format::UnormR8G8, 
+		Image::Usage::Sampled | Image::Usage::TransferDst | Image::Usage::TransferQ, 1, 
+		Image::Strategy::Size, ImageLoadFlags::LoadShared | ImageLoadFlags::LoadAsSrgb, 9.0f);
 }
 static Ref<Image> createNoiseShape()
 {
 	return ResourceSystem::Instance::get()->loadImage("clouds/noise-shape", Image::Format::UnormR8G8B8A8,
-		Image::Usage::Sampled | Image::Usage::TransferSrc | Image::Usage::TransferDst | Image::Usage::TransferQ, 
-		0, Image::Strategy::Size, ImageLoadFlags::LoadShared | ImageLoadFlags::Load3D, 9.0f);
+		Image::Usage::Sampled | Image::Usage::TransferSrc | Image::Usage::TransferDst | 
+		Image::Usage::TransferQ, 0, Image::Strategy::Size, ImageLoadFlags::LoadShared | 
+		ImageLoadFlags::LoadAs3D | ImageLoadFlags::LoadAsSrgb, 9.0f);
 }
 static Ref<Image> createCirrusShape()
 {
 	return ResourceSystem::Instance::get()->loadImage("clouds/cirrus-shape", Image::Format::UnormR8G8B8A8,
-		Image::Usage::Sampled | Image::Usage::TransferSrc | Image::Usage::TransferDst | 
-		Image::Usage::TransferQ, 0, Image::Strategy::Size, ImageLoadFlags::LoadShared, 9.0f);
+		Image::Usage::Sampled | Image::Usage::TransferSrc | Image::Usage::TransferDst | Image::Usage::TransferQ, 
+		0, Image::Strategy::Size, ImageLoadFlags::LoadShared | ImageLoadFlags::LoadAsSrgb, 9.0f);
 }
 
 static void getCloudsQuality(GraphicsQuality cloudsQuality, float& stepSizeFactor, float& sliceCount, float& kmPerSlice)

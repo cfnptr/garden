@@ -38,7 +38,7 @@ public:
 	/**
 	 * @brief Creates a new unspecified Garden error (exception) instance.
 	 */
-	GardenError() : message("Unspecified") { }
+	GardenError() : message("Garden Error") { }
 	/**
 	 * @brief Creates a new Garden error (exception) instance. 
 	 * @param message target error message

@@ -133,7 +133,7 @@ void SpriteRenderEditorSystem::renderComponent(SpriteRenderComponent* componentV
 
 	auto maxMipCount = componentView->useMipmap ? 0 : 1;
 	auto flags = ImageLoadFlags::TypeArray | ImageLoadFlags::LoadShared;
-	if (componentView->isArray) flags |= ImageLoadFlags::LoadArray;
+	if (componentView->isArray) flags |= ImageLoadFlags::LoadAsArray;
 	editorSystem->drawImageSelector("Color Map", 
 		componentView->colorMapPath, Image::Format::SrgbR8G8B8A8, componentView->colorMap,
 		componentView->descriptorSet, componentView->getEntity(), componentType, maxMipCount, flags);
@@ -160,7 +160,7 @@ void SpriteRenderEditorSystem::renderComponent(SpriteRenderComponent* componentV
 
 		auto maxMipCount = componentView->useMipmap ? 0 : 1;
 		auto flags = ImageLoadFlags::TypeArray | ImageLoadFlags::LoadShared;
-		if (componentView->isArray) flags |= ImageLoadFlags::LoadArray;
+		if (componentView->isArray) flags |= ImageLoadFlags::LoadAsArray;
 		auto usage = Image::Usage::Sampled | Image::Usage::TransferDst | Image::Usage::TransferQ;
 		if (maxMipCount == 0) usage |= Image::Usage::TransferSrc;
 		componentView->colorMap = resourceSystem->loadImage(

@@ -30,7 +30,5 @@ bool Font::destroy()
 		auto result = FT_Done_Face((FT_Face)face);
 		GARDEN_ASSERT_MSG(!result, "Failed to destroy FreeType font");
 	}
-	
-	delete[] data;
 	return true;
 }

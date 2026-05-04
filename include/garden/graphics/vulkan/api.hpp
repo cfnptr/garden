@@ -246,6 +246,8 @@ static vk::Format toVkFormat(Image::Format formatType) noexcept
 	case Image::Format::UfloatB10G11R11: return vk::Format::eB10G11R11UfloatPack32;
 	case Image::Format::UfloatE5B9G9R9: return vk::Format::eE5B9G9R9UfloatPack32;
 
+	case Image::Format::SrgbR8: return vk::Format::eR8Srgb;
+	case Image::Format::SrgbR8G8: return vk::Format::eR8G8Srgb;
 	case Image::Format::SrgbR8G8B8A8: return vk::Format::eR8G8B8A8Srgb;
 	case Image::Format::SrgbB8G8R8A8: return vk::Format::eB8G8R8A8Srgb;
 	case Image::Format::SrgbA8B8G8R8: return vk::Format::eA8B8G8R8SrgbPack32;
@@ -322,6 +324,8 @@ static Image::Format toImageFormat(vk::Format formatType) noexcept
 		case vk::Format::eB10G11R11UfloatPack32: return Image::Format::UfloatB10G11R11;
 		case vk::Format::eE5B9G9R9UfloatPack32: return Image::Format::UfloatE5B9G9R9;
 
+		case vk::Format::eR8Srgb: return Image::Format::SrgbR8;
+		case vk::Format::eR8G8Srgb: return Image::Format::SrgbR8G8;
 		case vk::Format::eR8G8B8A8Srgb: return Image::Format::SrgbR8G8B8A8;
 		case vk::Format::eB8G8R8A8Srgb: return Image::Format::SrgbB8G8R8A8;
 		case vk::Format::eA8B8G8R8SrgbPack32: return Image::Format::SrgbA8B8G8R8;
