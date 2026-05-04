@@ -408,7 +408,7 @@ public:
 	 * @param[out] shCoeffs diffuse SH coefficients or null (SH)
 	 * @param[out] shCache spherical harmonics cache or null
 	 */
-	void loadCubemap(const fs::path& path, Image::Format format, Ref<Image>& cubemap, 
+	void loadCubemap(const fs::path& path, Image::Format& format, Ref<Image>& cubemap, 
 		Ref<Buffer>& shDiffuse, Ref<Image>& specular, Memory::Strategy strategy = Memory::Strategy::Size, 
 		f32x4x4* shCoeffs = nullptr, vector<f32x4>* shCache = nullptr);
 

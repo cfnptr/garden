@@ -18,6 +18,7 @@
  */
 
 #pragma once
+#include "garden/thread-pool.hpp"
 #include "garden/graphics/image.hpp"
 #include "math/ibl.hpp"
 
@@ -31,6 +32,7 @@ class Equi2Cube final
 {
 public:
 	static f32x4 filterCubeMap(float2 coords, const f32x4* pixels, uint2 sizeMinus1, uint32 sizeX) noexcept;
+	static f16x4 filterCubeMap(float2 coords, const f16x4* pixels, uint2 sizeMinus1, uint32 sizeX) noexcept;
 	static Color filterCubeMap(float2 coords, const Color* pixels, uint2 sizeMinus1, uint32 sizeX) noexcept;
 
 	template<class T>
@@ -59,21 +61,20 @@ public:
 		}
 	}
 
-	static void writeExrImageData(const fs::path& filePath, uint32 size, 
-		const vector<uint8>& data, Image::Format imageForamt);
-
 	#if GARDEN_DEBUG || defined(EQUI2CUBE)
 	/**
-	 * @brief Converts input equirectangular image to cubemap. 
+	 * @brief Converts input equirectangular image to cubemap. (MT-Safe)
 	 * 
-	 * @param filePath target image to convert path
-	 * @param inputPath input image directory path
-	 * @param outputPath output images directory path
+	 * @param[in] filePath target image to convert path
+	 * @param[in] inputPath input image directory path
+	 * @param[in] outputPath output images directory path
+	 * @param[in] threadPool thread pool instance or null
 	 * 
 	 * @return Returns false if failed to open image file.
 	 * @throw GardenError on image conversion error.
 	 */
-	static bool convertImage(const fs::path& filePath, const fs::path& inputPath, const fs::path& outputPath);
+	static bool convertImage(const fs::path& filePath, const fs::path& inputPath, 
+		const fs::path& outputPath, ThreadPool* threadPool = nullptr);
 	#endif
 };
 

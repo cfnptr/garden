@@ -25,23 +25,15 @@
 #include "garden/graphics/gslc.hpp"
 #include "garden/graphics/api.hpp"
 #include "garden/json-serialize.hpp"
-#include "garden/json2bson.hpp"
 #include "garden/profiler.hpp"
 #include "garden/file.hpp"
 #include "math/types.hpp"
-
-#include "webp/decode.h"
-#include "webp/encode.h"
-#include "png.h"
-#include "stb_image.h"
-#include "stb_image_write.h"
 
 #include "ft2build.h"
 #include FT_FREETYPE_H
 
 #include <fstream>
 #include <cstdint>
-#include <cstdlib>
 #include <cstring>
 #include <iostream>
 
@@ -110,11 +102,11 @@ const vector<string_view> ResourceSystem::imageFileExts =
 {
 	".webp", ".png", ".jpg", ".jpeg", ".exr", ".hdr", ".bmp", ".psd", ".tga", ".pic", ".gif"
 };
-const vector<ImageFileType> ResourceSystem::imageFileTypes =
+const vector<Image::FileType> ResourceSystem::imageFileTypes =
 {
-	ImageFileType::Webp, ImageFileType::Png, ImageFileType::Jpg, ImageFileType::Jpg, 
-	ImageFileType::Exr, ImageFileType::Hdr, ImageFileType::Bmp, ImageFileType::Psd, 
-	ImageFileType::Tga, ImageFileType::Pic, ImageFileType::Gif
+	Image::FileType::WebP, Image::FileType::PNG, Image::FileType::JPEG, Image::FileType::JPEG, 
+	Image::FileType::EXR, Image::FileType::HDR, Image::FileType::BMP, Image::FileType::PSD, 
+	Image::FileType::TGA, Image::FileType::PIC, Image::FileType::GIF
 };
 
 const vector<string_view> ResourceSystem::modelFileExts =
@@ -469,7 +461,7 @@ static void collectChangedPipelines(const string& shaderPath, const fs::path& fi
 		}
 		else if (isMeshShader)
 		{
-			// TODO:
+			abort(); // TODO: implement
 		}
 	}
 }
@@ -701,12 +693,14 @@ void ResourceSystem::fileChange()
 }
 
 //**********************************************************************************************************************
-static void loadMissingImage(Image::Format imageFormat, vector<uint8>& data, uint2& size)
+static void loadMissingImage(Image::Format& imageFormat, vector<uint8>& data, uint2& size) noexcept
 {
+	if (imageFormat == Image::Format::Undefined)
+		imageFormat = Image::Format::SrgbR8G8B8A8;
+
 	auto formatBinarySize = toBinarySize(imageFormat);
 	auto componentCount = toComponentCount(imageFormat);
-	if (formatBinarySize % componentCount != 0)
-		throw GardenError("Unsupported missing image data format.");
+	GARDEN_ASSERT(formatBinarySize != 0 && componentCount != 0);
 
 	auto compBinarySize = formatBinarySize / componentCount;
 	data.resize(formatBinarySize * 16); size = uint2(4, 4);
@@ -738,7 +732,7 @@ static void loadMissingImage(Image::Format imageFormat, vector<uint8>& data, uin
 			pixels[8] = 1.0f;  pixels[9] = 0.0f;  pixels[10] = 1.0f; pixels[11] = 0.0f;
 			pixels[12] = 0.0f; pixels[13] = 1.0f; pixels[14] = 0.0f; pixels[15] = 1.0f;
 		}
-		else throw GardenError("Unsupported missing image component count.");
+		else abort();
 	}
 	else if (compBinarySize == 2)
 	{
@@ -770,7 +764,7 @@ static void loadMissingImage(Image::Format imageFormat, vector<uint8>& data, uin
 			pixels[8] = white;  pixels[9] = black;  pixels[10] = white; pixels[11] = black;
 			pixels[12] = black; pixels[13] = white; pixels[14] = black; pixels[15] = white;
 		}
-		else throw GardenError("Unsupported missing image component count.");
+		else abort();
 	}
 	else if (compBinarySize == 1)
 	{
@@ -802,19 +796,19 @@ static void loadMissingImage(Image::Format imageFormat, vector<uint8>& data, uin
 			pixels[8] = UINT8_MAX; pixels[9] = 0;          pixels[10] = UINT8_MAX; pixels[11] = 0;
 			pixels[12] = 0;        pixels[13] = UINT8_MAX; pixels[14] = 0;         pixels[15] = UINT8_MAX;
 		}
-		else throw GardenError("Unsupported missing image component count.");
+		else abort();
 	}
-	else throw GardenError("Unsupported missing image component binary size.");
+	else memset(data.data(), UINT8_MAX, data.size());
 }
-static void loadMissingImage(Image::Format imageFormat, vector<uint8>& left, vector<uint8>& right, 
-	vector<uint8>& bottom, vector<uint8>& top, vector<uint8>& back, vector<uint8>& front, uint2& size)
+static void loadMissingImage(Image::Format& imageFormat, vector<uint8>& nx, vector<uint8>& px, 
+	vector<uint8>& ny, vector<uint8>& py, vector<uint8>& nz, vector<uint8>& pz, uint2& size) noexcept
 {
-	loadMissingImage(imageFormat, left, size);
-	loadMissingImage(imageFormat, right, size);
-	loadMissingImage(imageFormat, bottom, size);
-	loadMissingImage(imageFormat, top, size);
-	loadMissingImage(imageFormat, back, size);
-	loadMissingImage(imageFormat, front, size);
+	loadMissingImage(imageFormat, nx, size);
+	loadMissingImage(imageFormat, px, size);
+	loadMissingImage(imageFormat, ny, size);
+	loadMissingImage(imageFormat, py, size);
+	loadMissingImage(imageFormat, nz, size);
+	loadMissingImage(imageFormat, pz, size);
 }
 
 //**********************************************************************************************************************
@@ -874,7 +868,7 @@ static void loadMissingModel(const vector<BufferChannel>& channels, vector<uint8
 #if !GARDEN_PACK_RESOURCES
 //**********************************************************************************************************************
 static int32 getImageFilePath(const fs::path& appResourcesPath,
-	fs::path imagePath, fs::path& filePath, ImageFileType& fileType)
+	fs::path imagePath, fs::path& filePath, Image::FileType& fileType)
 {
 	int32 fileCount = 0;
 	imagePath += ".ext";
@@ -892,7 +886,7 @@ static int32 getImageFilePath(const fs::path& appResourcesPath,
 	return fileCount;
 }
 static int32 getCacheImageFilePath(const fs::path& appCachePath,
-	fs::path imagePath, fs::path& filePath, ImageFileType& fileType)
+	fs::path imagePath, fs::path& filePath, Image::FileType& fileType)
 {
 	int32 fileCount = 0;
 	imagePath = appCachePath / fs::path("images") / imagePath;
@@ -912,7 +906,7 @@ static int32 getCacheImageFilePath(const fs::path& appCachePath,
 	return fileCount;
 }
 static int32 getImageFilePath(const fs::path& appCachePath, const fs::path& appResourcesPath,
-	const fs::path& imagePath, fs::path& filePath, ImageFileType& fileType)
+	const fs::path& imagePath, fs::path& filePath, Image::FileType& fileType)
 {
 	auto fileCount = getCacheImageFilePath(appCachePath, imagePath, filePath, fileType);
 	if (fileCount > 0)
@@ -925,14 +919,13 @@ static int32 getImageFilePath(const fs::path& appCachePath, const fs::path& appR
 #endif
 
 //**********************************************************************************************************************
-void ResourceSystem::loadImageData(const fs::path& path, Image::Format format, 
-	vector<uint8>& data, uint2& size, int32 threadIndex) const
+void ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& pixels, 
+	uint2& size, Image::Format& format, int32 threadIndex) const noexcept
 {
-	// TODO: store images as bc compressed for polygon geometry. KTX 2.0
 	GARDEN_ASSERT(!path.empty());
 	GARDEN_ASSERT(threadIndex < (int32)thread::hardware_concurrency());
 
-	vector<uint8> dataBuffer; ImageFileType fileType;
+	vector<uint8> dataBuffer; Image::FileType fileType;
 
 	#if GARDEN_PACK_RESOURCES
 	if (threadIndex < 0)
@@ -953,7 +946,7 @@ void ResourceSystem::loadImageData(const fs::path& path, Image::Format format,
 	if (fileType == ImageFileType::Count)
 	{
 		GARDEN_LOG_ERROR("Image does not exist. (path: " + path.generic_string() + ")");
-		loadMissingImage(format, data, size);
+		loadMissingImage(format, pixels, size);
 		return;
 	}
 
@@ -965,138 +958,114 @@ void ResourceSystem::loadImageData(const fs::path& path, Image::Format format,
 	if (fileCount == 0)
 	{
 		GARDEN_LOG_ERROR("Image file does not exist. (path: " + path.generic_string() + ")");
-		loadMissingImage(format, data, size);
+		loadMissingImage(format, pixels, size);
 		return;
 	}
 	if (fileCount > 1)
 	{
 		GARDEN_LOG_ERROR("Image file is ambiguous. (path: " + path.generic_string() + ")");
-		loadMissingImage(format, data, size);
+		loadMissingImage(format, pixels, size);
 		return;
 	}
 
-	File::loadBinary(filePath, dataBuffer);
+	try
+	{
+		File::loadBinary(filePath, dataBuffer);
+	}
+	catch (exception& e)
+	{
+		GARDEN_LOG_ERROR(string(e.what()));
+		loadMissingImage(format, pixels, size);
+		return;
+	}
 	#endif
 
-	loadImageData(dataBuffer.data(), dataBuffer.size(), fileType, format, data, size);
-	GARDEN_LOG_TRACE("Loaded image. (path: " + path.generic_string() + ")");
-}
-
-#if !GARDEN_PACK_RESOURCES
-//**********************************************************************************************************************
-static void writeExrImageData(const fs::path& filePath, uint32 size, const vector<uint8>& data, Image::Format format)
-{
-	auto formatBinarySize = toBinarySize(format);
-	auto componentCount = toComponentCount(format);
-	if (formatBinarySize % componentCount != 0)
-		throw GardenError("Unsupported EXR image format for writing.");
-
-	auto compBinarySize = formatBinarySize / componentCount;
-	auto isFP16 = compBinarySize == 2;
-	if (compBinarySize != 4 && !isFP16)
-		throw GardenError("Unsupported EXR image format binary size.");
-
-	/* TODO: replace with OpenEXR
-	const char* error = nullptr;
-	auto result = SaveEXR((const float*)data.data(), size, size,
-		componentCount, isFP16, filePath.generic_string().c_str(), &error);
-
-	if (result != TINYEXR_SUCCESS)
+	try
 	{
-		auto errorString = string(error); FreeEXRErrorMessage(error);
-		throw GardenError("Failed to store EXR image. ("
-			"path: " + filePath.generic_string() + ", error: " + errorString + ")");
+		Image::loadFileData(dataBuffer.data(), dataBuffer.size(), pixels, size, fileType, format);
+		GARDEN_LOG_TRACE("Loaded image. (path: " + path.generic_string() + ")");
 	}
-	*/
-	abort();
-}
-#endif
-
-//**********************************************************************************************************************
-static void clampImageData(Image::Format imageFormat, vector<uint8>& imageData) noexcept
-{
-	auto formatBinarySize = toBinarySize(imageFormat);
-	auto componentCount = toComponentCount(imageFormat);
-	if (formatBinarySize % componentCount != 0)
-		return;
-
-	auto compBinarySize = formatBinarySize / componentCount;
-	if (componentCount == 4)
+	catch (exception& e)
 	{
-		if (compBinarySize == 4)
-		{
-			auto data = (f32x4*)imageData.data(); auto count = imageData.size() / sizeof(f32x4);
-			for (psize i = 0; i < count; i++)
-				data[i] = min(data[i], f32x4(FLOAT_BIG_16));
-		}
-		else if (compBinarySize == 2)
-		{
-			auto data = (f16x4*)imageData.data(); auto count = imageData.size() / sizeof(f16x4);
-			for (psize i = 0; i < count; i++)
-				data[i] = (f16x4)min((f32x4)data[i], f32x4(FLOAT_BIG_16));
-		}
+		GARDEN_LOG_ERROR("Failed to load image data. (path: " + 
+			path.generic_string() + ", error: " + string(e.what()) + ")");
+		loadMissingImage(format, pixels, size);
 	}
-	else if (componentCount == 2)
+}
+void ResourceSystem::loadImageData(const vector<fs::path>& paths, vector<vector<uint8>>& pixelArrays, 
+	uint2& size, Image::Format& format, int32 threadIndex) const noexcept
+{
+	GARDEN_ASSERT(!paths.empty());
+	GARDEN_ASSERT(threadIndex < (int32)thread::hardware_concurrency());
+
+	auto pathCount = (uint32)paths.size();
+	auto pathData = paths.data(); auto pixelArrayData = pixelArrays.data();
+	loadImageData(pathData[0], pixelArrayData[0], size, format, threadIndex);
+
+	for (uint32 i = 1; i < pathCount; i++)
 	{
-		if (compBinarySize == 4)
+		uint2 elementSize;
+		loadImageData(pathData[i], pixelArrayData[i], elementSize, format, threadIndex);
+
+		if (size != elementSize)
 		{
-			auto data = (float2*)imageData.data(); auto count = imageData.size() / sizeof(float2);
-			for (psize i = 0; i < count; i++)
-				data[i] = min(data[i], float2(FLOAT_BIG_16));
-		}
-		else if (compBinarySize == 2)
-		{
-			auto data = (half*)imageData.data(); auto count = imageData.size() / sizeof(half);
-			for (psize i = 0; i < count; i += 2)
+			auto count = (psize)size.x * size.y;
+			auto binarySize = toBinarySize(format);
+			auto pixelArray = pixelArrayData[i];
+			pixelArray.resize(binarySize * count);
+
+			if (binarySize == 4)
 			{
-				data[i] = (half)min((float)data[i], FLOAT_BIG_16);
-				data[i + 1] = (half)min((float)data[i], FLOAT_BIG_16);
+				auto pixels = (Color*)pixelArray.data();
+				for (uint32 j = 0; j < count; j++)
+					pixels[j] = Color::magenta;
 			}
-		}
-	}
-	else if (componentCount == 1)
-	{
-		if (compBinarySize == 4)
-		{
-			auto data = (float*)imageData.data(); auto count = imageData.size() / sizeof(float);
-			for (psize i = 0; i < count; i++)
-				data[i] = min(data[i], FLOAT_BIG_16);
-		}
-		else if (compBinarySize == 2)
-		{
-			auto data = (half*)imageData.data(); auto count = imageData.size() / sizeof(half);
-			for (psize i = 0; i < count; i++)
-				data[i] = (half)min((float)data[i], FLOAT_BIG_16);
+			else if (format == Image::Format::SfloatR16G16B16A16)
+			{
+				auto pixels = (f16x4*)pixelArray.data();
+				for (uint32 j = 0; j < count; j++)
+					pixels[j] = f16x4(1.0f, 0.0f, 1.0f, 1.0f); 
+			}
+			else if (format == Image::Format::SfloatR32G32B32A32)
+			{
+				auto pixels = (f32x4*)pixelArray.data();
+				for (uint32 j = 0; j < count; j++)
+					pixels[j] = f32x4(1.0f, 0.0f, 1.0f, 1.0f); 
+			}
+			else memset(pixelArray.data(), UINT8_MAX, pixelArray.size());
+			GARDEN_LOG_ERROR("Different image array element size. (path: " + pathData[i].generic_string() + ")");
 		}
 	}
 }
 
 //**********************************************************************************************************************
-void ResourceSystem::loadCubemapData(const fs::path& path, Image::Format format, 
-	vector<uint8>& left, vector<uint8>& right, vector<uint8>& bottom, vector<uint8>& top, 
-	vector<uint8>& back, vector<uint8>& front, uint2& size, bool clamp16, int32 threadIndex) const
+void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& nx, 
+	vector<uint8>& px, vector<uint8>& ny, vector<uint8>& py, vector<uint8>& nz, 
+	vector<uint8>& pz, uint2& size, Image::Format& format, int32 threadIndex) const noexcept
 {
 	GARDEN_ASSERT(!path.empty());
 	GARDEN_ASSERT(threadIndex < (int32)thread::hardware_concurrency());
+
 	auto threadSystem = ThreadSystem::Instance::tryGet();
+	auto threadPool = threadIndex < 0 && threadSystem ? &threadSystem->getForegroundPool() : nullptr;
 	
 	#if !GARDEN_PACK_RESOURCES
 	auto cacheFilePath = appCachePath / "images" / path;
 	auto cacheFileString = cacheFilePath.generic_string();
 
-	fs::path inputFilePath; ImageFileType inputFileType; 
+	fs::path inputFilePath; Image::FileType inputFileType; 
 	auto fileCount = getImageFilePath(appCachePath, appResourcesPath, path, inputFilePath, inputFileType);
 
 	if (fileCount == 0)
 	{
 		GARDEN_LOG_ERROR("Cubemap image file does not exist. (path: " + path.generic_string() + ")");
-		loadMissingImage(format, left, right, bottom, top, back, front, size);
+		loadMissingImage(format, nx, px, ny, py, nz, pz, size);
 		return;
 	}
 	if (fileCount > 1)
 	{
 		GARDEN_LOG_ERROR("Cubemap image file is ambiguous. (path: " + path.generic_string() + ")");
-		loadMissingImage(format, left, right, bottom, top, back, front, size);
+		loadMissingImage(format, nx, px, ny, py, nz, pz, size);
 		return;
 	}
 	
@@ -1112,67 +1081,41 @@ void ResourceSystem::loadCubemapData(const fs::path& path, Image::Format format,
 		inputLastWriteTime > fs::last_write_time(cacheFileString + "-pz.exr"))
 	{
 		vector<uint8> equiData; uint2 equiSize;
-		loadImageData(path, format, equiData, equiSize, threadIndex);
+		loadImageData(path, equiData, equiSize, format, threadIndex);
 
 		auto cubemapSize = equiSize.x / 4;
 		if (equiSize.x / 2 != equiSize.y)
 		{
 			GARDEN_LOG_ERROR("Invalid equi cubemap size. (path: " + path.generic_string() + ")");
-			loadMissingImage(format, left, right, bottom, top, back, front, size);
+			loadMissingImage(format, nx, px, ny, py, nz, pz, size);
 			return;
 		}
 		if (cubemapSize % 32 != 0)
 		{
 			GARDEN_LOG_ERROR("Invalid cubemap image size. (path: " + path.generic_string() + ")");
-			loadMissingImage(format, left, right, bottom, top, back, front, size);
+			loadMissingImage(format, nx, px, ny, py, nz, pz, size);
 			return;
 		}
 
-		abort();
-
-		/* TODO: use Equi2Cubemap here instead.
-		if (clamp16 && isFormatFloat(format))
-			clampImageData(format, equiData);
-		convertCubemapImageData(threadSystem, equiData, equiSize, format,
-			left, right, bottom, top, back, front, threadIndex);
-		size = uint2(equiSize.x / 4, equiSize.y / 2);
-
-		fs::create_directories(cacheFilePath.parent_path());
-		if (threadIndex < 0 && threadSystem)
+		try
 		{
-			auto& threadPool = threadSystem->getForegroundPool();
-			threadPool.addTasks([&](const ThreadPool::Task& task)
-			{
-				switch (task.getTaskIndex())
-				{
-					case 0: writeExrImageData(cacheFileString + "-nx.exr", cubemapSize, left, format); break;
-					case 1: writeExrImageData(cacheFileString + "-px.exr", cubemapSize, right, format); break;
-					case 2: writeExrImageData(cacheFileString + "-ny.exr", cubemapSize, bottom, format); break;
-					case 3: writeExrImageData(cacheFileString + "-py.exr", cubemapSize, top, format); break;
-					case 4: writeExrImageData(cacheFileString + "-nz.exr", cubemapSize, back, format); break;
-					case 5: writeExrImageData(cacheFileString + "-pz.exr", cubemapSize, front, format); break;
-					default: abort();
-				}
-			}, Image::cubemapFaceCount);
-			threadPool.wait();
+			Equi2Cube::convertImage(inputFilePath.filename(), 
+				inputFilePath.parent_path(), cacheFilePath.parent_path(), threadPool);
+			GARDEN_LOG_DEBUG("Converted spherical cubemap. (path: " + path.generic_string() + ")");
 		}
-		else
+		catch (exception& e)
 		{
-			writeExrImageData(cacheFileString + "-nx.exr", cubemapSize, left, format);
-			writeExrImageData(cacheFileString + "-px.exr", cubemapSize, right, format);
-			writeExrImageData(cacheFileString + "-ny.exr", cubemapSize, bottom, format);
-			writeExrImageData(cacheFileString + "-py.exr", cubemapSize, top, format);
-			writeExrImageData(cacheFileString + "-nz.exr", cubemapSize, back, format);
-			writeExrImageData(cacheFileString + "-pz.exr", cubemapSize, front, format);
+			GARDEN_LOG_ERROR(e.what());
+			loadMissingImage(format, nx, px, ny, py, nz, pz, size);
 		}
-
-		GARDEN_LOG_DEBUG("Converted spherical cubemap. (path: " + path.generic_string() + ")");
-		*/
 		return;
 	}
 	#endif
 
-	uint2 leftSize, rightSize, bottomSize, topSize, backSize, frontSize;
+	uint2 nxSize, pxSize, nySize, pySize, nzSize, pzSize;
+	Image::Format nxFormat, pxFormat, nyFormat, pyFormat, nzFormat, pzFormat;
+	nxFormat = pxFormat = nyFormat = pyFormat = nzFormat = pzFormat = format;
+
 	if (threadIndex < 0 && threadSystem)
 	{
 		auto& threadPool = threadSystem->getForegroundPool();
@@ -1181,14 +1124,16 @@ void ResourceSystem::loadCubemapData(const fs::path& path, Image::Format format,
 			SET_CPU_ZONE_SCOPED("Cubemap Data Load");
 
 			auto filePath = path.generic_string();
+			auto threadIndex = task.getThreadIndex();
+
 			switch (task.getTaskIndex())
 			{
-				case 0: loadImageData(filePath + "-nx", format, left, leftSize, task.getThreadIndex()); break;
-				case 1: loadImageData(filePath + "-px", format, right, rightSize, task.getThreadIndex()); break;
-				case 2: loadImageData(filePath + "-ny", format, bottom, bottomSize, task.getThreadIndex()); break;
-				case 3: loadImageData(filePath + "-py", format, top, topSize, task.getThreadIndex()); break;
-				case 4: loadImageData(filePath + "-nz", format, back, backSize, task.getThreadIndex()); break;
-				case 5: loadImageData(filePath + "-pz", format, front, frontSize, task.getThreadIndex()); break;
+				case 0: loadImageData(filePath + "-nx", nx, nxSize, nxFormat, threadIndex); break;
+				case 1: loadImageData(filePath + "-px", px, pxSize, pxFormat, threadIndex); break;
+				case 2: loadImageData(filePath + "-ny", ny, nySize, nyFormat, threadIndex); break;
+				case 3: loadImageData(filePath + "-py", py, pySize, pyFormat, threadIndex); break;
+				case 4: loadImageData(filePath + "-nz", nz, nzSize, nzFormat, threadIndex); break;
+				case 5: loadImageData(filePath + "-pz", pz, pzSize, pzFormat, threadIndex); break;
 				default: abort();
 			}
 		}, Image::cubemapFaceCount);
@@ -1199,233 +1144,50 @@ void ResourceSystem::loadCubemapData(const fs::path& path, Image::Format format,
 		SET_CPU_ZONE_SCOPED("Cubemap Data Load");
 
 		auto filePath = path.generic_string();
-		loadImageData(filePath + "-nx", format, left, leftSize, threadIndex);
-		loadImageData(filePath + "-px", format, right, rightSize, threadIndex);
-		loadImageData(filePath + "-ny", format, bottom, bottomSize, threadIndex);
-		loadImageData(filePath + "-py", format, top, topSize, threadIndex);
-		loadImageData(filePath + "-nz", format, back, backSize, threadIndex);
-		loadImageData(filePath + "-pz", format, front, frontSize, threadIndex);
+		loadImageData(filePath + "-nx", nx, nxSize, nxFormat, threadIndex);
+		loadImageData(filePath + "-px", px, pxSize, pxFormat, threadIndex);
+		loadImageData(filePath + "-ny", ny, nySize, nyFormat, threadIndex);
+		loadImageData(filePath + "-py", py, pySize, pyFormat, threadIndex);
+		loadImageData(filePath + "-nz", nz, nzSize, nzFormat, threadIndex);
+		loadImageData(filePath + "-pz", pz, pzSize, pzFormat, threadIndex);
 	}
 
-	#if GARDEN_DEBUG
-	if (leftSize != rightSize || leftSize != bottomSize ||
-		leftSize != topSize || leftSize != backSize || leftSize != frontSize ||
-		leftSize.x % 32 != 0 || rightSize.x % 32 != 0 || bottomSize.x % 32 != 0 ||
-		topSize.x % 32 != 0 || backSize.x % 32 != 0 || frontSize.x % 32 != 0)
+	if (nxSize != pxSize || nxSize != nySize || 
+		nxSize != pySize || nxSize != nzSize || nxSize != pzSize ||
+		nxSize.x % 32 != 0 || pxSize.x % 32 != 0 || nySize.x % 32 != 0 ||
+		pySize.x % 32 != 0 || nzSize.x % 32 != 0 || pzSize.x % 32 != 0)
 	{
 		GARDEN_LOG_ERROR("Invalid cubemap size. (path: " + path.generic_string() + ")");
-		loadMissingImage(format, left, right, bottom, top, back, front, size);
+		loadMissingImage(format, nx, px, ny, py, nz, pz, size);
 		return;
 	}
-	if (leftSize.x != leftSize.y || rightSize.x != rightSize.y ||
-		bottomSize.x != bottomSize.y || topSize.x != topSize.y ||
-		backSize.x != backSize.y || frontSize.x != frontSize.y)
+	if (nxSize.x != nxSize.y || pxSize.x != pxSize.y || nySize.x != nySize.y || 
+		pySize.x != pySize.y || nzSize.x != nzSize.y || pzSize.x != pzSize.y)
 	{
 		GARDEN_LOG_ERROR("Invalid cubemap face size. (path: " + path.generic_string() + ")");
-		loadMissingImage(format, left, right, bottom, top, back, front, size);
+		loadMissingImage(format, nx, px, ny, py, nz, pz, size);
 		return;
 	}
-	#endif
 
-	size = leftSize;
+	if (format == Image::Format::Undefined)
+	{
+		if (nxFormat != pxFormat || nxFormat != nyFormat || 
+			nxFormat != pyFormat || nxFormat != nzFormat || nxFormat != pzFormat)
+		{
+			GARDEN_LOG_ERROR("Invalid cubemap face format. (path: " + path.generic_string() + ")");
+			loadMissingImage(format, nx, px, ny, py, nz, pz, size);
+			return;
+		}
+		format = nxFormat;
+	}
+	size = nxSize;
 }
 
 //**********************************************************************************************************************
-static uint32 toPngFormat(Image::Format imageFormat)
-{
-	switch (imageFormat)
-	{
-	case Image::Format::UintR8G8B8A8:
-	case Image::Format::SintR8G8B8A8:
-	case Image::Format::UnormR8G8B8A8:
-	case Image::Format::SnormR8G8B8A8:
-	case Image::Format::SrgbR8G8B8A8:
-		return PNG_FORMAT_RGBA;
-	case Image::Format::UintR8G8:
-	case Image::Format::SintR8G8:
-	case Image::Format::UnormR8G8:
-	case Image::Format::SnormR8G8:
-		return PNG_FORMAT_GA;
-	case Image::Format::UintR8:
-	case Image::Format::SintR8:
-	case Image::Format::UnormR8:
-	case Image::Format::SnormR8:
-		return PNG_FORMAT_GRAY;
-	case Image::Format::SrgbB8G8R8A8: return PNG_FORMAT_BGRA;
-	case Image::Format::SrgbA8B8G8R8: return PNG_FORMAT_ABGR;
-	default: throw GardenError("Unsupported PNG image data format.");
-	}
-}
-
-void ResourceSystem::loadImageData(const uint8* data, psize dataSize, ImageFileType fileType,
-	Image::Format imageFormat, vector<uint8>& pixels, uint2& imageSize)
-{
-	if (fileType == ImageFileType::Webp)
-	{
-		int sizeX = 0, sizeY = 0;
-		if (!WebPGetInfo(data, dataSize, &sizeX, &sizeY))
-			throw GardenError("Invalid WebP image info.");
-		pixels.resize(sizeof(Color) * sizeX * sizeY);
-
-		uint8* decodeResult;
-		if (imageFormat == Image::Format::UintR8G8B8A8 | imageFormat == Image::Format::SintR8G8B8A8 | 
-			imageFormat == Image::Format::UnormR8G8B8A8 | imageFormat == Image::Format::SnormR8G8B8A8 | 
-			imageFormat == Image::Format::SrgbR8G8B8A8)
-		{
-			decodeResult = WebPDecodeRGBAInto(data, dataSize, pixels.data(), 
-				pixels.size(), (int)(sizeX * sizeof(Color)));
-		}
-		else if (imageFormat == Image::Format::UnormB8G8R8A8 | imageFormat == Image::Format::SrgbB8G8R8A8)
-		{
-			decodeResult = WebPDecodeBGRAInto(data, dataSize, pixels.data(), 
-				pixels.size(), (int)(sizeX * sizeof(Color)));
-		}
-		else throw GardenError("Unsupported WebP image data format.");
-
-		if (!decodeResult)
-			throw GardenError("Invalid WebP image data.");
-		imageSize = uint2(sizeX, sizeY);
-	}
-	else if (fileType == ImageFileType::Png)
-	{
-		png_image image; memset(&image, 0, sizeof(png_image));
-		image.version = PNG_IMAGE_VERSION;
-
-		if (!png_image_begin_read_from_memory(&image, data, dataSize))
-			throw GardenError("Invalid PNG image info.");
-
-		image.format = toPngFormat(imageFormat);
-		pixels.resize(PNG_IMAGE_SIZE(image));
-
-		if (!png_image_finish_read(&image, nullptr, pixels.data(), 0, nullptr))
-			throw GardenError("Invalid PNG image data.");
-		imageSize = uint2(image.width, image.height);
-	}
-	else if (fileType == ImageFileType::Jpg || fileType == ImageFileType::Bmp ||
-		fileType == ImageFileType::Psd || fileType == ImageFileType::Tga ||
-		fileType == ImageFileType::Pic || fileType == ImageFileType::Gif)
-	{
-		if (toBinarySize(imageFormat) > 4)
-			throw GardenError("Unsupported JPG/BMP/... image data format.");
-
-		int sizeX = 0, sizeY = 0;
-		auto pixelData = stbi_load_from_memory(data, (int)dataSize, 
-			&sizeX, &sizeY, nullptr, (int)toComponentCount(imageFormat));
-		if (!pixelData)
-			throw GardenError("Invalid JPG/BMP/... image data.");
-
-		pixels.assign(pixelData, pixelData + sizeof(Color) * sizeX * sizeY);
-		stbi_image_free(pixelData);
-		imageSize = uint2(sizeX, sizeY);
-	}
-	else if (fileType == ImageFileType::Exr)
-	{
-		if (imageFormat != Image::Format::SfloatR32G32B32A32 & imageFormat != Image::Format::SfloatR16G16B16A16)
-			throw GardenError("Unsupported EXR image data format.");
-
-		/* TODO: replace with OpenEXR
-		int sizeX = 0, sizeY = 0; float* pixelData = nullptr; const char* error = nullptr;
-		if (LoadEXRFromMemory(&pixelData, &sizeX, &sizeY, data, dataSize, &error) != TINYEXR_SUCCESS)
-		{
-			auto errorString = string(error);
-			FreeEXRErrorMessage(error);
-			throw GardenError(errorString);
-		}
-
-		if (imageFormat != Image::Format::SfloatR32G32B32A32)
-		{
-			pixels.assign((const uint8*)pixelData, (const uint8*)pixelData +
-				sizeof(float4) * imageSize.x * imageSize.y);
-		}
-		else
-		{
-			auto count = (psize)imageSize.x * imageSize.y;
-			pixels.resize(sizeof(f16x4) * count); auto data = (f16x4*)pixels.data();
-			auto pixelDataF32 = (const f32x4*)pixelData;
-
-			for (psize i = 0; i < count; i ++)
-				data[i] = (f16x4)pixelDataF32[i];
-		}
-		
-		free(pixelData);
-		imageSize = uint2(sizeX, sizeY);
-		*/
-		abort();
-	}
-	else if (fileType == ImageFileType::Hdr)
-	{
-		if (imageFormat != Image::Format::SfloatR32G32B32A32 & imageFormat != Image::Format::SfloatR16G16B16A16)
-			throw GardenError("Unsupported HDR image data format.");
-
-		int sizeX = 0, sizeY = 0;
-		auto pixelData = stbi_loadf_from_memory(data, (int)dataSize, 
-			&sizeX, &sizeY, nullptr, (int)toComponentCount(imageFormat));
-		if (!pixelData)
-			throw GardenError("Invalid HDR image data.");
-
-		if (imageFormat != Image::Format::SfloatR32G32B32A32)
-		{
-			pixels.assign((const uint8*)pixelData, (const uint8*)pixelData +
-				sizeof(float4) * imageSize.x * imageSize.y);
-		}
-		else
-		{
-			auto count = (psize)imageSize.x * imageSize.y;
-			pixels.resize(sizeof(f16x4) * count); auto data = (f16x4*)pixels.data();
-			auto pixelDataF32 = (const f32x4*)pixelData;
-
-			for (psize i = 0; i < count; i ++)
-				data[i] = (f16x4)pixelDataF32[i];
-		}
-
-		stbi_image_free(pixelData);
-		imageSize = uint2(sizeX, sizeY);
-	}
-	else abort();
-}
-
-//**********************************************************************************************************************
-static void loadImageArrayData(ResourceSystem* resourceSystem, const vector<fs::path>& paths,
-	Image::Format format, vector<vector<uint8>>& pixelArrays, uint2& size, int32 threadIndex)
-{
-	auto pathCount = (uint32)paths.size();
-	auto pathData = paths.data(); auto pixelArrayData = pixelArrays.data();
-	resourceSystem->loadImageData(pathData[0], format, pixelArrayData[0], size, threadIndex);
-
-	for (uint32 i = 1; i < pathCount; i++)
-	{
-		uint2 elementSize;
-		resourceSystem->loadImageData(pathData[i], format, pixelArrayData[i], elementSize, threadIndex);
-
-		if (size != elementSize)
-		{
-			auto count = (psize)size.x * size.y;
-			auto binarySize = toBinarySize(format);
-			auto pixelArray = pixelArrayData[i];
-			pixelArray.resize(binarySize * count);
-
-			// TODO: or maybe use checkerboard pattern?
-			if (binarySize == 16)
-			{
-				auto pixels = (f32x4*)pixelArray.data();
-				for (uint32 j = 0; j < count; j++)
-					pixels[j] = f32x4(1.0f, 0.0f, 1.0f, 1.0f); 
-			}
-			else if (binarySize == 4)
-			{
-				auto pixels = (Color*)pixelArray.data();
-				for (uint32 j = 0; j < count; j++)
-					pixels[j] = Color::magenta;
-			}
-			else memset(pixelArray.data(), UINT8_MAX, pixelArray.size());
-			GARDEN_LOG_ERROR("Different image array element size. (path: " + pathData[i].generic_string() + ")");
-		}
-	}
-}
 static void copyLoadedImageData(const vector<vector<uint8>>& pixelArrays, uint8* stagingMap,
 	uint2 realSize, uint2 imageSize, psize formatBinarySize, ImageLoadFlags flags) noexcept
 {
-	if (hasAnyFlag(flags, ImageLoadFlags::LoadArray | ImageLoadFlags::Load3D) && realSize.x > realSize.y)
+	if (hasAnyFlag(flags, ImageLoadFlags::LoadAsArray | ImageLoadFlags::LoadAs3D) && realSize.x > realSize.y)
 	{
 		auto pixels = pixelArrays[0].data();
 		auto layerCount = realSize.x / realSize.y;
@@ -1453,12 +1215,11 @@ static void copyLoadedImageData(const vector<vector<uint8>>& pixelArrays, uint8*
 	}
 }
 
-//**********************************************************************************************************************
 static void calcLoadedImageDim(psize pathCount, uint2 realSize,
 	ImageLoadFlags flags, uint2& imageSize, uint32& layerCount) noexcept
 {
 	imageSize = realSize; layerCount = (uint32)pathCount;
-	if (hasAnyFlag(flags, ImageLoadFlags::LoadArray | ImageLoadFlags::Load3D))
+	if (hasAnyFlag(flags, ImageLoadFlags::LoadAsArray | ImageLoadFlags::LoadAs3D))
 	{
 		if (realSize.x > realSize.y)
 		{
@@ -1478,9 +1239,9 @@ static Image::Type calcLoadedImageType(uint32 sizeY, ImageLoadFlags flags) noexc
 {
 	if (hasAnyFlag(flags, ImageLoadFlags::TypeCubemap))
 		return Image::Type::Cubemap;
-	if (hasAnyFlag(flags, ImageLoadFlags::LoadArray | ImageLoadFlags::TypeArray))
+	if (hasAnyFlag(flags, ImageLoadFlags::LoadAsArray | ImageLoadFlags::TypeArray))
 		return sizeY == 1 ? Image::Type::Texture1DArray : Image::Type::Texture2DArray;
-	if (hasAnyFlag(flags, ImageLoadFlags::Load3D | ImageLoadFlags::Type3D))
+	if (hasAnyFlag(flags, ImageLoadFlags::LoadAs3D | ImageLoadFlags::Type3D))
 		return Image::Type::Texture3D;
 	return sizeY == 1 ? Image::Type::Texture1D : Image::Type::Texture2D;
 }
@@ -1488,12 +1249,21 @@ static uint8 calcLoadedImageMipCount(uint8 maxMipCount, uint2 imageSize) noexcep
 {
 	return maxMipCount == 0 ? calcMipCount(imageSize) : std::min(maxMipCount, calcMipCount(imageSize));
 }
+static Image::Format toSrgbFormat(int componentCount)
+{
+	switch (componentCount)
+	{
+		case 4: return Image::Format::SrgbR8G8B8A8;
+		case 2: return Image::Format::SrgbR8G8;
+		case 1: return Image::Format::SrgbR8;
+		default: throw GardenError("Unsupported sRGB image channel count.");
+	}
+}
 
 //**********************************************************************************************************************
-Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::Format format, 
-	Image::Usage usage, uint8 maxMipCount, Image::Strategy strategy, ImageLoadFlags flags, float taskPriority)
+Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::Format format, Image::Usage usage, 
+	uint8 maxMipCount, Image::Strategy strategy, ImageLoadFlags flags, float taskPriority)
 {
-	// TODO: allow to load file with image paths to load image arrays.
 	GARDEN_ASSERT(!paths.empty());
 	GARDEN_ASSERT(hasAnyFlag(usage, Image::Usage::TransferDst));
 	GARDEN_ASSERT(hasAnyFlag(usage, Image::Usage::TransferQ));
@@ -1501,26 +1271,26 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	if (paths.size() > 1)
 	{
-		GARDEN_ASSERT(!hasAnyFlag(flags, ImageLoadFlags::LoadArray | ImageLoadFlags::Load3D));
+		GARDEN_ASSERT(!hasAnyFlag(flags, ImageLoadFlags::LoadAsArray | ImageLoadFlags::LoadAs3D));
 	}
 	else
 	{
 		GARDEN_ASSERT(!hasAnyFlag(flags, ImageLoadFlags::TypeCubemap));
 	}
-	if (hasAnyFlag(flags, ImageLoadFlags::LoadArray | ImageLoadFlags::TypeArray))
+	if (hasAnyFlag(flags, ImageLoadFlags::LoadAsArray | ImageLoadFlags::TypeArray))
 	{
-		GARDEN_ASSERT(!hasAnyFlag(flags, ImageLoadFlags::Load3D | 
+		GARDEN_ASSERT(!hasAnyFlag(flags, ImageLoadFlags::LoadAs3D | 
 			ImageLoadFlags::Type3D | ImageLoadFlags::TypeCubemap));
 	}
-	if (hasAnyFlag(flags, ImageLoadFlags::Load3D | ImageLoadFlags::Type3D))
+	if (hasAnyFlag(flags, ImageLoadFlags::LoadAs3D | ImageLoadFlags::Type3D))
 	{
-		GARDEN_ASSERT(!hasAnyFlag(flags, ImageLoadFlags::LoadArray | 
+		GARDEN_ASSERT(!hasAnyFlag(flags, ImageLoadFlags::LoadAsArray | 
 			ImageLoadFlags::TypeArray | ImageLoadFlags::TypeCubemap));
 	}
 	if (hasAnyFlag(flags, ImageLoadFlags::TypeCubemap))
 	{
-		GARDEN_ASSERT(!hasAnyFlag(flags, ImageLoadFlags::LoadArray | ImageLoadFlags::TypeArray | 
-			ImageLoadFlags::Load3D | ImageLoadFlags::Type3D));
+		GARDEN_ASSERT(!hasAnyFlag(flags, ImageLoadFlags::LoadAsArray | ImageLoadFlags::TypeArray | 
+			ImageLoadFlags::LoadAs3D | ImageLoadFlags::Type3D));
 	}
 	string debugName = hasAnyFlag(flags, ImageLoadFlags::LoadShared) ? "shared." : "";
 	#endif
@@ -1564,7 +1334,7 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 	auto resource = graphicsAPI->imagePool.get(image);
 	if (paths.size() > 1)
 	{
-		if (hasAnyFlag(flags, ImageLoadFlags::LoadArray))
+		if (hasAnyFlag(flags, ImageLoadFlags::LoadAsArray))
 			resource->setDebugName("imageArray." + debugName + paths[0].generic_string());
 		else resource->setDebugName("image3D." + debugName + paths[0].generic_string());
 	}
@@ -1588,27 +1358,29 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 		{
 			SET_CPU_ZONE_SCOPED("Image Array Load");
 
-			auto& paths = data->paths; auto format = data->format;
+			auto& paths = data->paths; auto flags = data->flags;
 			vector<vector<uint8>> pixelArrays(paths.size()); uint2 realSize;
-			loadImageArrayData(this, paths, format, pixelArrays, realSize, task.getThreadIndex());
+			auto dataFormat = hasAnyFlag(flags, ImageLoadFlags::LoadAsSrgb) ? 
+				toSrgbFormat(toComponentCount(data->format)) : data->format;
+			loadImageData(paths, pixelArrays, realSize, dataFormat, task.getThreadIndex());
 
-			auto formatBinarySize = toBinarySize(format); uint2 imageSize; uint32 layerCount;
-			calcLoadedImageDim(paths.size(), realSize, data->flags, imageSize, layerCount);
+			auto formatBinarySize = toBinarySize(dataFormat); uint2 imageSize; uint32 layerCount;
+			calcLoadedImageDim(paths.size(), realSize, flags, imageSize, layerCount);
 			auto mipCount = calcLoadedImageMipCount(data->maxMipCount, imageSize);
-			auto type = calcLoadedImageType(realSize.y, data->flags);
+			auto type = calcLoadedImageType(realSize.y, flags);
 			
 			ImageQueueItem item =
 			{
-				ImageExt::create(type, format, data->usage, data->strategy, 
+				ImageExt::create(type, data->format, data->usage, data->strategy, 
 					u32x4(imageSize.x, imageSize.y, layerCount, mipCount), data->imageVersion),
 				BufferExt::create(Buffer::Usage::TransferSrc, Buffer::CpuAccess::SequentialWrite, 
 					Buffer::Location::Auto, Buffer::Strategy::Speed, // Note: Staging does not need TransferQ flag.
 					formatBinarySize * realSize.x * realSize.y * paths.size(), 0),
-				std::move(paths), realSize, data->instance, data->flags
+				std::move(paths), realSize, data->instance, flags
 			};
 
-			copyLoadedImageData(pixelArrays, item.staging.getMap(),
-				realSize, imageSize, formatBinarySize, data->flags);
+			copyLoadedImageData(pixelArrays, item.staging.getMap(), 
+				realSize, imageSize, formatBinarySize, flags);
 			item.staging.flush();
 
 			queueLocker.lock();
@@ -1624,7 +1396,7 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 		SET_CPU_ZONE_SCOPED("Image Array Load");
 
 		vector<vector<uint8>> pixelArrays(paths.size()); uint2 realSize;
-		loadImageArrayData(this, paths, format, pixelArrays, realSize, -1);
+		loadImageData(paths, pixelArrays, realSize, format, -1);
 
 		auto formatBinarySize = toBinarySize(format); uint2 imageSize; uint32 layerCount;
 		calcLoadedImageDim(paths.size(), realSize, flags, imageSize, layerCount);
@@ -1671,11 +1443,11 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 }
 
 //**********************************************************************************************************************
-void ResourceSystem::storeImage(const fs::path& path, const void* data, uint2 size,  
-	ImageFileType fileType, Image::Format imageFormat, float quality, const fs::path& directory)
+void ResourceSystem::storeImage(const fs::path& path, const void* pixels, uint2 size,  
+	Image::FileType fileType, Image::Format imageFormat, float quality, const fs::path& directory)
 {
 	GARDEN_ASSERT(!path.empty());
-	GARDEN_ASSERT(data);
+	GARDEN_ASSERT(pixels);
 	GARDEN_ASSERT(areAllTrue(size > uint2::zero));
 	GARDEN_ASSERT(quality >= 0.0f && quality <= 1.0f);
 
@@ -1689,105 +1461,19 @@ void ResourceSystem::storeImage(const fs::path& path, const void* data, uint2 si
 	if (!fs::exists(directoryPath))
 		fs::create_directories(directoryPath);
 
-	auto filePath = imagesPath / path;
-	if (fileType == ImageFileType::Webp)
-	{
-		filePath.replace_extension(".webp");
-		ofstream outputStream(filePath, ios::binary | ios::trunc);
-		if (!outputStream.is_open())
-			throw GardenError("Failed to store WebP image file. (path: " + path.generic_string() + ")");
-		outputStream.exceptions(std::ifstream::failbit | std::ifstream::badbit);
-
-		uint8_t* encoded = nullptr; size_t encodedSize = 0;
-		if (imageFormat == Image::Format::UintR8G8B8A8 | imageFormat == Image::Format::SintR8G8B8A8 | 
-			imageFormat == Image::Format::UnormR8G8B8A8 | imageFormat == Image::Format::SnormR8G8B8A8 | 
-			imageFormat == Image::Format::SrgbR8G8B8A8)
-		{
-			if (quality == 1.0f)
-			{
-				encodedSize = WebPEncodeLosslessRGBA((const uint8_t*)data, 
-					size.x, size.y, size.x * 4, &encoded);
-			}
-			else
-			{
-				encodedSize = WebPEncodeRGBA((const uint8_t*)data, size.x, 
-					size.y, size.x * 4, quality * 100.0f, &encoded);
-			}
-		}
-		else if (imageFormat == Image::Format::UnormB8G8R8A8 | imageFormat == Image::Format::SrgbB8G8R8A8)
-		{
-			if (quality == 1.0f)
-			{
-				encodedSize = WebPEncodeLosslessBGRA((const uint8_t*)data, 
-					size.x, size.y, size.x * 4, &encoded);
-			}
-			else
-			{
-				encodedSize = WebPEncodeBGRA((const uint8_t*)data, size.x, 
-					size.y, size.x * 4, quality * 100.0f, &encoded);
-			}
-		}
-		else throw GardenError("Unsupported WebP image data format for writing.");
-
-		if (encodedSize == 0)
-			throw GardenError("Failed to encode WebP image. (path: " + path.generic_string() + ")");
-		outputStream.write((const char*)encoded, encodedSize);
-		WebPFree(encoded);
-	}
-	else if (fileType == ImageFileType::Png)
-	{
-		png_image image; memset(&image, 0, sizeof(png_image));
-		image.version = PNG_IMAGE_VERSION;
-		image.width = size.x; image.height = size.y;
-		image.format = toPngFormat(imageFormat);
-		filePath.replace_extension(".png");
-
-		if (!png_image_write_to_file(&image, filePath.generic_string().c_str(), 0, data, 0, NULL))
-			throw GardenError("Failed to write PNG image. (path: " + path.generic_string() + ")");
-	}
-	else if (fileType == ImageFileType::Jpg)
-	{
-		filePath.replace_extension(".jpg");
-		if (!stbi_write_jpg(filePath.generic_string().c_str(), size.x, size.y, 4, data, quality * 100.0f))
-			throw GardenError("Failed to write JPG image. (path: " + path.generic_string() + ")");
-	}
-	else if (fileType == ImageFileType::Exr)
-	{
-		abort(); // TODO: implement: https://github.com/syoyo/tinyexr
-	}
-	else if (fileType == ImageFileType::Hdr)
-	{
-		filePath.replace_extension(".hdr");
-		if (!stbi_write_hdr(filePath.generic_string().c_str(), size.x, size.y, 4, (const float*)data))
-			throw GardenError("Failed to write HDR image. (path: " + path.generic_string() + ")");
-	}
-	else if (fileType == ImageFileType::Bmp)
-	{
-		filePath.replace_extension(".bmp");
-		if (!stbi_write_bmp(filePath.generic_string().c_str(), size.x, size.y, 4, data))
-			throw GardenError("Failed to write BMP image. (path: " + path.generic_string() + ")");
-	}
-	else if (fileType == ImageFileType::Tga)
-	{
-		filePath.replace_extension(".tga");
-		if (!stbi_write_tga(path.generic_string().c_str(), size.x, size.y, 4, data))
-			throw GardenError("Failed to write TGA image. (path: " + path.generic_string() + ")");
-	}
-	else abort();
-
+	Image::writeFileData(imagesPath / path, pixels, size, fileType, imageFormat);
 	GARDEN_LOG_DEBUG("Stored image. (path: " + path.generic_string() + ")");
 }
 
-//**********************************************************************************************************************
 void ResourceSystem::combineImages(const vector<fs::path>& inputPaths, const fs::path& outputPath, 
-	ImageFileType fileType, Image::Format imageFormat, int32 threadIndex)
+	Image::FileType fileType, Image::Format imageFormat, int32 threadIndex)
 {
 	GARDEN_ASSERT(!inputPaths.empty());
 	GARDEN_ASSERT(!inputPaths[0].empty());
 	GARDEN_ASSERT(!outputPath.empty());
 
 	vector<uint8> inBuffer; uint2 inSize;
-	loadImageData(inputPaths[0], imageFormat, inBuffer, inSize, threadIndex);
+	loadImageData(inputPaths[0], inBuffer, inSize, imageFormat, threadIndex);
 
 	auto pathCount = (uint32)inputPaths.size();
 	auto formatBinarySize = toBinarySize(imageFormat);
@@ -1806,7 +1492,7 @@ void ResourceSystem::combineImages(const vector<fs::path>& inputPaths, const fs:
 	for (uint32 i = 1; i < pathCount; i++)
 	{
 		uint2 otherSize;
-		loadImageData(inputPathData[i], imageFormat, inBuffer, otherSize, threadIndex);
+		loadImageData(inputPathData[i], inBuffer, otherSize, imageFormat, threadIndex);
 
 		if (inSize != otherSize)
 			throw GardenError("Failed to combine images, different sizes.");
@@ -1822,19 +1508,42 @@ void ResourceSystem::combineImages(const vector<fs::path>& inputPaths, const fs:
     auto outSize = uint2(inSize.x * (uint32)inputPaths.size(), inSize.y);
 	storeImage(outputPath, outBuffer.data(), outSize, fileType, imageFormat);
 }
-void ResourceSystem::renormalizeImage(const fs::path& path, ImageFileType fileType, int32 threadIndex)
+
+//**********************************************************************************************************************
+void ResourceSystem::renormalizeImage(const fs::path& path, Image::FileType fileType, int32 threadIndex)
 {
 	GARDEN_ASSERT(!path.empty());
 
 	vector<uint8> dataBuffer; uint2 size;
-	loadImageData(path, Image::Format::UnormR8G8B8A8, dataBuffer, size, threadIndex);
+	auto imageFormat = Image::Format::Undefined;
+	loadImageData(path, dataBuffer, size, imageFormat, threadIndex);
 
-	auto pixelData = (Color*)dataBuffer.data();
 	auto pixelCount = (psize)size.x * size.y;
-
-	for (psize i = 0; i < 0; i++)
-		pixelData[i] = (Color)normalize3((f32x4)pixelData[i]);
-	storeImage(path, dataBuffer.data(), size, fileType, Image::Format::UnormR8G8B8A8);
+	if (imageFormat == Image::Format::SrgbR8G8B8A8 || imageFormat == Image::Format::UnormR8G8B8A8)
+	{
+		auto pixelData = (Color*)dataBuffer.data();
+		for (psize i = 0; i < 0; i++)
+			pixelData[i] = (Color)normalize3((f32x4)pixelData[i]);
+	}
+	else if (imageFormat == Image::Format::SfloatR32G32B32A32)
+	{
+		auto pixelData = (f32x4*)dataBuffer.data();
+		for (psize i = 0; i < 0; i++)
+			pixelData[i] = normalize3(pixelData[i]);
+	}
+	else if (imageFormat == Image::Format::SfloatR16G16B16A16)
+	{
+		auto pixelData = (f16x4*)dataBuffer.data();
+		for (psize i = 0; i < 0; i++)
+			pixelData[i] = (f16x4)normalize3((f32x4)pixelData[i]);
+	}
+	else
+	{
+		throw GardenError("Unsupported normal map image format. ("
+			"path: " + path.generic_string() + ")");
+	}
+	
+	storeImage(path, dataBuffer.data(), size, fileType, imageFormat);
 }
 
 void ResourceSystem::destroyShared(Ref<Image>& image)
@@ -3193,6 +2902,7 @@ Ref<Font> ResourceSystem::loadFont(const fs::path& path, int32 faceIndex, bool l
 
 	auto textSystem = TextSystem::Instance::get();
 	fs::path filePath = "fonts" / path; filePath += ".ttf";
+	vector<uint8> fontData;
 
 	#if GARDEN_PACK_RESOURCES
 	uint64 itemIndex = 0;
@@ -3202,10 +2912,7 @@ Ref<Font> ResourceSystem::loadFont(const fs::path& path, int32 faceIndex, bool l
 			GARDEN_LOG_ERROR("Font does not exist. (path: " + path.generic_string() + ")");
 		return {};
 	}
-
-	auto dataSize = packReader.getItemDataSize(itemIndex);
-	auto data = new uint8[dataSize];
-	packReader.readItemData(itemIndex, data);
+	packReader.readItemData(itemIndex, fontData);
 	#else
 	fs::path fontPath;
 	if (!File::tryGetResourcePath(appResourcesPath, filePath, fontPath))
@@ -3215,9 +2922,15 @@ Ref<Font> ResourceSystem::loadFont(const fs::path& path, int32 faceIndex, bool l
 		return {};
 	}
 
-	auto dataSize = File::getFileSize(fontPath);
-	auto data = new uint8[dataSize];
-	File::loadBinary(fontPath, data, dataSize);
+	try
+	{
+		File::loadBinary(filePath, fontData);
+	}
+	catch (exception& e)
+	{
+		GARDEN_LOG_ERROR(string(e.what()));
+		return {};
+	}
 	#endif
 
 	auto ftLibrary = (FT_Library)textSystem->ftLibrary;
@@ -3227,7 +2940,7 @@ Ref<Font> ResourceSystem::loadFont(const fs::path& path, int32 faceIndex, bool l
 	for (auto& face : faces)
 	{
 		FT_Face ftFace = nullptr;
-		auto result = FT_New_Memory_Face(ftLibrary, data, dataSize, faceIndex, &ftFace);
+		auto result = FT_New_Memory_Face(ftLibrary, fontData.data(), fontData.size(), faceIndex, &ftFace);
 		if (result != 0)
 		{
 			GARDEN_LOG_ERROR("Failed to load font. (path: " + path.generic_string() + 
@@ -3238,7 +2951,6 @@ Ref<Font> ResourceSystem::loadFont(const fs::path& path, int32 faceIndex, bool l
 				result = FT_Done_Face((FT_Face)_face);
 				GARDEN_ASSERT_MSG(!result, "Failed to destroy FreeType font");
 			}
-			delete[] data;
 			return {};
 		}
 		face = ftFace;
@@ -3250,7 +2962,7 @@ Ref<Font> ResourceSystem::loadFont(const fs::path& path, int32 faceIndex, bool l
 
 	auto fontView = textSystem->fonts.get(font);
 	fontView->faces = std::move(faces);
-	fontView->data = data;
+	fontView->data = std::move(fontData);
 
 	GARDEN_LOG_TRACE("Loaded font. (path: " + path.generic_string() + ")");
 	return font;
@@ -3345,7 +3057,16 @@ bool ResourceSystem::loadData(const fs::path& path, vector<uint8>& data)
 		GARDEN_LOG_ERROR("Resource file does not exist or ambiguous. (path: " + path.generic_string() + ")");
 		return false;
 	}
-	File::loadBinary(resourcePath, data);
+
+	try
+	{
+		File::loadBinary(resourcePath, data);
+	}
+	catch (exception& e)
+	{
+		GARDEN_LOG_ERROR(string(e.what()));
+		return false;
+	}
 	#endif
 	return true;
 }

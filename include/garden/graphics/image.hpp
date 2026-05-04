@@ -61,6 +61,7 @@ public:
 		Cubemap,        /**< Texture with six faces. */
 		Count           /**< Image dimensionality type count. */
 	};
+
 	/*******************************************************************************************************************
 	 * @brief Image data format.
 	 * 
@@ -139,6 +140,8 @@ public:
 		UfloatB10G11R11,    /**< Unsigned floating point (10-bit blue, 11-bit green, 10-bit red channel) format. */
 		UfloatE5B9G9R9,     /**< Unsigned floating point (5-bit exponent, 9-bit blue/green/red channel) format. */
 
+		SrgbR8,             /**< 8-bit sRGB color space (red only channel) format. */
+		SrgbR8G8,           /**< 8-bit sRGB color space (red and green channel) format. */
 		SrgbR8G8B8A8,       /**< 8-bit sRGB color space (red, green, blue, alpha channel) format. */
 		SrgbB8G8R8A8,       /**< 8-bit sRGB color space (blue, green, red, alpha channel) format. */
 		SrgbA8B8G8R8,       /**< 8-bit sRGB color space (alpha channel, blue, green, red) format. */
@@ -152,6 +155,7 @@ public:
 		Count               /**< Image data format count. */
 		// TODO: A8B8G8R8
 	};
+
 	/**
 	 * @brief Image usage types. (Affects driver optimizations)
 	 * 
@@ -172,8 +176,15 @@ public:
 		DepthStencilAttachment = 0x0080, /**< Image can be used as the framebuffer depth or/and stencil attachment. */
 		Fullscreen             = 0x0100, /**< Image will be the size of the window or larger. (Better optimization) */
 	};
-
 	static constexpr uint8 usageCount = 8; /**< Image usage type count. */
+
+	/**
+	 * @brief Image file format types. (Container)
+	 */
+	enum class FileType : uint8
+	{
+		WebP, PNG, JPEG, EXR, HDR, BMP, PSD, TGA, PIC, GIF, Count
+	};
 
 	/*******************************************************************************************************************
 	 * @brief Image clear region description.
@@ -818,6 +829,49 @@ public:
 	 */
 	void setDebugName(const string& name) override;
 	#endif
+
+	/**
+	 * @brief Converts image data formats.
+	 * @note Clamps values if out of range.
+	 *
+	 * @param[in] srcPixels source image pixel data
+	 * @param size image data size in pixels
+	 * @param[out] dstPixels destination image pixel data
+	 * @param srcFormat source image data format
+	 * @param dstFormat destination image data format
+	 *
+	 * @return pointer to the converted image pixel data.
+	 * @throw GardenError on image data conversion error.
+	 */
+	static const void* convertFormat(const void* srcPixels, uint2 size, 
+		vector<uint8>& dstPixels, Format srcFormat, Format dstFormat);
+
+	/**
+	 * @brief Loads image pixels from the specified file data.
+	 * @throw GardenError on image data loading error.
+	 * 
+	 * @param[in] data image file binary data
+	 * @param dataSize image file data size in bytes
+	 * @param[out] pixels loaded image pixel data
+	 * @param[out] imageSize loaded image size in pixels
+	 * @param fileType image file container type
+	 * @param[in,out] imageFormat image data format or undefined
+	 */
+	static void loadFileData(const void* data, psize dataSize, vector<uint8>& pixels, 
+		uint2& imageSize, FileType fileType, Format& imageFormat);
+	/**
+	 * @brief Writes image pixels to the specified file.
+	 * @throw GardenError on image data writing error.
+	 *
+	 * @param[in] path target image file path
+	 * @param[in] pixels image pixel data
+	 * @param size image size in pixels
+	 * @param fileType image file container type
+	 * @param imageFormat image pixel data format
+	 * @param quality image quality (0.0 - 1.0)
+	 */
+	static void writeFileData(const fs::path& path, const void* pixels, 
+		uint2 size, FileType fileType, Format imageFormat, float quality = 1.0f);
 };
 
 DECLARE_ENUM_CLASS_FLAG_OPERATORS(Image::Usage)
@@ -1021,7 +1075,7 @@ static constexpr bool isFormatFloat(Image::Format formatType)
  */
 static constexpr bool isFormatSrgb(Image::Format formatType)
 {
-	return Image::Format::SrgbR8G8B8A8 <= formatType && formatType <= Image::Format::SrgbA8B8G8R8;
+	return Image::Format::SrgbR8 <= formatType && formatType <= Image::Format::SrgbA8B8G8R8;
 }
 
 /***********************************************************************************************************************
@@ -1088,6 +1142,8 @@ static constexpr psize toBinarySize(Image::Format imageFormat) noexcept
 		case Image::Format::UfloatB10G11R11: return 4;
 		case Image::Format::UfloatE5B9G9R9: return 4;
 
+		case Image::Format::SrgbR8: return 1;
+		case Image::Format::SrgbR8G8: return 2;
 		case Image::Format::SrgbR8G8B8A8: return 4;
 		case Image::Format::SrgbB8G8R8A8: return 4;
 		case Image::Format::SrgbA8B8G8R8: return 4;
@@ -1124,6 +1180,7 @@ static constexpr psize toComponentCount(Image::Format imageFormat) noexcept
 		case Image::Format::SfloatR32:
 		case Image::Format::UnormD16:
 		case Image::Format::SfloatD32:
+		case Image::Format::SrgbR8:
 		case Image::Format::UintS8:
 			return 1;
 		case Image::Format::UintR8G8:
@@ -1138,6 +1195,7 @@ static constexpr psize toComponentCount(Image::Format imageFormat) noexcept
 		case Image::Format::SnormR16G16:
 		case Image::Format::SfloatR16G16:
 		case Image::Format::SfloatR32G32:
+		case Image::Format::SrgbR8G8:
 		case Image::Format::UnormD24UintS8:
 		case Image::Format::SfloatD32UintS8:
 			return 2;
@@ -1304,7 +1362,7 @@ constexpr const char* imageFormatNames[(psize)Image::Format::Count] =
 
 	"UfloatB10G11R11", "UfloatE5B9G9R9", 
 
-	"SrgbR8G8B8A8", "SrgbB8G8R8A8", "SrgbA8B8G8R8", 
+	"SrgbR8", "SrgbR8G8", "SrgbR8G8B8A8", "SrgbB8G8R8A8", "SrgbA8B8G8R8", 
 
 	"UnormD16", "SfloatD32", "UintS8", "UnormD24UintS8", "SfloatD32UintS8"
 };
@@ -1326,6 +1384,26 @@ static string_view toString(Image::Format imageFormat) noexcept
 {
 	GARDEN_ASSERT(imageFormat < Image::Format::Count);
 	return imageFormatNames[(psize)imageFormat];
+}
+
+/**
+ * @brief Returns image file type.
+ * @param name target file type name
+ * @throw GardenError on unknown image file type.
+ */
+static Image::FileType toImageFileType(string_view name)
+{
+	if (name == "webp") return Image::FileType::WebP;
+	if (name == "png") return Image::FileType::PNG;
+	if (name == "jpg" || name == "jpeg") return Image::FileType::JPEG;
+	if (name == "exr") return Image::FileType::EXR;
+	if (name == "hdr") return Image::FileType::HDR;
+	if (name == "bmp") return Image::FileType::BMP;
+	if (name == "psd") return Image::FileType::PSD;
+	if (name == "tga") return Image::FileType::TGA;
+	if (name == "pic") return Image::FileType::PIC;
+	if (name == "gif") return Image::FileType::GIF;
+	throw GardenError("Unknown image file type. (name: " + string(name) + ")");
 }
 
 /***********************************************************************************************************************
@@ -1502,34 +1580,5 @@ public:
 	 */
 	static bool& isDefault(ImageView& imageView) noexcept { return imageView._default; }
 };
-
-/**
- * @brief Converts floating point value to the B10G11R11 value.
- *
- * @param value target floating point value
- * @param bits packed mantissa bit count
- * @param mask packed mantissa mask
- */
-static uint32 encodeB10G11R11(float value, uint32 bits, uint32 mask) noexcept
-{
-	// TODO use here simd vector instead, it all can be ported.
-	auto valueBits = *(const uint32*)&value;
-	auto exponent = (int32)((valueBits >> 23u) & 0xFFu) - 127 + 15; 
-	if (exponent <= 0) return 0; // 5-bit exponent bias 15
-	auto mantissa = (valueBits >> 12u) & mask;
-	return (exponent << bits) | mantissa;
-}
-/**
- * @brief Converts 3D floating point vector to the B10G11R11 value.
- * @param rgb target 3D floating point vector
- */
-static uint32 encodeB10G11R11(f32x4 rgb) noexcept
-{
-	rgb = clamp(rgb, f32x4::zero, f32x4(FLOAT_BIG_16));
-	auto r = encodeB10G11R11(rgb.getX(), 6, 0b111111);
-	auto g = encodeB10G11R11(rgb.getY(), 6, 0b111111);
-	auto b = encodeB10G11R11(rgb.getZ(), 5, 0b11111);
-	return (b << 22u) | (g << 11u) | r;
-}
 
 } // namespace garden::graphics

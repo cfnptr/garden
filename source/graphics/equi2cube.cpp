@@ -13,18 +13,7 @@
 // limitations under the License.
 
 #include "garden/graphics/equi2cube.hpp"
-#include "garden/thread-pool.hpp"
 #include "garden/file.hpp"
-#include "png.h"
-
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
-
-#define STB_IMAGE_WRITE_IMPLEMENTATION
-#include "stb_image_write.h"
-
-#include <ImfRgbaFile.h>
-#include <ImfArray.h>
 
 #include <atomic>
 #include <iostream>
@@ -32,96 +21,6 @@
 using namespace garden;
 using namespace garden::graphics;
 using namespace math::ibl;
-
-//**********************************************************************************************************************
-namespace
-{
-	class ExrMemoryStream final : public Imf::IStream
-	{
-		vector<uint8> fileData;
-		uint64 dataPos = 0;
-	public:
-		ExrMemoryStream(vector<uint8>&& fileData) : 
-			Imf::IStream("memory"), fileData(std::move(fileData)) { }
-		~ExrMemoryStream() override { }
-
-		bool isMemoryMapped() const override { return true; }
-
-		bool read(char c[/*n*/], int n) override
-		{
-			if (dataPos + n >= fileData.size())
-				throw runtime_error("Out of EXR file bounds.");
-			memcpy(c, fileData.data(), n); dataPos += n;
-			return dataPos != fileData.size();
-		}
-		char* readMemoryMapped(int n) override
-		{
-			if (dataPos + n >= fileData.size())
-				throw runtime_error("Out of EXR file bounds.");
-			auto memory = (char*)fileData.data() + dataPos; dataPos += n;
-			return memory;
-		}
-
-		uint64_t tellg() override { return dataPos; }
-		void seekg(uint64_t pos) override { dataPos = pos; }
-		void clear() override { }
-
-		/* TODO: uncomment when will be widely supported.
-
-		int64_t size() override { return (int64_t)fileData.size(); }
-		bool isStatelessRead() const override { return true; }
-
-		int64_t read(void* buf, uint64_t sz, uint64_t offset) override
-		{
-			if (offset >= fileData.size())
-				return 0;
-			auto remaining = fileData.size() - offset;
-    		auto bytesToRead = (sz < remaining) ? sz : remaining;
-			memcpy(buf, fileData.data() + offset, bytesToRead);
-			return bytesToRead;
-		}
-		*/
-	};
-}
-
-//**********************************************************************************************************************
-static f32x4 imfToRgb(Imf::Rgba imf) noexcept { return f32x4(imf.r, imf.g, imf.b, imf.a); }
-static Imf::Rgba rgbToImf(f32x4 rgb) noexcept { return Imf::Rgba(rgb.getX(), rgb.getY(), rgb.getZ(), rgb.getW()); }
-
-static Imf::Rgba filterCubeMap(float2 coords, const Imf::Rgba* pixels, uint2 sizeMinus1, uint32 sizeX) noexcept
-{
-	auto coords0 = min((uint2)coords, sizeMinus1);
-	auto coords1 = min(coords0 + uint2::one, sizeMinus1);
-	auto uv = coords - coords0, invUV = 1.0f - uv;
-
-	auto s0 = imfToRgb(pixels[coords0.y * sizeX + coords0.x]);
-	auto s1 = imfToRgb(pixels[coords0.y * sizeX + coords1.x]);
-	auto s2 = imfToRgb(pixels[coords1.y * sizeX + coords0.x]);
-	auto s3 = imfToRgb(pixels[coords1.y * sizeX + coords1.x]);
-
-	return rgbToImf(fma(s0, f32x4(invUV.x * invUV.y), fma(s1, f32x4(uv.x * invUV.y),
-		fma(s2, f32x4(invUV.x * uv.y), s3 * (uv.x * uv.y)))));
-}
-static void convert(Imf::Rgba** cubeFaces, uint32 cubemapSize, uint2 equiSize,
-	uint2 equiSizeMinus1, const Imf::Rgba* equiPixels, float invDim) noexcept
-{
-	for (uint32 face = 0; face < Image::cubemapFaceCount; face++)
-	{
-		auto cubePixels = cubeFaces[face];
-		for (uint32 y = 0; y < cubemapSize; y++)
-		{
-			for (uint32 x = 0; x < cubemapSize; x++)
-			{
-				auto coords = uint3(x, y, face);
-				auto dir = ibl::coordsToDir(coords, invDim);
-				auto uv = ibl::toSphericalMapUV(dir);
-
-				cubePixels[coords.y * cubemapSize + coords.x] = filterCubeMap(
-					uv * equiSize, equiPixels, equiSizeMinus1, equiSize.x);
-			}
-		}
-	}
-}
 
 #if GARDEN_DEBUG || defined(EQUI2CUBE)
 //**********************************************************************************************************************
@@ -139,6 +38,20 @@ f32x4 Equi2Cube::filterCubeMap(float2 coords, const f32x4* pixels, uint2 sizeMin
 	return fma(s0, f32x4(invUV.x * invUV.y), fma(s1, f32x4(uv.x * invUV.y),
 		fma(s2, f32x4(invUV.x * uv.y), s3 * (uv.x * uv.y))));
 }
+f16x4 Equi2Cube::filterCubeMap(float2 coords, const f16x4* pixels, uint2 sizeMinus1, uint32 sizeX) noexcept
+{
+	auto coords0 = min((uint2)coords, sizeMinus1);
+	auto coords1 = min(coords0 + uint2::one, sizeMinus1);
+	auto uv = coords - coords0, invUV = 1.0f - uv;
+
+	auto s0 = f32x4(pixels[coords0.y * sizeX + coords0.x]);
+	auto s1 = f32x4(pixels[coords0.y * sizeX + coords1.x]);
+	auto s2 = f32x4(pixels[coords1.y * sizeX + coords0.x]);
+	auto s3 = f32x4(pixels[coords1.y * sizeX + coords1.x]);
+
+	return f16x4(min(fma(s0, f32x4(invUV.x * invUV.y), fma(s1, f32x4(uv.x * invUV.y),
+		fma(s2, f32x4(invUV.x * uv.y), s3 * (uv.x * uv.y)))), f32x4(FLOAT_BIG_16)));
+}
 Color Equi2Cube::filterCubeMap(float2 coords, const Color* pixels, uint2 sizeMinus1, uint32 sizeX) noexcept
 {
 	auto coords0 = min((uint2)coords, sizeMinus1);
@@ -154,155 +67,104 @@ Color Equi2Cube::filterCubeMap(float2 coords, const Color* pixels, uint2 sizeMin
 		f32x4(uv.x * invUV.y), fma(s2, f32x4(invUV.x * uv.y), s3 * (uv.x * uv.y)))));
 }
 
-void Equi2Cube::writeExrImageData(const fs::path& filePath, uint32 size, 
-	const vector<uint8>& data, Image::Format imageForamt)
-{
-	GARDEN_ASSERT(!filePath.empty());
-	GARDEN_ASSERT(size > 0);
-	GARDEN_ASSERT(!data.empty());
-
-	const Imf::Rgba* pixels = nullptr;
-	vector<uint8> buffer;
-
-	if (imageForamt == Image::Format::SfloatR16G16B16A16)
-	{
-		pixels = (const Imf::Rgba*)data.data();
-	}
-	else if (imageForamt == Image::Format::SfloatR32G32B32A32)
-	{
-		auto pixelCount = (psize)size * size;
-		buffer.resize(pixelCount * 8);
-		auto pixels32 = (float4*)data.data();
-		auto pixels16 = (Imf::Rgba*)buffer.data();
-
-		for (psize i = 0; i < pixelCount; i++)
-		{
-			auto p = pixels32[i];
-			pixels16[i] = Imf::Rgba(p.x, p.y, p.z, p.w);
-		}
-		pixels = pixels16;
-	}
-	else
-	{
-		throw GardenError("Unsupported EXR image format. ("
-			"path: " + filePath.generic_string() + ")");
-	}
-
-	try
-	{
-		Imf::RgbaOutputFile file(filePath.generic_string().c_str(), size, size, Imf::WRITE_RGBA);
-		file.setFrameBuffer(pixels, 1, size);
-		file.writePixels(size);
-	}
-	catch (exception& e)
-	{
-		throw GardenError("Failed to store EXR image. ("
-			"path: " + filePath.generic_string() + ", error: " + string(e.what()) + ")");
-	}
-}
-
 //******************************************************************************************************************
-bool Equi2Cube::convertImage(const fs::path& filePath, const fs::path& inputPath, const fs::path& outputPath)
+bool Equi2Cube::convertImage(const fs::path& filePath, const fs::path& inputPath, 
+	const fs::path& outputPath, ThreadPool* threadPool)
 {	
 	GARDEN_ASSERT(!filePath.empty());
 	GARDEN_ASSERT(!inputPath.empty());
 	GARDEN_ASSERT(!outputPath.empty());
 
-	auto path = inputPath / filePath;
-	vector<uint8> dataBuffer;
-
+	auto path = inputPath / filePath; vector<uint8> dataBuffer;
 	if (!File::tryLoadBinary(path, dataBuffer))
 		return false;
 
-	auto extension = filePath.extension(); uint8* equiPixels = nullptr;
-	int sizeX = 0, sizeY = 0, binarySize = 0; Image::Format imageFormat = {};
+	auto extension = filePath.extension();
+	GARDEN_ASSERT(!extension.empty());
+	auto imageFormat = Image::Format::Undefined;
+	vector<uint8> equiPixels; uint2 equiSize = uint2::zero; 
 
-	if (extension == ".exr")
+	try
 	{
-		try
-		{
-			ExrMemoryStream exrStream(std::move(dataBuffer));
-			Imf::RgbaInputFile exrFile(exrStream);
-		
-			auto dw = exrFile.dataWindow();
-			sizeX = dw.max.x - dw.min.x + 1;
-			sizeY = dw.max.y - dw.min.y + 1;
-			imageFormat = Image::Format::SfloatR16G16B16A16;
-			binarySize = 8;
+		Image::loadFileData(dataBuffer.data(), dataBuffer.size(), equiPixels, equiSize, 
+			toImageFileType(extension.generic_string().c_str() + 1), imageFormat);
+	}
+	catch (exception& e)
+	{
+		throw GardenError("Failed to load equi image data. (path: " + 
+			filePath.generic_string() + ", error: " + string(e.what()) + ")");
+	}
 
-			equiPixels = malloc<uint8>((psize)sizeX * sizeY * binarySize);
-			exrFile.setFrameBuffer((Imf::Rgba*)equiPixels - dw.min.x - dw.min.y * sizeX, 1, sizeX);
-			exrFile.readPixels(dw.min.y, dw.max.y);
-		}
-		catch (exception& e)
-		{
-			free(equiPixels);
-			throw GardenError("Failed to load EXR image. ("
-				"path: " + filePath.generic_string() + ", error: " + string(e.what()) + ")");
-		}
-	}
-	else if (extension == ".hdr")
-	{
-		equiPixels = (uint8*)stbi_loadf_from_memory(dataBuffer.data(),
-			(int)dataBuffer.size(), &sizeX, &sizeY, nullptr, 4);
-		if (!equiPixels)
-			throw GardenError("Failed to load HDR image. (path: " + filePath.generic_string() + ")");
-		imageFormat = Image::Format::SfloatR32G32B32A32;
-		binarySize = 16;
-	}
-	else
-	{
-		throw GardenError("Unsupported image file extension. ("
-			"path: " + filePath.generic_string() + ")");
-	}
-	// TODO: also convert png/jpg cubemaps.
-
-	auto equiSize = uint2((uint32)sizeX, (uint32)sizeY);
 	auto cubemapSize = equiSize.x / 4;
-
 	if (equiSize.x / 2 != equiSize.y || cubemapSize % 32 != 0)
-	{
-		free(equiPixels);
 		throw GardenError("Image is not a cubemap. (path: " + filePath.generic_string() + ")");
-	}
 
-	auto invDim = 1.0f / cubemapSize;
-	auto equiSizeMinus1 = equiSize - 1u;
-	auto pixelsSize = (psize)cubemapSize * cubemapSize * binarySize;
-
-	vector<uint8> left(pixelsSize), right(pixelsSize), bottom(pixelsSize),
-		top(pixelsSize), back(pixelsSize), front(pixelsSize);
+	auto invDim = 1.0f / cubemapSize; auto equiSizeMinus1 = equiSize - 1u;
+	auto pixelsSize = (psize)cubemapSize * cubemapSize * toBinarySize(imageFormat);
+	vector<uint8> nx(pixelsSize), px(pixelsSize), ny(pixelsSize), py(pixelsSize), nz(pixelsSize), pz(pixelsSize);
 
 	if (imageFormat == Image::Format::SfloatR16G16B16A16)
 	{
-		Imf::Rgba* cubeFaces[6] =
+		f16x4* cubeFaces[6] =
 		{
-			(Imf::Rgba*)left.data(), (Imf::Rgba*)right.data(), (Imf::Rgba*)bottom.data(), 
-			(Imf::Rgba*)top.data(), (Imf::Rgba*)back.data(), (Imf::Rgba*)front.data(),
+			(f16x4*)nx.data(), (f16x4*)px.data(), (f16x4*)ny.data(), 
+			(f16x4*)py.data(), (f16x4*)nz.data(), (f16x4*)pz.data(),
 		};
-		::convert(cubeFaces, cubemapSize, equiSize, equiSizeMinus1, (Imf::Rgba*)equiPixels, invDim);
+		convert(cubeFaces, cubemapSize, equiSize, equiSizeMinus1, (f16x4*)equiPixels.data(), invDim);
 	}
 	else if (imageFormat == Image::Format::SfloatR32G32B32A32)
 	{
 		f32x4* cubeFaces[6] =
 		{
-			(f32x4*)left.data(), (f32x4*)right.data(), (f32x4*)bottom.data(), 
-			(f32x4*)top.data(), (f32x4*)back.data(), (f32x4*)front.data(),
+			(f32x4*)nx.data(), (f32x4*)px.data(), (f32x4*)ny.data(), 
+			(f32x4*)py.data(), (f32x4*)nz.data(), (f32x4*)pz.data(),
 		};
-		convert(cubeFaces, cubemapSize, equiSize, equiSizeMinus1, (f32x4*)equiPixels, invDim);
+		convert(cubeFaces, cubemapSize, equiSize, equiSizeMinus1, (f32x4*)equiPixels.data(), invDim);
 	}
-	else abort();
-	free(equiPixels);
+	else if (imageFormat == Image::Format::SrgbR8G8B8A8)
+	{
+		Color* cubeFaces[6] =
+		{
+			(Color*)nx.data(), (Color*)px.data(), (Color*)ny.data(), 
+			(Color*)py.data(), (Color*)nz.data(), (Color*)pz.data(),
+		};
+		convert(cubeFaces, cubemapSize, equiSize, equiSizeMinus1, (Color*)equiPixels.data(), invDim);
+	}
+	else throw GardenError("Unsupported equi image data format.");
+	equiPixels = {}; // Cleaning up memory.
 
-	auto cacheFilePath = (outputPath / filePath).generic_string();
-	cacheFilePath.resize(cacheFilePath.length() - 4);
+	auto imageSize = uint2(cubemapSize);
+	static constexpr auto fileType = Image::FileType::EXR;
+	auto exrFilePath = (outputPath / filePath).generic_string();
+	exrFilePath.resize(exrFilePath.length() - 4);
+	fs::create_directories(outputPath);
 
-	writeExrImageData(cacheFilePath + "-nx.exr", cubemapSize, left, imageFormat);
-	writeExrImageData(cacheFilePath + "-px.exr", cubemapSize, right, imageFormat);
-	writeExrImageData(cacheFilePath + "-ny.exr", cubemapSize, bottom, imageFormat);
-	writeExrImageData(cacheFilePath + "-py.exr", cubemapSize, top, imageFormat);
-	writeExrImageData(cacheFilePath + "-nz.exr", cubemapSize, back, imageFormat);
-	writeExrImageData(cacheFilePath + "-pz.exr", cubemapSize, front, imageFormat);
+	if (threadPool)
+	{
+		threadPool->addTasks([&](const ThreadPool::Task& task)
+		{
+			switch (task.getTaskIndex())
+			{
+				case 0: Image::writeFileData(exrFilePath + "-nx.exr", nx.data(), imageSize, fileType, imageFormat); break;
+				case 1: Image::writeFileData(exrFilePath + "-px.exr", px.data(), imageSize, fileType, imageFormat); break;
+				case 2: Image::writeFileData(exrFilePath + "-ny.exr", ny.data(), imageSize, fileType, imageFormat); break;
+				case 3: Image::writeFileData(exrFilePath + "-py.exr", py.data(), imageSize, fileType, imageFormat); break;
+				case 4: Image::writeFileData(exrFilePath + "-nz.exr", nz.data(), imageSize, fileType, imageFormat); break;
+				case 5: Image::writeFileData(exrFilePath + "-pz.exr", pz.data(), imageSize, fileType, imageFormat); break;
+				default: abort();
+			}
+		}, Image::cubemapFaceCount);
+		threadPool->wait();
+	}
+	else
+	{
+		Image::writeFileData(exrFilePath + "-nx.exr", nx.data(), imageSize, fileType, imageFormat);
+		Image::writeFileData(exrFilePath + "-px.exr", px.data(), imageSize, fileType, imageFormat);
+		Image::writeFileData(exrFilePath + "-ny.exr", ny.data(), imageSize, fileType, imageFormat);
+		Image::writeFileData(exrFilePath + "-py.exr", py.data(), imageSize, fileType, imageFormat);
+		Image::writeFileData(exrFilePath + "-nz.exr", nz.data(), imageSize, fileType, imageFormat);
+		Image::writeFileData(exrFilePath + "-pz.exr", pz.data(), imageSize, fileType, imageFormat);
+	}
 	return true;
 }
 #endif

@@ -32,7 +32,7 @@ using namespace ecsm;
 struct Font final
 {
 	vector<void*> faces;
-	uint8* data = nullptr;
+	vector<uint8> data;
 
 	bool destroy();
 };

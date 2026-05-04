@@ -65,6 +65,7 @@ bool Json2Bson::convertFile(const fs::path& filePath, const fs::path& inputPath,
 	}
 
 	auto binaryData = json::to_bson(textData);
+	textData = {}; // Cleaning up memory.
 
 	auto outputFilePath = outputPath / filePath;
 	auto outputDirectory = outputFilePath.parent_path();

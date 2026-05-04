@@ -15,6 +15,21 @@
 #include "garden/graphics/image.hpp"
 #include "garden/graphics/vulkan/api.hpp"
 
+#include "webp/decode.h"
+#include "webp/encode.h"
+#include "png.h"
+
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"
+
+#include "ImfRgbaFile.h"
+#include "ImfInputFile.h"
+
+#include <fstream>
+
 using namespace math;
 using namespace garden;
 using namespace garden::graphics;
@@ -904,6 +919,850 @@ void Image::setDebugName(const string& name)
 	else abort();
 }
 #endif
+
+//**********************************************************************************************************************
+template<typename S, typename D>
+static void convertPixels(const void* src, vector<uint8>& dst, psize count) noexcept
+{
+	dst.resize(count * sizeof(D));
+	auto dstPixels = (D*)dst.data();
+	auto srcPixels = (const S*)src;
+
+	for (psize i = 0; i < count; i++)
+		dstPixels[i] = (D)srcPixels[i];
+}
+template<typename S, typename D, S MAX_VALUE>
+static void convertPixelsMin(const void* src, vector<uint8>& dst, psize count) noexcept
+{
+	dst.resize(count * sizeof(D));
+	auto dstPixels = (D*)dst.data();
+	auto srcPixels = (const S*)src;
+
+	for (psize i = 0; i < count; i++)
+		dstPixels[i] = (D)std::min(srcPixels[i], MAX_VALUE);
+}
+template<typename S, typename D>
+static void convertPixelsMin(const void* src, vector<uint8>& dst, psize count, S minValue) noexcept
+{
+	dst.resize(count * sizeof(D));
+	auto dstPixels = (D*)dst.data();
+	auto srcPixels = (const S*)src;
+
+	for (psize i = 0; i < count; i++)
+		dstPixels[i] = (D)std::min(srcPixels[i], minValue);
+}
+template<typename S, typename D, S MIN_VALUE>
+static void convertPixelsMax(const void* src, vector<uint8>& dst, psize count) noexcept
+{
+	dst.resize(count * sizeof(D));
+	auto dstPixels = (D*)dst.data();
+	auto srcPixels = (const S*)src;
+
+	for (psize i = 0; i < count; i++)
+		dstPixels[i] = (D)std::max(srcPixels[i], MIN_VALUE);
+}
+template<typename S, typename D, S MIN_VALUE, S MAX_VALUE>
+static void convertPixelsClamp(const void* src, vector<uint8>& dst, psize count) noexcept
+{
+	dst.resize(count * sizeof(D));
+	auto dstPixels = (D*)dst.data();
+	auto srcPixels = (const S*)src;
+
+	for (psize i = 0; i < count; i++)
+		dstPixels[i] = (D)std::clamp(srcPixels[i], MIN_VALUE, MAX_VALUE);
+}
+template<typename S, typename D, S SRC_MAX_VALUE, D DST_MAX_VALUE>
+static void convertPixelsUnorm(const void* src, vector<uint8>& dst, psize count) noexcept
+{
+	dst.resize(count * sizeof(D));
+	auto dstPixels = (D*)dst.data();
+	auto srcPixels = (const S*)src;
+
+	static constexpr float mul = (float)((1.0 / SRC_MAX_VALUE) * DST_MAX_VALUE);
+	for (psize i = 0; i < count; i++)
+		dstPixels[i] = (D)(srcPixels[i] * mul + 0.5f);
+}
+template<typename S, typename D, S MAX_VALUE>
+static void convertPixelsToFloat(const void* src, vector<uint8>& dst, psize count) noexcept
+{
+	dst.resize(count * sizeof(D));
+	auto dstPixels = (D*)dst.data();
+	auto srcPixels = (const S*)src;
+
+	static constexpr float mul = 1.0f / MAX_VALUE;
+	for (psize i = 0; i < count; i++)
+		dstPixels[i] = (D)(srcPixels[i] * mul);
+}
+template<typename S, typename D, D MAX_VALUE>
+static void convertPixelsFromFloat(const void* src, vector<uint8>& dst, psize count) noexcept
+{
+	dst.resize(count * sizeof(D));
+	auto dstPixels = (D*)dst.data();
+	auto srcPixels = (const S*)src;
+
+	static constexpr float mul = 1.0f / MAX_VALUE;
+	for (psize i = 0; i < count; i++)
+		dstPixels[i] = (D)(std::clamp((float)srcPixels[i], 0.0f, 1.0f) * MAX_VALUE + 0.5f);
+}
+static void convertPixelsToSrgb(const void* src, vector<uint8>& dst, psize count) noexcept
+{
+	dst.resize(count * sizeof(uint8));
+	count /= sizeof(Color);
+	auto dstPixels = (Color*)dst.data();
+	auto srcPixels = (const Color*)src;
+
+	for (psize i = 0; i < count; i++)
+		dstPixels[i] = (Color)rgbToSrgb((f32x4)srcPixels[i]);
+}
+static void convertPixelsFromSrgb(const void* src, vector<uint8>& dst, psize count) noexcept
+{
+	dst.resize(count * sizeof(uint8));
+	count /= sizeof(Color);
+	auto dstPixels = (Color*)dst.data();
+	auto srcPixels = (const Color*)src;
+
+	for (psize i = 0; i < count; i++)
+		dstPixels[i] = (Color)srgbToRgb((f32x4)srcPixels[i]);
+}
+
+//**********************************************************************************************************************
+const void* Image::convertFormat(const void* src, uint2 size, 
+	vector<uint8>& dst, Format srcFormat, Format dstFormat)
+{
+	GARDEN_ASSERT(src);
+	GARDEN_ASSERT(areAllTrue(size > uint2::zero));
+
+	if (srcFormat == dstFormat)
+		return src;
+
+	auto dstData = dst.data();
+	auto count = (psize)size.x * size.y * toComponentCount(srcFormat);
+
+	switch (srcFormat)
+	{
+	case Format::UintR8: case Format::UintS8:
+		switch (dstFormat)
+		{
+			case Format::UintR16: convertPixels<uint8, uint16>(src, dst, count); break;
+			case Format::UintR32: convertPixels<uint8, uint32>(src, dst, count); break;
+			case Format::SintR8: convertPixelsMin<uint8, int8, INT8_MAX>(src, dst, count); break;
+			case Format::SintR16: convertPixels<uint8, int16>(src, dst, count); break;
+			case Format::SintR32: convertPixels<uint8, int32>(src, dst, count); break;
+			case Format::SrgbR8: convertPixelsToSrgb(src, dst, count); break;
+			case Format::UintR8: case Format::UintS8: return dstData;
+			default: throw GardenError("Unsupported image formats conversion.");
+		}
+		break;
+	case Format::UintR8G8:
+		switch (dstFormat)
+		{
+			case Format::UintR16G16: convertPixels<uint8, uint16>(src, dst, count); break;
+			case Format::UintR32G32: convertPixels<uint8, uint32>(src, dst, count); break;
+			case Format::SintR8G8: convertPixelsMin<uint8, int8, INT8_MAX>(src, dst, count); break;
+			case Format::SintR16G16: convertPixels<uint8, int16>(src, dst, count); break;
+			case Format::SintR32G32: convertPixels<uint8, int32>(src, dst, count); break;
+			case Format::SrgbR8G8: convertPixelsToSrgb(src, dst, count); break;
+			default: throw GardenError("Unsupported image formats conversion.");
+		}
+		break;
+	case Format::UintR8G8B8A8:
+		switch (dstFormat)
+		{
+			case Format::UintR16G16B16A16: convertPixels<uint8, uint16>(src, dst, count); break;
+			case Format::UintR32G32B32A32: convertPixels<uint8, uint32>(src, dst, count); break;
+			case Format::SintR8G8B8A8: convertPixelsMin<uint8, int8, INT8_MAX>(src, dst, count); break;
+			case Format::SintR16G16B16A16: convertPixels<uint8, int16>(src, dst, count); break;
+			case Format::SintR32G32B32A32: convertPixels<uint8, int32>(src, dst, count); break;
+			case Format::SrgbR8G8B8A8: convertPixelsToSrgb(src, dst, count); break;
+			default: throw GardenError("Unsupported image formats conversion.");
+		}
+		break;
+
+	case Format::UintR16:
+		switch (dstFormat)
+		{
+			case Format::UintR8: convertPixelsMin<uint16, uint8, UINT8_MAX>(src, dst, count); break;
+			case Format::UintR32: convertPixels<uint16, uint32>(src, dst, count); break;
+			case Format::SintR8: convertPixelsMin<uint16, int8, INT8_MAX>(src, dst, count); break;
+			case Format::SintR16: convertPixelsMin<uint16, int16, INT16_MAX>(src, dst, count); break;
+			case Format::SintR32: convertPixels<uint16, int32>(src, dst, count); break;
+			default: throw GardenError("Unsupported image formats conversion.");
+		}
+		break;
+	case Format::UintR16G16:
+		switch (dstFormat)
+		{
+			case Format::UintR8G8: convertPixelsMin<uint16, uint8, UINT8_MAX>(src, dst, count); break;
+			case Format::UintR32G32: convertPixels<uint16, uint32>(src, dst, count); break;
+			case Format::SintR8G8: convertPixelsMin<uint16, int8, INT8_MAX>(src, dst, count); break;
+			case Format::SintR16G16: convertPixelsMin<uint16, int16, INT16_MAX>(src, dst, count); break;
+			case Format::SintR32G32: convertPixels<uint16, int32>(src, dst, count); break;
+			default: throw GardenError("Unsupported image formats conversion.");
+		}
+		break;
+	case Format::UintR16G16B16A16:
+		switch (dstFormat)
+		{
+			case Format::UintR8G8B8A8: convertPixelsMin<uint16, uint8, UINT8_MAX>(src, dst, count); break;
+			case Format::UintR32G32B32A32: convertPixels<uint16, uint32>(src, dst, count); break;
+			case Format::SintR8G8B8A8: convertPixelsMin<uint16, int8, INT8_MAX>(src, dst, count); break;
+			case Format::SintR16G16B16A16: convertPixelsMin<uint16, int16, INT16_MAX>(src, dst, count); break;
+			case Format::SintR32G32B32A32: convertPixels<uint16, int32>(src, dst, count); break;
+			default: throw GardenError("Unsupported image formats conversion.");
+		}
+		break;
+
+	case Format::UintR32:
+		switch (dstFormat)
+		{
+			case Format::UintR8: convertPixelsMin<uint32, uint8, UINT8_MAX>(src, dst, count); break;
+			case Format::UintR16: convertPixelsMin<uint32, uint16, UINT16_MAX>(src, dst, count); break;
+			case Format::SintR8: convertPixelsMin<uint32, int8, INT8_MAX>(src, dst, count); break;
+			case Format::SintR16: convertPixelsMin<uint32, int16, INT16_MAX>(src, dst, count); break;
+			case Format::SintR32: convertPixelsMin<uint32, int32, INT32_MAX>(src, dst, count); break;
+			default: throw GardenError("Unsupported image formats conversion.");
+		}
+		break;
+	case Format::UintR32G32:
+		switch (dstFormat)
+		{
+			case Format::UintR8G8: convertPixelsMin<uint32, uint8, UINT8_MAX>(src, dst, count); break;
+			case Format::UintR16G16: convertPixelsMin<uint32, uint16, UINT16_MAX>(src, dst, count); break;
+			case Format::SintR8G8: convertPixelsMin<uint32, int8, INT8_MAX>(src, dst, count); break;
+			case Format::SintR16G16: convertPixelsMin<uint32, int16, INT16_MAX>(src, dst, count); break;
+			case Format::SintR32G32: convertPixelsMin<uint32, int32, INT32_MAX>(src, dst, count); break;
+			default: throw GardenError("Unsupported image formats conversion.");
+		}
+		break;
+	case Format::UintR32G32B32A32:
+		switch (dstFormat)
+		{
+			case Format::UintR8G8B8A8: convertPixelsMin<uint32, uint8, UINT8_MAX>(src, dst, count); break;
+			case Format::UintR16G16B16A16: convertPixelsMin<uint32, uint16, UINT16_MAX>(src, dst, count); break;
+			case Format::SintR8G8B8A8: convertPixelsMin<uint32, int8, INT8_MAX>(src, dst, count); break;
+			case Format::SintR16G16B16A16: convertPixelsMin<uint32, int16, INT16_MAX>(src, dst, count); break;
+			case Format::SintR32G32B32A32: convertPixelsMin<uint32, int32, INT32_MAX>(src, dst, count); break;
+			default: throw GardenError("Unsupported image formats conversion.");
+		}
+		break;
+
+	case Format::UintA2R10G10B10: throw GardenError("Not implemented yet!");
+	case Format::UintA2B10G10R10: throw GardenError("Not implemented yet!");
+
+	case Format::SintR8:
+		switch (dstFormat)
+		{
+			case Format::SintR16: convertPixels<int8, int16>(src, dst, count); break;
+			case Format::SintR32: convertPixels<int8, int32>(src, dst, count); break;
+			case Format::UintR8: convertPixelsMax<int8, uint8, 0>(src, dst, count); break;
+			case Format::UintR16: convertPixelsMax<int8, uint16, 0>(src, dst, count); break;
+			case Format::UintR32: convertPixelsMax<int8, uint32, 0>(src, dst, count); break;
+			default: throw GardenError("Unsupported image formats conversion.");
+		}
+		break;
+	case Format::SintR8G8:
+		switch (dstFormat)
+		{
+			case Format::SintR16G16: convertPixels<int8, int16>(src, dst, count); break;
+			case Format::SintR32G32: convertPixels<int8, int32>(src, dst, count); break;
+			case Format::UintR8G8: convertPixelsMax<int8, uint8, 0>(src, dst, count); break;
+			case Format::UintR16G16: convertPixelsMax<int8, uint16, 0>(src, dst, count); break;
+			case Format::UintR32G32: convertPixelsMax<int8, uint32, 0>(src, dst, count); break;
+			default: throw GardenError("Unsupported image formats conversion.");
+		}
+		break;
+	case Format::SintR8G8B8A8:
+		switch (dstFormat)
+		{
+			case Format::SintR16G16B16A16: convertPixels<int8, int16>(src, dst, count); break;
+			case Format::SintR32G32B32A32: convertPixels<int8, int32>(src, dst, count); break;
+			case Format::UintR8G8B8A8: convertPixelsMax<int8, uint8, 0>(src, dst, count); break;
+			case Format::UintR16G16B16A16: convertPixelsMax<int8, uint16, 0>(src, dst, count); break;
+			case Format::UintR32G32B32A32: convertPixelsMax<int8, uint32, 0>(src, dst, count); break;
+			default: throw GardenError("Unsupported image formats conversion.");
+		}
+		break;
+
+	case Format::SintR16:
+		switch (dstFormat)
+		{
+			case Format::SintR8: convertPixelsClamp<int16, int8, INT8_MIN, INT8_MAX>(src, dst, count); break;
+			case Format::SintR32: convertPixels<int16, int32>(src, dst, count); break;
+			case Format::UintR8: convertPixelsClamp<int16, uint8, 0, UINT8_MAX>(src, dst, count); break;
+			case Format::UintR16: convertPixelsMax<int16, uint16, 0>(src, dst, count); break;
+			case Format::UintR32: convertPixelsMax<int16, uint32, 0>(src, dst, count); break;
+			default: throw GardenError("Unsupported image formats conversion.");
+		}
+		break;
+	case Format::SintR16G16:
+		switch (dstFormat)
+		{
+			case Format::SintR8G8: convertPixelsClamp<int16, int8, INT8_MIN, INT8_MAX>(src, dst, count); break;
+			case Format::SintR32G32: convertPixels<int16, int32>(src, dst, count); break;
+			case Format::UintR8G8: convertPixelsClamp<int16, uint8, 0, UINT8_MAX>(src, dst, count); break;
+			case Format::UintR16G16: convertPixelsMax<int16, uint16, 0>(src, dst, count); break;
+			case Format::UintR32G32: convertPixelsMax<int16, uint32, 0>(src, dst, count); break;
+			default: throw GardenError("Unsupported image formats conversion.");
+		}
+		break;
+	case Format::SintR16G16B16A16:
+		switch (dstFormat)
+		{
+			case Format::SintR8G8B8A8: convertPixelsClamp<int16, int8, INT8_MIN, INT8_MAX>(src, dst, count); break;
+			case Format::SintR32G32B32A32: convertPixels<int16, int32>(src, dst, count); break;
+			case Format::UintR8G8B8A8: convertPixelsClamp<int16, uint8, 0, UINT8_MAX>(src, dst, count); break;
+			case Format::UintR16G16B16A16: convertPixelsMax<int16, uint16, 0>(src, dst, count); break;
+			case Format::UintR32G32B32A32: convertPixelsMax<int16, uint32, 0>(src, dst, count); break;
+			default: throw GardenError("Unsupported image formats conversion.");
+		}
+		break;
+
+	case Format::SintR32:
+		switch (dstFormat)
+		{
+			case Format::SintR8: convertPixelsClamp<int32, int8, INT8_MIN, INT8_MAX>(src, dst, count); break;
+			case Format::SintR16: convertPixelsClamp<int32, int16, INT16_MIN, INT16_MAX>(src, dst, count); break;
+			case Format::UintR8: convertPixelsClamp<int32, uint8, 0, UINT8_MAX>(src, dst, count); break;
+			case Format::UintR16: convertPixelsClamp<int32, uint16, 0, UINT16_MAX>(src, dst, count); break;
+			case Format::UintR32: convertPixelsMax<int32, uint32, 0>(src, dst, count); break;
+			default: throw GardenError("Unsupported image formats conversion.");
+		}
+		break;
+	case Format::SintR32G32:
+		switch (dstFormat)
+		{
+			case Format::SintR8G8: convertPixelsClamp<int32, int8, INT8_MIN, INT8_MAX>(src, dst, count); break;
+			case Format::SintR16G16: convertPixelsClamp<int32, int16, INT16_MIN, INT16_MAX>(src, dst, count); break;
+			case Format::UintR8G8: convertPixelsClamp<int32, uint8, 0, UINT8_MAX>(src, dst, count); break;
+			case Format::UintR16G16: convertPixelsClamp<int32, uint16, 0, UINT16_MAX>(src, dst, count); break;
+			case Format::UintR32G32: convertPixelsMax<int32, uint32, 0>(src, dst, count); break;
+			default: throw GardenError("Unsupported image formats conversion.");
+		}
+		break;
+	case Format::SintR32G32B32A32:
+		switch (dstFormat)
+		{
+			case Format::SintR8G8B8A8: convertPixelsClamp<int32, int8, INT8_MIN, INT8_MAX>(src, dst, count); break;
+			case Format::SintR16G16B16A16: convertPixelsClamp<int32, int16, INT16_MIN, INT16_MAX>(src, dst, count); break;
+			case Format::UintR8G8B8A8: convertPixelsClamp<int32, uint8, 0, UINT8_MAX>(src, dst, count); break;
+			case Format::UintR16G16B16A16: convertPixelsClamp<int32, uint16, 0, UINT16_MAX>(src, dst, count); break;
+			case Format::UintR32G32B32A32: convertPixelsMax<int32, uint32, 0>(src, dst, count); break;
+			default: throw GardenError("Unsupported image formats conversion.");
+		}
+		break;
+
+	case Format::UnormR8:
+		switch (dstFormat)
+		{
+			case Format::UnormR16: convertPixelsUnorm<uint8, uint16, UINT8_MAX, UINT16_MAX>(src, dst, count); break;
+			case Format::SfloatR16: convertPixelsToFloat<uint8, math::half, UINT8_MAX>(src, dst, count); break;
+			case Format::SfloatR32: convertPixelsToFloat<uint8, float, UINT8_MAX>(src, dst, count); break;
+
+			default: throw GardenError("Unsupported image formats conversion.");
+		}
+		break;
+	case Format::UnormR8G8:
+		switch (dstFormat)
+		{
+			case Format::UnormR16G16: convertPixelsUnorm<uint8, uint16, UINT8_MAX, UINT16_MAX>(src, dst, count); break;
+			case Format::SfloatR16G16: convertPixelsToFloat<uint8, math::half, UINT8_MAX>(src, dst, count); break;
+			case Format::SfloatR32G32: convertPixelsToFloat<uint8, float, UINT8_MAX>(src, dst, count); break;
+			case Format::UintR8G8: case Format::SintR8G8: case Format::SnormR8G8: return dstData;
+			default: throw GardenError("Unsupported image formats conversion.");
+		}
+		break;
+	case Format::UnormR8G8B8A8:
+		switch (dstFormat)
+		{
+			case Format::UnormR16G16B16A16: convertPixelsUnorm<uint8, uint16, UINT8_MAX, UINT16_MAX>(src, dst, count); break;
+			case Format::SfloatR16G16B16A16: convertPixelsToFloat<uint8, math::half, UINT8_MAX>(src, dst, count); break;
+			case Format::SfloatR32G32B32A32: convertPixelsToFloat<uint8, float, UINT8_MAX>(src, dst, count); break;
+			case Format::UintR8G8B8A8: case Format::SintR8G8B8A8: case Format::SnormR8G8B8A8: return dstData;
+			default: throw GardenError("Unsupported image formats conversion.");
+		}
+		break;
+
+	case Format::UnormR16: case Format::UnormD16:
+		switch (dstFormat)
+		{
+			case Format::UnormR8: convertPixelsUnorm<uint16, uint8, UINT16_MAX, UINT8_MAX>(src, dst, count); break;
+			case Format::SfloatR16: convertPixelsToFloat<uint16, math::half, UINT16_MAX>(src, dst, count); break;
+			case Format::SfloatR32: convertPixelsToFloat<uint16, float, UINT16_MAX>(src, dst, count); break;
+			case Format::UnormR16: case Format::UnormD16: return dstData;
+			default: throw GardenError("Unsupported image formats conversion.");
+		}
+		break;
+	case Format::UnormR16G16:
+		switch (dstFormat)
+		{
+			case Format::UnormR8G8: convertPixelsUnorm<uint16, uint8, UINT16_MAX, UINT8_MAX>(src, dst, count); break;
+			case Format::SfloatR16G16: convertPixelsToFloat<uint16, math::half, UINT16_MAX>(src, dst, count); break;
+			case Format::SfloatR32G32: convertPixelsToFloat<uint16, float, UINT16_MAX>(src, dst, count); break;
+			case Format::UintR16G16: case Format::SintR16G16: case Format::SnormR16G16: return dstData;
+			default: throw GardenError("Unsupported image formats conversion.");
+		}
+		break;
+	case Format::UnormR16G16B16A16:
+		switch (dstFormat)
+		{
+			case Format::UnormR8G8B8A8: case Format::UnormB8G8R8A8:
+				convertPixelsUnorm<uint16, uint8, UINT16_MAX, UINT8_MAX>(src, dst, count); break;
+			case Format::SfloatR16G16B16A16: convertPixelsToFloat<uint16, math::half, UINT16_MAX>(src, dst, count); break;
+			case Format::SfloatR32G32B32A32: convertPixelsToFloat<uint16, float, UINT16_MAX>(src, dst, count); break;
+			case Format::UintR16G16B16A16: case Format::SintR16G16B16A16: case Format::SnormR16G16B16A16: return dstData;
+			default: throw GardenError("Unsupported image formats conversion.");
+		}
+		break;
+
+	case Format::UnormR5G6B5: throw GardenError("Not implemented yet!");
+	case Format::UnormA1R5G5B5: throw GardenError("Not implemented yet!");
+	case Format::UnormR5G5B5A1: throw GardenError("Not implemented yet!");
+	case Format::UnormB5G5R5A1: throw GardenError("Not implemented yet!");
+	case Format::UnormR4G4B4A4: throw GardenError("Not implemented yet!");
+	case Format::UnormB4G4R4A4: throw GardenError("Not implemented yet!");
+	case Format::UnormA2R10G10B10: throw GardenError("Not implemented yet!");
+	case Format::UnormA2B10G10R10: throw GardenError("Not implemented yet!");
+
+	case Format::SnormR8: throw GardenError("Not implemented yet!");
+	case Format::SnormR8G8: throw GardenError("Not implemented yet!");
+	case Format::SnormR8G8B8A8: throw GardenError("Not implemented yet!");
+
+	case Format::SnormR16: throw GardenError("Not implemented yet!");
+	case Format::SnormR16G16: throw GardenError("Not implemented yet!");
+	case Format::SnormR16G16B16A16: throw GardenError("Not implemented yet!");
+
+	case Format::SfloatR16:
+		switch (dstFormat)
+		{
+			case Format::SfloatR32: case Format::SfloatD32: convertPixels<math::half, float>(src, dst, count); break;
+			case Format::UnormR8: convertPixelsFromFloat<math::half, uint8, UINT8_MAX>(src, dst, count); break;
+			case Format::UnormR16: convertPixelsFromFloat<math::half, uint16, UINT16_MAX>(src, dst, count); break;
+			default: throw GardenError("Unsupported image formats conversion.");
+		}
+		break;
+	case Format::SfloatR16G16:
+		switch (dstFormat)
+		{
+			case Format::SfloatR32G32: convertPixels<math::half, float>(src, dst, count); break;
+			case Format::UnormR8G8: convertPixelsFromFloat<math::half, uint8, UINT8_MAX>(src, dst, count); break;
+			case Format::UnormR16G16: convertPixelsFromFloat<math::half, uint16, UINT16_MAX>(src, dst, count); break;
+			default: throw GardenError("Unsupported image formats conversion.");
+		}
+		break;
+	case Format::SfloatR16G16B16A16:
+		switch (dstFormat)
+		{
+			case Format::SfloatR32G32B32A32: convertPixels<math::half, float>(src, dst, count); break;
+			case Format::UnormR8G8B8A8: convertPixelsFromFloat<math::half, uint8, UINT8_MAX>(src, dst, count); break;
+			case Format::UnormR16G16B16A16: convertPixelsFromFloat<math::half, uint16, UINT16_MAX>(src, dst, count); break;
+			default: throw GardenError("Unsupported image formats conversion.");
+		}
+		break;
+
+	case Format::SfloatR32: case Format::SfloatD32:
+		switch (dstFormat)
+		{
+			case Format::SfloatR16: convertPixelsMin<float, math::half>(src, dst, count, FLOAT_BIG_16); break;
+			case Format::UnormR8: convertPixelsFromFloat<math::half, uint8, UINT8_MAX>(src, dst, count); break;
+			case Format::UnormR16: convertPixelsFromFloat<math::half, uint16, UINT16_MAX>(src, dst, count); break;
+			default: throw GardenError("Unsupported image formats conversion.");
+		}
+		break;
+	case Format::SfloatR32G32:
+		switch (dstFormat)
+		{
+			case Format::SfloatR16G16: convertPixelsMin<float, math::half>(src, dst, count, FLOAT_BIG_16); break;
+			case Format::UnormR8G8: convertPixelsFromFloat<math::half, uint8, UINT8_MAX>(src, dst, count); break;
+			case Format::UnormR16G16: convertPixelsFromFloat<math::half, uint16, UINT16_MAX>(src, dst, count); break;
+			default: throw GardenError("Unsupported image formats conversion.");
+		}
+		break;
+	case Format::SfloatR32G32B32A32:
+		switch (dstFormat)
+		{
+			case Format::SfloatR16G16B16A16: convertPixelsMin<float, math::half>(src, dst, count, FLOAT_BIG_16); break;
+			case Format::UnormR8G8B8A8: convertPixelsFromFloat<math::half, uint8, UINT8_MAX>(src, dst, count); break;
+			case Format::UnormR16G16B16A16: convertPixelsFromFloat<math::half, uint16, UINT16_MAX>(src, dst, count); break;
+			default: throw GardenError("Unsupported image formats conversion.");
+		}
+		break;
+
+	case Format::UfloatB10G11R11: throw GardenError("Not implemented yet!");
+	case Format::UfloatE5B9G9R9: throw GardenError("Not implemented yet!");
+
+	case Format::SrgbR8:
+		switch (dstFormat)
+		{
+			case Format::UintR8: convertPixelsFromSrgb(src, dst, count); break;
+			default: throw GardenError("Unsupported image formats conversion.");
+		}
+		break;
+	case Format::SrgbR8G8:
+		switch (dstFormat)
+		{
+			case Format::UintR8G8: convertPixelsFromSrgb(src, dst, count); break;
+			default: throw GardenError("Unsupported image formats conversion.");
+		}
+		break;
+	case Format::SrgbR8G8B8A8:
+		switch (dstFormat)
+		{
+			case Format::UintR8G8B8A8: convertPixelsFromSrgb(src, dst, count); break;
+			default: throw GardenError("Unsupported image formats conversion.");
+		}
+		break;
+	default: throw GardenError("Unsupported image formats conversion.");
+	}
+	return dstData;
+}
+
+//**********************************************************************************************************************
+namespace
+{
+	class ExrMemoryStream final : public Imf::IStream
+	{
+		const uint8* data = nullptr;
+		psize size = 0, pos = 0;
+	public:
+		ExrMemoryStream(const uint8* data, psize size) : 
+			Imf::IStream("memory"), data(data), size(size) { }
+		~ExrMemoryStream() override { }
+
+		bool isMemoryMapped() const override { return true; }
+
+		bool read(char c[/*n*/], int n) override
+		{
+			if (pos + n >= size)
+				throw runtime_error("Out of EXR file bounds.");
+			memcpy(c, data, n); pos += n;
+			return pos != size;
+		}
+		char* readMemoryMapped(int n) override
+		{
+			if (pos + n >= size)
+				throw runtime_error("Out of EXR file bounds.");
+			auto memory = (char*)data + pos; pos += n;
+			return memory;
+		}
+
+		uint64_t tellg() override { return pos; }
+		void seekg(uint64_t pos) override { this->pos = pos; }
+		void clear() override { }
+
+		/* TODO: uncomment when will be widely supported.
+
+		int64_t size() override { return (int64_t)size; }
+		bool isStatelessRead() const override { return true; }
+
+		int64_t read(void* buf, uint64_t sz, uint64_t offset) override
+		{
+			if (offset >= size)
+				return 0;
+			auto remaining = (uint64_t)size - offset;
+    		auto bytesToRead = (sz < remaining) ? sz : remaining;
+			memcpy(buf, data + offset, bytesToRead);
+			return bytesToRead;
+		}
+		*/
+	};
+}
+
+static uint32 toPngFormat(int componentCount)
+{
+	switch (componentCount)
+	{
+		case 4: return PNG_FORMAT_RGBA;
+		case 2: return PNG_FORMAT_GA;
+		case 1: return PNG_FORMAT_GRAY;
+		default: throw GardenError("Unsupported PNG image channel count.");
+	}
+}
+static Image::Format toSrgbFormat(int componentCount)
+{
+	switch (componentCount)
+	{
+		case 4: return Image::Format::SrgbR8G8B8A8;
+		case 2: return Image::Format::SrgbR8G8;
+		case 1: return Image::Format::SrgbR8;
+		default: throw GardenError("Unsupported sRGB image channel count.");
+	}
+}
+static Image::Format toFloatFormat(int componentCount)
+{
+	switch (componentCount)
+	{
+		case 4: return Image::Format::SfloatR32G32B32A32;
+		case 2: return Image::Format::SfloatR32G32;
+		case 1: return Image::Format::SfloatR32;
+		default: throw GardenError("Unsupported float image channel count.");
+	}
+}
+
+//**********************************************************************************************************************
+void Image::loadFileData(const void* data, psize dataSize, vector<uint8>& pixels, 
+	uint2& imageSize, FileType fileType, Format& imageFormat)
+{
+	GARDEN_ASSERT(data);
+	GARDEN_ASSERT(dataSize > 0);
+
+	auto componentCount = imageFormat == Format::Undefined ? 4 : toComponentCount(imageFormat);
+	vector<uint8> tmpPixels; Format loadedFormat;
+
+	if (fileType == FileType::WebP)
+	{
+		int sizeX = 0, sizeY = 0;
+		if (!WebPGetInfo((const uint8_t*)data, dataSize, &sizeX, &sizeY))
+			throw GardenError("Invalid WebP image info.");
+
+		imageSize = uint2(sizeX, sizeY);
+		loadedFormat = toSrgbFormat(componentCount);
+		pixels.resize((psize)imageSize.x * imageSize.y * sizeof(Color));
+
+		auto decodeResult = WebPDecodeRGBAInto((const uint8_t*)data, dataSize, 
+			pixels.data(), pixels.size(), (int)(imageSize.x  * sizeof(Color)));
+		if (!decodeResult)
+			throw GardenError("Invalid WebP image data.");
+
+		if (componentCount != 4)
+		{
+			auto pixelCount = (psize)imageSize.x * imageSize.y;
+			tmpPixels.resize(pixelCount * componentCount);
+			swap(pixels, tmpPixels);
+
+			auto srcPixels = (const Color*)tmpPixels.data();
+			auto dstPixels = (uint8*)pixels.data();
+			if (componentCount == 2)
+			{
+				for (psize i = 0, j = 0; i < pixelCount; i++, j += 2)
+				{
+					auto p = srcPixels[i];
+					dstPixels[j] = p.r; dstPixels[j + 1] = p.g;
+				}
+			}
+			else if (componentCount == 1)
+			{
+				for (psize i = 0; i < pixelCount; i++)
+					dstPixels[i] = srcPixels[i].r;
+			}
+			else throw GardenError("Unsupported WebP image channel count.");
+		}
+	}
+	else if (fileType == FileType::PNG)
+	{
+		png_image image; memset(&image, 0, sizeof(png_image));
+		image.version = PNG_IMAGE_VERSION;
+
+		if (!png_image_begin_read_from_memory(&image, data, dataSize))
+			throw GardenError("Invalid PNG image info.");
+
+		imageSize = uint2(image.width, image.height);
+		loadedFormat = toSrgbFormat(componentCount);
+		image.format = toPngFormat(componentCount);
+		pixels.resize((psize)imageSize.x * imageSize.y * componentCount);
+
+		if (!png_image_finish_read(&image, nullptr, pixels.data(), 0, nullptr))
+			throw GardenError("Invalid PNG image data.");
+	}
+	else if (fileType == FileType::EXR)
+	{
+		ExrMemoryStream exrStream((const uint8*)data, dataSize);
+		if (componentCount == 4 && imageFormat == Format::SfloatR16G16B16A16)
+		{
+			Imf::RgbaInputFile exrFile(exrStream);
+			auto dw = exrFile.dataWindow();
+			imageSize = uint2(dw.max.x - dw.min.x + 1, dw.max.y - dw.min.y + 1);
+			loadedFormat = Format::SfloatR16G16B16A16;
+			auto pixelCount = (psize)imageSize.x * imageSize.y;
+			pixels.resize(pixelCount * sizeof(Imf::Rgba));
+			auto pixels16 = (Imf::Rgba*)pixels.data();
+			exrFile.setFrameBuffer(pixels16 - dw.min.x - dw.min.y * imageSize.x, 1, imageSize.x);
+			exrFile.readPixels(dw.min.y, dw.max.y);
+		}
+		else
+		{
+			Imf::InputFile exrFile(exrStream);
+			auto dw = exrFile.header().dataWindow();
+			imageSize = uint2(dw.max.x - dw.min.x + 1, dw.max.y - dw.min.y + 1);
+			auto pixelCount = (psize)imageSize.x * imageSize.y;
+			auto formatBinarySize = toBinarySize(imageFormat);
+			auto floatSize = formatBinarySize / componentCount;
+			auto strideY = formatBinarySize * imageSize.x;
+			pixels.resize(pixelCount * formatBinarySize);
+
+			char* exrPixels; Imf::PixelType pixelType;
+			if (floatSize == 4)
+			{
+				exrPixels = (char*)((float*)pixels.data() - dw.min.x - dw.min.y * imageSize.x);
+				pixelType = Imf::FLOAT;
+			}
+			else if (floatSize == 2)
+			{
+				exrPixels = (char*)((Imath::half*)pixels.data() - dw.min.x - dw.min.y * imageSize.x);
+				pixelType = Imf::HALF;
+			}
+			else throw GardenError("Unsupported EXR image float binary size.");
+
+			Imf::FrameBuffer exrFrameBuffer;
+			exrFrameBuffer.insert("R", Imf::Slice(pixelType, exrPixels, formatBinarySize, strideY));
+			if (componentCount > 1)
+				exrFrameBuffer.insert("G", Imf::Slice(pixelType, exrPixels + floatSize * 1, formatBinarySize, strideY));
+			if (componentCount > 2)
+				exrFrameBuffer.insert("B", Imf::Slice(pixelType, exrPixels + floatSize * 2, formatBinarySize, strideY));
+			if (componentCount > 3)
+				exrFrameBuffer.insert("A", Imf::Slice(pixelType, exrPixels + floatSize * 3, formatBinarySize, strideY));
+			exrFile.setFrameBuffer(exrFrameBuffer);
+			exrFile.readPixels(dw.min.y, dw.max.y);
+		}
+	}
+	else if (fileType == FileType::HDR)
+	{
+		int sizeX = 0, sizeY = 0;
+		auto pixelData = stbi_loadf_from_memory((const stbi_uc*)data, 
+			(int)dataSize, &sizeX, &sizeY, nullptr, componentCount);
+		if (!pixelData)
+			throw GardenError("Invalid HDR image data.");
+
+		imageSize = uint2(sizeX, sizeY);
+		loadedFormat = toFloatFormat(componentCount);
+		pixels.assign((const uint8*)pixelData, (const uint8*)pixelData +
+			(psize)imageSize.x * imageSize.y * sizeof(float4));
+		stbi_image_free(pixelData); // TODO: this is suboptimal to copy data over.
+	}
+	else if (fileType == FileType::JPEG | fileType == FileType::BMP |
+		fileType == FileType::PSD | fileType == FileType::TGA |
+		fileType == FileType::PIC | fileType == FileType::GIF)
+	{
+		int sizeX = 0, sizeY = 0;
+		auto pixelData = stbi_load_from_memory((const stbi_uc*)data, 
+			(int)dataSize, &sizeX, &sizeY, nullptr, componentCount);
+		if (!pixelData)
+			throw GardenError("Invalid STB image data.");
+
+		imageSize = uint2(sizeX, sizeY);
+		loadedFormat = toSrgbFormat(componentCount);
+		pixels.assign(pixelData, pixelData + (psize)imageSize.x * imageSize.y * sizeof(Color));
+		stbi_image_free(pixelData); // TODO: this is suboptimal to copy data over.
+	}
+	// TODO: load bc compressed for polygon geometry. KTX 2.0
+	else abort();
+
+	if (imageFormat == Format::Undefined)
+	{
+		imageFormat = loadedFormat;
+		return;
+	}
+
+	auto dstPixels = convertFormat(pixels.data(), 
+		imageSize, tmpPixels, loadedFormat, imageFormat);
+	if (dstPixels == tmpPixels.data())
+		swap(pixels, tmpPixels);
+}
+
+//**********************************************************************************************************************
+void Image::writeFileData(const fs::path& path, const void* pixels, 
+	uint2 size, FileType fileType, Format imageFormat, float quality)
+{
+	GARDEN_ASSERT(!path.empty());
+	GARDEN_ASSERT(pixels);
+	GARDEN_ASSERT(areAllTrue(size > uint2::zero));
+	GARDEN_ASSERT(imageFormat != Format::Undefined);
+	GARDEN_ASSERT(quality >= 0.0f && quality <= 1.0f);
+
+	auto componentCount = toComponentCount(imageFormat);
+	auto filePath = path; vector<uint8> tmpPixels; 
+
+	if (fileType == FileType::WebP)
+	{
+		if (componentCount != 4)
+		{
+			abort(); // TODO:
+		}
+
+		auto dstPixels = convertFormat(pixels, size, tmpPixels, imageFormat, Format::SrgbR8G8B8A8);
+		filePath.replace_extension(".webp");
+	
+		ofstream outputStream(filePath, ios::binary | ios::trunc);
+		if (!outputStream.is_open())
+			throw GardenError("Failed to store WebP image file. (path: " + path.generic_string() + ")");
+		outputStream.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+
+		uint8_t* encoded = nullptr; size_t encodedSize = 0;
+		if (quality == 1.0f)
+		{
+			encodedSize = WebPEncodeLosslessRGBA((const uint8_t*)dstPixels, 
+				size.x, size.y, size.x * 4, &encoded);
+		}
+		else
+		{
+			encodedSize = WebPEncodeRGBA((const uint8_t*)dstPixels, 
+				size.x, size.y, size.x * 4, quality * 100.0f, &encoded);
+		}
+
+		if (encodedSize == 0)
+			throw GardenError("Failed to encode WebP image. (path: " + path.generic_string() + ")");
+		outputStream.write((const char*)encoded, encodedSize);
+		WebPFree(encoded);
+	}
+	else if (fileType == FileType::PNG)
+	{
+		auto dstPixels = convertFormat(pixels, size, tmpPixels, imageFormat, toSrgbFormat(componentCount));
+		filePath.replace_extension(".png");
+
+		png_image image; memset(&image, 0, sizeof(png_image));
+		image.version = PNG_IMAGE_VERSION;
+		image.width = size.x; image.height = size.y;
+		image.format = toPngFormat(componentCount);
+
+		if (!png_image_write_to_file(&image, filePath.generic_string().c_str(), 0, dstPixels, 0, NULL))
+			throw GardenError("Failed to write PNG image. (path: " + path.generic_string() + ")");
+	}
+	else if (fileType == FileType::EXR)
+	{
+		auto dstPixels = convertFormat(pixels, size, tmpPixels, imageFormat, Format::SfloatR16G16B16A16);
+		filePath.replace_extension(".exr");
+
+		try
+		{
+			Imf::RgbaOutputFile file(filePath.generic_string().c_str(), size.x, size.y, Imf::WRITE_RGBA);
+			file.setFrameBuffer((const Imf::Rgba*)dstPixels, 1, size.x);
+			file.writePixels(size.y);
+		}
+		catch (exception& e)
+		{
+			throw GardenError("Failed to write EXR image. (path: " + 
+				filePath.generic_string() + ", error: " + string(e.what()) + ")");
+		}
+	}
+	else if (fileType == FileType::HDR)
+	{
+		auto dstPixels = convertFormat(pixels, size, tmpPixels, imageFormat, toFloatFormat(componentCount));
+		filePath.replace_extension(".hdr");
+		if (!stbi_write_hdr(filePath.generic_string().c_str(), size.x, size.y, componentCount, (const float*)dstPixels))
+			throw GardenError("Failed to write HDR image. (path: " + path.generic_string() + ")");
+	}
+	else if (fileType == FileType::JPEG)
+	{
+		auto dstPixels = convertFormat(pixels, size, tmpPixels, imageFormat, toSrgbFormat(componentCount));
+		filePath.replace_extension(".jpg");
+		if (!stbi_write_jpg(filePath.generic_string().c_str(), size.x, size.y, componentCount, dstPixels, quality * 100.0f))
+			throw GardenError("Failed to write JPG image. (path: " + path.generic_string() + ")");
+	}
+	else if (fileType == FileType::BMP)
+	{
+		auto dstPixels = convertFormat(pixels, size, tmpPixels, imageFormat, toSrgbFormat(componentCount));
+		filePath.replace_extension(".bmp");
+		if (!stbi_write_bmp(filePath.generic_string().c_str(), size.x, size.y, componentCount, dstPixels))
+			throw GardenError("Failed to write BMP image. (path: " + path.generic_string() + ")");
+	}
+	else if (fileType == FileType::TGA)
+	{
+		auto dstPixels = convertFormat(pixels, size, tmpPixels, imageFormat, toSrgbFormat(componentCount));
+		filePath.replace_extension(".tga");
+		if (!stbi_write_tga(path.generic_string().c_str(), size.x, size.y, componentCount, dstPixels))
+			throw GardenError("Failed to write TGA image. (path: " + path.generic_string() + ")");
+	}
+	else throw GardenError("Unsupported image write file format. (path: " + path.generic_string() + ")");
+}
 
 //**********************************************************************************************************************
 static void* createVkImageView(View<Image> imageView, Image::Type type, Image::Format format, 
