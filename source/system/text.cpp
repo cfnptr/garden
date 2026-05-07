@@ -308,19 +308,18 @@ static void updateTextNewLine(TextInstanceData* instances, uint32 fontSize, floa
 	float offset;
 	switch (alignment)
 	{
-	case Text::Alignment::Center: offset = floorf(instanceOffset.x * -0.5f * fontSize) / fontSize; break;
-	case Text::Alignment::Right: offset = -instanceOffset.x; break;
-	case Text::Alignment::Bottom: offset = floorf(instanceOffset.x * -0.5f * fontSize) / fontSize; break;
-	case Text::Alignment::Top: offset = floorf(instanceOffset.x * -0.5f * fontSize) / fontSize; break;
-	case Text::Alignment::RightBottom: offset = -instanceOffset.x; break;
-	case Text::Alignment::RightTop: offset = -instanceOffset.x; break;
+		case Text::Alignment::Center: offset = floorf(instanceOffset.x * -0.5f * fontSize) / fontSize; break;
+		case Text::Alignment::Right: offset = -instanceOffset.x; break;
+		case Text::Alignment::Bottom: offset = floorf(instanceOffset.x * -0.5f * fontSize) / fontSize; break;
+		case Text::Alignment::Top: offset = floorf(instanceOffset.x * -0.5f * fontSize) / fontSize; break;
+		case Text::Alignment::RightBottom: offset = -instanceOffset.x; break;
+		case Text::Alignment::RightTop: offset = -instanceOffset.x; break;
 
-	case Text::Alignment::Left:
-	case Text::Alignment::LeftBottom:
-	case Text::Alignment::LeftTop:
-		offset = 0.0f;
-		break;
-	default: abort();
+		case Text::Alignment::Left:
+		case Text::Alignment::LeftBottom:
+		case Text::Alignment::LeftTop:
+			offset = 0.0f; break;
+		default: abort();
 	}
 
 	if (offset != 0.0f)

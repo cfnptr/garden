@@ -242,7 +242,8 @@ void AddressPool::addBufferBarriers(Buffer::BarrierState newState)
 	auto bufferCount = (uint32)resources.size();
 	uint32 barrierCount = 0;
 
-	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
+	auto graphicsBackend = graphicsAPI->getBackendType();
+	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
 		for (uint32 i = 0; i < bufferCount; i++)
 		{

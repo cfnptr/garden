@@ -14,6 +14,7 @@
 
 #include "garden/system/controller/fpv.hpp"
 #include "garden/system/render/pbr-lighting.hpp"
+#include "garden/system/render/skybox.hpp"
 #include "garden/system/transform.hpp"
 #include "garden/system/graphics.hpp"
 #include "garden/system/camera.hpp"
@@ -45,6 +46,8 @@ void FpvControllerSystem::init()
 		manager->add<DoNotDestroyComponent>(camera);
 	if (DoNotSerializeSystem::Instance::has())
 		manager->add<DoNotSerializeComponent>(camera);
+	if (SkyboxRenderSystem::Instance::has())
+		manager->add<SkyboxRenderComponent>(camera);
 	if (PbrLightingSystem::Instance::has())
 		manager->add<PbrLightingComponent>(camera);
 

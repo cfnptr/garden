@@ -163,7 +163,8 @@ Buffer::Buffer(Usage usage, CpuAccess cpuAccess, Location location, Strategy str
 		throw GardenError("Ray tracing acceleration is not supported on this GPU.");
 	}
 
-	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
+	auto graphicsBackend = graphicsAPI->getBackendType();
+	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 		createVkBuffer(usage, cpuAccess, location, strategy, size, instance, allocation, map, deviceAddress);
 	else abort();
 
@@ -218,7 +219,8 @@ bool Buffer::destroy()
 	}
 	#endif
 
-	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
+	auto graphicsBackend = graphicsAPI->getBackendType();
+	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
 		auto vulkanAPI = VulkanAPI::get();
 		if (vulkanAPI->forceResourceDestroy)
@@ -237,7 +239,8 @@ void Buffer::invalidate(uint64 size, uint64 offset)
 	GARDEN_ASSERT_MSG(map, "Buffer [" + debugName + "] is not mappable");
 	GARDEN_ASSERT_MSG(instance, "Buffer [" + debugName + "] is not ready");
 
-	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
+	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
 		auto result = vmaInvalidateAllocation(VulkanAPI::get()->memoryAllocator,
 			(VmaAllocation)allocation, offset, size == 0 ? VK_WHOLE_SIZE : size);
@@ -252,7 +255,8 @@ void Buffer::flush(uint64 size, uint64 offset)
 	GARDEN_ASSERT_MSG(map, "Buffer [" + debugName + "] is not mappable");
 	GARDEN_ASSERT_MSG(instance, "Buffer [" + debugName + "] is not ready");
 
-	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
+	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
 		auto result = vmaFlushAllocation(VulkanAPI::get()->memoryAllocator,
 			(VmaAllocation)allocation, offset, size == 0 ? VK_WHOLE_SIZE : size);
@@ -275,7 +279,8 @@ void Buffer::writeData(const void* data, uint64 size, uint64 offset)
 		return;
 	}
 
-	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
+	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
 		auto vulkanAPI = VulkanAPI::get();
 		uint8* map = nullptr;
@@ -409,7 +414,8 @@ void Buffer::setDebugName(const string& name)
 {
 	Resource::setDebugName(name);
 
-	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
+	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
 		#if GARDEN_DEBUG // Note: No GARDEN_EDITOR
 		auto vulkanAPI = VulkanAPI::get();

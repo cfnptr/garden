@@ -943,7 +943,7 @@ void ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& pixels,
 			fileType = imageFileTypes[i];
 	}
 
-	if (fileType == ImageFileType::Count)
+	if (fileType == ImageFile::Type::Count)
 	{
 		GARDEN_LOG_ERROR("Image does not exist. (path: " + path.generic_string() + ")");
 		loadMissingImage(format, pixels, size);
@@ -992,20 +992,20 @@ void ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& pixels,
 		loadMissingImage(format, pixels, size);
 	}
 }
-void ResourceSystem::loadImageData(const vector<fs::path>& paths, vector<vector<uint8>>& pixelArrays, 
-	uint2& size, Image::Format& format, int32 threadIndex) const noexcept
+void ResourceSystem::loadImageData(const fs::path* paths, psize pathCount, 
+	vector<vector<uint8>>& pixelArrays, uint2& size, Image::Format& format, int32 threadIndex) const noexcept
 {
-	GARDEN_ASSERT(!paths.empty());
+	GARDEN_ASSERT(paths);
+	GARDEN_ASSERT(pathCount > 0);
 	GARDEN_ASSERT(threadIndex < (int32)thread::hardware_concurrency());
 
-	auto pathCount = (uint32)paths.size();
-	auto pathData = paths.data(); auto pixelArrayData = pixelArrays.data();
-	loadImageData(pathData[0], pixelArrayData[0], size, format, threadIndex);
+	auto pixelArrayData = pixelArrays.data();
+	loadImageData(paths[0], pixelArrayData[0], size, format, threadIndex);
 
-	for (uint32 i = 1; i < pathCount; i++)
+	for (psize i = 1; i < pathCount; i++)
 	{
 		uint2 elementSize;
-		loadImageData(pathData[i], pixelArrayData[i], elementSize, format, threadIndex);
+		loadImageData(paths[i], pixelArrayData[i], elementSize, format, threadIndex);
 
 		if (size != elementSize)
 		{
@@ -1033,7 +1033,7 @@ void ResourceSystem::loadImageData(const vector<fs::path>& paths, vector<vector<
 					pixels[j] = f32x4(1.0f, 0.0f, 1.0f, 1.0f); 
 			}
 			else memset(pixelArray.data(), UINT8_MAX, pixelArray.size());
-			GARDEN_LOG_ERROR("Different image array element size. (path: " + pathData[i].generic_string() + ")");
+			GARDEN_LOG_ERROR("Different image array element size. (path: " + paths[i].generic_string() + ")");
 		}
 	}
 }
@@ -1107,8 +1107,8 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& nx,
 		{
 			GARDEN_LOG_ERROR(e.what());
 			loadMissingImage(format, nx, px, ny, py, nz, pz, size);
+			return;
 		}
-		return;
 	}
 	#endif
 
@@ -1184,8 +1184,8 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& nx,
 }
 
 //**********************************************************************************************************************
-static void copyLoadedImageData(const vector<vector<uint8>>& pixelArrays, uint8* stagingMap,
-	uint2 realSize, uint2 imageSize, psize formatBinarySize, ImageLoadFlags flags) noexcept
+static void copyLoadedImageData(const vector<vector<uint8>>& pixelArrays, uint8* stagingMap, uint2 realSize, 
+	uint2 imageSize, psize formatBinarySize, Image::Type imageType, ImageLoadFlags flags) noexcept
 {
 	if (hasAnyFlag(flags, ImageLoadFlags::LoadAsArray | ImageLoadFlags::LoadAs3D) && realSize.x > realSize.y)
 	{
@@ -1207,8 +1207,12 @@ static void copyLoadedImageData(const vector<vector<uint8>>& pixelArrays, uint8*
 	}
 	else
 	{
-		for (auto& pixels : pixelArrays)
+		auto pixelData = pixelArrays.data();
+		auto layerCount = (uint32)pixelArrays.size();
+
+		for (uint32 layer = 0; layer < layerCount; layer++)
 		{
+			auto& pixels = pixelData[Image::calcApiLayerIndex(imageType, layer)];
 			memcpy(stagingMap, pixels.data(), pixels.size());
 			stagingMap += pixels.size();
 		}
@@ -1261,36 +1265,39 @@ static Image::Format toSrgbFormat(int componentCount)
 }
 
 //**********************************************************************************************************************
-Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::Format format, Image::Usage usage, 
-	uint8 maxMipCount, Image::Strategy strategy, ImageLoadFlags flags, float taskPriority)
+Ref<Image> ResourceSystem::loadImage(const fs::path* paths, psize pathCount, Image::Format format, 
+	Image::Usage usage, uint8 maxMipCount, Image::Strategy strategy, ImageLoadFlags flags, float taskPriority)
 {
-	GARDEN_ASSERT(!paths.empty());
-	GARDEN_ASSERT(hasAnyFlag(usage, Image::Usage::TransferDst));
-	GARDEN_ASSERT(hasAnyFlag(usage, Image::Usage::TransferQ));
+	GARDEN_ASSERT(paths);
+	GARDEN_ASSERT(pathCount > 0);
+	GARDEN_ASSERT_MSG(hasAnyFlag(usage, Image::Usage::TransferDst), "Assert " + paths[0].generic_string());
+	GARDEN_ASSERT_MSG(hasAnyFlag(usage, Image::Usage::TransferQ), "Assert " + paths[0].generic_string());
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
-	if (paths.size() > 1)
+	if (pathCount > 1)
 	{
-		GARDEN_ASSERT(!hasAnyFlag(flags, ImageLoadFlags::LoadAsArray | ImageLoadFlags::LoadAs3D));
-	}
-	else
-	{
-		GARDEN_ASSERT(!hasAnyFlag(flags, ImageLoadFlags::TypeCubemap));
+		GARDEN_ASSERT_MSG(!hasAnyFlag(flags, ImageLoadFlags::LoadAsArray | 
+			ImageLoadFlags::LoadAs3D), "Assert " + paths[0].generic_string());
+		if (hasAnyFlag(flags, ImageLoadFlags::TypeCubemap))
+		{
+			GARDEN_ASSERT_MSG(pathCount == 1 || pathCount == 
+				Image::cubemapFaceCount, "Assert " + paths[0].generic_string());
+		}
 	}
 	if (hasAnyFlag(flags, ImageLoadFlags::LoadAsArray | ImageLoadFlags::TypeArray))
 	{
-		GARDEN_ASSERT(!hasAnyFlag(flags, ImageLoadFlags::LoadAs3D | 
-			ImageLoadFlags::Type3D | ImageLoadFlags::TypeCubemap));
+		GARDEN_ASSERT_MSG(!hasAnyFlag(flags, ImageLoadFlags::LoadAs3D | ImageLoadFlags::Type3D | 
+			ImageLoadFlags::TypeCubemap), "Assert " + paths[0].generic_string());
 	}
 	if (hasAnyFlag(flags, ImageLoadFlags::LoadAs3D | ImageLoadFlags::Type3D))
 	{
-		GARDEN_ASSERT(!hasAnyFlag(flags, ImageLoadFlags::LoadAsArray | 
-			ImageLoadFlags::TypeArray | ImageLoadFlags::TypeCubemap));
+		GARDEN_ASSERT_MSG(!hasAnyFlag(flags, ImageLoadFlags::LoadAsArray | ImageLoadFlags::TypeArray | 
+			ImageLoadFlags::TypeCubemap), "Assert " + paths[0].generic_string());
 	}
 	if (hasAnyFlag(flags, ImageLoadFlags::TypeCubemap))
 	{
-		GARDEN_ASSERT(!hasAnyFlag(flags, ImageLoadFlags::LoadAsArray | ImageLoadFlags::TypeArray | 
-			ImageLoadFlags::LoadAs3D | ImageLoadFlags::Type3D));
+		GARDEN_ASSERT_MSG(!hasAnyFlag(flags, ImageLoadFlags::LoadAsArray | ImageLoadFlags::TypeArray | 
+			ImageLoadFlags::LoadAs3D | ImageLoadFlags::Type3D), "Assert " + paths[0].generic_string());
 	}
 	string debugName = hasAnyFlag(flags, ImageLoadFlags::LoadShared) ? "shared." : "";
 	#endif
@@ -1300,9 +1307,9 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 	{
 		auto hashState = Hash128::getState();
 		Hash128::resetState(hashState);
-		for (const auto& item : paths)
+		for (psize i = 0; i < pathCount; i++)
 		{
-			auto path = item.generic_string();
+			auto path = paths[i].generic_string();
 			Hash128::updateState(hashState, path.c_str(), path.length());
 		}
 
@@ -1318,7 +1325,7 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 			if (imageView->isLoaded())
 			{
 				LoadedImageItem item;
-				item.paths = paths;
+				item.paths.assign(paths, paths + pathCount);
 				item.instance = ID<Image>(result->second);
 				loadedImageArray.push_back(std::move(item));
 			}
@@ -1332,7 +1339,7 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	auto resource = graphicsAPI->imagePool.get(image);
-	if (paths.size() > 1)
+	if (pathCount > 1)
 	{
 		if (hasAnyFlag(flags, ImageLoadFlags::LoadAsArray))
 			resource->setDebugName("imageArray." + debugName + paths[0].generic_string());
@@ -1346,7 +1353,7 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 	{
 		auto data = new ImageLoadData();
 		data->imageVersion = imageVersion;
-		data->paths = paths;
+		data->paths.assign(paths, paths + pathCount);
 		data->instance = image;
 		data->format = format;
 		data->usage = usage;
@@ -1356,22 +1363,36 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 
 		threadSystem->getBackgroundPool().addTask([this, data](const ThreadPool::Task& task)
 		{
-			SET_CPU_ZONE_SCOPED("Image Array Load");
+			SET_CPU_ZONE_SCOPED("Image Load");
 
 			auto& paths = data->paths; auto flags = data->flags;
 			vector<vector<uint8>> pixelArrays(paths.size()); uint2 realSize;
 			auto dataFormat = hasAnyFlag(flags, ImageLoadFlags::LoadAsSrgb) ? 
 				toSrgbFormat(toComponentCount(data->format)) : data->format;
-			loadImageData(paths, pixelArrays, realSize, dataFormat, task.getThreadIndex());
+			auto formatBinarySize = toBinarySize(dataFormat);
 
-			auto formatBinarySize = toBinarySize(dataFormat); uint2 imageSize; uint32 layerCount;
-			calcLoadedImageDim(paths.size(), realSize, flags, imageSize, layerCount);
+			if (hasAnyFlag(flags, ImageLoadFlags::TypeCubemap) && paths.size() == 1)
+			{
+				pixelArrays.resize(Image::cubemapFaceCount);
+				loadCubemapData(paths[0], pixelArrays[0], pixelArrays[1], pixelArrays[2], pixelArrays[3], 
+					pixelArrays[4], pixelArrays[5], realSize, dataFormat, task.getThreadIndex());
+				auto p = paths[0].generic_string();
+				paths = { p + "-nx", p + "-px", p + "-ny", p + "-py", p + "-nz", p + "-pz" };
+			}
+			else
+			{
+				loadImageData(paths.data(), paths.size(), pixelArrays, 
+					realSize, dataFormat, task.getThreadIndex());
+			}
+
+			uint2 imageSize; uint32 layerCount; calcLoadedImageDim(
+				paths.size(), realSize, flags, imageSize, layerCount);
 			auto mipCount = calcLoadedImageMipCount(data->maxMipCount, imageSize);
-			auto type = calcLoadedImageType(realSize.y, flags);
+			auto imageType = calcLoadedImageType(realSize.y, flags);
 			
 			ImageQueueItem item =
 			{
-				ImageExt::create(type, data->format, data->usage, data->strategy, 
+				ImageExt::create(imageType, data->format, data->usage, data->strategy, 
 					u32x4(imageSize.x, imageSize.y, layerCount, mipCount), data->imageVersion),
 				BufferExt::create(Buffer::Usage::TransferSrc, Buffer::CpuAccess::SequentialWrite, 
 					Buffer::Location::Auto, Buffer::Strategy::Speed, // Note: Staging does not need TransferQ flag.
@@ -1380,7 +1401,7 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 			};
 
 			copyLoadedImageData(pixelArrays, item.staging.getMap(), 
-				realSize, imageSize, formatBinarySize, flags);
+				realSize, imageSize, formatBinarySize, imageType, flags);
 			item.staging.flush();
 
 			queueLocker.lock();
@@ -1393,18 +1414,35 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 	}
 	else
 	{
-		SET_CPU_ZONE_SCOPED("Image Array Load");
+		SET_CPU_ZONE_SCOPED("Image Load");
 
-		vector<vector<uint8>> pixelArrays(paths.size()); uint2 realSize;
-		loadImageData(paths, pixelArrays, realSize, format, -1);
+		LoadedImageItem item;
+		vector<vector<uint8>> pixelArrays(pathCount); uint2 realSize;
+		auto dataFormat = hasAnyFlag(flags, ImageLoadFlags::LoadAsSrgb) ? 
+			toSrgbFormat(toComponentCount(format)) : format;
+		auto formatBinarySize = toBinarySize(dataFormat);
 
-		auto formatBinarySize = toBinarySize(format); uint2 imageSize; uint32 layerCount;
-		calcLoadedImageDim(paths.size(), realSize, flags, imageSize, layerCount);
+		if (hasAnyFlag(flags, ImageLoadFlags::TypeCubemap) && pathCount == 1)
+		{
+			pixelArrays.resize(Image::cubemapFaceCount);
+			loadCubemapData(paths[0], pixelArrays[0], pixelArrays[1], pixelArrays[2], 
+				pixelArrays[3], pixelArrays[4], pixelArrays[5], realSize, dataFormat, -1);
+			auto p = paths[0].generic_string();
+			item.paths = { p + "-nx", p + "-px", p + "-ny", p + "-py", p + "-nz", p + "-pz" };
+		}
+		else
+		{
+			loadImageData(paths, pathCount, pixelArrays, realSize, dataFormat, -1);
+			item.paths.assign(paths, paths + pathCount);
+		}
+
+		uint2 imageSize; uint32 layerCount; calcLoadedImageDim(
+			pathCount, realSize, flags, imageSize, layerCount);
 		auto mipCount = calcLoadedImageMipCount(maxMipCount, imageSize);
-		auto type = calcLoadedImageType(realSize.y, flags);
+		auto imageType = calcLoadedImageType(realSize.y, flags);
 
-		auto imageInstance = ImageExt::create(type, format, usage, strategy,
-			u32x4(imageSize.x, imageSize.y, layerCount, mipCount), 0);
+		auto imageInstance = ImageExt::create(imageType, format, usage, 
+			strategy, u32x4(imageSize.x, imageSize.y, layerCount, mipCount), 0);
 		auto imageView = graphicsAPI->imagePool.get(image);
 		ImageExt::moveInternalObjects(imageInstance, **imageView);
 
@@ -1415,7 +1453,7 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 
 		auto stagingView = graphicsAPI->bufferPool.get(stagingBuffer);
 		copyLoadedImageData(pixelArrays, stagingView->getMap(),
-			realSize, imageSize, formatBinarySize, flags);
+			realSize, imageSize, formatBinarySize, imageType, flags);
 		stagingView->flush();
 
 		auto generateMipmap = imageView->getMipCount() > 1;
@@ -1426,8 +1464,6 @@ Ref<Image> ResourceSystem::loadImageArray(const vector<fs::path>& paths, Image::
 		graphicsSystem->stopRecording();
 		graphicsAPI->bufferPool.destroy(stagingBuffer);
 
-		LoadedImageItem item;
-		item.paths = paths;
 		item.instance = image;
 		loadedImageArray.push_back(std::move(item));
 	}
@@ -1447,9 +1483,9 @@ void ResourceSystem::storeImage(const fs::path& path, const void* pixels, uint2 
 	Image::FileType fileType, Image::Format imageFormat, float quality, const fs::path& directory)
 {
 	GARDEN_ASSERT(!path.empty());
-	GARDEN_ASSERT(pixels);
-	GARDEN_ASSERT(areAllTrue(size > uint2::zero));
-	GARDEN_ASSERT(quality >= 0.0f && quality <= 1.0f);
+	GARDEN_ASSERT_MSG(pixels, "Assert " + path.generic_string());
+	GARDEN_ASSERT_MSG(areAllTrue(size > uint2::zero), "Assert " + path.generic_string());
+	GARDEN_ASSERT_MSG(quality >= 0.0f && quality <= 1.0f, "Assert " + path.generic_string());
 
 	#if !GARDEN_PACK_RESOURCES || GARDEN_EDITOR
 	auto imagesPath = directory.empty() ? appResourcesPath / "images" : directory;
@@ -1471,6 +1507,7 @@ void ResourceSystem::combineImages(const vector<fs::path>& inputPaths, const fs:
 	GARDEN_ASSERT(!inputPaths.empty());
 	GARDEN_ASSERT(!inputPaths[0].empty());
 	GARDEN_ASSERT(!outputPath.empty());
+	GARDEN_ASSERT(threadIndex < (int32)thread::hardware_concurrency());
 
 	vector<uint8> inBuffer; uint2 inSize;
 	loadImageData(inputPaths[0], inBuffer, inSize, imageFormat, threadIndex);
@@ -1513,6 +1550,7 @@ void ResourceSystem::combineImages(const vector<fs::path>& inputPaths, const fs:
 void ResourceSystem::renormalizeImage(const fs::path& path, Image::FileType fileType, int32 threadIndex)
 {
 	GARDEN_ASSERT(!path.empty());
+	GARDEN_ASSERT(threadIndex < (int32)thread::hardware_concurrency());
 
 	vector<uint8> dataBuffer; uint2 size;
 	auto imageFormat = Image::Format::Undefined;
@@ -1563,7 +1601,7 @@ void ResourceSystem::destroyShared(Ref<Image>& image)
 }
 
 //**********************************************************************************************************************
-Ref<Buffer> ResourceSystem::loadBuffer(const vector<fs::path>& path, 
+Ref<Buffer> ResourceSystem::loadBuffer(const fs::path& path, 
 	Buffer::Strategy strategy, BufferLoadFlags flags, float taskPriority)
 {
 	GARDEN_ASSERT(!path.empty());

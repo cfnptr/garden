@@ -38,14 +38,14 @@ static BOOL WINAPI consoleHandler(DWORD ctrlType)
 {
 	switch (ctrlType)
 	{
-	case CTRL_C_EVENT:
-	case CTRL_BREAK_EVENT:
-	case CTRL_CLOSE_EVENT:
-	case CTRL_LOGOFF_EVENT:
-	case CTRL_SHUTDOWN_EVENT:
-		Manager::Instance::get()->isRunning = false;
-		return TRUE;
-	default: return FALSE;
+		case CTRL_C_EVENT:
+		case CTRL_BREAK_EVENT:
+		case CTRL_CLOSE_EVENT:
+		case CTRL_LOGOFF_EVENT:
+		case CTRL_SHUTDOWN_EVENT:
+			Manager::Instance::get()->isRunning = false;
+			return TRUE;
+		default: return FALSE;
 	}
 }
 #endif

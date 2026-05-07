@@ -1161,14 +1161,10 @@ void EditorRenderSystem::drawImageSelector(const char* name, fs::path& path, Ima
 	if (ImGui::BeginPopupContextItem())
 	{
 		fs::path resourcesPath;
-		if (ImGui::BeginMenu("Select Image"))
-		{
-			if (ImGui::MenuItem("App"))
-				resourcesPath = AppInfoSystem::Instance::get()->getResourcesPath() / "images";
-			if (ImGui::MenuItem("Engine"))
-				resourcesPath = GARDEN_RESOURCES_PATH / "images";
-			ImGui::EndMenu();
-		}
+		if (ImGui::MenuItem("Select App Image"))
+			resourcesPath = AppInfoSystem::Instance::get()->getResourcesPath() / "images";
+		if (ImGui::MenuItem("Select Engine Image"))
+			resourcesPath = GARDEN_RESOURCES_PATH / "images";
 
 		if (!resourcesPath.empty())
 		{

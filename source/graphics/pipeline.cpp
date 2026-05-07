@@ -362,7 +362,9 @@ Pipeline::Pipeline(CreateData& createData, bool asyncRecording)
 	this->variantCount = createData.variantCount;
 
 	auto graphicsAPI = GraphicsAPI::get();
-	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
+	auto graphicsBackend = graphicsAPI->getBackendType();
+
+	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
 		this->pushConstantsMask = (uint32)toVkShaderStages(createData.pushConstantsStages);
 
@@ -403,7 +405,8 @@ bool Pipeline::destroy()
 	}
 	#endif
 
-	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
+	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
 		destroyVkPipeline(instance, pipelineLayout, 
 			samplers, descriptorSetLayouts, descriptorPools, variantCount);
@@ -415,13 +418,15 @@ bool Pipeline::destroy()
 
 vector<void*> Pipeline::createShaders(const vector<uint8>* codeArray, uint8 shaderCount, const fs::path& pipelinePath)
 {
-	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
+	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 		return createVkShaders(codeArray, shaderCount, pipelinePath);
 	else abort();
 }
 void Pipeline::destroyShaders(const vector<void*>& shaders)
 {
-	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
+	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
 		auto vulkanAPI = VulkanAPI::get();
 		for (auto shader : shaders)
@@ -695,10 +700,11 @@ void Pipeline::bindAsync(uint8 variant, int32 threadIndex)
 		atomicFetchAdd32(&busyLock, 1);
 	}
 
+	auto graphicsBackend = graphicsAPI->getBackendType();
 	auto pipeline = graphicsAPI->getPipeline(type, this);
 	auto autoThreadCount = graphicsAPI->calcAutoThreadCount(threadIndex);
 
-	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
+	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
 		auto vulkanAPI = VulkanAPI::get();
 		auto vkBindPoint = toVkPipelineBindPoint(type);
@@ -794,10 +800,12 @@ void Pipeline::bindDescriptorSetsAsync(const DescriptorSet::Range* descriptorSet
 	command.rangeCount = rangeCount;
 	memcpy(command.descriptorSetRanges, descriptorSetRanges, sizeof(DescriptorSet::Range) * rangeCount);
 
+	auto graphicsBackend = graphicsAPI->getBackendType();
 	auto autoThreadCount = graphicsAPI->calcAutoThreadCount(threadIndex);
 	GARDEN_ASSERT_MSG(ID<Pipeline>(graphicsAPI->getPipeline(type, this)) == 
 		graphicsAPI->currentPipelines[threadIndex], "Assert " + debugName);
-	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
+
+	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
 		auto vulkanAPI = VulkanAPI::get();
 		auto& vkDescriptorSets = vulkanAPI->bindDescriptorSets[threadIndex];
@@ -866,7 +874,9 @@ void Pipeline::pushConstantsAsync(const void* data, int32 threadIndex)
 	GARDEN_ASSERT_MSG(instance, "Pipeline [" + debugName + "] is not ready");
 
 	graphicsAPI->calcAutoThreadIndex(threadIndex);
-	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
+
+	auto graphicsBackend = graphicsAPI->getBackendType();
+	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
 		VulkanAPI::get()->secondaryCommandBuffers[threadIndex].pushConstants(
 			vk::PipelineLayout((VkPipelineLayout)pipelineLayout), 

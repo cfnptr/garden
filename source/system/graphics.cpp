@@ -135,7 +135,9 @@ void GraphicsSystem::preInit()
 	ECSM_SUBSCRIBE_TO_EVENT("Output", GraphicsSystem::present);
 
 	auto graphicsAPI = GraphicsAPI::get();
-	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
+	auto graphicsBackend = graphicsAPI->getBackendType();
+
+	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 		logVkGpuInfo();
 	else abort();
 
@@ -339,7 +341,8 @@ void GraphicsSystem::update()
 			to_string(frameSize.y) + " px, " + to_string(swapchain->getImageCount()) + "I)");
 	}
 
-	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
+	auto graphicsBackend = graphicsAPI->getBackendType();
+	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
 		auto vulkanAPI = VulkanAPI::get();
 		if (vulkanAPI->features.nvLowLatency && (nvLowLatency != useLowLatency || nvMaxFrameRate != maxFrameRate))
@@ -761,15 +764,7 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 
 			for (uint32 layer = 0; layer < mipLayerCount; layer++)
 			{
-				const void* layerData;
-				if (type == Image::Type::Cubemap && graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
-				{
-					if (layer % 2 == 0) 
-						layerData = mipData[min(layer + 1, mipLayerCount - 1)];
-					else layerData = mipData[layer - 1];
-				}
-				else layerData = mipData[layer];
-
+				auto layerData = mipData[Image::calcApiLayerIndex(type, layer)];
 				if (!layerData)
 					continue;
 
@@ -1124,10 +1119,14 @@ void GraphicsSystem::startRecording(CommandBufferType commandBufferType) noexcep
 	
 	switch (commandBufferType)
 	{
-	case CommandBufferType::Frame: graphicsAPI->currentCommandBuffer = graphicsAPI->frameCommandBuffer; break;
-	case CommandBufferType::Graphics: graphicsAPI->currentCommandBuffer = graphicsAPI->graphicsCommandBuffer; break;
-	case CommandBufferType::TransferOnly: graphicsAPI->currentCommandBuffer = graphicsAPI->transferCommandBuffer; break;
-	case CommandBufferType::Compute: graphicsAPI->currentCommandBuffer = graphicsAPI->computeCommandBuffer; break;
+	case CommandBufferType::Frame:
+		graphicsAPI->currentCommandBuffer = graphicsAPI->frameCommandBuffer; break;
+	case CommandBufferType::Graphics:
+		graphicsAPI->currentCommandBuffer = graphicsAPI->graphicsCommandBuffer; break;
+	case CommandBufferType::TransferOnly:
+		graphicsAPI->currentCommandBuffer = graphicsAPI->transferCommandBuffer; break;
+	case CommandBufferType::Compute:
+		graphicsAPI->currentCommandBuffer = graphicsAPI->computeCommandBuffer; break;
 	default: abort();
 	}
 }
@@ -1209,7 +1208,8 @@ void GraphicsSystem::addBarriers(Buffer::BarrierState newState, const ID<Buffer>
 	}
 	#endif
 
-	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
+	auto graphicsBackend = graphicsAPI->getBackendType();
+	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
 		for (uint32 i = 0; i < bufferCount; i++)
 		{

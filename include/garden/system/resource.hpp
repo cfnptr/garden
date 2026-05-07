@@ -234,13 +234,14 @@ public:
 	 * @brief Loads image pixels from the resource pack.
 	 * @note Loads from the images directory in debug build.
 	 * 
-	 * @param[in] path target image resource path array
+	 * @param[in] paths target image resource path array
+	 * @param pathCount image resource path array size
 	 * @param[out] pixelArrays loaded image pixel data arrays
 	 * @param[out] size loaded image size in pixels
 	 * @param[in,out] format image data format or undefined
 	 * @param threadIndex thread index in the pool (-1 = single threaded)
 	 */
-	void loadImageData(const vector<fs::path>& paths, vector<vector<uint8>>& pixelArrays, 
+	void loadImageData(const fs::path* paths, psize pathCount, vector<vector<uint8>>& pixelArrays, 
 		uint2& size, Image::Format& format, int32 threadIndex = -1) const noexcept;
 
 	/**
@@ -267,6 +268,7 @@ public:
 	 * @note Loads from the images directory in debug build.
 	 *
 	 * @param[in] paths target image resource path array
+	 * @param pathCount image resource path array size
 	 * @param format required image data format
 	 * @param usage image usage flags (affects driver optimization)
 	 * @param maxMipCount maximum mipmap level count (0 = unlimited)
@@ -274,8 +276,8 @@ public:
 	 * @param flags additional image load flags
 	 * @param taskPriority thread pool image load task priority
 	 */
-	Ref<Image> loadImageArray(const vector<fs::path>& paths, Image::Format format, Image::Usage usage, 
-		uint8 maxMipCount = 1, Image::Strategy strategy = Buffer::Strategy::Default, 
+	Ref<Image> loadImage(const fs::path* paths, psize pathCount, Image::Format format, 
+		Image::Usage usage, uint8 maxMipCount = 1, Image::Strategy strategy = Buffer::Strategy::Default, 
 		ImageLoadFlags flags = ImageLoadFlags::None, float taskPriority = 0.0f);
 
 	/**
@@ -294,7 +296,7 @@ public:
 		uint8 maxMipCount = 1, Image::Strategy strategy = Buffer::Strategy::Default, 
 		ImageLoadFlags flags = ImageLoadFlags::None, float taskPriority = 0.0f)
 	{
-		return loadImageArray({ path }, format, usage, maxMipCount, strategy, flags, taskPriority);
+		return loadImage(&path, 1, format, usage, maxMipCount, strategy, flags, taskPriority);
 	}
 
 	/**
@@ -374,7 +376,7 @@ public:
 	 * @param flags additional buffer load flags
 	 * @param taskPriority thread pool buffer load task priority
 	 */
-	Ref<Buffer> loadBuffer(const vector<fs::path>& path, Buffer::Strategy strategy = Buffer::Strategy::Default, 
+	Ref<Buffer> loadBuffer(const fs::path& path, Buffer::Strategy strategy = Buffer::Strategy::Default, 
 		BufferLoadFlags flags = BufferLoadFlags::None, float taskPriority = 0.0f);
 	/**
 	 * @brief Destroys shared buffer if it's the last one.

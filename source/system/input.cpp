@@ -204,8 +204,10 @@ void InputSystem::input()
 {
 	SET_CPU_ZONE_SCOPED("Input Update");
 
+	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
 	auto graphicsSystem = GraphicsSystem::Instance::get();
-	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+
+	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
 		auto vulkanAPI = VulkanAPI::get();
 		if (vulkanAPI->features.amdAntiLag)
@@ -240,7 +242,8 @@ void InputSystem::input()
 
 	if (graphicsSystem->isOutOfDateSwapchain())
 	{
-		if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+		auto graphicsBackend = GraphicsAPI::get()->getBackendType();
+		if (graphicsBackend == GraphicsBackend::VulkanAPI)
 		{
 			auto vulkanAPI = VulkanAPI::get();
 			auto surfaceCapabilities = vulkanAPI->physicalDevice.getSurfaceCapabilitiesKHR(vulkanAPI->surface);

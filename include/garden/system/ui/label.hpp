@@ -37,10 +37,10 @@ struct UiLabelComponent final : public MeshRenderComponent
 	vector<fs::path> fontPaths; /**< Text font paths. */
 	#endif
 
-	u32string text = U"";              /**< UI label text string. */
+	u32string text = U"";             /**< UI label text string. */
 	Text::Properties properties = {}; /**< UI label text properties. */
-	f32x4 color = f32x4::one;          /**< Text sRGB color multiplier. */
-	uint32 fontSize = 16;              /**< Text font size in pixels.*/
+	f32x4 color = f32x4::one;         /**< Text sRGB color multiplier. */
+	uint32 fontSize = 16;             /**< Text font size in pixels.*/
 private:
 	ID<Text> textData = {};
 	ID<DescriptorSet> descriptorSet = {};
