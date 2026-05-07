@@ -79,7 +79,9 @@ static uint32 getDepthStencilLayout(Framebuffer::Attachment depthStencilAttachme
 		return 0;
 
 	auto graphicsAPI = GraphicsAPI::get();
-	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
+	auto graphicsBackend = graphicsAPI->getBackendType();
+
+	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
 		auto imageFormat = graphicsAPI->imageViewPool.get(depthStencilAttachment.imageView)->getFormat();
 		if (isFormatDepthOnly(imageFormat))
@@ -110,7 +112,8 @@ Framebuffer::Framebuffer(uint2 size, vector<Attachment>&& colorAttachments, Atta
 		(uint32)colorAttachments.size(), depthStencilAttachment, debugName);
 	#endif
 
-	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
+	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
 		if (!VulkanAPI::get()->features.dynamicRendering)
 			throw GardenError("Dynamic rendering is not supported on this GPU.");
@@ -293,7 +296,8 @@ void Framebuffer::beginRenderPass(const float4* clearColors, uint8 clearColorCou
 
 	if (asyncRecording)
 	{
-		if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
+		auto graphicsBackend = graphicsAPI->getBackendType();
+		if (graphicsBackend == GraphicsBackend::VulkanAPI)
 		{
 			#if GARDEN_DEBUG
 			const auto& name = debugName;
@@ -345,7 +349,8 @@ void Framebuffer::endRenderPass()
 		graphicsAPI->framebufferPool.getID(this), "Assert " + debugName);
 	GARDEN_ASSERT_MSG(currentCommandBuffer, "Assert " + debugName);
 
-	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
+	auto graphicsBackend = graphicsAPI->getBackendType();
+	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 		VulkanAPI::get()->vulkanSwapchain->endSecondaryCommandBuffers();
 	else abort();
 

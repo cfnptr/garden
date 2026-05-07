@@ -116,7 +116,9 @@ void GraphicsEditorSystem::showPerformanceStats()
 		ImGui::Spacing();
 
 		auto graphicsAPI = GraphicsAPI::get();
-		if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
+		auto graphicsBackend = graphicsAPI->getBackendType();
+
+		if (graphicsBackend == GraphicsBackend::VulkanAPI)
 		{
 			auto vulkanAPI = VulkanAPI::get();
 			auto& inFlightFrame = vulkanAPI->vulkanSwapchain->getInFlightFrame();
@@ -141,7 +143,7 @@ void GraphicsEditorSystem::showPerformanceStats()
 		else abort();
 
 		ImGui::SeparatorText("GPU Information");
-		if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
+		if (graphicsBackend == GraphicsBackend::VulkanAPI)
 		{
 			auto vulkanAPI = VulkanAPI::get();
 			ImGui::Text("Queues: %lu, %lu, %lu. (Graphics, Transfer, Compute)",
@@ -169,7 +171,8 @@ void GraphicsEditorSystem::showMemoryStats()
 {
 	if (ImGui::Begin("Memory Stats", &memoryStats, ImGuiWindowFlags_AlwaysAutoResize))
 	{
-		if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+		auto graphicsBackend = GraphicsAPI::get()->getBackendType();
+		if (graphicsBackend == GraphicsBackend::VulkanAPI)
 		{
 			auto vulkanAPI = VulkanAPI::get();
 			VmaBudget heapBudgets[VK_MAX_MEMORY_HEAPS];

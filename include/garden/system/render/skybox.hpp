@@ -30,6 +30,10 @@ struct SkyboxRenderComponent final : public Component
 {
 	Ref<Image> cubemap = {};               /**< Skybox cubemap texture. */
 	Ref<DescriptorSet> descriptorSet = {}; /**< Skybox descriptor set. */
+	#if GARDEN_DEBUG || GARDEN_EDITOR
+	fs::path cubemapPath = "";             /**< Skybox cubemap texture path. */
+	float taskPriority = 0.0f;             /**< Texture load task priority. */
+	#endif
 };
 
 /**

@@ -320,6 +320,15 @@ public:
 	bool isSwapchain() const noexcept { return swapchain; }
 
 	/**
+	 * @brief Calculates current graphics API layer index.
+	 * @details Used to copy special type images. (Like cubemaps)
+	 *
+	 * @param type image dimensionality type
+	 * @param layerIndex target image layer index
+	 */
+	static uint32 calcApiLayerIndex(Type type, uint32 layerIndex) noexcept;
+
+	/*******************************************************************************************************************
 	 * @brief Returns entire image view instance. (All layers and mips)
 	 * @note Creates a new image view instance on a first call.
 	 */
@@ -830,7 +839,7 @@ public:
 	void setDebugName(const string& name) override;
 	#endif
 
-	/**
+	/*******************************************************************************************************************
 	 * @brief Converts image data formats.
 	 * @note Clamps values if out of range.
 	 *
@@ -1242,55 +1251,55 @@ static Image::Type toImageType(GslUniformType uniformType)
 {
 	switch (uniformType)
 	{
-	case GslUniformType::Sampler1D:
-	case GslUniformType::Isampler1D:
-	case GslUniformType::Usampler1D:
-	case GslUniformType::Sampler1DShadow:
-	case GslUniformType::Image1D:
-	case GslUniformType::Iimage1D:
-	case GslUniformType::Uimage1D:
-		return Image::Type::Texture1D;
-	case GslUniformType::Sampler2D:
-	case GslUniformType::Isampler2D:
-	case GslUniformType::Usampler2D:
-	case GslUniformType::Sampler2DShadow:
-	case GslUniformType::Image2D:
-	case GslUniformType::Iimage2D:
-	case GslUniformType::Uimage2D:
-		return Image::Type::Texture2D;
-	case GslUniformType::Sampler3D:
-	case GslUniformType::Isampler3D:
-	case GslUniformType::Usampler3D:
-	case GslUniformType::Image3D:
-	case GslUniformType::Iimage3D:
-	case GslUniformType::Uimage3D:
-		return Image::Type::Texture3D;
-	case GslUniformType::Sampler1DArray:
-	case GslUniformType::Isampler1DArray:
-	case GslUniformType::Usampler1DArray:
-	case GslUniformType::Sampler1DArrayShadow:
-	case GslUniformType::Image1DArray:
-	case GslUniformType::Iimage1DArray:
-	case GslUniformType::Uimage1DArray:
-		return Image::Type::Texture1DArray;
-	case GslUniformType::Sampler2DArray:
-	case GslUniformType::Isampler2DArray:
-	case GslUniformType::Usampler2DArray:
-	case GslUniformType::Sampler2DArrayShadow:
-	case GslUniformType::Image2DArray:
-	case GslUniformType::Iimage2DArray:
-	case GslUniformType::Uimage2DArray:
-		return Image::Type::Texture2DArray;
-	case GslUniformType::SamplerCube:
-	case GslUniformType::IsamplerCube:
-	case GslUniformType::UsamplerCube:
-	case GslUniformType::SamplerCubeShadow:
-	case GslUniformType::ImageCube:
-	case GslUniformType::IimageCube:
-	case GslUniformType::UimageCube:
-		return Image::Type::Cubemap;
-	default: throw GardenError("Unsupported image type. ("
-		"uniformType: " + to_string((uint8)uniformType) + ")");
+		case GslUniformType::Sampler1D:
+		case GslUniformType::Isampler1D:
+		case GslUniformType::Usampler1D:
+		case GslUniformType::Sampler1DShadow:
+		case GslUniformType::Image1D:
+		case GslUniformType::Iimage1D:
+		case GslUniformType::Uimage1D:
+			return Image::Type::Texture1D;
+		case GslUniformType::Sampler2D:
+		case GslUniformType::Isampler2D:
+		case GslUniformType::Usampler2D:
+		case GslUniformType::Sampler2DShadow:
+		case GslUniformType::Image2D:
+		case GslUniformType::Iimage2D:
+		case GslUniformType::Uimage2D:
+			return Image::Type::Texture2D;
+		case GslUniformType::Sampler3D:
+		case GslUniformType::Isampler3D:
+		case GslUniformType::Usampler3D:
+		case GslUniformType::Image3D:
+		case GslUniformType::Iimage3D:
+		case GslUniformType::Uimage3D:
+			return Image::Type::Texture3D;
+		case GslUniformType::Sampler1DArray:
+		case GslUniformType::Isampler1DArray:
+		case GslUniformType::Usampler1DArray:
+		case GslUniformType::Sampler1DArrayShadow:
+		case GslUniformType::Image1DArray:
+		case GslUniformType::Iimage1DArray:
+		case GslUniformType::Uimage1DArray:
+			return Image::Type::Texture1DArray;
+		case GslUniformType::Sampler2DArray:
+		case GslUniformType::Isampler2DArray:
+		case GslUniformType::Usampler2DArray:
+		case GslUniformType::Sampler2DArrayShadow:
+		case GslUniformType::Image2DArray:
+		case GslUniformType::Iimage2DArray:
+		case GslUniformType::Uimage2DArray:
+			return Image::Type::Texture2DArray;
+		case GslUniformType::SamplerCube:
+		case GslUniformType::IsamplerCube:
+		case GslUniformType::UsamplerCube:
+		case GslUniformType::SamplerCubeShadow:
+		case GslUniformType::ImageCube:
+		case GslUniformType::IimageCube:
+		case GslUniformType::UimageCube:
+			return Image::Type::Cubemap;
+		default: throw GardenError("Unsupported image type. ("
+			"uniformType: " + to_string((uint8)uniformType) + ")");
 	}
 }
 

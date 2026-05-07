@@ -87,9 +87,9 @@ void PbrLightingEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened
 	if (cubemapMode == PbrCubemapMode::Static)
 	{
 		constexpr auto flags = ImageLoadFlags::TypeCubemap | ImageLoadFlags::LoadShared;
-		editorSystem->drawImageSelector("Skybox", 
-			pbrLightingView->skyboxPath, Image::Format::SfloatR16G16B16A16, pbrLightingView->skybox,
-			pbrLightingView->descriptorSet, pbrLightingView->getEntity(), typeid(PbrLightingComponent), 1, flags);
+		editorSystem->drawImageSelector("Skybox", pbrLightingView->skyboxPath, 
+			Image::Format::SfloatR16G16B16A16, pbrLightingView->skybox, pbrLightingView->descriptorSet, 
+			pbrLightingView->getEntity(), typeid(PbrLightingComponent), 1, flags);
 	}
 	else if (cubemapMode == PbrCubemapMode::Dynamic)
 	{

@@ -167,13 +167,15 @@ static void renderBuffers(uint32& selectedItem, string& searchString,
 	ImGui::TextWrapped("Busy lock: %lu", (unsigned long)ResourceExt::getBusyLock(buffer));
 	ImGui::TextWrapped("Usage: { %s }", toStringList(buffer.getUsage()).c_str());
 
-	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
+	auto graphicsBackend = graphicsAPI->getBackendType();
+	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
 		VmaAllocationInfo allocationInfo = {};
 		vk::MemoryType memoryType = {}; vk::MemoryHeap memoryHeap = {};
 		getVkAllocationInfo(allocationInfo, memoryType, memoryHeap, buffer);
 		renderVkMemoryDetails(allocationInfo, memoryType, memoryHeap, buffer);
 	}
+	else abort();
 	ImGui::Spacing();
 
 	if (ImGui::CollapsingHeader("Using Descriptor Sets"))
@@ -312,7 +314,8 @@ static void renderImages(uint32& selectedItem, string& searchString, bool& searc
 		(unsigned long)size.getY(), (unsigned long)size.getZ());
 	ImGui::TextWrapped("Mip count: %lu", (unsigned long)image.getMipCount());
 
-	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
+	auto graphicsBackend = graphicsAPI->getBackendType();
+	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
 		VmaAllocationInfo allocationInfo = {};
 		vk::MemoryType memoryType = {}; vk::MemoryHeap memoryHeap = {};

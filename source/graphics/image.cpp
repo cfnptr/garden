@@ -39,16 +39,16 @@ static vk::ImageType toVkImageType(Image::Type imageType) noexcept
 {
 	switch (imageType)
 	{
-	case Image::Type::Texture1DArray:
-	case Image::Type::Texture1D:
-		return vk::ImageType::e1D;
-	case Image::Type::Texture2DArray:
-	case Image::Type::Texture2D:
-	case Image::Type::Cubemap:
-		return vk::ImageType::e2D;
-	case Image::Type::Texture3D:
-		return vk::ImageType::e3D;
-	default: abort();
+		case Image::Type::Texture1DArray:
+		case Image::Type::Texture1D:
+			return vk::ImageType::e1D;
+		case Image::Type::Texture2DArray:
+		case Image::Type::Texture2D:
+		case Image::Type::Cubemap:
+			return vk::ImageType::e2D;
+		case Image::Type::Texture3D:
+			return vk::ImageType::e3D;
+		default: abort();
 	}
 }
 static vk::ImageViewType toVkImageViewType(Image::Type imageType) noexcept
@@ -198,7 +198,8 @@ Image::Image(Type type, Format format, Usage usage, Strategy strategy, u32x4 siz
 {
 	GARDEN_ASSERT(areAllTrue(size > u32x4::zero));
 
-	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
+	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 		createVkImage(type, format, usage, strategy, size, instance, allocation, aspectFlags);
 	else abort();
 
@@ -261,7 +262,8 @@ bool Image::destroy()
 	}
 	#endif
 
-	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
+	auto graphicsBackend = graphicsAPI->getBackendType();
+	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
 		auto vulkanAPI = VulkanAPI::get();
 		if (!this->swapchain)
@@ -274,6 +276,19 @@ bool Image::destroy()
 	else abort();
 
 	return true;
+}
+
+uint32 Image::calcApiLayerIndex(Type type, uint32 layerIndex) noexcept
+{
+	if (type == Image::Type::Cubemap)
+	{
+		GARDEN_ASSERT(layerIndex < Image::cubemapFaceCount);
+		auto graphicsBackend = GraphicsAPI::get()->getBackendType();
+		if (graphicsBackend == GraphicsBackend::VulkanAPI)
+			return layerIndex ^ 1; // Note: remapping Vulkan API cubemap face indices.
+		else abort();
+	}
+	return layerIndex;
 }
 
 //**********************************************************************************************************************
@@ -348,7 +363,8 @@ void Image::freeSpecificViews()
 //**********************************************************************************************************************
 bool Image::isSupported(Type type, Format format, Usage usage, uint3 size, uint8 mipCount, uint32 layerCount) noexcept
 {
-	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
+	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
 		vk::PhysicalDeviceImageFormatInfo2 imageFormatInfo;
 		imageFormatInfo.format = toVkFormat(format);
@@ -905,7 +921,8 @@ void Image::setDebugName(const string& name)
 {
 	Resource::setDebugName(name);
 
-	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
+	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
 		#if GARDEN_DEBUG // Note: No GARDEN_EDITOR
 		auto vulkanAPI = VulkanAPI::get();
@@ -1004,25 +1021,25 @@ static void convertPixelsFromFloat(const void* src, vector<uint8>& dst, psize co
 	for (psize i = 0; i < count; i++)
 		dstPixels[i] = (D)(std::clamp((float)srcPixels[i], 0.0f, 1.0f) * MAX_VALUE + 0.5f);
 }
+template<typename S>
 static void convertPixelsToSrgb(const void* src, vector<uint8>& dst, psize count) noexcept
 {
-	dst.resize(count * sizeof(uint8));
-	count /= sizeof(Color);
+	dst.resize(count * sizeof(Color)); count /= 4;
 	auto dstPixels = (Color*)dst.data();
-	auto srcPixels = (const Color*)src;
+	auto srcPixels = (const S*)src;
 
 	for (psize i = 0; i < count; i++)
 		dstPixels[i] = (Color)rgbToSrgb((f32x4)srcPixels[i]);
 }
+template<typename S, typename D>
 static void convertPixelsFromSrgb(const void* src, vector<uint8>& dst, psize count) noexcept
 {
-	dst.resize(count * sizeof(uint8));
-	count /= sizeof(Color);
-	auto dstPixels = (Color*)dst.data();
-	auto srcPixels = (const Color*)src;
+	dst.resize(count * sizeof(D)); count /= 4;
+	auto dstPixels = (D*)dst.data();
+	auto srcPixels = (const S*)src;
 
 	for (psize i = 0; i < count; i++)
-		dstPixels[i] = (Color)srgbToRgb((f32x4)srcPixels[i]);
+		dstPixels[i] = (D)srgbToRgb((f32x4)srcPixels[i]);
 }
 
 //**********************************************************************************************************************
@@ -1035,7 +1052,6 @@ const void* Image::convertFormat(const void* src, uint2 size,
 	if (srcFormat == dstFormat)
 		return src;
 
-	auto dstData = dst.data();
 	auto count = (psize)size.x * size.y * toComponentCount(srcFormat);
 
 	switch (srcFormat)
@@ -1048,8 +1064,7 @@ const void* Image::convertFormat(const void* src, uint2 size,
 			case Format::SintR8: convertPixelsMin<uint8, int8, INT8_MAX>(src, dst, count); break;
 			case Format::SintR16: convertPixels<uint8, int16>(src, dst, count); break;
 			case Format::SintR32: convertPixels<uint8, int32>(src, dst, count); break;
-			case Format::SrgbR8: convertPixelsToSrgb(src, dst, count); break;
-			case Format::UintR8: case Format::UintS8: return dstData;
+			case Format::UintR8: case Format::UintS8: return dst.data();
 			default: throw GardenError("Unsupported image formats conversion.");
 		}
 		break;
@@ -1061,7 +1076,6 @@ const void* Image::convertFormat(const void* src, uint2 size,
 			case Format::SintR8G8: convertPixelsMin<uint8, int8, INT8_MAX>(src, dst, count); break;
 			case Format::SintR16G16: convertPixels<uint8, int16>(src, dst, count); break;
 			case Format::SintR32G32: convertPixels<uint8, int32>(src, dst, count); break;
-			case Format::SrgbR8G8: convertPixelsToSrgb(src, dst, count); break;
 			default: throw GardenError("Unsupported image formats conversion.");
 		}
 		break;
@@ -1073,7 +1087,7 @@ const void* Image::convertFormat(const void* src, uint2 size,
 			case Format::SintR8G8B8A8: convertPixelsMin<uint8, int8, INT8_MAX>(src, dst, count); break;
 			case Format::SintR16G16B16A16: convertPixels<uint8, int16>(src, dst, count); break;
 			case Format::SintR32G32B32A32: convertPixels<uint8, int32>(src, dst, count); break;
-			case Format::SrgbR8G8B8A8: convertPixelsToSrgb(src, dst, count); break;
+			case Format::SrgbR8G8B8A8: convertPixelsToSrgb<Color>(src, dst, count); break;
 			default: throw GardenError("Unsupported image formats conversion.");
 		}
 		break;
@@ -1267,7 +1281,7 @@ const void* Image::convertFormat(const void* src, uint2 size,
 			case Format::UnormR16G16: convertPixelsUnorm<uint8, uint16, UINT8_MAX, UINT16_MAX>(src, dst, count); break;
 			case Format::SfloatR16G16: convertPixelsToFloat<uint8, math::half, UINT8_MAX>(src, dst, count); break;
 			case Format::SfloatR32G32: convertPixelsToFloat<uint8, float, UINT8_MAX>(src, dst, count); break;
-			case Format::UintR8G8: case Format::SintR8G8: case Format::SnormR8G8: return dstData;
+			case Format::UintR8G8: case Format::SintR8G8: case Format::SnormR8G8: return dst.data();
 			default: throw GardenError("Unsupported image formats conversion.");
 		}
 		break;
@@ -1277,7 +1291,7 @@ const void* Image::convertFormat(const void* src, uint2 size,
 			case Format::UnormR16G16B16A16: convertPixelsUnorm<uint8, uint16, UINT8_MAX, UINT16_MAX>(src, dst, count); break;
 			case Format::SfloatR16G16B16A16: convertPixelsToFloat<uint8, math::half, UINT8_MAX>(src, dst, count); break;
 			case Format::SfloatR32G32B32A32: convertPixelsToFloat<uint8, float, UINT8_MAX>(src, dst, count); break;
-			case Format::UintR8G8B8A8: case Format::SintR8G8B8A8: case Format::SnormR8G8B8A8: return dstData;
+			case Format::UintR8G8B8A8: case Format::SintR8G8B8A8: case Format::SnormR8G8B8A8: return dst.data();
 			default: throw GardenError("Unsupported image formats conversion.");
 		}
 		break;
@@ -1288,7 +1302,7 @@ const void* Image::convertFormat(const void* src, uint2 size,
 			case Format::UnormR8: convertPixelsUnorm<uint16, uint8, UINT16_MAX, UINT8_MAX>(src, dst, count); break;
 			case Format::SfloatR16: convertPixelsToFloat<uint16, math::half, UINT16_MAX>(src, dst, count); break;
 			case Format::SfloatR32: convertPixelsToFloat<uint16, float, UINT16_MAX>(src, dst, count); break;
-			case Format::UnormR16: case Format::UnormD16: return dstData;
+			case Format::UnormR16: case Format::UnormD16: return dst.data();
 			default: throw GardenError("Unsupported image formats conversion.");
 		}
 		break;
@@ -1298,7 +1312,7 @@ const void* Image::convertFormat(const void* src, uint2 size,
 			case Format::UnormR8G8: convertPixelsUnorm<uint16, uint8, UINT16_MAX, UINT8_MAX>(src, dst, count); break;
 			case Format::SfloatR16G16: convertPixelsToFloat<uint16, math::half, UINT16_MAX>(src, dst, count); break;
 			case Format::SfloatR32G32: convertPixelsToFloat<uint16, float, UINT16_MAX>(src, dst, count); break;
-			case Format::UintR16G16: case Format::SintR16G16: case Format::SnormR16G16: return dstData;
+			case Format::UintR16G16: case Format::SintR16G16: case Format::SnormR16G16: return dst.data();
 			default: throw GardenError("Unsupported image formats conversion.");
 		}
 		break;
@@ -1309,7 +1323,7 @@ const void* Image::convertFormat(const void* src, uint2 size,
 				convertPixelsUnorm<uint16, uint8, UINT16_MAX, UINT8_MAX>(src, dst, count); break;
 			case Format::SfloatR16G16B16A16: convertPixelsToFloat<uint16, math::half, UINT16_MAX>(src, dst, count); break;
 			case Format::SfloatR32G32B32A32: convertPixelsToFloat<uint16, float, UINT16_MAX>(src, dst, count); break;
-			case Format::UintR16G16B16A16: case Format::SintR16G16B16A16: case Format::SnormR16G16B16A16: return dstData;
+			case Format::UintR16G16B16A16: case Format::SintR16G16B16A16: case Format::SnormR16G16B16A16: return dst.data();
 			default: throw GardenError("Unsupported image formats conversion.");
 		}
 		break;
@@ -1390,30 +1404,20 @@ const void* Image::convertFormat(const void* src, uint2 size,
 	case Format::UfloatB10G11R11: throw GardenError("Not implemented yet!");
 	case Format::UfloatE5B9G9R9: throw GardenError("Not implemented yet!");
 
-	case Format::SrgbR8:
-		switch (dstFormat)
-		{
-			case Format::UintR8: convertPixelsFromSrgb(src, dst, count); break;
-			default: throw GardenError("Unsupported image formats conversion.");
-		}
-		break;
-	case Format::SrgbR8G8:
-		switch (dstFormat)
-		{
-			case Format::UintR8G8: convertPixelsFromSrgb(src, dst, count); break;
-			default: throw GardenError("Unsupported image formats conversion.");
-		}
-		break;
+	case Format::SrgbR8: throw GardenError("Not implemented yet!");
+	case Format::SrgbR8G8: throw GardenError("Not implemented yet!");
 	case Format::SrgbR8G8B8A8:
 		switch (dstFormat)
 		{
-			case Format::UintR8G8B8A8: convertPixelsFromSrgb(src, dst, count); break;
+			case Format::UintR8G8B8A8: convertPixelsFromSrgb<Color, Color>(src, dst, count); break;
+			case Format::SfloatR16G16B16A16: convertPixelsFromSrgb<Color, f16x4>(src, dst, count); break;
+			case Format::SfloatR32G32B32A32: convertPixelsFromSrgb<Color, f32x4>(src, dst, count); break;
 			default: throw GardenError("Unsupported image formats conversion.");
 		}
 		break;
 	default: throw GardenError("Unsupported image formats conversion.");
 	}
-	return dstData;
+	return dst.data();
 }
 
 //**********************************************************************************************************************
@@ -1432,14 +1436,14 @@ namespace
 
 		bool read(char c[/*n*/], int n) override
 		{
-			if (pos + n >= size)
+			if (pos + n > size)
 				throw runtime_error("Out of EXR file bounds.");
-			memcpy(c, data, n); pos += n;
+			memcpy(c, data + pos, n); pos += n;
 			return pos != size;
 		}
 		char* readMemoryMapped(int n) override
 		{
-			if (pos + n >= size)
+			if (pos + n > size)
 				throw runtime_error("Out of EXR file bounds.");
 			auto memory = (char*)data + pos; pos += n;
 			return memory;
@@ -1456,7 +1460,7 @@ namespace
 
 		int64_t read(void* buf, uint64_t sz, uint64_t offset) override
 		{
-			if (offset >= size)
+			if (offset > size)
 				return 0;
 			auto remaining = (uint64_t)size - offset;
     		auto bytesToRead = (sz < remaining) ? sz : remaining;
@@ -1566,7 +1570,8 @@ void Image::loadFileData(const void* data, psize dataSize, vector<uint8>& pixels
 	else if (fileType == FileType::EXR)
 	{
 		ExrMemoryStream exrStream((const uint8*)data, dataSize);
-		if (componentCount == 4 && imageFormat == Format::SfloatR16G16B16A16)
+		if (componentCount == 4 && (imageFormat == Format::Undefined || 
+			imageFormat == Format::SfloatR16G16B16A16))
 		{
 			Imf::RgbaInputFile exrFile(exrStream);
 			auto dw = exrFile.dataWindow();
@@ -1782,21 +1787,14 @@ static void* createVkImageView(View<Image> imageView, Image::Type type, Image::F
 ImageView::ImageView(bool isDefault, ID<Image> image, Image::Type type,
 	Image::Format format, uint32 baseLayer, uint32 layerCount, uint8 baseMip, uint8 mipCount)
 {
-	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
+	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
 		auto imageView = VulkanAPI::get()->imagePool.get(image);
 		if (imageView->getType() == Image::Type::Cubemap && layerCount == 1)
 		{
-			switch (baseLayer) // Note: remapping Vulkan API cubemap face indices.
-			{
-			case 0: baseLayer = 1; break;
-			case 1: baseLayer = 0; break;
-			case 2: baseLayer = 3; break;
-			case 3: baseLayer = 2; break;
-			case 4: baseLayer = 5; break;
-			case 5: baseLayer = 4; break;
-			default: abort();
-			}
+			GARDEN_ASSERT(baseLayer < Image::cubemapFaceCount);
+			baseLayer ^= 1; // Note: remapping Vulkan API cubemap face indices.
 		}
 
 		this->instance = createVkImageView(imageView, type, format, 
@@ -1878,7 +1876,8 @@ bool ImageView::destroy()
 	}
 	#endif
 
-	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
+	auto graphicsBackend = graphicsAPI->getBackendType();
+	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
 		auto vulkanAPI = VulkanAPI::get();
 		if (vulkanAPI->forceResourceDestroy)
@@ -1908,7 +1907,8 @@ void ImageView::setDebugName(const string& name)
 {
 	Resource::setDebugName(name);
 
-	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
+	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
 		#if GARDEN_DEBUG // Note: No GARDEN_EDITOR
 		auto vulkanAPI = VulkanAPI::get();

@@ -34,7 +34,7 @@ using namespace garden;
 using namespace garden::graphics;
 
 //**********************************************************************************************************************
-constexpr uint8 gslHeader[] = { 1, 0, 0, GARDEN_LITTLE_ENDIAN, };
+constexpr uint8 gslHeader[4] = { 1, 0, 0, GARDEN_LITTLE_ENDIAN, };
 
 #define COMMON_GLSL_EXTENSIONS ""                                           \
 	"#extension GL_EXT_scalar_block_layout : require\n"                     \

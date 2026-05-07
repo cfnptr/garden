@@ -98,7 +98,8 @@ static void terminateDlss(NVSDK_NGX_Parameter* ngxParameters)
 	auto result = NVSDK_NGX_VULKAN_DestroyParameters(ngxParameters);
 	GARDEN_ASSERT_MSG(result == NVSDK_NGX_Result_Success, "Failed to destroy Nvidia DLSS parameters");
 
-	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
+	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
 		result = NVSDK_NGX_VULKAN_Shutdown1(VulkanAPI::get()->device);
 		GARDEN_ASSERT_MSG(result == NVSDK_NGX_Result_Success, "Failed to shutdown Nvidia DLSS");
@@ -107,7 +108,9 @@ static void terminateDlss(NVSDK_NGX_Parameter* ngxParameters)
 }
 static NVSDK_NGX_Parameter* initializeDlss(const wstring& nvidiaDlssPath)
 {
+	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
 	NVSDK_NGX_FeatureCommonInfo* featureCommonInfoPtr = nullptr;
+
 	#if 0 // Note: for DLSS debugging.
 	NVSDK_NGX_FeatureCommonInfo featureCommonInfo;
 	memset(&featureCommonInfo, 0, sizeof(NVSDK_NGX_FeatureCommonInfo));
@@ -117,7 +120,7 @@ static NVSDK_NGX_Parameter* initializeDlss(const wstring& nvidiaDlssPath)
 	#endif
 
 	NVSDK_NGX_Result ngxResult; NVSDK_NGX_Parameter* ngxParameters = nullptr;
-	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
 		auto vulkanAPI = VulkanAPI::get();
 		#if defined(GARDEN_NVIDIA_DLSS_PROJECT_ID)
@@ -148,7 +151,9 @@ static NVSDK_NGX_Parameter* initializeDlss(const wstring& nvidiaDlssPath)
 		auto ngxResStr = wstring(GetNGXResultAsString(ngxResult));
 		GARDEN_LOG_WARN("Failed to get Nvidia DLSS parameters. ("
 			"result: " + string(ngxResStr.begin(), ngxResStr.end()) + ")");
-		if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+
+		auto graphicsBackend = GraphicsAPI::get()->getBackendType();
+		if (graphicsBackend == GraphicsBackend::VulkanAPI)
 			NVSDK_NGX_VULKAN_Shutdown1(VulkanAPI::get()->device);
 		return nullptr;
 	}
@@ -210,8 +215,10 @@ static NVSDK_NGX_Handle* createDlssFeature(CommandBuffer* commandBuffer, NVSDK_N
 	// NVSDK_NGX_Parameter_SetUI(ngxParameters, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Performance, renderPreset);
 	// NVSDK_NGX_Parameter_SetUI(ngxParameters, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_UltraPerformance, renderPreset);
 
+	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
+
 	NVSDK_NGX_Handle* ngxFeature = nullptr;
-	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
 		auto vkCommandBuffer = (VulkanCommandBuffer*)commandBuffer;
 		ngxResult = NGX_VULKAN_CREATE_DLSS_EXT(vkCommandBuffer->instance, 
@@ -236,8 +243,9 @@ static void destroyDlssFeature(NVSDK_NGX_Handle* ngxFeature)
 {
 	if (!ngxFeature)
 		return;
-	
-	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+
+	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
+	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
 		auto result = NVSDK_NGX_VULKAN_ReleaseFeature(ngxFeature);
 		GARDEN_ASSERT_MSG(result == NVSDK_NGX_Result_Success, "Failed to release Nvidia DLSS feature");
@@ -292,11 +300,12 @@ void DlssRenderSystem::preInit()
 		});
 	}
 
+	auto graphicsBackend = graphicsAPI->getBackendType();
 	NVSDK_NGX_FeatureRequirement featureRequirement;
 	memset(&featureRequirement, 0, sizeof(NVSDK_NGX_FeatureRequirement));
 
 	NVSDK_NGX_Result ngxResult;
-	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
+	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
 		auto vulkanAPI = VulkanAPI::get();
 		if (!vulkanAPI->features.nvidiaDlss)
@@ -350,13 +359,14 @@ void DlssRenderSystem::evaluateDlssCommand(void* commandBuffer, void* argument)
 	if (gFramebufferView->getSize() != dlssSystem->optimalSize)
 		return;
 
+	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
 	auto& jitterOffsets = graphicsSystem->getJitterOffsets();
 	auto jitterOffset = jitterOffsets[graphicsSystem->getCurrentFrameIndex() % jitterOffsets.size()] * 0.5f;
 	auto velocityBufferView = gFramebufferView->getColorAttachments()[G_BUFFER_VELOCITY].imageView;
 	auto inputSize = gFramebufferView->getSize();
 
 	NVSDK_NGX_Result ngxResult;
-	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
 		NVSDK_NGX_VK_DLSS_Eval_Params evalParams;
 		memset(&evalParams, 0, sizeof(NVSDK_NGX_VK_DLSS_Eval_Params));

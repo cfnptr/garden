@@ -63,12 +63,12 @@ void SettingsSystem::postDeinit()
 		{
 			switch (pair.second.type)
 			{
-			case Type::Int: settings[pair.first] = *((int64*)&pair.second.data); break;
-			case Type::Float: settings[pair.first] = *((double*)&pair.second.data); break;
-			case Type::Bool: settings[pair.first] = *((bool*)&pair.second.data); break;
-			case Type::String: settings[pair.first] = *((const char**)&pair.second.data); break;
-			case Type::Color: settings[pair.first] = Color((uint32)pair.second.data).toHex4(); break;
-			default: abort();
+				case Type::Int: settings[pair.first] = *((int64*)&pair.second.data); break;
+				case Type::Float: settings[pair.first] = *((double*)&pair.second.data); break;
+				case Type::Bool: settings[pair.first] = *((bool*)&pair.second.data); break;
+				case Type::String: settings[pair.first] = *((const char**)&pair.second.data); break;
+				case Type::Color: settings[pair.first] = Color((uint32)pair.second.data).toHex4(); break;
+				default: abort();
 			}
 		}
 

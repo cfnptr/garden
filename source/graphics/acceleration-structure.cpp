@@ -82,7 +82,8 @@ bool AccelerationStructure::destroy()
 	}
 	#endif
 
-	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
+	auto graphicsBackend = graphicsAPI->getBackendType();
+	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
 		auto vulkanAPI = VulkanAPI::get();
 		if (vulkanAPI->forceResourceDestroy)
@@ -211,7 +212,8 @@ void AccelerationStructure::setDebugName(const string& name)
 	auto storageView = graphicsAPI->bufferPool.get(storageBuffer);
 	storageView->setDebugName("asBuffer.storage." + name);
 
-	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
+	auto graphicsBackend = graphicsAPI->getBackendType();
+	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
 		#if GARDEN_DEBUG // Note: No GARDEN_EDITOR
 		auto vulkanAPI = VulkanAPI::get();

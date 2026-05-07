@@ -105,7 +105,7 @@ bool Equi2Cube::convertImage(const fs::path& filePath, const fs::path& inputPath
 
 	if (imageFormat == Image::Format::SfloatR16G16B16A16)
 	{
-		f16x4* cubeFaces[6] =
+		f16x4* cubeFaces[Image::cubemapFaceCount] =
 		{
 			(f16x4*)nx.data(), (f16x4*)px.data(), (f16x4*)ny.data(), 
 			(f16x4*)py.data(), (f16x4*)nz.data(), (f16x4*)pz.data(),
@@ -114,7 +114,7 @@ bool Equi2Cube::convertImage(const fs::path& filePath, const fs::path& inputPath
 	}
 	else if (imageFormat == Image::Format::SfloatR32G32B32A32)
 	{
-		f32x4* cubeFaces[6] =
+		f32x4* cubeFaces[Image::cubemapFaceCount] =
 		{
 			(f32x4*)nx.data(), (f32x4*)px.data(), (f32x4*)ny.data(), 
 			(f32x4*)py.data(), (f32x4*)nz.data(), (f32x4*)pz.data(),
@@ -123,7 +123,7 @@ bool Equi2Cube::convertImage(const fs::path& filePath, const fs::path& inputPath
 	}
 	else if (imageFormat == Image::Format::SrgbR8G8B8A8)
 	{
-		Color* cubeFaces[6] =
+		Color* cubeFaces[Image::cubemapFaceCount] =
 		{
 			(Color*)nx.data(), (Color*)px.data(), (Color*)ny.data(), 
 			(Color*)py.data(), (Color*)nz.data(), (Color*)pz.data(),
@@ -135,8 +135,7 @@ bool Equi2Cube::convertImage(const fs::path& filePath, const fs::path& inputPath
 
 	auto imageSize = uint2(cubemapSize);
 	static constexpr auto fileType = Image::FileType::EXR;
-	auto exrFilePath = (outputPath / filePath).generic_string();
-	exrFilePath.resize(exrFilePath.length() - 4);
+	auto exrFilePath = (outputPath / filePath).replace_extension().generic_string();
 	fs::create_directories(outputPath);
 
 	if (threadPool)

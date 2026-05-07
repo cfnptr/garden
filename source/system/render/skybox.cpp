@@ -47,7 +47,7 @@ void SkyboxRenderSystem::init()
 {
 	auto manager = Manager::Instance::get();
 	ECSM_SUBSCRIBE_TO_EVENT("ImageLoaded", SkyboxRenderSystem::imageLoaded);
-	ECSM_SUBSCRIBE_TO_EVENT("DdHdrRender", SkyboxRenderSystem::dsHdrRender);
+	ECSM_SUBSCRIBE_TO_EVENT("DsHdrRender", SkyboxRenderSystem::dsHdrRender);
 }
 
 void SkyboxRenderSystem::resetComponent(View<Component> component, bool full)

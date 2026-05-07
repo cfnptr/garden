@@ -99,14 +99,16 @@ Tlas::Tlas(vector<InstanceData>&& instances, ID<Buffer> instanceBuffer, BuildFla
 	GARDEN_ASSERT(!this->instances.empty());
 	GARDEN_ASSERT(instanceBuffer);
 
-	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
+	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 		createVkTlas(instanceBuffer, flags, storageBuffer, instance, deviceAddress, buildData);
 	else abort();
 }
 
 uint32 Tlas::getInstanceSize() noexcept
 {
-	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
+	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 		return sizeof(vk::AccelerationStructureInstanceKHR);
 	else abort();
 }
@@ -116,10 +118,12 @@ void Tlas::fillInstanceData(const InstanceData* instanceArray, uint32 instanceCo
 	GARDEN_ASSERT(instanceCount > 0);
 	GARDEN_ASSERT(data);
 
-	auto instances = (vk::AccelerationStructureInstanceKHR*)data;
-	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
+	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
 		auto vulkanAPI = VulkanAPI::get();
+		auto instances = (vk::AccelerationStructureInstanceKHR*)data;
+
 		for (uint32 i = 0; i < instanceCount; i++)
 		{
 			auto instance = instanceArray[i];

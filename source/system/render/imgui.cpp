@@ -201,13 +201,13 @@ static LRESULT CALLBACK imGuiWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM 
 {
 	switch (msg)
 	{
-	case WM_MOUSEMOVE: case WM_NCMOUSEMOVE:
-	case WM_LBUTTONDOWN: case WM_LBUTTONDBLCLK: case WM_LBUTTONUP:
-	case WM_RBUTTONDOWN: case WM_RBUTTONDBLCLK: case WM_RBUTTONUP:
-	case WM_MBUTTONDOWN: case WM_MBUTTONDBLCLK: case WM_MBUTTONUP:
-	case WM_XBUTTONDOWN: case WM_XBUTTONDBLCLK: case WM_XBUTTONUP:
-		ImGui::GetIO().AddMouseSourceEvent(getMouseSourceFromMessageExtraInfo());
-		break;
+		case WM_MOUSEMOVE: case WM_NCMOUSEMOVE:
+		case WM_LBUTTONDOWN: case WM_LBUTTONDBLCLK: case WM_LBUTTONUP:
+		case WM_RBUTTONDOWN: case WM_RBUTTONDBLCLK: case WM_RBUTTONUP:
+		case WM_MBUTTONDOWN: case WM_MBUTTONDBLCLK: case WM_MBUTTONUP:
+		case WM_XBUTTONDOWN: case WM_XBUTTONDBLCLK: case WM_XBUTTONUP:
+			ImGui::GetIO().AddMouseSourceEvent(getMouseSourceFromMessageExtraInfo());
+			break;
 	}
 	return ::CallWindowProcW(prevWndProc, hWnd, msg, wParam, lParam);
 }

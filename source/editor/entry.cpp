@@ -38,6 +38,7 @@
 #include "garden/system/render/blur.hpp"
 #include "garden/system/render/model.hpp"
 #include "garden/system/render/bloom.hpp"
+#include "garden/system/render/skybox.hpp"
 #include "garden/system/render/clouds.hpp"
 #include "garden/system/render/deferred.hpp"
 #include "garden/system/render/atmosphere.hpp"
@@ -64,6 +65,7 @@
 #include "garden/editor/system/render/hbao.hpp"
 #include "garden/editor/system/render/model.hpp"
 #include "garden/editor/system/render/bloom.hpp"
+#include "garden/editor/system/render/skybox.hpp"
 #include "garden/editor/system/render/clouds.hpp"
 #include "garden/editor/system/render/sprite.hpp"
 #include "garden/editor/system/render/9-slice.hpp"
@@ -127,6 +129,7 @@ static void entryPoint()
 	manager->createSystem<DeferredRenderSystem>();
 	manager->createSystem<HizRenderSystem>();
 	manager->createSystem<PbrLightingSystem>();
+	// manager->createSystem<SkyboxRenderSystem>();
 	manager->createSystem<AtmosphereRenderSystem>();
 	manager->createSystem<CloudsRenderSystem>();
 	manager->createSystem<MeshRenderSystem>();
@@ -171,6 +174,7 @@ static void entryPoint()
 	manager->createSystem<MeshSelectorEditorSystem>();
 	manager->createSystem<MeshGizmosEditorSystem>();
 	manager->createSystem<DeferredRenderEditorSystem>();
+	manager->createSystem<SkyboxRenderEditorSystem>();
 	manager->createSystem<AtmosphereEditorSystem>();
 	manager->createSystem<CloudsEditorSystem>();
 	manager->createSystem<SpriteRenderEditorSystem>();

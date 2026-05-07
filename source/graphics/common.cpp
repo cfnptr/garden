@@ -39,8 +39,10 @@ void DebugLabel::begin(const string& name, Color color, int32 threadIndex)
 	else
 	{
 		GARDEN_ASSERT_MSG(graphicsAPI->isRenderPassAsync, "Assert " + name);
+		auto graphicsBackend = GraphicsAPI::get()->getBackendType();
 		graphicsAPI->calcAutoThreadIndex(threadIndex);
-		if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+
+		if (graphicsBackend == GraphicsBackend::VulkanAPI)
 		{
 			array<float, 4> values; *(float4*)values.data() = (float4)color;
 			vk::DebugUtilsLabelEXT debugLabel(name.c_str(), values);
@@ -63,8 +65,10 @@ void DebugLabel::end(int32 threadIndex)
 	else
 	{
 		GARDEN_ASSERT(graphicsAPI->isRenderPassAsync);
+		auto graphicsBackend = GraphicsAPI::get()->getBackendType();
 		graphicsAPI->calcAutoThreadIndex(threadIndex);
-		if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+
+		if (graphicsBackend == GraphicsBackend::VulkanAPI)
 			VulkanAPI::get()->secondaryCommandBuffers[threadIndex].endDebugUtilsLabelEXT();
 		else abort();
 	}
@@ -87,8 +91,10 @@ void DebugLabel::insert(const string& name, Color color, int32 threadIndex)
 	else
 	{
 		GARDEN_ASSERT_MSG(graphicsAPI->isRenderPassAsync, "Assert " + name);
+		auto graphicsBackend = GraphicsAPI::get()->getBackendType();
 		graphicsAPI->calcAutoThreadIndex(threadIndex);
-		if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+
+		if (graphicsBackend == GraphicsBackend::VulkanAPI)
 		{
 			array<float, 4> values; *(float4*)values.data() = (float4)color;
 			vk::DebugUtilsLabelEXT debugLabel(name.c_str(), values);

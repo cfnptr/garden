@@ -87,11 +87,11 @@ static bool isBigFontSize(Language language) noexcept
 {
 	switch (language)
 	{
-	case Language::Japanese: case Language::ChineseTrad: case Language::ChineseSimpl: case Language::Korean:
-	case Language::Persian: case Language::Arabic: case Language::Hebrew: case Language::Thai:
-	case Language::Hindi: case Language::Bengali: case Language::Urdu:
-		return true;
-	default: return false;
+		case Language::Japanese: case Language::ChineseTrad: case Language::ChineseSimpl: case Language::Korean:
+		case Language::Persian: case Language::Arabic: case Language::Hebrew: case Language::Thai:
+		case Language::Hindi: case Language::Bengali: case Language::Urdu:
+			return true;
+		default: return false;
 	}
 }
 

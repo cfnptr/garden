@@ -30,7 +30,8 @@ static void destroyVkSampler(void* instance)
 
 Sampler::Sampler(const State& state) : state(state)
 {
-	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
+	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
 		auto samplerInfo = getVkSamplerCreateInfo(state);
 		this->instance = VulkanAPI::get()->device.createSampler(samplerInfo);
@@ -43,7 +44,8 @@ bool Sampler::destroy()
 	if (!instance || busyLock > 0)
 		return false;
 
-	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
+	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 		destroyVkSampler(instance);
 	else abort();
 
@@ -56,7 +58,8 @@ void Sampler::setDebugName(const string& name)
 {
 	Resource::setDebugName(name);
 
-	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
+	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
 		#if GARDEN_DEBUG // Note: No GARDEN_EDITOR
 		auto vulkanAPI = VulkanAPI::get();

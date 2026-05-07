@@ -595,7 +595,8 @@ DescriptorSet::DescriptorSet(ID<Pipeline> pipeline, PipelineType pipelineType, U
 	GARDEN_ASSERT(pipeline);
 	GARDEN_ASSERT(!uniforms.empty());
 
-	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
+	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 		this->instance = createVkDescriptorSet(pipeline, pipelineType, uniforms, setCount, index);
 	else abort();
 
@@ -608,7 +609,8 @@ bool DescriptorSet::destroy()
 	if (!instance || busyLock > 0)
 		return false;
 
-	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
+	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 		destroyVkDescriptorSet(instance, pipeline, pipelineType, uniforms, setCount, index);
 	else abort();
 
@@ -717,7 +719,8 @@ void DescriptorSet::recreate(Uniforms&& uniforms, Samplers&& samplers)
 	}
 	#endif
 
-	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
+	auto graphicsBackend = graphicsAPI->getBackendType();
+	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
 		vk::DescriptorPool descriptorPool = (VkDescriptorPool)
 			PipelineExt::getDescriptorPools(**pipelineView)[index];
@@ -820,7 +823,8 @@ void DescriptorSet::updateResources(string_view name, uint32 elementCount, uint3
 			View<GraphicsPipeline>(pipelineView)->getFramebuffer()));
 	}
 
-	if (graphicsAPI->getBackendType() == GraphicsBackend::VulkanAPI)
+	auto graphicsBackend = graphicsAPI->getBackendType();
+	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
 		updateVkDescriptorSetResources(instance, dsUniform->second, pipelineUniform->second, 
 			framebufferView, barriers[setIndex], elementCount, elementOffset, setIndex);
@@ -834,7 +838,8 @@ void DescriptorSet::setDebugName(const string& name)
 {
 	Resource::setDebugName(name);
 
-	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
+	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
 		#if GARDEN_DEBUG // Note: No GARDEN_EDITOR
 		auto vulkanAPI = VulkanAPI::get();

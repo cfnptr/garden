@@ -21,11 +21,14 @@ using namespace garden::graphics;
 Memory::BarrierState Memory::toBarrierState(AccessFlags accessFlags, PipelineStage pipelineStages) noexcept
 {
 	BarrierState state;
-	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+
+	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
+	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
 		state.access = (uint64)toVkAccessFlags(accessFlags);
 		state.stage = (uint64)toVkPipelineStages(pipelineStages);
 	}
 	else abort();
+
 	return state;
 }
