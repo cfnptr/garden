@@ -943,7 +943,7 @@ void ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& pixels,
 			fileType = imageFileTypes[i];
 	}
 
-	if (fileType == ImageFile::Type::Count)
+	if (fileType == Image::FileType::Count)
 	{
 		GARDEN_LOG_ERROR("Image does not exist. (path: " + path.generic_string() + ")");
 		loadMissingImage(format, pixels, size);
