@@ -1603,8 +1603,9 @@ static bool compileGraphicsShader(const fs::path& inputPath, const fs::path& out
 						vertexAttribute.format = format;
 						vertexAttribute.offset = data.vertexAttributesSize;
 						data.vertexAttributes.push_back(vertexAttribute); 
-						data.vertexAttributesSize += (uint16)(
-							toComponentCount(vertexAttribute.type) * toBinarySize(vertexAttribute.format));
+						data.vertexAttributesSize += (uint16)(toComponentCount(
+							vertexAttribute.type) * toBinarySize(vertexAttribute.format));
+						GARDEN_ASSERT(data.vertexAttributesSize > 0);
 						fileData.outputFileStream << "; // " << toString(format);
 						overrideOutput = true; lineData.isIn = 0;
 					}

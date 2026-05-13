@@ -16,7 +16,7 @@
 
 #include "garden/system/render/dlss.hpp"
 
-#if GARDEN_NVIDIA_DLSS
+#if GARDEN_USE_NVIDIA_DLSS
 #include "garden/graphics/vulkan/command-buffer.hpp"
 #include "garden/system/render/deferred.hpp"
 #include "garden/system/app-info.hpp"
@@ -469,4 +469,4 @@ float DlssRenderSystem::calcMipLodBias(float nativeBias) noexcept
 	return nativeBias + std::log2((float)optimalSize.x / maxSize.x) - 1.0f + FLT_EPSILON;
 }
 
-#endif // GARDEN_NVIDIA_DLSS
+#endif // GARDEN_USE_NVIDIA_DLSS

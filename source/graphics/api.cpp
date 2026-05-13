@@ -17,6 +17,13 @@
 #include "garden/graphics/glfw.hpp" // Note: Do not move it.
 #include "garden/system/log.hpp" // TODO: we should not include system here
 
+#if GARDEN_USE_BASIS_UNIVERSAL
+	#if GARDEN_EDITOR
+	#include "basisu_enc.h"
+	#endif
+#include "basisu_transcoder.h"
+#endif
+
 #if GARDEN_OS_WINDOWS
 #define GLFW_EXPOSE_NATIVE_WIN32
 #include "GLFW/glfw3native.h"
@@ -109,10 +116,14 @@ void GraphicsAPI::initialize(GraphicsBackend backendType, const string& appName,
 	const string& appDataName, Version appVersion, uint2 windowSize, ThreadPool* threadPool, 
 	bool useVsync, bool useTripleBuffering, bool isFullscreen, bool isDecorated)
 {
-	#if GARDEN_OS_LINUX
-	setenv("XCURSOR_SIZE", "24", 0);
-	// TODO: remove cursor size after fixing: https://github.com/glfw/glfw/issues/2668
+	#if GARDEN_USE_BASIS_UNIVERSAL
+		#if GARDEN_EDITOR
+		basisu::basisu_encoder_init();
+		#endif
+	basist::basisu_transcoder_init();
+	#endif
 
+	#if GARDEN_OS_LINUX
 		#if GARDEN_MESA_RGP
 		const auto forceX11 = true;
 		#else

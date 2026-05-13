@@ -15,7 +15,7 @@
 #pragma once
 #include "garden/system/render/editor.hpp"
 
-#if GARDEN_EDITOR && GARDEN_NVIDIA_DLSS
+#if GARDEN_EDITOR && GARDEN_USE_NVIDIA_DLSS
 namespace garden
 {
 

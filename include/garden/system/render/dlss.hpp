@@ -20,7 +20,7 @@
 #pragma once
 #include "garden/system/graphics.hpp"
 
-#if GARDEN_NVIDIA_DLSS
+#if GARDEN_USE_NVIDIA_DLSS
 
 namespace garden
 {
@@ -123,4 +123,4 @@ static string_view toString(DlssQuality dlssQuality) noexcept
 
 } // namespace garden
 
-#endif // GARDEN_NVIDIA_DLSS
+#endif // GARDEN_USE_NVIDIA_DLSS

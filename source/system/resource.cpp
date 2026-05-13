@@ -100,13 +100,13 @@ namespace garden::graphics
 
 const vector<string_view> ResourceSystem::imageFileExts =
 {
-	".webp", ".png", ".jpg", ".jpeg", ".exr", ".hdr", ".bmp", ".psd", ".tga", ".pic", ".gif"
+	".ktx2", ".webp", ".png", ".jpg", ".jpeg", ".exr", ".hdr", ".bmp", ".psd", ".tga", ".pic", ".gif"
 };
 const vector<Image::FileType> ResourceSystem::imageFileTypes =
 {
-	Image::FileType::WebP, Image::FileType::PNG, Image::FileType::JPEG, Image::FileType::JPEG, 
-	Image::FileType::EXR, Image::FileType::HDR, Image::FileType::BMP, Image::FileType::PSD, 
-	Image::FileType::TGA, Image::FileType::PIC, Image::FileType::GIF
+	Image::FileType::KTX2, Image::FileType::WebP, Image::FileType::PNG, Image::FileType::JPEG, Image::FileType::JPEG, 
+	Image::FileType::EXR, Image::FileType::HDR, Image::FileType::BMP, Image::FileType::PSD,  Image::FileType::TGA, 
+	Image::FileType::PIC, Image::FileType::GIF
 };
 
 const vector<string_view> ResourceSystem::modelFileExts =
@@ -1010,11 +1010,12 @@ void ResourceSystem::loadImageData(const fs::path* paths, psize pathCount,
 		if (size != elementSize)
 		{
 			auto count = (psize)size.x * size.y;
-			auto binarySize = toBinarySize(format);
-			auto pixelArray = pixelArrayData[i];
-			pixelArray.resize(binarySize * count);
+			auto formatBinarySize = toBinarySize(format);
+			auto& pixelArray = pixelArrayData[i];
+			GARDEN_ASSERT(formatBinarySize > 0);
+			pixelArray.resize(formatBinarySize * count);
 
-			if (binarySize == 4)
+			if (formatBinarySize == 4)
 			{
 				auto pixels = (Color*)pixelArray.data();
 				for (uint32 j = 0; j < count; j++)
@@ -1370,6 +1371,7 @@ Ref<Image> ResourceSystem::loadImage(const fs::path* paths, psize pathCount, Ima
 			auto dataFormat = hasAnyFlag(flags, ImageLoadFlags::LoadAsSrgb) ? 
 				toSrgbFormat(toComponentCount(data->format)) : data->format;
 			auto formatBinarySize = toBinarySize(dataFormat);
+			GARDEN_ASSERT(formatBinarySize > 0);
 
 			if (hasAnyFlag(flags, ImageLoadFlags::TypeCubemap) && paths.size() == 1)
 			{
@@ -1421,6 +1423,7 @@ Ref<Image> ResourceSystem::loadImage(const fs::path* paths, psize pathCount, Ima
 		auto dataFormat = hasAnyFlag(flags, ImageLoadFlags::LoadAsSrgb) ? 
 			toSrgbFormat(toComponentCount(format)) : format;
 		auto formatBinarySize = toBinarySize(dataFormat);
+		GARDEN_ASSERT(formatBinarySize > 0);
 
 		if (hasAnyFlag(flags, ImageLoadFlags::TypeCubemap) && pathCount == 1)
 		{
@@ -1516,6 +1519,7 @@ void ResourceSystem::combineImages(const vector<fs::path>& inputPaths, const fs:
 	auto formatBinarySize = toBinarySize(imageFormat);
 	auto inBinSizeX = formatBinarySize * inSize.x, inBinSizeY = formatBinarySize * inSize.y;
 	auto outBinSizeY = formatBinarySize * inSize.y * pathCount;
+	GARDEN_ASSERT(formatBinarySize > 0);
 	vector<uint8> outBuffer(inSize.x * outBinSizeY);
 
 	auto inData = inBuffer.data(), outData = outBuffer.data();
