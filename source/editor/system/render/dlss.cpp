@@ -14,7 +14,7 @@
 
 #include "garden/editor/system/render/dlss.hpp"
 
-#if GARDEN_EDITOR && GARDEN_NVIDIA_DLSS
+#if GARDEN_EDITOR && GARDEN_USE_NVIDIA_DLSS
 #include "garden/system/render/dlss.hpp"
 #include "garden/system/settings.hpp"
 

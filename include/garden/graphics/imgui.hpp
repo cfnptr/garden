@@ -23,6 +23,7 @@
 
 #define IMGUI_ENABLE_FREETYPE
 #define IMGUI_DISABLE_DEFAULT_FONT
+// #define IMGUI_DISABLE_OBSOLETE_FUNCTIONS
 #include "imgui.h"
 #include "misc/cpp/imgui_stdlib.h"
 

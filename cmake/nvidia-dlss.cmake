@@ -13,13 +13,12 @@
 # limitations under the License.
 
 if (NOT GARDEN_USE_NVIDIA_DLSS)
-	set(GARDEN_NVIDIA_DLSS 0)
 	return()
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 	message(STATUS "Nvidia DLSS does not support macOS or iOS!")
-	set(GARDEN_NVIDIA_DLSS 0)
+	set(GARDEN_USE_NVIDIA_DLSS 0)
 	return()
 endif()
 
@@ -29,7 +28,7 @@ endif()
 
 message(STATUS "Fetching Nvidia DLSS SDK, please wait...")
 FetchContent_Declare(nvidia-dlss GIT_REPOSITORY https://github.com/NVIDIA/DLSS
-	GIT_TAG a8ed84e2d1cc1efa7bef63fb9394be6cb06c0d74)
+	GIT_TAG a8ed84e2d1cc1efa7bef63fb9394be6cb06c0d74 GIT_SHALLOW TRUE)
 set(NVIDIA_DLSS_VERSION "310.3.0")
 
 FetchContent_MakeAvailable(nvidia-dlss)
@@ -78,4 +77,3 @@ if (DEFINED GARDEN_NVIDIA_DLSS_PROJECT_ID)
 else()
 	set(GARDEN_NVIDIA_DLSS_USE_PROJECT_ID 0)
 endif()
-set(GARDEN_NVIDIA_DLSS 1)

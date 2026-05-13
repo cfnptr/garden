@@ -21,7 +21,7 @@
 #include "garden/hash.hpp"
 #include "mpio/directory.hpp"
 
-#if GARDEN_NVIDIA_DLSS
+#if GARDEN_USE_NVIDIA_DLSS
 #include "nvsdk_ngx_vk.h"
 #endif
 
@@ -96,7 +96,7 @@ static bool hasExtension(const vector<const char*>& extensions, const char* exte
 	return false;
 }
 
-#if GARDEN_NVIDIA_DLSS
+#if GARDEN_USE_NVIDIA_DLSS
 static NVSDK_NGX_FeatureDiscoveryInfo getDlssDiscoveryInfo()
 {
 	NVSDK_NGX_FeatureDiscoveryInfo discoveryInfo;
@@ -195,7 +195,7 @@ static vk::Instance createVkInstance(const string& appName, Version appVersion,
 	}
 	#endif
 
-	#if GARDEN_NVIDIA_DLSS
+	#if GARDEN_USE_NVIDIA_DLSS
 	if (isNvidiaGPU)
 	{
 		auto dlssDiscoveryInfo = getDlssDiscoveryInfo();
@@ -682,7 +682,7 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 		else hasDemoteToHelperInv = false;
 	}
 
-	#if GARDEN_NVIDIA_DLSS
+	#if GARDEN_USE_NVIDIA_DLSS
 	if (features.nvidiaDlss)
 	{
 		auto dlssDiscoveryInfo = getDlssDiscoveryInfo();

@@ -77,6 +77,7 @@ Use building [instructions](BUILDING.md) to install all required tools and libra
 | GARDEN_USE_TRACY_PROFILER   | Use Tracy frame profiler                         | `OFF`         |
 | GARDEN_USE_ASAN             | Use Clang address sanitizer                      | `OFF`         |
 | GARDEN_USE_MESA_RGP         | Use Mesa Radeon GPU Profiler (RGP)               | `OFF`         |
+| GARDEN_USE_BASIS_UNIVERSAL  | Use Binomial Basis Universal GPU texture codec   | `ON`          |
 | GARDEN_USE_NVIDIA_DLSS      | Use Nvidia DLSS SDK (Auto-downloads repo)        | `OFF`         |
 | GARDEN_USE_STEAMWORKS_SDK   | Use Valve Steamworks SDK (Download it manually!) | `OFF`         |
 
@@ -117,6 +118,7 @@ Use building [instructions](BUILDING.md) to install all required tools and libra
 ## Third-party
 
 * [Assimp](https://github.com/assimp/assimp) (assimp license)
+* [Basis Universal](https://github.com/BinomialLLC/basis_universal) (Apache-2.0 license)
 * [cURL](https://github.com/curl/curl) (curl License)
 * [ECSM](https://github.com/cfnptr/ecsm) (Apache-2.0 license)
 * [FastNoise2](https://github.com/Auburn/FastNoise2) (MIT license)
@@ -147,4 +149,6 @@ Use building [instructions](BUILDING.md) to install all required tools and libra
 
 ## Trademarks
 
-DLSS (Deep Learning Super Sampling) is a registered trademark of NVIDIA Corporation.
+* Basis Universal is a registered trademark of Binomial LLC.
+* DLSS (Deep Learning Super Sampling) is a registered trademark of NVIDIA Corporation.
+* Vulkan and the Vulkan logo are registered trademarks of the Khronos Group Inc.

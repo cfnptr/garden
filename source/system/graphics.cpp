@@ -701,8 +701,9 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 
 	auto mipSize = (uint3)size;
 	auto formatBinarySize = (uint64)toBinarySize(dataFormat);
-	uint64 stagingSize = 0; uint32 stagingCount = 0;
+	GARDEN_ASSERT(formatBinarySize > 0);
 
+	uint64 stagingSize = 0; uint32 stagingCount = 0;
 	for (uint8 mip = 0; mip < mipCount; mip++)
 	{
 		const auto& mipData = data[mip];

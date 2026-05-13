@@ -140,7 +140,7 @@ static void entryPoint()
 	// manager->createSystem<Cutout9SliceSystem>();
 	manager->createSystem<CsmRenderSystem>();
 	manager->createSystem<HbaoRenderSystem>();
-	#if GARDEN_NVIDIA_DLSS
+	#if GARDEN_USE_NVIDIA_DLSS
 	manager->createSystem<DlssRenderSystem>();
 	#endif
 	manager->createSystem<OitRenderSystem>();
@@ -182,7 +182,7 @@ static void entryPoint()
 	manager->createSystem<PbrLightingEditorSystem>();
 	manager->createSystem<CsmRenderEditorSystem>();
 	manager->createSystem<HbaoRenderEditorSystem>();
-	#if GARDEN_NVIDIA_DLSS
+	#if GARDEN_USE_NVIDIA_DLSS
 	manager->createSystem<DlssRenderEditorSystem>();
 	#endif
 	manager->createSystem<BloomRenderEditorSystem>();

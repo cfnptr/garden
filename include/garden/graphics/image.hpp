@@ -183,7 +183,7 @@ public:
 	 */
 	enum class FileType : uint8
 	{
-		WebP, PNG, JPEG, EXR, HDR, BMP, PSD, TGA, PIC, GIF, Count
+		KTX2, WebP, PNG, JPEG, EXR, HDR, BMP, PSD, TGA, PIC, GIF, Count
 	};
 
 	/*******************************************************************************************************************
@@ -878,9 +878,10 @@ public:
 	 * @param fileType image file container type
 	 * @param imageFormat image pixel data format
 	 * @param quality image quality (0.0 - 1.0)
+	 * @param effort image compression effort (0.0 - 1.0)
 	 */
-	static void writeFileData(const fs::path& path, const void* pixels, 
-		uint2 size, FileType fileType, Format imageFormat, float quality = 1.0f);
+	static void writeFileData(const fs::path& path, const void* pixels, uint2 size, 
+		FileType fileType, Format imageFormat, float quality = 1.0f, float effort = 0.7f);
 };
 
 DECLARE_ENUM_CLASS_FLAG_OPERATORS(Image::Usage)
@@ -1402,6 +1403,7 @@ static string_view toString(Image::Format imageFormat) noexcept
  */
 static Image::FileType toImageFileType(string_view name)
 {
+	if (name == "ktx2") return Image::FileType::KTX2;
 	if (name == "webp") return Image::FileType::WebP;
 	if (name == "png") return Image::FileType::PNG;
 	if (name == "jpg" || name == "jpeg") return Image::FileType::JPEG;
