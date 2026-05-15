@@ -1,0 +1,79 @@
+// Copyright 2022-2026 Nikita Fediuchin. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#ifndef BLOOM_GSL
+#define BLOOM_GSL
+
+#include "common/tone-mapping.gsl"
+
+float3 box4x4(float3 s0, float3 s1, float3 s2, float3 s3)
+{
+	return (s0 + s1 + s2 + s3) * 0.25f;
+}
+
+//**********************************************************************************************************************
+float3 downsample(sampler2D srcBuffer, float2 texCoords)
+{
+	float3 c   = textureLod(srcBuffer, texCoords, 0.0f).rgb;
+
+	float3 lt  = textureLodOffset(srcBuffer, texCoords, 0.0f, int2(-1, -1)).rgb;
+	float3 rt  = textureLodOffset(srcBuffer, texCoords, 0.0f, int2( 1, -1)).rgb;
+	float3 rb  = textureLodOffset(srcBuffer, texCoords, 0.0f, int2( 1,  1)).rgb;
+	float3 lb  = textureLodOffset(srcBuffer, texCoords, 0.0f, int2(-1,  1)).rgb;
+
+	float3 lt2 = textureLodOffset(srcBuffer, texCoords, 0.0f, int2(-2, -2)).rgb;
+	float3 rt2 = textureLodOffset(srcBuffer, texCoords, 0.0f, int2( 2, -2)).rgb;
+	float3 rb2 = textureLodOffset(srcBuffer, texCoords, 0.0f, int2( 2,  2)).rgb;
+	float3 lb2 = textureLodOffset(srcBuffer, texCoords, 0.0f, int2(-2,  2)).rgb;
+
+	float3 l   = textureLodOffset(srcBuffer, texCoords, 0.0f, int2(-2,  0)).rgb;
+	float3 t   = textureLodOffset(srcBuffer, texCoords, 0.0f, int2( 0, -2)).rgb;
+	float3 r   = textureLodOffset(srcBuffer, texCoords, 0.0f, int2( 2,  0)).rgb;
+	float3 b   = textureLodOffset(srcBuffer, texCoords, 0.0f, int2( 0,  2)).rgb;
+
+	float3 c0  = box4x4(lt, rt, rb,  lb);
+	float3 c1  = box4x4(c,   l,  t,  lt2);
+	c1        += box4x4(c,   r,  t,  rt2);
+	c1        += box4x4(c,   r,  b,  rb2);
+	c1        += box4x4(c,   l,  b,  lb2);
+	return fma(c0, float3(0.5f), c1 * 0.125f);
+}
+
+//**********************************************************************************************************************
+// Based on this: https://www.shadertoy.com/view/cslczj
+float3 downsample6x6(sampler2D srcBuffer, float2 texCoords)
+{
+	const float o  = 1.5f + 0.261629f;
+	const float wa = 7.46602f / 32.0f;
+	const float wb = 1.0f - wa * 2.0f;
+	const float3 wab = float3(wa * wb);
+	const float3 waa = float3(wa * wa);
+	const float3 wbb = float3(wb * wb);
+
+	float2 size = (1.0f / textureSize(srcBuffer, 0)) * o;
+	float3 c  = textureLod(srcBuffer, texCoords + float2(   0.0f,    0.0f), 0.0f).rgb;
+	float3 l  = textureLod(srcBuffer, texCoords + float2(-size.x,    0.0f), 0.0f).rgb;
+	float3 r  = textureLod(srcBuffer, texCoords + float2( size.x,    0.0f), 0.0f).rgb;
+	float3 b  = textureLod(srcBuffer, texCoords + float2(   0.0f, -size.y), 0.0f).rgb;
+	float3 t  = textureLod(srcBuffer, texCoords + float2(   0.0f,  size.y), 0.0f).rgb;
+	float3 lb = textureLod(srcBuffer, texCoords + float2(-size.x, -size.y), 0.0f).rgb;
+	float3 rb = textureLod(srcBuffer, texCoords + float2( size.x, -size.y), 0.0f).rgb;
+	float3 lt = textureLod(srcBuffer, texCoords + float2(-size.x,  size.y), 0.0f).rgb;
+	float3 rt = textureLod(srcBuffer, texCoords + float2( size.x,  size.y), 0.0f).rgb;
+
+	return fma(c, wbb, fma(l, wab, fma(r, wab, fma(b, wab, fma(t, wab, 
+		fma(lb, waa, fma(rb, waa, fma(lt, waa, rt * waa))))))));
+}
+
+#endif // BLOOM_GSL

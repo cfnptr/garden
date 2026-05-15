@@ -78,6 +78,7 @@ namespace garden
 #endif
 
 #if GARDEN_DEBUG || GARDEN_EDITOR || !GARDEN_PACK_RESOURCES
+#define GARDEN_SOURCE_PATH fs::path("@Garden_SOURCE_DIR@")
 #define GARDEN_RESOURCES_PATH fs::path("@Garden_SOURCE_DIR@/resources")
 #endif
 

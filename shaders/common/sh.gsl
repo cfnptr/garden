@@ -1,0 +1,46 @@
+// Copyright 2022-2026 Nikita Fediuchin. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Spherical Harmonics
+
+#ifndef SH_GSL
+#define SH_GSL
+
+#include "common/math.gsl"
+
+#define SH2_COUNT 4  // L1: 2 * 2
+#define SH3_COUNT 9  // L2: 3 * 3
+#define SH4_COUNT 16 // L3: 4 * 4
+
+float calcSolidAngleFast(float2 st, float invDim) // Schuler's approximation
+{
+	float r2 = dot(st, st) + 1.0f;
+	return (invDim * invDim * 4.0f) / (r2 * sqrt(r2));
+}
+
+void computeSh3Basis(float3 n, out float shb[SH3_COUNT])
+{
+	float pml1 = n.z * -3.0f;
+	shb[0] = 1.0f;
+	shb[1] = n.y * -1.0f;
+	shb[2] = n.z;
+	shb[3] = n.x * -1.0f;
+	shb[4] = fma(n.y, n.x, n.x * n.y) * 3.0f;
+	shb[5] = n.y * pml1;
+	shb[6] = fma(n.z * n.z, 3.0f, -1.0) * 0.5f;
+	shb[7] = n.x * pml1;
+	shb[8] = (n.x * n.x - n.y * n.y) * 3.0f;
+}
+
+#endif // SH_GSL

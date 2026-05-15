@@ -547,8 +547,8 @@ static void collectGslHeaderUsers(const fs::path& appResourcesPath,
 		while (!gslHeaders.empty() && checkCount < 1000)
 		{
 			auto resourcePath = gslHeaders.back(); gslHeaders.pop_back();
-			collectGslHeaderUsers(GARDEN_RESOURCES_PATH, appCachePath, resourcePath, gslHeaders, 
-				checkedPaths, graphicsPipelines, computePipelines, rayTracingPipelines);
+			collectGslHeaderUsers(GARDEN_SOURCE_PATH / "shaders", appCachePath, resourcePath, 
+				gslHeaders, checkedPaths, graphicsPipelines, computePipelines, rayTracingPipelines);
 			collectGslHeaderUsers(appResourcesPath, appCachePath, resourcePath, gslHeaders, 
 				checkedPaths, graphicsPipelines, computePipelines, rayTracingPipelines);
 			checkCount++;
@@ -1701,6 +1701,20 @@ void ResourceSystem::destroyShared(Ref<DescriptorSet>& descriptorSet)
 }
 
 //**********************************************************************************************************************
+static bool tryGetShaderPath(const fs::path& appResourcesPath, const fs::path& resourcePath, fs::path& filePath)
+{
+	GARDEN_ASSERT(!resourcePath.empty());
+	auto enginePath = GARDEN_SOURCE_PATH / resourcePath;
+	auto appPath = appResourcesPath / resourcePath;
+	auto hasEngineFile = fs::exists(enginePath);
+	auto hasAppFile = fs::exists(appPath);
+
+	if ((hasEngineFile && hasAppFile) || (!hasEngineFile && !hasAppFile))
+		return false;
+	
+	filePath = hasEngineFile ? enginePath : appPath;
+	return true;
+}
 static bool loadOrCompileGraphics(GslCompiler::GraphicsData& data)
 {
 	#if !GARDEN_PACK_RESOURCES
@@ -1710,8 +1724,8 @@ static bool loadOrCompileGraphics(GslCompiler::GraphicsData& data)
 	auto fragmentPath = shadersPath; fragmentPath += ".frag";
 
 	fs::path vertexInputPath, fragmentInputPath;
-	auto hasVertexShader = File::tryGetResourcePath(data.resourcesPath, vertexPath, vertexInputPath);
-	auto hasFragmentShader = File::tryGetResourcePath(data.resourcesPath, fragmentPath, fragmentInputPath);
+	auto hasVertexShader = tryGetShaderPath(data.resourcesPath, vertexPath, vertexInputPath);
+	auto hasFragmentShader = tryGetShaderPath(data.resourcesPath, fragmentPath, fragmentInputPath);
 
 	if (!hasVertexShader && !hasFragmentShader)
 	{
@@ -1732,7 +1746,7 @@ static bool loadOrCompileGraphics(GslCompiler::GraphicsData& data)
 		fs::last_write_time(fragmentInputPath) > fs::last_write_time(fragmentOutputPath))))
 	{
 		const vector<fs::path> includePaths =
-		{ GARDEN_RESOURCES_PATH / "shaders", data.resourcesPath / "shaders" };
+		{ GARDEN_SOURCE_PATH / "shaders", data.resourcesPath / "shaders" };
 		auto dataPath = data.shaderPath;
 
 		fs::path inputPath, outputPath;
@@ -1950,7 +1964,7 @@ static bool loadOrCompileCompute(GslCompiler::ComputeData& data)
 	auto computePath = shadersPath; computePath += ".comp";
 
 	fs::path computeInputPath;
-	if (!File::tryGetResourcePath(data.resourcesPath, computePath, computeInputPath))
+	if (!tryGetShaderPath(data.resourcesPath, computePath, computeInputPath))
 	{
 		throw GardenError("Compute shader file does not exist, or it is ambiguous. ("
 			"path: " + data.shaderPath.generic_string() + ")");
@@ -1964,7 +1978,7 @@ static bool loadOrCompileCompute(GslCompiler::ComputeData& data)
 		fs::last_write_time(computeInputPath) > fs::last_write_time(computeOutputPath))
 	{
 		const vector<fs::path> includePaths =
-		{ GARDEN_RESOURCES_PATH / "shaders", data.resourcesPath / "shaders" };
+		{ GARDEN_SOURCE_PATH / "shaders", data.resourcesPath / "shaders" };
 		auto dataPath = data.shaderPath;
 
 		auto compileResult = false;
@@ -2131,12 +2145,12 @@ static bool loadOrCompileRayTracing(GslCompiler::RayTracingData& data)
 	auto closestHitPath = shadersPath; closestHitPath += ".rchit";
 
 	fs::path rayGenInputPath, missInputPath, intersectInputPath, closHitInputPath, anyHitInputPath, callInputPath;
-	auto hasRayGenShader = File::tryGetResourcePath(data.resourcesPath, rayGenerationPath, rayGenInputPath);
-	auto hasMissShader = File::tryGetResourcePath(data.resourcesPath, missPath, missInputPath);
-	auto hasCallableShader = File::tryGetResourcePath(data.resourcesPath, callablePath, callInputPath);
-	auto hasIntersectShader = File::tryGetResourcePath(data.resourcesPath, intersectionPath, intersectInputPath);
-	auto hasAnyHitShader = File::tryGetResourcePath(data.resourcesPath, anyHitPath, anyHitInputPath);
-	auto hasClosHitShader = File::tryGetResourcePath(data.resourcesPath, closestHitPath, closHitInputPath);
+	auto hasRayGenShader = tryGetShaderPath(data.resourcesPath, rayGenerationPath, rayGenInputPath);
+	auto hasMissShader = tryGetShaderPath(data.resourcesPath, missPath, missInputPath);
+	auto hasCallableShader = tryGetShaderPath(data.resourcesPath, callablePath, callInputPath);
+	auto hasIntersectShader = tryGetShaderPath(data.resourcesPath, intersectionPath, intersectInputPath);
+	auto hasAnyHitShader = tryGetShaderPath(data.resourcesPath, anyHitPath, anyHitInputPath);
+	auto hasClosHitShader = tryGetShaderPath(data.resourcesPath, closestHitPath, closHitInputPath);
 
 	if (!hasRayGenShader || !hasMissShader || (!hasIntersectShader && !hasClosHitShader && !hasAnyHitShader))
 	{
@@ -2170,7 +2184,7 @@ static bool loadOrCompileRayTracing(GslCompiler::RayTracingData& data)
 		fs::last_write_time(closHitInputPath) > fs::last_write_time(closHitOutputPath))))
 	{
 		const vector<fs::path> includePaths =
-		{ GARDEN_RESOURCES_PATH / "shaders", data.resourcesPath / "shaders" };
+		{ GARDEN_SOURCE_PATH / "shaders", data.resourcesPath / "shaders" };
 		auto dataPath = data.shaderPath;
 
 		auto compileResult = false;

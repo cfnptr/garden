@@ -1,0 +1,164 @@
+// Copyright 2022-2026 Nikita Fediuchin. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Physically Based Rendering
+
+// Note: Material roughness is perceptual.
+// roughness = perceptual * perceptual
+
+// Reflectance
+// 1.0  = Diamond (16%)
+// 0.7  = Ruby    ( 8%)
+// 0.5  = Common  ( 4%)
+// 0.35 = Water   ( 2%)
+
+#ifndef PBR_GSL
+#define PBR_GSL
+
+#include "common/brdf.gsl"
+#include "common/light.gsl"
+#include "common/gbuffer.gsl"
+
+struct BrdfTerms
+{
+	float3 e;
+	#ifndef USE_SPECULAR_ONLY
+	float3 fd;
+	#endif
+	#ifndef USE_DIFFUSE_ONLY
+	float3 fr;
+	#endif
+	#ifdef USE_LIGHT_EMISSION
+	float3 fe;
+	#endif
+};
+
+//**********************************************************************************************************************
+BrdfTerms evaluateBRDF(const GBufferValues gBuffer, sampler2D dfgLUT
+	#ifndef USE_DIFFUSE_ONLY
+	, samplerCube iblSpecular
+	#endif
+	)
+{
+	BrdfTerms terms;
+	float perceptualRoughness = max(gBuffer.roughness, MIN_ROUGHNESS);
+	float linearRoughness = unpackRoughness(perceptualRoughness);
+	float nov = clampNov(dot(gBuffer.normal, -gBuffer.viewDirection));
+	float reflectance = computeDielectricF0(gBuffer.reflectance);
+	float3 f0 = computeF0(gBuffer.baseColor.rgb, gBuffer.metallic, reflectance);
+	terms.e = specularDFG(dfgLUT, nov, perceptualRoughness, f0);
+
+	#ifdef USE_REFLECTIONS
+	float4 reflectionColor = gBuffer.reflectionColor;
+	#else
+	const float4 reflectionColor = float4(0.0f);
+	#endif
+
+	#ifndef USE_DIFFUSE_ONLY
+	terms.fr = float3(0.0f);
+	float3 energyCompensation = computeEnergyCompensation(dfgLUT, nov, perceptualRoughness, f0);
+
+	if (reflectionColor.a < 1.0f)
+	{
+		float3 reflected = reflect(gBuffer.viewDirection, gBuffer.normal);
+		float3 r = computeReflectedVector(linearRoughness, gBuffer.normal, reflected);
+		terms.fr = terms.e * prefilteredRadiance(iblSpecular, r, gBuffer.roughness) * energyCompensation;
+		// Note: using unclamped gBuffer.roughness for a correct LOD level at 0.0f
+	}
+	#endif
+
+	#ifndef USE_SPECULAR_ONLY
+	float3 diffuseColor = computeDiffuseColor(gBuffer.baseColor.rgb, gBuffer.metallic);
+	terms.fd = diffuseColor * (1.0f - terms.e) * gBuffer.irradiance * lambert();
+	#endif
+
+	#if defined(USE_SUBSURFACE_SCATTERING) && !defined(USE_SPECULAR_ONLY)
+	if (gBuffer.thickness < 1.0f && gBuffer.transmission == 0.0f)
+	{
+		float3 viewDependent = prefilteredRadiance(iblSpecular, 
+			gBuffer.viewDirection, linearRoughness, 1.0f + gBuffer.thickness);
+		float attenuation = (1.0f - gBuffer.thickness) * float(1.0 / M_TAU);
+		terms.fd += gBuffer.subsurfaceColor * (irradiance + viewDependent) * attenuation;
+		// If have cloth model:  fd *= saturate(gBuffer.subsurfaceColor + nov);
+	}
+	#endif
+
+	/// TODO: evaluateSheenIBL();
+
+	#ifdef USE_AMBIENT_OCCLUSION
+	float specularAO = specularAoLagarde(nov, gBuffer.ambientOcclusion, linearRoughness);
+		#ifndef USE_SPECULAR_ONLY
+		terms.fd *= gtaoMultiBounce(gBuffer.ambientOcclusion, diffuseColor);
+		#endif
+		#ifndef USE_DIFFUSE_ONLY
+		terms.fr *= gtaoMultiBounce(specularAO, f0);
+		#endif
+	#endif
+
+	#ifdef USE_CLEAR_COAT
+	if ((gBuffer.materialID & G_MATERIAL_CLEAR_COAT) != 0)
+	{
+		// The clear coat layer assumes an IOR of 1.5 (4% reflectance)
+		float clearCoatNov = clampNov(dot(gBuffer.clearCoatNormal, -gBuffer.viewDirection));
+		float fc = schlick(clearCoatNov, 0.04f, 1.0f) * gBuffer.clearCoat;
+
+		float attenuation = 1.0f - fc;
+		#ifndef USE_SPECULAR_ONLY
+		terms.fd *= attenuation;
+		#endif
+		
+		#ifndef USE_DIFFUSE_ONLY
+			#ifdef USE_AMBIENT_OCCLUSION
+			float ccRoughness = unpackRoughness(max(gBuffer.clearCoatRoughness, MIN_ROUGHNESS));
+			float specularAO = specularAoLagarde(clearCoatNov, gBuffer.ambientOcclusion, ccRoughness);
+			#else
+			const float specularAO = 1.0f;
+			#endif
+		float3 clearCoatRefl = reflect(gBuffer.viewDirection, gBuffer.clearCoatNormal);
+		float3 fr = prefilteredRadiance(iblSpecular, clearCoatRefl, 
+			gBuffer.clearCoatRoughness) * (fc * specularAO);
+		terms.fr = fma(terms.fr, float3(attenuation), fr);
+		#endif
+    }
+	#endif
+
+	#ifdef USE_LIGHT_EMISSION
+	terms.fe = (gBuffer.materialID & G_MATERIAL_EMISSIVE) == 0 ? float3(0.0f) :
+		gBuffer.emissiveColor.rgb * pow(gBuffer.emissiveColor.a, 1.0f / 2.2f) * gBuffer.baseColor.a;
+	#endif
+
+	#if defined(USE_LIGHT_ABSORPTION) && !defined(USE_SPECULAR_ONLY)
+	if (gBuffer.transmission > 0.0f)
+	{
+		float3 ft = gBuffer.refractedColor * exp(-gBuffer.absorptionColor * 
+			gBuffer.thickness) * ((1.0f - terms.e) * gBuffer.transmission);
+		terms.fd = fma(terms.fd, float3(1.0f - gBuffer.transmission), ft);
+	}
+	#endif
+
+	#ifndef USE_DIFFUSE_ONLY
+		#ifdef USE_REFLECTIONS
+		terms.fr = fma(terms.fr, float3(1.0f - reflectionColor.a), 
+			terms.e * reflectionColor.rgb * energyCompensation);
+		#endif
+		#ifdef USE_SPECULAR_FACTOR
+		terms.fr *= gBuffer.specularFactor;
+		#endif
+	#endif
+	return terms;
+}
+
+// TODO: support anisotropy shading model for brushed metals.
+
+#endif // PBR_GSL

@@ -211,7 +211,7 @@ FileWatcherSystem::FileWatcherSystem(bool setSingleton) : Singleton(setSingleton
 static bool addDirWatchers(int fd, const fs::path& resourcesPath, tsl::robin_map<int, fs::path>& watchers)
 {
 	constexpr auto watchMask = IN_CREATE | IN_DELETE_SELF | IN_MODIFY | IN_MOVED_TO;
-	auto wd = inotify_add_watch(fd, GARDEN_RESOURCES_PATH.c_str(), watchMask);
+	auto wd = inotify_add_watch(fd, resourcesPath.c_str(), watchMask);
 	if (wd == -1)
 	{
 		GARDEN_LOG_ERROR("Failed to add inotify watch. (error: " + to_string(errno) + ")");
@@ -284,11 +284,14 @@ void FileWatcherSystem::preInit()
 	}
 	instance = (void*)(size_t)fd;
 
+	addDirWatchers(fd, GARDEN_SOURCE_PATH / "shaders", watchers);
 	addDirWatchers(fd, GARDEN_RESOURCES_PATH, watchers);
 	addDirWatchers(fd, appResourcesPath, watchers);
 	#elif GARDEN_OS_APPLE
 	CFStringRef paths[2] =
 	{
+		CFStringCreateWithCString(kCFAllocatorDefault, 
+			(GARDEN_SOURCE_PATH / "shaders").c_str(), kCFStringEncodingUTF8),
 		CFStringCreateWithCString(kCFAllocatorDefault, 
 			GARDEN_RESOURCES_PATH.c_str(), kCFStringEncodingUTF8),
 		CFStringCreateWithCString(kCFAllocatorDefault, 
@@ -317,10 +320,11 @@ void FileWatcherSystem::preInit()
 	this->instance = data;
 
 	data->system = this;
-	data->watchers.resize(2);
+	data->watchers.resize(3);
 
-	if (!createDirWatcher(GARDEN_RESOURCES_PATH, data->watchers[0]) ||
-		!createDirWatcher(appResourcesPath, data->watchers[1]))
+	if (!createDirWatcher(GARDEN_SOURCE_PATH / "shaders", data->watchers[0]) ||
+		!createDirWatcher(GARDEN_RESOURCES_PATH, data->watchers[1]) ||
+		!createDirWatcher(appResourcesPath, data->watchers[2]))
 	{
 		GARDEN_LOG_ERROR("Failed to create directory watchers.");
 		return;

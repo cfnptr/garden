@@ -1,0 +1,398 @@
+// Copyright 2022-2026 Nikita Fediuchin. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Physically based volumetric clouds.
+// Based on the Decima Nubis clouds rendering system.
+
+#ifndef CLOUDS_GSL
+#define CLOUDS_GSL
+
+#include "common/math.gsl"
+#include "common/remap.gsl"
+#include "common/depth.gsl"
+#include "common/gbuffer.gsl"
+#include "common/color-space.gsl"
+#include "atmosphere/common.gsl"
+
+struct CloudsParams
+{
+	#ifdef USE_CLOUDS_DEPTH
+	float4x4 viewProj;
+	#endif
+	#ifdef USE_CLOUDS_REPROJECTION
+	float4x4 prevViewProj;
+	uint2 fragCoord;
+	uint2 bayerPos;
+	#endif
+	float4x4 invViewProj;	
+	float3 cameraPos;
+	float3 starDir;
+	float3 windDir;
+	float3 starColor;
+	float3 ambientLight;
+	float2 texCoords;
+	float groundRadius;
+	float atmTopRadius;
+	float bottomRadius;
+	float topRadius;
+	float minDistance;
+	float maxDistance;
+	float currentTime;
+	float cumulusCoverage;
+	float cirrusCoverage;
+	float temperatureDiff;
+	float stepSizeFactor;
+};
+//**********************************************************************************************************************
+float calcStepSize(float stepSizeFactor, float distance)
+{
+	const float nearStepSize = 0.003f, farStepOffset = 0.06f;
+	return fma(farStepOffset * distance, stepSizeFactor / 8.192f, nearStepSize);
+}
+
+float calcErosion(float value, float oldMin) { return saturate((value - oldMin) / (1.0f - oldMin)); }
+float3 calcProjSpherePoint(float bottomRadius, float3 samplePos) { return normalize(samplePos) * bottomRadius; }
+
+float calcRelativeHeight(float bottomRadius, float coverage, float3 samplePos, float invThickness)
+{
+	float3 projPos = calcProjSpherePoint(bottomRadius, samplePos);
+	float relativeHeight = fma(distance(samplePos, projPos), invThickness, max(coverage * 0.6f, 0.2f));
+	return saturate(relativeHeight);
+}
+float calcVerticalProfile(sampler2D vertProfile, float temperatureDiff, float3 cloudData, float relativeHeight)
+{
+	float topProfile = textureLod(vertProfile, float2(min(cloudData.z, temperatureDiff), relativeHeight), 0.0f).x;
+	float bottomProfile = textureLod(vertProfile, float2(cloudData.x, relativeHeight), 0.0f).y;
+	return topProfile * bottomProfile;
+}
+float calcCloudCoverage(float coverage, float3 cloudData)
+{
+	return saturate(remap(cloudData.y, coverage, 1.0f, 0.0f, 1.0f));
+}
+
+float3 calcFieldWindDir(float3 windDir, float currentTime) { return windDir * (currentTime * 0.02f); }
+float3 calcShapeWindDir(float3 windDir, float currentTime) { return windDir.yzx * (currentTime * -0.002f); }
+
+float calcCloudMipLevel(float3 cameraPos, float3 samplePos, float scale, float offset)
+{
+	return log2(fma(max(distance(cameraPos, samplePos) + offset, 0.0f), scale, 1.0f));
+}
+float3 sampleDataFields(sampler2D dataFields, float3 cameraPos, float3 samplePos, float3 windDir, float posScale)
+{
+	float mipLod = calcCloudMipLevel(cameraPos, samplePos, 1.5f, -15.0f);
+	samplePos += windDir;
+
+	#if defined(USE_TRIPLANAR_CLOUDS)
+	float3 weights = pow(abs(normalize(samplePos)), float3(4.0f));
+	weights /= (weights.x + weights.y + weights.z);
+	float3 x = textureLod(dataFields, samplePos.zy * posScale, mipLod).xyz;
+	float3 y = textureLod(dataFields, samplePos.xz * posScale, mipLod).xyz;
+	float3 z = textureLod(dataFields, samplePos.xy * posScale, mipLod).xyz;
+	return x * weights.x + y * weights.y + z * weights.z;
+	#else
+	return textureLod(dataFields, samplePos.xz * posScale, mipLod).xyz;
+	#endif
+}
+float3 sampleCirrusShape(sampler2D cirrusShape, float3 cameraPos, float3 samplePos, float3 windDir)
+{
+	const float posScale = 0.25f;
+	float mipLod = calcCloudMipLevel(cameraPos, samplePos, 1.5f, -5.0f);
+	samplePos += windDir;
+
+	#if defined(USE_TRIPLANAR_CLOUDS)
+	float3 weights = pow(abs(normalize(samplePos)), float3(4.0f));
+	weights /= (weights.x + weights.y + weights.z);
+	float3 x = textureLod(cirrusShape, samplePos.zy * posScale, mipLod).xyz;
+	float3 y = textureLod(cirrusShape, samplePos.xz * posScale, mipLod).xyz;
+	float3 z = textureLod(cirrusShape, samplePos.xy * posScale, mipLod).xyz;
+	return x * weights.x + y * weights.y + z * weights.z;
+	#else
+	return textureLod(cirrusShape, samplePos.xz * posScale, mipLod).xyz;
+	#endif
+}
+
+//**********************************************************************************************************************
+float calcCloudDensity(sampler3D noiseShape, float3 cameraPos, 
+	float3 samplePos, float3 cloudData, float dimProfile, float3 windDir)
+{
+	float mipLod = calcCloudMipLevel(cameraPos, samplePos, 0.5f, -15.0f);
+	float4 noise = textureLod(noiseShape, (samplePos + windDir) * 0.4f, mipLod);
+	float wispyNoise = lerp(noise.r, noise.g, dimProfile);
+	float billowyNoise = lerp(noise.b * 0.3f, noise.a * 0.3f, pow(dimProfile, 0.25f));
+	float noiseComposite = lerp(wispyNoise, billowyNoise, cloudData.z);
+	return calcErosion(dimProfile, noiseComposite);
+}
+
+float valueRemap(float value, float oldMin, float oldMax, float newMin, float newMax)
+{
+	const float oldMinMaxRange = (oldMax - oldMin);
+	float clampedNormalized = saturate((value - oldMin) / oldMinMaxRange);
+	return fma(clampedNormalized, (newMax - newMin), newMin);
+}
+float valueRemapConst(float value, float oldMin, float oldMax, float newMin, float newMax)
+{
+	const float oldMinMaxRange = 1.0f / (oldMax - oldMin);
+	float clampedNormalized = saturate((value - oldMin) * oldMinMaxRange);
+	return fma(clampedNormalized, (newMax - newMin), newMin);
+}
+float calcCirrusDensity(float3 cloudData, float3 cirrusShape, float cloudCoverage)
+{
+	float density = valueRemap(cloudData.z, 0.5f, 1.0f, valueRemap(cloudData.z, 
+		0.0f, 0.5f, cirrusShape.x, cirrusShape.y), cirrusShape.z);
+	density = pow(density, 1.0f - valueRemapConst(cloudCoverage, 0.0f, 1.0f, -0.9f, 0.9f));
+	return saturate(density * valueRemapConst(pow(cloudCoverage, 3.0f), 0.0f, 0.5f, 0.0f, 1.0f));
+}
+
+float hgPhase(float anisotropy, float cosTheta) // Henyey-Greenstein
+{
+	const float g2 = anisotropy * anisotropy;
+	float i = rsqrt(saturate((g2 + 1.0f) - cosTheta * (anisotropy * 2.0f)));
+	return (i * i * i) * ((1.0f - g2) * float(M_1_PI4));
+}
+float hgPhaseCloud(float cosTheta) // Emulates the sun silver lining highlights.
+{
+	const float anisotropy = 0.6f, silverIntens = 0.6f, silverSpread = 0.2f;
+	return max(hgPhase(anisotropy, cosTheta), hgPhase(0.99f - silverSpread, cosTheta) * silverIntens);
+}
+
+// HG makes far clouds too dark, clouds away from star direction need extra scattering.
+float beerLambertCloud(float accumDensity, float cosTheta) 
+{
+	float transmission = exp(-accumDensity);
+	float modulated = max(transmission, exp(accumDensity * -0.25f) * 0.7f);
+	return mix(transmission, modulated, fma(cosTheta, -0.5f, 0.5f));
+}
+float calcMultiScattering(float hgMultiScatt, float stepSize, float3 cloudData, 
+	float relativeHeight, float cloudCoverage, float dimProfile, float transmittance)
+{
+	const float depthPower = 0.5f, heightPower = 0.5f;
+	return hgMultiScatt * remapConstClamp(dimProfile * stepSize * 1000.0f, 0.1f, 1.0f, 0.0f, 1.0f) * 
+		pow(cloudCoverage * cloudData.z, 0.25f) * pow(transmittance, depthPower) * pow(relativeHeight, heightPower);
+}
+
+//**********************************************************************************************************************
+void evaluateClouds(sampler2D transLUT, sampler3D cameraVolume, sampler2D dataFields, sampler2D vertProfile, 
+	sampler3D noiseShape, sampler2D cirrusShape, const CloudsParams clouds, out float4 color
+	#ifdef USE_CLOUDS_REPROJECTION
+	, sampler2D camView, sampler2D camViewDepth, sampler2D disocclMap
+	#endif
+	#ifdef USE_CLOUDS_DEPTH
+	, sampler2D hizBuffer, out float depth
+	#endif
+	)
+{
+	Ray ray = Ray(clouds.cameraPos, calcViewDirection(clouds.texCoords, clouds.invViewProj));
+	float2 rayT = raycast2(Sphere(float3(0.0f), clouds.topRadius), ray);
+	if (!isIntersected(rayT)) // No atmosphere intersection so no clouds.
+	{
+		color = float4(0.0f);
+		#ifdef USE_CLOUDS_DEPTH
+		depth = 0.0f;
+		#endif
+		return;
+	}
+
+	float cirrusT = rayT.x < 0.0f ? rayT.y : rayT.x;
+	rayT.x = max(rayT.x, clouds.minDistance); 
+
+	float2 bottomT = raycast2(Sphere(float3(0.0f), clouds.bottomRadius), ray);
+	if (isIntersected(bottomT)) // Intersecting bottom clouds sphere.
+	{
+		rayT = bottomT.x < 0.0f ? // Is camera below bottom clouds level?
+			float2(max(rayT.x, bottomT.y), rayT.y) : float2(rayT.x, min(rayT.y, bottomT.x)); 
+	}
+
+	#ifdef USE_CLOUDS_DEPTH
+	float hizDepth = MIN_HIZ(textureLod(hizBuffer, clouds.texCoords, 0.0f));
+	float2 currNdcPos = fma(clouds.texCoords, float2(2.0f), float2(-1.0f));
+	float4 worldPos = clouds.invViewProj * float4(currNdcPos, hizDepth, 1.0f);
+	rayT.y = IS_DEPTH_GREATER(hizDepth, FAR_PLANE_DEPTH) ? 
+		min(rayT.y, length((worldPos.xyz / worldPos.w) * 0.001f)) : rayT.y;
+	#endif
+
+	// Skipping ray if whole planet is behind us.
+	if (rayT.y <= rayT.x || rayT.x > clouds.maxDistance)
+	{
+		color = float4(0.0f);
+		#ifdef USE_CLOUDS_DEPTH
+		depth = 0.0f;
+		#endif
+		return;
+	}
+
+	#ifdef USE_CLOUDS_REPROJECTION
+	float4 prevNdcPos = clouds.prevViewProj * float4(normalize(worldPos.xyz), 0.0f);
+	float2 prevTexCoords = fma(prevNdcPos.xy / prevNdcPos.w, float2(0.5f), float2(0.5f));
+	float disocclusion = textureLod(disocclMap, clouds.texCoords, 0.0f).x;
+
+	if (disocclusion == 0.0f && clouds.bayerPos.x != UINT32_MAX &&
+		all(bool4(lessThan(prevTexCoords, float2(1.0f)), greaterThan(prevTexCoords, float2(0.0f)))))
+	{
+		float prevDepth = MAX_HIZ(textureLod(hizBuffer, prevTexCoords, 0.0f));
+		if (clouds.fragCoord % 4 != clouds.bayerPos && IS_DEPTH_LESS_EQUAL(prevDepth, hizDepth))
+		{
+			color = textureLod(camView, prevTexCoords, 0.0f);
+			#ifdef USE_CLOUDS_DEPTH
+			depth = textureLod(camViewDepth, prevTexCoords, 0.0f).x;
+			#endif
+			return;
+		}
+	}
+	#endif
+
+	const float densityFactor = 5.0f;
+	float invThickness = 1.0f / (clouds.topRadius - clouds.bottomRadius);
+	float3 fieldWindDir = calcFieldWindDir(clouds.windDir, clouds.currentTime);
+	float3 shapeWindDir = calcShapeWindDir(clouds.windDir, clouds.currentTime);
+
+	float cosTheta = dot(ray.direction, clouds.starDir);
+	float hgScattering = hgPhaseCloud(cosTheta), hgMultiScatt = hgPhase(0.3f, cosTheta);
+	float lightAbsorption = 0.0f, directIntensity = 0.0f, ambientIntensity = 0.0f, distanceSum = 0.0f;
+	float stepMul = 3.0f; uint32 missCount = 0; bool fastMarching = true;
+
+	while (rayT.x < rayT.y && lightAbsorption < 1.0f)
+	{
+		float stepSize = calcStepSize(clouds.stepSizeFactor, rayT.x) * stepMul; 
+		float3 samplePos = fma(ray.direction, float3(rayT.x), clouds.cameraPos);
+		float3 cloudData = sampleDataFields(dataFields, clouds.cameraPos, samplePos, fieldWindDir, 0.02f);
+		float relativeHeight = calcRelativeHeight(clouds.bottomRadius, clouds.cumulusCoverage, samplePos, invThickness);
+		float verticalProfile = calcVerticalProfile(vertProfile, clouds.temperatureDiff, cloudData, relativeHeight);
+		float cloudCoverage = calcCloudCoverage(clouds.cumulusCoverage, cloudData);
+		float dimProfile = verticalProfile * cloudCoverage; // Dimensional profile
+
+		if (dimProfile > 0.0f)
+		{
+			missCount = 0;
+			if (fastMarching) // Starting high resolution ray marching.
+			{
+				rayT.x -= stepSize; // Go back one step to not miss any high res samples.
+				stepMul = 1.0f; fastMarching = false;
+				continue;
+			}
+
+			float cloudDensity = calcCloudDensity(noiseShape, clouds.cameraPos, 
+				samplePos, cloudData, dimProfile, shapeWindDir);
+			if (cloudDensity < FLOAT_EPS6)
+			{
+				rayT.x += stepSize;
+				continue;
+			}
+
+			cloudDensity *= clouds.temperatureDiff * (densityFactor * clouds.stepSizeFactor);
+			float occlusion = cloudDensity * (1.0f - lightAbsorption);
+			float attenuation = beerLambertCloud(cloudDensity, cosTheta);
+			float ambientScattering = pow(1.0f - dimProfile, 0.5f) * attenuation;
+			ambientIntensity = fma(ambientScattering, occlusion, ambientIntensity); 
+			distanceSum = fma(rayT.x, occlusion, distanceSum);
+			lightAbsorption += occlusion;
+
+			float lightDensity = 0.0f, lightStepSize = 0.006f;
+			for (uint32 step = 0; step < 10; step++) // 256 meters with 10 samples
+			{
+				samplePos = fma(clouds.starDir, float3(lightStepSize), samplePos);
+				float3 data = sampleDataFields(dataFields, clouds.cameraPos, samplePos, fieldWindDir, 0.02f);
+				float height = calcRelativeHeight(clouds.bottomRadius, clouds.cumulusCoverage, samplePos, invThickness);
+				float profile = calcVerticalProfile(vertProfile, clouds.temperatureDiff, 
+					data, height) * calcCloudCoverage(clouds.cumulusCoverage, data);
+				lightDensity = fma(calcCloudDensity(noiseShape, clouds.cameraPos, 
+					samplePos, data, profile, shapeWindDir), lightStepSize, lightDensity);
+				lightStepSize = fma(lightStepSize, 1.3f, lightStepSize);
+			}
+
+			lightDensity *= densityFactor * 10.0f; // 10 samples
+			float lightTransmittance = beerLambertCloud(lightDensity, cosTheta);
+			float multiScattering = calcMultiScattering(hgMultiScatt, stepSize, cloudData, 
+				relativeHeight, cloudCoverage, dimProfile, lightTransmittance);
+			float directScattering = fma(lightTransmittance, hgScattering, multiScattering);
+			directIntensity = fma(directScattering, occlusion, directIntensity);
+		}
+		else if (!fastMarching)
+		{
+			if (missCount++ >= 10)
+			{
+				fastMarching = true;
+				stepMul = 3.0f;
+			}
+		}
+
+		rayT.x += stepSize;
+	}
+
+	if (lightAbsorption < 1.0f)
+	{
+		fieldWindDir = fma(fieldWindDir, float3(0.3f), float3(16.0f)); shapeWindDir *= 2.0f;
+		float3 samplePos = fma(ray.direction, float3(cirrusT), clouds.cameraPos);
+		float3 cloudData = sampleDataFields(dataFields, clouds.cameraPos, samplePos, fieldWindDir, 0.025f);
+		float3 cirrusShapeData = sampleCirrusShape(cirrusShape, clouds.cameraPos, samplePos, shapeWindDir);
+		float cloudCoverage = calcCloudCoverage(clouds.cirrusCoverage, cloudData);
+		float cirrusDensity = calcCirrusDensity(cloudData, cirrusShapeData, cloudCoverage);
+
+		if (cirrusDensity > FLOAT_EPS6)
+		{
+			float occlusion = cirrusDensity * (1.0f - lightAbsorption);
+			float attenuation = beerLambertCloud(cirrusDensity, cosTheta) * densityFactor;
+			float ambientScattering = pow(1.0f - cloudCoverage, 0.5f) * attenuation;
+			ambientIntensity = fma(ambientScattering, occlusion, ambientIntensity);
+			distanceSum = fma(cirrusT, occlusion, distanceSum);
+			lightAbsorption += occlusion;
+
+			const float lightStepSize = 25.0f; // Based on the prev lightStep of 0.006f
+			float lightDensity = 0.0f;
+
+			for (uint32 step = 0; step < 4; step++)
+			{
+				samplePos = fma(clouds.starDir, float3(lightStepSize), samplePos);
+				float3 data = sampleDataFields(dataFields, clouds.cameraPos, samplePos, fieldWindDir, 0.025f);
+				float3 shapeData = sampleCirrusShape(cirrusShape, clouds.cameraPos, samplePos, shapeWindDir);
+				float coverage = calcCloudCoverage(clouds.cirrusCoverage, data);
+				lightDensity += calcCirrusDensity(data, shapeData, coverage);
+			}
+
+			const float directScattFactor = 0.5f;
+			float lightTransmittance = beerLambertCloud(lightDensity * directScattFactor, cosTheta);
+			directIntensity = fma(lightTransmittance * hgScattering, occlusion, directIntensity);
+		}
+	}
+	lightAbsorption = min(lightAbsorption, 1.0f);
+	
+	// TODO: also support coloring by the storm lightnings.
+
+	if (lightAbsorption == 0.0f)
+	{
+		color = float4(0.0f);
+		#ifdef USE_CLOUDS_DEPTH
+		depth = 0.0f;
+		#endif
+		return;
+	}
+
+	float3 cloudCamPos = ray.direction * (distanceSum / lightAbsorption);
+	#ifdef USE_CLOUDS_DEPTH
+	depth = calcDepth(cloudCamPos * 1000.0f, clouds.viewProj);
+	#endif
+
+	float3 cloudWorldPos = cloudCamPos + float3(0.0f, clouds.groundRadius, 0.0f);
+	float3 starTransmittance = getTransmittance(transLUT, Ray(cloudWorldPos, 
+		clouds.starDir), clouds.groundRadius, clouds.atmTopRadius);
+	float3 directLight = clouds.starColor * (starTransmittance * directIntensity);
+	float3 ambientLight = clouds.ambientLight * ambientIntensity * (1.0f / densityFactor);
+	float3 lightEnergy = directLight + ambientLight;
+	#ifdef USE_CAMERA_VOLUME
+	float4 ap = getAerialPerspLuminance(cameraVolume, clouds.texCoords, length(cloudCamPos));
+	lightEnergy = lerp(lightEnergy, ap.rgb, ap.a);
+	#endif
+	color = float4(min(lightEnergy, FLOAT_BIG_16), lightAbsorption);
+}
+
+#endif // CLOUDS_GSL
