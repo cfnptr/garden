@@ -1,0 +1,94 @@
+// Copyright 2022-2026 Nikita Fediuchin. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Automatic exposure average.
+// Based on this: https://bruop.github.io/exposure/
+
+#extension GL_KHR_shader_subgroup_arithmetic : enable
+spec const uint32 SG_SHARED_SIZE = 64;
+
+#include "common/tone-mapping.gsl"
+#include "auto-exposure/constants.h"
+
+#ifdef GL_KHR_shader_subgroup_arithmetic
+#define HG_SHARED_SIZE SG_SHARED_SIZE
+#else
+#define HG_SHARED_SIZE WG_LOCAL_SIZE
+#endif
+
+localSize = 256, 1, 1;
+
+buffer restrict readonly Histogram
+{
+	uint32 data[];
+} histogram;
+buffer restrict Luminance
+{
+	// In Yxy color space.
+	float avgLuminance;
+	float exposure;
+} luminance;
+
+uniform pushConstants
+{
+	float minLogLum;
+	float logLumRange;
+	float pixelCount;
+	float darkAdaptRate;
+	float brightAdaptRate;
+} pc;
+
+shared uint32 histogramShared[HG_SHARED_SIZE];
+
+//**********************************************************************************************************************
+void main()
+{
+	uint32 localThreadID = gl.localInvocationIndex;
+	uint32 weightedBinCount = histogram.data[localThreadID] * localThreadID;
+
+#ifdef GL_KHR_shader_subgroup_arithmetic
+	uint32 subgroupSum = subgroupAdd(weightedBinCount);
+	if (subgroupElect())
+		histogramShared[gl.subgroupID] = subgroupSum;
+	barrier();
+#else
+	histogramShared[localThreadID] = weightedBinCount;
+	barrier();
+
+	for (uint32 stride = (WG_LOCAL_SIZE >> 1); stride > 0; stride >>= 1)
+	{
+		histogramShared[localThreadID] += localThreadID < stride ? 
+			histogramShared[localThreadID + stride] : 0;
+		barrier();
+	}
+#endif
+
+	if (localThreadID == 0)
+	{
+		float weightedSum = float(histogramShared[0]);
+#ifdef GL_KHR_shader_subgroup_arithmetic
+		for (uint32 i = 1; i < SG_SHARED_SIZE; i++)
+			weightedSum += float(histogramShared[i]);
+#endif
+		float validPixelCount = max(pc.pixelCount - float(histogram.data[0]), 1.0f);
+		float weightedLogAvg = (weightedSum / validPixelCount) - 1.0f;
+		float weightedAvgLum = exp2(fma(weightedLogAvg * (1.0f / 254.0f), pc.logLumRange, pc.minLogLum));
+
+		float lastLuminance = luminance.avgLuminance;
+		float avgLuminance = fma(weightedAvgLum - lastLuminance, weightedAvgLum > 
+			lastLuminance ? pc.brightAdaptRate : pc.darkAdaptRate, lastLuminance);
+		luminance.avgLuminance = avgLuminance;
+		luminance.exposure = 1.0f / (avgLuminance * (LUM_TO_EXP + 0.0001f));
+	}
+}

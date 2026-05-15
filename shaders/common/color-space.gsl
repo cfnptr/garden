@@ -1,0 +1,118 @@
+// Copyright 2022-2026 Nikita Fediuchin. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#ifndef COLOR_SPACE_GSL
+#define COLOR_SPACE_GSL
+
+#include "common/math.gsl"
+
+#define DEFAULT_GAMMA 2.2
+#define LUM_TO_EXP 9.6
+
+byte4 encodeRgb(float4 rgba) { return byte4(fma(rgba, float4(255.0f), float4(0.5f))); }
+float4 decodeRgb(byte4 rgba) { return float4(rgba) * (1.0f / 255.0f); }
+byte3 encodeRgb(float3 rgb) { return byte3(fma(rgb, float3(255.0f), float3(0.5f))); }
+float3 decodeRgb(byte3 rgb) { return float3(rgb) * (1.0f / 255.0f); }
+byte2 encodeRgb(float2 rg) { return byte2(fma(rg, float2(255.0f), float2(0.5f))); }
+float2 decodeRgb(byte2 rg) { return float2(rg) * (1.0f / 255.0f); }
+uint8 encodeRgb(float r) { return uint8(r * 255.0f + 0.5f); }
+float decodeRgb(uint8 r) { return float(r) * (1.0f / 255.0f); }
+
+float3 rgbToSrgb(float3 rgb)
+{
+	float3 l = fma(pow(rgb, float3(1.0 / 2.4)), float3(1.055f), float3(-0.055f));
+	return lerp(l, rgb * 12.92f, step(rgb, float3(0.0031308f)));
+}
+float3 srgbToRgb(float3 sRGB)
+{
+	float3 l = pow((sRGB + 0.055f) * float(1.0 / 1.055), float3(2.4f));
+	return lerp(l, sRGB * float(1.0 / 12.92), step(sRGB, float3(0.04045f)));
+}
+
+float4 rgbToSrgb(float4 rgba) { return float4(rgbToSrgb(rgba.rgb), rgba.a); };
+float4 srgbToRgb(float4 sRGB) { return float4(srgbToRgb(sRGB.rgb), sRGB.a); };
+float4 rgbToSrgb(byte4 rgba) { return rgbToSrgb(decodeRgb(rgba)); };
+float4 srgbToRgb(byte4 sRGB) { return srgbToRgb(decodeRgb(sRGB)); };
+
+float3 gammaCorrection(float3 color, float invGamma) { return pow(color, float3(invGamma)); }
+float3 gammaCorrection(float3 color) { return pow(color, float3(1.0 / DEFAULT_GAMMA)); }
+
+float calcLum(float3 x) { return dot(x, float3(0.2126f, 0.7152f, 0.0722f)); }
+float rgbToLuma(float3 rgb) { return calcLum(gammaCorrection(rgb)); }
+
+//**********************************************************************************************************************
+// Linear sRGB <-> CIE XYZ
+const float3x3 rgbToXyzMat = float3x3
+(
+	float3(0.41239079926595934f, 0.21263900587151027f, 0.01933081871559182f),
+	float3(0.35758433938387800f, 0.71516867876775600f, 0.11919477979462598f),
+	float3(0.18048078840183430f, 0.07219231536073371f, 0.95053215224966070f)
+);
+const float3x3 xyzToRgbMat = float3x3
+(
+	float3( 3.2409699419045226f, -0.96924363628087960f,  0.05563007969699366f),
+	float3(-1.5373831775700940f,  1.87596750150772020f, -0.20397695888897652f),
+	float3(-0.4986107602930034f,  0.04155505740717559f,  1.05697151424287860f)
+);
+
+float3 rgbToXyz(float3 rgb) { return rgbToXyzMat * rgb; }
+float3 xyzToRgb(float3 xyz) { return xyzToRgbMat * xyz; }
+
+// CIE XYZ <-> CIE xyY
+float3 xyzToXyy(float3 xyz)
+{
+	return float3(xyz.xy / max(xyz.x + xyz.y + xyz.z, 1e-5f), xyz.y);
+}
+float3 xyyToXyz(float3 xyy)
+{
+	float a = xyy.z / max(xyy.y, 1e-5f);
+	return float3(xyy.x * a, xyy.z, (1.0f - xyy.x - xyy.y) * a);
+}
+
+float3 rgbToXyy(float3 rgb) { return xyzToXyy(rgbToXyz(rgb)); }
+float3 xyyToRgb(float3 xyy) { return xyzToRgb(xyyToXyz(xyy)); }
+
+//**********************************************************************************************************************
+// Linear sRGB <-> LogLuv
+const float3x3 rgbToLogLuvMat = float3x3
+(
+	float3(0.1832848040f, 0.2126390040f, 0.252131164f),
+	float3(0.1589263680f, 0.7151686540f, 0.788274765f),
+	float3(0.0802136883f, 0.0721923187f, 0.283475161f)
+);
+const float3x3 logLuvToRgbMat = float3x3
+(
+	float3( 7.666140550f, -2.211964610f, -0.667561352f),
+	float3( 0.955670714f,  1.668192390f, -5.488834380f),
+	float3(-2.412632940f,  0.201072842f,  5.114378450f)
+);
+
+uint32 rgbToLogLuv(float3 rgb)
+{
+	float3 luv = max(rgbToLogLuvMat * rgb, float3(1e-6f));
+	uint2 uv = uint2(fma(saturate(luv.xy / luv.z), float2(511.0f), float2(0.5f)));
+	uint32 le = uint32(fma(saturate(fma(log2(luv.y), 
+		(1.0f / 40.0f), 0.5f)), 16383.0f, 0.5f));
+	uint32 logLuv = (uv.y << 23u) | (uv.x << 14u) | le;
+	return dot(rgb, rgb) > 0.0f ? logLuv : 0;
+}
+float3 logLuvToRgb(uint32 logLuv)
+{
+	float3 luv; float2 uv = float2(uint2(logLuv >> 14u, logLuv >> 23u) & 511u) * (1.0f / 511.0f);
+	luv.y = exp2(fma(logLuv & 16383u, 40.0f / 16383.0f, -20.0f));
+	luv.z = luv.y / uv.y; luv.x = luv.z * uv.x;
+	return logLuv > 0 ? max(logLuvToRgbMat * luv, float3(0.0f)) : float3(0.0f);
+}
+
+#endif // COLOR_SPACE_GSL

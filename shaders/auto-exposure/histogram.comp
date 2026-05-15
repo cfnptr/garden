@@ -1,0 +1,65 @@
+// Copyright 2022-2026 Nikita Fediuchin. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Automatic exposure luminance histogram.
+// Based on this: https://bruop.github.io/exposure/
+
+#include "common/tone-mapping.gsl"
+#include "auto-exposure/constants.h"
+
+localSize = 16, 16, 1;
+
+uniform sampler2D hdrBuffer;
+
+buffer restrict Histogram
+{
+	uint32 data[];
+} histogram;
+
+uniform pushConstants
+{
+	float minLogLum;
+	float invLogLumRange;
+} pc;
+
+shared uint32 histogramShared[WG_LOCAL_SIZE];
+
+//**********************************************************************************************************************
+uint32 colorToBin(float3 hdrColor, float minLogLum, float invLogLumRange)
+{
+	float lum = calcLum(hdrColor);
+	if (lum < 0.005f) return 0;
+	float logLum = saturate((log2(lum) - minLogLum) * invLogLumRange);
+	return uint32(fma(logLum, 254.0f, 1.0f));
+}
+
+void main()
+{
+	uint32 localThreadID = gl.localInvocationIndex;
+	histogramShared[localThreadID] = 0;
+	barrier();
+
+	const int2 hdrTexSize = textureSize(hdrBuffer, 0);
+	int2 globalThreadID = int2(gl.globalInvocationID.xy);
+
+	if (all(lessThan(globalThreadID, hdrTexSize)))
+	{
+		float3 hdrColor = texelFetch(hdrBuffer, globalThreadID, 0).rgb;
+		uint32 binIndex = colorToBin(hdrColor, pc.minLogLum, pc.invLogLumRange);
+		atomicAdd(histogramShared[binIndex], 1u);
+	}
+
+	barrier();
+	atomicAdd(histogram.data[localThreadID], histogramShared[localThreadID]);
+}

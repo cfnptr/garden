@@ -1,0 +1,168 @@
+// Copyright 2022-2026 Nikita Fediuchin. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Physically based atmosphere multiple scattering.
+
+#extension GL_KHR_shader_subgroup_arithmetic : enable
+
+spec const float SAMPLE_COUNT = 20.0f; // A minimum set of step is required for accuracy unfortunately.
+spec const uint32 SG_SHARED_SIZE = 16;
+
+#define USE_SCATTERING_GROUND
+#define USE_TRANSMITTANCE_LUT
+#include "atmosphere/common.gsl"
+
+#ifdef GL_KHR_shader_subgroup_arithmetic
+#define MS_SHARED_SIZE SG_SHARED_SIZE
+#else
+#define MS_SHARED_SIZE MS_WG_LOCAL_SIZE
+#endif
+
+localSize = 1, 1, 64;
+
+uniform sampler2D
+{
+	filter = linear;
+} transLUT;
+
+uniform writeonly restrict image2D multiScattLUT : sfloatR16G16B16A16;
+
+uniform pushConstants
+{
+	float3 rayleighScattering;
+	float rayDensityExpScale;
+	float3 mieExtinction;
+	float mieDensityExpScale;
+	float3 absorptionExtinction;
+	float miePhaseG;
+	float3 mieScattering;
+	float absDensity0LayerWidth;
+	float3 groundAlbedo;
+	float absDensity0ConstantTerm;
+	float absDensity0LinearTerm;
+	float absDensity1ConstantTerm;
+	float absDensity1LinearTerm;
+	float bottomRadius;
+	float topRadius;
+	float multiScattFactor;
+} pc;
+
+shared float3 multiScattAs1Shared[MS_SHARED_SIZE];
+shared float3 inScattLumShared[MS_SHARED_SIZE];
+
+AtmosphereParams getAtmosphereParams()
+{
+	AtmosphereParams params;
+	params.rayleighScattering = pc.rayleighScattering;
+	params.rayDensityExpScale = pc.rayDensityExpScale;
+	params.mieExtinction = pc.mieExtinction;
+	params.mieDensityExpScale = pc.mieDensityExpScale;
+	params.absorptionExtinction = pc.absorptionExtinction;
+	params.absDensity0LayerWidth = pc.absDensity0LayerWidth;
+	params.absDensity0ConstantTerm = pc.absDensity0ConstantTerm;
+	params.absDensity0LinearTerm = pc.absDensity0LinearTerm;
+	params.absDensity1ConstantTerm = pc.absDensity1ConstantTerm;
+	params.absDensity1LinearTerm = pc.absDensity1LinearTerm;
+	params.bottomRadius = pc.bottomRadius;
+	params.topRadius = pc.topRadius;
+	params.mieScattering = pc.mieScattering;
+	params.miePhaseG = pc.miePhaseG;
+	params.groundAlbedo = pc.groundAlbedo;
+	return params;
+}
+
+//**********************************************************************************************************************
+void main()
+{
+	AtmosphereParams atmosphere = getAtmosphereParams();
+	float2 texCoords = (float2(gl.globalInvocationID.xy) + 0.5f) * (1.0f / MULTI_SCATT_LUT_LENGTH);
+	texCoords = (texCoords - 0.5f / MULTI_SCATT_LUT_LENGTH) * (MULTI_SCATT_LUT_LENGTH / (MULTI_SCATT_LUT_LENGTH - 1.0f));
+
+	float cosStarZenithAngle = fma(texCoords.x, 2.0f, -1.0f);
+	float3 starDir = normalize(float3(0.0f, cosStarZenithAngle, sqrt(
+		saturate(1.0f - (cosStarZenithAngle * cosStarZenithAngle)))));
+	// We adjust again viewHeight according to PLANET_RADIUS_OFFSET to be in a valid range.
+	float viewHeight = fma(saturate(texCoords.y + PLANET_RADIUS_OFFSET), atmosphere.topRadius - 
+		atmosphere.bottomRadius - PLANET_RADIUS_OFFSET, atmosphere.bottomRadius);
+
+	const uint32 sqrtSampleCount = 8;
+	uint32 localThreadID = gl.localInvocationIndex;
+	float i = float(localThreadID / sqrtSampleCount) + 0.5f;
+	float j = float(localThreadID - float((localThreadID / sqrtSampleCount) * sqrtSampleCount)) + 0.5f;
+	float randA = i / sqrtSampleCount, randB = j / sqrtSampleCount;
+	// Uniform distribution: https://mathworld.wolfram.com/SpherePointPicking.html
+	float2 thetaPhi = float2(randA * float(M_TAU), acosFast4(1.0f - (randB * 2.0f)));
+	float2 sinThetaPhi = sin(thetaPhi), cosThetaPhi = cos(thetaPhi);
+	float3 worldDir = normalize(float3(cosThetaPhi.x * sinThetaPhi.y, cosThetaPhi.y, sinThetaPhi.x * sinThetaPhi.y));
+
+	ScatteringResult result = integrateScatteredLuminance(texCoords, Ray(float3(0.0f, viewHeight, 
+		0.0f), worldDir), starDir, atmosphere, SAMPLE_COUNT, DEFAULT_T_MAX_MAX, transLUT);
+
+	const float sphereSolidAngle = float(4.0 * M_PI);
+	float3 multiScattAs1 = (result.multiScattAs1 * sphereSolidAngle) / (sqrtSampleCount * sqrtSampleCount);
+	float3 inScattLum = (result.l * sphereSolidAngle) / (sqrtSampleCount * sqrtSampleCount);
+
+#ifdef GL_KHR_shader_subgroup_arithmetic
+	float3 multiScattAs1Sum = subgroupAdd(multiScattAs1);
+	float3 inScattLumSum = subgroupAdd(inScattLum);
+	if (subgroupElect())
+	{
+		multiScattAs1Shared[gl.subgroupID] = multiScattAs1Sum;
+		inScattLumShared[gl.subgroupID] = inScattLumSum;
+	}
+	barrier();
+#else
+	multiScattAs1Shared[localThreadID] = multiScattAs1;
+	inScattLumShared[localThreadID] = inScattLum;
+	barrier();
+
+	for (uint32 stride = (MS_WG_LOCAL_SIZE >> 1); stride > 0; stride >>= 1)
+	{
+		multiScattAs1Shared[localThreadID] += localThreadID < stride ? 
+			multiScattAs1Shared[localThreadID + stride] : float3(0.0f);
+		inScattLumShared[localThreadID] += localThreadID < stride ? 
+			inScattLumShared[localThreadID + stride] : float3(0.0f);
+		barrier();
+	}
+#endif
+
+	if (localThreadID == 0)
+	{
+		multiScattAs1 = multiScattAs1Shared[0]; inScattLum = inScattLumShared[0];
+#ifdef GL_KHR_shader_subgroup_arithmetic
+		for (uint32 i = 1; i < SG_SHARED_SIZE; i++)
+		{
+			multiScattAs1 += multiScattAs1Shared[i];
+			inScattLum += inScattLumShared[i];
+		}
+#endif
+		const float isotropicPhase = 1.0f / sphereSolidAngle;
+		multiScattAs1 *= isotropicPhase; inScattLum *= isotropicPhase;
+
+		// multiScattAs1 represents the amount of luminance scattered as if 
+		// the integral of scattered luminance over the sphere would be 1.
+		//
+		//  - 1st order of scattering: one can ray-march a straight path as usual over the sphere. That is inScattLum.
+		//  - 2nd order of scattering: the in-scattered luminance is inScattLum at each of samples 
+		//    of fist order integration. Assuming a uniform phase function that is represented by multiScattAs1,
+		//  - 3nd order of scattering: the in-scattered luminance is 
+		//    (inScattLum * multiScattAs1 * multiScattAs1)
+		//  - etc.
+
+		float3 multiScattAs1Sqr = multiScattAs1 * multiScattAs1;
+		float3 l = inScattLum * (1.0f + multiScattAs1 + multiScattAs1Sqr + 
+			fma(multiScattAs1, multiScattAs1Sqr, multiScattAs1Sqr * multiScattAs1Sqr));
+		imageStore(multiScattLUT, int2(gl.globalInvocationID.xy), float4(pc.multiScattFactor * l, 1.0f));
+	}
+}

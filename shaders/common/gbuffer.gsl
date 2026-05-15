@@ -1,0 +1,360 @@
+// Copyright 2022-2026 Nikita Fediuchin. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#ifndef G_BUFFER_GSL
+#define G_BUFFER_GSL
+
+#include "common/gbuffer.h"
+#include "common/normal-mapping.gsl"
+
+struct GBufferData
+{
+	float4 g[G_BUFFER_COUNT];
+};
+struct GBufferValues
+{
+	float3 irradiance;
+	float3 viewDirection;
+	float3 normal;
+	uint32 materialID;
+	float4 baseColor;
+	float metallic;
+	float roughness;
+	float reflectance;
+	#ifdef USE_SPECULAR_FACTOR
+	float specularFactor;
+	#endif
+	#ifdef USE_AMBIENT_OCCLUSION
+	float ambientOcclusion;
+	#endif
+	#ifdef USE_SHADOW_ALPHA
+	float shadowAlpha;
+	#endif
+	#ifdef USE_LIGHT_EMISSION
+	float4 emissiveColor;
+	#endif
+	#ifdef USE_CLEAR_COAT
+	float clearCoat;
+	float clearCoatRoughness;
+	float3 clearCoatNormal;
+		#ifdef USE_ENCODED_CLEAR_COAT
+		float clearCoatEncoded;
+		#endif
+	#endif
+	#ifdef USE_SUBSURFACE_SCATTERING
+	float3 subsurfaceColor;
+	#endif
+	#ifdef USE_LIGHT_ABSORPTION
+	float3 refractedColor;
+	float3 absorptionColor;
+	float transmission;
+	#endif
+	#ifdef USE_REFLECTIONS
+	float4 reflectionColor;
+	#endif
+	#ifdef USE_MOTION_VECTORS
+	float2 velocity;
+	#endif
+	#if defined(USE_LIGHT_ABSORPTION) || defined(USE_SUBSURFACE_SCATTERING)
+	float thickness;
+	#endif
+};
+
+GBufferValues gBufferValuesDefault()
+{
+	GBufferValues gBuffer;
+	gBuffer.irradiance = float3(1.0f);
+	gBuffer.viewDirection = float3(0.0f, 0.0f, -1.0f);
+	gBuffer.normal = float3(0.0f, 1.0f, 0.0f);
+	gBuffer.materialID = 0;
+	gBuffer.baseColor = float4(1.0f);
+	gBuffer.metallic = 0.0f;
+	gBuffer.roughness = 1.0f;
+	gBuffer.reflectance = 0.5f;
+	#ifdef USE_SPECULAR_FACTOR
+	gBuffer.specularFactor = 1.0f;
+	#endif
+	#ifdef USE_AMBIENT_OCCLUSION
+	gBuffer.ambientOcclusion = 1.0f;
+	#endif
+	#ifdef USE_SHADOW_ALPHA
+	gBuffer.shadowAlpha = 1.0f;
+	#endif
+	#ifdef USE_LIGHT_EMISSION
+	gBuffer.emissiveColor = float4(0.0f);
+	#endif
+	#ifdef USE_CLEAR_COAT
+	gBuffer.clearCoat = 0.0f;
+	gBuffer.clearCoatRoughness = 0.0f;
+	gBuffer.clearCoatNormal = float3(0.0f, 1.0f, 0.0f);
+		#ifdef USE_ENCODED_CLEAR_COAT
+		gBuffer.clearCoatEncoded = 0.0f;
+		#endif
+	#endif
+	#ifdef USE_SUBSURFACE_SCATTERING
+	gBuffer.subsurfaceColor = float3(0.0f);
+	#endif
+	#ifdef USE_LIGHT_ABSORPTION
+	gBuffer.refractedColor = float3(0.0f);
+	gBuffer.absorptionColor = float3(0.0f);
+	gBuffer.transmission = 0.0f;
+	#endif
+	#ifdef USE_REFLECTIONS
+	gBuffer.reflectionColor = float4(0.0f);
+	#endif
+	#ifdef USE_MOTION_VECTORS
+	gBuffer.velocity = float2(0.0f);
+	#endif
+	#if defined(USE_LIGHT_ABSORPTION) || defined(USE_SUBSURFACE_SCATTERING)
+	gBuffer.thickness = 1.0f;
+	#endif
+	return gBuffer;
+}
+
+//**********************************************************************************************************************
+float4 encodeGBuffer0(GBufferValues gBuffer)
+{
+	#ifdef USE_LIGHT_EMISSION
+	float3 baseColor = (gBuffer.materialID & G_MATERIAL_EMISSIVE) != 0 ? 
+		gBuffer.emissiveColor.rgb : gBuffer.baseColor.rgb;
+	#else
+	float3 baseColor = gBuffer.baseColor.rgb;
+	#endif
+	return float4(baseColor, gBuffer.materialID * float(1.0 / 255.0));
+}
+float4 encodeGBuffer1(GBufferValues gBuffer)
+{
+	#ifdef USE_SHADOW_ALPHA
+	float shadowAlpha = gBuffer.shadowAlpha;
+	#else
+	const float shadowAlpha = 1.0f;
+	#endif
+	#ifdef USE_AMBIENT_OCCLUSION
+	float ambientOcclusion = gBuffer.ambientOcclusion;
+	#else
+	const float ambientOcclusion = 1.0f;
+	#endif
+	#ifdef USE_LIGHT_EMISSION
+	float emissiveFactor = gBuffer.emissiveColor.a;
+	#else
+	const float emissiveFactor = 0.0f;
+	#endif
+	#ifdef USE_CLEAR_COAT
+		#ifdef USE_ENCODED_CLEAR_COAT
+		float clearCoat = gBuffer.clearCoatEncoded;
+		#else
+		float clearCoat = ((uint32(fma(saturate(gBuffer.clearCoatRoughness), 15.0f, 0.5f)) << 4u) |
+			uint32(fma(saturate(gBuffer.clearCoat), 15.0f, 0.5f))) * float(1.0 / 255.0);
+		#endif
+	#else
+	const float clearCoat = 0.0f;
+	#endif
+
+	float aoEmCc = (gBuffer.materialID & G_MATERIAL_EMISSIVE) != 0 ? emissiveFactor : 
+		((gBuffer.materialID & G_MATERIAL_CLEAR_COAT) != 0 ? clearCoat : ambientOcclusion);
+	return float4(gBuffer.metallic, gBuffer.roughness, aoEmCc, shadowAlpha);
+}
+float4 encodeGBuffer2(GBufferValues gBuffer)
+{
+	#ifdef USE_SPECULAR_FACTOR
+	float reflectance = (gBuffer.materialID & G_MATERIAL_SPECULAR) == 0 ? gBuffer.reflectance :
+		((uint32(fma(saturate(gBuffer.specularFactor), 31.0f, 0.5f)) << 5u) |
+		uint32(fma(saturate(gBuffer.reflectance), 31.0f, 0.5f))) * float(1.0 / 1023.0);
+	#else
+	float reflectance = gBuffer.reflectance;
+	#endif
+	float3 encodedNormal = encodeNormalOct3(gBuffer.normal);
+	return float4(reflectance, encodedNormal.x, encodedNormal.y, encodedNormal.z);
+}
+float4 encodeGBuffer3(GBufferValues gBuffer)
+{
+	#ifdef USE_MOTION_VECTORS
+	float2 velocity = gBuffer.velocity;
+	#else
+	const float2 velocity = float2(0.0);
+	#endif
+	return float4(velocity, float2(0.0f));
+}
+
+void encodeGBufferValues(GBufferValues gBuffer, out float4 g0, out float4 g1, out float4 g2, out float4 g3)
+{
+	g0 = encodeGBuffer0(gBuffer);
+	g1 = encodeGBuffer1(gBuffer);
+	g2 = encodeGBuffer2(gBuffer);
+
+	#ifdef USE_MOTION_VECTORS
+	if (USE_VELOCITY_BUFFER)
+		g3 = encodeGBuffer3(gBuffer);
+	#endif
+}
+
+#define ENCODE_G_BUFFER_VALUES(gBuffer) encodeGBufferValues(gBuffer, fb_g0, fb_g1, fb_g2, fb_g3)
+
+//**********************************************************************************************************************
+float4 decodeBaseColor(float4 data) { return float4(data.rgb, 1.0f); }
+uint32 decodeMaterialID(float4 data) { return uint32(fma(data.a, 255.0f, 0.5f)); }
+float decodeMetallic(float4 data) { return data.r; }
+float decodeRoughness(float4 data) { return data.g; }
+float3 decodeNormal(float4 data) { return decodeNormalOct3(data.gba); }
+
+float decodeAmbientOcclusion(float4 data, uint32 materialID)
+{
+	#ifdef USE_AMBIENT_OCCLUSION
+	return (materialID & (G_MATERIAL_EMISSIVE | G_MATERIAL_CLEAR_COAT)) == 0 ? data.b : 1.0f;
+	#else
+	return 1.0f;
+	#endif
+}
+float decodeShadowAlpha(float4 data)
+{
+	#ifdef USE_SHADOW_ALPHA
+	return data.a;
+	#else
+	return 1.0f;
+	#endif
+}
+float4 decodeEmissiveColor(float4 data0, float4 data1, uint32 materialID)
+{
+	#ifdef USE_LIGHT_EMISSION
+	return (materialID & G_MATERIAL_EMISSIVE) != 0 ? float4(data0.rgb, data1.b) : float4(0.0f);
+	#else
+	return float4(0.0f);
+	#endif
+}
+void decodeReflSpecFactor(float4 data, uint32 materialID, out float reflectance, out float specular)
+{
+	#ifdef USE_SPECULAR_FACTOR
+	bool isSpecular = (materialID & G_MATERIAL_SPECULAR) != 0;
+	uint32 bits = uint32(fma(data.r, 1023.0f, 0.5f));
+	reflectance = isSpecular ? (bits & 31u) * float(1.0 / 31.0) : data.r;
+	specular = isSpecular ? ((bits >> 5u) & 31u) * float(1.0 / 31.0) : 1.0f;
+	#else
+	reflectance = data.r; specular = 1.0f;
+	#endif
+}
+void decodeClearCoat(float4 data, uint32 materialID, out float clearCoat, out float clearCoatRoughness)
+{
+	#ifdef USE_CLEAR_COAT
+	bool isClearCoat = (materialID & G_MATERIAL_CLEAR_COAT) != 0;
+	uint32 bits = uint32(fma(data.b, 255.0f, 0.5f));
+	clearCoat = isClearCoat ? (bits & 15u) * float(1.0 / 15.0) : 0.0f;
+	clearCoatRoughness = isClearCoat ? ((bits >> 4u) & 15u) * float(1.0 / 15.0) : 0.0f;
+	#else
+	clearCoat = 0.0f; clearCoatRoughness = 0.0f;
+	#endif
+}
+float2 decodeVelocity(float4 data)
+{
+	#ifdef USE_MOTION_VECTORS
+	return data.xy;
+	#else
+	return float2(0.0f);
+	#endif
+}
+
+float4 decodeBaseColor(GBufferData data) { return decodeBaseColor(data.g[G_BUFFER_BASE_COLOR]); }
+uint32 decodeMaterialID(GBufferData data) { return decodeMaterialID(data.g[G_BUFFER_MATERIAL_ID]); }
+float decodeMetallic(GBufferData data) { return decodeMetallic(data.g[G_BUFFER_METALLIC]); }
+float decodeRoughness(GBufferData data) { return decodeRoughness(data.g[G_BUFFER_ROUGHNESS]); }
+float3 decodeNormal(GBufferData data) { return decodeNormal(data.g[G_BUFFER_NORMALS]); }
+float decodeShadowAlpha(GBufferData data) { return decodeShadowAlpha(data.g[G_BUFFER_SHADOW]); }
+float2 decodeVelocity(GBufferData data) { return decodeVelocity(data.g[G_BUFFER_VELOCITY]); }
+
+float decodeAmbientOcclusion(GBufferData data)
+{
+	return decodeAmbientOcclusion(data.g[G_BUFFER_AMBIENT_OCCL], decodeMaterialID(data));
+}
+float4 decodeEmissiveColor(GBufferData data)
+{
+	return decodeEmissiveColor(data.g[G_BUFFER_EM_COLOR], data.g[G_BUFFER_EM_FACTOR], decodeMaterialID(data));
+}
+void decodeReflSpecFactor(GBufferData data, out float reflectance, out float specularFactor)
+{
+	decodeReflSpecFactor(data.g[G_BUFFER_REFLECTANCE], decodeMaterialID(data), reflectance, specularFactor);
+}
+void decodeClearCoat(GBufferData data, out float clearCoat, out float clearCoatRoughness)
+{
+	decodeClearCoat(data.g[G_BUFFER_CLEAR_COAT], decodeMaterialID(data), clearCoat, clearCoatRoughness);
+}
+
+//**********************************************************************************************************************
+GBufferData decodeGBufferData(sampler2D s0, sampler2D s1, sampler2D s2, sampler2D s3, float2 texCoords)
+{
+	GBufferData data;
+	data.g[0] = textureLod(s0, texCoords, 0.0f);
+	data.g[1] = textureLod(s1, texCoords, 0.0f);
+	data.g[2] = textureLod(s2, texCoords, 0.0f);
+
+	#ifdef USE_MOTION_VECTORS
+	if (USE_VELOCITY_BUFFER)
+		data.g[3] = textureLod(s3, texCoords, 0.0f);
+	#endif
+	return data;
+}
+GBufferValues decodeGBufferValues(sampler2D s0, sampler2D s1, sampler2D s2, sampler2D s3, float2 texCoords)
+{
+	GBufferData data = decodeGBufferData(s0, s1, s2, s3, texCoords);
+
+	GBufferValues gBuffer;
+	gBuffer.irradiance = float3(1.0f);
+	gBuffer.viewDirection = float3(0.0f, 0.0f, -1.0f);
+	gBuffer.normal = decodeNormal(data);
+	gBuffer.materialID = decodeMaterialID(data);
+	gBuffer.baseColor = decodeBaseColor(data);
+	gBuffer.metallic = decodeMetallic(data);
+	gBuffer.roughness = decodeRoughness(data);
+	float specularFactor; decodeReflSpecFactor(data, 
+		gBuffer.reflectance, specularFactor);
+	#ifdef USE_SPECULAR_FACTOR
+	gBuffer.specularFactor = specularFactor;
+	#endif
+	#ifdef USE_AMBIENT_OCCLUSION
+	gBuffer.ambientOcclusion = decodeAmbientOcclusion(data);
+	#endif
+	#ifdef USE_SHADOW_ALPHA
+	gBuffer.shadowAlpha = decodeShadowAlpha(data);
+	#endif
+	#ifdef USE_LIGHT_EMISSION
+	gBuffer.emissiveColor = decodeEmissiveColor(data);
+	#endif
+	#ifdef USE_LIGHT_ABSORPTION
+	gBuffer.refractedColor = float3(0.0f);
+	gBuffer.absorptionColor = float3(0.0f);
+	gBuffer.transmission = 0.0f;
+	#endif
+	#ifdef USE_CLEAR_COAT
+		#ifdef USE_ENCODED_CLEAR_COAT
+		decodeClearCoat(float4(gBuffer.clearCoatEncoded), decodeMaterialID(data),
+			gBuffer.clearCoat, gBuffer.clearCoatRoughness);
+		#else
+		decodeClearCoat(data, gBuffer.clearCoat, gBuffer.clearCoatRoughness);
+		#endif
+	gBuffer.clearCoatNormal = gBuffer.normal;
+	#endif
+	#ifdef USE_SUBSURFACE_SCATTERING
+	gBuffer.subsurfaceColor = float3(0.0f);
+	#endif
+	#ifdef USE_REFLECTIONS
+	gBuffer.reflectionColor = float4(0.0f);
+	#endif
+	#ifdef USE_MOTION_VECTORS
+	gBuffer.velocity = decodeVelocity(data);
+	#endif
+	#if defined(USE_LIGHT_ABSORPTION) || defined(USE_SUBSURFACE_SCATTERING)
+	gBuffer.thickness = 1.0f;
+	#endif
+	return gBuffer;
+}
+
+#endif // G_BUFFER_GSL

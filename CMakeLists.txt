@@ -163,9 +163,8 @@ include(cmake/compile-options.cmake)
 include(cmake/gather-git-info.cmake)
 
 #***********************************************************************************************************************
-set(GARDEN_INCLUDE_DIRS ${PROJECT_BINARY_DIR}/include ${PROJECT_SOURCE_DIR}/include resources/shaders 
-	libraries/ecsm/include libraries/vma/include libraries/stb libraries/png 
-	${PROJECT_BINARY_DIR}/libraries/png)
+set(GARDEN_INCLUDE_DIRS ${PROJECT_BINARY_DIR}/include ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/shaders 
+	libraries/ecsm/include libraries/vma/include libraries/stb libraries/png ${PROJECT_BINARY_DIR}/libraries/png)
 set(GARDEN_LINK_LIBS Vulkan::Vulkan volk nlohmann_json::nlohmann_json xxHash::xxhash assimp::assimp OpenEXR::OpenEXR 
 	ecsm-static math-static pack-static logy-static nets-static glfw webp png_static freetype FastNoise Jolt)
 set(GARDEN_LINK_DIRS)
