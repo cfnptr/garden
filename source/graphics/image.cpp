@@ -1796,8 +1796,8 @@ void Image::loadFileData(const void* data, psize dataSize, vector<uint8>& pixels
 }
 
 //**********************************************************************************************************************
-void Image::writeFileData(const fs::path& path, const void* pixels, uint2 size, 
-	FileType fileType, Format imageFormat, float quality, float effort)
+void Image::storeFileData(const fs::path& path, const void* pixels, uint2 size, 
+	FileType fileType, Format imageFormat, float quality, float effort, StoreFlag flags)
 {
 	GARDEN_ASSERT(!path.empty());
 	GARDEN_ASSERT_MSG(pixels, "Assert " + path.generic_string());
@@ -1813,33 +1813,52 @@ void Image::writeFileData(const fs::path& path, const void* pixels, uint2 size,
 	if (fileType == FileType::KTX2)
 	{
 		#if GARDEN_EDITOR
+		uint32_t basisFlags = basisu::cFlagUseOpenCL | basisu::cFlagKTX2 | 
+			basisu::cFlagKTX2UASTCSuperCompression | basisu::cFlagXUASTCLDRSyntaxFullZStd;
+		if (hasAnyFlag(flags, StoreFlag::GenerateMips))
+			basisFlags |= basisu::cFlagGenMipsClamp;
+
 		const void* dstPixels = pixels;
-		uint32_t basisFlags = basisu::cFlagUseOpenCL | basisu::cFlagKTX2 | basisu::cFlagKTX2UASTCSuperCompression |
-			basisu::cFlagGenMipsClamp | basisu::cFlagXUASTCLDRSyntaxFullZStd;
 		basist::basis_tex_format basisFormat; bool isHDR;
 
 		switch (imageFormat)
 		{
 			case Image::Format::SrgbR8G8B8A8:
-				basisFormat = quality < 1.0f ? basist::basis_tex_format::cETC1S : 
-					basist::basis_tex_format::cXUASTC_LDR_4x4;
-				isHDR = false; basisFlags |= basisu::cFlagSRGB;
-				break;
+				basisFlags |= basisu::cFlagSRGB;
+				// Note: falling through to the next case.
 			case Image::Format::UintR8G8B8A8:
-				basisFormat = quality < 1.0f ? basist::basis_tex_format::cETC1S : 
-					basist::basis_tex_format::cXUASTC_LDR_4x4;
+				if (quality < 1.0f)
+				{
+					GARDEN_ASSERT_MSG(!hasAnyFlag(flags, StoreFlag::BlockSize6x6 | 
+						StoreFlag::BlockSize8x8), "Unsupported ETC1S block size.");
+					basisFormat = basist::basis_tex_format::cETC1S;
+				}
+				else
+				{
+					if (hasAnyFlag(flags, StoreFlag::BlockSize6x6))
+						basisFormat = basist::basis_tex_format::cXUASTC_LDR_6x6;
+					else if (hasAnyFlag(flags, StoreFlag::BlockSize8x8))
+						basisFormat = basist::basis_tex_format::cXUASTC_LDR_8x8;
+					// TODO: more ASTC block sizes? Any use cases?
+					else basisFormat = basist::basis_tex_format::cXUASTC_LDR_4x4;
+				}
 				isHDR = false;
 				break;
 			case Image::Format::SfloatR32G32B32A32:
-				basisFormat = basist::basis_tex_format::cUASTC_HDR_4x4;
-				isHDR = true;
-				break;
-			case Image::Format::SfloatR16G16B16A16:
 				dstPixels = convertFormat(pixels, size, tmpPixels, imageFormat, Format::SfloatR32G32B32A32);
-				basisFormat = basist::basis_tex_format::cUASTC_HDR_4x4;
+				// Note: falling through to the next case.
+			case Image::Format::SfloatR16G16B16A16:
+				if (hasAnyFlag(flags, StoreFlag::BlockSize6x6))
+					basisFormat = basist::basis_tex_format::cUASTC_HDR_6x6_INTERMEDIATE;
+				else if (hasAnyFlag(flags, StoreFlag::BlockSize8x8))
+					throw GardenError("Unsupported UASTC HDR block size. (path: " + path.generic_string() + ")");
+				else basisFormat = basist::basis_tex_format::cUASTC_HDR_4x4;
 				isHDR = true;
 				break;
-			default: throw GardenError("Unsupported basis universal format conversion.");
+
+			default:
+				throw GardenError("Unsupported basis universal "
+					"format conversion. (path: " + path.generic_string() + ")");;
 		}
 
 		auto basisQuality = (int)std::fma(quality, 100.0f, 0.5f);
@@ -1876,6 +1895,9 @@ void Image::writeFileData(const fs::path& path, const void* pixels, uint2 size,
 	}
 	else if (fileType == FileType::WebP)
 	{
+		GARDEN_ASSERT_MSG(!hasAnyFlag(flags, StoreFlag::GenerateMips), "WebP does not store mip map levels");
+		GARDEN_ASSERT_MSG(!hasAnyFlag(flags, StoreFlag::BlockSize6x6 | 
+			StoreFlag::BlockSize8x8), "WebP does not support block compression");
 		auto dstPixels = convertFormat(pixels, size, tmpPixels, imageFormat, Format::SrgbR8G8B8A8);
 
 		filePath.replace_extension(".webp");
@@ -1916,6 +1938,9 @@ void Image::writeFileData(const fs::path& path, const void* pixels, uint2 size,
 	else if (fileType == FileType::PNG)
 	{
 		GARDEN_ASSERT_MSG(quality == 1.0f, "PNG is a lossless format, can't specify quality");
+		GARDEN_ASSERT_MSG(!hasAnyFlag(flags, StoreFlag::GenerateMips), "PNG does not store mip map levels");
+		GARDEN_ASSERT_MSG(!hasAnyFlag(flags, StoreFlag::BlockSize6x6 | 
+			StoreFlag::BlockSize8x8), "PNG does not support block compression");
 		auto dstPixels = convertFormat(pixels, size, tmpPixels, imageFormat, toSrgbFormat(componentCount));
 
 		filePath.replace_extension(".png");
@@ -1958,6 +1983,9 @@ void Image::writeFileData(const fs::path& path, const void* pixels, uint2 size,
 	else if (fileType == FileType::EXR)
 	{
 		GARDEN_ASSERT_MSG(quality == 1.0f, "EXR is a lossless format, can't specify quality");
+		GARDEN_ASSERT_MSG(!hasAnyFlag(flags, StoreFlag::GenerateMips), "Not implemented yet");
+		GARDEN_ASSERT_MSG(!hasAnyFlag(flags, StoreFlag::BlockSize6x6 | 
+			StoreFlag::BlockSize8x8), "EXR does not support block compression");
 		auto dstPixels = convertFormat(pixels, size, tmpPixels, imageFormat, Format::SfloatR16G16B16A16);
 		filePath.replace_extension(".exr");
 
@@ -1977,6 +2005,9 @@ void Image::writeFileData(const fs::path& path, const void* pixels, uint2 size,
 	else if (fileType == FileType::HDR)
 	{
 		GARDEN_ASSERT_MSG(quality == 1.0f, "HDR is a lossless format, can't specify quality");
+		GARDEN_ASSERT_MSG(!hasAnyFlag(flags, StoreFlag::GenerateMips), "HDR does not store mip map levels");
+		GARDEN_ASSERT_MSG(!hasAnyFlag(flags, StoreFlag::BlockSize6x6 | 
+			StoreFlag::BlockSize8x8), "HDR does not support block compression");
 		auto dstPixels = convertFormat(pixels, size, tmpPixels, imageFormat, toFloatFormat(componentCount));
 	
 		filePath.replace_extension(".hdr");
@@ -1985,16 +2016,22 @@ void Image::writeFileData(const fs::path& path, const void* pixels, uint2 size,
 	}
 	else if (fileType == FileType::JPEG)
 	{
+		GARDEN_ASSERT_MSG(!hasAnyFlag(flags, StoreFlag::GenerateMips), "JPEG does not store mip map levels");
+		GARDEN_ASSERT_MSG(!hasAnyFlag(flags, StoreFlag::BlockSize6x6 | 
+			StoreFlag::BlockSize8x8), "JPEG does not support custom block compression");
 		auto dstPixels = convertFormat(pixels, size, tmpPixels, imageFormat, toSrgbFormat(componentCount));
 		auto jpgQuality = (int)std::fma(quality, 100.0f, 0.5f);
 
 		filePath.replace_extension(".jpg");
 		if (!stbi_write_jpg(filePath.generic_string().c_str(), size.x, size.y, componentCount, dstPixels, jpgQuality))
-			throw GardenError("Failed to write JPG image. (path: " + path.generic_string() + ")");
+			throw GardenError("Failed to write JPEG image. (path: " + path.generic_string() + ")");
 	}
 	else if (fileType == FileType::BMP)
 	{
 		GARDEN_ASSERT_MSG(quality == 1.0f, "BMP is a lossless format, can't specify quality");
+		GARDEN_ASSERT_MSG(!hasAnyFlag(flags, StoreFlag::BlockSize6x6 | 
+			StoreFlag::BlockSize8x8), "BMP does not support block compression");
+		GARDEN_ASSERT_MSG(!hasAnyFlag(flags, StoreFlag::GenerateMips), "BMP does not store mip map levels");
 		auto dstPixels = convertFormat(pixels, size, tmpPixels, imageFormat, toSrgbFormat(componentCount));
 
 		filePath.replace_extension(".bmp");
@@ -2004,6 +2041,9 @@ void Image::writeFileData(const fs::path& path, const void* pixels, uint2 size,
 	else if (fileType == FileType::TGA)
 	{
 		GARDEN_ASSERT_MSG(quality == 1.0f, "TGA is a lossless format, can't specify quality");
+		GARDEN_ASSERT_MSG(!hasAnyFlag(flags, StoreFlag::BlockSize6x6 | 
+			StoreFlag::BlockSize8x8), "TGA does not support block compression");
+		GARDEN_ASSERT_MSG(!hasAnyFlag(flags, StoreFlag::GenerateMips), "TGA does not store mip map levels");
 		auto dstPixels = convertFormat(pixels, size, tmpPixels, imageFormat, toSrgbFormat(componentCount));
 
 		filePath.replace_extension(".tga");

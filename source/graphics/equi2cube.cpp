@@ -147,17 +147,17 @@ bool Equi2Cube::convertImage(const fs::path& filePath, const fs::path& inputPath
 		{
 			switch (task.getTaskIndex())
 			{
-				case 0: Image::writeFileData(exrFilePath + "-nx.ktx2", nx.data(), 
+				case 0: Image::storeFileData(exrFilePath + "-nx.ktx2", nx.data(), 
 					imageSize, fileType, imageFormat, 1.0f, effort); break;
-				case 1: Image::writeFileData(exrFilePath + "-px.ktx2", px.data(), 
+				case 1: Image::storeFileData(exrFilePath + "-px.ktx2", px.data(), 
 					imageSize, fileType, imageFormat, 1.0f, effort); break;
-				case 2: Image::writeFileData(exrFilePath + "-ny.ktx2", ny.data(), 
+				case 2: Image::storeFileData(exrFilePath + "-ny.ktx2", ny.data(), 
 					imageSize, fileType, imageFormat, 1.0f, effort); break;
-				case 3: Image::writeFileData(exrFilePath + "-py.ktx2", py.data(), 
+				case 3: Image::storeFileData(exrFilePath + "-py.ktx2", py.data(), 
 					imageSize, fileType, imageFormat, 1.0f, effort); break;
-				case 4: Image::writeFileData(exrFilePath + "-nz.ktx2", nz.data(), 
+				case 4: Image::storeFileData(exrFilePath + "-nz.ktx2", nz.data(), 
 					imageSize, fileType, imageFormat, 1.0f, effort); break;
-				case 5: Image::writeFileData(exrFilePath + "-pz.ktx2", pz.data(), 
+				case 5: Image::storeFileData(exrFilePath + "-pz.ktx2", pz.data(), 
 					imageSize, fileType, imageFormat, 1.0f, effort); break;
 				default: abort();
 			}
@@ -166,12 +166,12 @@ bool Equi2Cube::convertImage(const fs::path& filePath, const fs::path& inputPath
 	}
 	else
 	{
-		Image::writeFileData(exrFilePath + "-nx.ktx2", nx.data(), imageSize, fileType, imageFormat, 1.0f, effort);
-		Image::writeFileData(exrFilePath + "-px.ktx2", px.data(), imageSize, fileType, imageFormat, 1.0f, effort);
-		Image::writeFileData(exrFilePath + "-ny.ktx2", ny.data(), imageSize, fileType, imageFormat, 1.0f, effort);
-		Image::writeFileData(exrFilePath + "-py.ktx2", py.data(), imageSize, fileType, imageFormat, 1.0f, effort);
-		Image::writeFileData(exrFilePath + "-nz.ktx2", nz.data(), imageSize, fileType, imageFormat, 1.0f, effort);
-		Image::writeFileData(exrFilePath + "-pz.ktx2", pz.data(), imageSize, fileType, imageFormat, 1.0f, effort);
+		Image::storeFileData(exrFilePath + "-nx.ktx2", nx.data(), imageSize, fileType, imageFormat, 1.0f, effort);
+		Image::storeFileData(exrFilePath + "-px.ktx2", px.data(), imageSize, fileType, imageFormat, 1.0f, effort);
+		Image::storeFileData(exrFilePath + "-ny.ktx2", ny.data(), imageSize, fileType, imageFormat, 1.0f, effort);
+		Image::storeFileData(exrFilePath + "-py.ktx2", py.data(), imageSize, fileType, imageFormat, 1.0f, effort);
+		Image::storeFileData(exrFilePath + "-nz.ktx2", nz.data(), imageSize, fileType, imageFormat, 1.0f, effort);
+		Image::storeFileData(exrFilePath + "-pz.ktx2", pz.data(), imageSize, fileType, imageFormat, 1.0f, effort);
 	}
 	return true;
 }

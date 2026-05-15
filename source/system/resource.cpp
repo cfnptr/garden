@@ -1512,7 +1512,7 @@ void ResourceSystem::storeImage(const fs::path& path, const void* pixels, uint2 
 	if (!fs::exists(directoryPath))
 		fs::create_directories(directoryPath);
 
-	Image::writeFileData(imagesPath / path, pixels, size, fileType, imageFormat, quality, effort);
+	Image::storeFileData(imagesPath / path, pixels, size, fileType, imageFormat, quality, effort);
 	GARDEN_LOG_DEBUG("Stored image. (path: " + path.generic_string() + ")");
 }
 

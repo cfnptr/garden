@@ -196,11 +196,21 @@ public:
 	static constexpr uint8 usageCount = 8; /**< Image usage type count. */
 
 	/**
-	 * @brief Image file format types. (Container)
+	 * @brief Image file container types.
 	 */
 	enum class FileType : uint8
 	{
 		KTX2, WebP, PNG, JPEG, EXR, HDR, BMP, PSD, TGA, PIC, GIF, Count
+	};
+	/**
+	 * @brief Image file store flags.
+	 */
+	enum class StoreFlag : uint8
+	{
+		None = 0x00,         /**< No additional image store flags. */
+		GenerateMips = 0x01, /**< Generate and store image mip map levels. */
+		BlockSize6x6 = 0x02, /**< Use 6x6 block size for compressed formats. */
+		BlockSize8x8 = 0x04  /**< Use 8x8 block size for compressed formats. */
 	};
 
 	/*******************************************************************************************************************
@@ -886,7 +896,7 @@ public:
 	static void loadFileData(const void* data, psize dataSize, vector<uint8>& pixels, 
 		uint2& imageSize, FileType fileType, Format& imageFormat);
 	/**
-	 * @brief Writes image pixels to the specified file.
+	 * @brief Stores image pixels to the specified file.
 	 * @throw GardenError on image data writing error.
 	 *
 	 * @param[in] path target image file path
@@ -896,12 +906,14 @@ public:
 	 * @param imageFormat image pixel data format
 	 * @param quality image quality (0.0 - 1.0)
 	 * @param effort image compression effort (0.0 - 1.0)
+	 * @param flags additional image store flags
 	 */
-	static void writeFileData(const fs::path& path, const void* pixels, uint2 size, 
-		FileType fileType, Format imageFormat, float quality = 1.0f, float effort = 0.7f);
+	static void storeFileData(const fs::path& path, const void* pixels, uint2 size, FileType fileType, 
+		Format imageFormat, float quality = 1.0f, float effort = 0.7f, StoreFlag flags = StoreFlag::None);
 };
 
 DECLARE_ENUM_CLASS_FLAG_OPERATORS(Image::Usage)
+DECLARE_ENUM_CLASS_FLAG_OPERATORS(Image::StoreFlag)
 
 /***********************************************************************************************************************
  * @brief View of the graphics image.
