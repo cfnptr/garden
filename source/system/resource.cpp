@@ -698,12 +698,18 @@ static void loadMissingImage(Image::Format& imageFormat, vector<uint8>& data, ui
 	if (imageFormat == Image::Format::Undefined)
 		imageFormat = Image::Format::SrgbR8G8B8A8;
 
-	auto formatBinarySize = toBinarySize(imageFormat);
+	auto imageBinarySize = toBinarySize((psize)16, imageFormat);
 	auto componentCount = toComponentCount(imageFormat);
-	GARDEN_ASSERT(formatBinarySize != 0 && componentCount != 0);
 
-	auto compBinarySize = formatBinarySize / componentCount;
-	data.resize(formatBinarySize * 16); size = uint2(4, 4);
+	if (imageBinarySize == 0 || componentCount == 0)
+	{
+		data.resize(256);
+		memset(data.data(), UINT8_MAX, 256);
+		return;
+	}
+
+	auto compBinarySize = imageBinarySize / (componentCount * 16);
+	data.resize(imageBinarySize); size = uint2(4, 4);
 
 	if (compBinarySize == 4)
 	{
@@ -816,8 +822,8 @@ static void loadMissingModel(const vector<BufferChannel>& channels, vector<uint8
 	vector<uint8>& indexData, uint32& vertexCount, uint32& indexCount)
 {
 	const float4 colorMagenta = (float4)Color::magenta; const float4 colorBlack = (float4)Color::black;
-	auto vertexSize = toBinarySize(channels);
-	vertexData.resize(vertexSize * 3);
+	auto vertexBinarySize = toBinarySize(channels);
+	vertexData.resize(vertexBinarySize * 3);
 	auto vertices = vertexData.data();
 
 	for (auto channel : channels)
@@ -825,39 +831,39 @@ static void loadMissingModel(const vector<BufferChannel>& channels, vector<uint8
 		switch (channel)
 		{
 		case BufferChannel::Positions:
-			*(float3*)(vertices                 ) = float3(-1.0f, -1.0f, 0.0f);
-			*(float3*)(vertices + vertexSize    ) = float3( 1.0f, -1.0f, 0.0f);
-			*(float3*)(vertices + vertexSize * 2) = float3( 1.0f,  1.0f, 0.0f);
+			*(float3*)(vertices                       ) = float3(-1.0f, -1.0f, 0.0f);
+			*(float3*)(vertices + vertexBinarySize    ) = float3( 1.0f, -1.0f, 0.0f);
+			*(float3*)(vertices + vertexBinarySize * 2) = float3( 1.0f,  1.0f, 0.0f);
 			vertices += sizeof(float3);
 			break;
 		case BufferChannel::Normals:
-			*(float3*)(vertices                 ) = float3(0.0f, 0.0f, -1.0f);
-			*(float3*)(vertices + vertexSize    ) = float3(0.0f, 0.0f, -1.0f);
-			*(float3*)(vertices + vertexSize * 2) = float3(0.0f, 0.0f, -1.0f);
+			*(float3*)(vertices                       ) = float3(0.0f, 0.0f, -1.0f);
+			*(float3*)(vertices + vertexBinarySize    ) = float3(0.0f, 0.0f, -1.0f);
+			*(float3*)(vertices + vertexBinarySize * 2) = float3(0.0f, 0.0f, -1.0f);
 			vertices += sizeof(float3);
 			break;
 		case BufferChannel::Tangents:
-			*(float3*)(vertices                 ) = float3(1.0f, 0.0f, 0.0f);
-			*(float3*)(vertices + vertexSize    ) = float3(1.0f, 0.0f, 0.0f);
-			*(float3*)(vertices + vertexSize * 2) = float3(1.0f, 0.0f, 0.0f);
+			*(float3*)(vertices                       ) = float3(1.0f, 0.0f, 0.0f);
+			*(float3*)(vertices + vertexBinarySize    ) = float3(1.0f, 0.0f, 0.0f);
+			*(float3*)(vertices + vertexBinarySize * 2) = float3(1.0f, 0.0f, 0.0f);
 			vertices += sizeof(float3);
 			break;
 		case BufferChannel::Bitangents:
-			*(float3*)(vertices                 ) = float3(0.0f, 1.0f, 0.0f);
-			*(float3*)(vertices + vertexSize    ) = float3(0.0f, 1.0f, 0.0f);
-			*(float3*)(vertices + vertexSize * 2) = float3(0.0f, 1.0f, 0.0f);
+			*(float3*)(vertices                       ) = float3(0.0f, 1.0f, 0.0f);
+			*(float3*)(vertices + vertexBinarySize    ) = float3(0.0f, 1.0f, 0.0f);
+			*(float3*)(vertices + vertexBinarySize * 2) = float3(0.0f, 1.0f, 0.0f);
 			vertices += sizeof(float3);
 			break;
 		case BufferChannel::TextureCoords:
-			*(float2*)(vertices                 ) = float2(0.0f, 0.0f);
-			*(float2*)(vertices + vertexSize    ) = float2(1.0f, 0.0f);
-			*(float2*)(vertices + vertexSize * 2) = float2(0.5f, 1.0f);
+			*(float2*)(vertices                       ) = float2(0.0f, 0.0f);
+			*(float2*)(vertices + vertexBinarySize    ) = float2(1.0f, 0.0f);
+			*(float2*)(vertices + vertexBinarySize * 2) = float2(0.5f, 1.0f);
 			vertices += sizeof(float2);
 			break;
 		case BufferChannel::VertexColors:
-			*(float4*)(vertices                 ) = colorBlack;
-			*(float4*)(vertices + vertexSize    ) = colorBlack;
-			*(float4*)(vertices + vertexSize * 2) = colorMagenta;
+			*(float4*)(vertices                       ) = colorBlack;
+			*(float4*)(vertices + vertexBinarySize    ) = colorBlack;
+			*(float4*)(vertices + vertexBinarySize * 2) = colorMagenta;
 			vertices += sizeof(float4);
 			break;
 		default: abort();
@@ -1009,28 +1015,29 @@ void ResourceSystem::loadImageData(const fs::path* paths, psize pathCount,
 
 		if (size != elementSize)
 		{
-			auto count = (psize)size.x * size.y;
-			auto formatBinarySize = toBinarySize(format);
-			auto& pixelArray = pixelArrayData[i];
-			GARDEN_ASSERT(formatBinarySize > 0);
-			pixelArray.resize(formatBinarySize * count);
+			auto pixelCount = (psize)size.x * size.y;
+			auto imageBinarySize = toBinarySize(pixelCount, format);
+			GARDEN_ASSERT_MSG(imageBinarySize > 0, "Assert " + paths[i].generic_string());
 
-			if (formatBinarySize == 4)
+			auto& pixelArray = pixelArrayData[i];
+			pixelArray.resize(imageBinarySize);
+
+			if (imageBinarySize / pixelCount == 4)
 			{
 				auto pixels = (Color*)pixelArray.data();
-				for (uint32 j = 0; j < count; j++)
+				for (uint32 j = 0; j < pixelCount; j++)
 					pixels[j] = Color::magenta;
 			}
 			else if (format == Image::Format::SfloatR16G16B16A16)
 			{
 				auto pixels = (f16x4*)pixelArray.data();
-				for (uint32 j = 0; j < count; j++)
+				for (uint32 j = 0; j < pixelCount; j++)
 					pixels[j] = f16x4(1.0f, 0.0f, 1.0f, 1.0f); 
 			}
 			else if (format == Image::Format::SfloatR32G32B32A32)
 			{
 				auto pixels = (f32x4*)pixelArray.data();
-				for (uint32 j = 0; j < count; j++)
+				for (uint32 j = 0; j < pixelCount; j++)
 					pixels[j] = f32x4(1.0f, 0.0f, 1.0f, 1.0f); 
 			}
 			else memset(pixelArray.data(), UINT8_MAX, pixelArray.size());
@@ -1071,30 +1078,30 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& nx,
 	}
 	
 	auto inputLastWriteTime = fs::last_write_time(inputFilePath);
-	if (!fs::exists(cacheFileString + "-nx.exr") || !fs::exists(cacheFileString + "-px.exr") ||
-		!fs::exists(cacheFileString + "-ny.exr") || !fs::exists(cacheFileString + "-py.exr") ||
-		!fs::exists(cacheFileString + "-nz.exr") || !fs::exists(cacheFileString + "-pz.exr") ||
-		inputLastWriteTime > fs::last_write_time(cacheFileString + "-nx.exr") ||
-		inputLastWriteTime > fs::last_write_time(cacheFileString + "-px.exr") ||
-		inputLastWriteTime > fs::last_write_time(cacheFileString + "-ny.exr") ||
-		inputLastWriteTime > fs::last_write_time(cacheFileString + "-py.exr") ||
-		inputLastWriteTime > fs::last_write_time(cacheFileString + "-nz.exr") ||
-		inputLastWriteTime > fs::last_write_time(cacheFileString + "-pz.exr"))
+	if (!fs::exists(cacheFileString + "-nx.ktx2") || !fs::exists(cacheFileString + "-px.ktx2") ||
+		!fs::exists(cacheFileString + "-ny.ktx2") || !fs::exists(cacheFileString + "-py.ktx2") ||
+		!fs::exists(cacheFileString + "-nz.ktx2") || !fs::exists(cacheFileString + "-pz.ktx2") ||
+		inputLastWriteTime > fs::last_write_time(cacheFileString + "-nx.ktx2") ||
+		inputLastWriteTime > fs::last_write_time(cacheFileString + "-px.ktx2") ||
+		inputLastWriteTime > fs::last_write_time(cacheFileString + "-ny.ktx2") ||
+		inputLastWriteTime > fs::last_write_time(cacheFileString + "-py.ktx2") ||
+		inputLastWriteTime > fs::last_write_time(cacheFileString + "-nz.ktx2") ||
+		inputLastWriteTime > fs::last_write_time(cacheFileString + "-pz.ktx2"))
 	{
-		vector<uint8> equiData; uint2 equiSize;
-		loadImageData(path, equiData, equiSize, format, threadIndex);
+		vector<uint8> equiData; uint2 equiSize; Image::Format equiFormat;
+		loadImageData(path, equiData, equiSize, equiFormat, threadIndex);
 
 		auto cubemapSize = equiSize.x / 4;
 		if (equiSize.x / 2 != equiSize.y)
 		{
 			GARDEN_LOG_ERROR("Invalid equi cubemap size. (path: " + path.generic_string() + ")");
-			loadMissingImage(format, nx, px, ny, py, nz, pz, size);
+			loadMissingImage(equiFormat, nx, px, ny, py, nz, pz, size);
 			return;
 		}
 		if (cubemapSize % 32 != 0)
 		{
 			GARDEN_LOG_ERROR("Invalid cubemap image size. (path: " + path.generic_string() + ")");
-			loadMissingImage(format, nx, px, ny, py, nz, pz, size);
+			loadMissingImage(equiFormat, nx, px, ny, py, nz, pz, size);
 			return;
 		}
 
@@ -1107,7 +1114,7 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& nx,
 		catch (exception& e)
 		{
 			GARDEN_LOG_ERROR(e.what());
-			loadMissingImage(format, nx, px, ny, py, nz, pz, size);
+			loadMissingImage(equiFormat, nx, px, ny, py, nz, pz, size);
 			return;
 		}
 	}
@@ -1186,20 +1193,20 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& nx,
 
 //**********************************************************************************************************************
 static void copyLoadedImageData(const vector<vector<uint8>>& pixelArrays, uint8* stagingMap, uint2 realSize, 
-	uint2 imageSize, psize formatBinarySize, Image::Type imageType, ImageLoadFlags flags) noexcept
+	uint2 imageSize, psize pixelBinarySize, Image::Type imageType, ImageLoadFlags flags) noexcept
 {
 	if (hasAnyFlag(flags, ImageLoadFlags::LoadAsArray | ImageLoadFlags::LoadAs3D) && realSize.x > realSize.y)
 	{
 		auto pixels = pixelArrays[0].data();
 		auto layerCount = realSize.x / realSize.y;
-		auto lineSize = formatBinarySize * imageSize.x;
+		auto lineSize = pixelBinarySize * imageSize.x;
 
 		uint32 offsetX = 0;
 		for (uint32 l = 0; l < layerCount; l++)
 		{
 			for (uint32 y = 0; y < imageSize.y; y++)
 			{
-				auto pixelsOffset = formatBinarySize * (y * realSize.x + offsetX);
+				auto pixelsOffset = pixelBinarySize * (y * realSize.x + offsetX);
 				memcpy(stagingMap, pixels + pixelsOffset, lineSize);
 				stagingMap += lineSize;
 			}
@@ -1370,8 +1377,6 @@ Ref<Image> ResourceSystem::loadImage(const fs::path* paths, psize pathCount, Ima
 			vector<vector<uint8>> pixelArrays(paths.size()); uint2 realSize;
 			auto dataFormat = hasAnyFlag(flags, ImageLoadFlags::LoadAsSrgb) ? 
 				toSrgbFormat(toComponentCount(data->format)) : data->format;
-			auto formatBinarySize = toBinarySize(dataFormat);
-			GARDEN_ASSERT(formatBinarySize > 0);
 
 			if (hasAnyFlag(flags, ImageLoadFlags::TypeCubemap) && paths.size() == 1)
 			{
@@ -1391,19 +1396,23 @@ Ref<Image> ResourceSystem::loadImage(const fs::path* paths, psize pathCount, Ima
 				paths.size(), realSize, flags, imageSize, layerCount);
 			auto mipCount = calcLoadedImageMipCount(data->maxMipCount, imageSize);
 			auto imageType = calcLoadedImageType(realSize.y, flags);
+			auto pixelCount = (psize)realSize.x * realSize.y;
+			auto imageBinarySize = toBinarySize(pixelCount, dataFormat);
+			if (data->format != Image::Format::Undefined) dataFormat = data->format;
+			GARDEN_ASSERT_MSG(imageBinarySize > 0, "Assert " + paths[0].generic_string());
 			
 			ImageQueueItem item =
 			{
-				ImageExt::create(imageType, data->format, data->usage, data->strategy, 
+				ImageExt::create(imageType, dataFormat, data->usage, data->strategy, 
 					u32x4(imageSize.x, imageSize.y, layerCount, mipCount), data->imageVersion),
 				BufferExt::create(Buffer::Usage::TransferSrc, Buffer::CpuAccess::SequentialWrite, 
 					Buffer::Location::Auto, Buffer::Strategy::Speed, // Note: Staging does not need TransferQ flag.
-					formatBinarySize * realSize.x * realSize.y * paths.size(), 0),
+					imageBinarySize * paths.size(), 0),
 				std::move(paths), realSize, data->instance, flags
 			};
 
-			copyLoadedImageData(pixelArrays, item.staging.getMap(), 
-				realSize, imageSize, formatBinarySize, imageType, flags);
+			copyLoadedImageData(pixelArrays, item.staging.getMap(), realSize, 
+				imageSize, imageBinarySize / pixelCount, imageType, flags);
 			item.staging.flush();
 
 			queueLocker.lock();
@@ -1422,8 +1431,6 @@ Ref<Image> ResourceSystem::loadImage(const fs::path* paths, psize pathCount, Ima
 		vector<vector<uint8>> pixelArrays(pathCount); uint2 realSize;
 		auto dataFormat = hasAnyFlag(flags, ImageLoadFlags::LoadAsSrgb) ? 
 			toSrgbFormat(toComponentCount(format)) : format;
-		auto formatBinarySize = toBinarySize(dataFormat);
-		GARDEN_ASSERT(formatBinarySize > 0);
 
 		if (hasAnyFlag(flags, ImageLoadFlags::TypeCubemap) && pathCount == 1)
 		{
@@ -1443,6 +1450,10 @@ Ref<Image> ResourceSystem::loadImage(const fs::path* paths, psize pathCount, Ima
 			pathCount, realSize, flags, imageSize, layerCount);
 		auto mipCount = calcLoadedImageMipCount(maxMipCount, imageSize);
 		auto imageType = calcLoadedImageType(realSize.y, flags);
+		auto pixelCount = (psize)realSize.x * realSize.y;
+		auto imageBinarySize = toBinarySize(pixelCount, dataFormat);
+		if (format != Image::Format::Undefined) dataFormat = format;
+		GARDEN_ASSERT_MSG(imageBinarySize > 0, "Assert " + paths[0].generic_string());
 
 		auto imageInstance = ImageExt::create(imageType, format, usage, 
 			strategy, u32x4(imageSize.x, imageSize.y, layerCount, mipCount), 0);
@@ -1451,12 +1462,12 @@ Ref<Image> ResourceSystem::loadImage(const fs::path* paths, psize pathCount, Ima
 
 		auto graphicsSystem = GraphicsSystem::Instance::get();
 		auto stagingBuffer =  graphicsSystem->createStagingBuffer(
-			Buffer::CpuAccess::SequentialWrite, formatBinarySize * realSize.x * realSize.y);
+			Buffer::CpuAccess::SequentialWrite, imageBinarySize * pathCount);
 		SET_RESOURCE_DEBUG_NAME(stagingBuffer, "buffer.staging.loadedImage" + to_string(*stagingBuffer));
 
 		auto stagingView = graphicsAPI->bufferPool.get(stagingBuffer);
-		copyLoadedImageData(pixelArrays, stagingView->getMap(),
-			realSize, imageSize, formatBinarySize, imageType, flags);
+		copyLoadedImageData(pixelArrays, stagingView->getMap(), realSize, 
+			imageSize, imageBinarySize / pixelCount, imageType, flags);
 		stagingView->flush();
 
 		auto generateMipmap = imageView->getMipCount() > 1;
@@ -1482,13 +1493,14 @@ Ref<Image> ResourceSystem::loadImage(const fs::path* paths, psize pathCount, Ima
 }
 
 //**********************************************************************************************************************
-void ResourceSystem::storeImage(const fs::path& path, const void* pixels, uint2 size,  
-	Image::FileType fileType, Image::Format imageFormat, float quality, const fs::path& directory)
+void ResourceSystem::storeImage(const fs::path& path, const void* pixels, uint2 size, Image::FileType fileType, 
+	Image::Format imageFormat, float quality, float effort, const fs::path& directory)
 {
 	GARDEN_ASSERT(!path.empty());
 	GARDEN_ASSERT_MSG(pixels, "Assert " + path.generic_string());
 	GARDEN_ASSERT_MSG(areAllTrue(size > uint2::zero), "Assert " + path.generic_string());
 	GARDEN_ASSERT_MSG(quality >= 0.0f && quality <= 1.0f, "Assert " + path.generic_string());
+	GARDEN_ASSERT_MSG(effort >= 0.0f && effort <= 1.0f, "Assert " + path.generic_string());
 
 	#if !GARDEN_PACK_RESOURCES || GARDEN_EDITOR
 	auto imagesPath = directory.empty() ? appResourcesPath / "images" : directory;
@@ -1500,7 +1512,7 @@ void ResourceSystem::storeImage(const fs::path& path, const void* pixels, uint2 
 	if (!fs::exists(directoryPath))
 		fs::create_directories(directoryPath);
 
-	Image::writeFileData(imagesPath / path, pixels, size, fileType, imageFormat);
+	Image::writeFileData(imagesPath / path, pixels, size, fileType, imageFormat, quality, effort);
 	GARDEN_LOG_DEBUG("Stored image. (path: " + path.generic_string() + ")");
 }
 
@@ -1516,10 +1528,13 @@ void ResourceSystem::combineImages(const vector<fs::path>& inputPaths, const fs:
 	loadImageData(inputPaths[0], inBuffer, inSize, imageFormat, threadIndex);
 
 	auto pathCount = (uint32)inputPaths.size();
-	auto formatBinarySize = toBinarySize(imageFormat);
-	auto inBinSizeX = formatBinarySize * inSize.x, inBinSizeY = formatBinarySize * inSize.y;
-	auto outBinSizeY = formatBinarySize * inSize.y * pathCount;
-	GARDEN_ASSERT(formatBinarySize > 0);
+	auto pixelCount = (psize)inSize.x * inSize.y;
+	auto imageBinarySize = toBinarySize(pixelCount, imageFormat);
+	GARDEN_ASSERT(imageBinarySize > 0);
+
+	auto pixelBinarySize = imageBinarySize / pixelCount;
+	auto inBinSizeX = pixelBinarySize * inSize.x, inBinSizeY = pixelBinarySize * inSize.y;
+	auto outBinSizeY = pixelBinarySize * inSize.y * pathCount;
 	vector<uint8> outBuffer(inSize.x * outBinSizeY);
 
 	auto inData = inBuffer.data(), outData = outBuffer.data();

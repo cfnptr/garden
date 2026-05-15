@@ -55,6 +55,7 @@ public:
 		bool rayTracing = false;
 		bool rayQuery = false;
 		bool meshShader = false;
+		bool astcHDR = false;
 		bool maintenance4 = false;
 		bool maintenance5 = false;
 		bool maintenance6 = false;
@@ -167,6 +168,18 @@ public:
 	 */
 	bool hasMeshShader() const override { return features.meshShader; }
 	/**
+	 * @brief Returns true if BCn texture compression is supported.
+	 */
+	bool hasBCn() const override { return deviceFeatures.features.textureCompressionBC ? true : false; }
+	/**
+	 * @brief Returns true if ASTC texture compression is supported.
+	 */
+	bool hasASTC_LDR() const override { return deviceFeatures.features.textureCompressionASTC_LDR ? true : false; }
+	/**
+	 * @brief Returns true if ASTC texture compression is supported.
+	 */
+	bool hasASTC_HDR() const override { return features.astcHDR ? true : false; }
+	/**
 	 * @brief Returns true if low latency input is supported.
 	 */
 	bool hasLowLatency() const override { return features.nvLowLatency || features.amdAntiLag; }
@@ -228,6 +241,13 @@ static vk::Format toVkFormat(Image::Format formatType) noexcept
 		case Image::Format::UnormB4G4R4A4: return vk::Format::eB4G4R4A4UnormPack16;
 		case Image::Format::UnormA2R10G10B10: return vk::Format::eA2R10G10B10UnormPack32;
 		case Image::Format::UnormA2B10G10R10: return vk::Format::eA2B10G10R10UnormPack32;
+		case Image::Format::UnormRgbBC1: return vk::Format::eBc1RgbUnormBlock;
+		case Image::Format::UnormRgbaBC1: return vk::Format::eBc1RgbaUnormBlock;
+		case Image::Format::UnormBC3: return vk::Format::eBc3UnormBlock;
+		case Image::Format::UnormBC4: return vk::Format::eBc4UnormBlock;
+		case Image::Format::UnormBC5: return vk::Format::eBc5UnormBlock;
+		case Image::Format::UnormBC7: return vk::Format::eBc7UnormBlock;
+		case Image::Format::UnormAstc4x4: return vk::Format::eAstc4x4UnormBlock;
 
 		case Image::Format::SnormR8: return vk::Format::eR8Snorm;
 		case Image::Format::SnormR8G8: return vk::Format::eR8G8Snorm;
@@ -235,6 +255,8 @@ static vk::Format toVkFormat(Image::Format formatType) noexcept
 		case Image::Format::SnormR16: return vk::Format::eR16Snorm;
 		case Image::Format::SnormR16G16: return vk::Format::eR16G16Snorm;
 		case Image::Format::SnormR16G16B16A16: return vk::Format::eR16G16B16A16Snorm;
+		case Image::Format::SnormBC4: return vk::Format::eBc4SnormBlock;
+		case Image::Format::SnormBC5: return vk::Format::eBc5SnormBlock;
 
 		case Image::Format::SfloatR16: return vk::Format::eR16Sfloat;
 		case Image::Format::SfloatR16G16: return vk::Format::eR16G16Sfloat;
@@ -242,16 +264,24 @@ static vk::Format toVkFormat(Image::Format formatType) noexcept
 		case Image::Format::SfloatR32: return vk::Format::eR32Sfloat;
 		case Image::Format::SfloatR32G32: return vk::Format::eR32G32Sfloat;
 		case Image::Format::SfloatR32G32B32A32: return vk::Format::eR32G32B32A32Sfloat;
+		case Image::Format::SfloatBC6H: return vk::Format::eBc6HSfloatBlock;
+		case Image::Format::SfloatAstc4x4: return vk::Format::eAstc4x4SfloatBlock;
 
 		case Image::Format::UfloatB10G11R11: return vk::Format::eB10G11R11UfloatPack32;
 		case Image::Format::UfloatE5B9G9R9: return vk::Format::eE5B9G9R9UfloatPack32;
+		case Image::Format::UfloatBC6H: return vk::Format::eBc6HUfloatBlock;
 
 		case Image::Format::SrgbR8: return vk::Format::eR8Srgb;
 		case Image::Format::SrgbR8G8: return vk::Format::eR8G8Srgb;
 		case Image::Format::SrgbR8G8B8A8: return vk::Format::eR8G8B8A8Srgb;
 		case Image::Format::SrgbB8G8R8A8: return vk::Format::eB8G8R8A8Srgb;
 		case Image::Format::SrgbA8B8G8R8: return vk::Format::eA8B8G8R8SrgbPack32;
-		
+		case Image::Format::SrgbRgbBC1: return vk::Format::eBc1RgbSrgbBlock;
+		case Image::Format::SrgbRgbaBC1: return vk::Format::eBc1RgbaSrgbBlock;
+		case Image::Format::SrgbBC3: return vk::Format::eBc3SrgbBlock;
+		case Image::Format::SrgbBC7: return vk::Format::eBc7SrgbBlock;
+		case Image::Format::SrgbAstc4x4: return vk::Format::eAstc4x4SrgbBlock;
+
 		case Image::Format::UnormD16: return vk::Format::eD16Unorm;
 		case Image::Format::SfloatD32: return vk::Format::eD32Sfloat;
 		case Image::Format::UintS8: return vk::Format::eS8Uint;
@@ -299,6 +329,7 @@ static Image::Format toImageFormat(vk::Format formatType) noexcept
 		case vk::Format::eR16G16Unorm: return Image::Format::UnormR16G16;
 		case vk::Format::eR16G16B16A16Unorm: return Image::Format::UnormR16G16B16A16;
 		case vk::Format::eR5G6B5UnormPack16: return Image::Format::UnormR5G6B5;
+		case vk::Format::eB5G6R5UnormPack16: return Image::Format::UnormB5G6R5;
 		case vk::Format::eA1R5G5B5UnormPack16: return Image::Format::UnormA1R5G5B5;
 		case vk::Format::eR5G5B5A1UnormPack16: return Image::Format::UnormR5G5B5A1;
 		case vk::Format::eB5G5R5A1UnormPack16: return Image::Format::UnormB5G5R5A1;
@@ -306,6 +337,13 @@ static Image::Format toImageFormat(vk::Format formatType) noexcept
 		case vk::Format::eB4G4R4A4UnormPack16: return Image::Format::UnormB4G4R4A4;
 		case vk::Format::eA2R10G10B10UnormPack32: return Image::Format::UnormA2R10G10B10;
 		case vk::Format::eA2B10G10R10UnormPack32: return Image::Format::UnormA2B10G10R10;
+		case vk::Format::eBc1RgbUnormBlock: return Image::Format::UnormRgbBC1;
+		case vk::Format::eBc1RgbaUnormBlock: return Image::Format::UnormRgbaBC1;
+		case vk::Format::eBc3UnormBlock: return Image::Format::UnormBC3;
+		case vk::Format::eBc4UnormBlock: return Image::Format::UnormBC4;
+		case vk::Format::eBc5UnormBlock: return Image::Format::UnormBC5;
+		case vk::Format::eBc7UnormBlock: return Image::Format::UnormBC7;
+		case vk::Format::eAstc4x4UnormBlock: return Image::Format::UnormAstc4x4;
 
 		case vk::Format::eR8Snorm: return Image::Format::SnormR8;
 		case vk::Format::eR8G8Snorm: return Image::Format::SnormR8G8;
@@ -313,6 +351,8 @@ static Image::Format toImageFormat(vk::Format formatType) noexcept
 		case vk::Format::eR16Snorm: return Image::Format::SnormR16;
 		case vk::Format::eR16G16Snorm: return Image::Format::SnormR16G16;
 		case vk::Format::eR16G16B16A16Snorm: return Image::Format::SnormR16G16B16A16;
+		case vk::Format::eBc4SnormBlock: return Image::Format::SnormBC4;
+		case vk::Format::eBc5SnormBlock: return Image::Format::SnormBC5;
 
 		case vk::Format::eR16Sfloat: return Image::Format::SfloatR16;
 		case vk::Format::eR16G16Sfloat: return Image::Format::SfloatR16G16;
@@ -320,15 +360,23 @@ static Image::Format toImageFormat(vk::Format formatType) noexcept
 		case vk::Format::eR32Sfloat: return Image::Format::SfloatR32;
 		case vk::Format::eR32G32Sfloat: return Image::Format::SfloatR32G32;
 		case vk::Format::eR32G32B32A32Sfloat: return Image::Format::SfloatR32G32B32A32;
+		case vk::Format::eBc6HSfloatBlock: return Image::Format::SfloatBC6H;
+		case vk::Format::eAstc4x4SfloatBlock: return Image::Format::SfloatAstc4x4;
 
 		case vk::Format::eB10G11R11UfloatPack32: return Image::Format::UfloatB10G11R11;
 		case vk::Format::eE5B9G9R9UfloatPack32: return Image::Format::UfloatE5B9G9R9;
+		case vk::Format::eBc6HUfloatBlock: return Image::Format::UfloatBC6H;
 
 		case vk::Format::eR8Srgb: return Image::Format::SrgbR8;
 		case vk::Format::eR8G8Srgb: return Image::Format::SrgbR8G8;
 		case vk::Format::eR8G8B8A8Srgb: return Image::Format::SrgbR8G8B8A8;
 		case vk::Format::eB8G8R8A8Srgb: return Image::Format::SrgbB8G8R8A8;
 		case vk::Format::eA8B8G8R8SrgbPack32: return Image::Format::SrgbA8B8G8R8;
+		case vk::Format::eBc1RgbSrgbBlock: return Image::Format::SrgbRgbBC1;
+		case vk::Format::eBc1RgbaSrgbBlock: return Image::Format::SrgbRgbaBC1;
+		case vk::Format::eBc3SrgbBlock: return Image::Format::SrgbBC3;
+		case vk::Format::eBc7SrgbBlock: return Image::Format::SrgbBC7;
+		case vk::Format::eAstc4x4SrgbBlock: return Image::Format::SrgbAstc4x4;
 
 		case vk::Format::eD16Unorm: return Image::Format::UnormD16;
 		case vk::Format::eD32Sfloat: return Image::Format::SfloatD32;

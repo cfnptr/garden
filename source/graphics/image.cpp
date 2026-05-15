@@ -218,19 +218,20 @@ Image::Image(Type type, Format format, Usage usage, Strategy strategy, u32x4 siz
 	this->size = size;
 
 	auto mipSize = size;
-	auto formatBinarySize = (uint64)toBinarySize(format);
-	GARDEN_ASSERT(formatBinarySize > 0);
-
 	for (uint8 mip = 0, mipCount = getMipCount(); mip < mipCount; mip++)
 	{
-		this->binarySize += formatBinarySize * mipSize.getX() * mipSize.getY() * mipSize.getZ();
-		mipSize = max(mipSize / 2u, u32x4::one);
+		auto mipBinarySize = toBinarySize((psize)mipSize.getX() * 
+			mipSize.getY() * mipSize.getZ(), format);
+		GARDEN_ASSERT(mipBinarySize > 0);
+	
+		this->binarySize += mipBinarySize;
+		mipSize = max(mipSize / 2u, u32x4::one);	
 	}
 }
 
 //**********************************************************************************************************************
-Image::Image(void* instance, Format format, Usage usage, Strategy strategy, uint2 size, uint8 backend) : 
-	Memory(toBinarySize(format) * size.x * size.y, CpuAccess::None, Location::Auto, strategy, 0), barrierStates(1)
+Image::Image(void* instance, Format format, Usage usage, Strategy strategy, uint2 size, uint8 backend) : Memory(
+	toBinarySize((psize)size.x * size.y, format), CpuAccess::None, Location::Auto, strategy, 0), barrierStates(1)
 {
 	GARDEN_ASSERT(areAllTrue(size > uint2::zero));
 	GARDEN_ASSERT(binarySize > 0);
@@ -607,7 +608,7 @@ void Image::copy(ID<Image> source, ID<Image> destination, const CopyImageRegion*
 	auto dstView = graphicsAPI->imagePool.get(destination);
 	GARDEN_ASSERT_MSG(hasAnyFlag(dstView->usage, Usage::TransferDst),
 		"Missing destination image [" + dstView->getDebugName() + "] flag");
-	GARDEN_ASSERT_MSG(toBinarySize(srcView->format) == toBinarySize(dstView->format), "Different source [" +
+	GARDEN_ASSERT_MSG(toBinarySize(256, srcView->format) == toBinarySize(256, dstView->format), "Different source [" +
 		srcView->getDebugName() + "] and destination [" + dstView->getDebugName() + "] image format binary sizes");
 	GARDEN_ASSERT_MSG(dstView->instance, "Destination image [" + dstView->getDebugName() + "] is not ready");
 
@@ -730,8 +731,8 @@ void Image::copy(ID<Buffer> source, ID<Image> destination, const CopyBufferRegio
 		}
 		if (region.bufferRowLength == 0 && region.bufferImageHeight == 0)
 		{
-			auto regionBinarySize = region.imageExtent.x * region.imageExtent.y * 
-				region.imageExtent.z * toBinarySize(imageView->format);
+			auto regionBinarySize = toBinarySize((psize)region.imageExtent.x * 
+				region.imageExtent.y * region.imageExtent.z, imageView->format);
 			GARDEN_ASSERT(region.bufferOffset < bufferView->getBinarySize());
 			GARDEN_ASSERT(regionBinarySize <= bufferView->getBinarySize());
 			GARDEN_ASSERT(regionBinarySize + region.bufferOffset <= bufferView->getBinarySize());
@@ -819,8 +820,8 @@ void Image::copy(ID<Image> source, ID<Buffer> destination, const CopyBufferRegio
 		}
 		if (region.bufferRowLength == 0 && region.bufferImageHeight == 0)
 		{
-			auto regionBinarySize = region.imageExtent.x * region.imageExtent.y * 
-				region.imageExtent.z * toBinarySize(imageView->format);
+			auto regionBinarySize = toBinarySize((psize)region.imageExtent.x * 
+				region.imageExtent.y * region.imageExtent.z, imageView->format);
 			GARDEN_ASSERT(region.bufferOffset < bufferView->getBinarySize());
 			GARDEN_ASSERT(regionBinarySize <= bufferView->getBinarySize());
 			GARDEN_ASSERT(regionBinarySize + region.bufferOffset <= bufferView->getBinarySize());
@@ -1068,16 +1069,17 @@ const void* Image::convertFormat(const void* src, uint2 size,
 	vector<uint8> tmpBuffer;
 	if (srcCompCount < dstCompCount)
 	{
-		auto srcBinarySize = toBinarySize(srcFormat);
-		auto compBinarySize = srcBinarySize / srcCompCount;
-		auto dstBinarySize = dstCompCount * compBinarySize;
+		auto pixelCount = (psize)size.x * size.y;
+		auto srcBinarySize = toBinarySize(pixelCount, srcFormat) / pixelCount;
 		GARDEN_ASSERT(srcBinarySize > 0);
 
-		auto pixelCount = (psize)size.x * size.y;
-		tmpBuffer.resize(pixelCount * compBinarySize * 4);
+		auto compBinarySize = srcBinarySize / srcCompCount;
+		auto dstBinarySize = dstCompCount * compBinarySize;
+		tmpBuffer.resize(pixelCount * dstBinarySize);
+
 		auto end = tmpBuffer.data() + tmpBuffer.size();
 		auto srcData = (const uint8*)src;
-
+	
 		for (auto i = tmpBuffer.data(); i < end; i += dstBinarySize, srcData += srcBinarySize)
 			memcpy(i, srcData, srcBinarySize);
 		src = tmpBuffer.data();
@@ -1194,9 +1196,6 @@ const void* Image::convertFormat(const void* src, uint2 size,
 			default: throw GardenError("Unsupported image formats conversion.");
 		}
 		break;
-
-	case Format::UintA2R10G10B10: throw GardenError("Not implemented yet!");
-	case Format::UintA2B10G10R10: throw GardenError("Not implemented yet!");
 
 	case Format::SintR8:
 		switch (dstFormat)
@@ -1363,23 +1362,6 @@ const void* Image::convertFormat(const void* src, uint2 size,
 		}
 		break;
 
-	case Format::UnormR5G6B5: throw GardenError("Not implemented yet!");
-	case Format::UnormA1R5G5B5: throw GardenError("Not implemented yet!");
-	case Format::UnormR5G5B5A1: throw GardenError("Not implemented yet!");
-	case Format::UnormB5G5R5A1: throw GardenError("Not implemented yet!");
-	case Format::UnormR4G4B4A4: throw GardenError("Not implemented yet!");
-	case Format::UnormB4G4R4A4: throw GardenError("Not implemented yet!");
-	case Format::UnormA2R10G10B10: throw GardenError("Not implemented yet!");
-	case Format::UnormA2B10G10R10: throw GardenError("Not implemented yet!");
-
-	case Format::SnormR8: throw GardenError("Not implemented yet!");
-	case Format::SnormR8G8: throw GardenError("Not implemented yet!");
-	case Format::SnormR8G8B8A8: throw GardenError("Not implemented yet!");
-
-	case Format::SnormR16: throw GardenError("Not implemented yet!");
-	case Format::SnormR16G16: throw GardenError("Not implemented yet!");
-	case Format::SnormR16G16B16A16: throw GardenError("Not implemented yet!");
-
 	case Format::SfloatR16:
 		switch (dstFormat)
 		{
@@ -1436,11 +1418,6 @@ const void* Image::convertFormat(const void* src, uint2 size,
 		}
 		break;
 
-	case Format::UfloatB10G11R11: throw GardenError("Not implemented yet!");
-	case Format::UfloatE5B9G9R9: throw GardenError("Not implemented yet!");
-
-	case Format::SrgbR8: throw GardenError("Not implemented yet!");
-	case Format::SrgbR8G8: throw GardenError("Not implemented yet!");
 	case Format::SrgbR8G8B8A8:
 		switch (dstFormat)
 		{
@@ -1450,6 +1427,7 @@ const void* Image::convertFormat(const void* src, uint2 size,
 			default: throw GardenError("Unsupported image formats conversion.");
 		}
 		break;
+
 	default: throw GardenError("Unsupported image formats conversion.");
 	}
 	return dst.data();
@@ -1545,6 +1523,74 @@ static Image::Format toFloatFormat(int componentCount)
 }
 
 //**********************************************************************************************************************
+static Image::Format toImageFormat(Image::Format imageFormat, 
+	basist::basis_tex_format texFormat, int componentCount, bool isSrgb)
+{
+	bool hasASTC_LDR, hasASTC_HDR, hasBCn;
+	if (GraphicsAPI::isInitialized())
+	{
+		auto graphicsAPI = GraphicsAPI::get();
+		hasASTC_LDR = graphicsAPI->hasASTC_LDR();
+		hasASTC_HDR = graphicsAPI->hasASTC_HDR();
+		hasBCn = graphicsAPI->hasBCn();
+	}
+	else hasASTC_LDR = hasASTC_HDR = hasBCn = false;
+
+	switch (texFormat)
+	{
+	case basist::basis_tex_format::cXUASTC_LDR_4x4:
+		if (imageFormat == Image::Format::SrgbR8G8B8A8 || imageFormat == Image::Format::UnormR8G8B8A8)
+			return imageFormat;
+		if (hasASTC_LDR)
+			return isSrgb ? Image::Format::SrgbAstc4x4 : Image::Format::UnormAstc4x4;
+		if (hasBCn)
+		{
+			switch (componentCount)
+			{
+				case 1: return Image::Format::UnormBC4;
+				case 2: return Image::Format::UnormBC5;
+				case 3: return Image::Format::UnormRgbBC1;
+				case 4: return Image::Format::UnormBC7;
+				default: abort();
+			}
+		}
+		return isSrgb ? Image::Format::SrgbR8G8B8A8 : Image::Format::UnormR8G8B8A8;
+	case basist::basis_tex_format::cUASTC_HDR_4x4:
+		if (imageFormat == Image::Format::SfloatR16G16B16A16)
+			return Image::Format::SfloatR16G16B16A16;
+		if (hasASTC_HDR) return Image::Format::SfloatAstc4x4;
+		if (hasBCn) return Image::Format::UfloatBC6H;
+		return Image::Format::SfloatR16G16B16A16;
+	default: throw GardenError("Unsupported basis universal texture format.");
+	}
+}
+static basist::transcoder_texture_format toTranscoderFormat(Image::Format imageFormat)
+{
+	switch (imageFormat)
+	{
+		case Image::Format::SrgbRgbBC1: case Image::Format::UnormRgbBC1:
+			return basist::transcoder_texture_format::cTFBC1_RGB;
+		case Image::Format::SrgbBC3: case Image::Format::UnormBC3:
+			return basist::transcoder_texture_format::cTFBC3_RGBA;
+		case Image::Format::UnormBC4: return basist::transcoder_texture_format::cTFBC4_R;
+		case Image::Format::UnormBC5: return basist::transcoder_texture_format::cTFBC5_RG;
+		case Image::Format::UnormBC7: return basist::transcoder_texture_format::cTFBC7_RGBA;
+		case Image::Format::SrgbAstc4x4: case Image::Format::UnormAstc4x4:
+			return basist::transcoder_texture_format::cTFASTC_LDR_4x4_RGBA;
+		case Image::Format::UfloatBC6H: return basist::transcoder_texture_format::cTFBC6H;
+		case Image::Format::SfloatAstc4x4: return basist::transcoder_texture_format::cTFASTC_HDR_4x4_RGBA;
+		case Image::Format::SrgbR8G8B8A8: case Image::Format::UnormR8G8B8A8:
+			return basist::transcoder_texture_format::cTFRGBA32;
+		case Image::Format::UnormR5G6B5: return basist::transcoder_texture_format::cTFRGB565;
+		case Image::Format::UnormB5G6R5: return basist::transcoder_texture_format::cTFBGR565;
+		case Image::Format::UnormR4G4B4A4: return basist::transcoder_texture_format::cTFRGBA4444;
+		case Image::Format::SfloatR16G16B16A16: return basist::transcoder_texture_format::cTFRGBA_HALF;
+		case Image::Format::UfloatE5B9G9R9: return basist::transcoder_texture_format::cTFRGB_9E5;
+		default: throw GardenError("Unsupported basis universal transcoder format.");
+	}
+}
+
+//**********************************************************************************************************************
 void Image::loadFileData(const void* data, psize dataSize, vector<uint8>& pixels, 
 	uint2& imageSize, FileType fileType, Format& imageFormat)
 {
@@ -1566,13 +1612,23 @@ void Image::loadFileData(const void* data, psize dataSize, vector<uint8>& pixels
 		if (!transcoder.init(data, (uint32_t)dataSize))
 			throw GardenError("Invalid KTX2 basis universal image data.");
 
-		if (transcoder.is_hdr())
+		imageSize = uint2(transcoder.get_width(), transcoder.get_height());
+		loadedFormat = ::toImageFormat(imageFormat, 
+			transcoder.get_basis_tex_format(), componentCount, transcoder.is_srgb());
+		auto transcoderFormat = toTranscoderFormat(loadedFormat);
+		auto blockSize = basist::basis_transcoder_format_is_uncompressed(transcoderFormat) ? 1 : 
+			basist::basis_get_block_width(transcoderFormat) * basist::basis_get_block_height(transcoderFormat);
+		auto pixelCount = (psize)imageSize.x * imageSize.y;
+		auto imageBinarySize = toBinarySize(pixelCount, loadedFormat);
+		pixels.resize(imageBinarySize);
+
+		auto decodeFlags = basist::basisu_decode_flags::cDecodeFlagsHighQuality;
+		transcoder.start_transcoding();
+
+		if (!transcoder.transcode_image_level(0, 0, 0, pixels.data(), 
+			pixelCount / blockSize, transcoderFormat, decodeFlags))
 		{
-			abort(); // TODO:
-		}
-		else
-		{
-			abort(); // TODO:
+			throw GardenError("Failed to transcode basis universal image.");
 		}
 		#else
 		throw GardenError("No Binomial Basis Universal support.");
@@ -1655,11 +1711,15 @@ void Image::loadFileData(const void* data, psize dataSize, vector<uint8>& pixels
 			auto dw = exrFile.header().dataWindow();
 			imageSize = uint2(dw.max.x - dw.min.x + 1, dw.max.y - dw.min.y + 1);
 			auto pixelCount = (psize)imageSize.x * imageSize.y;
-			auto formatBinarySize = toBinarySize(imageFormat);
-			auto floatSize = formatBinarySize / componentCount;
-			auto strideY = formatBinarySize * imageSize.x;
-			GARDEN_ASSERT(formatBinarySize > 0);
-			pixels.resize(pixelCount * formatBinarySize);
+			auto imageBinarySize = toBinarySize(pixelCount, imageFormat);
+
+			if (imageBinarySize == 0)
+				throw GardenError("Unsupported EXR image format.");
+
+			auto pixelBinarySize = imageBinarySize / pixelCount;
+			auto floatSize = pixelBinarySize / componentCount;
+			auto strideY = pixelBinarySize * imageSize.x;
+			pixels.resize(imageBinarySize);
 
 			char* exrPixels; Imf::PixelType pixelType;
 			if (floatSize == 4)
@@ -1675,13 +1735,13 @@ void Image::loadFileData(const void* data, psize dataSize, vector<uint8>& pixels
 			else throw GardenError("Unsupported EXR image float binary size.");
 
 			Imf::FrameBuffer exrFrameBuffer;
-			exrFrameBuffer.insert("R", Imf::Slice(pixelType, exrPixels, formatBinarySize, strideY));
+			exrFrameBuffer.insert("R", Imf::Slice(pixelType, exrPixels, pixelBinarySize, strideY));
 			if (componentCount > 1)
-				exrFrameBuffer.insert("G", Imf::Slice(pixelType, exrPixels + floatSize * 1, formatBinarySize, strideY));
+				exrFrameBuffer.insert("G", Imf::Slice(pixelType, exrPixels + floatSize * 1, pixelBinarySize, strideY));
 			if (componentCount > 2)
-				exrFrameBuffer.insert("B", Imf::Slice(pixelType, exrPixels + floatSize * 2, formatBinarySize, strideY));
+				exrFrameBuffer.insert("B", Imf::Slice(pixelType, exrPixels + floatSize * 2, pixelBinarySize, strideY));
 			if (componentCount > 3)
-				exrFrameBuffer.insert("A", Imf::Slice(pixelType, exrPixels + floatSize * 3, formatBinarySize, strideY));
+				exrFrameBuffer.insert("A", Imf::Slice(pixelType, exrPixels + floatSize * 3, pixelBinarySize, strideY));
 			exrFile.setFrameBuffer(exrFrameBuffer);
 			exrFile.readPixels(dw.min.y, dw.max.y);
 		}
@@ -1740,11 +1800,11 @@ void Image::writeFileData(const fs::path& path, const void* pixels, uint2 size,
 	FileType fileType, Format imageFormat, float quality, float effort)
 {
 	GARDEN_ASSERT(!path.empty());
-	GARDEN_ASSERT(pixels);
-	GARDEN_ASSERT(areAllTrue(size > uint2::zero));
-	GARDEN_ASSERT(imageFormat != Format::Undefined);
-	GARDEN_ASSERT(quality >= 0.0f && quality <= 1.0f);
-	GARDEN_ASSERT(effort >= 0.0f && effort <= 1.0f);
+	GARDEN_ASSERT_MSG(pixels, "Assert " + path.generic_string());
+	GARDEN_ASSERT_MSG(areAllTrue(size > uint2::zero), "Assert " + path.generic_string());
+	GARDEN_ASSERT_MSG(imageFormat != Format::Undefined, "Assert " + path.generic_string());
+	GARDEN_ASSERT_MSG(quality >= 0.0f && quality <= 1.0f, "Assert " + path.generic_string());
+	GARDEN_ASSERT_MSG(effort >= 0.0f && effort <= 1.0f, "Assert " + path.generic_string());
 
 	auto filePath = path; vector<uint8> tmpPixels; 
 	auto componentCount = toComponentCount(imageFormat);
@@ -1754,7 +1814,7 @@ void Image::writeFileData(const fs::path& path, const void* pixels, uint2 size,
 	{
 		#if GARDEN_EDITOR
 		const void* dstPixels = pixels;
-		uint32_t basisFlags = basisu::cFlagKTX2 | basisu::cFlagKTX2UASTCSuperCompression |
+		uint32_t basisFlags = basisu::cFlagUseOpenCL | basisu::cFlagKTX2 | basisu::cFlagKTX2UASTCSuperCompression |
 			basisu::cFlagGenMipsClamp | basisu::cFlagXUASTCLDRSyntaxFullZStd;
 		basist::basis_tex_format basisFormat; bool isHDR;
 
@@ -1830,6 +1890,9 @@ void Image::writeFileData(const fs::path& path, const void* pixels, uint2 size,
 		if (quality == 1.0f) config.lossless = 1;
 		config.method = (int)std::fma(effort, 6.0f, 0.5f);
 
+		if (!WebPValidateConfig(&config))
+			throw GardenError("Invalid WebP config. (path: " + path.generic_string() + ")");
+
 		WebPPicture pic;
 		if (!WebPPictureInit(&pic))
 			throw GardenError("Failed to init WebP picture. (path: " + path.generic_string() + ")");
@@ -1837,8 +1900,8 @@ void Image::writeFileData(const fs::path& path, const void* pixels, uint2 size,
 		pic.use_argb = 1;
 		pic.width = size.x;
 		pic.height = size.y;
-		
-		if (!WebPPictureImportRGBA(&pic, (uint8_t*)pixels, 0))
+
+		if (!WebPPictureImportRGBA(&pic, (uint8_t*)pixels, size.x * sizeof(Color)))
 			throw GardenError("Failed to import WebP picture. (path: " + path.generic_string() + ")");
 
 		pic.writer = webpWriter;
@@ -1852,7 +1915,7 @@ void Image::writeFileData(const fs::path& path, const void* pixels, uint2 size,
 	}
 	else if (fileType == FileType::PNG)
 	{
-		GARDEN_ASSERT_MSG(quality != 1.0f, "PNG is a lossless format, can't specify quality");
+		GARDEN_ASSERT_MSG(quality == 1.0f, "PNG is a lossless format, can't specify quality");
 		auto dstPixels = convertFormat(pixels, size, tmpPixels, imageFormat, toSrgbFormat(componentCount));
 
 		filePath.replace_extension(".png");
@@ -1894,7 +1957,7 @@ void Image::writeFileData(const fs::path& path, const void* pixels, uint2 size,
 	}
 	else if (fileType == FileType::EXR)
 	{
-		GARDEN_ASSERT_MSG(quality != 1.0f, "EXR is a lossless format, can't specify quality");
+		GARDEN_ASSERT_MSG(quality == 1.0f, "EXR is a lossless format, can't specify quality");
 		auto dstPixels = convertFormat(pixels, size, tmpPixels, imageFormat, Format::SfloatR16G16B16A16);
 		filePath.replace_extension(".exr");
 
@@ -1913,7 +1976,7 @@ void Image::writeFileData(const fs::path& path, const void* pixels, uint2 size,
 	}
 	else if (fileType == FileType::HDR)
 	{
-		GARDEN_ASSERT_MSG(quality != 1.0f, "HDR is a lossless format, can't specify quality");
+		GARDEN_ASSERT_MSG(quality == 1.0f, "HDR is a lossless format, can't specify quality");
 		auto dstPixels = convertFormat(pixels, size, tmpPixels, imageFormat, toFloatFormat(componentCount));
 	
 		filePath.replace_extension(".hdr");
@@ -1931,7 +1994,7 @@ void Image::writeFileData(const fs::path& path, const void* pixels, uint2 size,
 	}
 	else if (fileType == FileType::BMP)
 	{
-		GARDEN_ASSERT_MSG(quality != 1.0f, "BMP is a lossless format, can't specify quality");
+		GARDEN_ASSERT_MSG(quality == 1.0f, "BMP is a lossless format, can't specify quality");
 		auto dstPixels = convertFormat(pixels, size, tmpPixels, imageFormat, toSrgbFormat(componentCount));
 
 		filePath.replace_extension(".bmp");
@@ -1940,11 +2003,11 @@ void Image::writeFileData(const fs::path& path, const void* pixels, uint2 size,
 	}
 	else if (fileType == FileType::TGA)
 	{
-		GARDEN_ASSERT_MSG(quality != 1.0f, "TGA is a lossless format, can't specify quality");
+		GARDEN_ASSERT_MSG(quality == 1.0f, "TGA is a lossless format, can't specify quality");
 		auto dstPixels = convertFormat(pixels, size, tmpPixels, imageFormat, toSrgbFormat(componentCount));
 
 		filePath.replace_extension(".tga");
-		if (!stbi_write_tga(path.generic_string().c_str(), size.x, size.y, componentCount, dstPixels))
+		if (!stbi_write_tga(filePath.generic_string().c_str(), size.x, size.y, componentCount, dstPixels))
 			throw GardenError("Failed to write TGA image. (path: " + path.generic_string() + ")");
 	}
 	else throw GardenError("Unsupported image write file format. (path: " + path.generic_string() + ")");

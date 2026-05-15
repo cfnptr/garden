@@ -700,20 +700,20 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 		dataFormat = format;
 
 	auto mipSize = (uint3)size;
-	auto formatBinarySize = (uint64)toBinarySize(dataFormat);
-	GARDEN_ASSERT(formatBinarySize > 0);
-
 	uint64 stagingSize = 0; uint32 stagingCount = 0;
+
 	for (uint8 mip = 0; mip < mipCount; mip++)
 	{
 		const auto& mipData = data[mip];
-		auto binarySize = formatBinarySize * mipSize.x * mipSize.y * mipSize.z;
+		auto mipBinarySize = toBinarySize((psize)mipSize.x * 
+			mipSize.y * mipSize.z, dataFormat);
+		GARDEN_ASSERT(mipBinarySize > 0);
 
 		for (auto layerData : mipData)
 		{
 			if (!layerData)
 				continue;
-			stagingSize += binarySize;
+			stagingSize += mipBinarySize;
 			stagingCount++;
 		}
 
@@ -761,7 +761,9 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 		{
 			const auto& mipData = data[mip].data();
 			auto mipLayerCount = (uint32)data[mip].size();
-			auto binarySize = formatBinarySize * mipSize.x * mipSize.y * mipSize.z;
+			auto mipBinarySize = toBinarySize((psize)mipSize.x * 
+				mipSize.y * mipSize.z, dataFormat);
+			GARDEN_ASSERT(mipBinarySize > 0);
 
 			for (uint32 layer = 0; layer < mipLayerCount; layer++)
 			{
@@ -777,8 +779,8 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 				region.imageMipLevel = mip;
 				regions[copyIndex++] = region;
 
-				memcpy(stagingMap + stagingOffset, layerData, binarySize);
-				stagingOffset += binarySize;
+				memcpy(stagingMap + stagingOffset, layerData, mipBinarySize);
+				stagingOffset += mipBinarySize;
 			}
 
 			mipSize = max(mipSize / 2u, uint3::one);

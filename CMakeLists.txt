@@ -54,6 +54,7 @@ option(GARDEN_USE_TRACY_PROFILER "Use Tracy frame profiler." OFF)
 option(GARDEN_USE_ASAN "Use Clang address sanitizer. (Memory debugger)" OFF)
 option(GARDEN_USE_MESA_RGP "Use Mesa Radeon GPU Profiler." OFF)
 option(GARDEN_USE_BASIS_UNIVERSAL "Use Basis Universal GPU texture codec." ON)
+option(GARDEN_USE_OPENCL "Use OpenCL framework. (CUDA analogue)" OFF)
 
 # By enabling this option you agree to the NVIDIA RTX SDKs license.
 option(GARDEN_USE_NVIDIA_DLSS "Use Nvidia DLSS SDK." OFF)
@@ -185,6 +186,15 @@ find_package(ZLIB) # zlib1g-dev
 if(NOT ZLIB_FOUND AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
 	set(ZLIB_LIBRARY /usr/lib64/libz.so)
 	find_package(ZLIB REQUIRED)
+endif()
+
+if(GARDEN_USE_OPENCL)
+	find_package(OpenCL) # opencl-headers ocl-icd-opencl-dev
+	if(OpenCL_FOUND)
+		list(APPEND GARDEN_LINK_LIBS OpenCL::OpenCL)
+	else()
+		set(GARDEN_USE_OPENCL OFF)
+	endif()
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")

@@ -39,7 +39,7 @@ static void flushChanges(void* instance, tsl::robin_map<int, fs::path>& watchers
 		return;
 
 	auto fd = (int)(size_t)instance;
-	static constexpr auto bufferSize = sizeof(struct inotify_event) + NAME_MAX + 1;
+	constexpr auto bufferSize = sizeof(struct inotify_event) + NAME_MAX + 1;
 	char buffer[bufferSize];
 
 	while (true)

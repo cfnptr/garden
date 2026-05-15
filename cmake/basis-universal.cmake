@@ -20,6 +20,10 @@ set(BASISU_STATIC ON CACHE BOOL "" FORCE)
 set(BASISU_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(BASISU_SSE ON CACHE BOOL "" FORCE)
 
+if(GARDEN_USE_OPENCL AND GARDEN_EDITOR)
+	set(BASISU_OPENCL ON CACHE BOOL "" FORCE)
+endif()
+
 message(STATUS "Fetching Binomial Basis Universal, please wait...")
 FetchContent_Declare(basis-universal GIT_REPOSITORY https://github.com/binomialLLC/basis_universal 
 	GIT_TAG 45d5f41015eecd9570d5a3f89ab9cc0037a25063 GIT_SHALLOW TRUE)

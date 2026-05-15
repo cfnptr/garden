@@ -118,7 +118,8 @@ void GraphicsAPI::initialize(GraphicsBackend backendType, const string& appName,
 {
 	#if GARDEN_USE_BASIS_UNIVERSAL
 		#if GARDEN_EDITOR
-		basisu::basisu_encoder_init();
+		if (!basisu::basisu_encoder_init(GARDEN_USE_OPENCL ? true : false))
+			throw GardenError("Failed to initialize basis universal encoder.");
 		#endif
 	basist::basisu_transcoder_init();
 	#endif

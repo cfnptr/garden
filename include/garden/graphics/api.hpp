@@ -317,7 +317,19 @@ public:
 	 */
 	virtual bool hasMeshShader() const { return false; }
 	/**
-	 * @brief Returns true low latency input is supported.
+	 * @brief Returns true if BCn texture compression is supported.
+	 */
+	virtual bool hasBCn() const { return false; }
+	/**
+	 * @brief Returns true if ASTC LDR texture compression is supported.
+	 */
+	virtual bool hasASTC_LDR() const { return false; }
+	/**
+	 * @brief Returns true if ASTC HDR texture compression is supported.
+	 */
+	virtual bool hasASTC_HDR() const { return false; }
+	/**
+	 * @brief Returns true if low latency input is supported.
 	 */
 	virtual bool hasLowLatency() const { return false; }
 

@@ -166,33 +166,42 @@ void EditorRenderSystem::showMainMenuBar()
 	if (ImGui::Button(playText))
 		setPlaying(!playing);
 	ImGui::PopStyleColor(3);
-	
-	auto stats = "[E: " + to_string(manager->getEntities().getCount());
+
+	auto inputSystem = InputSystem::Instance::get();
+	auto fps = 1.0 / (inputSystem->getDeltaTime() / inputSystem->timeMultiplier);
+	auto stats = "ENT: " + to_string(manager->getEntities().getCount()) + 
+		" | FPS: " + to_string((int32)((lastFps + fps) * 0.5));
+	lastFps = fps;
+
+	textSize = ImGui::CalcTextSize(stats.c_str());
+	auto rightOffset = ImGui::GetWindowWidth() - (textSize.x + 16.0f);
+	ImGui::SameLine(rightOffset);
+	ImGui::Text("%s", stats.c_str());
 
 	auto threadSystem = ThreadSystem::Instance::tryGet();
 	if (threadSystem)
 	{
 		auto& threadPool = threadSystem->getBackgroundPool();
-		stats += " | T: " + to_string(threadPool.getPendingTaskCount());
+		auto pendingTasks = threadPool.getPendingTaskCount();
+		auto workingTasks = threadPool.getWorkingTaskCount();
+
+		if (pendingTasks > 0 || workingTasks > 0)
+		{
+			const auto barWidth = 128.0f;
+			ImGui::SetCursorPos(ImVec2(rightOffset - 
+				(barWidth + 8.0f), ImGui::GetCursorPos().y + 8.0f));
+			auto fraction = 1.0f / (pendingTasks + 1);
+			ImGui::ProgressBar(fraction, ImVec2(barWidth, 8.0f), "");
+
+			if (ImGui::BeginItemTooltip())
+			{
+				ImGui::SeparatorText("Background Tasks");
+				ImGui::Text("Pending: %s | Working: %s", 
+					to_string(pendingTasks).c_str(), to_string(workingTasks).c_str());
+				ImGui::EndTooltip();
+			}
+		}
 	}
-
-	auto inputSystem = InputSystem::Instance::get();
-	auto fps = 1.0 / (inputSystem->getDeltaTime() / inputSystem->timeMultiplier);
-	stats += " | FPS: " + to_string((int32)((lastFps + fps) * 0.5));
-	lastFps = fps;
-
-	stats += "]";
-
-	textSize = ImGui::CalcTextSize(stats.c_str());
-	ImGui::SameLine(ImGui::GetWindowWidth() - (textSize.x + 16.0f));
-	ImGui::Text("%s", stats.c_str());
-
-	if (ImGui::BeginItemTooltip())
-	{
-		ImGui::Text("E = Entities, T = Tasks, FPS = Frames Per Second");
-		ImGui::EndTooltip();
-	}
-
 	ImGui::EndMainMenuBar();
 }
 
@@ -1147,7 +1156,7 @@ void EditorRenderSystem::drawFileSelector(const char* name, fs::path& path, ID<E
 }
 
 //**********************************************************************************************************************
-void EditorRenderSystem::drawImageSelector(const char* name, fs::path& path, Image::Format format, 
+void EditorRenderSystem::drawImageSelector(const char* name, fs::path& path, 
 	Ref<Image>& image, Ref<DescriptorSet>& descriptorSet, ID<Entity> entity, 
 	type_index componentType, uint8 maxMipCount, ImageLoadFlags loadFlags)
 {
@@ -1168,7 +1177,7 @@ void EditorRenderSystem::drawImageSelector(const char* name, fs::path& path, Ima
 
 		if (!resourcesPath.empty())
 		{
-			openFileSelector([format, &path, &image, &descriptorSet, entity, 
+			openFileSelector([&path, &image, &descriptorSet, entity, 
 				componentType, maxMipCount, loadFlags](const fs::path& selectedFile)
 			{
 				if (EditorRenderSystem::Instance::get()->selectedEntity != entity ||
@@ -1186,8 +1195,8 @@ void EditorRenderSystem::drawImageSelector(const char* name, fs::path& path, Ima
 
 				auto usage = Image::Usage::Sampled | Image::Usage::TransferDst | Image::Usage::TransferQ;
 				if (maxMipCount == 0) usage |= Image::Usage::TransferSrc;
-				image = resourceSystem->loadImage(path, format, usage, 
-					maxMipCount, Image::Strategy::Default, loadFlags);
+				image = resourceSystem->loadImage(path, Image::Format::Undefined, 
+					usage, maxMipCount, Image::Strategy::Default, loadFlags);
 			},
 			resourcesPath, ResourceSystem::imageFileExts);
 		}

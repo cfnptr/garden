@@ -111,6 +111,13 @@ uint32 ThreadPool::getPendingTaskCount()
 	mutex.unlock();
 	return count;
 }
+uint32 ThreadPool::getWorkingTaskCount()
+{
+	mutex.lock();
+	auto count = workingCount;
+	mutex.unlock();
+	return count;
+}
 
 //**********************************************************************************************************************
 void ThreadPool::addTask(const Task::Function& function, float priority)

@@ -509,6 +509,8 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 				features.synchronization2 = true;
 			else if (extensionName == VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME)
 				features.dynamicRendering = true;
+			else if (extensionName == VK_EXT_TEXTURE_COMPRESSION_ASTC_HDR_EXTENSION_NAME)
+				features.astcHDR = true;
 			else if (extensionName == VK_KHR_MAINTENANCE_4_EXTENSION_NAME)
 				features.maintenance4 = true;
 		}
@@ -537,6 +539,7 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 		vk::PhysicalDeviceVulkanMemoryModelFeatures vulkanMemoryModel;
 		vk::PhysicalDeviceSynchronization2Features synchronization2;
 		vk::PhysicalDeviceDynamicRenderingFeatures dynamicRendering;
+		vk::PhysicalDeviceTextureCompressionASTCHDRFeaturesEXT astcHDR;
 		vk::PhysicalDevicePageableDeviceLocalMemoryFeaturesEXT pageableMemory;
 		vk::PhysicalDeviceAccelerationStructureFeaturesKHR accelerationStructure;
 		vk::PhysicalDeviceRayTracingPipelineFeaturesKHR rayTracingPipeline;
@@ -609,7 +612,8 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 	}
 	else
 	{
-		features.synchronization2 = features.dynamicRendering = features.maintenance4 = true;
+		features.synchronization2 = features.dynamicRendering = 
+			features.astcHDR = features.maintenance4 = true;
 	}
 
 	if (versionMinor < 4)
@@ -671,6 +675,14 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 		if (vkFeatures->meshShader.meshShader && vkFeatures->meshShader.taskShader)
 			extensions.push_back(VK_EXT_MESH_SHADER_EXTENSION_NAME);
 		else features.meshShader = false;
+	}
+	if (features.astcHDR)
+	{
+		vkFeatures->device.pNext = &vkFeatures->astcHDR;
+		physicalDevice.getFeatures2(&vkFeatures->device);
+		if (vkFeatures->astcHDR.textureCompressionASTC_HDR)
+			extensions.push_back(VK_EXT_TEXTURE_COMPRESSION_ASTC_HDR_EXTENSION_NAME);
+		else features.astcHDR = false;
 	}
 	if (hasDemoteToHelperInv)
 	{
@@ -792,6 +804,13 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 		vkFeatures->dynamicRendering.dynamicRendering = VK_TRUE;
 		*lastPNext = &vkFeatures->dynamicRendering;
 		lastPNext = &vkFeatures->dynamicRendering.pNext;
+	}
+	if (features.astcHDR)
+	{
+		vkFeatures->astcHDR = vk::PhysicalDeviceTextureCompressionASTCHDRFeaturesEXT();
+		vkFeatures->astcHDR.textureCompressionASTC_HDR = VK_TRUE;
+		*lastPNext = &vkFeatures->astcHDR;
+		lastPNext = &vkFeatures->astcHDR.pNext;
 	}
 	if (features.rayTracing || features.rayQuery)
 	{
