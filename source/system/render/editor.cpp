@@ -187,7 +187,7 @@ void EditorRenderSystem::showMainMenuBar()
 
 		if (pendingTasks > 0 || workingTasks > 0)
 		{
-			const auto barWidth = 128.0f;
+			const auto barWidth = 64.0f;
 			ImGui::SetCursorPos(ImVec2(rightOffset - 
 				(barWidth + 8.0f), ImGui::GetCursorPos().y + 8.0f));
 			auto fraction = 1.0f / (pendingTasks + 1);
