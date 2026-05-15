@@ -308,10 +308,11 @@ public:
 	 * @param fileType image file container type
 	 * @param imageFormat required image data format
 	 * @param quality image quality (0.0 - 1.0)
+	 * @param effort image compression effort (0.0 - 1.0)
 	 * @param[in] directory scene resource directory
 	 */
 	void storeImage(const fs::path& path, const void* pixels, uint2 size, Image::FileType fileType, 
-		Image::Format imageFormat, float quality = 1.0f, const fs::path& directory = "");
+		Image::Format imageFormat, float quality = 1.0f, float effort = 0.7f, const fs::path& directory = "");
 	/**
 	 * @brief Stores specified image to the images directory.
 	 * 
@@ -321,13 +322,14 @@ public:
 	 * @param fileType image file container type
 	 * @param imageFormat required image data format
 	 * @param quality image quality (0.0 - 1.0)
+	 * @param effort image compression effort (0.0 - 1.0)
 	 * @param[in] directory scene resource directory
 	 */
 	void storeImage(const fs::path& path, const vector<uint8>& pixels, uint2 size, Image::FileType fileType, 
-		Image::Format imageFormat, float quality = 1.0f, const fs::path& directory = "")
+		Image::Format imageFormat, float quality = 1.0f, float effort = 0.7f, const fs::path& directory = "")
 	{
-		GARDEN_ASSERT(pixels.size() == toBinarySize(imageFormat) * size.x * size.y);
-		storeImage(path, pixels.data(), size, fileType, imageFormat, quality, directory);
+		GARDEN_ASSERT(pixels.size() == toBinarySize(size.x * size.y, imageFormat));
+		storeImage(path, pixels.data(), size, fileType, imageFormat, quality, effort, directory);
 	}
 
 	/**

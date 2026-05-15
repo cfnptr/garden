@@ -167,7 +167,7 @@ Ref<DescriptorSet> SkyboxRenderSystem::createSharedDS(string_view path, ID<Image
 
 	auto uniforms = getUniforms(graphicsSystem, cubemap);
 	auto descriptorSet = ResourceSystem::Instance::get()->createSharedDS(
-		Hash128::digestState(hashState), pipeline, std::move(uniforms));
+		Hash128::digestState(hashState), getPipeline(), std::move(uniforms));
 	SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.shared." + string(path));
 	return descriptorSet;
 }

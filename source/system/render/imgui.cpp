@@ -76,6 +76,7 @@ static void setImGuiStyle()
 	colors[ImGuiCol_MenuBarBg] = ImVec4(0.094f, 0.094f, 0.094f, 0.992f);
 	// TODO: scroll bar
 	colors[ImGuiCol_CheckMark] = ImVec4(0.0f, 0.471f, 0.831f, 1.0f);
+	colors[ImGuiCol_CheckboxSelectedBg] = ImVec4(0.165f, 0.165f, 0.165f, 1.0f);
 	colors[ImGuiCol_SliderGrab] = ImVec4(0.0f, 0.471f, 0.831f, 1.0f);
 	colors[ImGuiCol_SliderGrabActive] = ImVec4(0.0f, 0.471f, 0.831f, 1.0f); // TODO:
 	colors[ImGuiCol_Button] = ImVec4(0.0f, 0.471f, 0.831f, 1.0f);

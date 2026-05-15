@@ -54,10 +54,9 @@ void SkyboxRenderEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpene
 
 	auto skyboxView = Manager::Instance::get()->get<SkyboxRenderComponent>(entity);
 	auto editorSystem = EditorRenderSystem::Instance::get();
-	constexpr auto flags = ImageLoadFlags::TypeCubemap | ImageLoadFlags::LoadShared;
-	editorSystem->drawImageSelector("Cubemap", skyboxView->cubemapPath, 
-		Image::Format::SfloatR16G16B16A16, skyboxView->cubemap, skyboxView->descriptorSet, 
-		skyboxView->getEntity(), typeid(SkyboxRenderComponent), 1, flags);
+	auto flags = ImageLoadFlags::TypeCubemap | ImageLoadFlags::LoadShared;
+	editorSystem->drawImageSelector("Cubemap", skyboxView->cubemapPath, skyboxView->cubemap, 
+		skyboxView->descriptorSet, skyboxView->getEntity(), typeid(SkyboxRenderComponent), 1, flags);
 	editorSystem->drawResource(skyboxView->descriptorSet);
 }
 #endif

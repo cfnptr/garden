@@ -49,6 +49,7 @@ namespace garden
 #cmakedefine01 GARDEN_USE_TRACY_PROFILER
 #cmakedefine01 GARDEN_USE_MESA_RGP
 #cmakedefine01 GARDEN_USE_BASIS_UNIVERSAL
+#cmakedefine01 GARDEN_USE_OPENCL
 #cmakedefine01 GARDEN_USE_NVIDIA_DLSS
 #cmakedefine01 GARDEN_USE_STEAMWORKS_SDK
 

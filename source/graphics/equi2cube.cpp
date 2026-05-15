@@ -100,9 +100,11 @@ bool Equi2Cube::convertImage(const fs::path& filePath, const fs::path& inputPath
 		throw GardenError("Image is not a cubemap. (path: " + filePath.generic_string() + ")");
 
 	auto invDim = 1.0f / cubemapSize; auto equiSizeMinus1 = equiSize - 1u;
-	auto pixelsSize = (psize)cubemapSize * cubemapSize * toBinarySize(imageFormat);
-	vector<uint8> nx(pixelsSize), px(pixelsSize), ny(pixelsSize), py(pixelsSize), nz(pixelsSize), pz(pixelsSize);
+	auto faceBinarySize = toBinarySize((psize)cubemapSize * cubemapSize, imageFormat);
+	GARDEN_ASSERT_MSG(faceBinarySize > 0, "Assert " + filePath.generic_string());
 
+	vector<uint8> nx(faceBinarySize), px(faceBinarySize), ny(faceBinarySize), 
+		py(faceBinarySize), nz(faceBinarySize), pz(faceBinarySize);
 	if (imageFormat == Image::Format::SfloatR16G16B16A16)
 	{
 		f16x4* cubeFaces[Image::cubemapFaceCount] =
@@ -134,7 +136,8 @@ bool Equi2Cube::convertImage(const fs::path& filePath, const fs::path& inputPath
 	equiPixels = {}; // Cleaning up memory.
 
 	auto imageSize = uint2(cubemapSize);
-	static constexpr auto fileType = Image::FileType::EXR;
+	constexpr auto fileType = Image::FileType::KTX2;
+	constexpr auto effort = GARDEN_DEBUG ? 0.3f : 0.7f;
 	auto exrFilePath = (outputPath / filePath).replace_extension().generic_string();
 	fs::create_directories(outputPath);
 
@@ -144,12 +147,18 @@ bool Equi2Cube::convertImage(const fs::path& filePath, const fs::path& inputPath
 		{
 			switch (task.getTaskIndex())
 			{
-				case 0: Image::writeFileData(exrFilePath + "-nx.exr", nx.data(), imageSize, fileType, imageFormat); break;
-				case 1: Image::writeFileData(exrFilePath + "-px.exr", px.data(), imageSize, fileType, imageFormat); break;
-				case 2: Image::writeFileData(exrFilePath + "-ny.exr", ny.data(), imageSize, fileType, imageFormat); break;
-				case 3: Image::writeFileData(exrFilePath + "-py.exr", py.data(), imageSize, fileType, imageFormat); break;
-				case 4: Image::writeFileData(exrFilePath + "-nz.exr", nz.data(), imageSize, fileType, imageFormat); break;
-				case 5: Image::writeFileData(exrFilePath + "-pz.exr", pz.data(), imageSize, fileType, imageFormat); break;
+				case 0: Image::writeFileData(exrFilePath + "-nx.ktx2", nx.data(), 
+					imageSize, fileType, imageFormat, 1.0f, effort); break;
+				case 1: Image::writeFileData(exrFilePath + "-px.ktx2", px.data(), 
+					imageSize, fileType, imageFormat, 1.0f, effort); break;
+				case 2: Image::writeFileData(exrFilePath + "-ny.ktx2", ny.data(), 
+					imageSize, fileType, imageFormat, 1.0f, effort); break;
+				case 3: Image::writeFileData(exrFilePath + "-py.ktx2", py.data(), 
+					imageSize, fileType, imageFormat, 1.0f, effort); break;
+				case 4: Image::writeFileData(exrFilePath + "-nz.ktx2", nz.data(), 
+					imageSize, fileType, imageFormat, 1.0f, effort); break;
+				case 5: Image::writeFileData(exrFilePath + "-pz.ktx2", pz.data(), 
+					imageSize, fileType, imageFormat, 1.0f, effort); break;
 				default: abort();
 			}
 		}, Image::cubemapFaceCount);
@@ -157,12 +166,12 @@ bool Equi2Cube::convertImage(const fs::path& filePath, const fs::path& inputPath
 	}
 	else
 	{
-		Image::writeFileData(exrFilePath + "-nx.exr", nx.data(), imageSize, fileType, imageFormat);
-		Image::writeFileData(exrFilePath + "-px.exr", px.data(), imageSize, fileType, imageFormat);
-		Image::writeFileData(exrFilePath + "-ny.exr", ny.data(), imageSize, fileType, imageFormat);
-		Image::writeFileData(exrFilePath + "-py.exr", py.data(), imageSize, fileType, imageFormat);
-		Image::writeFileData(exrFilePath + "-nz.exr", nz.data(), imageSize, fileType, imageFormat);
-		Image::writeFileData(exrFilePath + "-pz.exr", pz.data(), imageSize, fileType, imageFormat);
+		Image::writeFileData(exrFilePath + "-nx.ktx2", nx.data(), imageSize, fileType, imageFormat, 1.0f, effort);
+		Image::writeFileData(exrFilePath + "-px.ktx2", px.data(), imageSize, fileType, imageFormat, 1.0f, effort);
+		Image::writeFileData(exrFilePath + "-ny.ktx2", ny.data(), imageSize, fileType, imageFormat, 1.0f, effort);
+		Image::writeFileData(exrFilePath + "-py.ktx2", py.data(), imageSize, fileType, imageFormat, 1.0f, effort);
+		Image::writeFileData(exrFilePath + "-nz.ktx2", nz.data(), imageSize, fileType, imageFormat, 1.0f, effort);
+		Image::writeFileData(exrFilePath + "-pz.ktx2", pz.data(), imageSize, fileType, imageFormat, 1.0f, effort);
 	}
 	return true;
 }

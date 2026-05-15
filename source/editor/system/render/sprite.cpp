@@ -134,8 +134,7 @@ void SpriteRenderEditorSystem::renderComponent(SpriteRenderComponent* componentV
 	auto maxMipCount = componentView->useMipmap ? 0 : 1;
 	auto flags = ImageLoadFlags::TypeArray | ImageLoadFlags::LoadShared;
 	if (componentView->isArray) flags |= ImageLoadFlags::LoadAsArray;
-	editorSystem->drawImageSelector("Color Map", 
-		componentView->colorMapPath, Image::Format::SrgbR8G8B8A8, componentView->colorMap,
+	editorSystem->drawImageSelector("Color Map", componentView->colorMapPath, componentView->colorMap,
 		componentView->descriptorSet, componentView->getEntity(), componentType, maxMipCount, flags);
 	editorSystem->drawResource(componentView->descriptorSet);
 

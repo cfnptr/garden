@@ -156,11 +156,17 @@ public:
 	 * @details This affects how threads are scheduled for execution by the scheduler.
 	 */
 	bool isBackground() const noexcept { return background; }
+
 	/**
 	 * @brief Returns curent task queue pending task count. (MT-Safe)
-     * @details Locks mutex inside to get current task count.
+	 * @details Locks mutex inside to get current task count.
 	 */
 	uint32 getPendingTaskCount();
+	/**
+	 * @brief Returns curent thread working task count. (MT-Safe)
+	 * @details Locks mutex inside to get working task count.
+	 */
+	uint32 getWorkingTaskCount();
 
 	/**
 	 * @brief Adds a new task to the pending task queue. (MT-Safe)

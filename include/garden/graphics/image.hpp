@@ -114,14 +114,22 @@ public:
 		UnormR16,           /**< 16-bit normalized uint as float (red only channel) format. [0.0, 1.0] */
 		UnormR16G16,        /**< 16-bit normalized uint as float (red and green channel) format. [0.0, 1.0] */
 		UnormR16G16B16A16,  /**< 16-bit normalized uint as float (red, green, blue, alpha channel) format. [0.0, 1.0] */
-		UnormR5G6B5,        /**< normalized uint as float (5-bit red, 6-bit green, 5-bit blue channel) format. [0.0, 1.0] */
-		UnormA1R5G5B5,      /**< normalized uint as float (1-bit alpha, 5-bit red/green/blue channel) format. [0.0, 1.0] */
-		UnormR5G5B5A1,      /**< normalized uint as float (5-bit red/green/blue channel, 1-bit alpha) format. [0.0, 1.0] */
-		UnormB5G5R5A1,      /**< normalized uint as float (5-bit blue/green/red channel, 1-bit alpha) format. [0.0, 1.0] */
-		UnormR4G4B4A4,      /**< normalized uint as float (4-bit red/green/blue/alpha channel) format. [0.0, 1.0] */
-		UnormB4G4R4A4,      /**< normalized uint as float (4-bit blue/green/red/alpha channel) format. [0.0, 1.0] */
-		UnormA2R10G10B10,   /**< normalized uint as float (2-bit alpha, 10-bit red/green/blue channel) format. [0.0, 1.0] */
-		UnormA2B10G10R10,   /**< normalized uint as float (2-bit alpha, 10-bit blue/green/red channel) format. [0.0, 1.0] */
+		UnormR5G6B5,        /**< 16-bit normalized uint as float (5-bit red, 6-bit green, 5-bit blue channel) format. */
+		UnormB5G6R5,        /**< 16-bit normalized uint as float (5-bit blue, 6-bit green, 5-bit red channel) format. */
+		UnormA1R5G5B5,      /**< 16-bit normalized uint as float (1-bit alpha, 5-bit red/green/blue channel) format. */
+		UnormR5G5B5A1,      /**< 16-bit normalized uint as float (5-bit red/green/blue channel, 1-bit alpha) format. */
+		UnormB5G5R5A1,      /**< 16-bit normalized uint as float (5-bit blue/green/red channel, 1-bit alpha) format. */
+		UnormR4G4B4A4,      /**< 16-bit normalized uint as float (4-bit red/green/blue/alpha channel) format. */
+		UnormB4G4R4A4,      /**< 16-bit normalized uint as float (4-bit blue/green/red/alpha channel) format. */
+		UnormA2R10G10B10,   /**< 32-bit normalized uint as float (2-bit alpha, 10-bit red/green/blue channel) format. */
+		UnormA2B10G10R10,   /**< 32-bit normalized uint as float (2-bit alpha, 10-bit blue/green/red channel) format. */
+		UnormRgbBC1,        /**< 64-bit per 4x4 block RGB compressed BCn format. (linear color space) */
+		UnormRgbaBC1,       /**< 64-bit per 4x4 block RGBA compressed BCn format. (linear color space) */
+		UnormBC3,           /**< 128-bit per 4x4 block RGBA compressed BCn format. (linear color space) */
+		UnormBC4,           /**< 64-bit per 4x4 block R only compressed BCn format. (normalized uint) */
+		UnormBC5,           /**< 128-bit per 4x4 block RG compressed BCn format. (normalized uint) */
+		UnormBC7,           /**< 128-bit per 4x4 block RGBA compressed BCn format. (linear color space) */
+		UnormAstc4x4,       /**< 128-bit per 4x4 block RGBA compressed ASTC format. (linear color space) */
 
 		SnormR8,            /**< 8-bit normalized int as float (red only channel) format. [-1.0, 1.0] */
 		SnormR8G8,          /**< 8-bit normalized int as float (red and green channel) format. [-1.0, 1.0] */
@@ -129,6 +137,8 @@ public:
 		SnormR16,           /**< 16-bit normalized int as float (red only channel) format. [-1.0, 1.0] */
 		SnormR16G16,        /**< 16-bit normalized int as float (red and green channel) format. [-1.0, 1.0] */
 		SnormR16G16B16A16,  /**< 16-bit normalized int as float (red, green, blue, alpha channel) format. [-1.0, 1.0] */
+		SnormBC4,           /**< 64-bit per 4x4 block R only compressed BCn format. (normalized int) */
+		SnormBC5,           /**< 128-bit per 4x4 block RG compressed BCn format. (normalized int) */
 
 		SfloatR16,          /**< 16-bit signed floating point (red only channel) format. */
 		SfloatR16G16,       /**< 16-bit signed floating point (red and green channel) format. */
@@ -136,15 +146,23 @@ public:
 		SfloatR32,          /**< 32-bit signed floating point (red only channel) format. */
 		SfloatR32G32,       /**< 32-bit signed floating point (red and green channel) format. */
 		SfloatR32G32B32A32, /**< 32-bit signed floating point (red, green, blue, alpha channel) format. */
+		SfloatBC6H,         /**< 128-bit per 4x4 block RGB compressed BCn format. (signed floating-point) */
+		SfloatAstc4x4,      /**< 128-bit per 4x4 block RGBA compressed ASTC format. (signed floating-point) */
 
-		UfloatB10G11R11,    /**< Unsigned floating point (10-bit blue, 11-bit green, 10-bit red channel) format. */
-		UfloatE5B9G9R9,     /**< Unsigned floating point (5-bit exponent, 9-bit blue/green/red channel) format. */
+		UfloatB10G11R11,    /**< 32-bit unsigned floating point (10-bit blue, 11-bit green, 10-bit red channel) format. */
+		UfloatE5B9G9R9,     /**< 32-bit unsigned floating point (5-bit exponent, 9-bit blue/green/red channel) format. */
+		UfloatBC6H,         /**< 128-bit per 4x4 block RGB compressed BCn format. (unsigned floating-point) */
 
-		SrgbR8,             /**< 8-bit sRGB color space (red only channel) format. */
-		SrgbR8G8,           /**< 8-bit sRGB color space (red and green channel) format. */
-		SrgbR8G8B8A8,       /**< 8-bit sRGB color space (red, green, blue, alpha channel) format. */
-		SrgbB8G8R8A8,       /**< 8-bit sRGB color space (blue, green, red, alpha channel) format. */
-		SrgbA8B8G8R8,       /**< 8-bit sRGB color space (alpha channel, blue, green, red) format. */
+		SrgbR8,             /**< 8-bit normalized sRGB color space (red only channel) format. */
+		SrgbR8G8,           /**< 8-bit normalized sRGB color space (red and green channel) format. */
+		SrgbR8G8B8A8,       /**< 8-bit normalized sRGB color space (red, green, blue, alpha channel) format. */
+		SrgbB8G8R8A8,       /**< 8-bit normalized sRGB color space (blue, green, red, alpha channel) format. */
+		SrgbA8B8G8R8,       /**< 8-bit normalized sRGB color space (alpha channel, blue, green, red) format. */
+		SrgbRgbBC1,         /**< 64-bit per 4x4 block RGB compressed BCn format. (sRGB color space) */
+		SrgbRgbaBC1,        /**< 64-bit per 4x4 block RGBA compressed BCn format. (sRGB color space) */
+		SrgbBC3,            /**< 128-bit per 4x4 block RGBA compressed BCn format. (sRGB color space) */
+		SrgbBC7,            /**< 128-bit per 4x4 block RGBA compressed BCn format. (sRGB color space) */
+		SrgbAstc4x4,        /**< 128-bit per 4x4 block RGBA compressed ASTC format. (sRGB color space) */
 
 		UnormD16,           /**< 16-bit normalized uint as float depth format. */
 		SfloatD32,          /**< 32-bit signed floating point depth format. */
@@ -153,7 +171,6 @@ public:
 		SfloatD32UintS8,    /**< 32-bit signed floating depth and 8-bit unsigned integer stencil format. */
 
 		Count               /**< Image data format count. */
-		// TODO: A8B8G8R8
 	};
 
 	/**
@@ -1053,7 +1070,7 @@ static constexpr bool isFormatInt(Image::Format formatType)
  */
 static constexpr bool isFormatUnorm(Image::Format formatType)
 {
-	return Image::Format::UnormR8 <= formatType && formatType <= Image::Format::UnormA2B10G10R10;
+	return Image::Format::UnormR8 <= formatType && formatType <= Image::Format::UnormAstc4x4;
 }
 /**
  * @brief Is the image data format a normalized signed integer.
@@ -1061,7 +1078,7 @@ static constexpr bool isFormatUnorm(Image::Format formatType)
  */
 static constexpr bool isFormatSnorm(Image::Format formatType)
 {
-	return Image::Format::SnormR8 <= formatType && formatType <= Image::Format::SnormR16G16B16A16;
+	return Image::Format::SnormR8 <= formatType && formatType <= Image::Format::SnormBC5;
 }
 /**
  * @brief Is the image data format a normalized signed or unsigned integer.
@@ -1069,7 +1086,23 @@ static constexpr bool isFormatSnorm(Image::Format formatType)
  */
 static constexpr bool isFormatNorm(Image::Format formatType)
 {
-	return Image::Format::UnormR8 <= formatType && formatType <= Image::Format::SnormR16G16B16A16;
+	return Image::Format::UnormR8 <= formatType && formatType <= Image::Format::SnormBC5;
+}
+/**
+ * @brief Is the image data format an unsigned floating point.
+ * @param formatType target image format
+ */
+static constexpr bool isFormatUfloat(Image::Format formatType)
+{
+	return Image::Format::UfloatB10G11R11 <= formatType && formatType <= Image::Format::UfloatBC6H;
+}
+/**
+ * @brief Is the image data format an unsigned floating point.
+ * @param formatType target image format
+ */
+static constexpr bool isFormatSfloat(Image::Format formatType)
+{
+	return Image::Format::SfloatR16 <= formatType && formatType <= Image::Format::SfloatAstc4x4;
 }
 /**
  * @brief Is the image data format a floating point.
@@ -1077,7 +1110,7 @@ static constexpr bool isFormatNorm(Image::Format formatType)
  */
 static constexpr bool isFormatFloat(Image::Format formatType)
 {
-	return Image::Format::SfloatR16 <= formatType && formatType <= Image::Format::UfloatB10G11R11;
+	return Image::Format::SfloatR16 <= formatType && formatType <= Image::Format::UfloatBC6H;
 }
 /**
  * @brief Is the image data format a sRGB encoded.
@@ -1085,85 +1118,105 @@ static constexpr bool isFormatFloat(Image::Format formatType)
  */
 static constexpr bool isFormatSrgb(Image::Format formatType)
 {
-	return Image::Format::SrgbR8 <= formatType && formatType <= Image::Format::SrgbA8B8G8R8;
+	return Image::Format::SrgbR8 <= formatType && formatType <= Image::Format::SrgbAstc4x4;
 }
 
 /***********************************************************************************************************************
  * @brief Returns image data format binary size in bytes.
- * @param imageFormat target image data format
  * @warning Same size is not guaranteed on the GPU!
+ *
+ * @param texelCount image total texel (pixel) count
+ * @param imageFormat target image data format
  */
-static constexpr psize toBinarySize(Image::Format imageFormat) noexcept
+static constexpr psize toBinarySize(psize texelCount, Image::Format imageFormat) noexcept
 {
 	switch (imageFormat)
 	{
-		case Image::Format::UintR8: return 1;
-		case Image::Format::UintR8G8: return 2;
-		case Image::Format::UintR8G8B8A8: return 4;
-		case Image::Format::UintR16: return 2;
-		case Image::Format::UintR16G16: return 4;
-		case Image::Format::UintR16G16B16A16: return 8;
-		case Image::Format::UintR32: return 4;
-		case Image::Format::UintR32G32: return 8;
-		case Image::Format::UintR32G32B32A32: return 16;
-		case Image::Format::UintA2R10G10B10: return 4;
-		case Image::Format::UintA2B10G10R10: return 4;
+		case Image::Format::UintR8: return texelCount;
+		case Image::Format::UintR8G8: return texelCount * 2;
+		case Image::Format::UintR8G8B8A8: return texelCount * 4;
+		case Image::Format::UintR16: return texelCount * 2;
+		case Image::Format::UintR16G16: return texelCount * 4;
+		case Image::Format::UintR16G16B16A16: return texelCount * 8;
+		case Image::Format::UintR32: return texelCount * 4;
+		case Image::Format::UintR32G32: return texelCount * 8;
+		case Image::Format::UintR32G32B32A32: return texelCount * 16;
+		case Image::Format::UintA2R10G10B10: return texelCount * 4;
+		case Image::Format::UintA2B10G10R10: return texelCount * 4;
 
-		case Image::Format::SintR8: return 1;
-		case Image::Format::SintR8G8: return 2;
-		case Image::Format::SintR8G8B8A8: return 4;
-		case Image::Format::SintR16: return 2;
-		case Image::Format::SintR16G16: return 4;
-		case Image::Format::SintR16G16B16A16: return 8;
-		case Image::Format::SintR32: return 4;
-		case Image::Format::SintR32G32: return 8;
-		case Image::Format::SintR32G32B32A32: return 16;
+		case Image::Format::SintR8: return texelCount;
+		case Image::Format::SintR8G8: return texelCount * 2;
+		case Image::Format::SintR8G8B8A8: return texelCount * 4;
+		case Image::Format::SintR16: return texelCount * 2;
+		case Image::Format::SintR16G16: return texelCount * 4;
+		case Image::Format::SintR16G16B16A16: return texelCount * 8;
+		case Image::Format::SintR32: return texelCount * 4;
+		case Image::Format::SintR32G32: return texelCount * 8;
+		case Image::Format::SintR32G32B32A32: return texelCount * 16;
 
-		case Image::Format::UnormR8: return 1;
-		case Image::Format::UnormR8G8: return 2;
-		case Image::Format::UnormR8G8B8A8: return 4;
-		case Image::Format::UnormB8G8R8A8: return 4;
-		case Image::Format::UnormR16: return 2;
-		case Image::Format::UnormR16G16: return 4;
-		case Image::Format::UnormR16G16B16A16: return 8;
-		case Image::Format::UnormR5G6B5: return 2;
-		case Image::Format::UnormA1R5G5B5: return 2;
-		case Image::Format::UnormR5G5B5A1: return 2;
-		case Image::Format::UnormB5G5R5A1: return 2;
-		case Image::Format::UnormR4G4B4A4: return 2;
-		case Image::Format::UnormB4G4R4A4: return 2;
-		case Image::Format::UnormA2R10G10B10: return 4;
-		case Image::Format::UnormA2B10G10R10: return 4;
+		case Image::Format::UnormR8: return texelCount;
+		case Image::Format::UnormR8G8: return texelCount * 2;
+		case Image::Format::UnormR8G8B8A8: return texelCount * 4;
+		case Image::Format::UnormB8G8R8A8: return texelCount * 4;
+		case Image::Format::UnormR16: return texelCount * 2;
+		case Image::Format::UnormR16G16: return texelCount * 4;
+		case Image::Format::UnormR16G16B16A16: return texelCount * 8;
+		case Image::Format::UnormR5G6B5: return texelCount * 2;
+		case Image::Format::UnormB5G6R5: return texelCount * 2;
+		case Image::Format::UnormA1R5G5B5: return texelCount * 2;
+		case Image::Format::UnormR5G5B5A1: return texelCount * 2;
+		case Image::Format::UnormB5G5R5A1: return texelCount * 2;
+		case Image::Format::UnormR4G4B4A4: return texelCount * 2;
+		case Image::Format::UnormB4G4R4A4: return texelCount * 2;
+		case Image::Format::UnormA2R10G10B10: return texelCount * 4;
+		case Image::Format::UnormA2B10G10R10: return texelCount * 4;
+		case Image::Format::UnormRgbBC1: return texelCount / 16 * 8;
+		case Image::Format::UnormRgbaBC1: return texelCount / 16 * 8;
+		case Image::Format::UnormBC3: return texelCount;
+		case Image::Format::UnormBC4: return texelCount / 16 * 8;
+		case Image::Format::UnormBC5: return texelCount;
+		case Image::Format::UnormBC7: return texelCount;
+		case Image::Format::UnormAstc4x4: return texelCount;
 
-		case Image::Format::SnormR8: return 1;
-		case Image::Format::SnormR8G8: return 2;
-		case Image::Format::SnormR8G8B8A8: return 4;
-		case Image::Format::SnormR16: return 2;
-		case Image::Format::SnormR16G16: return 4;
-		case Image::Format::SnormR16G16B16A16: return 8;
+		case Image::Format::SnormR8: return texelCount;
+		case Image::Format::SnormR8G8: return texelCount * 2;
+		case Image::Format::SnormR8G8B8A8: return texelCount * 4;
+		case Image::Format::SnormR16: return texelCount * 2;
+		case Image::Format::SnormR16G16: return texelCount * 4;
+		case Image::Format::SnormR16G16B16A16: return texelCount * 8;
+		case Image::Format::SnormBC4: return texelCount / 16 * 8;
+		case Image::Format::SnormBC5: return texelCount;
 
-		case Image::Format::SfloatR16: return 2;
-		case Image::Format::SfloatR16G16: return 4;
-		case Image::Format::SfloatR16G16B16A16: return 8;
-		case Image::Format::SfloatR32: return 4;
-		case Image::Format::SfloatR32G32: return 8;
-		case Image::Format::SfloatR32G32B32A32: return 16;
+		case Image::Format::SfloatR16: return texelCount * 2;
+		case Image::Format::SfloatR16G16: return texelCount * 4;
+		case Image::Format::SfloatR16G16B16A16: return texelCount * 8;
+		case Image::Format::SfloatR32: return texelCount * 4;
+		case Image::Format::SfloatR32G32: return texelCount * 8;
+		case Image::Format::SfloatR32G32B32A32: return texelCount * 16;
+		case Image::Format::SfloatBC6H: return texelCount;
+		case Image::Format::SfloatAstc4x4: return texelCount;
 
-		case Image::Format::UfloatB10G11R11: return 4;
-		case Image::Format::UfloatE5B9G9R9: return 4;
+		case Image::Format::UfloatB10G11R11: return texelCount * 4;
+		case Image::Format::UfloatE5B9G9R9: return texelCount * 4;
+		case Image::Format::UfloatBC6H: return texelCount;
 
-		case Image::Format::SrgbR8: return 1;
-		case Image::Format::SrgbR8G8: return 2;
-		case Image::Format::SrgbR8G8B8A8: return 4;
-		case Image::Format::SrgbB8G8R8A8: return 4;
-		case Image::Format::SrgbA8B8G8R8: return 4;
-		
-		case Image::Format::UnormD16: return 2;
-		case Image::Format::SfloatD32: return 4;
-		case Image::Format::UintS8: return 1;
-		case Image::Format::UnormD24UintS8: return 4;
-		case Image::Format::SfloatD32UintS8: return 5;
-		
+		case Image::Format::SrgbR8: return texelCount;
+		case Image::Format::SrgbR8G8: return texelCount * 2;
+		case Image::Format::SrgbR8G8B8A8: return texelCount * 4;
+		case Image::Format::SrgbB8G8R8A8: return texelCount * 4;
+		case Image::Format::SrgbA8B8G8R8: return texelCount * 4;
+		case Image::Format::SrgbRgbBC1: return texelCount * 8;
+		case Image::Format::SrgbRgbaBC1: return texelCount * 8;
+		case Image::Format::SrgbBC3: return texelCount * 16;
+		case Image::Format::SrgbBC7: return texelCount * 16;
+		case Image::Format::SrgbAstc4x4: return texelCount * 16;
+
+		case Image::Format::UnormD16: return texelCount * 2;
+		case Image::Format::SfloatD32: return texelCount * 4;
+		case Image::Format::UintS8: return texelCount * 1;
+		case Image::Format::UnormD24UintS8: return texelCount * 4;
+		case Image::Format::SfloatD32UintS8: return texelCount * 5;
+
 		default: return 0;
 	}
 }
@@ -1172,7 +1225,7 @@ static constexpr psize toBinarySize(Image::Format imageFormat) noexcept
  * @brief Returns image data format component count.
  * @param imageFormat target image data format
  */
-static constexpr psize toComponentCount(Image::Format imageFormat) noexcept
+static constexpr uint8 toComponentCount(Image::Format imageFormat) noexcept
 {
 	switch (imageFormat)
 	{
@@ -1186,6 +1239,7 @@ static constexpr psize toComponentCount(Image::Format imageFormat) noexcept
 		case Image::Format::UnormR16:
 		case Image::Format::SnormR8:
 		case Image::Format::SnormR16:
+		case Image::Format::SnormBC4:
 		case Image::Format::SfloatR16:
 		case Image::Format::SfloatR32:
 		case Image::Format::UnormD16:
@@ -1203,6 +1257,7 @@ static constexpr psize toComponentCount(Image::Format imageFormat) noexcept
 		case Image::Format::UnormR16G16:
 		case Image::Format::SnormR8G8:
 		case Image::Format::SnormR16G16:
+		case Image::Format::SnormBC5:
 		case Image::Format::SfloatR16G16:
 		case Image::Format::SfloatR32G32:
 		case Image::Format::SrgbR8G8:
@@ -1210,8 +1265,13 @@ static constexpr psize toComponentCount(Image::Format imageFormat) noexcept
 		case Image::Format::SfloatD32UintS8:
 			return 2;
 		case Image::Format::UnormR5G6B5:
+		case Image::Format::UnormB5G6R5:
+		case Image::Format::UnormRgbBC1:
+		case Image::Format::SfloatBC6H:
 		case Image::Format::UfloatB10G11R11:
 		case Image::Format::UfloatE5B9G9R9:
+		case Image::Format::UfloatBC6H:
+		case Image::Format::SrgbRgbBC1:
 			return 3;
 		case Image::Format::UintR8G8B8A8:
 		case Image::Format::UintR16G16B16A16:
@@ -1231,13 +1291,22 @@ static constexpr psize toComponentCount(Image::Format imageFormat) noexcept
 		case Image::Format::UnormB4G4R4A4:
 		case Image::Format::UnormA2R10G10B10:
 		case Image::Format::UnormA2B10G10R10:
+		case Image::Format::UnormRgbaBC1:
+		case Image::Format::UnormBC3:
+		case Image::Format::UnormBC7:
+		case Image::Format::UnormAstc4x4:
 		case Image::Format::SnormR8G8B8A8:
 		case Image::Format::SnormR16G16B16A16:
 		case Image::Format::SfloatR16G16B16A16:
 		case Image::Format::SfloatR32G32B32A32:
+		case Image::Format::SfloatAstc4x4:
 		case Image::Format::SrgbR8G8B8A8:
 		case Image::Format::SrgbB8G8R8A8:
 		case Image::Format::SrgbA8B8G8R8:
+		case Image::Format::SrgbRgbaBC1:
+		case Image::Format::SrgbBC3:
+		case Image::Format::SrgbBC7:
+		case Image::Format::SrgbAstc4x4:
 			return 4;
 		default: return 0;
 	}
@@ -1362,17 +1431,21 @@ constexpr const char* imageFormatNames[(psize)Image::Format::Count] =
 	"SintR8", "SintR8G8", "SintR8G8B8A8", "SintR16", "SintR16G16", 
 	"SintR16G16B16A16", "SintR32", "SintR32G32", "SintR32G32B32A32", 
 
-	"UnormR8", "UnormR8G8", "UnormR8G8B8A8", "UnormB8G8R8A8", "UnormR16", "UnormR16G16", 
-	"UnormR16G16B16A16", "UnormR5G6B5", "UnormA1R5G5B5", "UnormR5G5B5A1", "UnormB5G5R5A1", 
-	"UnormR4G4B4A4", "UnormB4G4R4A4", "UnormA2R10G10B10", "UnormA2B10G10R10", 
+	"UnormR8", "UnormR8G8", "UnormR8G8B8A8", "UnormB8G8R8A8", "UnormR16", "UnormR16G16", "UnormR16G16B16A16", 
+	"UnormR5G6B5", "UnormB5G6R5", "UnormA1R5G5B5", "UnormR5G5B5A1", "UnormB5G5R5A1", "UnormR4G4B4A4", "UnormB4G4R4A4", 
+	"UnormA2R10G10B10", "UnormA2B10G10R10", "UnormRgbBC1", "UnormRgbaBC1", "UnormBC3", "UnormBC4", "UnormBC5", 
+	"UnormBC7", "UnormAstc4x4", 
 
-	"SnormR8", "SnormR8G8", "SnormR8G8B8A8", "SnormR16", "SnormR16G16", "SnormR16G16B16A16", 
+	"SnormR8", "SnormR8G8", "SnormR8G8B8A8", "SnormR16", 
+	"SnormR16G16", "SnormR16G16B16A16", "SnormBC4", "SnormBC5",
 
-	"SfloatR16", "SfloatR16G16", "SfloatR16G16B16A16", "SfloatR32", "SfloatR32G32", "SfloatR32G32B32A32", 
+	"SfloatR16", "SfloatR16G16", "SfloatR16G16B16A16", "SfloatR32", 
+	"SfloatR32G32", "SfloatR32G32B32A32", "SfloatBC6H", "SfloatAstc4x4", 
 
-	"UfloatB10G11R11", "UfloatE5B9G9R9", 
+	"UfloatB10G11R11", "UfloatE5B9G9R9", "UfloatBC6H",  
 
 	"SrgbR8", "SrgbR8G8", "SrgbR8G8B8A8", "SrgbB8G8R8A8", "SrgbA8B8G8R8", 
+	"SrgbRgbBC1", "SrgbRgbaBC1", "SrgbBC3", "SrgbBC7", "SrgbAstc4x4", 
 
 	"UnormD16", "SfloatD32", "UintS8", "UnormD24UintS8", "SfloatD32UintS8"
 };
