@@ -50,13 +50,62 @@ macro(collectPackShaders PACK_CACHE_DIR PACK_RESOURCES_DIR
 		list(APPEND ${PACK_RESOURCES} "${${PACK_CACHE_DIR}}/${SHADER_PART}.spv")
 		list(APPEND ${PACK_RESOURCES} "${SHADER_PART}.spv")
 
-		# Preventing double .vert and .frag shader name and ray tracing shader variants addition.
+		# Note: Preventing double .vert and .frag shader name and ray tracing shader variants addition.
 		if((NOT ${SHADER_PATH} IN_LIST ${PACK_SHADERS}) AND (NOT "${SHADER_PATH}" MATCHES "\\."))
 			list(APPEND ${PACK_SHADERS} "${SHADER_PATH}")
 			list(APPEND ${PACK_RESOURCES} "${${PACK_CACHE_DIR}}/${SHADER_PATH}.gslh")
 			list(APPEND ${PACK_RESOURCES} "${SHADER_PATH}.gslh")
 		endif()
 	endforeach()
+endmacro()
+
+#***********************************************************************************************************************
+macro(collectPackImages PACK_CACHE_DIR PACK_RESOURCES_DIR INCLUDE_EDITOR 
+	INCLUDE_DEBUG PACK_IMAGES PACK_CUBEMAPS PACK_RESOURCES)
+
+	file(GLOB_RECURSE PACK_IMAGE_PATHS
+		${${PACK_RESOURCES_DIR}}/images/*.png ${${PACK_RESOURCES_DIR}}/models/*.png 
+		${${PACK_RESOURCES_DIR}}/images/*.webp ${${PACK_RESOURCES_DIR}}/models/*.webp 
+		${${PACK_RESOURCES_DIR}}/images/*.jpg ${${PACK_RESOURCES_DIR}}/models/*.jpg 
+		${${PACK_RESOURCES_DIR}}/images/*.jpeg ${${PACK_RESOURCES_DIR}}/models/*.jpeg 
+		${${PACK_RESOURCES_DIR}}/images/*.exr ${${PACK_RESOURCES_DIR}}/models/*.exr 
+		${${PACK_RESOURCES_DIR}}/images/*.hdr ${${PACK_RESOURCES_DIR}}/models/*.hdr)
+
+	foreach(IMAGE ${PACK_IMAGE_PATHS})
+		if((NOT ${INCLUDE_EDITOR} AND IMAGE MATCHES "editor") OR
+			(NOT ${INCLUDE_DEBUG} AND IMAGE MATCHES "debug"))
+			continue()
+		endif()
+
+		string(REPLACE ${${PACK_RESOURCES_DIR}}/ "" IMAGE_PART ${IMAGE})
+		string(REGEX REPLACE "\\.[^.]*$" "" IMAGE_PATH ${IMAGE_PART})
+
+		if(IMAGE MATCHES "cubemap")
+			list(APPEND ${PACK_CUBEMAPS} "${IMAGE_PART}")
+			list(APPEND ${PACK_RESOURCES} "${${PACK_CACHE_DIR}}/${IMAGE_PATH}-nx.gic")
+			list(APPEND ${PACK_RESOURCES} "${IMAGE_PATH}-nx.gic")
+			list(APPEND ${PACK_RESOURCES} "${${PACK_CACHE_DIR}}/${IMAGE_PATH}-px.gic")
+			list(APPEND ${PACK_RESOURCES} "${IMAGE_PATH}-px.gic")
+			list(APPEND ${PACK_RESOURCES} "${${PACK_CACHE_DIR}}/${IMAGE_PATH}-ny.gic")
+			list(APPEND ${PACK_RESOURCES} "${IMAGE_PATH}-ny.gic")
+			list(APPEND ${PACK_RESOURCES} "${${PACK_CACHE_DIR}}/${IMAGE_PATH}-py.gic")
+			list(APPEND ${PACK_RESOURCES} "${IMAGE_PATH}-py.gic")
+			list(APPEND ${PACK_RESOURCES} "${${PACK_CACHE_DIR}}/${IMAGE_PATH}-nz.gic")
+			list(APPEND ${PACK_RESOURCES} "${IMAGE_PATH}-nz.gic")
+			list(APPEND ${PACK_RESOURCES} "${${PACK_CACHE_DIR}}/${IMAGE_PATH}-pz.gic")
+			list(APPEND ${PACK_RESOURCES} "${IMAGE_PATH}-pz.gic")
+		else()
+			list(APPEND ${PACK_IMAGES} "${IMAGE_PART}")
+			list(APPEND ${PACK_RESOURCES} "${${PACK_CACHE_DIR}}/${IMAGE_PATH}.gic")
+			list(APPEND ${PACK_RESOURCES} "${IMAGE_PATH}.gic")
+		endif()
+	endforeach()
+endmacro()
+
+#***********************************************************************************************************************
+macro(collectPackModels PACK_CACHE_DIR PACK_RESOURCES_DIR
+	INCLUDE_EDITOR INCLUDE_DEBUG PACK_IMAGES PACK_RESOURCES)
+	message(FATAL_ERROR "Not implemented yet")
 endmacro()
 
 #***********************************************************************************************************************
@@ -80,49 +129,14 @@ macro(collectPackJson2bsons PACK_CACHE_DIR PACK_RESOURCES_DIR
 endmacro()
 
 #***********************************************************************************************************************
-macro(collectPackEqui2cubes PACK_CACHE_DIR PACK_RESOURCES_DIR
-	INCLUDE_EDITOR INCLUDE_DEBUG PACK_EQUI2CUBES PACK_RESOURCES)
-
-	file(GLOB_RECURSE PACK_EQUI2CUBE_PATHS
-		${${PACK_RESOURCES_DIR}}/images/*.exr ${${PACK_RESOURCES_DIR}}/images/*.hdr
-		${${PACK_RESOURCES_DIR}}/models/*.exr ${${PACK_RESOURCES_DIR}}/models/*.hdr)
-
-	foreach(EQUI2CUBE ${PACK_EQUI2CUBE_PATHS})
-		if(NOT EQUI2CUBE MATCHES "cubemap" OR
-			(NOT ${INCLUDE_EDITOR} AND EQUI2CUBE MATCHES "editor") OR
-			(NOT ${INCLUDE_DEBUG} AND EQUI2CUBE MATCHES "debug"))
-			continue()
-		endif()
-
-		string(REPLACE ${${PACK_RESOURCES_DIR}}/ "" EQUI2CUBE_PART ${EQUI2CUBE})
-		string(REGEX REPLACE "\\.[^.]*$" "" EQUI2CUBE_PATH ${EQUI2CUBE_PART})
-		list(APPEND ${PACK_EQUI2CUBES} "${EQUI2CUBE_PART}")
-		list(APPEND ${PACK_RESOURCES} "${${PACK_CACHE_DIR}}/${EQUI2CUBE_PATH}-nx.ktx2")
-		list(APPEND ${PACK_RESOURCES} "${EQUI2CUBE_PATH}-nx.ktx2")
-		list(APPEND ${PACK_RESOURCES} "${${PACK_CACHE_DIR}}/${EQUI2CUBE_PATH}-px.ktx2")
-		list(APPEND ${PACK_RESOURCES} "${EQUI2CUBE_PATH}-px.ktx2")
-		list(APPEND ${PACK_RESOURCES} "${${PACK_CACHE_DIR}}/${EQUI2CUBE_PATH}-ny.ktx2")
-		list(APPEND ${PACK_RESOURCES} "${EQUI2CUBE_PATH}-ny.ktx2")
-		list(APPEND ${PACK_RESOURCES} "${${PACK_CACHE_DIR}}/${EQUI2CUBE_PATH}-py.ktx2")
-		list(APPEND ${PACK_RESOURCES} "${EQUI2CUBE_PATH}-py.ktx2")
-		list(APPEND ${PACK_RESOURCES} "${${PACK_CACHE_DIR}}/${EQUI2CUBE_PATH}-nz.ktx2")
-		list(APPEND ${PACK_RESOURCES} "${EQUI2CUBE_PATH}-nz.ktx2")
-		list(APPEND ${PACK_RESOURCES} "${${PACK_CACHE_DIR}}/${EQUI2CUBE_PATH}-pz.ktx2")
-		list(APPEND ${PACK_RESOURCES} "${EQUI2CUBE_PATH}-pz.ktx2")
-	endforeach()
-endmacro()
-
-#***********************************************************************************************************************
 macro(collectPackResources PACK_RESOURCES_DIR INCLUDE_EDITOR INCLUDE_DEBUG PACK_RESOURCES APP_RESOURCES)
 
-	file(GLOB_RECURSE PACK_ANY_RESOURCE_PATHS ${${PACK_RESOURCES_DIR}}/images/*.webp 
-		${${PACK_RESOURCES_DIR}}/images/*.png ${${PACK_RESOURCES_DIR}}/images/*.jpg 
+	file(GLOB_RECURSE PACK_ANY_RESOURCE_PATHS 
 		${${PACK_RESOURCES_DIR}}/fonts/*.ttf ${${PACK_RESOURCES_DIR}}/locales/*.txt)
 	list(APPEND PACK_ANY_RESOURCE_PATHS ${${APP_RESOURCES}})
 
 	foreach(ANY_RESOURCE ${PACK_ANY_RESOURCE_PATHS})
-		if(ANY_RESOURCE MATCHES "cubemap" OR 
-			(NOT ${INCLUDE_EDITOR} AND ANY_RESOURCE MATCHES "editor") OR
+		if((NOT ${INCLUDE_EDITOR} AND ANY_RESOURCE MATCHES "editor") OR
 			(NOT ${INCLUDE_DEBUG} AND ANY_RESOURCE MATCHES "debug"))
 			continue()
 		endif()
@@ -152,6 +166,16 @@ function(packResources PACK_EXE_NAME PACK_CACHE_DIR PACK_APP_RES_DIR PACK_GARDEN
 	collectPackShaders(PACK_CACHE_DIR PACK_APP_RES_DIR INCLUDE_EDITOR
 		INCLUDE_DEBUG PACK_APP_SHADERS PACK_APP_RES_PATHS)
 
+	set(PACK_GARDEN_IMAGES)
+	set(PACK_APP_IMAGES)
+	set(PACK_GARDEN_CUBEMAPS)
+	set(PACK_APP_CUBEMAPS)
+
+	collectPackImages(PACK_CACHE_DIR PACK_GARDEN_RES_DIR INCLUDE_EDITOR INCLUDE_DEBUG 
+		PACK_GARDEN_IMAGES PACK_GARDEN_CUBEMAPS PACK_APP_RES_PATHS)
+	collectPackImages(PACK_CACHE_DIR PACK_APP_RES_DIR INCLUDE_EDITOR INCLUDE_DEBUG 
+		PACK_APP_IMAGES PACK_APP_CUBEMAPS PACK_APP_RES_PATHS)
+
 	set(PACK_GARDEN_JSON2BSONS)
 	set(PACK_APP_JSON2BSONS)
 
@@ -159,14 +183,6 @@ function(packResources PACK_EXE_NAME PACK_CACHE_DIR PACK_APP_RES_DIR PACK_GARDEN
 		INCLUDE_DEBUG PACK_GARDEN_JSON2BSONS PACK_APP_RES_PATHS)
 	collectPackJson2bsons(PACK_CACHE_DIR PACK_APP_RES_DIR INCLUDE_EDITOR
 		INCLUDE_DEBUG PACK_APP_JSON2BSONS PACK_APP_RES_PATHS)
-
-	set(PACK_GARDEN_EQUI2CUBES)
-	set(PACK_APP_EQUI2CUBES)
-
-	collectPackEqui2cubes(PACK_CACHE_DIR PACK_GARDEN_RES_DIR INCLUDE_EDITOR
-		INCLUDE_DEBUG PACK_GARDEN_EQUI2CUBES PACK_APP_RES_PATHS)
-	collectPackEqui2cubes(PACK_CACHE_DIR PACK_APP_RES_DIR INCLUDE_EDITOR
-		INCLUDE_DEBUG PACK_APP_EQUI2CUBES PACK_APP_RES_PATHS)
 
 	collectPackResources(PACK_GARDEN_RES_DIR INCLUDE_EDITOR INCLUDE_DEBUG PACK_APP_RES_PATHS "")
 	collectPackResources(PACK_APP_RES_DIR INCLUDE_EDITOR INCLUDE_DEBUG PACK_APP_RES_PATHS APP_RESOURCES)
@@ -184,6 +200,14 @@ function(packResources PACK_EXE_NAME PACK_CACHE_DIR PACK_APP_RES_DIR PACK_GARDEN
 			-o ${PACK_CACHE_DIR} -I ${PACK_APP_RES_DIR}/shaders 
 			-I ${PROJECT_SOURCE_DIR}/shaders ${PACK_APP_SHADERS}
 
+		COMMAND ${CMAKE_COMMAND} -E echo "Converting Garden images..."
+		COMMAND $<TARGET_FILE:imagec> -i ${PACK_GARDEN_RES_DIR} 
+			-o ${PACK_CACHE_DIR} ${PACK_GARDEN_IMAGES}
+
+		COMMAND ${CMAKE_COMMAND} -E echo "Converting ${PACK_EXE_NAME} images..."
+		COMMAND $<TARGET_FILE:imagec> -i ${PACK_APP_RES_DIR} 
+			-o ${PACK_CACHE_DIR} ${PACK_APP_IMAGES}
+
 		COMMAND ${CMAKE_COMMAND} -E echo "Converting Garden JSON files..."
 		COMMAND $<TARGET_FILE:json2bson> -i ${PACK_GARDEN_RES_DIR} 
 			-o ${PACK_CACHE_DIR} ${PACK_GARDEN_JSON2BSONS}
@@ -191,14 +215,6 @@ function(packResources PACK_EXE_NAME PACK_CACHE_DIR PACK_APP_RES_DIR PACK_GARDEN
 		COMMAND ${CMAKE_COMMAND} -E echo "Converting ${PACK_EXE_NAME} JSON files..."
 		COMMAND $<TARGET_FILE:json2bson> -i ${PACK_APP_RES_DIR} 
 			-o ${PACK_CACHE_DIR} ${PACK_APP_JSON2BSONS}
-
-		COMMAND ${CMAKE_COMMAND} -E echo "Converting Garden images..."
-		COMMAND $<TARGET_FILE:equi2cube> -i ${PACK_GARDEN_RES_DIR} 
-			-o ${PACK_CACHE_DIR} ${PACK_GARDEN_EQUI2CUBES}
-
-		COMMAND ${CMAKE_COMMAND} -E echo "Converting ${PACK_EXE_NAME} images..."
-		COMMAND $<TARGET_FILE:equi2cube> -i ${PACK_APP_RES_DIR} 
-			-o ${PACK_CACHE_DIR} ${PACK_APP_EQUI2CUBES}
 
 		COMMAND ${CMAKE_COMMAND} -E echo "Packing ${PACK_EXE_NAME} resources..."
 		COMMAND $<TARGET_FILE:packer> -v ${PACK_APP_VERSION} 

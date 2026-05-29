@@ -96,7 +96,7 @@ instance to implement the desired functionality for the new component.
 ```cpp
 //...
 
-auto manager = Manager::Instance::get();
+auto manager = Manager::getInstance();
 auto someEntity = manager->createEntity();
 auto myCustomView = manager->add<MyCustomComponent>(someEntity);
 myCustomView->someValue = 456;
@@ -194,7 +194,7 @@ Now we can get a view of the desired entity component the **Manager**.
 ```cpp
 //...
 
-auto manager = Manager::Instance::get();
+auto manager = Manager::getInstance();
 auto transformView = manager->get<TransformComponent>(someEntity);
 
 //...

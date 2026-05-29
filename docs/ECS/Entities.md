@@ -10,7 +10,7 @@ are attached to entities to give them data and properties like: Position, Veloci
 
 //...
 
-auto manager = Manager::Instance::get();
+auto manager = Manager::getInstance();
 auto player = manager->createEntity();
 
 auto transformView = manager->add<TransformComponent>(player);
