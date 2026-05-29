@@ -55,3 +55,6 @@
 [submodule "resources"]
 	path = resources
 	url = https://github.com/cfnptr/garden-resources
+[submodule "libraries/meshopt"]
+	path = libraries/meshopt
+	url = https://github.com/zeux/meshoptimizer

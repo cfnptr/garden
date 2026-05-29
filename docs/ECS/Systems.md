@@ -106,7 +106,7 @@ class MyCustomSystem : public System
 
 MyCustomSystem::MyCustomSystem()
 {
-    auto manager = Manager::Instance::get();
+    auto manager = Manager::getInstance();
     ECSM_SUBSCRIBE_TO_EVENT("Update", MyCustomSystem::update);
 }
 void MyCustomSystem::update()
@@ -139,7 +139,7 @@ while unordered events can be triggered at any moment, and any number of times.
 ```cpp
 //...
 
-auto manager = Manager::Instance::get();
+auto manager = Manager::getInstance();
 manager->registerEvent("MyUnorderedEvent");
 manager->registerEventAfter("MyOrderedEvent", "Update");
 
