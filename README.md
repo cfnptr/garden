@@ -66,10 +66,10 @@ Use building [instructions](BUILDING.md) to install all required tools and libra
 |-----------------------------|--------------------------------------------------|---------------|
 | GARDEN_USE_AVX2             | Use AVX2 instruction set (Better perf)           | `ON`          |
 | GARDEN_BUILD_EDITOR         | Build base Garden editor                         | `ON`          |
-| GARDEN_BUILD_GSLC           | Build GSL shader compiler                        | `ON`          |
+| GARDEN_BUILD_GSLC           | Build Garden Shading Language compiler           | `ON`          |
+| GARDEN_BUILD_IMAGEC         | Build Garden image converter                     | `ON`          |
 | GARDEN_BUILD_MODELC         | Build Garden model converter                     | `ON`          |
 | GARDEN_BUILD_JSON2BSON      | Build JSON to binary JSON converter              | `ON`          |
-| GARDEN_BUILD_EQUI2CUBE      | Build equirectangular to cubemap converter       | `ON`          |
 | GARDEN_RELEASE_EDITOR       | Build Garden editor in the release build         | `OFF`         |
 | GARDEN_RELEASE_DEBUGGING    | Build Garden debugging code in the release build | `OFF`         |
 | GARDEN_DEBUG_PACK_RESOURCES | Pack and load resources in the debug build       | `OFF`         |
@@ -78,6 +78,7 @@ Use building [instructions](BUILDING.md) to install all required tools and libra
 | GARDEN_USE_ASAN             | Use Clang address sanitizer                      | `OFF`         |
 | GARDEN_USE_MESA_RGP         | Use Mesa Radeon GPU Profiler (RGP)               | `OFF`         |
 | GARDEN_USE_BASIS_UNIVERSAL  | Use Binomial Basis Universal GPU texture codec   | `ON`          |
+| GARDEN_USE_OPENCL           | Use OpenCL framework. (CUDA analogue)            | `OFF`          |
 | GARDEN_USE_NVIDIA_DLSS      | Use Nvidia DLSS SDK (Auto-downloads repo)        | `OFF`         |
 | GARDEN_USE_STEAMWORKS_SDK   | Use Valve Steamworks SDK (Download it manually!) | `OFF`         |
 
@@ -129,6 +130,7 @@ Use building [instructions](BUILDING.md) to install all required tools and libra
 * [JSON](https://github.com/nlohmann/json) (MIT license)
 * [Logy](https://github.com/cfnptr/logy) (Apache-2.0 license)
 * [Math](https://github.com/cfnptr/math) (Apache-2.0 license)
+* [meshoptimizer](https://github.com/zeux/meshoptimizer) (MIT license)
 * [Nets](https://github.com/cfnptr/nets) (Apache-2.0 license)
 * [OpenEXR](https://github.com/AcademySoftwareFoundation/openexr) (BSD-3-Clause license)
 * [OpenSSL](https://github.com/openssl/openssl) (Apache-2.0 license)

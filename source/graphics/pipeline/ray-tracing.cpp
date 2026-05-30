@@ -144,8 +144,7 @@ void RayTracingPipeline::createVkInstance(RayTracingCreateData& createData)
 }
 
 //**********************************************************************************************************************
-RayTracingPipeline::RayTracingPipeline(RayTracingCreateData& createData, 
-	bool asyncRecording) : Pipeline(createData, asyncRecording)
+RayTracingPipeline::RayTracingPipeline(RayTracingCreateData& createData) : Pipeline(createData)
 {
 	this->rayGenGroupCount = (uint32)createData.rayGenGroups.size();
 	this->missGroupCount = (uint32)createData.missGroups.size();

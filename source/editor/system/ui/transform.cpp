@@ -26,12 +26,12 @@ using namespace garden;
 //**********************************************************************************************************************
 UiTransformEditorSystem::UiTransformEditorSystem(bool setSingleton) : Singleton(setSingleton)
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", UiTransformEditorSystem::init);
 }
 void UiTransformEditorSystem::init()
 {
-	EditorRenderSystem::Instance::get()->registerEntityInspector<UiTransformComponent>(
+	EditorRenderSystem::getInstance()->registerEntityInspector<UiTransformComponent>(
 	[this](ID<Entity> entity, bool isOpened)
 	{
 		onEntityInspector(entity, isOpened);
@@ -41,7 +41,7 @@ void UiTransformEditorSystem::init()
 
 void UiTransformEditorSystem::onEntityDestroy(ID<Entity> entity)
 {
-	auto editorSystem = EditorRenderSystem::Instance::get();
+	auto editorSystem = EditorRenderSystem::getInstance();
 	if (editorSystem->selectedEntity == entity)
 		editorSystem->selectedEntity = {};
 
@@ -58,7 +58,7 @@ void UiTransformEditorSystem::onEntityDestroy(ID<Entity> entity)
 //**********************************************************************************************************************
 void UiTransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	if (entity != selectedEntity)
 	{
 		if (entity)

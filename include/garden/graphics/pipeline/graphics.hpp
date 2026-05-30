@@ -153,12 +153,12 @@ public:
 	 */
 	enum class BlendOp : uint8
 	{
-		Add,             /**< finalColor = (srcColor * srcBlendFactor) + (dstColor * dstBlendFactor) */
-		Subtract,        /**< finalColor = (srcColor * srcBlendFactor) - (dstColor * dstBlendFactor) */
-		RevSubtract,     /**< finalColor = (dstColor * dstBlendFactor) - (srcColor * srcBlendFactor) */
-		Minimum,         /**< finalColor = min(srcColor * srcBlendFactor, dstColor * dstBlendFactor) */
-		Maximum,         /**< finalColor = max(srcColor * srcBlendFactor, dstColor * dstBlendFactor) */
-		Count            /**< Framebuffer blending operation count. */
+		Add,         /**< finalColor = (srcColor * srcBlendFactor) + (dstColor * dstBlendFactor) */
+		Subtract,    /**< finalColor = (srcColor * srcBlendFactor) - (dstColor * dstBlendFactor) */
+		RevSubtract, /**< finalColor = (dstColor * dstBlendFactor) - (srcColor * srcBlendFactor) */
+		Minimum,     /**< finalColor = min(srcColor * srcBlendFactor, dstColor * dstBlendFactor) */
+		Maximum,     /**< finalColor = max(srcColor * srcBlendFactor, dstColor * dstBlendFactor) */
+		Count        /**< Framebuffer blending operation count. */
 	};
 
 	/**
@@ -273,7 +273,7 @@ public:
 		uint8 depthBounding : 1;                           /**< Is depth bounds testing enabled. */
 		uint8 stencilTesting : 1;                          /**< Is stencil value testing enabled. */
 		uint8 discarding : 1;                              /**< Is fragment discarding enabled. */
-		uint8 _reserved0 : 1;                             /**< [reserved for future use] */
+		uint8 _reserved0 : 1;                              /**< [reserved for future use] */
 		Topology topology = Topology::TriangleList;        /**< Primitive topology type. */
 		PolygonMode polygonMode = PolygonMode::Fill;       /**< Polygon rasterization mode. */
 		CompareOp depthCompare = CompareOp::Greater;       /**< Depth compare operator. */
@@ -354,11 +354,11 @@ private:
 	uint8 attachmentCount = 0;
 	ID<Framebuffer> framebuffer = {};
 
-	GraphicsPipeline(const fs::path& path, uint32 maxBindlessCount, bool useAsyncRecording,
-		uint64 pipelineVersion, ID<Framebuffer> framebuffer) noexcept : Pipeline(
-		PipelineType::Graphics, path, maxBindlessCount, useAsyncRecording, pipelineVersion), 
+	GraphicsPipeline(const fs::path& path, uint32 maxBindlessCount,
+		uint64 pipelineVersion, ID<Framebuffer> framebuffer) noexcept : 
+		Pipeline(PipelineType::Graphics, path, maxBindlessCount, pipelineVersion), 
 		framebuffer(framebuffer) { }
-	GraphicsPipeline(GraphicsCreateData& createData, bool useAsyncRecording);
+	GraphicsPipeline(GraphicsCreateData& createData);
 
 	void createVkInstance(GraphicsCreateData& createData);
 
@@ -683,13 +683,11 @@ public:
 	/**
 	 * @brief Creates a new graphics pipeline data.
 	 * @warning In most cases you should use @ref GraphicsSystem functions.
-	 * 
 	 * @param[in,out] createData target graphics pipeline create data
-	 * @param useAsyncRecording use multithreaded render commands recording
 	 */
-	static GraphicsPipeline create(GraphicsPipeline::GraphicsCreateData& createData, bool useAsyncRecording)
+	static GraphicsPipeline create(GraphicsPipeline::GraphicsCreateData& createData)
 	{
-		return GraphicsPipeline(createData, useAsyncRecording);
+		return GraphicsPipeline(createData);
 	}
 	/**
 	 * @brief Moves internal graphics pipeline objects.

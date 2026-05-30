@@ -25,12 +25,12 @@ using namespace garden;
 //**********************************************************************************************************************
 GraphicsEditorSystem::GraphicsEditorSystem()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", GraphicsEditorSystem::init);
 }
 void GraphicsEditorSystem::init()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("PreUiRender", GraphicsEditorSystem::preUiRender);
 	ECSM_SUBSCRIBE_TO_EVENT("EditorBarTool", GraphicsEditorSystem::editorBarTool);
 }
@@ -110,7 +110,7 @@ void GraphicsEditorSystem::showPerformanceStats()
 		ImGui::ProgressBar(fraction, ImVec2(-FLT_MIN, 0.0f), progressInfo.c_str());
 
 		ImGui::SeparatorText("Frames Per Second");
-		auto inputSystem = InputSystem::Instance::get();
+		auto inputSystem = InputSystem::getInstance();
 		auto deltaTime = (float)inputSystem->getDeltaTime() / (float)inputSystem->timeMultiplier;
 		updateHistogram("CPU", cpuFpsBuffer, cpuSortedBuffer, deltaTime);
 		ImGui::Spacing();

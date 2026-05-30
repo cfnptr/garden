@@ -36,7 +36,7 @@ using namespace garden;
 //**********************************************************************************************************************
 DlssRenderSystem::DlssRenderSystem(bool setSingleton) : Singleton(setSingleton)
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("PreInit", DlssRenderSystem::preInit);
 	ECSM_SUBSCRIBE_TO_EVENT("PreLdrRender", DlssRenderSystem::preLdrRender);
 	ECSM_SUBSCRIBE_TO_EVENT("SwapchainRecreate", DlssRenderSystem::swapchainRecreate);
@@ -179,7 +179,7 @@ static NVSDK_NGX_Handle* createDlssFeature(CommandBuffer* commandBuffer, NVSDK_N
 	NVSDK_NGX_PerfQuality_Value perfQuality, NVSDK_NGX_DLSS_Hint_Render_Preset renderPreset, 
 	uint2& optimalSize, uint2& minSize, uint2& maxSize, float& sharpness)
 {
-	auto frameSize = GraphicsSystem::Instance::get()->getFramebufferSize();
+	auto frameSize = GraphicsSystem::getInstance()->getFramebufferSize();
 	unsigned int optimalWidth = 0, optimalHeight = 0, maxWidth = 0, 
 		maxHeight = 0, minWidth = 0, minHeight = 0;
 	auto ngxResult = NGX_DLSS_GET_OPTIMAL_SETTINGS(ngxParameters, frameSize.x, frameSize.y,
@@ -197,7 +197,7 @@ static NVSDK_NGX_Handle* createDlssFeature(CommandBuffer* commandBuffer, NVSDK_N
 		NVSDK_NGX_DLSS_Feature_Flags_AutoExposure | NVSDK_NGX_DLSS_Feature_Flags_DepthInverted;
 	// TODO: try to pass exposure manually. ExposureValue = MidGray / (AverageLuma * (1.0 - MidGray))
 
-	if (DeferredRenderSystem::Instance::tryGet())
+	if (DeferredRenderSystem::tryGetInstance())
 		createParams.InFeatureCreateFlags |= NVSDK_NGX_DLSS_Feature_Flags_IsHDR;
 
 	createParams.Feature.InTargetWidth = frameSize.x;
@@ -260,11 +260,11 @@ void DlssRenderSystem::preInit()
 	if (graphicsAPI->getGpuVendor() != GpuVendor::Nvidia)
 		return;
 
-	auto settingsSystem = SettingsSystem::Instance::tryGet();
+	auto settingsSystem = SettingsSystem::tryGetInstance();
 	if (settingsSystem)
 		settingsSystem->getType("dlss.quality", quality, dlssQualityNames, (uint32)DlssQuality::Count);
 
-	auto appInfoSystem = AppInfoSystem::Instance::get();
+	auto appInfoSystem = AppInfoSystem::getInstance();
 	auto appDataPath = mpio::Directory::getAppDataPath(appInfoSystem->getAppDataName());
 	auto nvidiaDlssPath = (appDataPath / "nvidia").generic_wstring();
 
@@ -287,7 +287,7 @@ void DlssRenderSystem::preInit()
 	discoveryInfo.Identifier.v.ApplicationId = GARDEN_NVIDIA_DLSS_APP_ID;
 	#endif
 
-	auto threadSystem = ThreadSystem::Instance::tryGet();
+	auto threadSystem = ThreadSystem::tryGetInstance();
 	if (threadSystem)
 	{
 		threadSystem->getBackgroundPool().addTask([discoveryInfo](const ThreadPool::Task& task)
@@ -350,11 +350,11 @@ void DlssRenderSystem::createDlssFeatureCommand(void* commandBuffer, void* argum
 void DlssRenderSystem::evaluateDlssCommand(void* commandBuffer, void* argument)
 {
 	auto dlssSystem = (DlssRenderSystem*)argument;
-	auto deferredSystem = DeferredRenderSystem::Instance::get();
+	auto deferredSystem = DeferredRenderSystem::getInstance();
 	if (!dlssSystem->feature || deferredSystem->getHdrFramebuffer() == deferredSystem->getUpscaleHdrFB())
 		return;
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	auto gFramebufferView = graphicsSystem->get(deferredSystem->getGFramebuffer());
 	if (gFramebufferView->getSize() != dlssSystem->optimalSize)
 		return;
@@ -414,7 +414,7 @@ void DlssRenderSystem::preLdrRender()
 	if (!parameters || quality == DlssQuality::Off)
 		return;
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	graphicsSystem->startRecording(CommandBufferType::Frame);
 	{
 		BEGIN_GPU_DEBUG_LABEL("DLSS Evaluate");
@@ -434,7 +434,7 @@ void DlssRenderSystem::preLdrRender()
 
 void DlssRenderSystem::swapchainRecreate()
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	const auto& swapchainChanges = graphicsSystem->getSwapchainChanges();
 
 	if (swapchainChanges.framebufferSize && maxSize != graphicsSystem->getFramebufferSize())
@@ -455,7 +455,7 @@ void DlssRenderSystem::setQuality(DlssQuality quality)
 
 	if (quality == DlssQuality::Off)
 	{
-		auto graphicsSystem = GraphicsSystem::Instance::get();
+		auto graphicsSystem = GraphicsSystem::getInstance();
 		graphicsSystem->setScaledFrameSize(uint2::zero);
 		graphicsSystem->setMipLodBias(0.0f);
 		graphicsSystem->useUpscaling = graphicsSystem->useJittering = false;

@@ -27,12 +27,12 @@ using namespace garden;
 //**********************************************************************************************************************
 GpuResourceEditorSystem::GpuResourceEditorSystem()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", GpuResourceEditorSystem::init);
 }
 void GpuResourceEditorSystem::init()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("PreUiRender", GpuResourceEditorSystem::preUiRender);
 	ECSM_SUBSCRIBE_TO_EVENT("EditorBarTool", GpuResourceEditorSystem::editorBarTool);
 }
@@ -1017,13 +1017,11 @@ static void renderDescriptorSets(uint32& selectedItem, string& searchString,
 static void renderPipelineDetails(const Pipeline& pipeline, ID<Pipeline> instance,
 	GpuResourceEditorSystem::TabType& openNextTab, uint32& selectedItem)
 {
-	auto useAsyncRecording = pipeline.useAsyncRecording();
 	auto isBindless = pipeline.isBindless();
 	ImGui::TextWrapped("Path: %s", pipeline.getPath().generic_string().c_str());
 	ImGui::TextWrapped("Variant count: %lu", (unsigned long)pipeline.getVariantCount());
 	ImGui::TextWrapped("Push constants size: %s", toBinarySizeString(pipeline.getPushConstantsSize()).c_str());
 	ImGui::TextWrapped("Max bindless count: %lu", (unsigned long)pipeline.getMaxBindlessCount());
-	ImGui::Checkbox("Async Recording", &useAsyncRecording); ImGui::SameLine();
 	ImGui::Checkbox("Bindless", &isBindless);
 	ImGui::Spacing();
 

@@ -56,8 +56,8 @@ void ComputePipeline::createVkInstance(ComputeCreateData& createData)
 }
 
 //**********************************************************************************************************************
-ComputePipeline::ComputePipeline(ComputeCreateData& createData, bool asyncRecording) :
-	Pipeline(createData, asyncRecording), localSize(createData.localSize)
+ComputePipeline::ComputePipeline(ComputeCreateData& createData) :
+	Pipeline(createData), localSize(createData.localSize)
 {
 	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)

@@ -27,7 +27,7 @@ ThreadSystem::ThreadSystem(bool setSingleton) : Singleton(setSingleton),
 {
 	mpmt::Thread::setMain();
 
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("PreInit", ThreadSystem::preInit);
 	ECSM_SUBSCRIBE_TO_EVENT("PreDeinit", ThreadSystem::preDeinit);
 }

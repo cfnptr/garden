@@ -31,7 +31,7 @@ bool AnimationComponent::getActiveLooped(bool& isLooped) const
 	if (searchResult == animations.end())
 		return false;
 
-	auto animation = AnimationSystem::Instance::get()->get(searchResult->second);
+	auto animation = AnimationSystem::getInstance()->get(searchResult->second);
 	isLooped = animation->isLooped;
 	return true;
 }
@@ -42,7 +42,7 @@ AnimationSystem::AnimationSystem(bool animateAsync, bool setSingleton) :
 	random_device randomDevice;
 	this->randomGenerator = mt19937(randomDevice());
 
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	manager->addGroupSystem<ISerializable>(this);
 	ECSM_SUBSCRIBE_TO_EVENT("Update", AnimationSystem::update);
 }
@@ -148,7 +148,7 @@ static void animateComponent(Manager* manager, const AnimationSystem::AnimationP
 		return;
 	}
 
-	animationComp.frame += InputSystem::Instance::get()->getDeltaTime() * animationView->frameRate;
+	animationComp.frame += InputSystem::getInstance()->getDeltaTime() * animationView->frameRate;
 }
 
 //**********************************************************************************************************************
@@ -161,7 +161,7 @@ void AnimationSystem::update()
 
 	auto animations = &this->animations;
 	auto componentData = components.getData();
-	auto threadSystem = ThreadSystem::Instance::tryGet();
+	auto threadSystem = ThreadSystem::tryGetInstance();
 
 	if (animateAsync && threadSystem)
 	{
@@ -169,7 +169,7 @@ void AnimationSystem::update()
 		threadPool.addItems([animations, componentData](const ThreadPool::Task& task)
 		{
 			auto itemCount = task.getItemCount();
-			auto manager = Manager::Instance::get();
+			auto manager = Manager::getInstance();
 
 			for (uint32 i = task.getItemOffset(); i < itemCount; i++)
 				animateComponent(manager, animations, componentData[i]);
@@ -180,7 +180,7 @@ void AnimationSystem::update()
 	else
 	{
 		auto componentOccupancy = components.getOccupancy();
-		auto manager = Manager::Instance::get();
+		auto manager = Manager::getInstance();
 
 		for (uint32 i = 0; i < componentOccupancy; i++)
 			animateComponent(manager, animations, componentData[i]);
@@ -197,7 +197,7 @@ static void randomizeStartFrame(mt19937& randomGenerator, View<AnimationComponen
 	if (searchResult == animations.end())
 		return;
 
-	auto animationView = AnimationSystem::Instance::get()->get(searchResult->second);
+	auto animationView = AnimationSystem::getInstance()->get(searchResult->second);
 	if (animationView->getKeyframes().empty())
 		return;
 
@@ -212,7 +212,7 @@ void AnimationSystem::resetComponent(View<Component> component, bool full)
 	auto componentView = View<AnimationComponent>(component);
 	if (!componentView->animations.empty())
 	{
-		auto resourceSystem = ResourceSystem::Instance::get();
+		auto resourceSystem = ResourceSystem::getInstance();
 		auto animations = componentView->animations;
 		for (const auto& pair : animations)
 		{
@@ -280,7 +280,7 @@ void AnimationSystem::deserialize(IDeserializer& deserializer, View<Component> c
 
 	if (deserializer.beginChild("animations"))
 	{
-		auto resourceSystem = ResourceSystem::Instance::get();
+		auto resourceSystem = ResourceSystem::getInstance();
 		auto arraySize = (uint32)deserializer.getArraySize();
 		for (uint32 i = 0; i < arraySize; i++)
 		{
@@ -291,7 +291,7 @@ void AnimationSystem::deserialize(IDeserializer& deserializer, View<Component> c
 			deserializer.read(path);
 			if (!path.empty())
 			{
-				auto animation = resourceSystem->loadAnimation(path, true);
+				auto animation = resourceSystem->loadSharedAnimation(path);
 				if (animation)
 					animations.emplace(std::move(path), std::move(animation));
 			}

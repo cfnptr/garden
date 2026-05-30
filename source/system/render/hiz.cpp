@@ -63,7 +63,7 @@ static DescriptorSet::Uniforms getUniforms(ID<ImageView> srcBuffer)
 static void createHizDescriptorSets(GraphicsSystem* graphicsSystem, ID<GraphicsPipeline> pipeline,  
 	ID<Image> hizBuffer, vector<ID<DescriptorSet>>& descriptorSets)
 {
-	auto deferredSystem = DeferredRenderSystem::Instance::get();
+	auto deferredSystem = DeferredRenderSystem::getInstance();
 	auto hisBufferView = graphicsSystem->get(hizBuffer);
 	auto mipCount = hisBufferView->getMipCount();
 	descriptorSets.resize(mipCount); auto descriptorSetData = descriptorSets.data();
@@ -84,26 +84,25 @@ static void createHizDescriptorSets(GraphicsSystem* graphicsSystem, ID<GraphicsP
 
 static ID<GraphicsPipeline> createPipeline(ID<Framebuffer> framebuffer)
 {
-	ResourceSystem::GraphicsOptions options;
-	return ResourceSystem::Instance::get()->loadGraphicsPipeline("hiz", framebuffer, options);
+	return ResourceSystem::getInstance()->loadGraphicsPipeline("hiz", framebuffer);
 }
 
 //**********************************************************************************************************************
 HizRenderSystem::HizRenderSystem(bool setSingleton) : Singleton(setSingleton)
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", HizRenderSystem::init);
 }
 void HizRenderSystem::init()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("PreHdrRender", HizRenderSystem::preHdrRender);
 	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", HizRenderSystem::gBufferRecreate);
 }
 
 void HizRenderSystem::downsampleHiz(uint8 mipCount)
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	if (!isEnabled)
 	{
 		if (hizBuffer)
@@ -175,7 +174,7 @@ void HizRenderSystem::preHdrRender()
 
 void HizRenderSystem::gBufferRecreate()
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	graphicsSystem->destroy(descriptorSets); descriptorSets.clear();
 
 	if (hizBuffer)
@@ -206,12 +205,12 @@ ID<GraphicsPipeline> HizRenderSystem::getPipeline()
 ID<Image> HizRenderSystem::getHizBuffer()
 {
 	if (!hizBuffer)
-		hizBuffer = createHizBuffer(GraphicsSystem::Instance::get());
+		hizBuffer = createHizBuffer(GraphicsSystem::getInstance());
 	return hizBuffer;
 }
 const vector<ID<Framebuffer>>& HizRenderSystem::getFramebuffers()
 {
 	if (framebuffers.empty())
-		createHizFramebuffers(GraphicsSystem::Instance::get(), getHizBuffer(), framebuffers);
+		createHizFramebuffers(GraphicsSystem::getInstance(), getHizBuffer(), framebuffers);
 	return framebuffers;
 }

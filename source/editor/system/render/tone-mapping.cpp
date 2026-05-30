@@ -20,12 +20,12 @@ using namespace garden;
 //**********************************************************************************************************************
 ToneMappingEditorSystem::ToneMappingEditorSystem()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", ToneMappingEditorSystem::init);
 }
 void ToneMappingEditorSystem::init()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("PreUiRender", ToneMappingEditorSystem::preUiRender);
 	ECSM_SUBSCRIBE_TO_EVENT("EditorBarToolPP", ToneMappingEditorSystem::editorBarToolPP);
 }
@@ -37,7 +37,7 @@ void ToneMappingEditorSystem::preUiRender()
 
 	if (ImGui::Begin("Tone Mapping", &showWindow, ImGuiWindowFlags_AlwaysAutoResize))
 	{
-		auto toneMappingSystem = ToneMappingSystem::Instance::get();
+		auto toneMappingSystem = ToneMappingSystem::getInstance();
 		auto options = toneMappingSystem->getOptions();
 
 		if (ImGui::Combo("Tone Mapper", &options.toneMapper, TONE_MAPPER_NAMES, TONE_MAPPER_COUNT))
@@ -49,7 +49,7 @@ void ToneMappingEditorSystem::preUiRender()
 		if (options.useLightAbsorption)
 			ImGui::DragFloat3("Absorption Color", &toneMappingSystem->absorptionColor);
 
-		auto graphicsSystem = GraphicsSystem::Instance::get();
+		auto graphicsSystem = GraphicsSystem::getInstance();
 		const auto& commonConstants = graphicsSystem->getCommonConstants();
 		auto emissiveCoeff = commonConstants.emissiveCoeff;
 		if (ImGui::DragFloat("Emissive Coefficient", &emissiveCoeff, 0.1f, 0.0f, FLT_MAX))

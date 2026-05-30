@@ -34,7 +34,7 @@ bool TransformComponent::destroy()
 
 	if (parent)
 	{
-		auto parentTransformView = Manager::Instance::get()->get<TransformComponent>(parent);
+		auto parentTransformView = Manager::getInstance()->get<TransformComponent>(parent);
 		auto parentChildCount = parentTransformView->childCount();
 		auto parentChilds = parentTransformView->childs;
 
@@ -56,7 +56,7 @@ REMOVED_FROM_PARENT:
 
 	if (childs)
 	{
-		auto manager = Manager::Instance::get();
+		auto manager = Manager::getInstance();
 		auto thisChildCount = childCount();
 
 		for (uint32 i = 0; i < thisChildCount; i++)
@@ -79,7 +79,7 @@ void TransformComponent::setActive(bool isActive) noexcept
 
 	selfActive = isActive; // Note: Do not move this setter!
 
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	entityStack.push_back(entity);
 
 	if (isActive)
@@ -133,7 +133,7 @@ void TransformComponent::setParent(ID<Entity> parent)
 	if (this->parent == parent)
 		return;
 
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	#if GARDEN_DEBUG
 	if (parent)
 	{
@@ -200,7 +200,7 @@ bool TransformComponent::tryAddChild(ID<Entity> child)
 	GARDEN_ASSERT(child);
 	GARDEN_ASSERT(child != entity);
 
-	auto childTransformView = Manager::Instance::get()->get<TransformComponent>(child);
+	auto childTransformView = Manager::getInstance()->get<TransformComponent>(child);
 	if (childTransformView->parent)
 		return false;
 
@@ -254,7 +254,7 @@ bool TransformComponent::tryRemoveChild(uint32 index) noexcept
 	for (uint32 j = index + 1; j < thisChildCount; j++)
 		childs[j - 1] = childs[j];
 
-	auto childTransformView = Manager::Instance::get()->get<TransformComponent>(child);
+	auto childTransformView = Manager::getInstance()->get<TransformComponent>(child);
 	childTransformView->parent = {};
 	childTransformView->ancestorsActive = true;
 
@@ -281,7 +281,7 @@ bool TransformComponent::tryRemoveChild(ID<Entity> child) noexcept
 }
 void TransformComponent::removeAllChilds() noexcept
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	auto thisChildCount = childCount();
 
 	for (uint32 i = 0; i < thisChildCount; i++)
@@ -316,7 +316,7 @@ bool TransformComponent::hasAncestor(ID<Entity> ancestor) const noexcept
 	GARDEN_ASSERT(ancestor);
 	GARDEN_ASSERT(ancestor != entity);
 
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	auto nextParent = parent;
 
 	while (nextParent)
@@ -336,7 +336,7 @@ bool TransformComponent::hasDescendant(ID<Entity> descendant) const noexcept
 	if (!childs)
 		return false;
 
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	entityStack.push_back(entity);
 
 	while (!entityStack.empty())
@@ -363,7 +363,7 @@ bool TransformComponent::hasDescendant(ID<Entity> descendant) const noexcept
 //**********************************************************************************************************************
 bool TransformComponent::hasStaticWithDescendants() const noexcept
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	entityStack.push_back(entity);
 
 	while (!entityStack.empty())
@@ -386,7 +386,7 @@ bool TransformComponent::hasStaticWithDescendants() const noexcept
 #if GARDEN_EDITOR
 void TransformComponent::resetUIDs()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	stack<ID<Entity>, vector<ID<Entity>>> childEntities; childEntities.push(entity);
 
 	while (!childEntities.empty())
@@ -406,7 +406,7 @@ void TransformComponent::resetUIDs()
 //**********************************************************************************************************************
 TransformSystem::TransformSystem(bool setSingleton) : Singleton(setSingleton)
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	manager->addGroupSystem<ISerializable>(this);
 	manager->addGroupSystem<IAnimatable>(this);
 }
@@ -416,7 +416,7 @@ void TransformSystem::destroyComponent(ID<Component> instance)
 {
 	auto transform = ID<TransformComponent>(instance);
 	#if GARDEN_EDITOR
-	auto transformEditor = TransformEditorSystem::Instance::tryGet();
+	auto transformEditor = TransformEditorSystem::tryGetInstance();
 	if (transformEditor)
 	{
 		auto componentView = components.get(transform);
@@ -476,7 +476,7 @@ void TransformSystem::serialize(ISerializer& serializer, const View<Component> c
 	uidStringCache.resize(uidStringCache.length() - 1);
 	serializer.write("uid", uidStringCache);
 
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	if (!manager->has<UiTransformComponent>(component->getEntity()))
 	{
 		if (f32x4(componentView->posChildCount, 0.0f) != f32x4::zero)
@@ -562,7 +562,7 @@ void TransformSystem::deserialize(IDeserializer& deserializer, View<Component> c
 }
 void TransformSystem::postDeserialize(IDeserializer& deserializer)
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	for (auto pair : deserializedParents)
 	{
 		auto parent = deserializedEntities.find(pair.second);
@@ -628,7 +628,7 @@ void TransformSystem::destroyRecursive(ID<Entity>& entity)
 	if (!entity)
 		return;
 
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	if (manager->has<DoNotDestroyComponent>(entity))
 		return;
 
@@ -675,7 +675,7 @@ ID<Entity> TransformSystem::duplicateRecursive(ID<Entity> entity)
 {
 	GARDEN_ASSERT(entity);
 
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	GARDEN_ASSERT(!manager->has<DoNotDuplicateComponent>(entity));
 
 	auto entityDuplicate = manager->duplicate(entity);
@@ -716,7 +716,7 @@ ID<Entity> TransformSystem::duplicateRecursive(ID<Entity> entity)
 //**********************************************************************************************************************
 StaticTransformSystem::StaticTransformSystem(bool setSingleton) : Singleton(setSingleton)
 {
-	Manager::Instance::get()->addGroupSystem<ISerializable>(this);
+	Manager::getInstance()->addGroupSystem<ISerializable>(this);
 }
 
 string_view StaticTransformSystem::getComponentName() const

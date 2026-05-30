@@ -37,7 +37,7 @@ enum class UiAnchor : uint8
 	LeftTop,     /**< Aligns interface element to the left top corner of the screen. */
 	RightBottom, /**< Aligns interface element to the right bottom corner of the screen. */
 	RightTop,    /**< Aligns interface element to the right top corner of the screen. */
-	Horizontal,  /**< Aligns interface element to the horizonatl screen line. */
+	Horizontal,  /**< Aligns interface element to the horizontal screen line. */
 	Vertical,    /**< Aligns interface element to the vertical screen line. */
 	Fullscreen,  /**< Aligns interface element to the full screen. */
 	Count        /**< User interface alignment anchor type count. */

@@ -63,9 +63,9 @@ private:
 	uint16 _alignment1 = 0;
 	uint3 localSize = uint3::zero;
 
-	ComputePipeline(const fs::path& path, uint32 maxBindlessCount, bool useAsyncRecording, uint64 pipelineVersion) 
-		noexcept : Pipeline(PipelineType::Compute, path, maxBindlessCount, useAsyncRecording, pipelineVersion) { }
-	ComputePipeline(ComputeCreateData& createData, bool useAsyncRecording);
+	ComputePipeline(const fs::path& path, uint32 maxBindlessCount, uint64 pipelineVersion) 
+		noexcept : Pipeline(PipelineType::Compute, path, maxBindlessCount, pipelineVersion) { }
+	ComputePipeline(ComputeCreateData& createData);
 
 	void createVkInstance(ComputeCreateData& createData);
 
@@ -139,13 +139,11 @@ public:
 	/**
 	 * @brief Creates a new compute pipeline data.
 	 * @warning In most cases you should use @ref GraphicsSystem functions.
-	 * 
 	 * @param[in,out] createData target compute pipeline create data
-	 * @param useAsyncRecording use multithreaded render commands recording
 	 */
-	static ComputePipeline create(ComputePipeline::ComputeCreateData& createData, bool useAsyncRecording)
+	static ComputePipeline create(ComputePipeline::ComputeCreateData& createData)
 	{
-		return ComputePipeline(createData, useAsyncRecording);
+		return ComputePipeline(createData);
 	}
 	/**
 	 * @brief Moves internal compute pipeline objects.

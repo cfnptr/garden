@@ -24,7 +24,7 @@ using namespace garden;
 //**********************************************************************************************************************
 UiTriggerSystem::UiTriggerSystem(bool setSingleton) : Singleton(setSingleton)
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	manager->addGroupSystem<ISerializable>(this);
 	manager->addGroupSystem<IAnimatable>(this);
 
@@ -61,22 +61,22 @@ void UiTriggerSystem::update()
 	if (components.getCount() == 0)
 		return;
 
-	auto inputSystem = InputSystem::Instance::get();
+	auto inputSystem = InputSystem::getInstance();
 	if (inputSystem->cursorCapturers > 0 || inputSystem->getCursorMode() != CursorMode::Normal)
 	{
 		if (currElement)
 		{
-			auto uiTriggerView = Manager::Instance::get()->tryGet<UiTriggerComponent>(currElement);
+			auto uiTriggerView = Manager::getInstance()->tryGet<UiTriggerComponent>(currElement);
 			if (uiTriggerView && !uiTriggerView->onExit.empty())
-				Manager::Instance::get()->tryRunEvent(uiTriggerView->onExit);
+				Manager::getInstance()->tryRunEvent(uiTriggerView->onExit);
 			currElement = {};
 		}
 		return;
 	}
 
 	auto componentData = components.getData();
-	auto threadSystem = ThreadSystem::Instance::tryGet();
-	auto cursorPosition = UiTransformSystem::Instance::get()->getCursorPosition();
+	auto threadSystem = ThreadSystem::tryGetInstance();
+	auto cursorPosition = UiTransformSystem::getInstance()->getCursorPosition();
 	ID<Entity> newElement = {}; float newPosZ = FLT_MAX;
 
 	if (threadSystem && components.getCount() > threadSystem->getForegroundPool().getThreadCount())
@@ -90,7 +90,7 @@ void UiTriggerSystem::update()
 			SET_CPU_ZONE_SCOPED("UI Trigger Update");
 
 			auto itemCount = task.getItemCount();
-			auto manager = Manager::Instance::get();
+			auto manager = Manager::getInstance();
 			auto& threadElement = newElementData[task.getThreadIndex()];
 			auto& newElement = threadElement.first; auto& newPosZ = threadElement.second;
 
@@ -113,7 +113,7 @@ void UiTriggerSystem::update()
 	else
 	{
 		auto componentOccupancy = components.getOccupancy();
-		auto manager = Manager::Instance::get();
+		auto manager = Manager::getInstance();
 
 		for (uint32 i = 0; i < componentOccupancy; i++)
 			triggerUiComponent(manager, newElement, newPosZ, componentData[i], cursorPosition);
@@ -121,7 +121,7 @@ void UiTriggerSystem::update()
 
 	if (newElement)
 	{
-		auto manager = Manager::Instance::get();
+		auto manager = Manager::getInstance();
 		if (newElement == currElement)
 		{
 			auto uiTriggerView = manager->tryGet<UiTriggerComponent>(currElement);
@@ -130,7 +130,7 @@ void UiTriggerSystem::update()
 		}
 		else
 		{
-			auto manager = Manager::Instance::get();
+			auto manager = Manager::getInstance();
 			if (currElement)
 			{
 				auto uiTriggerView = manager->tryGet<UiTriggerComponent>(currElement);
@@ -148,7 +148,7 @@ void UiTriggerSystem::update()
 	{
 		if (currElement)
 		{
-			auto manager = Manager::Instance::get();
+			auto manager = Manager::getInstance();
 			auto uiTriggerView = manager->tryGet<UiTriggerComponent>(currElement);
 			if (uiTriggerView && !uiTriggerView->onExit.empty())
 				manager->tryRunEvent(uiTriggerView->onExit);
@@ -165,7 +165,7 @@ void UiTriggerSystem::destroyComponent(ID<Component> instance)
 	if (currElement == uiTriggerView->getEntity())
 	{
 		if (!uiTriggerView->onExit.empty())
-			Manager::Instance::get()->tryRunEvent(uiTriggerView->onExit);
+			Manager::getInstance()->tryRunEvent(uiTriggerView->onExit);
 		currElement = {};
 	}
 	resetComponent(View<Component>(uiTriggerView), false);

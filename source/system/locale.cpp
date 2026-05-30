@@ -30,12 +30,12 @@ static bool loadLocaleStrings(LocaleSystem::StringMap& strings, string_view modu
 	if (!module.empty()) localePath /= module;
 	localePath /= toString(language); localePath.replace_extension(".txt");
 
-	if (!ResourceSystem::Instance::get()->loadData(localePath, localeData))
+	if (!ResourceSystem::getInstance()->loadData(localePath, localeData))
 		return false;
 
 	istringstream stream(string((const char*)
 		localeData.data(), localeData.size()));
-	localeData = {}; // Cleaning up memory.
+	localeData = {}; // Note: Cleaning up memory.
 
 	string line;
 	while (std::getline(stream, line)) // TODO: get pointer to the line instead of allocating string
@@ -77,7 +77,7 @@ static bool loadLocaleStrings(LocaleSystem::StringMap& strings, string_view modu
 //**********************************************************************************************************************
 LocaleSystem::LocaleSystem(bool setSingleton) : Singleton(setSingleton)
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	manager->registerEvent("LocaleChange");
 	ECSM_SUBSCRIBE_TO_EVENT("PreInit", LocaleSystem::preInit);
 }
@@ -86,7 +86,7 @@ void LocaleSystem::preInit()
 {
 	auto isLanguageSet = false;
 
-	auto settingsSystem = SettingsSystem::Instance::tryGet();
+	auto settingsSystem = SettingsSystem::tryGetInstance();
 	if (settingsSystem)
 	{
 		string languageCode = "-";
@@ -99,7 +99,7 @@ void LocaleSystem::preInit()
 	#if GARDEN_STEAMWORKS_SDK
 	if (!isLanguageSet)
 	{
-		auto steamApiSystem = SteamApiSystem::Instance::tryGet();
+		auto steamApiSystem = SteamApiSystem::tryGetInstance();
 		if (steamApiSystem)
 			loadedLanguage = steamApiSystem->getGameLanguage();
 	}
@@ -138,7 +138,7 @@ void LocaleSystem::setLanguage(Language language)
 
 	loadedLanguage = language;
 	GARDEN_LOG_INFO("Changed localization language: " + string(toString(language)));
-	Manager::Instance::get()->runEvent("LocaleChange");
+	Manager::getInstance()->runEvent("LocaleChange");
 }
 
 string_view LocaleSystem::get(string_view key, bool andModules) const

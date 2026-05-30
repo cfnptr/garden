@@ -28,6 +28,20 @@ class RayTracingPipelineExt;
 
 /**
  * @brief Ray tracing stage container.
+ *
+ *
+ * @details
+ * Ray tracing shader is designed to calculate how light interacts with a virtual environment by simulating the 
+ * physical behavior of individual light rays. Unlike graphics shaders, these dynamically trace paths from the camera 
+ * into the 3D scene, calculating precise intersections with geometry to determine realistic reflections, 
+ * refractions, soft shadows, and global illumination.
+ *
+ * rgen: Generates and launches initial rays into the 3D scene using the acceleration structure.
+ * rint: Custom intersection shader, which determines exactly where ray hits an object.
+ * rahit: Any hit shader executes whenever a ray intersects geometry. (Used for transparency)
+ * rchit: Once the pipeline finds the absolute nearest surface a ray has struck, this shader fires.
+ * rmiss: Miss shader is executed when ray travels through the entire scene without hitting any geometry.
+ * rcall: Callable shader is invoked directly by another RT shader. (Improves RT shaders performance)
  */
 class RayTracingPipeline final : public Pipeline
 {
@@ -101,9 +115,9 @@ private:
 	uint8 callGroupCount = 0;
 	uint8 hitGroupCount = 0;
 
-	RayTracingPipeline(const fs::path& path, uint32 maxBindlessCount, bool useAsyncRecording, uint64 pipelineVersion) 
-		noexcept : Pipeline(PipelineType::RayTracing, path, maxBindlessCount, useAsyncRecording, pipelineVersion) { }
-	RayTracingPipeline(RayTracingCreateData& createData, bool useAsyncRecording);
+	RayTracingPipeline(const fs::path& path, uint32 maxBindlessCount, uint64 pipelineVersion) 
+		noexcept : Pipeline(PipelineType::RayTracing, path, maxBindlessCount, pipelineVersion) { }
+	RayTracingPipeline(RayTracingCreateData& createData);
 
 	void createVkInstance(RayTracingCreateData& createData);
 
@@ -166,25 +180,25 @@ class RayTracingPipelineExt final
 public:
 	/**
 	 * @brief Returns ray tracing pipeline ray generation shader group count.
-	 * @warning In most cases you should use @ref GraphicsPipeline functions.
+	 * @warning In most cases you should use @ref RayTracingPipeline functions.
 	 * @param[in] pipeline target ray tracing pipeline instance
 	 */
 	static uint8& getRayGenGroupCount(RayTracingPipeline& pipeline) { return pipeline.rayGenGroupCount; }
 	/**
 	 * @brief Returns ray tracing pipeline ray miss shader group count.
-	 * @warning In most cases you should use @ref GraphicsPipeline functions.
+	 * @warning In most cases you should use @ref RayTracingPipeline functions.
 	 * @param[in] pipeline target ray tracing pipeline instance
 	 */
 	static uint8& getMissGroupCount(RayTracingPipeline& pipeline) { return pipeline.missGroupCount; }
 	/**
 	 * @brief Returns ray tracing pipeline callable shader group count.
-	 * @warning In most cases you should use @ref GraphicsPipeline functions.
+	 * @warning In most cases you should use @ref RayTracingPipeline functions.
 	 * @param[in] pipeline target ray tracing pipeline instance
 	 */
 	static uint8& getCallGroupCount(RayTracingPipeline& pipeline) { return pipeline.callGroupCount; }
 	/**
 	 * @brief Returns ray tracing pipeline ray hit shader group count.
-	 * @warning In most cases you should use @ref GraphicsPipeline functions.
+	 * @warning In most cases you should use @ref RayTracingPipeline functions.
 	 * @param[in] pipeline target ray tracing pipeline instance
 	 */
 	static uint8& getHitGroupCount(RayTracingPipeline& pipeline) { return pipeline.hitGroupCount; }
@@ -192,13 +206,11 @@ public:
 	/**
 	 * @brief Creates a new ray tracing pipeline data.
 	 * @warning In most cases you should use @ref GraphicsSystem functions.
-	 * 
 	 * @param[in,out] createData target compute pipeline create data
-	 * @param useAsyncRecording use multithreaded render commands recording
 	 */
-	static RayTracingPipeline create(RayTracingPipeline::RayTracingCreateData& createData, bool useAsyncRecording)
+	static RayTracingPipeline create(RayTracingPipeline::RayTracingCreateData& createData)
 	{
-		return RayTracingPipeline(createData, useAsyncRecording);
+		return RayTracingPipeline(createData);
 	}
 	/**
 	 * @brief Moves internal ray tracing pipeline objects.

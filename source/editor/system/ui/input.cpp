@@ -23,12 +23,12 @@ using namespace garden;
 //**********************************************************************************************************************
 UiInputEditorSystem::UiInputEditorSystem(bool setSingleton) : Singleton(setSingleton)
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", UiInputEditorSystem::init);
 }
 void UiInputEditorSystem::init()
 {
-	EditorRenderSystem::Instance::get()->registerEntityInspector<UiInputComponent>(
+	EditorRenderSystem::getInstance()->registerEntityInspector<UiInputComponent>(
 	[this](ID<Entity> entity, bool isOpened)
 	{
 		onEntityInspector(entity, isOpened);
@@ -41,7 +41,7 @@ void UiInputEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	if (!isOpened)
 		return;
 
-	auto uiInputView = Manager::Instance::get()->get<UiInputComponent>(entity);
+	auto uiInputView = Manager::getInstance()->get<UiInputComponent>(entity);
 
 	auto isEnabled = uiInputView->isEnabled();
 	if (ImGui::Checkbox("Enabled", &isEnabled))

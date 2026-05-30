@@ -31,18 +31,18 @@ using namespace garden;
 MeshRenderSystem::MeshRenderSystem(bool useOIT, bool useAsyncRecording, bool useAsyncPreparing, bool setSingleton) :
 	Singleton(setSingleton), hasOIT(useOIT), asyncRecording(useAsyncRecording), asyncPreparing(useAsyncPreparing)
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", MeshRenderSystem::init);
 }
 void MeshRenderSystem::init()
 {
-	auto manager = Manager::Instance::get();
-	if (ForwardRenderSystem::Instance::has())
+	auto manager = Manager::getInstance();
+	if (ForwardRenderSystem::hasInstance())
 	{
 		ECSM_SUBSCRIBE_TO_EVENT("PreForwardRender", MeshRenderSystem::preForwardRender);
 		ECSM_SUBSCRIBE_TO_EVENT("ForwardRender", MeshRenderSystem::forwardRender);
 	}
-	if (DeferredRenderSystem::Instance::has())
+	if (DeferredRenderSystem::hasInstance())
 	{
 		ECSM_SUBSCRIBE_TO_EVENT("PreDeferredRender", MeshRenderSystem::preDeferredRender);
 		ECSM_SUBSCRIBE_TO_EVENT("DeferredRender", MeshRenderSystem::deferredRender);
@@ -70,7 +70,7 @@ void MeshRenderSystem::prepareSystems()
 {
 	SET_CPU_ZONE_SCOPED("Systems Prepare");
 
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	meshSystems.clear();
 
 	#if GARDEN_EDITOR
@@ -114,7 +114,7 @@ static void prepareUnsortedMeshes(f32x4 cameraOffset, f32x4 cameraPosition, cons
 {
 	SET_CPU_ZONE_SCOPED("Unsorted Meshes Prepare");
 
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	auto meshSystem = unsortedBuffer->meshSystem;
 	auto componentSize = meshSystem->getMeshComponentSize();
 	auto componentData = (uint8*)meshSystem->getMeshComponentPool().getData();
@@ -192,7 +192,7 @@ static void prepareSortedMeshes(f32x4 cameraOffset, f32x4 cameraPosition, const 
 {
 	SET_CPU_ZONE_SCOPED("Sorted Meshes Prepare");
 
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	auto meshSystem = sortedBuffer->meshSystem;
 	auto componentSize = meshSystem->getMeshComponentSize();
 	auto componentData = (uint8*)meshSystem->getMeshComponentPool().getData();
@@ -266,7 +266,7 @@ void MeshRenderSystem::sortMeshes() // TODO: We can use here async bitonic sorti
 {
 	SET_CPU_ZONE_SCOPED("Meshes Sort");
 
-	auto threadSystem = asyncPreparing ? ThreadSystem::Instance::tryGet() : nullptr;
+	auto threadSystem = asyncPreparing ? ThreadSystem::tryGetInstance() : nullptr;
 	for (uint32 i = 0; i < unsortedBufferCount; i++)
 	{
 		auto unsortedBuffer = unsortedBuffers[i];
@@ -394,9 +394,9 @@ void MeshRenderSystem::prepareMeshes(const Frustum& viewFrustum,
 	if (uiSortedMeshes.size() < uiMeshMaxCount)
 		uiSortedMeshes.resize(uiMeshMaxCount);
 
-	auto manager = Manager::Instance::get();
-	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto threadSystem = asyncPreparing ? ThreadSystem::Instance::tryGet() : nullptr;
+	auto manager = Manager::getInstance();
+	auto graphicsSystem = GraphicsSystem::getInstance();
+	auto threadSystem = asyncPreparing ? ThreadSystem::tryGetInstance() : nullptr;
 	const auto& cc = graphicsSystem->getCommonConstants();
 	auto cameraPosition = (f32x4)cc.cameraPos;
 	uint32 unsortedBufferIndex = 0, sortedBufferIndex = 0;
@@ -557,7 +557,7 @@ void MeshRenderSystem::renderUnsorted(const f32x4x4& viewProj, MeshRenderType re
 {
 	SET_CPU_ZONE_SCOPED("Unsorted Mesh Render");
 
-	auto threadSystem = asyncRecording ? ThreadSystem::Instance::tryGet() : nullptr;
+	auto threadSystem = asyncRecording ? ThreadSystem::tryGetInstance() : nullptr;
 	for (uint32 bufferIndex = 0; bufferIndex < unsortedBufferCount; bufferIndex++)
 	{
 		auto unsortedBuffer = unsortedBuffers[bufferIndex];
@@ -669,7 +669,7 @@ void MeshRenderSystem::renderSorted(const f32x4x4& viewProj, MeshRenderType rend
 		sortedBuffer->instanceCount.store(0); // Note: Reusing instanceCount for rendering.
 	}
 
-	auto threadSystem = asyncRecording ? ThreadSystem::Instance::tryGet() : nullptr;
+	auto threadSystem = asyncRecording ? ThreadSystem::tryGetInstance() : nullptr;
 	if (threadSystem)
 	{
 		auto& threadPool = threadSystem->getForegroundPool();
@@ -796,11 +796,11 @@ void MeshRenderSystem::renderShadows()
 {
 	SET_CPU_ZONE_SCOPED("Shadows Mesh Render");
 
-	auto systemGroup = Manager::Instance::get()->tryGetSystemGroup<IShadowMeshRenderSystem>();
+	auto systemGroup = Manager::getInstance()->tryGetSystemGroup<IShadowMeshRenderSystem>();
 	if (!systemGroup)
 		return;
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	for (auto system : *systemGroup)
 	{
 		auto shadowSystem = dynamic_cast<IShadowMeshRenderSystem*>(system);
@@ -850,7 +850,7 @@ void MeshRenderSystem::renderShadows()
 static f32x4x4 calcUiProjView() noexcept
 {
 	auto halfSize = float2(0.5f);
-	auto uiTransformSystem = UiTransformSystem::Instance::tryGet();
+	auto uiTransformSystem = UiTransformSystem::tryGetInstance();
 	if (uiTransformSystem)
 		halfSize *= uiTransformSystem->getUiSize();
 	return (f32x4x4)calcOrthoProjRevZ(float2(-halfSize.x, halfSize.x), 
@@ -865,7 +865,7 @@ void MeshRenderSystem::preForwardRender()
 	renderShadows();
 
 	auto uiFrustum = Frustum(calcUiProjView());
-	const auto& cc = GraphicsSystem::Instance::get()->getCommonConstants();
+	const auto& cc = GraphicsSystem::getInstance()->getCommonConstants();
 	prepareMeshes(Frustum(cc.viewProj), &uiFrustum, f32x4::zero, -1);
 }
 
@@ -873,7 +873,7 @@ void MeshRenderSystem::forwardRender()
 {
 	SET_CPU_ZONE_SCOPED("Mesh Forward Render");
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	const auto& cc = graphicsSystem->getCommonConstants();
 	renderUnsorted(cc.viewProj, MeshRenderType::Opaque, -1);
 	renderUnsorted(cc.viewProj, MeshRenderType::Color, -1);
@@ -898,21 +898,21 @@ void MeshRenderSystem::preDeferredRender()
 	renderShadows();
 
 	auto uiFrustum = Frustum(calcUiProjView());
-	const auto& cc = GraphicsSystem::Instance::get()->getCommonConstants();
+	const auto& cc = GraphicsSystem::getInstance()->getCommonConstants();
 	prepareMeshes(Frustum(cc.viewProj), &uiFrustum, f32x4::zero, -1);
 }
 void MeshRenderSystem::deferredRender()
 {
 	SET_CPU_ZONE_SCOPED("Mesh Deferred Render");
 
-	const auto& cc = GraphicsSystem::Instance::get()->getCommonConstants();
+	const auto& cc = GraphicsSystem::getInstance()->getCommonConstants();
 	renderUnsorted(cc.viewProj, MeshRenderType::Opaque, -1);
 }
 void MeshRenderSystem::dsHdrRender()
 {
 	SET_CPU_ZONE_SCOPED("Mesh Depth/Stencil HDR Render");
 
-	const auto& cc = GraphicsSystem::Instance::get()->getCommonConstants();
+	const auto& cc = GraphicsSystem::getInstance()->getCommonConstants();
 	renderUnsorted(cc.viewProj, MeshRenderType::Color, -1);
 }
 void MeshRenderSystem::preRefrRender()
@@ -921,7 +921,7 @@ void MeshRenderSystem::preRefrRender()
 
 	if (!hasAnyRefr)
 		return;
-	DeferredRenderSystem::Instance::get()->markAnyRefracted();
+	DeferredRenderSystem::getInstance()->markAnyRefracted();
 }
 void MeshRenderSystem::refrRender()
 {
@@ -930,7 +930,7 @@ void MeshRenderSystem::refrRender()
 	if (isNonTranslucent)
 		return;
 
-	const auto& cc = GraphicsSystem::Instance::get()->getCommonConstants();
+	const auto& cc = GraphicsSystem::getInstance()->getCommonConstants();
 	renderUnsorted(cc.viewProj, MeshRenderType::Refracted, -1);
 }
 void MeshRenderSystem::transRender()
@@ -940,7 +940,7 @@ void MeshRenderSystem::transRender()
 	if (isNonTranslucent)
 		return;
 
-	const auto& cc = GraphicsSystem::Instance::get()->getCommonConstants();
+	const auto& cc = GraphicsSystem::getInstance()->getCommonConstants();
 	renderSorted(cc.viewProj, MeshRenderType::Translucent, -1);
 }
 void MeshRenderSystem::preTransDepthRender()
@@ -949,7 +949,7 @@ void MeshRenderSystem::preTransDepthRender()
 
 	if (!hasAnyTD)
 		return;
-	DeferredRenderSystem::Instance::get()->markAnyTransDepth();
+	DeferredRenderSystem::getInstance()->markAnyTransDepth();
 }
 void MeshRenderSystem::transDepthRender()
 {
@@ -958,7 +958,7 @@ void MeshRenderSystem::transDepthRender()
 	if (isNonTranslucent)
 		return;
 
-	const auto& cc = GraphicsSystem::Instance::get()->getCommonConstants();
+	const auto& cc = GraphicsSystem::getInstance()->getCommonConstants();
 	renderUnsorted(cc.viewProj, MeshRenderType::TransDepth, -1);
 }
 void MeshRenderSystem::preOitRender()
@@ -967,7 +967,7 @@ void MeshRenderSystem::preOitRender()
 
 	if (!hasAnyOIT)
 		return;
-	DeferredRenderSystem::Instance::get()->markAnyOIT();
+	DeferredRenderSystem::getInstance()->markAnyOIT();
 }
 void MeshRenderSystem::oitRender()
 {
@@ -976,14 +976,14 @@ void MeshRenderSystem::oitRender()
 	if (isNonTranslucent)
 		return;
 
-	const auto& cc = GraphicsSystem::Instance::get()->getCommonConstants();
+	const auto& cc = GraphicsSystem::getInstance()->getCommonConstants();
 	renderUnsorted(cc.viewProj, MeshRenderType::OIT, -1);
 }
 void MeshRenderSystem::uiRender()
 {
 	SET_CPU_ZONE_SCOPED("Mesh UI Render");
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	renderSorted(calcUiProjView(), MeshRenderType::UI, -1);
 }
 

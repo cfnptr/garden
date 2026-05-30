@@ -189,30 +189,32 @@ void VulkanCommandBuffer::addBufferBarrier(VulkanAPI* vulkanAPI,
 //**********************************************************************************************************************
 static void addImageBarrier(VulkanAPI* vulkanAPI, Image::LayoutState& oldState, 
 	Image::LayoutState& newState, VkImage vkImage, uint32 baseMip, uint32 mipCount, 
-	uint32 baseLayer, uint32 layerCount, vk::ImageAspectFlags aspectFlags)
+	uint32 baseLayer, uint32 layerCount, vk::ImageAspectFlags aspectFlags, bool doNotCare)
 {
 	vk::ImageSubresourceRange subresourceRange(aspectFlags, baseMip, mipCount, baseLayer, layerCount);
+	auto oldLayout = doNotCare ? vk::ImageLayout::eUndefined : vk::ImageLayout(oldState.layout);
+
 	if (vulkanAPI->features.synchronization2)
 	{
 		vulkanAPI->imageMemoryBarriers2.push_back(vk::ImageMemoryBarrier2(
 			vk::PipelineStageFlags2(oldState.stage), vk::AccessFlags2(oldState.access),
 			vk::PipelineStageFlags2(newState.stage), vk::AccessFlags2(newState.access),
-			vk::ImageLayout(oldState.layout), vk::ImageLayout(newState.layout),
-			VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED, vkImage, subresourceRange));
+			oldLayout, vk::ImageLayout(newState.layout), VK_QUEUE_FAMILY_IGNORED, 
+			VK_QUEUE_FAMILY_IGNORED, vkImage, subresourceRange));
 	}
 	else
 	{
 		fixupLegacyVkState(oldState); fixupLegacyVkState(newState);
 		vulkanAPI->imageMemoryBarriers.push_back(vk::ImageMemoryBarrier(
 			vk::AccessFlags((uint32)oldState.access), vk::AccessFlags((uint32)newState.access),
-			vk::ImageLayout(oldState.layout), vk::ImageLayout(newState.layout),
-			VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED, vkImage, subresourceRange));
+			oldLayout, vk::ImageLayout(newState.layout), VK_QUEUE_FAMILY_IGNORED, 
+			VK_QUEUE_FAMILY_IGNORED, vkImage, subresourceRange));
 		vulkanAPI->oldPipelineStage |= (uint32)oldState.stage;
 		vulkanAPI->newPipelineStage |= (uint32)newState.stage;
 	}
 }
 void VulkanCommandBuffer::addImageBarrier(VulkanAPI* vulkanAPI, 
-	Image::LayoutState& newImageState, ID<ImageView> imageView)
+	Image::LayoutState& newImageState, ID<ImageView> imageView, bool doNotCare)
 {
 	auto view = vulkanAPI->imageViewPool.get(imageView);
 	auto image = vulkanAPI->imagePool.get(view->getImage());
@@ -220,8 +222,9 @@ void VulkanCommandBuffer::addImageBarrier(VulkanAPI* vulkanAPI,
 
 	if (VulkanCommandBuffer::isDifferentState(oldImageState, newImageState))
 	{
-		::addImageBarrier(vulkanAPI, oldImageState, newImageState, (VkImage)ResourceExt::getInstance(**image), 
-			view->getBaseMip(), 1, view->getBaseLayer(), 1, (vk::ImageAspectFlags)ImageViewExt::getAspectFlags(**view));
+		::addImageBarrier(vulkanAPI, oldImageState, newImageState, 
+			(VkImage)ResourceExt::getInstance(**image), view->getBaseMip(), 1, view->getBaseLayer(), 
+			1, (vk::ImageAspectFlags)ImageViewExt::getAspectFlags(**view), doNotCare);
 	}
 
 	imageView = oldImageState.view;
@@ -231,8 +234,8 @@ void VulkanCommandBuffer::addImageBarrier(VulkanAPI* vulkanAPI,
 	ImageExt::isFullBarrier(**image) = image->getMipCount() == 1 && image->getLayerCount() == 1;
 }
 
-static void addImageBarriers(VulkanAPI* vulkanAPI, Image::LayoutState& newImageState, 
-	ID<Image> image, uint8 baseMip, uint8 mipCount, uint32 baseLayer, uint32 layerCount)
+static void addImageBarriers(VulkanAPI* vulkanAPI, Image::LayoutState& newImageState, ID<Image> image, 
+	uint8 baseMip, uint8 mipCount, uint32 baseLayer, uint32 layerCount, bool doNotCare)
 {
 	auto imageView = vulkanAPI->imagePool.get(image);
 	auto vkImage = (VkImage)ResourceExt::getInstance(**imageView);
@@ -246,7 +249,7 @@ static void addImageBarriers(VulkanAPI* vulkanAPI, Image::LayoutState& newImageS
 		if (VulkanCommandBuffer::isDifferentState(oldImageState, newImageState))
 		{
 			addImageBarrier(vulkanAPI, oldImageState, newImageState, 
-				vkImage, 0, mipCount, 0, layerCount, aspectFlags);
+				vkImage, 0, mipCount, 0, layerCount, aspectFlags, doNotCare);
 		}
 
 		auto& barrierStates = ImageExt::getBarrierStates(**imageView);
@@ -267,8 +270,8 @@ static void addImageBarriers(VulkanAPI* vulkanAPI, Image::LayoutState& newImageS
 				auto& oldImageState = vulkanAPI->getImageState(image, layer, mip);
 				if (VulkanCommandBuffer::isDifferentState(oldImageState, newImageState))
 				{
-					addImageBarrier(vulkanAPI, oldImageState, 
-						newImageState, vkImage, mip, 1, layer, 1, aspectFlags);
+					addImageBarrier(vulkanAPI, oldImageState, newImageState, 
+						vkImage, mip, 1, layer, 1, aspectFlags, doNotCare);
 				}
 
 				auto imageView = oldImageState.view;
@@ -282,13 +285,13 @@ static void addImageBarriers(VulkanAPI* vulkanAPI, Image::LayoutState& newImageS
 
 //**********************************************************************************************************************
 void VulkanCommandBuffer::addDescriptorSetBarriers(VulkanAPI* vulkanAPI, 
-	const DescriptorSet::Range* descriptorSetRanges, uint32 rangeCount)
+	const DescriptorSet::Range* ranges, uint32 rangeCount)
 {
 	SET_CPU_ZONE_SCOPED("Descriptor Set Barriers Add");
 
 	for (uint8 i = 0; i < rangeCount; i++)
 	{
-		auto descriptorSetRange = descriptorSetRanges[i];
+		auto descriptorSetRange = ranges[i];
 		auto setCount = descriptorSetRange.offset + descriptorSetRange.count;
 		auto descriptorSetView = vulkanAPI->descriptorSetPool.get(descriptorSetRange.set);
 		const auto barriers = DescriptorSetExt::getBarriers(**descriptorSetView).data();
@@ -310,7 +313,7 @@ void VulkanCommandBuffer::addDescriptorSetBarriers(VulkanAPI* vulkanAPI,
 				{
 					auto imageView = vulkanAPI->imageViewPool.get(barrierState.view);
 					addImageBarriers(vulkanAPI, barrierState, imageView->getImage(), imageView->getBaseMip(), 
-						imageView->getMipCount(), imageView->getBaseLayer(), imageView->getLayerCount());
+						imageView->getMipCount(), imageView->getBaseLayer(), imageView->getLayerCount(), false);
 				}
 			}
 		}
@@ -737,7 +740,9 @@ void VulkanCommandBuffer::processCommand(const BeginRenderPassCommand& command)
 			vk::ImageLayout::eColorAttachmentOptimal, {}, nullptr, 
 			vk::ImageLayout::eUndefined, loadOperation, storeOperation, clearValue);
 		colorAttachmentData[i] = colorAttachmentInfo;
-		addImageBarrier(vulkanAPI, newImageState, colorAttachment.imageView);
+
+		auto doNotCare = colorAttachment.loadOperation != Framebuffer::LoadOp::Load;
+		addImageBarrier(vulkanAPI, newImageState, colorAttachment.imageView, doNotCare);
 	}
 
 	auto depthStencilAttachment = framebufferView->getDepthStencilAttachment();
@@ -821,8 +826,9 @@ void VulkanCommandBuffer::processCommand(const BeginRenderPassCommand& command)
 			stencilAttachmentInfoPtr = &depthStencilAttachmentInfo;
 		}
 
+		auto doNotCare = depthStencilAttachment.loadOperation != Framebuffer::LoadOp::Load;
 		newImageState.layout = (uint32)depthStencilAttachmentInfo.imageLayout;
-		addImageBarrier(vulkanAPI, newImageState, depthStencilAttachment.imageView);
+		addImageBarrier(vulkanAPI, newImageState, depthStencilAttachment.imageView, doNotCare);
 	}
 
 	processPipelineBarriers();
@@ -950,14 +956,13 @@ void VulkanCommandBuffer::processCommand(const BindDescriptorSetsCommand& comman
 	SET_CPU_ZONE_SCOPED("BindDescriptorSets Command Process");
 
 	auto rangeCount = command.rangeCount;
-	auto descriptorSetRanges = (const DescriptorSet::Range*)(
-		(const uint8*)&command + sizeof(BindDescriptorSetsCommandBase));
+	auto ranges = (const DescriptorSet::Range*)((const uint8*)&command + sizeof(BindDescriptorSetsCommandBase));
 	auto& descriptorSets = vulkanAPI->bindDescriptorSets[0];
 	// TODO: maybe detect already bound descriptor sets?
 
 	for (uint8 i = 0; i < rangeCount; i++)
 	{
-		auto descriptorSetRange = descriptorSetRanges[i];
+		auto descriptorSetRange = ranges[i];
 		auto descriptorSet = vulkanAPI->descriptorSetPool.get(descriptorSetRange.set);
 		auto instance = (vk::DescriptorSet*)ResourceExt::getInstance(**descriptorSet);
 
@@ -970,7 +975,7 @@ void VulkanCommandBuffer::processCommand(const BindDescriptorSetsCommand& comman
 		else descriptorSets.push_back((VkDescriptorSet)instance);
 	}
 
-	auto descriptorSet = vulkanAPI->descriptorSetPool.get(descriptorSetRanges[0].set);
+	auto descriptorSet = vulkanAPI->descriptorSetPool.get(ranges[0].set);
 	auto pipelineView = vulkanAPI->getPipelineView(descriptorSet->getPipelineType(), descriptorSet->getPipeline());
 	auto pipelineLayout = (VkPipelineLayout)PipelineExt::getLayout(**pipelineView);
 
@@ -1190,7 +1195,8 @@ void VulkanCommandBuffer::processCommand(const ClearImageCommand& command)
 		auto layerCount = region.layerCount == 0 ? imageView->getLayerCount() : region.layerCount;
 		imageClearData[i] = vk::ImageSubresourceRange(
 			aspectFlags, region.baseMip, mipCount, region.baseLayer, layerCount);
-		addImageBarriers(vulkanAPI, newImageState, image, region.baseMip, mipCount, region.baseLayer, layerCount);
+		addImageBarriers(vulkanAPI, newImageState, image, region.baseMip, 
+			mipCount, region.baseLayer, layerCount, true);
 	}
 	processPipelineBarriers();
 
@@ -1257,20 +1263,25 @@ void VulkanCommandBuffer::processCommand(const CopyImageCommand& command)
 		vk::Offset3D srcOffset(region.srcOffset.x, region.srcOffset.y, region.srcOffset.z);
 		vk::Offset3D dstOffset(region.dstOffset.x, region.dstOffset.y, region.dstOffset.z);
 
-		vk::Extent3D extent;
+		vk::Extent3D extent; bool isFullCopy;
 		if (region.extent == uint3::zero)
 		{
 			auto mipImageSize = calcSizeAtMip3(srcImage->getSize(), region.srcMipLevel);
 			extent = vk::Extent3D(mipImageSize.getX(), mipImageSize.getY(), 
 				srcImage->getType() == Image::Type::Texture3D ? mipImageSize.getZ() : 1);
+			isFullCopy = true;
 		}
-		else extent = vk::Extent3D(region.extent.x, region.extent.y, region.extent.z);
+		else
+		{
+			extent = vk::Extent3D(region.extent.x, region.extent.y, region.extent.z);
+			isFullCopy = false;
+		}
 
 		imageCopyData[i] = vk::ImageCopy(srcSubresource, srcOffset, dstSubresource, dstOffset, extent);
 		addImageBarriers(vulkanAPI, newSrcImageState, source, region.srcMipLevel, 
-			1, region.srcBaseLayer, srcSubresource.layerCount);
+			1, region.srcBaseLayer, srcSubresource.layerCount, false);
 		addImageBarriers(vulkanAPI, newDstImageState, destination, region.dstMipLevel, 
-			1, region.dstBaseLayer, dstSubresource.layerCount);
+			1, region.dstBaseLayer, dstSubresource.layerCount, isFullCopy);
 	}
 	processPipelineBarriers();
 
@@ -1315,20 +1326,25 @@ void VulkanCommandBuffer::processCommand(const CopyBufferImageCommand& command)
 		imageSubresource.layerCount = region.imageLayerCount == 0 ? imageView->getLayerCount() : region.imageLayerCount;
 		vk::Offset3D dstOffset(region.imageOffset.x, region.imageOffset.y, region.imageOffset.z);
 
-		vk::Extent3D dstExtent;
+		vk::Extent3D dstExtent; bool isFullCopy;
 		if (region.imageExtent == uint3::zero)
 		{
 			auto mipImageSize = calcSizeAtMip3(imageView->getSize(), region.imageMipLevel);
 			dstExtent = vk::Extent3D(mipImageSize.getX(), mipImageSize.getY(), 
 				imageView->getType() == Image::Type::Texture3D ? mipImageSize.getZ() : 1);
+			isFullCopy = true;
 		}
-		else dstExtent = vk::Extent3D(region.imageExtent.x, region.imageExtent.y, region.imageExtent.z);
+		else
+		{
+			dstExtent = vk::Extent3D(region.imageExtent.x, region.imageExtent.y, region.imageExtent.z);
+			isFullCopy = false;
+		}
 
 		bufferImageCopyData[i] = vk::BufferImageCopy((vk::DeviceSize)region.bufferOffset,
 			region.bufferRowLength, region.bufferImageHeight, imageSubresource, dstOffset, dstExtent);
 		addBufferBarrier(vulkanAPI, newBufferState, buffer);
 		addImageBarriers(vulkanAPI, newImageState, image, region.imageMipLevel, 
-			1, region.imageBaseLayer, imageSubresource.layerCount);
+			1, region.imageBaseLayer, imageSubresource.layerCount, isFullCopy);
 	}
 	processPipelineBarriers();
 
@@ -1380,10 +1396,11 @@ void VulkanCommandBuffer::processCommand(const BlitImageCommand& command)
 		vk::ImageSubresourceLayers dstSubresource(dstAspectFlags, region.dstMipLevel, region.dstBaseLayer);
 		srcSubresource.layerCount = dstSubresource.layerCount =
 			region.layerCount == 0 ? srcImage->getLayerCount() : region.layerCount;
-		array<vk::Offset3D, 2> srcBounds;
+
+		array<vk::Offset3D, 2> srcBounds, dstBounds;
 		srcBounds[0] = vk::Offset3D(region.srcOffset.x, region.srcOffset.y, region.srcOffset.z);
-		array<vk::Offset3D, 2> dstBounds;
 		dstBounds[0] = vk::Offset3D(region.dstOffset.x, region.dstOffset.y, region.dstOffset.z);
+		bool isFullBlit;
 
 		if (region.srcExtent == uint3::zero)
 		{
@@ -1398,14 +1415,19 @@ void VulkanCommandBuffer::processCommand(const BlitImageCommand& command)
 			auto mipImageSize = calcSizeAtMip3(dstImage->getSize(), region.dstMipLevel);
 			dstBounds[1] = vk::Offset3D(mipImageSize.getX(), mipImageSize.getY(), 
 				dstImage->getType() == Image::Type::Texture3D ? mipImageSize.getZ() : 1);
+			isFullBlit = true;
 		}
-		else dstBounds[1] = vk::Offset3D(region.dstExtent.x, region.dstExtent.y, region.dstExtent.z);
+		else
+		{
+			dstBounds[1] = vk::Offset3D(region.dstExtent.x, region.dstExtent.y, region.dstExtent.z);
+			isFullBlit = false;
+		}
 
 		imageBlitData[i] = vk::ImageBlit(srcSubresource, srcBounds, dstSubresource, dstBounds);
 		addImageBarriers(vulkanAPI, newSrcImageState, source, region.srcMipLevel, 
-			1, region.srcBaseLayer, srcSubresource.layerCount);
+			1, region.srcBaseLayer, srcSubresource.layerCount, false);
 		addImageBarriers(vulkanAPI, newDstImageState, destination, region.dstMipLevel, 
-			1, region.dstBaseLayer, dstSubresource.layerCount);
+			1, region.dstBaseLayer, dstSubresource.layerCount, isFullBlit);
 	}
 	processPipelineBarriers();
 

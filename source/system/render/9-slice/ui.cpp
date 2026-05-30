@@ -20,7 +20,7 @@ using namespace garden;
 Ui9SliceSystem::Ui9SliceSystem(bool setSingleton) : 
 	NineSliceCompAnimSystem("9-slice/translucent"), Singleton(setSingleton)
 {
-	Manager::Instance::get()->addGroupSystem<IMeshRenderSystem>(this);
+	Manager::getInstance()->addGroupSystem<IMeshRenderSystem>(this);
 }
 
 string_view Ui9SliceSystem::getComponentName() const
@@ -43,7 +43,7 @@ void Ui9SliceSystem::beginDrawAsync(int32 taskIndex)
 void Ui9SliceSystem::prepareDraw(const f32x4x4& viewProj, uint32 drawCount, uint32 instanceCount, int8 shadowPass)
 {
 	SpriteRenderSystem::prepareDraw(viewProj, drawCount, instanceCount, shadowPass);
-	uiScissorSystem = UiScissorSystem::Instance::tryGet();
+	uiScissorSystem = UiScissorSystem::tryGetInstance();
 }
 void Ui9SliceSystem::drawAsync(MeshRenderComponent* meshRenderView, 
 	const f32x4x4& viewProj, const f32x4x4& model, uint32 instanceIndex, int32 taskIndex)

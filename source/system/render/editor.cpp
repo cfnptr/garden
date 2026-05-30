@@ -37,7 +37,7 @@ using namespace garden;
 //**********************************************************************************************************************
 EditorRenderSystem::EditorRenderSystem(bool setSingleton) : Singleton(setSingleton)
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	manager->registerEvent("EditorPlayStart");
 	manager->registerEvent("EditorPlayStop");
 	manager->registerEvent("EditorBarFile");
@@ -50,10 +50,10 @@ EditorRenderSystem::EditorRenderSystem(bool setSingleton) : Singleton(setSinglet
 }
 void EditorRenderSystem::init()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("PreUiRender", EditorRenderSystem::preUiRender);
 
-	auto settingsSystem = SettingsSystem::Instance::get();
+	auto settingsSystem = SettingsSystem::getInstance();
 	if (settingsSystem)
 		settingsSystem->getFloat("editor.unitScale", unitScale);
 }
@@ -64,14 +64,14 @@ static void renderSceneSelector(EditorRenderSystem* editorSystem, fs::path& expo
 	editorSystem->openFileSelector([&](const fs::path& selectedFile)
 	{
 		exportScenePath = selectedFile; exportScenePath.replace_extension();
-		ResourceSystem::Instance::get()->loadScene(exportScenePath);
+		ResourceSystem::getInstance()->loadScene(exportScenePath);
 	},
-	AppInfoSystem::Instance::get()->getResourcesPath() / "scenes", extensions);
+	AppInfoSystem::getInstance()->getResourcesPath() / "scenes", extensions);
 }
 
 void EditorRenderSystem::showMainMenuBar()
 {
-	if (InputSystem::Instance::get()->getCursorMode() == CursorMode::Locked)
+	if (InputSystem::getInstance()->getCursorMode() == CursorMode::Locked)
 		return;
 
 	ImGui::BeginMainMenuBar();
@@ -88,10 +88,10 @@ void EditorRenderSystem::showMainMenuBar()
 		ImGui::EndMenu();
 	}
 
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	if (ImGui::BeginMenu("File"))
 	{
-		auto hasTransformSystem = TransformSystem::Instance::has();
+		auto hasTransformSystem = TransformSystem::hasInstance();
 		if (hasTransformSystem)
 		{
 			if (ImGui::MenuItem("New Scene"))
@@ -167,7 +167,7 @@ void EditorRenderSystem::showMainMenuBar()
 		setPlaying(!playing);
 	ImGui::PopStyleColor(3);
 
-	auto inputSystem = InputSystem::Instance::get();
+	auto inputSystem = InputSystem::getInstance();
 	auto fps = 1.0 / (inputSystem->getDeltaTime() / inputSystem->timeMultiplier);
 	auto stats = "ENT: " + to_string(manager->getEntities().getCount()) + 
 		" | FPS: " + to_string((int32)((lastFps + fps) * 0.5));
@@ -178,7 +178,7 @@ void EditorRenderSystem::showMainMenuBar()
 	ImGui::SameLine(rightOffset);
 	ImGui::Text("%s", stats.c_str());
 
-	auto threadSystem = ThreadSystem::Instance::tryGet();
+	auto threadSystem = ThreadSystem::tryGetInstance();
 	if (threadSystem)
 	{
 		auto& threadPool = threadSystem->getBackgroundPool();
@@ -220,7 +220,7 @@ void EditorRenderSystem::showAboutWindow()
 		ImGui::Text("Creator: Nikita Fediuchin");
 		ImGui::Text("Version: %s", engineVersion.c_str());
 
-		auto appInfoSystem = AppInfoSystem::Instance::tryGet();
+		auto appInfoSystem = AppInfoSystem::tryGetInstance();
 		if (appInfoSystem)
 		{
 			auto appVersion = appInfoSystem->getVersion().toString3();
@@ -274,9 +274,9 @@ void EditorRenderSystem::showOptionsWindow()
 {
 	if (ImGui::Begin("Options", &optionsWindow))
 	{
-		auto manager = Manager::Instance::get();
-		auto graphicsSystem = GraphicsSystem::Instance::get();
-		auto settingsSystem = SettingsSystem::Instance::tryGet();
+		auto manager = Manager::getInstance();
+		auto graphicsSystem = GraphicsSystem::getInstance();
+		auto settingsSystem = SettingsSystem::tryGetInstance();
 
 		if (ImGui::Checkbox("V-Sync", &graphicsSystem->useVsync))
 		{
@@ -369,7 +369,7 @@ void EditorRenderSystem::showOptionsWindow()
 		}
 		ImGui::EndDisabled();
 
-		auto uiTransformSystem = UiTransformSystem::Instance::tryGet();
+		auto uiTransformSystem = UiTransformSystem::tryGetInstance();
 		if (uiTransformSystem)
 		{
 			if (ImGui::DragFloat("UI Scale", &uiTransformSystem->uiScale, 0.01f, 0.001f, FLT_MAX))
@@ -393,7 +393,7 @@ void EditorRenderSystem::showOptionsWindow()
 			ImGui::EndTooltip();
 		}
 
-		auto localeSystem = LocaleSystem::Instance::tryGet();
+		auto localeSystem = LocaleSystem::tryGetInstance();
 		if (localeSystem)
 		{
 			auto language = localeSystem->getLanguage();
@@ -406,7 +406,7 @@ void EditorRenderSystem::showOptionsWindow()
 		}
 		ImGui::Spacing();
 
-		auto appInfoSystem = AppInfoSystem::Instance::tryGet();
+		auto appInfoSystem = AppInfoSystem::tryGetInstance();
 		if (appInfoSystem && ImGui::CollapsingHeader("Storage"))
 		{
 			ImGui::Indent();
@@ -463,7 +463,7 @@ static void renderWordNode(const ComponentEntry::Nodes& nodes, ID<Entity> select
 		if (pair.second.nodes.empty())
 		{
 			if (ImGui::MenuItem(pair.first.c_str()))
-				Manager::Instance::get()->add(selectedEntity, pair.second.componentType);
+				Manager::getInstance()->add(selectedEntity, pair.second.componentType);
 		}
 		else
 		{
@@ -478,7 +478,7 @@ static void renderWordNode(const ComponentEntry::Nodes& nodes, ID<Entity> select
 static void renderAddComponent(const EditorRenderSystem::EntityInspectors& entityInspectors, 
 	ID<Entity> selectedEntity, uint32& itemCount)
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	const auto& componentTypes = manager->getComponentTypes();
 	static ComponentEntry::Nodes wordNodes;
 
@@ -555,7 +555,7 @@ static bool renderInspectorWindowPopup(const EditorRenderSystem::EntityInspector
 {
 	if (ImGui::BeginPopupContextWindow(nullptr, ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems))
 	{
-		auto manager = Manager::Instance::get();
+		auto manager = Manager::getInstance();
 		const auto& componentTypes = manager->getComponentTypes();
 
 		if (ImGui::BeginMenu("Add Component", !componentTypes.empty()))
@@ -609,14 +609,14 @@ static bool renderInspectorWindowPopup(const EditorRenderSystem::EntityInspector
 		}
 		if (ImGui::MenuItem("Destroy Entity", nullptr, false, !manager->has<DoNotDestroyComponent>(selectedEntity)))
 		{
-			TransformSystem::Instance::get()->destroyRecursive(selectedEntity);
+			TransformSystem::getInstance()->destroyRecursive(selectedEntity);
 			ImGui::EndPopup();
 			return false;
 		}
 
 		try
 		{
-			auto manager = Manager::Instance::get();
+			auto manager = Manager::getInstance();
 			auto& componentNames = manager->getComponentNames();
 			JsonDeserializer jsonDeserializer = JsonDeserializer(string_view(ImGui::GetClipboardText()));
 			string jsonComponentName; jsonDeserializer.read(".type", jsonComponentName);
@@ -655,7 +655,7 @@ static bool renderInspectorComponentPopup(ID<Entity>& selectedEntity,
 	{
 		if (ImGui::MenuItem("Remove Component"))
 		{
-			auto manager = Manager::Instance::get();
+			auto manager = Manager::getInstance();
 			auto selected = selectedEntity; // Note: Do not optimize, required for transforms.
 			manager->remove(selectedEntity, componentType);
 			if (!manager->hasComponents(selected))
@@ -665,7 +665,7 @@ static bool renderInspectorComponentPopup(ID<Entity>& selectedEntity,
 		}
 
 		if (ImGui::MenuItem("Reset Component"))
-			Manager::Instance::get()->reset(selectedEntity, componentType);
+			Manager::getInstance()->reset(selectedEntity, componentType);
 
 		if (ImGui::MenuItem("Copy Component Name"))
 			ImGui::SetClipboardText(string(componentName).c_str());
@@ -673,7 +673,7 @@ static bool renderInspectorComponentPopup(ID<Entity>& selectedEntity,
 		auto serializableSystem = dynamic_cast<ISerializable*>(system);
 		if (ImGui::MenuItem("Copy Component Data", nullptr, false, serializableSystem))
 		{
-			auto manager = Manager::Instance::get();
+			auto manager = Manager::getInstance();
 			JsonSerializer jsonSerializer;
 			jsonSerializer.write(".type", componentName);
 			serializableSystem->preSerialize(jsonSerializer);
@@ -692,7 +692,7 @@ static bool renderInspectorComponentPopup(ID<Entity>& selectedEntity,
 			if (ImGui::MenuItem(itemName.c_str(), nullptr, false, 
 				serializableSystem && componentName == jsonComponentName))
 			{
-				auto manager = Manager::Instance::get();
+				auto manager = Manager::getInstance();
 				manager->reset(selectedEntity, componentType, true);
 				serializableSystem->preDeserialize(jsonDeserializer);
 				auto componentView = manager->get(selectedEntity, componentType);
@@ -716,7 +716,7 @@ void EditorRenderSystem::showEntityInspector()
 	auto showEntityInspector = true;
 	if (ImGui::Begin("Entity Inspector", &showEntityInspector, ImGuiWindowFlags_NoFocusOnAppearing))
 	{
-		auto manager = Manager::Instance::get();
+		auto manager = Manager::getInstance();
 		auto entityView = manager->getEntities().get(selectedEntity);
 
 		if (ImGui::BeginItemTooltip())
@@ -785,10 +785,10 @@ void EditorRenderSystem::showEntityInspector()
 	}
 	ImGui::End();
 
-	if (InputSystem::Instance::get()->isKeyPressed(KeyboardButton::Delete) &&
-		!Manager::Instance::get()->has<DoNotDestroyComponent>(selectedEntity))
+	if (InputSystem::getInstance()->isKeyPressed(KeyboardButton::Delete) &&
+		!Manager::getInstance()->has<DoNotDestroyComponent>(selectedEntity))
 	{
-		TransformSystem::Instance::get()->destroyRecursive(selectedEntity);
+		TransformSystem::getInstance()->destroyRecursive(selectedEntity);
 		selectedEntity = {};
 	}
 
@@ -814,7 +814,7 @@ void EditorRenderSystem::showNewScene()
 		if (ImGui::Button("OK", ImVec2(140.0f, 0.0f)))
 		{
 			ImGui::CloseCurrentPopup(); newScene = false;
-			ResourceSystem::Instance::get()->clearScene();
+			ResourceSystem::getInstance()->clearScene();
 			exportScenePath = "unnamed";
 		}
 
@@ -839,10 +839,10 @@ void EditorRenderSystem::showExportScene()
 
 		ImGui::BeginDisabled(exportScenePath.empty());
 		if (ImGui::Button("Export full .scene", ImVec2(-FLT_MIN, 0.0f)))
-			ResourceSystem::Instance::get()->storeScene(exportScenePath);
+			ResourceSystem::getInstance()->storeScene(exportScenePath);
 		ImGui::EndDisabled();
 
-		auto manager = Manager::Instance::get();
+		auto manager = Manager::getInstance();
 		ImGui::BeginDisabled(!selectedEntity || !manager->has<TransformComponent>(selectedEntity));
 		string exportSelectedText = "Export selected .scene";
 		if (selectedEntity)
@@ -853,7 +853,7 @@ void EditorRenderSystem::showExportScene()
 			exportSelectedText += " (" + debugName + ")";
 		}
 		if (ImGui::Button(exportSelectedText.c_str(), ImVec2(-FLT_MIN, 0.0f)))
-			ResourceSystem::Instance::get()->storeScene(exportScenePath, selectedEntity);
+			ResourceSystem::getInstance()->storeScene(exportScenePath, selectedEntity);
 		ImGui::EndDisabled();
 	}
 	ImGui::End();
@@ -1102,12 +1102,12 @@ void EditorRenderSystem::setPlaying(bool isPlaying)
 
 	if (playing)
 	{
-		Manager::Instance::get()->runEvent("EditorPlayStop");
+		Manager::getInstance()->runEvent("EditorPlayStop");
 		this->playing = false;
 	}
 	else
 	{
-		Manager::Instance::get()->runEvent("EditorPlayStart");
+		Manager::getInstance()->runEvent("EditorPlayStart");
 		this->playing = true;
 	}
 }
@@ -1117,7 +1117,7 @@ void EditorRenderSystem::openFileSelector(const OnFileSelect& onSelect,
 	const fs::path& directory, const vector<string_view>& extensions)
 {
 	fileSelectDirectory = selectedEntry = directory.empty() ?
-		AppInfoSystem::Instance::get()->getResourcesPath() : directory;
+		AppInfoSystem::getInstance()->getResourcesPath() : directory;
 	fileExtensions = extensions; onFileSelect = onSelect;
 }
 
@@ -1137,8 +1137,8 @@ void EditorRenderSystem::drawFileSelector(const char* name, fs::path& path, ID<E
 		{
 			openFileSelector([&](const fs::path& selectedFile)
 			{
-				if (EditorRenderSystem::Instance::get()->selectedEntity != entity ||
-					!Manager::Instance::get()->has(entity, componentType))
+				if (EditorRenderSystem::getInstance()->selectedEntity != entity ||
+					!Manager::getInstance()->has(entity, componentType))
 				{
 					return;
 				}
@@ -1146,7 +1146,7 @@ void EditorRenderSystem::drawFileSelector(const char* name, fs::path& path, ID<E
 				path = selectedFile;
 				path.replace_extension();
 			},
-			AppInfoSystem::Instance::get()->getResourcesPath() / directory, extensions);
+			AppInfoSystem::getInstance()->getResourcesPath() / directory, extensions);
 		}
 
 		if (ImGui::MenuItem("Reset Default"))
@@ -1156,9 +1156,8 @@ void EditorRenderSystem::drawFileSelector(const char* name, fs::path& path, ID<E
 }
 
 //**********************************************************************************************************************
-void EditorRenderSystem::drawImageSelector(const char* name, fs::path& path, 
-	Ref<Image>& image, Ref<DescriptorSet>& descriptorSet, ID<Entity> entity, 
-	type_index componentType, uint8 maxMipCount, ImageLoadFlags loadFlags)
+void EditorRenderSystem::drawImageSelector(const char* name, fs::path& path, Ref<Image>& image, 
+	Ref<DescriptorSet>& descriptorSet, ID<Entity> entity, type_index componentType)
 {
 	GARDEN_ASSERT(name);
 	GARDEN_ASSERT(entity);
@@ -1171,42 +1170,36 @@ void EditorRenderSystem::drawImageSelector(const char* name, fs::path& path,
 	{
 		fs::path resourcesPath;
 		if (ImGui::MenuItem("Select App Image"))
-			resourcesPath = AppInfoSystem::Instance::get()->getResourcesPath() / "images";
+			resourcesPath = AppInfoSystem::getInstance()->getResourcesPath() / "images";
 		if (ImGui::MenuItem("Select Engine Image"))
 			resourcesPath = GARDEN_RESOURCES_PATH / "images";
 
 		if (!resourcesPath.empty())
 		{
-			openFileSelector([&path, &image, &descriptorSet, entity, 
-				componentType, maxMipCount, loadFlags](const fs::path& selectedFile)
+			openFileSelector([&path, &image, &descriptorSet, entity, componentType](const fs::path& selectedFile)
 			{
-				if (EditorRenderSystem::Instance::get()->selectedEntity != entity ||
-					!Manager::Instance::get()->has(entity, componentType))
+				if (EditorRenderSystem::getInstance()->selectedEntity != entity ||
+					!Manager::getInstance()->has(entity, componentType))
 				{
 					return;
 				}
 				
-				auto resourceSystem = ResourceSystem::Instance::get();
+				auto resourceSystem = ResourceSystem::getInstance();
 				resourceSystem->destroyShared(image);
 				resourceSystem->destroyShared(descriptorSet);
 
-				path = selectedFile;
-				path.replace_extension();
-
-				auto usage = Image::Usage::Sampled | Image::Usage::TransferDst | Image::Usage::TransferQ;
-				if (maxMipCount == 0) usage |= Image::Usage::TransferSrc;
-				image = resourceSystem->loadImage(path, Image::Format::Undefined, 
-					usage, maxMipCount, Image::Strategy::Default, loadFlags);
+				path = selectedFile; path.replace_extension();
+				image = resourceSystem->loadImage(path);
 			},
 			resourcesPath, ResourceSystem::imageFileExts);
 		}
 
-		auto gpuResourceSystem = Manager::Instance::get()->tryGet<GpuResourceEditorSystem>();
+		auto gpuResourceSystem = Manager::getInstance()->tryGet<GpuResourceEditorSystem>();
 		if (ImGui::MenuItem("Show Resource", nullptr, false, gpuResourceSystem && image))
 			gpuResourceSystem->openTab(ID<Image>(image));
 		if (ImGui::MenuItem("Reset Default"))
 		{
-			auto resourceSystem = ResourceSystem::Instance::get();
+			auto resourceSystem = ResourceSystem::getInstance();
 			resourceSystem->destroyShared(image);
 			resourceSystem->destroyShared(descriptorSet);
 			path = "";
@@ -1232,13 +1225,13 @@ void EditorRenderSystem::drawModelSelector(const char* name, fs::path& path, Ref
 		{
 			openFileSelector([&](const fs::path& selectedFile)
 			{
-				if (EditorRenderSystem::Instance::get()->selectedEntity != entity ||
-					!Manager::Instance::get()->has(entity, componentType))
+				if (EditorRenderSystem::getInstance()->selectedEntity != entity ||
+					!Manager::getInstance()->has(entity, componentType))
 				{
 					return;
 				}
 			
-				auto resourceSystem = ResourceSystem::Instance::get();
+				auto resourceSystem = ResourceSystem::getInstance();
 				resourceSystem->destroyShared(vertexBuffer);
 				resourceSystem->destroyShared(indexBuffer);
 
@@ -1248,17 +1241,17 @@ void EditorRenderSystem::drawModelSelector(const char* name, fs::path& path, Ref
 				abort();
 				// TODO: resourceSystem->loadModel(path, );
 			},
-			AppInfoSystem::Instance::get()->getResourcesPath() / "models", ResourceSystem::modelFileExts);
+			AppInfoSystem::getInstance()->getResourcesPath() / "models", ResourceSystem::modelFileExts);
 		}
 
-		auto gpuResourceSystem = Manager::Instance::get()->tryGet<GpuResourceEditorSystem>();
+		auto gpuResourceSystem = Manager::getInstance()->tryGet<GpuResourceEditorSystem>();
 		if (ImGui::MenuItem("Show Vertex Resource", nullptr, false, gpuResourceSystem && vertexBuffer))
 			gpuResourceSystem->openTab(ID<Buffer>(vertexBuffer));
 		if (ImGui::MenuItem("Show Index Resource", nullptr, false, gpuResourceSystem && indexBuffer))
 			gpuResourceSystem->openTab(ID<Buffer>(indexBuffer));
 		if (ImGui::MenuItem("Reset Default"))
 		{
-			auto resourceSystem = ResourceSystem::Instance::get();
+			auto resourceSystem = ResourceSystem::getInstance();
 			resourceSystem->destroyShared(vertexBuffer);
 			resourceSystem->destroyShared(indexBuffer);
 			path = "";
@@ -1283,7 +1276,7 @@ static void drawResource(OptView<T> resource, const char* label,
 
 	if (ImGui::BeginPopupContextItem())
 	{
-		auto gpuResourceSystem = Manager::Instance::get()->tryGet<GpuResourceEditorSystem>();
+		auto gpuResourceSystem = Manager::getInstance()->tryGet<GpuResourceEditorSystem>();
 		if (ImGui::MenuItem("Show Resource", nullptr, false, gpuResourceSystem && resource))
 			gpuResourceSystem->openTab(instance, tabType);
 		ImGui::EndPopup();

@@ -374,8 +374,7 @@ void GraphicsPipeline::createVkInstance(GraphicsCreateData& createData)
 }
 
 //**********************************************************************************************************************
-GraphicsPipeline::GraphicsPipeline(GraphicsCreateData& createData, 
-	bool asyncRecording) : Pipeline(createData, asyncRecording)
+GraphicsPipeline::GraphicsPipeline(GraphicsCreateData& createData) : Pipeline(createData)
 {
 	this->attachmentCount = (uint8)createData.blendStates.size();
 	
@@ -420,7 +419,6 @@ void GraphicsPipeline::setViewport(float4 viewport)
 void GraphicsPipeline::setViewportAsync(float4 viewport, int32 threadIndex)
 {
 	auto graphicsAPI = GraphicsAPI::get();
-	GARDEN_ASSERT_MSG(asyncRecording, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(graphicsAPI->currentCommandBuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(graphicsAPI->renderPassFramebuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(graphicsAPI->isRenderPassAsync, "Assert " + debugName);
@@ -476,7 +474,6 @@ void GraphicsPipeline::setScissor(int4 scissor)
 void GraphicsPipeline::setScissorAsync(int4 scissor, int32 threadIndex)
 {
 	auto graphicsAPI = GraphicsAPI::get();
-	GARDEN_ASSERT_MSG(asyncRecording, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(graphicsAPI->currentCommandBuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(graphicsAPI->renderPassFramebuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(graphicsAPI->isRenderPassAsync, "Assert " + debugName);
@@ -533,7 +530,6 @@ void GraphicsPipeline::setViewportScissor(float4 viewportScissor)
 void GraphicsPipeline::setViewportScissorAsync(float4 viewportScissor, int32 threadIndex)
 {
 	auto graphicsAPI = GraphicsAPI::get();
-	GARDEN_ASSERT_MSG(asyncRecording, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(graphicsAPI->currentCommandBuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(graphicsAPI->renderPassFramebuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(graphicsAPI->isRenderPassAsync, "Assert " + debugName);
@@ -621,7 +617,6 @@ void GraphicsPipeline::drawAsync(int32 threadIndex, ID<Buffer> vertexBuffer,
 {
 	auto graphicsAPI = GraphicsAPI::get();
 	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
-	GARDEN_ASSERT_MSG(asyncRecording, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(vertexCount > 0, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(instanceCount > 0, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(threadIndex >= 0, "Assert " + debugName);
@@ -691,10 +686,10 @@ void GraphicsPipeline::drawIndexed(ID<Buffer> vertexBuffer, ID<Buffer> indexBuff
 
 	auto vertexBufferView = graphicsAPI->bufferPool.get(vertexBuffer);
 	auto indexBufferView = graphicsAPI->bufferPool.get(indexBuffer);
-	GARDEN_ASSERT_MSG(ResourceExt::getInstance(**vertexBufferView), "Vertex buffer [" + 
-		vertexBufferView->getDebugName() + "] is not ready");
-	GARDEN_ASSERT_MSG(ResourceExt::getInstance(**indexBufferView), "Index buffer [" + 
-		indexBufferView->getDebugName() + "] is not ready");
+	GARDEN_ASSERT_MSG(ResourceExt::getInstance(**vertexBufferView), 
+		"Vertex buffer [" + vertexBufferView->getDebugName() + "] is not ready");
+	GARDEN_ASSERT_MSG(ResourceExt::getInstance(**indexBufferView), 
+		"Index buffer [" + indexBufferView->getDebugName() + "] is not ready");
 	GARDEN_ASSERT(indexCount + indexOffset <= indexBufferView->getBinarySize() / toBinarySize(indexType));
 	GARDEN_ASSERT(framebuffer == graphicsAPI->renderPassFramebuffer);
 
@@ -725,7 +720,6 @@ void GraphicsPipeline::drawIndexedAsync(int32 threadIndex, ID<Buffer> vertexBuff
 {
 	auto graphicsAPI = GraphicsAPI::get();
 	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
-	GARDEN_ASSERT_MSG(asyncRecording, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(vertexBuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(indexBuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(indexCount > 0, "Assert " + debugName);
@@ -738,10 +732,10 @@ void GraphicsPipeline::drawIndexedAsync(int32 threadIndex, ID<Buffer> vertexBuff
 
 	auto vertexBufferView = graphicsAPI->bufferPool.get(vertexBuffer);
 	auto indexBufferView = graphicsAPI->bufferPool.get(indexBuffer);
-	GARDEN_ASSERT_MSG(ResourceExt::getInstance(**vertexBufferView), "Vertex buffer [" + 
-		vertexBufferView->getDebugName() + "] is not ready");
-	GARDEN_ASSERT_MSG(ResourceExt::getInstance(**indexBufferView), "Index buffer [" + 
-		indexBufferView->getDebugName() + "] is not ready");
+	GARDEN_ASSERT_MSG(ResourceExt::getInstance(**vertexBufferView), 
+		"Vertex buffer [" + vertexBufferView->getDebugName() + "] is not ready");
+	GARDEN_ASSERT_MSG(ResourceExt::getInstance(**indexBufferView), 
+		"Index buffer [" + indexBufferView->getDebugName() + "] is not ready");
 	GARDEN_ASSERT(indexCount + indexOffset <= indexBufferView->getBinarySize() / toBinarySize(indexType));
 	GARDEN_ASSERT(framebuffer == graphicsAPI->renderPassFramebuffer);
 
@@ -809,7 +803,6 @@ void GraphicsPipeline::drawFullscreen()
 void GraphicsPipeline::drawFullscreenAsync(int32 threadIndex)
 {
 	auto graphicsAPI = GraphicsAPI::get();
-	GARDEN_ASSERT_MSG(asyncRecording, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(threadIndex >= 0, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(graphicsAPI->currentCommandBuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(graphicsAPI->renderPassFramebuffer, "Assert " + debugName);

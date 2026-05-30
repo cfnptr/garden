@@ -31,20 +31,20 @@ static DescriptorSet::Uniforms getUniforms(GraphicsSystem* graphicsSystem)
 
 InfiniteGridEditorSystem::InfiniteGridEditorSystem()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", InfiniteGridEditorSystem::init);
 }
 void InfiniteGridEditorSystem::init()
 {
-	auto manager = Manager::Instance::get();
-	if (OitRenderSystem::Instance::has())
+	auto manager = Manager::getInstance();
+	if (OitRenderSystem::hasInstance())
 	{
 		ECSM_SUBSCRIBE_TO_EVENT("PreOitRender", InfiniteGridEditorSystem::preRender);
 		ECSM_SUBSCRIBE_TO_EVENT("OitRender", InfiniteGridEditorSystem::render);
 	}
 	else
 	{
-		if (DeferredRenderSystem::Instance::has())
+		if (DeferredRenderSystem::hasInstance())
 		{
 			ECSM_SUBSCRIBE_TO_EVENT("PreDsLdrRender", InfiniteGridEditorSystem::preRender);
 			ECSM_SUBSCRIBE_TO_EVENT("DsLdrRender", InfiniteGridEditorSystem::render);
@@ -58,7 +58,7 @@ void InfiniteGridEditorSystem::init()
 
 	ECSM_SUBSCRIBE_TO_EVENT("EditorSettings", InfiniteGridEditorSystem::editorSettings);
 
-	auto settingsSystem = SettingsSystem::Instance::tryGet();
+	auto settingsSystem = SettingsSystem::tryGetInstance();
 	if (settingsSystem)
 	{
 		settingsSystem->getBool("infiniteGrid.enabled", isEnabled);
@@ -78,39 +78,31 @@ void InfiniteGridEditorSystem::preRender()
 
 	if (!pipeline)
 	{
-		if (OitRenderSystem::Instance::has())
+		if (OitRenderSystem::hasInstance())
 		{
-			auto deferredSystem = DeferredRenderSystem::Instance::get();
-			ResourceSystem::GraphicsOptions options;
-			options.useAsyncRecording = true;
-
-			pipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline(
-				"editor/infinite-grid/oit", deferredSystem->getOitFramebuffer(), options);
+			auto deferredSystem = DeferredRenderSystem::getInstance();
+			pipeline = ResourceSystem::getInstance()->loadGraphicsPipeline(
+				"editor/infinite-grid/oit", deferredSystem->getOitFramebuffer());
 		}
 		else
 		{
-			ID<Framebuffer> framebuffer; bool useAsyncRecording;
-			if (DeferredRenderSystem::Instance::has())
+			ID<Framebuffer> framebuffer;
+			if (DeferredRenderSystem::hasInstance())
 			{
-				framebuffer = DeferredRenderSystem::Instance::get()->getDepthStencilLdrFB();
-				useAsyncRecording = false;
+				framebuffer = DeferredRenderSystem::getInstance()->getDepthStencilLdrFB();
 			}
 			else
 			{
-				auto forwardSystem = ForwardRenderSystem::Instance::get();
+				auto forwardSystem = ForwardRenderSystem::getInstance();
 				framebuffer = forwardSystem->getFullFramebuffer();
-				useAsyncRecording = forwardSystem->useAsyncRecording();
 			}
 
-			ResourceSystem::GraphicsOptions options;
-			options.useAsyncRecording = useAsyncRecording;
-
-			pipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline(
-				"editor/infinite-grid/translucent", framebuffer, options);
+			pipeline = ResourceSystem::getInstance()->loadGraphicsPipeline(
+				"editor/infinite-grid/translucent", framebuffer);
 		}
 	}
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	auto pipelineView = graphicsSystem->get(pipeline);
 	if (!pipelineView->isReady())
 		return;
@@ -122,11 +114,11 @@ void InfiniteGridEditorSystem::preRender()
 		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.infiniteGrid");
 	}
 
-	DeferredRenderSystem::Instance::get()->markAnyOIT();
+	DeferredRenderSystem::getInstance()->markAnyOIT();
 }
 void InfiniteGridEditorSystem::render()
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	if (!isEnabled || !graphicsSystem->camera)
 		return;
 
@@ -180,7 +172,7 @@ void InfiniteGridEditorSystem::editorSettings()
 		ImGui::Indent();
 		ImGui::PushID("infiniteGrid");
 
-		auto settingsSystem = SettingsSystem::Instance::tryGet();
+		auto settingsSystem = SettingsSystem::tryGetInstance();
 		if (ImGui::Checkbox("Enabled", &isEnabled))
 		{
 			if (settingsSystem)

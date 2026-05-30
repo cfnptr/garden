@@ -179,7 +179,7 @@ static bool fillFontAtlas(const LinearPool<Font>& fontPool, FT_Library ftLibrary
 static bool fillFontAtlas(const LinearPool<Font>& fontPool, FT_Library ftLibrary, const FontArray& fonts, 
 	vector<FontAtlas::GlyphMap>& glyphs, uint8* pixels, uint32 fontSize, uint32 glyphLength, uint2 pixelSize)
 {
-	auto threadSystem = ThreadSystem::Instance::tryGet();
+	auto threadSystem = ThreadSystem::tryGetInstance();
 	if (threadSystem)
 	{
 		auto& threadPool = threadSystem->getForegroundPool();
@@ -224,7 +224,7 @@ bool FontAtlas::update(u32string_view chars, uint32 fontSize, Image::Usage image
 
 	SET_CPU_ZONE_SCOPED("Font Atlas Update");
 
-	auto textSystem = TextSystem::Instance::get();
+	auto textSystem = TextSystem::getInstance();
 	auto defaultFace = (FT_Face)textSystem->fonts.get(fonts[0][0])->faces[0];
 
 	auto result = FT_Set_Pixel_Sizes(defaultFace, 0, (FT_UInt)fontSize);
@@ -244,7 +244,7 @@ bool FontAtlas::update(u32string_view chars, uint32 fontSize, Image::Usage image
 	}
 	
 	constexpr auto imageFormat = Image::Format::UnormR8G8B8A8;
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	auto glyphLength = calcGlyphLength(glyphs[0].size());
 	auto newPixelSize = uint2(glyphLength * fontSize, (uint32)
 		ceil((double)glyphs[0].size() / glyphLength) * fontSize); 
@@ -536,12 +536,12 @@ static bool fillTextInstances(u32string_view value, Text::Properties properties,
 //**********************************************************************************************************************
 bool Text::isReady() const noexcept
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	auto instanceBufferView = graphicsSystem->get(instanceBuffer);
 	if (!instanceBufferView->isReady())
 		return false;
 
-	auto fontAtlasView = TextSystem::Instance::get()->get(fontAtlas);
+	auto fontAtlasView = TextSystem::getInstance()->get(fontAtlas);
 	auto imageView = graphicsSystem->get(fontAtlasView->getImage());
 	if (!imageView->isReady())
 		return false;
@@ -556,7 +556,7 @@ bool Text::update(u32string_view value, uint32 fontSize, Properties properties,
 	GARDEN_ASSERT(fontSize > 0);
 
 	SET_CPU_ZONE_SCOPED("Text Update");
-	auto textSystem = TextSystem::Instance::get();
+	auto textSystem = TextSystem::getInstance();
 
 	ID<FontAtlas> newFontAtlas = {}; OptView<FontAtlas> fontAtlasView = {};
 	if (atlasShared || shrink || !fontAtlas)
@@ -574,7 +574,7 @@ bool Text::update(u32string_view value, uint32 fontSize, Properties properties,
 			return false;
 	}
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	auto newBinarySize = (uint64)value.size() * sizeof(TextInstanceData);
 	auto stagingBuffer = graphicsSystem->createStagingBuffer(Buffer::CpuAccess::RandomReadWrite, newBinarySize);
 	SET_RESOURCE_DEBUG_NAME(stagingBuffer, "buffer.staging.textInstances" + to_string(*stagingBuffer));
@@ -629,7 +629,7 @@ float2 Text::calcCaretAdvance(u32string_view value, psize charIndex)
 		return float2::zero;
 
 	GARDEN_ASSERT(charIndex < value.length());
-	auto fontAtlasView = TextSystem::Instance::get()->get(fontAtlas);
+	auto fontAtlasView = TextSystem::getInstance()->get(fontAtlas);
 	auto chars = value.data(); const auto& glyphArray = fontAtlasView->getGlyphs();
 	auto fontSize = fontAtlasView->getFontSize(); auto newLineAdvance = fontAtlasView->getNewLineAdvance();
 	auto isBold = properties.isBold, isItalic = properties.isItalic;
@@ -822,7 +822,7 @@ ID<FontAtlas> TextSystem::createFontAtlas(u32string_view chars,
 	auto fontAtlasView = fontAtlases.get(fontAtlas);
 	fontAtlasView->fonts = std::move(fonts);
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	auto stopRecording = graphicsSystem->tryStartRecording(CommandBufferType::TransferOnly);
 
 	if (!fontAtlasView->update(chars, fontSize))
@@ -843,8 +843,8 @@ void TextSystem::destroy(ID<FontAtlas>& fontAtlas)
 		return;
 
 	auto fontAtlasView = fontAtlases.get(fontAtlas);
-	GraphicsSystem::Instance::get()->destroy(fontAtlasView->image);
-	ResourceSystem::Instance::get()->destroyShared(fontAtlasView->fonts);
+	GraphicsSystem::getInstance()->destroy(fontAtlasView->image);
+	ResourceSystem::getInstance()->destroyShared(fontAtlasView->fonts);
 	fontAtlases.destroy(fontAtlas);
 }
 
@@ -860,7 +860,7 @@ ID<Text> TextSystem::createText(u32string_view value, const Ref<FontAtlas>& font
 	textView->fontAtlas = fontAtlas;
 	textView->atlasShared = isAtlasShared;
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	auto stopRecording = graphicsSystem->tryStartRecording(CommandBufferType::TransferOnly);
 
 	auto fontAtlasView = fontAtlases.get(fontAtlas);
@@ -882,7 +882,7 @@ void TextSystem::destroy(ID<Text>& text)
 		return;
 
 	auto textView = texts.get(text);
-	GraphicsSystem::Instance::get()->destroy(textView->instanceBuffer);
+	GraphicsSystem::getInstance()->destroy(textView->instanceBuffer);
 	destroy(textView->fontAtlas);
 	texts.destroy(text);
 }

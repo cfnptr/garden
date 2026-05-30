@@ -30,7 +30,7 @@ static void setUiInputAnimation(ID<Entity> element, string_view animationPath, u
 	if (animationPath.empty())
 		return;
 
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	auto transformView = manager->tryGet<TransformComponent>(element);
 	if (!transformView)
 		return;
@@ -66,14 +66,14 @@ void UiInputComponent::setEnabled(bool state)
 	if (enabled == state)
 		return;
 
-	auto hoveredElement = UiTriggerSystem::Instance::get()->getHovered();
+	auto hoveredElement = UiTriggerSystem::getInstance()->getHovered();
 	auto currState = hoveredElement == entity ? "hovered" : "default";
 	setUiInputAnimation(entity, animationPath, text, 
 		state ? (textBad ? "bad" : currState) : "disabled");
 
 	if (hoveredElement == entity)
 	{
-		InputSystem::Instance::get()->setCursorType(
+		InputSystem::getInstance()->setCursorType(
 			state ? CursorType::Ibeam : CursorType::Default);
 	}
 	enabled = state;
@@ -83,7 +83,7 @@ void UiInputComponent::setTextBad(bool state)
 	if (textBad == state)
 		return;
 
-	auto uiInputSystem = UiInputSystem::Instance::get();
+	auto uiInputSystem = UiInputSystem::getInstance();
 	setUiInputAnimation(entity, animationPath, text, enabled ? (state ? "bad" : 
 		(entity == uiInputSystem->getActiveInput() ? "active" : "default")) : "disabled");
 	textBad = state;
@@ -92,7 +92,7 @@ void UiInputComponent::setTextBad(bool state)
 //**********************************************************************************************************************
 bool UiInputComponent::updateText(bool shrink)
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	auto transformView = manager->tryGet<TransformComponent>(entity);
 	if (!transformView)
 		return false;
@@ -114,7 +114,7 @@ bool UiInputComponent::updateText(bool shrink)
 //**********************************************************************************************************************
 bool UiInputComponent::updateCaret(psize charIndex)
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	auto transformView = manager->tryGet<TransformComponent>(entity);
 	if (!transformView)
 		return false;
@@ -128,8 +128,8 @@ bool UiInputComponent::updateCaret(psize charIndex)
 	if (!uiLabelView || !uiLabelView->getTextData())
 		return false;
 
-	auto textSystem = TextSystem::Instance::get();
-	auto uiTransformSystem = UiTransformSystem::Instance::get();
+	auto textSystem = TextSystem::getInstance();
+	auto uiTransformSystem = UiTransformSystem::getInstance();
 	auto textView = textSystem->get(uiLabelView->getTextData());
 	auto fontAtlasView = textSystem->get(textView->getFontAtlas());
 	auto fontSize = fontAtlasView->getFontSize();
@@ -177,7 +177,7 @@ bool UiInputComponent::updateCaret(psize charIndex)
 }
 bool UiInputComponent::hideCaret()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	auto transformView = manager->tryGet<TransformComponent>(entity);
 	if (!transformView)
 		return false;
@@ -193,7 +193,7 @@ bool UiInputComponent::hideCaret()
 //**********************************************************************************************************************
 UiInputSystem::UiInputSystem(bool setSingleton) : Singleton(setSingleton)
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	manager->addGroupSystem<ISerializable>(this);
 	manager->addGroupSystem<IAnimatable>(this);
 
@@ -209,23 +209,23 @@ UiInputSystem::UiInputSystem(bool setSingleton) : Singleton(setSingleton)
 
 void UiInputSystem::uiInputEnter()
 {
-	auto hoveredElement = UiTriggerSystem::Instance::get()->getHovered();
+	auto hoveredElement = UiTriggerSystem::getInstance()->getHovered();
 	if (!hoveredElement)
 		return;
-	auto uiInputView = Manager::Instance::get()->tryGet<UiInputComponent>(hoveredElement);
+	auto uiInputView = Manager::getInstance()->tryGet<UiInputComponent>(hoveredElement);
 	if (!uiInputView || !uiInputView->enabled)
 		return;
 
 	if (hoveredElement != activeInput)
 		setUiInputAnimation(hoveredElement, uiInputView->animationPath, uiInputView->text, "hovered");
-	InputSystem::Instance::get()->setCursorType(CursorType::Ibeam);
+	InputSystem::getInstance()->setCursorType(CursorType::Ibeam);
 }
 void UiInputSystem::uiInputExit()
 {
-	auto hoveredElement = UiTriggerSystem::Instance::get()->getHovered();
+	auto hoveredElement = UiTriggerSystem::getInstance()->getHovered();
 	if (!hoveredElement)
 		return;
-	auto uiInputView = Manager::Instance::get()->tryGet<UiInputComponent>(hoveredElement);
+	auto uiInputView = Manager::getInstance()->tryGet<UiInputComponent>(hoveredElement);
 	if (!uiInputView || !uiInputView->enabled)
 		return;
 
@@ -234,18 +234,18 @@ void UiInputSystem::uiInputExit()
 		setUiInputAnimation(hoveredElement, uiInputView->animationPath, 
 			uiInputView->text, uiInputView->textBad ? "bad" : "default");
 	}
-	InputSystem::Instance::get()->setCursorType(CursorType::Default);
+	InputSystem::getInstance()->setCursorType(CursorType::Default);
 }
 void UiInputSystem::uiInputStay()
 {
-	auto hoveredElement = UiTriggerSystem::Instance::get()->getHovered();
+	auto hoveredElement = UiTriggerSystem::getInstance()->getHovered();
 	if (!hoveredElement)
 		return;
-	auto uiInputView = Manager::Instance::get()->tryGet<UiInputComponent>(hoveredElement);
+	auto uiInputView = Manager::getInstance()->tryGet<UiInputComponent>(hoveredElement);
 	if (!uiInputView || !uiInputView->enabled || hoveredElement == activeInput)
 		return;
 
-	if (InputSystem::Instance::get()->isMousePressed(MouseButton::Left))
+	if (InputSystem::getInstance()->isMousePressed(MouseButton::Left))
 	{
 		setUiInputAnimation(hoveredElement, uiInputView->animationPath, 
 			uiInputView->text, uiInputView->textBad ? "bad" : "active");
@@ -257,11 +257,11 @@ void UiInputSystem::uiInputStay()
 //**********************************************************************************************************************
 void UiInputSystem::updateActive()
 {
-	auto uiInputView = Manager::Instance::get()->tryGet<UiInputComponent>(activeInput);
+	auto uiInputView = Manager::getInstance()->tryGet<UiInputComponent>(activeInput);
 	if (!uiInputView)
 		return;
 
-	auto inputSystem = InputSystem::Instance::get();
+	auto inputSystem = InputSystem::getInstance();
 	auto& keyboardChars = inputSystem->getKeyboardChars32();
 	if (!keyboardChars.empty())
 	{
@@ -278,7 +278,7 @@ void UiInputSystem::updateActive()
 			uiInputView->updateCaret(uiInputView->caretIndex + keyboardChars.size());
 
 			if (!uiInputView->onChange.empty())
-				Manager::Instance::get()->tryRunEvent(uiInputView->onChange);
+				Manager::getInstance()->tryRunEvent(uiInputView->onChange);
 		}
 	}
 
@@ -323,7 +323,7 @@ void UiInputSystem::updateActive()
 			uiInputView->updateCaret(uiInputView->caretIndex - 1);
 
 			if (!uiInputView->onChange.empty())
-				Manager::Instance::get()->tryRunEvent(uiInputView->onChange);
+				Manager::getInstance()->tryRunEvent(uiInputView->onChange);
 		}
 	}
 	if (inputSystem->isKeyPressed(KeyboardButton::Delete) ||
@@ -335,7 +335,7 @@ void UiInputSystem::updateActive()
 			uiInputView->updateText();
 
 			if (!uiInputView->onChange.empty())
-				Manager::Instance::get()->tryRunEvent(uiInputView->onChange);
+				Manager::getInstance()->tryRunEvent(uiInputView->onChange);
 		}
 	}
 }
@@ -343,13 +343,13 @@ void UiInputSystem::update()
 {
 	if (activeInput)
 	{
-		auto inputSystem = InputSystem::Instance::get();
-		auto hoveredElement = UiTriggerSystem::Instance::get()->getHovered();
+		auto inputSystem = InputSystem::getInstance();
+		auto hoveredElement = UiTriggerSystem::getInstance()->getHovered();
 
 		if (inputSystem->getCursorMode() != CursorMode::Normal || 
 			(inputSystem->isMousePressed(MouseButton::Left) && activeInput != hoveredElement))
 		{
-			auto uiInputView = Manager::Instance::get()->tryGet<UiInputComponent>(activeInput);
+			auto uiInputView = Manager::getInstance()->tryGet<UiInputComponent>(activeInput);
 			if (uiInputView)
 			{
 				setUiInputAnimation(activeInput, uiInputView->animationPath, 

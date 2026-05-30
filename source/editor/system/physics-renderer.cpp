@@ -35,7 +35,7 @@ static ID<Buffer> createVertexBuffer(GraphicsSystem* graphicsSystem, uint64 size
 
 bool PhysicsDebugRenderer::isReady()
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	auto result = true;
 	if (linePipeline)
 	{
@@ -57,13 +57,12 @@ void PhysicsDebugRenderer::drawLines(const f32x4x4& viewProj)
 
 	if (!linePipeline)
 	{
-		auto deferredSystem = DeferredRenderSystem::Instance::get();
-		ResourceSystem::GraphicsOptions options;
-		linePipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline(
-			"editor/physics/lines", deferredSystem->getDepthStencilLdrFB(), options);
+		auto deferredSystem = DeferredRenderSystem::getInstance();
+		linePipeline = ResourceSystem::getInstance()->loadGraphicsPipeline(
+			"editor/physics/lines", deferredSystem->getDepthStencilLdrFB());
 	}
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	auto pipelineView = graphicsSystem->get(linePipeline);
 	if (!pipelineView->isReady())
 		return;
@@ -87,13 +86,12 @@ void PhysicsDebugRenderer::drawTriangles(const f32x4x4& viewProj)
 
 	if (!trianglePipeline)
 	{
-		auto deferredSystem = DeferredRenderSystem::Instance::get();
-		ResourceSystem::GraphicsOptions options;
-		trianglePipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline(
-			"editor/physics/triangles", deferredSystem->getDepthStencilLdrFB(), options);
+		auto deferredSystem = DeferredRenderSystem::getInstance();
+		trianglePipeline = ResourceSystem::getInstance()->loadGraphicsPipeline(
+			"editor/physics/triangles", deferredSystem->getDepthStencilLdrFB());
 	}
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	auto pipelineView = graphicsSystem->get(trianglePipeline);
 	if (!pipelineView->isReady())
 		return;
@@ -111,7 +109,7 @@ void PhysicsDebugRenderer::drawTriangles(const f32x4x4& viewProj)
 
 void PhysicsDebugRenderer::preDraw()
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	if (!lines.empty())
 		linesBuffer = createVertexBuffer(graphicsSystem, lines.size() * sizeof(Line), lines.data());
 	if (!triangles.empty())
@@ -143,7 +141,7 @@ void PhysicsDebugRenderer::DrawTriangle(JPH::RVec3Arg inV1, JPH::RVec3Arg inV2,
 void PhysicsDebugRenderer::DrawText3D(JPH::RVec3Arg inPosition, 
 	const string_view& inString, JPH::ColorArg inColor, float inHeight)
 {
-	// TODO: implement when will be porting Uran engine text rendering.
+	// TODO: implement using added Garden text systems.
 }
 
 #endif // JPH_DEBUG_RENDERER

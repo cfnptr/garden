@@ -156,10 +156,10 @@ static ID<GraphicsPipeline> createTransLutPipeline(ID<Framebuffer> transLutFrame
 	}
 	Pipeline::SpecConstValues specConstValues = { { "SAMPLE_COUNT", Pipeline::SpecConstValue(sampleCount) } };
 
-	ResourceSystem::GraphicsOptions options;
+	ResourceSystem::GraphicsLoadOptions options;
 	options.specConstValues = &specConstValues;
-	return ResourceSystem::Instance::get()->loadGraphicsPipeline(
-		"atmosphere/transmittance", transLutFramebuffer, options);
+	return ResourceSystem::getInstance()->loadGraphicsPipeline(
+		"atmosphere/transmittance", transLutFramebuffer, &options);
 }
 static ID<ComputePipeline> createMultiScattLutPipeline(GraphicsSystem* graphicsSystem, GraphicsQuality quality)
 {
@@ -175,9 +175,9 @@ static ID<ComputePipeline> createMultiScattLutPipeline(GraphicsSystem* graphicsS
 		{ "SG_SHARED_SIZE", Pipeline::SpecConstValue(graphicsSystem->calcSubgroupSize(SH_WG_LOCAL_SIZE)) }
 	};
 	
-	ResourceSystem::ComputeOptions options;
+	ResourceSystem::ComputeLoadOptions options;
 	options.specConstValues = &specConstValues;
-	return ResourceSystem::Instance::get()->loadComputePipeline("atmosphere/multi-scattering", options);
+	return ResourceSystem::getInstance()->loadComputePipeline("atmosphere/multi-scattering", &options);
 }
 static ID<ComputePipeline> createCameraVolumePipeline(GraphicsQuality quality)
 {
@@ -198,9 +198,9 @@ static ID<ComputePipeline> createCameraVolumePipeline(GraphicsQuality quality)
 		{ "SAMPLES_PER_SLICE", Pipeline::SpecConstValue(kmPerSlice) }
 	};
 
-	ResourceSystem::ComputeOptions options;
+	ResourceSystem::ComputeLoadOptions options;
 	options.specConstValues = &specConstValues;
-	return ResourceSystem::Instance::get()->loadComputePipeline("atmosphere/camera-volume", options);
+	return ResourceSystem::getInstance()->loadComputePipeline("atmosphere/camera-volume", &options);
 }
 
 //**********************************************************************************************************************
@@ -224,10 +224,10 @@ static ID<GraphicsPipeline> createSkyViewLutPipeline(ID<Framebuffer> skyViewLutF
 		{ "RAY_MARCH_SPP_DIST", Pipeline::SpecConstValue(150.0f) }
 	};
 
-	ResourceSystem::GraphicsOptions options;
+	ResourceSystem::GraphicsLoadOptions options;
 	options.specConstValues = &specConstValues;
-	return ResourceSystem::Instance::get()->loadGraphicsPipeline(
-		"atmosphere/sky-view", skyViewLutFramebuffer, options);
+	return ResourceSystem::getInstance()->loadGraphicsPipeline(
+		"atmosphere/sky-view", skyViewLutFramebuffer, &options);
 }
 static ID<GraphicsPipeline> createHdrSkyPipeline(GraphicsQuality quality)
 {
@@ -242,13 +242,13 @@ static ID<GraphicsPipeline> createHdrSkyPipeline(GraphicsQuality quality)
 	};
 	GraphicsPipeline::BlendStates blendStates { { 0, { GraphicsPipeline::BlendState(true) } } };
 
-	ResourceSystem::GraphicsOptions options;
+	ResourceSystem::GraphicsLoadOptions options;
 	options.specConstValues = &specConstValues;
 	options.blendStateOverrides = &blendStates;
 
-	auto deferredSystem = DeferredRenderSystem::Instance::get();
-	return ResourceSystem::Instance::get()->loadGraphicsPipeline(
-		"atmosphere/skybox", deferredSystem->getHdrFramebuffer(), options);
+	auto deferredSystem = DeferredRenderSystem::getInstance();
+	return ResourceSystem::getInstance()->loadGraphicsPipeline(
+		"atmosphere/skybox", deferredSystem->getHdrFramebuffer(), &options);
 }
 static ID<GraphicsPipeline> createSkyboxPipeline(ID<Framebuffer> framebuffer, GraphicsQuality quality)
 {
@@ -262,26 +262,28 @@ static ID<GraphicsPipeline> createSkyboxPipeline(ID<Framebuffer> framebuffer, Gr
 		{ "KM_PER_SLICE", Pipeline::SpecConstValue(kmPerSlice) }
 	};
 
-	ResourceSystem::GraphicsOptions options;
+	ResourceSystem::GraphicsLoadOptions options;
 	options.specConstValues = &specConstValues;
-	return ResourceSystem::Instance::get()->loadGraphicsPipeline("atmosphere/skybox", framebuffer, options);
+	return ResourceSystem::getInstance()->loadGraphicsPipeline("atmosphere/skybox", framebuffer, &options);
 }
 
 static ID<ComputePipeline> createShGeneratePipeline(GraphicsSystem* graphicsSystem)
 {
 	Pipeline::SpecConstValues specConstValues =
 	{ { "SG_SHARED_SIZE", Pipeline::SpecConstValue(graphicsSystem->calcSubgroupSize(SH_WG_LOCAL_SIZE)) } };
-	ResourceSystem::ComputeOptions options;
+
+	ResourceSystem::ComputeLoadOptions options;
 	options.specConstValues = &specConstValues;
-	return ResourceSystem::Instance::get()->loadComputePipeline("atmosphere/sh-generate", options);
+	return ResourceSystem::getInstance()->loadComputePipeline("atmosphere/sh-generate", &options);
 }
 static ID<ComputePipeline> createShReducePipeline(GraphicsSystem* graphicsSystem)
 {
 	Pipeline::SpecConstValues specConstValues =
 	{ { "SG_SHARED_SIZE", Pipeline::SpecConstValue(graphicsSystem->calcSubgroupSize(SH_WG_LOCAL_SIZE)) } };
-	ResourceSystem::ComputeOptions options;
+
+	ResourceSystem::ComputeLoadOptions options;
 	options.specConstValues = &specConstValues;
-	return ResourceSystem::Instance::get()->loadComputePipeline("atmosphere/sh-reduce", options);
+	return ResourceSystem::getInstance()->loadComputePipeline("atmosphere/sh-reduce", &options);
 }
 
 //**********************************************************************************************************************
@@ -318,7 +320,7 @@ static DescriptorSet::Uniforms getCameraVolumeUniforms(GraphicsSystem* graphicsS
 static DescriptorSet::Uniforms getSkyUniforms(GraphicsSystem* graphicsSystem, 
 	ID<Image> transLUT, ID<Image> skyViewLUT, ID<Image> cameraVolume)
 {
-	auto deferredSystem = DeferredRenderSystem::Instance::get();
+	auto deferredSystem = DeferredRenderSystem::getInstance();
 	auto depthBufferView = deferredSystem->getDepthOnlyIV();
 	auto transLutView = graphicsSystem->get(transLUT)->getView();
 	auto skyViewLutView = graphicsSystem->get(skyViewLUT)->getView();
@@ -354,24 +356,24 @@ static DescriptorSet::Uniforms getShReduceUniforms(
 //**********************************************************************************************************************
 AtmosphereRenderSystem::AtmosphereRenderSystem(bool setSingleton) :Singleton(setSingleton)
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	manager->registerEvent("PreSkyFaceRender");
 	manager->registerEvent("SkyFaceRender");
 	ECSM_SUBSCRIBE_TO_EVENT("Init", AtmosphereRenderSystem::init);
 
-	auto settingsSystem = SettingsSystem::Instance::tryGet();
+	auto settingsSystem = SettingsSystem::tryGetInstance();
 	if (settingsSystem)
 		settingsSystem->getType("atmosphere.quality", quality, graphicsQualityNames, (uint32)GraphicsQuality::Count);
 }
 void AtmosphereRenderSystem::init()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("PreDeferredRender", AtmosphereRenderSystem::preDeferredRender);
 	ECSM_SUBSCRIBE_TO_EVENT("HdrRender", AtmosphereRenderSystem::hdrRender);
 	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", AtmosphereRenderSystem::gBufferRecreate);
 	ECSM_SUBSCRIBE_TO_EVENT("QualityChange", AtmosphereRenderSystem::qualityChange);
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	if (!graphicsSystem->directionalLight)
 	{
 		auto directionalLight = manager->createEntity();
@@ -421,7 +423,7 @@ void AtmosphereRenderSystem::preDeferredRender()
 	if (!isEnabled)
 		return;
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	if (!isInitialized)
 	{
 		if (!transLUT)
@@ -619,8 +621,8 @@ void AtmosphereRenderSystem::preDeferredRender()
 //**********************************************************************************************************************
 void AtmosphereRenderSystem::updateSkybox()
 {
-	auto manager = Manager::Instance::get();
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto manager = Manager::getInstance();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	auto pbrLightingView = manager->tryGet<PbrLightingComponent>(graphicsSystem->camera);
 
 	if (!pbrLightingView || pbrLightingView->getCubemapMode() != PbrCubemapMode::Dynamic)
@@ -651,7 +653,7 @@ void AtmosphereRenderSystem::updateSkybox()
 				framebufferView->update(frameSize, skyboxView->getView(i, 0));
 			}
 
-			auto pbrLightingSystem = PbrLightingSystem::Instance::get();
+			auto pbrLightingSystem = PbrLightingSystem::getInstance();
 			graphicsSystem->startRecording(CommandBufferType::Frame);
 			specularCache = pbrLightingSystem->createSpecularCache(
 				skyboxView->getSize().getX(), iblWeightBuffer, iblCountBuffer);
@@ -701,7 +703,7 @@ void AtmosphereRenderSystem::renderSkyboxFaces()
 	if (!skyboxPipeline)
 		skyboxPipeline = createSkyboxPipeline(framebuffer, quality);
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	auto pipelineView = graphicsSystem->get(skyboxPipeline);		
 	if (!pipelineView->isReady())
 		return;
@@ -713,9 +715,9 @@ void AtmosphereRenderSystem::renderSkyboxFaces()
 		SET_RESOURCE_DEBUG_NAME(skyboxDS, "descriptorSet.atmosphere.skybox");
 	}
 
-	auto& preSkyFaceEvent = Manager::Instance::get()->getEvent("PreSkyFaceRender");
-	auto& skyFaceEvent = Manager::Instance::get()->getEvent("SkyFaceRender");
-	auto pbrLightingSystem = PbrLightingSystem::Instance::get();
+	auto& preSkyFaceEvent = Manager::getInstance()->getEvent("PreSkyFaceRender");
+	auto& skyFaceEvent = Manager::getInstance()->getEvent("SkyFaceRender");
+	auto pbrLightingSystem = PbrLightingSystem::getInstance();
 	const auto& cc = graphicsSystem->getCommonConstants();
 	auto cameraHeight = calcCameraHeight(cc.cameraPos.y, groundRadius);
 
@@ -761,7 +763,7 @@ void AtmosphereRenderSystem::generateSkyShDiffuse(ID<Buffer> shDiffuse, f32x4x4*
 	if (!noDelay && updatePhase < Image::cubemapFaceCount)
 		return;
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	if (!shGeneratePipeline)
 		shGeneratePipeline = createShGeneratePipeline(graphicsSystem);
 	if (!shReducePipeline)
@@ -879,7 +881,7 @@ void AtmosphereRenderSystem::hdrRender()
 	if (!isEnabled)
 		return;
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	auto pipelineView = graphicsSystem->get(hdrSkyPipeline);
 	if (!pipelineView->isReady())
 		return;
@@ -914,7 +916,7 @@ void AtmosphereRenderSystem::hdrRender()
 
 void AtmosphereRenderSystem::gBufferRecreate()
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	graphicsSystem->destroy(skyboxDS);
 	graphicsSystem->destroy(hdrSkyDS);
 
@@ -934,7 +936,7 @@ void AtmosphereRenderSystem::gBufferRecreate()
 //**********************************************************************************************************************
 void AtmosphereRenderSystem::qualityChange()
 {
-	setQuality(GraphicsSystem::Instance::get()->quality);
+	setQuality(GraphicsSystem::getInstance()->quality);
 }
 
 void AtmosphereRenderSystem::setQuality(GraphicsQuality quality)
@@ -942,7 +944,7 @@ void AtmosphereRenderSystem::setQuality(GraphicsQuality quality)
 	if (this->quality == quality)
 		return;
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	graphicsSystem->destroy(skyboxDS);
 	graphicsSystem->destroy(hdrSkyDS);
 	graphicsSystem->destroy(skyViewLutDS);
@@ -1000,31 +1002,31 @@ void AtmosphereRenderSystem::setQuality(GraphicsQuality quality)
 ID<Image> AtmosphereRenderSystem::getTransLUT()
 {
 	if (!transLUT)
-		transLUT = createTransLUT(GraphicsSystem::Instance::get(), getTransLutFormat(quality));
+		transLUT = createTransLUT(GraphicsSystem::getInstance(), getTransLutFormat(quality));
 	return transLUT;
 }
 ID<Image> AtmosphereRenderSystem::getMultiScattLUT()
 {
 	if (!multiScattLUT)
-		multiScattLUT = createMultiScattLUT(GraphicsSystem::Instance::get());
+		multiScattLUT = createMultiScattLUT(GraphicsSystem::getInstance());
 	return multiScattLUT;
 }
 ID<Image> AtmosphereRenderSystem::getCameraVolume()
 {
 	if (!cameraVolume)
-		cameraVolume = createCameraVolume(GraphicsSystem::Instance::get());
+		cameraVolume = createCameraVolume(GraphicsSystem::getInstance());
 	return cameraVolume;
 }
 ID<Image> AtmosphereRenderSystem::getSkyViewLUT()
 {
 	if (!skyViewLUT)
-		skyViewLUT = createSkyViewLUT(GraphicsSystem::Instance::get());
+		skyViewLUT = createSkyViewLUT(GraphicsSystem::getInstance());
 	return skyViewLUT;
 }
 ID<Framebuffer> AtmosphereRenderSystem::getTransLutFramebuffer()
 {
 	if (!transLutFramebuffer)
-		transLutFramebuffer = createLutFramebuffer(GraphicsSystem::Instance::get(), getTransLUT(), "transLUT");
+		transLutFramebuffer = createLutFramebuffer(GraphicsSystem::getInstance(), getTransLUT(), "transLUT");
 	return transLutFramebuffer;
 }
 ID<Framebuffer> AtmosphereRenderSystem::getSkyViewLutFramebuffer()
@@ -1032,14 +1034,14 @@ ID<Framebuffer> AtmosphereRenderSystem::getSkyViewLutFramebuffer()
 	if (!skyViewLutFramebuffer)
 	{
 		skyViewLutFramebuffer = skyViewLutFramebuffer = createLutFramebuffer(
-			GraphicsSystem::Instance::get(), getSkyViewLUT(), "skyViewLUT");
+			GraphicsSystem::getInstance(), getSkyViewLUT(), "skyViewLUT");
 	}
 	return skyViewLutFramebuffer;
 }
 const ID<Framebuffer>* AtmosphereRenderSystem::getSkyboxFramebuffers()
 {
 	if (!skyboxFramebuffers[0])
-		createSkyboxFramebuffers(GraphicsSystem::Instance::get(), skyboxFramebuffers);
+		createSkyboxFramebuffers(GraphicsSystem::getInstance(), skyboxFramebuffers);
 	return skyboxFramebuffers;
 }
 
@@ -1052,7 +1054,7 @@ ID<GraphicsPipeline> AtmosphereRenderSystem::getTransLutPipeline()
 ID<ComputePipeline> AtmosphereRenderSystem::getMultiScattLutPipeline()
 {
 	if (!multiScattLutPipeline)
-		multiScattLutPipeline = createMultiScattLutPipeline(GraphicsSystem::Instance::get(), quality);
+		multiScattLutPipeline = createMultiScattLutPipeline(GraphicsSystem::getInstance(), quality);
 	return multiScattLutPipeline;
 }
 ID<ComputePipeline> AtmosphereRenderSystem::getCameraVolumePipeline()
@@ -1082,13 +1084,13 @@ ID<GraphicsPipeline> AtmosphereRenderSystem::getSkyboxPipeline()
 ID<ComputePipeline> AtmosphereRenderSystem::getShGeneratePipeline()
 {
 	if (!shGeneratePipeline)
-		shGeneratePipeline = createShGeneratePipeline(GraphicsSystem::Instance::get());
+		shGeneratePipeline = createShGeneratePipeline(GraphicsSystem::getInstance());
 	return shGeneratePipeline;
 }
 ID<ComputePipeline> AtmosphereRenderSystem::getShReducePipeline()
 {
 	if (!shReducePipeline)
-		shReducePipeline = createShReducePipeline(GraphicsSystem::Instance::get());
+		shReducePipeline = createShReducePipeline(GraphicsSystem::getInstance());
 	return shReducePipeline;
 }
 

@@ -40,8 +40,8 @@ static ID<Buffer> createLuminanceBuffer(GraphicsSystem* graphicsSystem)
 static DescriptorSet::Uniforms getUniforms(GraphicsSystem* graphicsSystem, 
 	ID<Buffer> luminanceBuffer, bool useBloomBuffer, bool useLightAbsorption)
 {
-	auto deferredSystem = DeferredRenderSystem::Instance::get();
-	auto bloomSystem = BloomRenderSystem::Instance::tryGet();
+	auto deferredSystem = DeferredRenderSystem::getInstance();
+	auto bloomSystem = BloomRenderSystem::tryGetInstance();
 	auto hdrBufferView = deferredSystem->getHdrImageView();
 	auto bloomBufferView = bloomSystem && useBloomBuffer ? graphicsSystem->get(
 		bloomSystem->getBloomBuffer())->getView() : graphicsSystem->getEmptyTexture();
@@ -62,7 +62,7 @@ static DescriptorSet::Uniforms getUniforms(GraphicsSystem* graphicsSystem,
 
 static ID<GraphicsPipeline> createPipeline(ToneMappingSystem::Options tmOptions)
 {
-	auto deferredSystem = DeferredRenderSystem::Instance::get();
+	auto deferredSystem = DeferredRenderSystem::getInstance();
 	Pipeline::SpecConstValues specConsts =
 	{
 		{ "TONE_MAPPER", Pipeline::SpecConstValue((uint32)tmOptions.toneMapper) },
@@ -70,38 +70,37 @@ static ID<GraphicsPipeline> createPipeline(ToneMappingSystem::Options tmOptions)
 		{ "USE_LIGHT_ABSORPTION", Pipeline::SpecConstValue(tmOptions.useLightAbsorption) }
 	};
 
-	ResourceSystem::GraphicsOptions options;
+	ResourceSystem::GraphicsLoadOptions options;
 	options.specConstValues = &specConsts;
-	options.useAsyncRecording = deferredSystem->getOptions().useAsyncRecording;
-	
-	return ResourceSystem::Instance::get()->loadGraphicsPipeline(
-		"tone-mapping", deferredSystem->getLdrFramebuffer(), options);
+
+	return ResourceSystem::getInstance()->loadGraphicsPipeline(
+		"tone-mapping", deferredSystem->getLdrFramebuffer(), &options);
 }
 
 //**********************************************************************************************************************
 ToneMappingSystem::ToneMappingSystem(Options options, bool setSingleton) : Singleton(setSingleton), options(options)
 {
 	GARDEN_ASSERT(options.toneMapper < TONE_MAPPER_COUNT);
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", ToneMappingSystem::init);
 }
 void ToneMappingSystem::init()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("PreLdrRender", ToneMappingSystem::preLdrRender);
 	ECSM_SUBSCRIBE_TO_EVENT("LdrRender", ToneMappingSystem::ldrRender);
 	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", ToneMappingSystem::dsRecreate);
 	ECSM_SUBSCRIBE_TO_EVENT("BloomRecreate", ToneMappingSystem::dsRecreate);
 
 	if (!luminanceBuffer)
-		luminanceBuffer = createLuminanceBuffer(GraphicsSystem::Instance::get());
+		luminanceBuffer = createLuminanceBuffer(GraphicsSystem::getInstance());
 	if (!pipeline)
 		pipeline = createPipeline(options);
 }
 
 void ToneMappingSystem::preLdrRender()
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	if (lastUpscaleState != graphicsSystem->useUpscaling)
 	{
 		graphicsSystem->destroy(descriptorSet);
@@ -126,12 +125,12 @@ void ToneMappingSystem::ldrRender()
 {
 	SET_CPU_ZONE_SCOPED("Tone Mapping LDR Render");
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	auto pipelineView = graphicsSystem->get(pipeline);
 	if (!pipelineView->isReady() || !descriptorSet)
 		return;
 
-	auto bloomSystem = BloomRenderSystem::Instance::tryGet();
+	auto bloomSystem = BloomRenderSystem::tryGetInstance();
 	auto inFlightIndex = graphicsSystem->getInFlightIndex();
 
 	PushConstants pc;
@@ -152,7 +151,7 @@ void ToneMappingSystem::ldrRender()
 //**********************************************************************************************************************
 void ToneMappingSystem::dsRecreate()
 {
-	GraphicsSystem::Instance::get()->destroy(descriptorSet);
+	GraphicsSystem::getInstance()->destroy(descriptorSet);
 }
 
 void ToneMappingSystem::setOptions(Options options)
@@ -161,7 +160,7 @@ void ToneMappingSystem::setOptions(Options options)
 	if (memcmp(&this->options, &options, sizeof(Options)) == 0)
 		return;
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	graphicsSystem->destroy(descriptorSet);
 
 	if (pipeline)
@@ -182,14 +181,14 @@ ID<GraphicsPipeline> ToneMappingSystem::getPipeline()
 ID<Buffer> ToneMappingSystem::getLuminanceBuffer()
 {
 	if (!luminanceBuffer)
-		luminanceBuffer = createLuminanceBuffer(GraphicsSystem::Instance::get());
+		luminanceBuffer = createLuminanceBuffer(GraphicsSystem::getInstance());
 	return luminanceBuffer;
 }
 
 void ToneMappingSystem::setLuminance(float luminance)
 {
 	auto exposure = 1.0f / (luminance * lumToExp + 0.0001f);
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	auto luminanceBufferView = graphicsSystem->get(luminanceBuffer);
 
 	graphicsSystem->startRecording(CommandBufferType::Frame);
@@ -203,7 +202,7 @@ void ToneMappingSystem::setLuminance(float luminance)
 void ToneMappingSystem::setExposure(float exposure)
 {
 	auto luminance = (1.0f / exposure) * (1.0f / lumToExp) - 0.0001f;
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	auto luminanceBufferView = graphicsSystem->get(luminanceBuffer);
 
 	graphicsSystem->startRecording(CommandBufferType::Frame);

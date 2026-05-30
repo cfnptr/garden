@@ -191,7 +191,7 @@ public:
 	 */
 	ServerSessionLocker()
 	{
-		auto networkSystem = ServerNetworkSystem::Instance::get();
+		auto networkSystem = ServerNetworkSystem::getInstance();
 		auto streamHandle = networkSystem->getStreamHandle();
 		if (!streamHandle)
 			return;
@@ -209,7 +209,7 @@ public:
 			return;
 		
 		sessions = nullptr; sessionCount = 0;
-		auto networkSystem = ServerNetworkSystem::Instance::get();
+		auto networkSystem = ServerNetworkSystem::getInstance();
 		networkSystem->getStreamHandle()->unlockSessions();
 	}
 

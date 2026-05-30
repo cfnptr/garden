@@ -22,15 +22,15 @@ using namespace garden;
 //**********************************************************************************************************************
 SkyboxRenderEditorSystem::SkyboxRenderEditorSystem()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", SkyboxRenderEditorSystem::init);
 }
 void SkyboxRenderEditorSystem::init()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("EditorSettings", SkyboxRenderEditorSystem::editorSettings);
 
-	EditorRenderSystem::Instance::get()->registerEntityInspector<SkyboxRenderComponent>(
+	EditorRenderSystem::getInstance()->registerEntityInspector<SkyboxRenderComponent>(
 	[this](ID<Entity> entity, bool isOpened)
 	{
 		onEntityInspector(entity, isOpened);
@@ -42,7 +42,7 @@ void SkyboxRenderEditorSystem::editorSettings()
 {
 	ImGui::Spacing();
 	ImGui::PushID("skybox");
-	auto skyboxSystem = SkyboxRenderSystem::Instance::get();
+	auto skyboxSystem = SkyboxRenderSystem::getInstance();
 	ImGui::Checkbox("Skybox Enabled", &skyboxSystem->isEnabled);
 	ImGui::PopID();
 }
@@ -52,11 +52,10 @@ void SkyboxRenderEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpene
 	if (!isOpened)
 		return;
 
-	auto skyboxView = Manager::Instance::get()->get<SkyboxRenderComponent>(entity);
-	auto editorSystem = EditorRenderSystem::Instance::get();
-	auto flags = ImageLoadFlags::TypeCubemap | ImageLoadFlags::LoadShared;
+	auto skyboxView = Manager::getInstance()->get<SkyboxRenderComponent>(entity);
+	auto editorSystem = EditorRenderSystem::getInstance();
 	editorSystem->drawImageSelector("Cubemap", skyboxView->cubemapPath, skyboxView->cubemap, 
-		skyboxView->descriptorSet, skyboxView->getEntity(), typeid(SkyboxRenderComponent), 1, flags);
+		skyboxView->descriptorSet, skyboxView->getEntity(), typeid(SkyboxRenderComponent));
 	editorSystem->drawResource(skyboxView->descriptorSet);
 }
 #endif

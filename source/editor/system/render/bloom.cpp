@@ -25,18 +25,18 @@ using namespace garden;
 //**********************************************************************************************************************
 static DescriptorSet::Uniforms getThresholdUniforms(GraphicsSystem* graphicsSystem)
 {
-	auto hdrBufferView = DeferredRenderSystem::Instance::get()->getHdrImageView();
+	auto hdrBufferView = DeferredRenderSystem::getInstance()->getHdrImageView();
 	return { { "hdrBuffer", DescriptorSet::Uniform(hdrBufferView) } };
 }
 
 BloomRenderEditorSystem::BloomRenderEditorSystem()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", BloomRenderEditorSystem::init);
 }
 void BloomRenderEditorSystem::init()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("PreUiRender", BloomRenderEditorSystem::preUiRender);
 	ECSM_SUBSCRIBE_TO_EVENT("UiRender", BloomRenderEditorSystem::uiRender);
 	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", BloomRenderEditorSystem::gBufferRecreate);
@@ -49,12 +49,12 @@ void BloomRenderEditorSystem::preUiRender()
 
 	if (ImGui::Begin("Bloom (Light Glow)", &showWindow, ImGuiWindowFlags_AlwaysAutoResize))
 	{
-		auto bloomSystem = BloomRenderSystem::Instance::get();
+		auto bloomSystem = BloomRenderSystem::getInstance();
 		auto useThreshold = bloomSystem->getUseThreshold();
 
 		if (ImGui::Checkbox("Enabled", &bloomSystem->isEnabled))
 		{
-			auto settingsSystem = SettingsSystem::Instance::tryGet();
+			auto settingsSystem = SettingsSystem::tryGetInstance();
 			if (settingsSystem)
 				settingsSystem->setBool("bloom.enabled", bloomSystem->isEnabled);
 		}
@@ -63,7 +63,7 @@ void BloomRenderEditorSystem::preUiRender()
 		if (ImGui::Combo("Quality", &quality, graphicsQualityNames, (int)GraphicsQuality::Count))
 		{
 			bloomSystem->setQuality(quality);
-			auto settingsSystem = SettingsSystem::Instance::tryGet();
+			auto settingsSystem = SettingsSystem::tryGetInstance();
 			if (settingsSystem)
 				settingsSystem->setString("bloom.quality", toString((GraphicsQuality)quality));
 		}
@@ -87,14 +87,12 @@ void BloomRenderEditorSystem::preUiRender()
 		{
 			if (!thresholdPipeline)
 			{
-				auto deferredSystem = DeferredRenderSystem::Instance::get();
-				ResourceSystem::GraphicsOptions options;
-				options.useAsyncRecording = deferredSystem->getOptions().useAsyncRecording;
-				thresholdPipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline(
-					"editor/bloom-threshold", deferredSystem->getUiFramebuffer(), options);
+				auto deferredSystem = DeferredRenderSystem::getInstance();
+				thresholdPipeline = ResourceSystem::getInstance()->loadGraphicsPipeline(
+					"editor/bloom-threshold", deferredSystem->getUiFramebuffer());
 			}
 
-			auto pipelineView = GraphicsSystem::Instance::get()->get(thresholdPipeline);
+			auto pipelineView = GraphicsSystem::getInstance()->get(thresholdPipeline);
 			if (!pipelineView->isReady())
 				ImGui::TextDisabled("Threshold pipeline is loading...");
 		}
@@ -108,7 +106,7 @@ void BloomRenderEditorSystem::uiRender()
 	if (!visualizeThreshold)
 		return;
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	auto pipelineView = graphicsSystem->get(thresholdPipeline);
 	if (!pipelineView->isReady())
 		return;
@@ -121,7 +119,7 @@ void BloomRenderEditorSystem::uiRender()
 	}
 
 	PushConstants pc;
-	pc.threshold = BloomRenderSystem::Instance::get()->threshold;
+	pc.threshold = BloomRenderSystem::getInstance()->threshold;
 
 	if (graphicsSystem->isRenderPassAsync())
 	{
@@ -146,7 +144,7 @@ void BloomRenderEditorSystem::uiRender()
 //**********************************************************************************************************************
 void BloomRenderEditorSystem::gBufferRecreate()
 {
-	GraphicsSystem::Instance::get()->destroy(thresholdDS);
+	GraphicsSystem::getInstance()->destroy(thresholdDS);
 }
 
 void BloomRenderEditorSystem::editorBarToolPP()

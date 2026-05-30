@@ -26,26 +26,26 @@ using namespace garden;
 //**********************************************************************************************************************
 PhysicsEditorSystem::PhysicsEditorSystem()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", PhysicsEditorSystem::init);
 }
 void PhysicsEditorSystem::init()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("PreDsLdrRender", PhysicsEditorSystem::preDsLdrRender);
 	ECSM_SUBSCRIBE_TO_EVENT("DsLdrRender", PhysicsEditorSystem::dsLdrRender);
 	ECSM_SUBSCRIBE_TO_EVENT("EditorBarTool", PhysicsEditorSystem::editorBarTool);
 
-	EditorRenderSystem::Instance::get()->registerEntityInspector<RigidbodyComponent>(
+	EditorRenderSystem::getInstance()->registerEntityInspector<RigidbodyComponent>(
 	[this](ID<Entity> entity, bool isOpened)
 	{
 		onRigidbodyInspector(entity, isOpened);
 	},
 	rigidbodyInspectorPriority);
 
-	if (CharacterSystem::Instance::has())
+	if (CharacterSystem::hasInstance())
 	{
-		EditorRenderSystem::Instance::get()->registerEntityInspector<CharacterComponent>(
+		EditorRenderSystem::getInstance()->registerEntityInspector<CharacterComponent>(
 		[this](ID<Entity> entity, bool isOpened)
 		{
 			onCharacterInspector(entity, isOpened);
@@ -57,7 +57,7 @@ void PhysicsEditorSystem::init()
 //**********************************************************************************************************************
 void PhysicsEditorSystem::preDsLdrRender()
 {
-	auto physicsSystem = PhysicsSystem::Instance::get();
+	auto physicsSystem = PhysicsSystem::getInstance();
 	if (!showWindow)
 		return;
 
@@ -112,8 +112,8 @@ void PhysicsEditorSystem::preDsLdrRender()
 		debugRenderer = new PhysicsDebugRenderer();
 
 	auto renderer = (PhysicsDebugRenderer*)debugRenderer;
-	auto instance = (JPH::PhysicsSystem*)PhysicsSystem::Instance::get()->getInstance();
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto instance = (JPH::PhysicsSystem*)PhysicsSystem::getInstance()->getInternal();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	const auto& cc = graphicsSystem->getCommonConstants();
 	renderer->setCameraPosition((f32x4)cc.cameraPos);
 
@@ -144,7 +144,7 @@ void PhysicsEditorSystem::dsLdrRender()
 		return;
 
 	auto renderer = (PhysicsDebugRenderer*)debugRenderer;
-	const auto& cc = GraphicsSystem::Instance::get()->getCommonConstants();
+	const auto& cc = GraphicsSystem::getInstance()->getCommonConstants();
 
 	SET_GPU_DEBUG_LABEL("Physics Debug");
 	renderer->draw(cc.viewProj);
@@ -174,7 +174,7 @@ static OptView<Shape> getShapeView(PhysicsSystem* physicsSystem, ID<Shape> shape
 static void renderEmptyShape(View<RigidbodyComponent> rigidbodyView, 
 	PhysicsEditorSystem::RigidbodyCache& cache, bool isChanged)
 {
-	auto physicsSystem = PhysicsSystem::Instance::get();
+	auto physicsSystem = PhysicsSystem::getInstance();
 	auto shapeView = getShapeView(physicsSystem, rigidbodyView->getShape());
 
 	if (shapeView)
@@ -217,7 +217,7 @@ static void renderEmptyShape(View<RigidbodyComponent> rigidbodyView,
 static void renderBoxShape(View<RigidbodyComponent> rigidbodyView, 
 	PhysicsEditorSystem::RigidbodyCache& cache, bool isChanged)
 {
-	auto physicsSystem = PhysicsSystem::Instance::get();
+	auto physicsSystem = PhysicsSystem::getInstance();
 	auto shapeView = getShapeView(physicsSystem, rigidbodyView->getShape());
 
 	if (shapeView)
@@ -289,7 +289,7 @@ static void renderBoxShape(View<RigidbodyComponent> rigidbodyView,
 static void renderSphereShape(View<RigidbodyComponent> rigidbodyView, 
 	PhysicsEditorSystem::RigidbodyCache& cache, bool isChanged)
 {
-	auto physicsSystem = PhysicsSystem::Instance::get();
+	auto physicsSystem = PhysicsSystem::getInstance();
 	auto shapeView = getShapeView(physicsSystem, rigidbodyView->getShape());
 
 	if (shapeView)
@@ -347,7 +347,7 @@ static void renderSphereShape(View<RigidbodyComponent> rigidbodyView,
 static void renderCapsuleShape(View<RigidbodyComponent> rigidbodyView, 
 	PhysicsEditorSystem::RigidbodyCache& cache, bool isChanged)
 {
-	auto physicsSystem = PhysicsSystem::Instance::get();
+	auto physicsSystem = PhysicsSystem::getInstance();
 	auto shapeView = getShapeView(physicsSystem, rigidbodyView->getShape());
 
 	if (shapeView)
@@ -418,7 +418,7 @@ static void renderCapsuleShape(View<RigidbodyComponent> rigidbodyView,
 //**********************************************************************************************************************
 static void renderShapeProperties(View<RigidbodyComponent> rigidbodyView, PhysicsEditorSystem::RigidbodyCache& cache)
 {
-	auto physicsSystem = PhysicsSystem::Instance::get();
+	auto physicsSystem = PhysicsSystem::getInstance();
 	auto shape = rigidbodyView->getShape();
 	auto innerShape = shape;
 	auto isChanged = false;
@@ -508,7 +508,7 @@ static void renderConstraints(View<RigidbodyComponent> rigidbodyView, PhysicsEdi
 	auto name = cache.constraintTarget ? "Entity " + to_string(*cache.constraintTarget) : "";
 	if (cache.constraintTarget)
 	{
-		auto transformView = Manager::Instance::get()->tryGet<TransformComponent>(cache.constraintTarget);
+		auto transformView = Manager::getInstance()->tryGet<TransformComponent>(cache.constraintTarget);
 		if (transformView && !transformView->debugName.empty())
 			name = transformView->debugName;
 	}
@@ -519,7 +519,7 @@ static void renderConstraints(View<RigidbodyComponent> rigidbodyView, PhysicsEdi
 		if (ImGui::MenuItem("Reset Default"))
 			cache.constraintTarget = {};
 		if (ImGui::MenuItem("Select Entity"))
-			EditorRenderSystem::Instance::get()->selectedEntity = cache.constraintTarget;
+			EditorRenderSystem::getInstance()->selectedEntity = cache.constraintTarget;
 		ImGui::EndPopup();
 	}
 	if (ImGui::BeginDragDropTarget())
@@ -555,7 +555,7 @@ static void renderConstraints(View<RigidbodyComponent> rigidbodyView, PhysicsEdi
 	auto canCreate = !cache.constraintTarget;
 	if (cache.constraintTarget && cache.constraintTarget != rigidbodyView->getEntity())
 	{
-		auto otherView = Manager::Instance::get()->tryGet<RigidbodyComponent>(cache.constraintTarget);
+		auto otherView = Manager::getInstance()->tryGet<RigidbodyComponent>(cache.constraintTarget);
 		if (otherView && otherView->getShape())
 			canCreate = true;
 	}
@@ -600,7 +600,7 @@ static void renderConstraints(View<RigidbodyComponent> rigidbodyView, PhysicsEdi
 
 			if (constraint.otherBody)
 			{
-				auto transformView = Manager::Instance::get()->tryGet<TransformComponent>(constraint.otherBody);
+				auto transformView = Manager::getInstance()->tryGet<TransformComponent>(constraint.otherBody);
 				if (transformView && !transformView->debugName.empty())
 					name = transformView->debugName;
 				else name = "Entity " + to_string(*constraint.otherBody);
@@ -614,7 +614,7 @@ static void renderConstraints(View<RigidbodyComponent> rigidbodyView, PhysicsEdi
 			if (ImGui::BeginPopupContextItem("otherEntity"))
 			{
 				if (ImGui::MenuItem("Select Entity"))
-					EditorRenderSystem::Instance::get()->selectedEntity = cache.constraintTarget;
+					EditorRenderSystem::getInstance()->selectedEntity = cache.constraintTarget;
 				ImGui::EndPopup();
 			}
 
@@ -752,7 +752,7 @@ static void renderAdvancedProperties(View<RigidbodyComponent> rigidbodyView, Phy
 	
 	OptView<Shape> shapeView = {};
 	if (shape)
-		shapeView = OptView<Shape>(PhysicsSystem::Instance::get()->get(shape));
+		shapeView = OptView<Shape>(PhysicsSystem::getInstance()->get(shape));
 
 	auto centerOfMass = f32x4::zero;
 	if (shapeView)
@@ -782,7 +782,7 @@ static void renderAdvancedProperties(View<RigidbodyComponent> rigidbodyView, Phy
 //**********************************************************************************************************************
 void PhysicsEditorSystem::onRigidbodyInspector(ID<Entity> entity, bool isOpened)
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	if (ImGui::BeginItemTooltip())
 	{
 		auto rigidbodyView = manager->get<RigidbodyComponent>(entity);
@@ -835,7 +835,7 @@ void PhysicsEditorSystem::onRigidbodyInspector(ID<Entity> entity, bool isOpened)
 	if (!isOpened)
 		return;
 
-	auto unitScale = EditorRenderSystem::Instance::get()->unitScale;
+	auto unitScale = EditorRenderSystem::getInstance()->unitScale;
 	auto rigidbodyView = manager->get<RigidbodyComponent>(entity);
 	auto shape = rigidbodyView->getShape();
 
@@ -963,7 +963,7 @@ void PhysicsEditorSystem::onRigidbodyInspector(ID<Entity> entity, bool isOpened)
 //**********************************************************************************************************************
 static void renderShapeProperties(View<CharacterComponent> characterView, PhysicsEditorSystem::CharacterCache& cache)
 {
-	auto physicsSystem = PhysicsSystem::Instance::get();
+	auto physicsSystem = PhysicsSystem::getInstance();
 	auto shape = characterView->getShape();
 	auto isChanged = false;
 
@@ -1144,7 +1144,7 @@ static void renderAdvancedProperties(View<CharacterComponent> characterView)
 //**********************************************************************************************************************
 void PhysicsEditorSystem::onCharacterInspector(ID<Entity> entity, bool isOpened)
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	if (ImGui::BeginItemTooltip())
 	{
 		auto characterView = manager->get<CharacterComponent>(entity);
@@ -1188,7 +1188,7 @@ void PhysicsEditorSystem::onCharacterInspector(ID<Entity> entity, bool isOpened)
 	if (!isOpened)
 		return;
 
-	auto unitScale = EditorRenderSystem::Instance::get()->unitScale;
+	auto unitScale = EditorRenderSystem::getInstance()->unitScale;
 	auto characterView = manager->get<CharacterComponent>(entity);
 	auto shape = characterView->getShape();
 
@@ -1196,7 +1196,7 @@ void PhysicsEditorSystem::onCharacterInspector(ID<Entity> entity, bool isOpened)
 	auto collisionLayer = (int)characterView->collisionLayer;
 	if (ImGui::DragInt("Collision Layer", &collisionLayer))
 	{
-		auto physicsSystem = PhysicsSystem::Instance::get();
+		auto physicsSystem = PhysicsSystem::getInstance();
 		if (collisionLayer < 0 || collisionLayer >= physicsSystem->getProperties().collisionLayerCount)
 			collisionLayer = (uint16)CollisionLayer::Moving;
 		characterView->collisionLayer = (uint16)collisionLayer;

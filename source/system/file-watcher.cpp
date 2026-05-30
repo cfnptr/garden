@@ -199,7 +199,7 @@ static void fileWatcherThread(WatcherData* data)
 //**********************************************************************************************************************
 FileWatcherSystem::FileWatcherSystem(bool setSingleton) : Singleton(setSingleton)
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	manager->registerEvent("FileChange");
 	manager->registerEvent("FileCreate");
 
@@ -272,7 +272,7 @@ static bool createDirWatcher(const fs::path& path, WatcherDir& watcher)
 
 void FileWatcherSystem::preInit()
 {
-	auto appInfoSystem = AppInfoSystem::Instance::get();
+	auto appInfoSystem = AppInfoSystem::getInstance();
 	auto appResourcesPath = appInfoSystem->getResourcesPath();
 
 	#if GARDEN_OS_LINUX
@@ -346,7 +346,7 @@ void FileWatcherSystem::update()
 	flushChanges(instance, watchers, changedFiles, createdFiles);
 	#endif
 
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	if (!changedFiles.empty())
 	{
 		auto event = manager->getEvent("FileChange");

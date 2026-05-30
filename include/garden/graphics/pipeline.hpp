@@ -151,16 +151,14 @@ protected:
 	uint16 pushConstantsSize = 0;
 	PipelineType type = {};
 	uint8 variantCount = 0;
-	bool asyncRecording = false;
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	Pipeline::SpecConstValues specConstValues;
 	#endif
 
-	Pipeline(CreateData& createData, bool useAsyncRecording);
-	Pipeline(PipelineType type, const fs::path& path, uint32 maxBindlessCount, bool useAsyncRecording, 
-		uint64 pipelineVersion) noexcept : pipelinePath(path), pipelineVersion(pipelineVersion),
-		maxBindlessCount(maxBindlessCount), type(type), asyncRecording(useAsyncRecording)
+	Pipeline(CreateData& createData);
+	Pipeline(PipelineType type, const fs::path& path, uint32 maxBindlessCount, uint64 pipelineVersion) noexcept : 
+		pipelinePath(path), pipelineVersion(pipelineVersion), maxBindlessCount(maxBindlessCount), type(type)
 	{
 		#if GARDEN_DEBUG || GARDEN_EDITOR
 		if (type == PipelineType::Graphics)
@@ -181,8 +179,7 @@ protected:
 		const SpecConstValues& specConstValues, PipelineStage pipelineStage, uint8 variantCount);
 	static void freeVkSpecConsts(void* specInfo);
 	static void setVkVariantIndex(void* specInfo, uint8 variantIndex) noexcept;
-	static void updateDescriptorsLock(const DescriptorSet::Range* 
-		descriptorSetRanges, uint8 rangeCount, int32 threadIndex = -1);
+	static void updateDescriptorsLock(const DescriptorSet::Range* ranges, uint8 rangeCount, int32 threadIndex = -1);
 	friend class PipelineExt;
 public:
 	/*******************************************************************************************************************
@@ -222,11 +219,6 @@ public:
 	 */
 	uint8 getVariantCount() const noexcept { return variantCount; }
 	/**
-	 * @brief Is pipeline can be used for multithreaded commands recording.
-	 * @details Asynchronous command recording helps to utilize all available CPU cores.
-	 */
-	bool useAsyncRecording() const noexcept { return asyncRecording; }
-	/**
 	 * @brief Is pipeline can be used for bindless descriptor set creation.
 	 * @details Helps to reduce overhead associated with binding and switching resources like textures, buffers.
 	 */
@@ -265,24 +257,23 @@ public:
 	/**
 	 * @brief Binds descriptor set range to this pipeline for subsequent rendering.
 	 * 
-	 * @param[in] descriptorSetRanges target descriptor set range array
+	 * @param[in] ranges target descriptor set range array
 	 * @param rangeCount descriptor set range array size
 	 * 
 	 * @details
 	 * Descriptors are a way of telling the GPU where to find the resources it needs, 
 	 * such as textures and buffers, that are used by shaders for rendering or computation.
 	 */
-	void bindDescriptorSets(const DescriptorSet::Range* descriptorSetRanges, uint8 rangeCount);
+	void bindDescriptorSets(const DescriptorSet::Range* ranges, uint8 rangeCount);
 	/**
 	 * @brief Binds descriptor set range to this pipeline for subsequent rendering.
 	 * @details See the @ref Pipeline::bindDescriptorSets()
 	 * 
-	 * @param[in] descriptorSetRanges target descriptor set range array
+	 * @param[in] ranges target descriptor set range array
 	 * @param rangeCount descriptor set range array size
 	 * @param threadIndex thread index in the pool (-1 = all threads)
 	 */
-	void bindDescriptorSetsAsync(const DescriptorSet::Range* descriptorSetRanges, 
-		uint8 rangeCount, int32 threadIndex = -1);
+	void bindDescriptorSetsAsync(const DescriptorSet::Range* ranges, uint8 rangeCount, int32 threadIndex = -1);
 
 	/*******************************************************************************************************************
 	 * @brief Binds descriptor set range to this pipeline for subsequent rendering.
@@ -456,12 +447,6 @@ public:
 	 * @param[in] pipeline target pipeline instance
 	 */
 	static uint8& getVariantCount(Pipeline& pipeline) noexcept { return pipeline.variantCount; }
-	/**
-	 * @brief Is pipeline can be used for multithreaded commands recording.
-	 * @warning In most cases you should use @ref Pipeline functions.
-	 * @param[in] pipeline target pipeline instance
-	 */
-	static bool& isAsyncRecording(Pipeline& pipeline) noexcept { return pipeline.asyncRecording; }
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	/**

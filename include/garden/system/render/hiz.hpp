@@ -67,7 +67,7 @@ public:
 	 */
 	ID<ImageView> getView(uint8 mip)
 	{
-		auto hizBufferView = GraphicsSystem::Instance::get()->get(getHizBuffer());
+		auto hizBufferView = GraphicsSystem::getInstance()->get(getHizBuffer());
 		return hizBufferView->getView(0, mip);
 	}
 

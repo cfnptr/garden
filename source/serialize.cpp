@@ -27,7 +27,7 @@ string_view DoNotSerializeSystem::getComponentName() const
 
 bool DoNotSerializeSystem::hasOrAncestors(ID<Entity> entity) const
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	if (manager->has<DoNotSerializeComponent>(entity))
 		return true;
 

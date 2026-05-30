@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "garden/graphics/equi2cube.hpp"
+#include "garden/graphics/image-converter.hpp"
 #include "garden/file.hpp"
 
 #include <atomic>
@@ -22,9 +22,9 @@ using namespace garden;
 using namespace garden::graphics;
 using namespace math::ibl;
 
-#if GARDEN_DEBUG || defined(EQUI2CUBE)
+#if GARDEN_DEBUG || defined(GARDEN_IMAGE_CONVERTER)
 //**********************************************************************************************************************
-f32x4 Equi2Cube::filterCubeMap(float2 coords, const f32x4* pixels, uint2 sizeMinus1, uint32 sizeX) noexcept
+f32x4 ImageConverter::filterCubeMap(float2 coords, const f32x4* pixels, uint2 sizeMinus1, uint32 sizeX) noexcept
 {
 	auto coords0 = min((uint2)coords, sizeMinus1);
 	auto coords1 = min(coords0 + uint2::one, sizeMinus1);
@@ -38,7 +38,7 @@ f32x4 Equi2Cube::filterCubeMap(float2 coords, const f32x4* pixels, uint2 sizeMin
 	return fma(s0, f32x4(invUV.x * invUV.y), fma(s1, f32x4(uv.x * invUV.y),
 		fma(s2, f32x4(invUV.x * uv.y), s3 * (uv.x * uv.y))));
 }
-f16x4 Equi2Cube::filterCubeMap(float2 coords, const f16x4* pixels, uint2 sizeMinus1, uint32 sizeX) noexcept
+f16x4 ImageConverter::filterCubeMap(float2 coords, const f16x4* pixels, uint2 sizeMinus1, uint32 sizeX) noexcept
 {
 	auto coords0 = min((uint2)coords, sizeMinus1);
 	auto coords1 = min(coords0 + uint2::one, sizeMinus1);
@@ -52,7 +52,7 @@ f16x4 Equi2Cube::filterCubeMap(float2 coords, const f16x4* pixels, uint2 sizeMin
 	return f16x4(min(fma(s0, f32x4(invUV.x * invUV.y), fma(s1, f32x4(uv.x * invUV.y),
 		fma(s2, f32x4(invUV.x * uv.y), s3 * (uv.x * uv.y)))), f32x4(FLOAT_BIG_16)));
 }
-Color Equi2Cube::filterCubeMap(float2 coords, const Color* pixels, uint2 sizeMinus1, uint32 sizeX) noexcept
+Color ImageConverter::filterCubeMap(float2 coords, const Color* pixels, uint2 sizeMinus1, uint32 sizeX) noexcept
 {
 	auto coords0 = min((uint2)coords, sizeMinus1);
 	auto coords1 = min(coords0 + uint2::one, sizeMinus1);
@@ -68,15 +68,51 @@ Color Equi2Cube::filterCubeMap(float2 coords, const Color* pixels, uint2 sizeMin
 }
 
 //******************************************************************************************************************
-bool Equi2Cube::convertImage(const fs::path& filePath, const fs::path& inputPath, 
+bool ImageConverter::compress(const fs::path& filePath, const fs::path& inputPath, const fs::path& outputPath)
+{
+	GARDEN_ASSERT(!filePath.empty());
+	GARDEN_ASSERT(!inputPath.empty());
+	GARDEN_ASSERT(!outputPath.empty());
+
+	auto path = inputPath / filePath; vector<uint8> imageData;
+	if (!File::tryLoadBinary(path, imageData))
+		return false;
+
+	auto extension = filePath.extension();
+	GARDEN_ASSERT(!extension.empty());
+	auto imageFormat = Image::Format::Undefined;
+	vector<uint8> pixels; uint2 size = uint2::zero; 
+
+	try
+	{
+		Image::loadFileData(imageData.data(), imageData.size(), pixels, size, 
+			toImageFileType(extension.generic_string()), imageFormat);
+	}
+	catch (exception& e)
+	{
+		throw GardenError("Failed to load image data. (path: " + 
+			filePath.generic_string() + ", error: " + string(e.what()) + ")");
+	}
+
+	auto ktxFilePath = (outputPath / filePath).replace_extension(".gic");
+	fs::create_directories(outputPath);
+
+	constexpr auto fileType = Image::FileType::GIC;
+	constexpr auto effort = GARDEN_DEBUG ? 0.1f : 0.7f;
+	Image::storeFileData(ktxFilePath, pixels.data(), size, fileType, imageFormat, 1.0f, effort);
+	return true;
+}
+
+//******************************************************************************************************************
+bool ImageConverter::equi2cube(const fs::path& filePath, const fs::path& inputPath, 
 	const fs::path& outputPath, ThreadPool* threadPool)
 {	
 	GARDEN_ASSERT(!filePath.empty());
 	GARDEN_ASSERT(!inputPath.empty());
 	GARDEN_ASSERT(!outputPath.empty());
 
-	auto path = inputPath / filePath; vector<uint8> dataBuffer;
-	if (!File::tryLoadBinary(path, dataBuffer))
+	auto path = inputPath / filePath; vector<uint8> imageData;
+	if (!File::tryLoadBinary(path, imageData))
 		return false;
 
 	auto extension = filePath.extension();
@@ -86,12 +122,12 @@ bool Equi2Cube::convertImage(const fs::path& filePath, const fs::path& inputPath
 
 	try
 	{
-		Image::loadFileData(dataBuffer.data(), dataBuffer.size(), equiPixels, equiSize, 
-			toImageFileType(extension.generic_string().c_str() + 1), imageFormat);
+		Image::loadFileData(imageData.data(), imageData.size(), equiPixels, equiSize, 
+			toImageFileType(extension.generic_string()), imageFormat);
 	}
 	catch (exception& e)
 	{
-		throw GardenError("Failed to load equi image data. (path: " + 
+		throw GardenError("Failed to load equirectangular image data. (path: " + 
 			filePath.generic_string() + ", error: " + string(e.what()) + ")");
 	}
 
@@ -133,12 +169,12 @@ bool Equi2Cube::convertImage(const fs::path& filePath, const fs::path& inputPath
 		convert(cubeFaces, cubemapSize, equiSize, equiSizeMinus1, (Color*)equiPixels.data(), invDim);
 	}
 	else throw GardenError("Unsupported equi image data format.");
-	equiPixels = {}; // Cleaning up memory.
+	equiPixels = {}; // Note: Cleaning up memory.
 
 	auto imageSize = uint2(cubemapSize);
-	constexpr auto fileType = Image::FileType::KTX2;
-	constexpr auto effort = GARDEN_DEBUG ? 0.3f : 0.7f;
-	auto exrFilePath = (outputPath / filePath).replace_extension().generic_string();
+	constexpr auto fileType = Image::FileType::GIC;
+	constexpr auto effort = GARDEN_DEBUG ? 0.1f : 0.7f;
+	auto ktxFilePath = (outputPath / filePath).replace_extension().generic_string();
 	fs::create_directories(outputPath);
 
 	if (threadPool)
@@ -147,17 +183,17 @@ bool Equi2Cube::convertImage(const fs::path& filePath, const fs::path& inputPath
 		{
 			switch (task.getTaskIndex())
 			{
-				case 0: Image::storeFileData(exrFilePath + "-nx.ktx2", nx.data(), 
+				case 0: Image::storeFileData(ktxFilePath + "-nx.gic", nx.data(), 
 					imageSize, fileType, imageFormat, 1.0f, effort); break;
-				case 1: Image::storeFileData(exrFilePath + "-px.ktx2", px.data(), 
+				case 1: Image::storeFileData(ktxFilePath + "-px.gic", px.data(), 
 					imageSize, fileType, imageFormat, 1.0f, effort); break;
-				case 2: Image::storeFileData(exrFilePath + "-ny.ktx2", ny.data(), 
+				case 2: Image::storeFileData(ktxFilePath + "-ny.gic", ny.data(), 
 					imageSize, fileType, imageFormat, 1.0f, effort); break;
-				case 3: Image::storeFileData(exrFilePath + "-py.ktx2", py.data(), 
+				case 3: Image::storeFileData(ktxFilePath + "-py.gic", py.data(), 
 					imageSize, fileType, imageFormat, 1.0f, effort); break;
-				case 4: Image::storeFileData(exrFilePath + "-nz.ktx2", nz.data(), 
+				case 4: Image::storeFileData(ktxFilePath + "-nz.gic", nz.data(), 
 					imageSize, fileType, imageFormat, 1.0f, effort); break;
-				case 5: Image::storeFileData(exrFilePath + "-pz.ktx2", pz.data(), 
+				case 5: Image::storeFileData(ktxFilePath + "-pz.gic", pz.data(), 
 					imageSize, fileType, imageFormat, 1.0f, effort); break;
 				default: abort();
 			}
@@ -166,30 +202,31 @@ bool Equi2Cube::convertImage(const fs::path& filePath, const fs::path& inputPath
 	}
 	else
 	{
-		Image::storeFileData(exrFilePath + "-nx.ktx2", nx.data(), imageSize, fileType, imageFormat, 1.0f, effort);
-		Image::storeFileData(exrFilePath + "-px.ktx2", px.data(), imageSize, fileType, imageFormat, 1.0f, effort);
-		Image::storeFileData(exrFilePath + "-ny.ktx2", ny.data(), imageSize, fileType, imageFormat, 1.0f, effort);
-		Image::storeFileData(exrFilePath + "-py.ktx2", py.data(), imageSize, fileType, imageFormat, 1.0f, effort);
-		Image::storeFileData(exrFilePath + "-nz.ktx2", nz.data(), imageSize, fileType, imageFormat, 1.0f, effort);
-		Image::storeFileData(exrFilePath + "-pz.ktx2", pz.data(), imageSize, fileType, imageFormat, 1.0f, effort);
+		Image::storeFileData(ktxFilePath + "-nx.gic", nx.data(), imageSize, fileType, imageFormat, 1.0f, effort);
+		Image::storeFileData(ktxFilePath + "-px.gic", px.data(), imageSize, fileType, imageFormat, 1.0f, effort);
+		Image::storeFileData(ktxFilePath + "-ny.gic", ny.data(), imageSize, fileType, imageFormat, 1.0f, effort);
+		Image::storeFileData(ktxFilePath + "-py.gic", py.data(), imageSize, fileType, imageFormat, 1.0f, effort);
+		Image::storeFileData(ktxFilePath + "-nz.gic", nz.data(), imageSize, fileType, imageFormat, 1.0f, effort);
+		Image::storeFileData(ktxFilePath + "-pz.gic", pz.data(), imageSize, fileType, imageFormat, 1.0f, effort);
 	}
 	return true;
 }
 #endif
 
-#ifdef EQUI2CUBE
+#ifdef GARDEN_IMAGE_CONVERTER
 //******************************************************************************************************************
 int main(int argc, char *argv[])
 {
 	if (argc < 2)
 	{
-		cout << "equi2cube: error: no image file name" << endl;
+		cout << "imagec: error: no image file name" << endl;
 		return EXIT_FAILURE;
 	}
 
 	fs::path workingPath = fs::path(argv[0]).parent_path();
 	auto inputPath = workingPath, outputPath = workingPath;
 	ThreadPool* threadPool = nullptr; atomic_int convertResult = true;
+	auto equi2cube = false;
 	
 	for (int i = 1; i < argc; i++)
 	{
@@ -197,29 +234,30 @@ int main(int argc, char *argv[])
 		if (strcmp(arg, "-h") == 0 || strcmp(arg, "--help") == 0)
 		{
 			cout << "(C) 2022-" GARDEN_CURRENT_YEAR " Nikita Fediuchin. All rights reserved.\n"
-				"equi2cube - Equirectangular to cubemap image converter.\n"
+				"imagec - Garden engine image converter.\n"
 				"\n"
-				"Usage: equi2cube [options] name...\n"
+				"Usage: imagec [options] name...\n"
 				"\n"
 				"Options:\n"
-				"  -i <dir>      Read input from <dir>.\n"
-				"  -o <dir>      Write output to <dir>.\n"
+				"  -i <dir>      Read input files from <dir>.\n"
+				"  -o <dir>      Write output files to <dir>.\n"
 				"  -t <value>    Specify thread pool size. (Uses all cores by default)\n"
-				"  -h            Display available options.\n"
-				"  --help        Display available options.\n"
+				"  -e            Convert equirectangular images to cubemaps."
+				"  -h            Display available imagec options.\n"
+				"  --help        Display available imagec options.\n"
 				"  --version     Display converter version information." << endl;
 			return EXIT_SUCCESS;
 		}
 		else if (strcmp(arg, "--version") == 0)
 		{
-			cout << "equi2cube " GARDEN_VERSION_STRING << endl;
+			cout << "imagec " GARDEN_VERSION_STRING << endl;
 			return EXIT_SUCCESS;
 		}
 		else if (strcmp(arg, "-i") == 0)
 		{
 			if (i + 1 >= argc)
 			{
-				cout << "equi2cube: error: no input directory" << endl;
+				cout << "imagec: error: no input directory" << endl;
 				return EXIT_FAILURE;
 			}
 
@@ -229,7 +267,7 @@ int main(int argc, char *argv[])
 		{
 			if (i + 1 >= argc)
 			{
-				cout << "equi2cube: error: no output directory" << endl;
+				cout << "imagec: error: no output directory" << endl;
 				return EXIT_FAILURE;
 			}
 
@@ -239,7 +277,7 @@ int main(int argc, char *argv[])
 		{
 			if (i + 1 >= argc)
 			{
-				cout << "equi2cube: error: no thread count" << endl;
+				cout << "imagec: error: no thread count" << endl;
 				return EXIT_FAILURE;
 			}
 
@@ -255,9 +293,14 @@ int main(int argc, char *argv[])
 			}
 			i++;
 		}
+		else if (strcmp(arg, "-e") == 0)
+		{
+			equi2cube = true;
+			i++;
+		}
 		else if (arg[0] == '-')
 		{
-			cout << string("equi2cube: error: unsupported option: '") + arg + "'" << endl;
+			cout << string("imagec: error: unsupported option: '") + arg + "'" << endl;
 			return EXIT_FAILURE;
 		}
 		else
@@ -272,9 +315,10 @@ int main(int argc, char *argv[])
 				// Note: Sending one batched message due to multithreading.
 				cout << string("Converting ") + arg + "\n" << flush;
 
-				auto result = Equi2Cube::convertImage(arg, inputPath, outputPath);
+				auto result = equi2cube ? ImageConverter::equi2cube(arg, inputPath, outputPath)
+					ImageConverter::compress(arg, inputPath, outputPath);
 				if (!result)
-					cout << string("equi2cube: error: no image file found (") + arg + ")\n" << flush;
+					cout << string("imagec: error: no image file found (") + arg + ")\n" << flush;
 				convertResult &= result;
 			});
 		}

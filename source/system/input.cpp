@@ -59,19 +59,19 @@ void InputSystem::onKeyboardButton(void* window, int key, int scancode, int acti
 }
 void InputSystem::onMouseScroll(void* window, double offsetX, double offsetY)
 {
-	InputSystem::Instance::get()->accumMouseScroll += float2((float)offsetX, (float)offsetY);
+	InputSystem::getInstance()->accumMouseScroll += float2((float)offsetX, (float)offsetY);
 }
 void InputSystem::onFileDrop(void* window, int count, const char** paths)
 {
 	GARDEN_LOG_INFO("Dropped " + to_string(count) + " items on a window.");
 
-	auto inputSystem = InputSystem::Instance::get();
+	auto inputSystem = InputSystem::getInstance();
 	for (int i = 0; i < count; i++)
 		inputSystem->accumFileDrops.push_back(paths[i]);
 }
 void InputSystem::onKeyboardChar(void* window, unsigned int codepoint)
 {
-	InputSystem::Instance::get()->accumKeyboardChars.push_back(codepoint);
+	InputSystem::getInstance()->accumKeyboardChars.push_back(codepoint);
 }
 
 void InputSystem::renderThread()
@@ -79,7 +79,7 @@ void InputSystem::renderThread()
 	mpmt::Thread::setName("RENDER");
 	mpmt::Thread::setForegroundPriority();
 
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	while (manager->isRunning)
 		manager->update();
 	// Note: manual loop instead of start().
@@ -96,7 +96,7 @@ InputSystem::InputSystem(bool setSingleton) : Singleton(setSingleton),
 {
 	mpmt::Thread::setForegroundPriority();
 	
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	manager->registerEventBefore("Input", "Update");
 	manager->registerEventAfter("Output", "Update");
 	manager->registerEvent("FileDrop");
@@ -104,7 +104,7 @@ InputSystem::InputSystem(bool setSingleton) : Singleton(setSingleton),
 }
 void InputSystem::preInit()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("Input", InputSystem::input);
 	ECSM_SUBSCRIBE_TO_EVENT("Output", InputSystem::output);
 
@@ -205,7 +205,7 @@ void InputSystem::input()
 	SET_CPU_ZONE_SCOPED("Input Update");
 
 	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
@@ -305,7 +305,7 @@ void InputSystem::input()
 
 	if (!currFileDrops.empty())
 	{
-		const auto& event = Manager::Instance::get()->getEvent("FileDrop");
+		const auto& event = Manager::getInstance()->getEvent("FileDrop");
 		for (const auto& path : currFileDrops)
 		{
 			currFileDropPath = &path;
@@ -344,7 +344,7 @@ void InputSystem::output()
 
 	auto window = (GLFWwindow*)GraphicsAPI::get()->getWindow();
 	if (glfwWindowShouldClose(window))
-		Manager::Instance::get()->isRunning = false;
+		Manager::getInstance()->isRunning = false;
 
 	#if GARDEN_OS_WINDOWS
 	eventLocker.unlock();
@@ -360,14 +360,14 @@ void InputSystem::setWindowIcon(const vector<string>& paths)
 //**********************************************************************************************************************
 void InputSystem::startRenderThread()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	manager->isRunning = true;
 
 	#if GARDEN_OS_WINDOWS
 	auto renderThread = thread(InputSystem::renderThread);
 	#endif
 
-	auto inputSystem = InputSystem::Instance::get();
+	auto inputSystem = InputSystem::getInstance();
 	auto window = (GLFWwindow*)GraphicsAPI::get()->getWindow();
 
 	while (!glfwWindowShouldClose(window) && manager->isRunning)
@@ -477,7 +477,7 @@ void InputSystem::startRenderThread()
 			auto platform = glfwGetPlatform();
 			if (platform == GLFW_PLATFORM_WIN32 || platform == GLFW_PLATFORM_X11)
 			{
-				auto resourceSystem = ResourceSystem::Instance::get();
+				auto resourceSystem = ResourceSystem::getInstance();
 				const auto& paths = inputSystem->currWindowIconPaths;
 				imagePixels.resize(paths.size()); images.resize(paths.size());
 				auto imagePixelData = imagePixels.data(); auto imageData = images.data();

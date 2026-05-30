@@ -35,8 +35,7 @@ static ID<Framebuffer> createFramebuffer(GraphicsSystem* graphicsSystem, Deferre
 }
 static ID<GraphicsPipeline> createPipeline(ID<Framebuffer> framebuffer)
 {
-	ResourceSystem::GraphicsOptions options;
-	return ResourceSystem::Instance::get()->loadGraphicsPipeline("oit", framebuffer, options);
+	return ResourceSystem::getInstance()->loadGraphicsPipeline("oit", framebuffer);
 }
 static DescriptorSet::Uniforms getUniforms(GraphicsSystem* graphicsSystem, DeferredRenderSystem* deferredSystem)
 {
@@ -53,12 +52,12 @@ static DescriptorSet::Uniforms getUniforms(GraphicsSystem* graphicsSystem, Defer
 
 OitRenderSystem::OitRenderSystem(bool setSingleton) : Singleton(setSingleton)
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", OitRenderSystem::init);
 }
 void OitRenderSystem::init()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("PreLdrRender", OitRenderSystem::preLdrRender);
 	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", OitRenderSystem::gBufferRecreate);
 }
@@ -71,8 +70,8 @@ void OitRenderSystem::preLdrRender()
 	if (!isEnabled)
 		return;
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto deferredSystem = DeferredRenderSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
+	auto deferredSystem = DeferredRenderSystem::getInstance();
 	if (!graphicsSystem->camera || !deferredSystem->hasAnyOIT())
 		return;
 
@@ -112,12 +111,12 @@ void OitRenderSystem::preLdrRender()
 //**********************************************************************************************************************
 void OitRenderSystem::gBufferRecreate()
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	graphicsSystem->destroy(descriptorSet);
 
 	if (framebuffer)
 	{
-		auto deferredSystem = DeferredRenderSystem::Instance::get();
+		auto deferredSystem = DeferredRenderSystem::getInstance();
 		auto framebufferView = graphicsSystem->get(framebuffer);
 		framebufferView->update(graphicsSystem->getScaledFrameSize(), 
 			deferredSystem->getHdrImageView(), deferredSystem->getDepthStencilIV());
@@ -127,7 +126,7 @@ void OitRenderSystem::gBufferRecreate()
 ID<Framebuffer> OitRenderSystem::getFramebuffer()
 {
 	if (!framebuffer)
-		framebuffer = createFramebuffer(GraphicsSystem::Instance::get(), DeferredRenderSystem::Instance::get());
+		framebuffer = createFramebuffer(GraphicsSystem::getInstance(), DeferredRenderSystem::getInstance());
 	return framebuffer;
 }
 ID<GraphicsPipeline> OitRenderSystem::getPipeline()

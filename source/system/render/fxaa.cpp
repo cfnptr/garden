@@ -60,32 +60,32 @@ static ID<GraphicsPipeline> createPipeline(ID<Framebuffer> framebuffer, Graphics
 		{ "SUBPIXEL_QUALITY", Pipeline::SpecConstValue(subpixelQuality) }
 	};
 
-	ResourceSystem::GraphicsOptions options;
+	ResourceSystem::GraphicsLoadOptions options;
 	options.specConstValues = &specConstValues;
-	return ResourceSystem::Instance::get()->loadGraphicsPipeline("fxaa", framebuffer, options);
+	return ResourceSystem::getInstance()->loadGraphicsPipeline("fxaa", framebuffer, &options);
 }
 
 static DescriptorSet::Uniforms getUniforms(GraphicsSystem* graphicsSystem)
 {
 	// TODO: Support forward rendering too.
-	auto ldrBufferView = getLdrCopyView(graphicsSystem, DeferredRenderSystem::Instance::get()); 
+	auto ldrBufferView = getLdrCopyView(graphicsSystem, DeferredRenderSystem::getInstance()); 
 	return { { "ldrBuffer", DescriptorSet::Uniform(ldrBufferView) } };
 }
 
 //**********************************************************************************************************************
 FxaaRenderSystem::FxaaRenderSystem(bool setSingleton) : Singleton(setSingleton)
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", FxaaRenderSystem::init);
 }
 void FxaaRenderSystem::init()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("PreUiRender", FxaaRenderSystem::preUiRender);
 	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", FxaaRenderSystem::gBufferRecreate);
 	ECSM_SUBSCRIBE_TO_EVENT("QualityChange", FxaaRenderSystem::qualityChange);
 
-	auto settingsSystem = SettingsSystem::Instance::tryGet();
+	auto settingsSystem = SettingsSystem::tryGetInstance();
 	if (settingsSystem)
 	{
 		settingsSystem->getBool("fxaa.enabled", isEnabled);
@@ -102,8 +102,8 @@ void FxaaRenderSystem::preUiRender()
 	if (!isEnabled || subpixelQuality <= 0.0f)
 		return;
 	
-	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto deferredSystem = DeferredRenderSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
+	auto deferredSystem = DeferredRenderSystem::getInstance();
 
 	if (!isInitialized)
 	{
@@ -156,19 +156,19 @@ void FxaaRenderSystem::preUiRender()
 //**********************************************************************************************************************
 void FxaaRenderSystem::gBufferRecreate()
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	graphicsSystem->destroy(descriptorSet);
 
 	if (framebuffer)
 	{
 		auto framebufferView = graphicsSystem->get(framebuffer);
 		framebufferView->update(graphicsSystem->getScaledFrameSize(), 
-			DeferredRenderSystem::Instance::get()->getLdrImageView());
+			DeferredRenderSystem::getInstance()->getLdrImageView());
 	}
 }
 void FxaaRenderSystem::qualityChange()
 {
-	setQuality(GraphicsSystem::Instance::get()->quality, subpixelQuality);
+	setQuality(GraphicsSystem::getInstance()->quality, subpixelQuality);
 }
 
 void FxaaRenderSystem::setQuality(GraphicsQuality quality, float subpixelQuality)
@@ -179,7 +179,7 @@ void FxaaRenderSystem::setQuality(GraphicsQuality quality, float subpixelQuality
 	if (this->quality == quality && this->subpixelQuality == subpixelQuality)
 		return;
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	graphicsSystem->destroy(descriptorSet);
 
 	if (pipeline)
@@ -195,7 +195,7 @@ void FxaaRenderSystem::setQuality(GraphicsQuality quality, float subpixelQuality
 ID<Framebuffer> FxaaRenderSystem::getFramebuffer()
 {
 	if (!framebuffer)
-		framebuffer = createFramebuffer(GraphicsSystem::Instance::get(), DeferredRenderSystem::Instance::get());
+		framebuffer = createFramebuffer(GraphicsSystem::getInstance(), DeferredRenderSystem::getInstance());
 	return framebuffer;
 }
 ID<GraphicsPipeline> FxaaRenderSystem::getPipeline()

@@ -22,12 +22,12 @@ using namespace garden;
 //**********************************************************************************************************************
 UiScissorEditorSystem::UiScissorEditorSystem(bool setSingleton) : Singleton(setSingleton)
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", UiScissorEditorSystem::init);
 }
 void UiScissorEditorSystem::init()
 {
-	EditorRenderSystem::Instance::get()->registerEntityInspector<UiScissorComponent>(
+	EditorRenderSystem::getInstance()->registerEntityInspector<UiScissorComponent>(
 	[this](ID<Entity> entity, bool isOpened)
 	{
 		onEntityInspector(entity, isOpened);
@@ -40,7 +40,7 @@ void UiScissorEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	if (!isOpened)
 		return;
 
-	auto uiLabelView = Manager::Instance::get()->get<UiScissorComponent>(entity);
+	auto uiLabelView = Manager::getInstance()->get<UiScissorComponent>(entity);
 
 	ImGui::DragFloat2("Offset", &uiLabelView->offset, 1.0f);
 	if (ImGui::BeginPopupContextItem("offset"))

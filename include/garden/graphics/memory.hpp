@@ -129,7 +129,9 @@ public:
 
 	/**
 	 * @brief Creates memory barrier state.
+	 *
 	 * @param accessFlags memory access flags
+	 * @param pipelineStages shader pipeline stages
 	 */
 	static BarrierState toBarrierState(AccessFlags accessFlags, PipelineStage pipelineStages) noexcept;
 };

@@ -23,7 +23,7 @@ using namespace garden;
 //**********************************************************************************************************************
 UiTransformSystem::UiTransformSystem(bool setSingleton) : Singleton(setSingleton)
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	manager->addGroupSystem<ISerializable>(this);
 	manager->addGroupSystem<IAnimatable>(this);
 
@@ -73,7 +73,7 @@ void UiTransformSystem::update()
 {
 	SET_CPU_ZONE_SCOPED("UI Transform Update");
 
-	auto inputSystem = InputSystem::Instance::get();
+	auto inputSystem = InputSystem::getInstance();
 	uiSize = (float2)inputSystem->getWindowSize() * inputSystem->getContentScale() * uiScale;
 	cursorPosition = (inputSystem->getCursorPosition() - (float2)inputSystem->getWindowSize() * 0.5f) * uiScale;
 	// TODO: take into account macOS differend window and framebuffer scale!
@@ -82,7 +82,7 @@ void UiTransformSystem::update()
 		return;
 
 	auto componentData = components.getData();
-	auto threadSystem = ThreadSystem::Instance::tryGet();
+	auto threadSystem = ThreadSystem::tryGetInstance();
 	auto uiHalfSize = uiSize * 0.5f;
 
 	if (threadSystem && components.getCount() > threadSystem->getForegroundPool().getThreadCount())
@@ -93,7 +93,7 @@ void UiTransformSystem::update()
 			SET_CPU_ZONE_SCOPED("UI Transform Update");
 
 			auto itemCount = task.getItemCount();
-			auto manager = Manager::Instance::get();
+			auto manager = Manager::getInstance();
 
 			for (uint32 i = task.getItemOffset(); i < itemCount; i++)
 				transformUiComponent(manager, uiHalfSize, componentData[i]);
@@ -104,7 +104,7 @@ void UiTransformSystem::update()
 	else
 	{
 		auto componentOccupancy = components.getOccupancy();
-		auto manager = Manager::Instance::get();
+		auto manager = Manager::getInstance();
 
 		for (uint32 i = 0; i < componentOccupancy; i++)
 			transformUiComponent(manager, uiHalfSize, componentData[i]);

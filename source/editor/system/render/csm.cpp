@@ -26,18 +26,18 @@ using namespace garden;
 //**********************************************************************************************************************
 static DescriptorSet::Uniforms getCascadesUniforms()
 {
-	auto hizBufferView = HizRenderSystem::Instance::get()->getView(1);
+	auto hizBufferView = HizRenderSystem::getInstance()->getView(1);
 	return { { "hizBuffer", DescriptorSet::Uniform(hizBufferView) } };
 }
 
 CsmRenderEditorSystem::CsmRenderEditorSystem()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", CsmRenderEditorSystem::init);
 }
 void CsmRenderEditorSystem::init()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("PreUiRender", CsmRenderEditorSystem::preUiRender);
 	ECSM_SUBSCRIBE_TO_EVENT("UiRender", CsmRenderEditorSystem::uiRender);
 	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", CsmRenderEditorSystem::gBufferRecreate);
@@ -75,7 +75,7 @@ void CsmRenderEditorSystem::preUiRender()
 	if (!showWindow)
 		return;
 
-	auto csmSystem = CsmRenderSystem::Instance::get();
+	auto csmSystem = CsmRenderSystem::getInstance();
 	if (ImGui::Begin("Cascade Shadow Mapping", &showWindow, ImGuiWindowFlags_AlwaysAutoResize))
 	{
 		ImGui::Checkbox("Enabled", &csmSystem->isEnabled); ImGui::SameLine();
@@ -86,7 +86,7 @@ void CsmRenderEditorSystem::preUiRender()
 			ImGui::EndTooltip();
 		}
 
-		auto graphicsSystem = GraphicsSystem::Instance::get();
+		auto graphicsSystem = GraphicsSystem::getInstance();
 		const auto& cc = graphicsSystem->getCommonConstants();
 		auto shadowColor = cc.shadowColor;
 		if (ImGui::SliderFloat3("Color", &shadowColor, 0.0f, 1.0f))
@@ -126,7 +126,7 @@ void CsmRenderEditorSystem::preUiRender()
 
 		if (isChanged)
 		{
-			auto settingsSystem = SettingsSystem::Instance::tryGet();
+			auto settingsSystem = SettingsSystem::tryGetInstance();
 			if (settingsSystem)
 				settingsSystem->setInt("csm.shadowMapSize", csmSystem->getShadowMapSize());
 		}
@@ -150,11 +150,9 @@ void CsmRenderEditorSystem::preUiRender()
 		{
 			if (!cascadesPipeline)
 			{
-				auto deferredSystem = DeferredRenderSystem::Instance::get();
-				ResourceSystem::GraphicsOptions options;
-				options.useAsyncRecording = deferredSystem->getOptions().useAsyncRecording;
-				cascadesPipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline(
-					"editor/shadow-cascades", deferredSystem->getUiFramebuffer(), options);
+				auto deferredSystem = DeferredRenderSystem::getInstance();
+				cascadesPipeline = ResourceSystem::getInstance()->loadGraphicsPipeline(
+					"editor/shadow-cascades", deferredSystem->getUiFramebuffer());
 			}
 
 			auto pipelineView = graphicsSystem->get(cascadesPipeline);
@@ -169,7 +167,7 @@ void CsmRenderEditorSystem::uiRender()
 	if (!visualizeCascades)
 		return;
 	
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	auto pipelineView = graphicsSystem->get(cascadesPipeline);
 	if (!pipelineView->isReady())
 		return;
@@ -181,7 +179,7 @@ void CsmRenderEditorSystem::uiRender()
 		SET_RESOURCE_DEBUG_NAME(cascadesDS, "descriptorSet.editor.csm.cascades");
 	}
 
-	auto csmSystem = CsmRenderSystem::Instance::get();
+	auto csmSystem = CsmRenderSystem::getInstance();
 	const auto& cc = graphicsSystem->getCommonConstants();
 
 	PushConstants pc;
@@ -211,7 +209,7 @@ void CsmRenderEditorSystem::uiRender()
 //**********************************************************************************************************************
 void CsmRenderEditorSystem::gBufferRecreate()
 {
-	GraphicsSystem::Instance::get()->destroy(cascadesDS);
+	GraphicsSystem::getInstance()->destroy(cascadesDS);
 }
 
 void CsmRenderEditorSystem::editorBarToolPP()

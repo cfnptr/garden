@@ -24,7 +24,6 @@ using namespace garden;
 // TODO: Add automatic tightly packed sprite arrays (add support of this to the resource system or texture atlases).
 
 //**********************************************************************************************************************
-static constexpr auto imageFlags = ImageLoadFlags::TypeArray | ImageLoadFlags::LoadShared;
 static constexpr auto imageUsage = Image::Usage::Sampled | Image::Usage::TransferDst | Image::Usage::TransferQ;
 
 SpriteRenderSystem::SpriteRenderSystem(const fs::path& pipelinePath) : pipelinePath(pipelinePath) { }
@@ -33,7 +32,7 @@ void SpriteRenderSystem::init()
 {
 	InstanceRenderSystem::init();
 
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("ImageLoaded", SpriteRenderSystem::imageLoaded);
 
 	#if GARDEN_DEBUG
@@ -43,7 +42,7 @@ void SpriteRenderSystem::init()
 
 void SpriteRenderSystem::imageLoaded()
 {
-	auto resourceSystem = ResourceSystem::Instance::get();
+	auto resourceSystem = ResourceSystem::getInstance();
 	auto image = resourceSystem->getLoadedImage();
 	auto& imagePath = resourceSystem->getLoadedImagePaths()[0];
 	auto& spriteRenderPool = getMeshComponentPool();
@@ -80,7 +79,7 @@ void SpriteRenderSystem::imageLoaded()
 
 void SpriteRenderSystem::resetComponent(View<Component> component)
 {
-	auto resourceSystem = ResourceSystem::Instance::get();
+	auto resourceSystem = ResourceSystem::getInstance();
 	auto componentView = View<SpriteRenderComponent>(component);
 	resourceSystem->destroyShared(componentView->colorMap);
 	resourceSystem->destroyShared(componentView->descriptorSet);
@@ -143,7 +142,7 @@ DescriptorSet::Uniforms SpriteRenderSystem::getSpriteUniforms(ID<ImageView> colo
 }
 ID<GraphicsPipeline> SpriteRenderSystem::createBasePipeline()
 {
-	auto deferredSystem = DeferredRenderSystem::Instance::tryGet();
+	auto deferredSystem = DeferredRenderSystem::tryGetInstance();
 	ID<Framebuffer> framebuffer; GraphicsPipeline::State pipelineState;
 	if (deferredSystem)
 	{
@@ -159,25 +158,20 @@ ID<GraphicsPipeline> SpriteRenderSystem::createBasePipeline()
 	}
 	else
 	{
-		framebuffer = ForwardRenderSystem::Instance::get()->getColorFramebuffer();
+		framebuffer = ForwardRenderSystem::getInstance()->getColorFramebuffer();
 	}
 	GraphicsPipeline::PipelineStates pipelineStates = { { 0, pipelineState } };
 
-	ResourceSystem::GraphicsOptions options;
-	options.useAsyncRecording = true;
+	ResourceSystem::GraphicsLoadOptions options;
 	options.loadAsync = false; // We can't load async due to imageLoaded() usage.
 	options.pipelineStateOverrides = &pipelineStates;
-	return ResourceSystem::Instance::get()->loadGraphicsPipeline(pipelinePath, framebuffer, options);
+	return ResourceSystem::getInstance()->loadGraphicsPipeline(pipelinePath, framebuffer, &options);
 }
 
 //**********************************************************************************************************************
 void SpriteRenderSystem::serialize(ISerializer& serializer, const View<Component> component)
 {
 	const auto componentView = View<SpriteRenderComponent>(component);
-	if (componentView->isArray)
-		serializer.write("isArray", true);
-	if (componentView->useMipmap)
-		serializer.write("useMipmap", true);
 	if (componentView->aabb != Aabb::one)
 		serializer.write("aabb", componentView->aabb);
 	if (!componentView->isEnabled)
@@ -194,15 +188,11 @@ void SpriteRenderSystem::serialize(ISerializer& serializer, const View<Component
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	if (!componentView->colorMapPath.empty())
 		serializer.write("colorMapPath", componentView->colorMapPath.generic_string());
-	if (componentView->taskPriority != 0.0f)
-		serializer.write("taskPriority", componentView->taskPriority);
 	#endif
 }
 void SpriteRenderSystem::deserialize(IDeserializer& deserializer, View<Component> component)
 {
 	auto componentView = View<SpriteRenderComponent>(component);
-	deserializer.read("isArray", componentView->isArray);
-	deserializer.read("useMipmap", componentView->useMipmap);
 	deserializer.read("aabb", componentView->aabb);
 	deserializer.read("isEnabled", componentView->isEnabled);
 	deserializer.read("colorMapLayer", componentView->colorMapLayer);
@@ -220,14 +210,8 @@ void SpriteRenderSystem::deserialize(IDeserializer& deserializer, View<Component
 
 		#if GARDEN_DEBUG || GARDEN_EDITOR
 		componentView->colorMapPath = valueStringCache;
-		componentView->taskPriority = taskPriority;
 		#endif
-
-		auto maxMipCount = componentView->useMipmap ? 0 : 1;
-		auto flags = imageFlags; if (componentView->isArray) flags |= ImageLoadFlags::LoadAsArray;
-		auto usage = imageUsage; if (maxMipCount == 0) usage |= Image::Usage::TransferSrc;
-		componentView->colorMap = ResourceSystem::Instance::get()->loadImage(valueStringCache, 
-			Image::Format::SrgbR8G8B8A8, usage, maxMipCount, Image::Strategy::Default, flags, taskPriority);
+		componentView->colorMap = ResourceSystem::getInstance()->loadSharedImage(valueStringCache);
 	}
 }
 
@@ -251,12 +235,6 @@ void SpriteRenderSystem::serializeAnimation(ISerializer& serializer, View<Animat
 	{
 		if (!frameView->colorMapPath.empty())
 			serializer.write("colorMapPath", frameView->colorMapPath.generic_string());
-		if (frameView->taskPriority != 0.0f)
-			serializer.write("taskPriority", frameView->taskPriority);
-		if (frameView->isArray)
-			serializer.write("isArray", true);
-		if (frameView->useMipmap)
-			serializer.write("useMipmap", true);
 	}
 	#endif
 }
@@ -276,27 +254,15 @@ void SpriteRenderSystem::deserializeAnimation(IDeserializer& deserializer, View<
 		if (colorMapPath.empty())
 			colorMapPath = "missing";
 
-		boolValue = false;
-		deserializer.read("isArray", boolValue);
-		frameView->isArray = boolValue;
-
-		boolValue = false;
-		deserializer.read("useMipmap", boolValue);
-		frameView->useMipmap = boolValue;
 
 		auto taskPriority = 0.0f;
 		deserializer.read("taskPriority", taskPriority);
 
 		#if GARDEN_DEBUG || GARDEN_EDITOR
 		frameView->colorMapPath = colorMapPath;
-		frameView->taskPriority = taskPriority;
 		#endif
 
-		auto maxMipCount = frameView->useMipmap ? 0 : 1;
-		auto flags = imageFlags; if (frameView->isArray) flags |= ImageLoadFlags::LoadAsArray;
-		auto usage = imageUsage; if (maxMipCount == 0) usage |= Image::Usage::TransferSrc;
-		frameView->colorMap = ResourceSystem::Instance::get()->loadImage(colorMapPath, 
-			Image::Format::SrgbR8G8B8A8, usage, maxMipCount, Image::Strategy::Default, flags, taskPriority);
+		frameView->colorMap = ResourceSystem::getInstance()->loadSharedImage(colorMapPath);
 		frameView->descriptorSet = {}; // Note: See the imageLoaded()
 		frameView->animateColorMap = true;
 	}
@@ -330,8 +296,6 @@ void SpriteRenderSystem::animateAsync(View<Component> component,
 				#if GARDEN_DEBUG || GARDEN_EDITOR
 				componentView->colorMapPath = frameB->colorMapPath;
 				#endif
-				componentView->isArray = frameB->isArray;
-				componentView->useMipmap = frameB->useMipmap;
 			}
 		}
 		else
@@ -343,15 +307,13 @@ void SpriteRenderSystem::animateAsync(View<Component> component,
 				#if GARDEN_DEBUG || GARDEN_EDITOR
 				componentView->colorMapPath = frameA->colorMapPath;
 				#endif
-				componentView->isArray = frameA->isArray;
-				componentView->useMipmap = frameA->useMipmap;
 			}
 		}
 	}
 }
 void SpriteRenderSystem::resetAnimation(View<AnimationFrame> frame)
 {
-	auto resourceSystem = ResourceSystem::Instance::get();
+	auto resourceSystem = ResourceSystem::getInstance();
 	auto frameView = View<SpriteAnimFrame>(frame);
 	resourceSystem->destroyShared(frameView->colorMap);
 	resourceSystem->destroyShared(frameView->descriptorSet);
@@ -363,7 +325,7 @@ Ref<DescriptorSet> SpriteRenderSystem::createSharedDS(string_view path, ID<Image
 	GARDEN_ASSERT(!path.empty());
 	GARDEN_ASSERT(colorMap);
 
-	auto colorMapView = GraphicsSystem::Instance::get()->get(colorMap);
+	auto colorMapView = GraphicsSystem::getInstance()->get(colorMap);
 	auto imageSize = (uint2)colorMapView->getSize();
 	auto imageType = colorMapView->getType();
 
@@ -375,7 +337,7 @@ Ref<DescriptorSet> SpriteRenderSystem::createSharedDS(string_view path, ID<Image
 	Hash128::updateState(hashState, &imageType, sizeof(Image::Type));
 
 	auto uniforms = getSpriteUniforms(colorMapView->getView());
-	auto descriptorSet = ResourceSystem::Instance::get()->createSharedDS(
+	auto descriptorSet = ResourceSystem::getInstance()->createSharedDS(
 		Hash128::digestState(hashState), getBasePipeline(), std::move(uniforms), 1);
 	SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.shared." + string(path));
 	return descriptorSet;

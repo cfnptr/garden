@@ -199,7 +199,7 @@ public:
 		auto model = math::calcModel(posChildCount, rotation, scaleChildCap);
 		if (modelWithAncestors)
 		{
-			auto manager = Manager::Instance::get();
+			auto manager = Manager::getInstance();
 			auto nextParent = parent;
 			while (nextParent)
 			{

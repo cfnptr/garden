@@ -27,6 +27,19 @@ namespace garden
 using namespace ecsm;
 
 /**
+ * @brief Common task priority values.
+ * @details Higher priority tasks are executed first.
+ */
+class TaskPriority final
+{
+public:
+	static constexpr float pipeline = 10.0f; /*< Graphics pipeline load task priority. */
+	static constexpr float model = 2.0f;     /*< 3D model load task priority. */
+	static constexpr float image = 1.0f;     /*< Texture load task priority. */
+	static constexpr float normal = 0.0f;    /*< Default task priority. */
+};
+
+/**
  * @brief Thread pool holder. (Asynchronous task executor)
  * 
  * @details

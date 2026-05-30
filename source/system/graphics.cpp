@@ -72,7 +72,7 @@ static void calcJitterOffsets(vector<float2>& jitterOffsets,
 GraphicsSystem::GraphicsSystem(uint2 windowSize, bool isFullscreen, bool isDecorated,
 	bool useAsyncRecording, bool setSingleton) : Singleton(setSingleton), asyncRecording(useAsyncRecording)
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	manager->registerEvent("Render");
 	manager->registerEvent("SwapchainRecreate");
 	manager->registerEvent("QualityChange");
@@ -81,8 +81,8 @@ GraphicsSystem::GraphicsSystem(uint2 windowSize, bool isFullscreen, bool isDecor
 	ECSM_SUBSCRIBE_TO_EVENT("PreDeinit", GraphicsSystem::preDeinit);
 	ECSM_SUBSCRIBE_TO_EVENT("Update", GraphicsSystem::update);
 
-	auto appInfoSystem = AppInfoSystem::Instance::get();
-	auto threadSystem = ThreadSystem::Instance::tryGet();
+	auto appInfoSystem = AppInfoSystem::getInstance();
+	auto threadSystem = ThreadSystem::tryGetInstance();
 	auto threadPool = threadSystem ? &threadSystem->getForegroundPool() : nullptr;
 
 	GraphicsAPI::initialize(GraphicsBackend::VulkanAPI, appInfoSystem->getName(), appInfoSystem->getAppDataName(),
@@ -121,8 +121,7 @@ static void logVkGpuInfo()
 		string(vulkanAPI->driverProperties.driverInfo.data()) + ")");
 	GARDEN_LOG_INFO("GPU Vulkan API: " + to_string(VK_API_VERSION_MAJOR(apiVersion)) + "." +
 		to_string(VK_API_VERSION_MINOR(apiVersion)) + "." + to_string(VK_API_VERSION_PATCH(apiVersion)));
-	GARDEN_LOG_INFO(vulkanAPI->isCacheLoaded ? 
-		"Loaded existing pipeline cache." : "Created a new pipeline cache.");
+	GARDEN_LOG_INFO(vulkanAPI->isCacheLoaded ? "Loaded existing shader cache." : "Created a new shader cache.");
 	GARDEN_LOG_INFO("Has ray tracing support: " + string(vulkanAPI->features.rayTracing ? "yes" : "no"));
 	GARDEN_LOG_INFO("Has ray query support: " + string(vulkanAPI->features.rayQuery ? "yes" : "no"));
 	GARDEN_LOG_INFO("Has mesh shader support: " + string(vulkanAPI->features.meshShader ? "yes" : "no"));
@@ -130,7 +129,7 @@ static void logVkGpuInfo()
 
 void GraphicsSystem::preInit()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("Input", GraphicsSystem::input);
 	ECSM_SUBSCRIBE_TO_EVENT("Output", GraphicsSystem::present);
 
@@ -141,11 +140,11 @@ void GraphicsSystem::preInit()
 		logVkGpuInfo();
 	else abort();
 
-	auto inputSystem = InputSystem::Instance::get();
+	auto inputSystem = InputSystem::getInstance();
 	auto displayRefreshRate = inputSystem->getDisplayRefreshRate();
 	if (displayRefreshRate > 0) maxFrameRate = displayRefreshRate;
 
-	auto settingsSystem = SettingsSystem::Instance::tryGet();
+	auto settingsSystem = SettingsSystem::tryGetInstance();
 	if (settingsSystem)
 	{
 		settingsSystem->getBool("render.useVsync", useVsync);
@@ -174,7 +173,7 @@ static f32x4x4 calcRelativeView(const TransformComponent* transform)
 {
 	auto view = calcView(transform);
 	auto nextParent = transform->getParent();
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 
 	while (nextParent)
 	{
@@ -191,7 +190,7 @@ static f32x4x4 calcRelativeView(const TransformComponent* transform)
 //**********************************************************************************************************************
 void GraphicsSystem::prepareCommonConstants()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	auto scaledFrameSize = getScaledFrameSize();
 
 	auto transformView = manager->tryGet<TransformComponent>(camera);
@@ -258,7 +257,7 @@ void GraphicsSystem::prepareCommonConstants()
 	}
 	else commonConstants.lightDir = float3::bottom;
 
-	auto inputSystem = InputSystem::Instance::get();
+	auto inputSystem = InputSystem::getInstance();
 	commonConstants.currentTime = inputSystem->getCurrentTime();
 	commonConstants.deltaTime = inputSystem->getDeltaTime();
 	commonConstants.frameSize = scaledFrameSize;
@@ -304,7 +303,7 @@ static void disposeGpuResources(GraphicsAPI* graphicsAPI)
 //**********************************************************************************************************************
 void GraphicsSystem::input()
 {
-	auto inputSystem = InputSystem::Instance::get();
+	auto inputSystem = InputSystem::getInstance();
 	auto windowSize = inputSystem->getWindowSize(); auto frameSize = inputSystem->getFramebufferSize();
 	isFramebufferSizeValid = windowSize.x > 0 && windowSize.y > 0 && frameSize.x > 0 && frameSize.y > 0;
 	beginSleepClock = mpio::OS::getCurrentClock();
@@ -314,7 +313,7 @@ void GraphicsSystem::update()
 	SET_CPU_ZONE_SCOPED("Graphics Update");
 
 	auto graphicsAPI = GraphicsAPI::get();
-	auto inputSystem = InputSystem::Instance::get();
+	auto inputSystem = InputSystem::getInstance();
 	auto swapchain = graphicsAPI->getSwapchain();
 
 	SwapchainChanges newSwapchainChanges;
@@ -370,7 +369,7 @@ void GraphicsSystem::update()
 		FramebufferExt::getSize(**framebufferView) = swapchain->getFramebufferSize();
 	}
 	
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	if (swapchainRecreated || forceRecreateSwapchain)
 	{
 		SET_CPU_ZONE_SCOPED("Swapchain Recreate");
@@ -985,8 +984,8 @@ ID<DescriptorSet> GraphicsSystem::createDescriptorSet(ID<GraphicsPipeline> graph
 
 	#if GARDEN_DEBUG
 	auto pipelineView = GraphicsAPI::get()->graphicsPipelinePool.get(graphicsPipeline);
-	GARDEN_ASSERT_MSG(ResourceExt::getInstance(**pipelineView), "Pipeline [" + 
-		pipelineView->getDebugName() + "] is not ready");
+	GARDEN_ASSERT_MSG(ResourceExt::getInstance(**pipelineView), 
+		"Pipeline [" + pipelineView->getDebugName() + "] is not ready");
 	GARDEN_ASSERT_MSG(index < PipelineExt::getDescriptorSetLayouts(**pipelineView).size(),
 		"Out of pipeline [" + pipelineView->getDebugName() + "] descriptor set count bounds");
 	// TODO: check if all items initialized if not using bindless.
@@ -1009,8 +1008,8 @@ ID<DescriptorSet> GraphicsSystem::createDescriptorSet(ID<ComputePipeline> comput
 
 	#if GARDEN_DEBUG
 	auto pipelineView = GraphicsAPI::get()->computePipelinePool.get(computePipeline);
-	GARDEN_ASSERT_MSG(ResourceExt::getInstance(**pipelineView), "Pipeline [" + 
-		pipelineView->getDebugName() + "] is not ready");
+	GARDEN_ASSERT_MSG(ResourceExt::getInstance(**pipelineView), 
+		"Pipeline [" + pipelineView->getDebugName() + "] is not ready");
 	GARDEN_ASSERT_MSG(index < PipelineExt::getDescriptorSetLayouts(**pipelineView).size(),
 		"Out of pipeline [" + pipelineView->getDebugName() + "] descriptor set count bounds");
 	// TODO: check if all items initialized if not using bindless.
@@ -1033,8 +1032,8 @@ ID<DescriptorSet> GraphicsSystem::createDescriptorSet(ID<RayTracingPipeline> ray
 
 	#if GARDEN_DEBUG
 	auto pipelineView = GraphicsAPI::get()->rayTracingPipelinePool.get(rayTracingPipeline);
-	GARDEN_ASSERT_MSG(ResourceExt::getInstance(**pipelineView), "Pipeline [" + 
-		pipelineView->getDebugName() + "] is not ready");
+	GARDEN_ASSERT_MSG(ResourceExt::getInstance(**pipelineView), 
+		"Pipeline [" + pipelineView->getDebugName() + "] is not ready");
 	GARDEN_ASSERT_MSG(index < PipelineExt::getDescriptorSetLayouts(**pipelineView).size(),
 		"Out of pipeline [" + pipelineView->getDebugName() + "] descriptor set count bounds");
 	// TODO: check if all items initialized if not using bindless.
@@ -1249,11 +1248,11 @@ void GraphicsSystem::drawLine(const f32x4x4& mvp, f32x4 startPoint, f32x4 endPoi
 {
 	if (!linePipeline)
 	{
-		ResourceSystem::GraphicsOptions options;
+		ResourceSystem::GraphicsLoadOptions options;
 		options.loadAsync = false;
 
-		linePipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline(
-			"editor/wireframe-line", swapchainFramebuffer, options);
+		linePipeline = ResourceSystem::getInstance()->loadGraphicsPipeline(
+			"editor/wireframe-line", swapchainFramebuffer, &options);
 	}
 
 	auto pipelineView = GraphicsAPI::get()->graphicsPipelinePool.get(linePipeline);
@@ -1274,11 +1273,11 @@ void GraphicsSystem::drawAabb(const f32x4x4& mvp, f32x4 color)
 {
 	if (!aabbPipeline)
 	{
-		ResourceSystem::GraphicsOptions options;
+		ResourceSystem::GraphicsLoadOptions options;
 		options.loadAsync = false;
 
-		aabbPipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline(
-			"editor/aabb-lines", GraphicsAPI::get()->renderPassFramebuffer, options);
+		aabbPipeline = ResourceSystem::getInstance()->loadGraphicsPipeline(
+			"editor/aabb-lines", GraphicsAPI::get()->renderPassFramebuffer, &options);
 	}
 
 	auto pipelineView = GraphicsAPI::get()->graphicsPipelinePool.get(aabbPipeline);

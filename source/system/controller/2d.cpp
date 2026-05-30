@@ -30,21 +30,21 @@ using namespace garden;
 //**********************************************************************************************************************
 Controller2DSystem::Controller2DSystem(bool setSingleton) : Singleton(setSingleton)
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", Controller2DSystem::init);
 	ECSM_SUBSCRIBE_TO_EVENT("Update", Controller2DSystem::update);
 }
 void Controller2DSystem::init()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("SwapchainRecreate", Controller2DSystem::swapchainRecreate);
 
 	camera = manager->createEntity();
 	manager->reserveComponents(camera, 8);
 
-	if (DoNotDestroySystem::Instance::has())
+	if (DoNotDestroySystem::hasInstance())
 		manager->add<DoNotDestroyComponent>(camera);
-	if (DoNotSerializeSystem::Instance::has())
+	if (DoNotSerializeSystem::hasInstance())
 		manager->add<DoNotSerializeComponent>(camera);
 
 	auto transformView = manager->add<TransformComponent>(camera);
@@ -56,7 +56,7 @@ void Controller2DSystem::init()
 	auto linkView = manager->add<LinkComponent>(camera);
 	linkView->setTag("MainCamera");
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	auto frameSize = graphicsSystem->getFramebufferSize();
 	auto aspectRatio = (float)frameSize.x / (float)frameSize.y;
 	constexpr auto defaultSize = 2.0f;
@@ -91,12 +91,12 @@ void Controller2DSystem::update()
 
 void Controller2DSystem::swapchainRecreate()
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	const auto& swapchainChanges = graphicsSystem->getSwapchainChanges();
 
 	if (swapchainChanges.framebufferSize)
 	{
-		auto cameraView = Manager::Instance::get()->tryGet<CameraComponent>(camera);
+		auto cameraView = Manager::getInstance()->tryGet<CameraComponent>(camera);
 		if (cameraView)
 		{
 			auto frameSize = graphicsSystem->getFramebufferSize();
@@ -109,8 +109,8 @@ void Controller2DSystem::swapchainRecreate()
 //**********************************************************************************************************************
 void Controller2DSystem::updateCameraControl()
 {
-	auto inputSystem = InputSystem::Instance::get();
-	auto uiTransformSystem = UiTriggerSystem::Instance::tryGet();
+	auto inputSystem = InputSystem::getInstance();
+	auto uiTransformSystem = UiTriggerSystem::tryGetInstance();
 
 	if (inputSystem->cursorCapturers > 0 || inputSystem->getCursorMode() != CursorMode::Normal || 
 		(uiTransformSystem && uiTransformSystem->getHovered()))
@@ -118,7 +118,7 @@ void Controller2DSystem::updateCameraControl()
 		return;
 	}
 
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	auto transformView = manager->tryGet<TransformComponent>(camera);
 	auto cameraView = manager->tryGet<CameraComponent>(camera);
 
@@ -145,7 +145,7 @@ void Controller2DSystem::updateCameraControl()
 	{
 		mouseScrollY *= scrollSensitivity * 0.5f;
 
-		auto frameSize = (float2)GraphicsSystem::Instance::get()->getFramebufferSize();
+		auto frameSize = (float2)GraphicsSystem::getInstance()->getFramebufferSize();
 		auto aspectRatio = frameSize.x / frameSize.y;
 		cameraView->p.orthographic.height.x += mouseScrollY;
 		cameraView->p.orthographic.height.y -= mouseScrollY;
@@ -161,15 +161,15 @@ void Controller2DSystem::updateCameraControl()
 void Controller2DSystem::updateCameraFollowing()
 {
 	#if GARDEN_EDITOR
-	auto editorSystem = EditorRenderSystem::Instance::tryGet();
+	auto editorSystem = EditorRenderSystem::tryGetInstance();
 	if (editorSystem && !editorSystem->isPlaying())
 		return;
 	#endif
 
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	auto cameraTransformView = manager->tryGet<TransformComponent>(camera);
 	auto cameraView = manager->tryGet<CameraComponent>(camera);
-	auto characterEntities = LinkSystem::Instance::get()->tryGet(characterEntityTag);
+	auto characterEntities = LinkSystem::getInstance()->tryGet(characterEntityTag);
 
 	if (!cameraTransformView || !cameraTransformView->isActive() ||
 		!cameraView || cameraView->type != ProjectionType::Orthographic)
@@ -177,7 +177,7 @@ void Controller2DSystem::updateCameraFollowing()
 		return;
 	}
 
-	auto deltaTime = (float)InputSystem::Instance::get()->getDeltaTime();
+	auto deltaTime = (float)InputSystem::getInstance()->getDeltaTime();
 	for (auto i = characterEntities.first; i != characterEntities.second; i++)
 	{
 		auto charTransformView = manager->tryGet<TransformComponent>(i->second);
@@ -204,20 +204,20 @@ void Controller2DSystem::updateCameraFollowing()
 void Controller2DSystem::updateCharacterControl()
 {
 	#if GARDEN_EDITOR
-	auto editorSystem = EditorRenderSystem::Instance::tryGet();
+	auto editorSystem = EditorRenderSystem::tryGetInstance();
 	if (editorSystem && !editorSystem->isPlaying())
 		return;
 	#endif
 
-	auto characterEntities = LinkSystem::Instance::get()->tryGet(characterEntityTag);
+	auto characterEntities = LinkSystem::getInstance()->tryGet(characterEntityTag);
 	if (characterEntities.first == characterEntities.second)
 		return;
 
-	auto manager = Manager::Instance::get();
-	auto inputSystem = InputSystem::Instance::get();
+	auto manager = Manager::getInstance();
+	auto inputSystem = InputSystem::getInstance();
 	auto deltaTime = (float)inputSystem->getDeltaTime();
 	auto isJumping = inputSystem->getKeyState(KeyboardButton::Space);
-	auto gravity = PhysicsSystem::Instance::get()->getGravity();
+	auto gravity = PhysicsSystem::getInstance()->getGravity();
 
 	auto horizontalVelocity = 0.0f;
 	if (inputSystem->getKeyState(KeyboardButton::A) || inputSystem->getKeyState(KeyboardButton::Left))

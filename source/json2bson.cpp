@@ -65,7 +65,7 @@ bool Json2Bson::convertFile(const fs::path& filePath, const fs::path& inputPath,
 	}
 
 	auto binaryData = json::to_bson(textData);
-	textData = {}; // Cleaning up memory.
+	textData = {}; // Note: Cleaning up memory.
 
 	auto outputFilePath = outputPath / filePath;
 	auto outputDirectory = outputFilePath.parent_path();
@@ -101,11 +101,11 @@ int main(int argc, char *argv[])
 				"Usage: json2bson [options] name...\n"
 				"\n"
 				"Options:\n"
-				"  -i <dir>      Read input from <dir>.\n"
-				"  -o <dir>      Write output to <dir>.\n"
+				"  -i <dir>      Read input files from <dir>.\n"
+				"  -o <dir>      Write output files to <dir>.\n"
 				"  -t <value>    Specify thread pool size. (Uses all cores by default)\n"
-				"  -h            Display available options.\n"
-				"  --help        Display available options.\n"
+				"  -h            Display available json2bson options.\n"
+				"  --help        Display available json2bson options.\n"
 				"  --version     Display converter version information." << endl;
 			return EXIT_SUCCESS;
 		}

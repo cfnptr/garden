@@ -22,12 +22,12 @@ using namespace garden;
 //**********************************************************************************************************************
 UiTriggerEditorSystem::UiTriggerEditorSystem(bool setSingleton) : Singleton(setSingleton)
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", UiTriggerEditorSystem::init);
 }
 void UiTriggerEditorSystem::init()
 {
-	EditorRenderSystem::Instance::get()->registerEntityInspector<UiTriggerComponent>(
+	EditorRenderSystem::getInstance()->registerEntityInspector<UiTriggerComponent>(
 	[this](ID<Entity> entity, bool isOpened)
 	{
 		onEntityInspector(entity, isOpened);
@@ -40,7 +40,7 @@ void UiTriggerEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	if (!isOpened)
 		return;
 
-	auto uiTriggerView = Manager::Instance::get()->get<UiTriggerComponent>(entity);
+	auto uiTriggerView = Manager::getInstance()->get<UiTriggerComponent>(entity);
 
 	ImGui::DragFloat2("Offset", &uiTriggerView->offset, 1.0f);
 	if (ImGui::BeginPopupContextItem("offset"))

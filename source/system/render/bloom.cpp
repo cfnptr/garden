@@ -98,7 +98,7 @@ static void createBloomDescriptorSets(GraphicsSystem* graphicsSystem,
 	descriptorSets.resize(mipCount + (mipCount - 1));
 	auto descriptorSetData = descriptorSets.data();
 
-	auto uniforms = getUniforms(DeferredRenderSystem::Instance::get()->getUpscaleHdrIV());
+	auto uniforms = getUniforms(DeferredRenderSystem::getInstance()->getUpscaleHdrIV());
 	auto descriptorSet = graphicsSystem->createDescriptorSet(downsamplePipeline, std::move(uniforms));
 	SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.bloom.downsample0");
 	descriptorSetData[0] = descriptorSet;
@@ -132,39 +132,39 @@ static uint8 getMaxMipCount(GraphicsQuality quality) noexcept
 
 static ID<GraphicsPipeline> createDownsamplePipeline(ID<Framebuffer> framebuffer, bool useThreshold)
 {
-	auto toneMappingSystem = ToneMappingSystem::Instance::get();
+	auto toneMappingSystem = ToneMappingSystem::getInstance();
 	auto tmOptions = toneMappingSystem->getOptions();
 	tmOptions.useBloomBuffer = true;
 	toneMappingSystem->setOptions(tmOptions);
 
 	Pipeline::SpecConstValues specConsts = { { "USE_THRESHOLD", Pipeline::SpecConstValue(useThreshold) } };
 
-	ResourceSystem::GraphicsOptions options;
+	ResourceSystem::GraphicsLoadOptions options;
 	options.specConstValues = &specConsts;
-	return ResourceSystem::Instance::get()->loadGraphicsPipeline("bloom/downsample", framebuffer, options);
+	return ResourceSystem::getInstance()->loadGraphicsPipeline("bloom/downsample", framebuffer, &options);
 }
 static ID<GraphicsPipeline> createUpsamplePipeline(ID<Framebuffer> framebuffer)
 {
-	ResourceSystem::GraphicsOptions options;
-	return ResourceSystem::Instance::get()->loadGraphicsPipeline("bloom/upsample", framebuffer, options);
+	ResourceSystem::GraphicsLoadOptions options;
+	return ResourceSystem::getInstance()->loadGraphicsPipeline("bloom/upsample", framebuffer, &options);
 }
 
 //**********************************************************************************************************************
 BloomRenderSystem::BloomRenderSystem(bool useThreshold, bool setSingleton) :
 	Singleton(setSingleton), useThreshold(useThreshold)
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	manager->registerEvent("BloomRecreate");
 	ECSM_SUBSCRIBE_TO_EVENT("Init", BloomRenderSystem::init);
 }
 void BloomRenderSystem::init()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("PreLdrRender", BloomRenderSystem::preLdrRender);
 	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", BloomRenderSystem::gBufferRecreate);
 	ECSM_SUBSCRIBE_TO_EVENT("QualityChange", BloomRenderSystem::qualityChange);
 
-	auto settingsSystem = SettingsSystem::Instance::tryGet();
+	auto settingsSystem = SettingsSystem::tryGetInstance();
 	if (settingsSystem)
 	{
 		settingsSystem->getBool("bloom.enabled", isEnabled);
@@ -176,7 +176,7 @@ void BloomRenderSystem::preLdrRender()
 {
 	SET_CPU_ZONE_SCOPED("Bloom Pre LDR Render");
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	if (!isEnabled || intensity == 0.0f)
 	{
 		if (bloomBuffer)
@@ -274,7 +274,7 @@ void BloomRenderSystem::preLdrRender()
 //**********************************************************************************************************************
 void BloomRenderSystem::gBufferRecreate()
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	graphicsSystem->destroy(descriptorSets); descriptorSets.clear();
 
 	if (bloomBuffer)
@@ -303,7 +303,7 @@ void BloomRenderSystem::gBufferRecreate()
 }
 void BloomRenderSystem::qualityChange()
 {
-	setQuality(GraphicsSystem::Instance::get()->quality);
+	setQuality(GraphicsSystem::getInstance()->quality);
 }
 
 void BloomRenderSystem::setConsts(bool useThreshold)
@@ -311,7 +311,7 @@ void BloomRenderSystem::setConsts(bool useThreshold)
 	if (this->useThreshold == useThreshold)
 		return;
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	graphicsSystem->destroy(descriptorSets); descriptorSets.clear();
 	
 	if (downsamplePipeline)
@@ -331,7 +331,7 @@ void BloomRenderSystem::setQuality(GraphicsQuality quality)
 	this->quality = quality;
 	gBufferRecreate();
 
-	Manager::Instance::get()->runEvent("BloomRecreate");
+	Manager::getInstance()->runEvent("BloomRecreate");
 }
 
 //**********************************************************************************************************************
@@ -351,12 +351,12 @@ ID<GraphicsPipeline> BloomRenderSystem::getUpsamplePipeline()
 ID<Image> BloomRenderSystem::getBloomBuffer()
 {
 	if (!bloomBuffer)
-		bloomBuffer = createBloomBuffer(GraphicsSystem::Instance::get(), getMaxMipCount(quality));
+		bloomBuffer = createBloomBuffer(GraphicsSystem::getInstance(), getMaxMipCount(quality));
 	return bloomBuffer;
 }
 const vector<ID<Framebuffer>>& BloomRenderSystem::getFramebuffers()
 {
 	if (framebuffers.empty())
-		createBloomFramebuffers(GraphicsSystem::Instance::get(), getBloomBuffer(), framebuffers);
+		createBloomFramebuffers(GraphicsSystem::getInstance(), getBloomBuffer(), framebuffers);
 	return framebuffers;
 }

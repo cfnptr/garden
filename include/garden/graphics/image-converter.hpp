@@ -26,9 +26,9 @@ namespace garden::graphics
 {
 
 /**
- * @brief Equirectangular image to cubemap converter. 
+ * @brief Garden image converter. (compression. equirectangular, etc.)
  */
-class Equi2Cube final
+class ImageConverter final
 {
 public:
 	static f32x4 filterCubeMap(float2 coords, const f32x4* pixels, uint2 sizeMinus1, uint32 sizeX) noexcept;
@@ -61,7 +61,18 @@ public:
 		}
 	}
 
-	#if GARDEN_DEBUG || defined(EQUI2CUBE)
+	#if GARDEN_DEBUG || defined(GARDEN_IMAGE_CONVERTER)
+	/*******************************************************************************************************************
+	 * @brief Compresses input image using block compression. (MT-Safe)
+	 * 
+	 * @param[in] filePath target image to convert path
+	 * @param[in] inputPath input image directory path
+	 * @param[in] outputPath output images directory path
+	 * 
+	 * @return Returns false if failed to open image file.
+	 * @throw GardenError on image compression error.
+	 */
+	static bool compress(const fs::path& filePath, const fs::path& inputPath, const fs::path& outputPath);
 	/**
 	 * @brief Converts input equirectangular image to cubemap. (MT-Safe)
 	 * 
@@ -73,7 +84,7 @@ public:
 	 * @return Returns false if failed to open image file.
 	 * @throw GardenError on image conversion error.
 	 */
-	static bool convertImage(const fs::path& filePath, const fs::path& inputPath, 
+	static bool equi2cube(const fs::path& filePath, const fs::path& inputPath, 
 		const fs::path& outputPath, ThreadPool* threadPool = nullptr);
 	#endif
 };

@@ -36,10 +36,10 @@ public:
 
 	static void addBufferBarrier(VulkanAPI* vulkanAPI, Buffer::BarrierState& newBufferState, 
 		ID<Buffer> buffer, uint64 size = VK_WHOLE_SIZE, uint64 offset = 0);
-	static void addImageBarrier(VulkanAPI* vulkanAPI, 
-		Image::LayoutState& newImageState, ID<ImageView> imageView);
+	static void addImageBarrier(VulkanAPI* vulkanAPI, Image::LayoutState& newImageState, 
+		ID<ImageView> imageView, bool doNotCare);
 	static void addDescriptorSetBarriers(VulkanAPI* vulkanAPI, 
-		const DescriptorSet::Range* descriptorSetRanges, uint32 rangeCount);
+		const DescriptorSet::Range* ranges, uint32 rangeCount);
 
 	void addRenderPassBarriers(const Command* command);
 	void addRenderPassBarriers(uint32 thisSize);

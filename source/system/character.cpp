@@ -32,7 +32,7 @@ void CharacterComponent::setShape(ID<Shape> shape, float mass, float maxPenetrat
 
 	if (shape)
 	{
-		auto physicsSystem = PhysicsSystem::Instance::get();
+		auto physicsSystem = PhysicsSystem::getInstance();
 		auto shapeView = physicsSystem->get(shape);
 
 		if (instance)
@@ -47,7 +47,7 @@ void CharacterComponent::setShape(ID<Shape> shape, float mass, float maxPenetrat
 			auto objectLayerFilter = physicsInstance->GetDefaultLayerFilter(collisionLayer);
 			JPH::BodyID rigidbodyID = {};
 
-			auto rigidbodyView = Manager::Instance::get()->tryGet<RigidbodyComponent>(entity);
+			auto rigidbodyView = Manager::getInstance()->tryGet<RigidbodyComponent>(entity);
 			if (rigidbodyView && rigidbodyView->getShape())
 			{
 				auto instance = (JPH::Body*)rigidbodyView->instance;
@@ -64,7 +64,7 @@ void CharacterComponent::setShape(ID<Shape> shape, float mass, float maxPenetrat
 		else
 		{
 			auto position = f32x4::zero; auto rotation = quat::identity;
-			auto transformView = Manager::Instance::get()->tryGet<TransformComponent>(entity);
+			auto transformView = Manager::getInstance()->tryGet<TransformComponent>(entity);
 			if (transformView)
 			{
 				position = transformView->getPosition();
@@ -81,7 +81,7 @@ void CharacterComponent::setShape(ID<Shape> shape, float mass, float maxPenetrat
 			this->instance = instance;
 
 			auto charVsCharCollision = (JPH::CharacterVsCharacterCollisionSimple*)
-				CharacterSystem::Instance::get()->charVsCharCollision;
+				CharacterSystem::getInstance()->charVsCharCollision;
 			instance->SetCharacterVsCharacterCollision(charVsCharCollision);
 
 			if (inSimulation)
@@ -96,7 +96,7 @@ void CharacterComponent::setShape(ID<Shape> shape, float mass, float maxPenetrat
 			if (inSimulation)
 			{
 				auto charVsCharCollision = (JPH::CharacterVsCharacterCollisionSimple*)
-					CharacterSystem::Instance::get()->charVsCharCollision;
+					CharacterSystem::getInstance()->charVsCharCollision;
 				charVsCharCollision->Remove(instance);
 			}
 
@@ -213,14 +213,14 @@ void CharacterComponent::update(float deltaTime, f32x4 gravity, const UpdateSett
 	SET_CPU_ZONE_SCOPED("Character Update");
 
 	GARDEN_ASSERT(shape);
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	auto instance = (JPH::CharacterVirtual*)this->instance;
 	auto transformView = manager->tryGet<TransformComponent>(entity);
 
 	if (transformView)
 	{
 		auto charVsCharCollision = (JPH::CharacterVsCharacterCollisionSimple*)
-			CharacterSystem::Instance::get()->charVsCharCollision;
+			CharacterSystem::getInstance()->charVsCharCollision;
 		if (transformView->isActive())
 		{
 			if (!inSimulation)
@@ -240,7 +240,7 @@ void CharacterComponent::update(float deltaTime, f32x4 gravity, const UpdateSett
 		}
 	}
 
-	auto physicsSystem = PhysicsSystem::Instance::get();
+	auto physicsSystem = PhysicsSystem::getInstance();
 	if (collisionLayer >= physicsSystem->properties.collisionLayerCount)
 		collisionLayer = (uint16)CollisionLayer::Moving;
 	
@@ -318,7 +318,7 @@ bool CharacterComponent::walkStairs(float deltaTime, f32x4 stepUp,
 	GARDEN_ASSERT(shape);
 	auto instance = (JPH::CharacterVirtual*)this->instance;
 
-	auto physicsSystem = PhysicsSystem::Instance::get();
+	auto physicsSystem = PhysicsSystem::getInstance();
 	if (collisionLayer >= physicsSystem->properties.collisionLayerCount)
 		collisionLayer = (uint16)CollisionLayer::Moving;
 
@@ -328,7 +328,7 @@ bool CharacterComponent::walkStairs(float deltaTime, f32x4 stepUp,
 	auto objectLayerFilter = physicsInstance->GetDefaultLayerFilter(collisionLayer);
 	JPH::BodyID rigidbodyID = {};
 
-	auto rigidbodyView = Manager::Instance::get()->tryGet<RigidbodyComponent>(entity);
+	auto rigidbodyView = Manager::getInstance()->tryGet<RigidbodyComponent>(entity);
 	if (rigidbodyView && rigidbodyView->instance)
 	{
 		auto instance = (JPH::Body*)rigidbodyView->instance;
@@ -348,7 +348,7 @@ bool CharacterComponent::stickToFloor(f32x4 stepDown)
 	GARDEN_ASSERT(shape);
 	auto instance = (JPH::CharacterVirtual*)this->instance;
 
-	auto physicsSystem = PhysicsSystem::Instance::get();
+	auto physicsSystem = PhysicsSystem::getInstance();
 	if (collisionLayer >= physicsSystem->properties.collisionLayerCount)
 		collisionLayer = (uint16)CollisionLayer::Moving;
 
@@ -358,7 +358,7 @@ bool CharacterComponent::stickToFloor(f32x4 stepDown)
 	auto objectLayerFilter = physicsInstance->GetDefaultLayerFilter(collisionLayer);
 	JPH::BodyID rigidbodyID = {};
 
-	auto rigidbodyView = Manager::Instance::get()->tryGet<RigidbodyComponent>(entity);
+	auto rigidbodyView = Manager::getInstance()->tryGet<RigidbodyComponent>(entity);
 	if (rigidbodyView && rigidbodyView->instance)
 	{
 		auto instance = (JPH::Body*)rigidbodyView->instance;
@@ -375,7 +375,7 @@ bool CharacterComponent::stickToFloor(f32x4 stepDown)
 void CharacterComponent::setWorldTransform()
 {
 	GARDEN_ASSERT(shape);
-	auto transformView = Manager::Instance::get()->get<TransformComponent>(entity);
+	auto transformView = Manager::getInstance()->get<TransformComponent>(entity);
 	auto model = transformView->calcModel();
 	setPosAndRot(getTranslation(model), extractQuat(extractRotation(model)));
 }
@@ -383,7 +383,7 @@ void CharacterComponent::setWorldTransform()
 //**********************************************************************************************************************
 CharacterSystem::CharacterSystem(bool setSingleton) : Singleton(setSingleton)
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	manager->addGroupSystem<ISerializable>(this);
 	manager->addGroupSystem<INetworkable>(this);
 
@@ -392,14 +392,14 @@ CharacterSystem::CharacterSystem(bool setSingleton) : Singleton(setSingleton)
 
 ID<Component> CharacterSystem::createComponent(ID<Entity> entity)
 {
-	auto transformView = Manager::Instance::get()->tryGet<TransformComponent>(entity);
+	auto transformView = Manager::getInstance()->tryGet<TransformComponent>(entity);
 	if (transformView)
 		transformView->modelWithAncestors = true;
 	return ID<Component>(components.create());
 }
 void CharacterSystem::destroyComponent(ID<Component> instance)
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	auto componentView = getComponent(instance);
 	auto transformView = manager->tryGet<TransformComponent>(componentView->getEntity());
 	auto rigidbodyView = manager->tryGet<RigidbodyComponent>(componentView->getEntity());
@@ -454,7 +454,7 @@ void CharacterSystem::serialize(ISerializer& serializer, const View<Component> c
 		if (velocity != f32x4::zero)
 			serializer.write("linearVelocity", (float3)position);
 
-		auto physicsSystem = PhysicsSystem::Instance::get();
+		auto physicsSystem = PhysicsSystem::getInstance();
 		physicsSystem->serializeDecoratedShape(serializer, componentView->shape);
 	}
 }
@@ -463,7 +463,7 @@ void CharacterSystem::deserialize(IDeserializer& deserializer, View<Component> c
 	auto componentView = View<CharacterComponent>(component);
 	if (deserializer.read("shapeType", valueStringCache))
 	{
-		auto physicsSystem = PhysicsSystem::Instance::get();
+		auto physicsSystem = PhysicsSystem::getInstance();
 		auto shape = physicsSystem->deserializeDecoratedShape(deserializer, valueStringCache);
 		if (shape)
 		{
@@ -501,7 +501,7 @@ void CharacterSystem::setWorldTransformRecursive(ID<Entity> entity)
 {
 	GARDEN_ASSERT(entity);
 
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	entityStack.push(entity);
 
 	while (!entityStack.empty())

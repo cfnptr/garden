@@ -104,33 +104,24 @@ static ID<Framebuffer> createSkyboxFramebuffer(GraphicsSystem* graphicsSystem, I
 //**********************************************************************************************************************
 static Ref<Image> createDataFields()
 {
-	return ResourceSystem::Instance::get()->loadImage("clouds/data-fields", Image::Format::UnormR8G8B8A8,
-		Image::Usage::Sampled | Image::Usage::TransferSrc | Image::Usage::TransferDst | Image::Usage::TransferQ, 
-		0, Image::Strategy::Size, ImageLoadFlags::LoadShared | ImageLoadFlags::LoadAsSrgb, 9.0f);
+	return ResourceSystem::getInstance()->loadSharedImage("clouds/data-fields");
 }
 static Ref<Image> createVertProfile()
 {
-	return ResourceSystem::Instance::get()->loadImage("clouds/vert-profile", Image::Format::UnormR8G8, 
-		Image::Usage::Sampled | Image::Usage::TransferDst | Image::Usage::TransferQ, 1, 
-		Image::Strategy::Size, ImageLoadFlags::LoadShared | ImageLoadFlags::LoadAsSrgb, 9.0f);
+	return ResourceSystem::getInstance()->loadSharedImage("clouds/vert-profile");
 }
 static Ref<Image> createNoiseShape()
 {
-	return ResourceSystem::Instance::get()->loadImage("clouds/noise-shape", Image::Format::UnormR8G8B8A8,
-		Image::Usage::Sampled | Image::Usage::TransferSrc | Image::Usage::TransferDst | 
-		Image::Usage::TransferQ, 0, Image::Strategy::Size, ImageLoadFlags::LoadShared | 
-		ImageLoadFlags::LoadAs3D | ImageLoadFlags::LoadAsSrgb, 9.0f);
+	return ResourceSystem::getInstance()->loadSharedImage("clouds/noise-shape");
 }
 static Ref<Image> createCirrusShape()
 {
-	return ResourceSystem::Instance::get()->loadImage("clouds/cirrus-shape", Image::Format::UnormR8G8B8A8,
-		Image::Usage::Sampled | Image::Usage::TransferSrc | Image::Usage::TransferDst | Image::Usage::TransferQ, 
-		0, Image::Strategy::Size, ImageLoadFlags::LoadShared | ImageLoadFlags::LoadAsSrgb, 9.0f);
+	return ResourceSystem::getInstance()->loadSharedImage("clouds/cirrus-shape");
 }
 
 static void getCloudsQuality(GraphicsQuality cloudsQuality, float& stepSizeFactor, float& sliceCount, float& kmPerSlice)
 {
-	auto atmosphereQuality = AtmosphereRenderSystem::Instance::get()->getQuality();
+	auto atmosphereQuality = AtmosphereRenderSystem::getInstance()->getQuality();
 	AtmosphereRenderSystem::getSliceQuality(atmosphereQuality, sliceCount, kmPerSlice);
 
 	switch (cloudsQuality)
@@ -157,9 +148,9 @@ static ID<GraphicsPipeline> createCamViewPipeline(ID<Framebuffer> framebuffer, G
 		{ "KM_PER_SLICE", Pipeline::SpecConstValue(kmPerSlice) }
 	};
 
-	ResourceSystem::GraphicsOptions options;
+	ResourceSystem::GraphicsLoadOptions options;
 	options.specConstValues = &specConstValues;
-	return ResourceSystem::Instance::get()->loadGraphicsPipeline("clouds/cam-view", framebuffer, options);
+	return ResourceSystem::getInstance()->loadGraphicsPipeline("clouds/cam-view", framebuffer, &options);
 }
 static ID<GraphicsPipeline> createSkyboxPipeline(ID<Framebuffer> framebuffer, GraphicsQuality quality)
 {
@@ -173,30 +164,28 @@ static ID<GraphicsPipeline> createSkyboxPipeline(ID<Framebuffer> framebuffer, Gr
 		{ "KM_PER_SLICE", Pipeline::SpecConstValue(kmPerSlice) }
 	};
 
-	ResourceSystem::GraphicsOptions options;
+	ResourceSystem::GraphicsLoadOptions options;
 	options.specConstValues = &specConstValues;
-	return ResourceSystem::Instance::get()->loadGraphicsPipeline("clouds/skybox", framebuffer, options);
+	return ResourceSystem::getInstance()->loadGraphicsPipeline("clouds/skybox", framebuffer, &options);
 }
 
 static ID<GraphicsPipeline> createViewBlendPipeline()
 {
-	auto deferredSystem = DeferredRenderSystem::Instance::get();
-	ResourceSystem::GraphicsOptions options;
-	options.useAsyncRecording = deferredSystem->getOptions().useAsyncRecording;
-	return ResourceSystem::Instance::get()->loadGraphicsPipeline(
-		"clouds/view-blend", deferredSystem->getHdrFramebuffer(), options);
+	auto deferredSystem = DeferredRenderSystem::getInstance();
+	return ResourceSystem::getInstance()->loadGraphicsPipeline(
+		"clouds/view-blend", deferredSystem->getHdrFramebuffer());
 }
 static ID<GraphicsPipeline> createSkyBlendPipeline(ID<Framebuffer> framebuffer)
 {
-	ResourceSystem::GraphicsOptions options;
-	return ResourceSystem::Instance::get()->loadGraphicsPipeline("process/alpha-blend", framebuffer, options);
+	ResourceSystem::GraphicsLoadOptions options;
+	return ResourceSystem::getInstance()->loadGraphicsPipeline("process/alpha-blend", framebuffer, &options);
 }
 static ID<GraphicsPipeline> createShadowPipeline()
 {
-	auto pbrLightingSystem = PbrLightingSystem::Instance::get();
-	ResourceSystem::GraphicsOptions options;
-	return ResourceSystem::Instance::get()->loadGraphicsPipeline(
-		"clouds/shadow", pbrLightingSystem->getShadBaseFB(), options);
+	auto pbrLightingSystem = PbrLightingSystem::getInstance();
+	ResourceSystem::GraphicsLoadOptions options;
+	return ResourceSystem::getInstance()->loadGraphicsPipeline(
+		"clouds/shadow", pbrLightingSystem->getShadBaseFB(), &options);
 }
 
 //**********************************************************************************************************************
@@ -215,9 +204,9 @@ static DescriptorSet::Uniforms getCamViewUniforms(GraphicsSystem* graphicsSystem
 		return {};
 	}
 
-	auto atmosphereSystem = AtmosphereRenderSystem::Instance::get();
-	auto hizBufferView = HizRenderSystem::Instance::get()->getView(2);
-	auto disocclMapView = DeferredRenderSystem::Instance::get()->getDisocclView(2);
+	auto atmosphereSystem = AtmosphereRenderSystem::getInstance();
+	auto hizBufferView = HizRenderSystem::getInstance()->getView(2);
+	auto disocclMapView = DeferredRenderSystem::getInstance()->getDisocclView(2);
 	auto transLutView = graphicsSystem->get(atmosphereSystem->getTransLUT())->getView();
 	auto cameraVolumeView = graphicsSystem->get(atmosphereSystem->getCameraVolume())->getView();
 	auto dataFieldsViewView = dataFieldsView->getView();
@@ -251,7 +240,7 @@ static DescriptorSet::Uniforms getCamViewUniforms(GraphicsSystem* graphicsSystem
 static DescriptorSet::Uniforms getSkyboxUniforms(GraphicsSystem* graphicsSystem, 
 	ID<Image> dataFields, ID<Image> vertProfile, ID<Image> noiseShape, ID<Image> cirrusShape)
 {
-	auto atmosphereSystem = AtmosphereRenderSystem::Instance::get();
+	auto atmosphereSystem = AtmosphereRenderSystem::getInstance();
 	auto transLutView = graphicsSystem->get(atmosphereSystem->getTransLUT())->getView();
 	auto cameraVolumeView = graphicsSystem->get(atmosphereSystem->getCameraVolume())->getView();
 	auto dataFieldsView = graphicsSystem->get(dataFields)->getView();
@@ -277,7 +266,7 @@ static DescriptorSet::Uniforms getSkyboxUniforms(GraphicsSystem* graphicsSystem,
 static DescriptorSet::Uniforms getViewBlendUniforms(GraphicsSystem* graphicsSystem, 
 	ID<Image> cloudsCamView, ID<Image> cloudsCamViewDepth)
 {
-	auto depthBufferView = DeferredRenderSystem::Instance::get()->getDepthOnlyIV();
+	auto depthBufferView = DeferredRenderSystem::getInstance()->getDepthOnlyIV();
 	auto camViewView = graphicsSystem->get(cloudsCamView);
 	auto camViewDepthView = graphicsSystem->get(cloudsCamViewDepth);
 
@@ -299,7 +288,7 @@ static DescriptorSet::Uniforms getSkyBlendUniforms(GraphicsSystem* graphicsSyste
 }
 static DescriptorSet::Uniforms getShadowUniforms(GraphicsSystem* graphicsSystem, ID<Image> dataFields)
 {
-	auto hizBufferView = HizRenderSystem::Instance::get()->getView(1);
+	auto hizBufferView = HizRenderSystem::getInstance()->getView(1);
 	auto dataFieldsView = graphicsSystem->get(dataFields)->getView();
 
 	DescriptorSet::Uniforms uniforms =
@@ -313,12 +302,12 @@ static DescriptorSet::Uniforms getShadowUniforms(GraphicsSystem* graphicsSystem,
 //**********************************************************************************************************************
 CloudsRenderSystem::CloudsRenderSystem(bool setSingleton) : Singleton(setSingleton)
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", CloudsRenderSystem::init);
 }
 void CloudsRenderSystem::init()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("PreDeferredRender", CloudsRenderSystem::preDeferredRender);
 	ECSM_SUBSCRIBE_TO_EVENT("PreSkyFaceRender", CloudsRenderSystem::preSkyFaceRender);
 	ECSM_SUBSCRIBE_TO_EVENT("SkyFaceRender", CloudsRenderSystem::skyFaceRender);
@@ -350,7 +339,7 @@ void CloudsRenderSystem::preDeferredRender()
 	if (!isEnabled)
 		return;
 	
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	if (!isInitialized)
 	{
 		if (!dataFields)
@@ -401,8 +390,8 @@ void CloudsRenderSystem::preSkyFaceRender()
 	if (!isEnabled || !camViewDS)
 		return;
 
-	auto manager = Manager::Instance::get();
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto manager = Manager::getInstance();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	auto pbrLightingView = manager->tryGet<PbrLightingComponent>(graphicsSystem->camera);
 	if (!pbrLightingView || !pbrLightingView->skybox)
 		return;
@@ -447,7 +436,7 @@ void CloudsRenderSystem::preSkyFaceRender()
 		SET_RESOURCE_DEBUG_NAME(skyboxDS, "descriptorSet.clouds.skybox");
 	}
 
-	auto atmosphereSystem = AtmosphereRenderSystem::Instance::get();
+	auto atmosphereSystem = AtmosphereRenderSystem::getInstance();
 	auto inFlightIndex = graphicsSystem->getInFlightIndex();
 	auto groundRadius = atmosphereSystem->groundRadius;
 	const auto& cc = graphicsSystem->getCommonConstants();
@@ -482,7 +471,7 @@ void CloudsRenderSystem::skyFaceRender()
 	if (!isEnabled || !cloudsSkybox)
 		return;
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	auto skyboxFramebuffer = graphicsSystem->getRenderPassFB();
 	if (!skyBlendPipeline)
 		skyBlendPipeline = createSkyBlendPipeline(skyboxFramebuffer);
@@ -514,8 +503,8 @@ void CloudsRenderSystem::preHdrRender()
 	if (!isEnabled || !camViewDS)
 		return;
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto atmosphereSystem = AtmosphereRenderSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
+	auto atmosphereSystem = AtmosphereRenderSystem::getInstance();
 	auto inFlightIndex = graphicsSystem->getInFlightIndex();
 	auto currentFrameIndex = graphicsSystem->getCurrentFrameIndex();
 	auto groundRadius = atmosphereSystem->groundRadius;
@@ -564,7 +553,7 @@ void CloudsRenderSystem::hdrRender()
 	if (!isEnabled)
 		return;
 	
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	auto pipelineView = graphicsSystem->get(viewBlendPipeline);
 	if (!pipelineView->isReady())
 		return;
@@ -594,7 +583,7 @@ void CloudsRenderSystem::preShadowRender()
 	if (!shadowPipeline)
 		shadowPipeline = createShadowPipeline();
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	auto pipelineView = graphicsSystem->get(shadowPipeline);
 	auto dataFieldsView = graphicsSystem->get(dataFields);
 	auto vertProfileView = graphicsSystem->get(vertProfile);
@@ -608,7 +597,7 @@ void CloudsRenderSystem::preShadowRender()
 		SET_RESOURCE_DEBUG_NAME(shadowDS, "descriptorSet.clouds.shadow");
 	}
 
-	PbrLightingSystem::Instance::get()->markFbShadow();
+	PbrLightingSystem::getInstance()->markFbShadow();
 	hasShadows = true;
 }
 void CloudsRenderSystem::shadowRender()
@@ -618,8 +607,8 @@ void CloudsRenderSystem::shadowRender()
 	if (!hasShadows)
 		return;
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto atmosphereSystem = AtmosphereRenderSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
+	auto atmosphereSystem = AtmosphereRenderSystem::getInstance();
 	auto groundRadius = atmosphereSystem->groundRadius;
 	const auto& cc = graphicsSystem->getCommonConstants();
 	auto pipelineView = graphicsSystem->get(shadowPipeline);
@@ -645,7 +634,7 @@ void CloudsRenderSystem::shadowRender()
 //**********************************************************************************************************************
 void CloudsRenderSystem::gBufferRecreate()
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	if (cloudsCamView)
 	{
 		graphicsSystem->destroy(cloudsCamView);
@@ -670,14 +659,14 @@ void CloudsRenderSystem::gBufferRecreate()
 
 void CloudsRenderSystem::qualityChange()
 {
-	setQuality(GraphicsSystem::Instance::get()->quality);
+	setQuality(GraphicsSystem::getInstance()->quality);
 }
 void CloudsRenderSystem::setQuality(GraphicsQuality quality)
 {
 	if (this->quality == quality)
 		return;
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	graphicsSystem->destroy(camViewDS);
 	graphicsSystem->destroy(skyboxDS);
 	graphicsSystem->destroy(skyboxPipeline);
@@ -713,13 +702,13 @@ const Ref<Image>& CloudsRenderSystem::getNoiseShape()
 ID<Image> CloudsRenderSystem::getCloudsCamView()
 {
 	if (!cloudsCamView)
-		cloudsCamView = createCloudsCamView(GraphicsSystem::Instance::get());
+		cloudsCamView = createCloudsCamView(GraphicsSystem::getInstance());
 	return cloudsCamView;
 }
 ID<Image> CloudsRenderSystem::getCloudsCamViewDepth()
 {
 	if (!cloudsCamViewDepth)
-		cloudsCamViewDepth = createCloudsCamViewDepth(GraphicsSystem::Instance::get());
+		cloudsCamViewDepth = createCloudsCamViewDepth(GraphicsSystem::getInstance());
 	return cloudsCamViewDepth;
 }
 
@@ -727,7 +716,7 @@ ID<Framebuffer> CloudsRenderSystem::getCamViewFramebuffer()
 {
 	if (!camViewFramebuffer)
 	{
-		camViewFramebuffer = createCamViewFramebuffer(GraphicsSystem::Instance::get(), 
+		camViewFramebuffer = createCamViewFramebuffer(GraphicsSystem::getInstance(), 
 			getCloudsCamView(), getCloudsCamViewDepth());
 	}
 	return camViewFramebuffer;

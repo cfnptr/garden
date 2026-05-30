@@ -24,16 +24,16 @@ using namespace garden;
 //**********************************************************************************************************************
 AnimationEditorSystem::AnimationEditorSystem()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", AnimationEditorSystem::init);
 }
 void AnimationEditorSystem::init()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("PreUiRender", AnimationEditorSystem::preUiRender);
 	ECSM_SUBSCRIBE_TO_EVENT("EditorBarTool", AnimationEditorSystem::editorBarTool);
 
-	EditorRenderSystem::Instance::get()->registerEntityInspector<AnimationComponent>(
+	EditorRenderSystem::getInstance()->registerEntityInspector<AnimationComponent>(
 	[this](ID<Entity> entity, bool isOpened)
 	{
 		onEntityInspector(entity, isOpened);
@@ -63,26 +63,26 @@ void AnimationEditorSystem::editorBarTool()
 static void renderAnimationSelector(ID<Entity> entity)
 {
 	static const vector<string_view> extensions = { ".anim" };
-	EditorRenderSystem::Instance::get()->openFileSelector([entity](const fs::path& selectedFile)
+	EditorRenderSystem::getInstance()->openFileSelector([entity](const fs::path& selectedFile)
 	{
-		auto animationView = Manager::Instance::get()->tryGet<AnimationComponent>(entity);
-		if (!animationView || EditorRenderSystem::Instance::get()->selectedEntity != entity)
+		auto animationView = Manager::getInstance()->tryGet<AnimationComponent>(entity);
+		if (!animationView || EditorRenderSystem::getInstance()->selectedEntity != entity)
 			return;
 
 		auto path = selectedFile;
 		path.replace_extension();
-		auto animation = ResourceSystem::Instance::get()->loadAnimation(path, true);
+		auto animation = ResourceSystem::getInstance()->loadSharedAnimation(path);
 		if (animation)
 			animationView->emplaceAnimation(path.generic_string(), std::move(animation));
 	},
-	AppInfoSystem::Instance::get()->getResourcesPath() / "animations", extensions);
+	AppInfoSystem::getInstance()->getResourcesPath() / "animations", extensions);
 }
 
 void AnimationEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 {
 	if (ImGui::BeginItemTooltip())
 	{
-		auto animationView = Manager::Instance::get()->get<AnimationComponent>(entity);
+		auto animationView = Manager::getInstance()->get<AnimationComponent>(entity);
 		ImGui::Text("Playing: %s, Frame: %f", animationView->isPlaying ?
 			animationView->active.c_str() : "none", animationView->frame);
 		ImGui::EndTooltip();
@@ -91,7 +91,7 @@ void AnimationEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	if (!isOpened)
 		return;
 
-	auto animationView = Manager::Instance::get()->get<AnimationComponent>(entity);
+	auto animationView = Manager::getInstance()->get<AnimationComponent>(entity);
 	if (ImGui::Checkbox("Playing", &animationView->isPlaying))
 	{
 		bool isLooped;
@@ -128,7 +128,7 @@ void AnimationEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 
 	if (ImGui::CollapsingHeader("Animations"))
 	{
-		auto resourceSystem = ResourceSystem::Instance::get();
+		auto resourceSystem = ResourceSystem::getInstance();
 		auto& animations = animationView->getAnimations();
 
 		if (ImGui::BeginPopupContextItem("animations"))
@@ -162,7 +162,7 @@ void AnimationEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 				{
 					auto animationPath = i->first; auto animation = i->second;
 					resourceSystem->destroyShared(animation); animationView->eraseAnimation(i);
-					auto newAnimation = resourceSystem->loadAnimation(animationPath, true);
+					auto newAnimation = resourceSystem->loadSharedAnimation(animationPath);
 					animationView->emplaceAnimation(std::move(animationPath), std::move(newAnimation));
 					ImGui::EndPopup();
 					break;

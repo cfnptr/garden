@@ -213,7 +213,7 @@ public:
 	 */
 	static void tryTrace(string_view message)
 	{
-		auto logSystem = LogSystem::Instance::tryGet();
+		auto logSystem = LogSystem::tryGetInstance();
 		if (logSystem) logSystem->trace(message);
 	}
 	/**
@@ -222,7 +222,7 @@ public:
 	 */
 	static void tryDebug(string_view message)
 	{
-		auto logSystem = LogSystem::Instance::tryGet();
+		auto logSystem = LogSystem::tryGetInstance();
 		if (logSystem) logSystem->debug(message);
 	}
 	/**
@@ -231,7 +231,7 @@ public:
 	 */
 	static void tryInfo(string_view message)
 	{
-		auto logSystem = LogSystem::Instance::tryGet();
+		auto logSystem = LogSystem::tryGetInstance();
 		if (logSystem) logSystem->info(message);
 	}
 	/**
@@ -240,7 +240,7 @@ public:
 	 */
 	static void tryWarn(string_view message)
 	{
-		auto logSystem = LogSystem::Instance::tryGet();
+		auto logSystem = LogSystem::tryGetInstance();
 		if (logSystem) logSystem->warn(message);
 	}
 	/**
@@ -249,7 +249,7 @@ public:
 	 */
 	static void tryError(string_view message)
 	{
-		auto logSystem = LogSystem::Instance::tryGet();
+		auto logSystem = LogSystem::tryGetInstance();
 		if (logSystem) logSystem->error(message);
 	}
 	/**
@@ -258,7 +258,7 @@ public:
 	 */
 	static void tryFatal(string_view message)
 	{
-		auto logSystem = LogSystem::Instance::tryGet();
+		auto logSystem = LogSystem::tryGetInstance();
 		if (logSystem) logSystem->fatal(message);
 	}
 };

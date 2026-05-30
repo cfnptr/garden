@@ -200,7 +200,7 @@ public:
 	 */
 	enum class FileType : uint8
 	{
-		KTX2, WebP, PNG, JPEG, EXR, HDR, BMP, PSD, TGA, PIC, GIF, Count
+		GIC, WebP, PNG, JPEG, EXR, HDR, BMP, PSD, TGA, PIC, GIF, Count
 	};
 	/**
 	 * @brief Image file store flags.
@@ -208,9 +208,11 @@ public:
 	enum class StoreFlag : uint8
 	{
 		None = 0x00,         /**< No additional image store flags. */
-		GenerateMips = 0x01, /**< Generate and store image mip map levels. */
-		BlockSize6x6 = 0x02, /**< Use 6x6 block size for compressed formats. */
-		BlockSize8x8 = 0x04  /**< Use 8x8 block size for compressed formats. */
+		Lossless = 0x01,     /**< Store image without any visual regressions. */
+		GenerateMips = 0x02, /**< Generate and store image mip map levels. */
+		BlockSize6x6 = 0x04, /**< Use 6x6 block size for compressed formats. */
+		BlockSize8x8 = 0x08, /**< Use 8x8 block size for compressed formats. */
+		ChannelsRG = 0x10,   /**< Store only red and green image components. */
 	};
 
 	/*******************************************************************************************************************
@@ -888,13 +890,14 @@ public:
 	 * 
 	 * @param[in] data image file binary data
 	 * @param dataSize image file data size in bytes
+	 * @param fileType image file container type
 	 * @param[out] pixels loaded image pixel data
 	 * @param[out] imageSize loaded image size in pixels
-	 * @param fileType image file container type
-	 * @param[in,out] imageFormat image data format or undefined
+	 * @param[out] imageType loaded image dimensionality type
+	 * @param[out] imageFormat loaded image data format
 	 */
-	static void loadFileData(const void* data, psize dataSize, vector<uint8>& pixels, 
-		uint2& imageSize, FileType fileType, Format& imageFormat);
+	static void loadFileData(const void* data, psize dataSize, FileType fileType, 
+		vector<uint8>& pixels, uint4& imageSize, Type& imageType, Format& imageFormat);
 	/**
 	 * @brief Stores image pixels to the specified file.
 	 * @throw GardenError on image data writing error.
@@ -1325,6 +1328,23 @@ static constexpr uint8 toComponentCount(Image::Format imageFormat) noexcept
 }
 
 /***********************************************************************************************************************
+ * @brief Returns image format from the component count
+ * @param componentCount target channel count
+ * @throw GardenError on unsupported component count.
+ */
+static Image::Format toSrgbFormat(int componentCount)
+{
+	switch (componentCount)
+	{
+		case 4: return Image::Format::SrgbR8G8B8A8;
+		case 2: return Image::Format::SrgbR8G8;
+		case 1: return Image::Format::SrgbR8;
+		default: throw GardenError("Unsupported sRGB image channel count.");
+	}
+}
+// TODO: toFloatFormat
+
+/***********************************************************************************************************************
  * @brief Returns image dimensionality type from the uniform type.
  * @param uniformType target uniform type
  * @throw GardenError on unsupported uniform type.
@@ -1488,7 +1508,7 @@ static string_view toString(Image::Format imageFormat) noexcept
  */
 static Image::FileType toImageFileType(string_view name)
 {
-	if (name == "ktx2") return Image::FileType::KTX2;
+	if (name == "gic") return Image::FileType::GIC;
 	if (name == "webp") return Image::FileType::WebP;
 	if (name == "png") return Image::FileType::PNG;
 	if (name == "jpg" || name == "jpeg") return Image::FileType::JPEG;

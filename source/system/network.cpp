@@ -39,7 +39,7 @@ bool NetworkComponent::trySetEntityUID(uint32 uid)
 	if (entityUID == uid)
 		return true;
 
-	auto& entityMap = NetworkSystem::Instance::get()->entityMap;
+	auto& entityMap = NetworkSystem::getInstance()->entityMap;
 	if (uid)
 	{
 		if (!entityMap.emplace(uid, entity).second)
@@ -58,7 +58,7 @@ bool NetworkComponent::trySetEntityUID(uint32 uid)
 //**********************************************************************************************************************
 NetworkSystem::NetworkSystem(bool setSingleton) : Singleton(setSingleton)
 {
-	Manager::Instance::get()->addGroupSystem<ISerializable>(this);
+	Manager::getInstance()->addGroupSystem<ISerializable>(this);
 
 	if (!initializeNetwork())
 		GardenError("Failed to initialize network subsystems.");

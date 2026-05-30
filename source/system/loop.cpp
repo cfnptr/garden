@@ -31,7 +31,7 @@ using namespace garden;
 #include <csignal>
 static void signalHandler(int signum)
 {
-	Manager::Instance::get()->isRunning = false;
+	Manager::getInstance()->isRunning = false;
 }
 #elif GARDEN_OS_WINDOWS
 static BOOL WINAPI consoleHandler(DWORD ctrlType)
@@ -43,7 +43,7 @@ static BOOL WINAPI consoleHandler(DWORD ctrlType)
 		case CTRL_CLOSE_EVENT:
 		case CTRL_LOGOFF_EVENT:
 		case CTRL_SHUTDOWN_EVENT:
-			Manager::Instance::get()->isRunning = false;
+			Manager::getInstance()->isRunning = false;
 			return TRUE;
 		default: return FALSE;
 	}
@@ -54,7 +54,7 @@ LoopSystem::LoopSystem(bool setSingleton) : Singleton(setSingleton)
 {
 	mpmt::Thread::setForegroundPriority();
 
-	auto manager = Manager::Instance::get(); 
+	auto manager = Manager::getInstance(); 
 	manager->registerEventBefore("Input", "Update");
 	manager->registerEventAfter("Output", "Update");
 	ECSM_SUBSCRIBE_TO_EVENT("PreInit", LoopSystem::preInit);
@@ -69,7 +69,7 @@ LoopSystem::LoopSystem(bool setSingleton) : Singleton(setSingleton)
 }
 void LoopSystem::preInit()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("Input", LoopSystem::input);
 	ECSM_SUBSCRIBE_TO_EVENT("Output", LoopSystem::output);
 

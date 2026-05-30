@@ -15,7 +15,7 @@
 // TODO: Refactor this dumpster fire. Use proper C tokenizer and transpiler.
 //       Or even better fork glslc compiler and integrate this into it.
 
-#include "garden/graphics/gslc.hpp"
+#include "garden/graphics/gsl-compiler.hpp"
 #include "garden/thread-pool.hpp"
 #include "garden/file.hpp"
 
@@ -34,7 +34,9 @@ using namespace garden;
 using namespace garden::graphics;
 
 //**********************************************************************************************************************
-constexpr uint8 gslHeader[4] = { 1, 0, 0, GARDEN_LITTLE_ENDIAN, };
+#define GSL_VERSION_MAJOR 1
+#define GSL_VERSION_MINOR 0
+#define GSL_VERSION_PATCH 0
 
 #define COMMON_GLSL_EXTENSIONS ""                                           \
 	"#extension GL_EXT_scalar_block_layout : require\n"                     \
@@ -49,6 +51,13 @@ constexpr uint8 gslHeader[4] = { 1, 0, 0, GARDEN_LITTLE_ENDIAN, };
 
 namespace garden::graphics
 {
+	struct GslHeader
+	{
+		uint8 versionMajor = GSL_VERSION_MAJOR;
+		uint8 versionMinor = GSL_VERSION_MINOR;
+		uint8 versionPatch = GSL_VERSION_PATCH;
+		uint8 isLittleEndian = GARDEN_LITTLE_ENDIAN;
+	};
 	struct GslValues
 	{
 		uint8 uniformCount = 0;
@@ -1437,8 +1446,10 @@ static void writeGslHeaderValues(const fs::path& filePath,
 	headerStream.open(filePath, ios::out | ios::binary);
 	if (!headerStream.is_open())
 		throw CompileError("failed to open header file");
+
+	auto gslHeader = GslHeader();
 	headerStream.write((const char*)gslMagic.data(), gslMagic.length());
-	headerStream.write((const char*)gslHeader, sizeof(gslHeader));
+	headerStream.write((const char*)&gslHeader, sizeof(GslHeader));
 	headerStream.write((const char*)&values, sizeof(T));
 }
 
@@ -2350,16 +2361,21 @@ template<typename T>
 static void readGslHeaderValues(const uint8* data, uint32 dataSize,
 	uint32& dataOffset, string_view gslMagic, T& values)
 {
-	if (dataOffset + gslMagic.size() + sizeof(gslHeader) > dataSize)
-		throw GardenError("Invalid GSL header size.");
+	if (dataOffset + gslMagic.size() + sizeof(GslHeader) > dataSize)
+		throw GardenError("Invalid GSL file size.");
 	if (memcmp(data + dataOffset, gslMagic.data(), gslMagic.size()) != 0)
-		throw GardenError("Invalid GSL header magic value.");
+		throw GardenError("Invalid GSL file magic value.");
 	dataOffset += gslMagic.size();
-	if (memcmp(data + dataOffset, gslHeader, sizeof(gslHeader)) != 0)
-		throw GardenError("Invalid GSL header version or endianness.");
-	dataOffset += sizeof(gslHeader);
+
+	auto gslHeader = *(const GslHeader*)(data + dataOffset);
+	if (gslHeader.versionMajor != GSL_VERSION_MAJOR || gslHeader.versionMinor != GSL_VERSION_MINOR)
+		throw GardenError("Bad GSL file version.");
+	if (gslHeader.isLittleEndian != GARDEN_LITTLE_ENDIAN)
+		throw GardenError("Bad GSL file endianness.");
+	dataOffset += sizeof(GslHeader);
+
 	if (dataOffset + sizeof(T) > dataSize)
-		throw GardenError("Invalid GSL header data size.");
+		throw GardenError("Invalid GSL file data size.");
 	values = *(const T*)(data + dataOffset);
 	dataOffset += sizeof(T);
 }
@@ -2371,17 +2387,17 @@ static void readGslHeaderArray(const uint8* data, uint32 dataSize,
 	for (uint8 i = 0; i < count; i++)
 	{
 		if (dataOffset + sizeof(uint8) > dataSize)
-			throw GardenError("Invalid GSL header data size.");
+			throw GardenError("Invalid GSL file data size.");
 		auto nameLength = *(const uint8*)(data + dataOffset);
 		dataOffset += sizeof(uint8);
 		if (dataOffset + nameLength + sizeof(T) > dataSize)
-			throw GardenError("Invalid GSL header data size.");
+			throw GardenError("Invalid GSL file data size.");
 		string name((const char*)(data + dataOffset), nameLength);
 		dataOffset += nameLength;
 		const auto& value = *(const T*)(data + dataOffset);
 		dataOffset += sizeof(T);
 		if (!valueArray.emplace(std::move(name), value).second)
-			throw GardenError("Invalid GSL header data.");
+			throw GardenError("Invalid GSL file data.");
 	}
 }
 
