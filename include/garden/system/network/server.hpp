@@ -164,7 +164,7 @@ public:
 	 * @param messageBufferSize biggest client request size in bytes
 	 * @param serverLengthSize server message length size in bytes
 	 * @param timeoutTime session timeout time in seconds
-	 * @param sslContext socket SSL context instance or NULL
+	 * @param sslContext socket SSL context instance or null
 	 *
 	 * @throw Error with a @ref NetsResult string on failure.
 	 */

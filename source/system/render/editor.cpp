@@ -1189,7 +1189,7 @@ void EditorRenderSystem::drawImageSelector(const char* name, fs::path& path, Ref
 				resourceSystem->destroyShared(descriptorSet);
 
 				path = selectedFile; path.replace_extension();
-				image = resourceSystem->loadImage(path);
+				image = resourceSystem->loadSharedImage(path);
 			},
 			resourcesPath, ResourceSystem::imageFileExts);
 		}

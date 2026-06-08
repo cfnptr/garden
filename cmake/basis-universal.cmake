@@ -25,8 +25,8 @@ if(GARDEN_USE_OPENCL AND GARDEN_EDITOR)
 endif()
 
 message(STATUS "Fetching Binomial Basis Universal, please wait...")
-FetchContent_Declare(basis-universal GIT_REPOSITORY https://github.com/cfnptr/basis_universal 
-	GIT_TAG 324b7d19e32025d40eb6b7ae84c05e3c0dd479bd GIT_SHALLOW TRUE)
+FetchContent_Declare(basis-universal GIT_REPOSITORY https://github.com/binomialLLC/basis_universal 
+	GIT_TAG e4f439fc9545b6a9e1fd26fc7ffd0c682c4b96d4 GIT_SHALLOW TRUE)
 set(BASIS_UNIVERSAL_VERSION "2.1")
 
 FetchContent_MakeAvailable(basis-universal)

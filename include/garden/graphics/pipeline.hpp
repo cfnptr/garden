@@ -158,7 +158,7 @@ protected:
 
 	Pipeline(CreateData& createData);
 	Pipeline(PipelineType type, const fs::path& path, uint32 maxBindlessCount, uint64 pipelineVersion) noexcept : 
-		pipelinePath(path), pipelineVersion(pipelineVersion), maxBindlessCount(maxBindlessCount), type(type)
+		pipelinePath(path), maxBindlessCount(maxBindlessCount), pipelineVersion(pipelineVersion), type(type)
 	{
 		#if GARDEN_DEBUG || GARDEN_EDITOR
 		if (type == PipelineType::Graphics)

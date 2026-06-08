@@ -98,7 +98,7 @@ void* StreamServerHandle::onSessionCreate(nets::StreamSessionView streamSession)
 		if (!encContext)
 		{
 			GARDEN_LOG_ERROR("Failed to generate session encryption context.");
-			return NULL;
+			return nullptr;
 		}
 	}
 
@@ -112,7 +112,7 @@ void* StreamServerHandle::onSessionCreate(nets::StreamSessionView streamSession)
 			ClientSession::destroyEncDecContext(encContext, encKey);
 			GARDEN_LOG_INFO("Rejected client session. (address: " + 
 				streamSession.getAddress() + ", reason: " + reasonToString(result) + ")");
-			return NULL;
+			return nullptr;
 		}
 	}
 	else

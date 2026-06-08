@@ -212,7 +212,8 @@ public:
 		GenerateMips = 0x02, /**< Generate and store image mip map levels. */
 		BlockSize6x6 = 0x04, /**< Use 6x6 block size for compressed formats. */
 		BlockSize8x8 = 0x08, /**< Use 8x8 block size for compressed formats. */
-		ChannelsRG = 0x10,   /**< Store only red and green image components. */
+	
+		BlockSizeMask = BlockSize6x6 | BlockSize8x8 /**< Compressed format block size mask. */
 	};
 
 	/*******************************************************************************************************************
@@ -881,7 +882,7 @@ public:
 	 * @return pointer to the converted image pixel data.
 	 * @throw GardenError on image data conversion error.
 	 */
-	static const void* convertFormat(const void* srcPixels, uint2 size, 
+	static const void* convertFormat(const void* srcPixels, uint3 size, 
 		vector<uint8>& dstPixels, Format srcFormat, Format dstFormat);
 
 	/**
@@ -911,7 +912,7 @@ public:
 	 * @param effort image compression effort (0.0 - 1.0)
 	 * @param flags additional image store flags
 	 */
-	static void storeFileData(const fs::path& path, const void* pixels, uint2 size, FileType fileType, 
+	static void storeFileData(const fs::path& path, const void* pixels, uint3 size, FileType fileType, 
 		Format imageFormat, float quality = 1.0f, float effort = 0.7f, StoreFlag flags = StoreFlag::None);
 };
 
@@ -1128,6 +1129,22 @@ static constexpr bool isFormatFloat(Image::Format formatType)
 	return Image::Format::SfloatR16 <= formatType && formatType <= Image::Format::UfloatBC6H;
 }
 /**
+ * @brief Is the image data format a 32-bit floating point.
+ * @param formatType target image format
+ */
+static constexpr bool isFormatFloat32(Image::Format formatType)
+{
+	return Image::Format::SfloatR32 <= formatType && formatType <= Image::Format::SfloatR32G32B32A32;
+}
+/**
+ * @brief Is the image data format a 16-bit floating point.
+ * @param formatType target image format
+ */
+static constexpr bool isFormatFloat16(Image::Format formatType)
+{
+	return Image::Format::SfloatR16 <= formatType && formatType <= Image::Format::SfloatR16G16B16A16;
+}
+/**
  * @brief Is the image data format a sRGB encoded.
  * @param formatType target image format
  */
@@ -1328,7 +1345,7 @@ static constexpr uint8 toComponentCount(Image::Format imageFormat) noexcept
 }
 
 /***********************************************************************************************************************
- * @brief Returns image format from the component count
+ * @brief Returns image sRGB format from the component count
  * @param componentCount target channel count
  * @throw GardenError on unsupported component count.
  */
@@ -1342,7 +1359,36 @@ static Image::Format toSrgbFormat(int componentCount)
 		default: throw GardenError("Unsupported sRGB image channel count.");
 	}
 }
-// TODO: toFloatFormat
+/**
+ * @brief Returns image 16-bit float format from the component count
+ * @param componentCount target channel count
+ * @throw GardenError on unsupported component count.
+ */
+static Image::Format toFloatFormat16(int componentCount)
+{
+	switch (componentCount)
+	{
+		case 4: return Image::Format::SfloatR16G16B16A16;
+		case 2: return Image::Format::SfloatR16G16;
+		case 1: return Image::Format::SfloatR16;
+		default: throw GardenError("Unsupported half float image channel count.");
+	}
+}
+/**
+ * @brief Returns image 32-bit float format from the component count
+ * @param componentCount target channel count
+ * @throw GardenError on unsupported component count.
+ */
+static Image::Format toFloatFormat32(int componentCount)
+{
+	switch (componentCount)
+	{
+		case 4: return Image::Format::SfloatR32G32B32A32;
+		case 2: return Image::Format::SfloatR32G32;
+		case 1: return Image::Format::SfloatR32;
+		default: throw GardenError("Unsupported float image channel count.");
+	}
+}
 
 /***********************************************************************************************************************
  * @brief Returns image dimensionality type from the uniform type.

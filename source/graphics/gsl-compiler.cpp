@@ -1384,7 +1384,7 @@ static bool openShaderFileStream(const fs::path& inputFilePath,
 	auto directory = outputFilePath.parent_path();
 	if (!fs::exists(directory))
 		fs::create_directories(directory);
-	outputFileStream = ofstream(outputFilePath);
+	outputFileStream.open(outputFilePath);
 	if (!outputFileStream.is_open())
 		throw CompileError("failed to open output shader file");
 	outputFileStream.exceptions(ios::failbit | ios::badbit);

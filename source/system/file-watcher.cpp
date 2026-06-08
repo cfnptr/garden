@@ -130,7 +130,7 @@ static bool enqueueDirWatcher(WatcherDir& watcher)
 {
 	auto result = ReadDirectoryChangesW(watcher.dirHandle, watcher.buffer.data(),
 		(DWORD)watcher.buffer.size(), TRUE, FILE_NOTIFY_CHANGE_FILE_NAME | 
-		FILE_NOTIFY_CHANGE_LAST_WRITE, NULL, &watcher.overlapped, NULL);
+		FILE_NOTIFY_CHANGE_LAST_WRITE, nullptr, &watcher.overlapped, nullptr);
 	if (!result)
 	{
 		GARDEN_LOG_ERROR("Failed to enqueue directory watcher. (error: " + to_string(GetLastError()) + ")");
@@ -174,10 +174,10 @@ static void fileWatcherThread(WatcherData* data)
 		do
 		{
 			auto filePathLength = WideCharToMultiByte(CP_UTF8, 0, notifyInfo->FileName, 
-				(int)notifyInfo->FileNameLength / sizeof(WCHAR), NULL, 0, NULL, NULL);
+				(int)notifyInfo->FileNameLength / sizeof(WCHAR), nullptr, 0, nullptr, nullptr);
 			std::string filePath(filePathLength, 0);
 			WideCharToMultiByte(CP_UTF8, 0, notifyInfo->FileName, (int)notifyInfo->FileNameLength / 
-				sizeof(WCHAR), filePath.data(), filePathLength, NULL, NULL);
+				sizeof(WCHAR), filePath.data(), filePathLength, nullptr, nullptr);
 
 			if (notifyInfo->Action == FILE_ACTION_MODIFIED)
 				changedFiles.emplace(watcher.path / filePath);
@@ -246,8 +246,8 @@ static bool addDirWatchers(int fd, const fs::path& resourcesPath, tsl::robin_map
 static bool createDirWatcher(const fs::path& path, WatcherDir& watcher)
 {
 	watcher.dirHandle = CreateFileW(path.generic_wstring().c_str(), FILE_LIST_DIRECTORY, 
-		FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL, OPEN_EXISTING, 
-		FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED, NULL);
+		FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING, 
+		FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED, nullptr);
 	if (watcher.dirHandle == INVALID_HANDLE_VALUE)
 	{
 		GARDEN_LOG_ERROR("Failed to create a directory watcher. (error: " + to_string(GetLastError()) + ")");
@@ -255,7 +255,7 @@ static bool createDirWatcher(const fs::path& path, WatcherDir& watcher)
 	}
 
 	watcher.overlapped = {};
-	watcher.overlapped.hEvent = CreateEventW(NULL, TRUE, FALSE, NULL);
+	watcher.overlapped.hEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
 
 	if (!watcher.overlapped.hEvent)
 	{

@@ -64,31 +64,31 @@ void* ClientSession::createEncContext(uint8*& encKey, void*& cipher) noexcept
 {
 	if (!cipher)
 	{
-		cipher = EVP_CIPHER_fetch(NULL, "AES-256-GCM", NULL);
+		cipher = EVP_CIPHER_fetch(nullptr, "AES-256-GCM", nullptr);
 		if (!cipher)
-			return NULL;
+			return nullptr;
 	}
 
 	auto encContext = EVP_CIPHER_CTX_new();
 	if (!encContext)
-		return NULL;
+		return nullptr;
 
 	encKey = new uint8[keySize]; // Note: key is allocated for memory safety.
 	if (!RAND_bytes(encKey, keySize))
 	{
 		EVP_CIPHER_CTX_free(encContext); free(encKey);
-		return NULL;
+		return nullptr;
 	}
 
-	if (!EVP_EncryptInit_ex(encContext, (EVP_CIPHER*)cipher, NULL, encKey, NULL))
+	if (!EVP_EncryptInit_ex(encContext, (EVP_CIPHER*)cipher, nullptr, encKey, nullptr))
 	{
 		EVP_CIPHER_CTX_free(encContext); free(encKey);
-		return NULL;
+		return nullptr;
 	}
-	if (!EVP_CIPHER_CTX_ctrl(encContext, EVP_CTRL_GCM_SET_IVLEN, ivSize, NULL))
+	if (!EVP_CIPHER_CTX_ctrl(encContext, EVP_CTRL_GCM_SET_IVLEN, ivSize, nullptr))
 	{
 		EVP_CIPHER_CTX_free(encContext); free(encKey);
-		return NULL;
+		return nullptr;
 	}
 	return encContext;
 }
@@ -96,24 +96,24 @@ void* ClientSession::createDecContext(const uint8* decKey, void*& cipher) noexce
 {
 	if (!cipher)
 	{
-		cipher = EVP_CIPHER_fetch(NULL, "AES-256-GCM", NULL);
+		cipher = EVP_CIPHER_fetch(nullptr, "AES-256-GCM", nullptr);
 		if (!cipher)
-			return NULL;
+			return nullptr;
 	}
 
 	auto encContext = EVP_CIPHER_CTX_new();
 	if (!encContext)
-		return NULL;
+		return nullptr;
 
-	if (!EVP_DecryptInit_ex(encContext, (EVP_CIPHER*)cipher, NULL, decKey, NULL))
+	if (!EVP_DecryptInit_ex(encContext, (EVP_CIPHER*)cipher, nullptr, decKey, nullptr))
 	{
 		EVP_CIPHER_CTX_free(encContext);
-		return NULL;
+		return nullptr;
 	}
-	if (!EVP_CIPHER_CTX_ctrl(encContext, EVP_CTRL_GCM_SET_IVLEN, ivSize, NULL))
+	if (!EVP_CIPHER_CTX_ctrl(encContext, EVP_CTRL_GCM_SET_IVLEN, ivSize, nullptr))
 	{
 		EVP_CIPHER_CTX_free(encContext);
-		return NULL;
+		return nullptr;
 	}
 	return encContext;
 }
@@ -123,7 +123,7 @@ bool ClientSession::updateEncDecKey(void* context, uint8* key) noexcept
 {
 	GARDEN_ASSERT(context);
 	GARDEN_ASSERT(key);
-	return EVP_DecryptInit_ex((EVP_CIPHER_CTX*)context, NULL, NULL, key, NULL);
+	return EVP_DecryptInit_ex((EVP_CIPHER_CTX*)context, nullptr, nullptr, key, nullptr);
 }
 void ClientSession::destroyEncDecContext(void* context, uint8* key) noexcept
 {
@@ -175,16 +175,16 @@ psize ClientSession::encryptDatagram(const void* plainData, psize size, void* en
 	*((uint32*)outBuffer) = datagramUID;
 	*((uint64*)(outBuffer + sizeof(uint32))) = hostToLE64(datagramIdx++);
 
-	if (!EVP_EncryptInit_ex(context, NULL, NULL, NULL, outBuffer))
+	if (!EVP_EncryptInit_ex(context, nullptr, nullptr, nullptr, outBuffer))
 		return 0;
 
 	int tmpSize;
-	if (!EVP_EncryptUpdate(context, NULL, &tmpSize, outBuffer, ivSize))
+	if (!EVP_EncryptUpdate(context, nullptr, &tmpSize, outBuffer, ivSize))
 		return 0;
 	GARDEN_ASSERT(tmpSize == ivSize);
 
 	auto ctrlSize = hostToLE64(size);
-	if (!EVP_EncryptUpdate(context, NULL, &tmpSize, (const uint8*)&ctrlSize, sizeof(uint64)))
+	if (!EVP_EncryptUpdate(context, nullptr, &tmpSize, (const uint8*)&ctrlSize, sizeof(uint64)))
 		return 0;
 	GARDEN_ASSERT(tmpSize == sizeof(uint64));
 
@@ -217,15 +217,15 @@ psize ClientSession::decryptDatagram(const uint8* encData,
 		return 0;
 
 	auto context = (EVP_CIPHER_CTX*)decContext;
-	if (!EVP_DecryptInit_ex(context, NULL, NULL, NULL, encData))
+	if (!EVP_DecryptInit_ex(context, nullptr, nullptr, nullptr, encData))
 		return 0;
 
 	int tmpSize;
-	if (!EVP_DecryptUpdate(context, NULL, &tmpSize, encData, ivSize) || tmpSize != ivSize)
+	if (!EVP_DecryptUpdate(context, nullptr, &tmpSize, encData, ivSize) || tmpSize != ivSize)
 		return 0;
 
 	auto dataSize = size - (ivSize + tagSize); auto ctrlSize = hostToLE64(dataSize);
-	if (!EVP_DecryptUpdate(context, NULL, &tmpSize, (const uint8*)&ctrlSize, 
+	if (!EVP_DecryptUpdate(context, nullptr, &tmpSize, (const uint8*)&ctrlSize, 
 		sizeof(uint64)) || tmpSize != sizeof(uint64))
 	{
 		return 0;

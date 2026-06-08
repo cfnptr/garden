@@ -80,13 +80,12 @@ bool ImageConverter::compress(const fs::path& filePath, const fs::path& inputPat
 
 	auto extension = filePath.extension();
 	GARDEN_ASSERT(!extension.empty());
-	auto imageFormat = Image::Format::Undefined;
-	vector<uint8> pixels; uint2 size = uint2::zero; 
+	vector<uint8> pixels; uint4 size; Image::Type imageType; Image::Format format;
 
 	try
 	{
-		Image::loadFileData(imageData.data(), imageData.size(), pixels, size, 
-			toImageFileType(extension.generic_string()), imageFormat);
+		Image::loadFileData(imageData.data(), imageData.size(), toImageFileType(
+			extension.generic_string()), pixels, size, imageType, format);
 	}
 	catch (exception& e)
 	{
@@ -99,7 +98,10 @@ bool ImageConverter::compress(const fs::path& filePath, const fs::path& inputPat
 
 	constexpr auto fileType = Image::FileType::GIC;
 	constexpr auto effort = GARDEN_DEBUG ? 0.1f : 0.7f;
-	Image::storeFileData(ktxFilePath, pixels.data(), size, fileType, imageFormat, 1.0f, effort);
+
+	auto storeFlags = Image::StoreFlag::None;
+	if (size.w > 1) storeFlags |= Image::StoreFlag::GenerateMips;
+	Image::storeFileData(ktxFilePath, pixels.data(), (uint3)size, fileType, format, 1.0f, effort, storeFlags);
 	return true;
 }
 
@@ -117,13 +119,13 @@ bool ImageConverter::equi2cube(const fs::path& filePath, const fs::path& inputPa
 
 	auto extension = filePath.extension();
 	GARDEN_ASSERT(!extension.empty());
+	vector<uint8> equiPixels; uint4 equiSize; Image::Type imageType;
 	auto imageFormat = Image::Format::Undefined;
-	vector<uint8> equiPixels; uint2 equiSize = uint2::zero; 
 
 	try
 	{
-		Image::loadFileData(imageData.data(), imageData.size(), equiPixels, equiSize, 
-			toImageFileType(extension.generic_string()), imageFormat);
+		Image::loadFileData(imageData.data(), imageData.size(), toImageFileType(
+			extension.generic_string()), equiPixels, equiSize, imageType, imageFormat);
 	}
 	catch (exception& e)
 	{
@@ -132,10 +134,10 @@ bool ImageConverter::equi2cube(const fs::path& filePath, const fs::path& inputPa
 	}
 
 	auto cubemapSize = equiSize.x / 4;
-	if (equiSize.x / 2 != equiSize.y || cubemapSize % 32 != 0)
+	if (equiSize.z != 1 || equiSize.x / 2 != equiSize.y || cubemapSize % 32 != 0)
 		throw GardenError("Image is not a cubemap. (path: " + filePath.generic_string() + ")");
 
-	auto invDim = 1.0f / cubemapSize; auto equiSizeMinus1 = equiSize - 1u;
+	auto invDim = 1.0f / cubemapSize; auto equiSizeMinus1 = (uint2)equiSize - 1u;
 	auto faceBinarySize = toBinarySize((psize)cubemapSize * cubemapSize, imageFormat);
 	GARDEN_ASSERT_MSG(faceBinarySize > 0, "Assert " + filePath.generic_string());
 
@@ -148,7 +150,7 @@ bool ImageConverter::equi2cube(const fs::path& filePath, const fs::path& inputPa
 			(f16x4*)nx.data(), (f16x4*)px.data(), (f16x4*)ny.data(), 
 			(f16x4*)py.data(), (f16x4*)nz.data(), (f16x4*)pz.data(),
 		};
-		convert(cubeFaces, cubemapSize, equiSize, equiSizeMinus1, (f16x4*)equiPixels.data(), invDim);
+		convert(cubeFaces, cubemapSize, (uint2)equiSize, equiSizeMinus1, (f16x4*)equiPixels.data(), invDim);
 	}
 	else if (imageFormat == Image::Format::SfloatR32G32B32A32)
 	{
@@ -157,7 +159,7 @@ bool ImageConverter::equi2cube(const fs::path& filePath, const fs::path& inputPa
 			(f32x4*)nx.data(), (f32x4*)px.data(), (f32x4*)ny.data(), 
 			(f32x4*)py.data(), (f32x4*)nz.data(), (f32x4*)pz.data(),
 		};
-		convert(cubeFaces, cubemapSize, equiSize, equiSizeMinus1, (f32x4*)equiPixels.data(), invDim);
+		convert(cubeFaces, cubemapSize, (uint2)equiSize, equiSizeMinus1, (f32x4*)equiPixels.data(), invDim);
 	}
 	else if (imageFormat == Image::Format::SrgbR8G8B8A8)
 	{
@@ -166,12 +168,12 @@ bool ImageConverter::equi2cube(const fs::path& filePath, const fs::path& inputPa
 			(Color*)nx.data(), (Color*)px.data(), (Color*)ny.data(), 
 			(Color*)py.data(), (Color*)nz.data(), (Color*)pz.data(),
 		};
-		convert(cubeFaces, cubemapSize, equiSize, equiSizeMinus1, (Color*)equiPixels.data(), invDim);
+		convert(cubeFaces, cubemapSize, (uint2)equiSize, equiSizeMinus1, (Color*)equiPixels.data(), invDim);
 	}
 	else throw GardenError("Unsupported equi image data format.");
 	equiPixels = {}; // Note: Cleaning up memory.
 
-	auto imageSize = uint2(cubemapSize);
+	auto imageSize = uint3(cubemapSize, cubemapSize, 1);
 	constexpr auto fileType = Image::FileType::GIC;
 	constexpr auto effort = GARDEN_DEBUG ? 0.1f : 0.7f;
 	auto ktxFilePath = (outputPath / filePath).replace_extension().generic_string();

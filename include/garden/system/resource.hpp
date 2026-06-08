@@ -114,7 +114,6 @@ protected:
 		Image image;
 		Buffer staging;
 		vector<fs::path> paths = {};
-		uint2 realSize = uint2::zero;
 		ID<Image> instance = {};
 	};
 
@@ -173,8 +172,8 @@ protected:
 	void loadOrConvertCubemap(const fs::path& path, vector<uint8>& nx, vector<uint8>& px, 
 		vector<uint8>& ny, vector<uint8>& py, vector<uint8>& nz, vector<uint8>& pz, 
 		uint2& size, Image::Format& format, int32 threadIndex) const noexcept;
-	void loadOrConvertImage(const fs::path& path, vector<uint8>& pixels, 
-		uint2& size, Image::Format& format, int32 threadIndex) const noexcept;
+	void loadOrConvertImage(const fs::path& path, vector<uint8>& pixels, uint4& size, 
+		Image::Type& type, Image::Format& format, int32 threadIndex) const noexcept;
 	friend class ecsm::Manager;
 public:
 	/*******************************************************************************************************************
@@ -198,11 +197,12 @@ public:
 	 * @param[in] path target image resource path
 	 * @param[out] pixels loaded image pixel data
 	 * @param[out] size loaded image size in pixels
-	 * @param[in,out] format image data format or undefined
+	 * @param[out] type loaded image dimensionality type
+	 * @param[out] format loaded image data format
 	 * @param threadIndex thread index in the pool (-1 = single threaded)
 	 */
-	void loadImageData(const fs::path& path, vector<uint8>& pixels, 
-		uint2& size, Image::Format& format, int32 threadIndex = -1) const noexcept;
+	void loadImageData(const fs::path& path, vector<uint8>& pixels, uint4& size, 
+		Image::Type& type, Image::Format& format, int32 threadIndex = -1) const noexcept;
 	/**
 	 * @brief Loads image pixels from the resource pack.
 	 * @note Loads from the images directory in debug build.
@@ -211,11 +211,12 @@ public:
 	 * @param pathCount image resource path array size
 	 * @param[out] pixelArrays loaded image pixel data arrays
 	 * @param[out] size loaded image size in pixels
-	 * @param[in,out] format image data format or undefined
+	 * @param[out] type loaded image dimensionality type
+	 * @param[out] format loaded image data format
 	 * @param threadIndex thread index in the pool (-1 = single threaded)
 	 */
 	void loadImageData(const fs::path* paths, psize pathCount, vector<vector<uint8>>& pixelArrays, 
-		uint2& size, Image::Format& format, int32 threadIndex = -1) const noexcept;
+		uint4& size, Image::Type& type, Image::Format& format, int32 threadIndex = -1) const noexcept;
 
 	/**
 	 * @brief Loads cubemap image pixels the resource pack.
@@ -229,7 +230,7 @@ public:
 	 * @param[out] nz negative Z side image pixel data container
 	 * @param[out] px positive Z side image pixel data container
 	 * @param[out] size loaded cubemap image size in pixels
-	 * @param[in,out] format image data format or undefined
+	 * @param[out] format loaded image data format
 	 * @param threadIndex thread index the pool (-1 = single threaded)
 	 */
 	void loadCubemapData(const fs::path& path, vector<uint8>& nx, vector<uint8>& px, 
@@ -292,7 +293,7 @@ public:
 	 * @param effort image compression effort (0.0 - 1.0)
 	 * @param[in] directory scene resource directory
 	 */
-	void storeImage(const fs::path& path, const void* pixels, uint2 size, Image::FileType fileType, 
+	void storeImage(const fs::path& path, const void* pixels, uint3 size, Image::FileType fileType, 
 		Image::Format imageFormat, float quality = 1.0f, float effort = 0.7f, const fs::path& directory = "");
 	/**
 	 * @brief Stores specified image to the images directory.
@@ -306,10 +307,10 @@ public:
 	 * @param effort image compression effort (0.0 - 1.0)
 	 * @param[in] directory scene resource directory
 	 */
-	void storeImage(const fs::path& path, const vector<uint8>& pixels, uint2 size, Image::FileType fileType, 
+	void storeImage(const fs::path& path, const vector<uint8>& pixels, uint3 size, Image::FileType fileType, 
 		Image::Format imageFormat, float quality = 1.0f, float effort = 0.7f, const fs::path& directory = "")
 	{
-		GARDEN_ASSERT(pixels.size() == toBinarySize(size.x * size.y, imageFormat));
+		GARDEN_ASSERT(pixels.size() == toBinarySize(size.x * size.y * size.z, imageFormat));
 		storeImage(path, pixels.data(), size, fileType, imageFormat, quality, effort, directory);
 	}
 

@@ -62,7 +62,7 @@ static bool fillFontAtlas(const LinearPool<Font>& fontPool, FT_Library ftLibrary
 
 		if (FT_HAS_MULTIPLE_MASTERS(fontFace))
 		{
-			FT_MM_Var* master = NULL;
+			FT_MM_Var* master = nullptr;
 			result = FT_Get_MM_Var(fontFace, &master);
 			if (result != 0)
 			{
