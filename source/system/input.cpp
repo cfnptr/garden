@@ -481,16 +481,17 @@ void InputSystem::startRenderThread()
 				const auto& paths = inputSystem->currWindowIconPaths;
 				imagePixels.resize(paths.size()); images.resize(paths.size());
 				auto imagePixelData = imagePixels.data(); auto imageData = images.data();
+				vector<uint8> tmpData;
 
 				for (psize i = 0; i < paths.size(); i++)
 				{
-					uint2 size; auto format = Image::Format::SrgbR8G8B8A8;
-					resourceSystem->loadImageData(paths[i], imagePixelData[i], size, format);
+					uint4 size; Image::Type type; Image::Format format;
+					resourceSystem->loadImageData(paths[i], imagePixelData[i], size, type, format);
 
 					GLFWimage image;
-					image.width = size.x;
-					image.height = size.y;
-					image.pixels = imagePixelData[i].data();
+					image.width = size.x; image.height = size.y;
+					image.pixels = (unsigned char*)Image::convertFormat(imagePixelData[i].data(), 
+						uint3((uint2)size, 1), tmpData, format, Image::Format::SrgbB8G8R8A8);
 					imageData[i] = image;
 				}
 			}

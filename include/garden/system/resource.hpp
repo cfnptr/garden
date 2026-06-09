@@ -289,7 +289,7 @@ public:
 	 * @param size image size in pixels
 	 * @param fileType image file container type
 	 * @param imageFormat required image data format
-	 * @param quality image quality (0.0 - 1.0)
+	 * @param quality image visual quality (0.0 - 1.0)
 	 * @param effort image compression effort (0.0 - 1.0)
 	 * @param[in] directory scene resource directory
 	 */
@@ -303,7 +303,7 @@ public:
 	 * @param size image size in pixels
 	 * @param fileType image file container type
 	 * @param imageFormat required image data format
-	 * @param quality image quality (0.0 - 1.0)
+	 * @param quality image visual quality (0.0 - 1.0)
 	 * @param effort image compression effort (0.0 - 1.0)
 	 * @param[in] directory scene resource directory
 	 */
@@ -321,18 +321,24 @@ public:
 	 * @param[in] outputPath output image path
 	 * @param fileType output image file container type
 	 * @param imageFormat required image data format
+	 * @param quality image visual quality (0.0 - 1.0)
+	 * @param effort image compression effort (0.0 - 1.0)
 	 * @param threadIndex thread index in the pool (-1 = single threaded)
 	 */
-	void combineImages(const vector<fs::path>& inputPaths, const fs::path& outputPath, 
-		Image::FileType fileType, Image::Format imageFormat, int32 threadIndex = -1);
+	void combineImages(const vector<fs::path>& inputPaths, const fs::path& outputPath, Image::FileType fileType, 
+		Image::Format imageFormat, float quality = 1.0f, float effort = 1.0f, int32 threadIndex = -1);
+
 	/**
 	 * @brief Renormalizes specified normal map image.
 	 *
 	 * @param[in] path target image resource path
 	 * @param fileType output image file container type
+	 * @param quality image visual quality (0.0 - 1.0)
+	 * @param effort image compression effort (0.0 - 1.0)
 	 * @param threadIndex thread index in the pool (-1 = single threaded)
 	 */
-	void renormalizeImage(const fs::path& path, Image::FileType fileType, int32 threadIndex = -1);
+	void renormalizeImage(const fs::path& path, Image::FileType fileType, 
+		float quality = 1.0f, float effort = 0.7f, int32 threadIndex = -1);
 
 	/**
 	 * @brief Returns current loaded image instance.

@@ -1454,15 +1454,21 @@ void ResourceSystem::storeImage(const fs::path& path, const void* pixels, uint3 
 }
 
 void ResourceSystem::combineImages(const vector<fs::path>& inputPaths, const fs::path& outputPath, 
-	Image::FileType fileType, Image::Format imageFormat, int32 threadIndex)
+	Image::FileType fileType, Image::Format imageFormat, float quality, float effort, int32 threadIndex)
 {
 	GARDEN_ASSERT(!inputPaths.empty());
 	GARDEN_ASSERT(!inputPaths[0].empty());
 	GARDEN_ASSERT(!outputPath.empty());
 	GARDEN_ASSERT(threadIndex < (int32)thread::hardware_concurrency());
 
-	vector<uint8> inBuffer; uint2 inSize;
-	loadImageData(inputPaths[0], inBuffer, inSize, imageFormat, threadIndex);
+	vector<uint8> inBuffer; uint4 inSize; Image::Type inType; Image::Format inFormat;
+	loadImageData(inputPaths[0], inBuffer, inSize, inType, inFormat, threadIndex);
+
+	if (inSize.z != 1 || inType != Image::Type::Texture2D)
+	{
+		throw GardenError("Failed to combine images, image is not 2D. ("
+			"path: " + inputPaths[0].generic_string() + ")");
+	}
 
 	auto pathCount = (uint32)inputPaths.size();
 	auto pixelCount = (psize)inSize.x * inSize.y;
@@ -1472,46 +1478,56 @@ void ResourceSystem::combineImages(const vector<fs::path>& inputPaths, const fs:
 	auto pixelBinarySize = imageBinarySize / pixelCount;
 	auto inBinSizeX = pixelBinarySize * inSize.x, inBinSizeY = pixelBinarySize * inSize.y;
 	auto outBinSizeY = pixelBinarySize * inSize.y * pathCount;
-	vector<uint8> outBuffer(inSize.x * outBinSizeY);
+	vector<uint8> outBuffer(inSize.x * outBinSizeY), tmpBuffer;
 
-	auto inData = inBuffer.data(), outData = outBuffer.data();
+	auto tmpData = (const uint8*)Image::convertFormat(inBuffer.data(), 
+		uint3((uint2)inSize, 1), tmpBuffer, inFormat, imageFormat);
+	auto outData = outBuffer.data();
+
 	for (uint32 y = 0; y < inSize.y; y++)
 	{
-		memcpy(outData, inData, inBinSizeX);
-		inData += inBinSizeY; outData += outBinSizeY;
+		memcpy(outData, tmpData, inBinSizeX);
+		tmpData += inBinSizeY; outData += outBinSizeY;
 	}
 
 	auto inputPathData = inputPaths.data();
 	for (uint32 i = 1; i < pathCount; i++)
 	{
-		uint2 otherSize;
-		loadImageData(inputPathData[i], inBuffer, otherSize, imageFormat, threadIndex);
+		uint4 otherSize; Image::Type otherType; Image::Format otherFormat;
+		loadImageData(inputPathData[i], inBuffer, otherSize, otherType, otherFormat, threadIndex);
 
-		if (inSize != otherSize)
-			throw GardenError("Failed to combine images, different sizes.");
+		if (inSize != otherSize || inType != otherType)
+		{
+			throw GardenError("Failed to combine images, different sizes or types. ("
+				"path: " + inputPaths[0].generic_string() + ")");
+		}
 
-		inData = inBuffer.data(); outData = outBuffer.data() + inBinSizeX * i;
+		tmpData = (const uint8*)Image::convertFormat(inBuffer.data(), 
+			uint3((uint2)inSize, 1), tmpBuffer, inFormat, imageFormat);
+		outData = outBuffer.data() + inBinSizeX * i;
+
 		for (uint32 y = 0; y < inSize.y; y++)
 		{
-			memcpy(outData, inData, inBinSizeX);
-			inData += inBinSizeY; outData += outBinSizeY;
+			memcpy(outData, tmpData, inBinSizeX);
+			tmpData += inBinSizeY; outData += outBinSizeY;
 		}
 	}
 
     auto outSize = uint2(inSize.x * (uint32)inputPaths.size(), inSize.y);
-	storeImage(outputPath, outBuffer.data(), outSize, fileType, imageFormat);
+	storeImage(outputPath, outBuffer.data(), uint3(outSize, 1), fileType, imageFormat, quality, effort);
 }
 
 //**********************************************************************************************************************
-void ResourceSystem::renormalizeImage(const fs::path& path, Image::FileType fileType, int32 threadIndex)
+void ResourceSystem::renormalizeImage(const fs::path& path, 
+	Image::FileType fileType, float quality, float effort, int32 threadIndex)
 {
 	GARDEN_ASSERT(!path.empty());
 	GARDEN_ASSERT(threadIndex < (int32)thread::hardware_concurrency());
 
-	vector<uint8> dataBuffer; uint2 size; Image::Format imageFormat;
-	loadImageData(path, dataBuffer, size, imageFormat, threadIndex);
+	vector<uint8> dataBuffer; uint4 size; Image::Type imageType; Image::Format imageFormat;
+	loadImageData(path, dataBuffer, size, imageType, imageFormat, threadIndex);
 
-	auto pixelCount = (psize)size.x * size.y;
+	auto pixelCount = (psize)size.x * size.y * size.z;
 	if (imageFormat == Image::Format::SrgbR8G8B8A8 || imageFormat == Image::Format::UnormR8G8B8A8)
 	{
 		auto pixelData = (Color*)dataBuffer.data();
@@ -1536,7 +1552,7 @@ void ResourceSystem::renormalizeImage(const fs::path& path, Image::FileType file
 			"path: " + path.generic_string() + ")");
 	}
 	
-	storeImage(path, dataBuffer.data(), size, fileType, imageFormat);
+	storeImage(path, dataBuffer.data(), (uint3)size, fileType, imageFormat);
 }
 
 //**********************************************************************************************************************
@@ -2775,9 +2791,9 @@ Ref<Animation> ResourceSystem::loadSharedAnimation(const fs::path& path)
 	Hash128::updateState(hashState, pathString.c_str(), pathString.length());
 	auto hash = Hash128::digestState(hashState);
 
-	auto result = sharedAnimations.find(hash);
-	if (result != sharedAnimations.end())
-		return result->second;
+	auto searchResult = sharedAnimations.find(hash);
+	if (searchResult != sharedAnimations.end())
+		return searchResult->second;
 
 	auto animation = Ref<Animation>(loadAnimation(path)); 
 	auto result = sharedAnimations.emplace(hash, animation);
