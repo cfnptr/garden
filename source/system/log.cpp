@@ -88,7 +88,7 @@ LogSystem::LogSystem(LogLevel level, double rotationTime, bool setSingleton) : S
 	{
 		this->logger = logy::Logger(directoryPath, level, (bool)GARDEN_DEBUG, rotationTime, rotationTime == 0.0);
 	}
-	catch (exception& e)
+	catch (const exception& e)
 	{
 		this->logger = logy::Logger(directoryPath / File::createTmpName(), level, (bool)GARDEN_DEBUG, rotationTime);
 	}

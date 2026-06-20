@@ -900,6 +900,21 @@ public:
 	static void loadFileData(const void* data, psize dataSize, FileType fileType, 
 		vector<uint8>& pixels, uint4& imageSize, Type& imageType, Format& imageFormat);
 	/**
+	 * @brief Loads and applies image metadata from the specified file.
+	 * @throw GardenError on image metadata loading error.
+	 * 
+	 * @param[in] path target image metadata file path
+	 * @param[in,out] pixels loaded image pixel data
+	 * @param[in,out] size loaded image size in pixels
+	 * @param[in,out] imageType loaded image dimensionality type
+	 * @param[in,out] imageFormat loaded image data format
+	 * @param[out] effort loaded image compression effort
+	 * @param[out] isLossless loaded image data should be lossless
+	 * @param[out] generateMips loaded image should have mipmap
+	 */
+	static void loadFileMetadata(const fs::path& path, vector<uint8>& pixels, uint4& size, 
+		Type& imageType, Format& imageFormat, float& effort, bool& isLossless, bool& generateMips);
+	/**
 	 * @brief Stores image pixels to the specified file.
 	 * @throw GardenError on image data writing error.
 	 *
@@ -1548,24 +1563,24 @@ static string_view toString(Image::Format imageFormat) noexcept
 }
 
 /**
- * @brief Returns image file type.
- * @param name target file type name
+ * @brief Returns image file type from extension.
+ * @param extension target file type extension
  * @throw GardenError on unknown image file type.
  */
-static Image::FileType toImageFileType(string_view name)
+static Image::FileType toImageFileType(string_view extension)
 {
-	if (name == "gic") return Image::FileType::GIC;
-	if (name == "webp") return Image::FileType::WebP;
-	if (name == "png") return Image::FileType::PNG;
-	if (name == "jpg" || name == "jpeg") return Image::FileType::JPEG;
-	if (name == "exr") return Image::FileType::EXR;
-	if (name == "hdr") return Image::FileType::HDR;
-	if (name == "bmp") return Image::FileType::BMP;
-	if (name == "psd") return Image::FileType::PSD;
-	if (name == "tga") return Image::FileType::TGA;
-	if (name == "pic") return Image::FileType::PIC;
-	if (name == "gif") return Image::FileType::GIF;
-	throw GardenError("Unknown image file type. (name: " + string(name) + ")");
+	if (extension == ".gic") return Image::FileType::GIC;
+	if (extension == ".webp") return Image::FileType::WebP;
+	if (extension == ".png") return Image::FileType::PNG;
+	if (extension == ".jpg" || extension == ".jpeg") return Image::FileType::JPEG;
+	if (extension == ".exr") return Image::FileType::EXR;
+	if (extension == ".hdr") return Image::FileType::HDR;
+	if (extension == ".bmp") return Image::FileType::BMP;
+	if (extension == ".psd") return Image::FileType::PSD;
+	if (extension == ".tga") return Image::FileType::TGA;
+	if (extension == ".pic") return Image::FileType::PIC;
+	if (extension == ".gif") return Image::FileType::GIF;
+	throw GardenError("Unknown image file type. (extension: " + string(extension) + ")");
 }
 
 /***********************************************************************************************************************

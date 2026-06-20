@@ -313,12 +313,11 @@ public:
 	 * These attributes are essential for rendering as they provide the necessary information to 
 	 * the graphics pipeline about how to process and display each vertex in 3D space.
 	 */
-	struct VertexAttribute final
+	struct alignas(4) VertexAttribute final
 	{
 		GslDataType type = {};     /**< Vertex attribute data type. */
 		GslDataFormat format = {}; /**< Vertex attribute data format. */
 		uint16 offset = 0;         /**< Byte offset of this attribute relative to the start of an element. */
-		// Note: Should be aligned.
 	};
 
 	/**

@@ -549,7 +549,7 @@ static void collectGslHeaderUsers(const fs::path& appResourcesPath,
 		if (checkCount >= 10000)
 			GARDEN_LOG_ERROR("Detected shader GSL circular includes!");
 	}
-	catch (exception& e)
+	catch (const exception& e)
 	{
 		GARDEN_LOG_ERROR("Failed to iterate shader dirs. (error: " + string(e.what()) + ")");
 		return;
@@ -588,7 +588,7 @@ static void recompilePipelines(ResourceSystem* resourceSystem,
 				// graphicsPipelinePool.destroy(newPipeline);
 				newPipelineView->setDebugName(newPipelineView->getDebugName() + ".old");
 			}
-			catch (exception& e)
+			catch (const exception& e)
 			{
 				GARDEN_LOG_ERROR(string(e.what()));
 			}
@@ -614,7 +614,7 @@ static void recompilePipelines(ResourceSystem* resourceSystem,
 				swap(**computePipelinePool.get(pair.second), **newPipelineView);
 				newPipelineView->setDebugName(newPipelineView->getDebugName() + ".old");
 			}
-			catch (exception& e)
+			catch (const exception& e)
 			{
 				GARDEN_LOG_ERROR(string(e.what()));
 			}
@@ -640,7 +640,7 @@ static void recompilePipelines(ResourceSystem* resourceSystem,
 				swap(**rayTracingPipelinePool.get(pair.second), **newPipelineView);
 				newPipelineView->setDebugName(newPipelineView->getDebugName() + ".old");
 			}
-			catch (exception& e)
+			catch (const exception& e)
 			{
 				GARDEN_LOG_ERROR(string(e.what()));
 			}
@@ -682,23 +682,23 @@ void ResourceSystem::fileChange()
 }
 
 //**********************************************************************************************************************
-static void loadMissingImage(Image::Format& imageFormat, vector<uint8>& data, uint4& size) noexcept
+static void loadMissingImage(vector<uint8>& data, uint4& size, Image::Type& type, Image::Format& format) noexcept
 {
-	if (imageFormat == Image::Format::Undefined)
-		imageFormat = Image::Format::SrgbR8G8B8A8;
+	if (format == Image::Format::Undefined)
+		format = Image::Format::SrgbR8G8B8A8;
 
-	auto imageBinarySize = toBinarySize((psize)16, imageFormat);
-	auto componentCount = toComponentCount(imageFormat);
+	auto imageBinarySize = toBinarySize((psize)16, format);
+	auto componentCount = toComponentCount(format);
 
 	if (imageBinarySize == 0 || componentCount == 0)
 	{
-		data.resize(256);
-		memset(data.data(), UINT8_MAX, 256);
+		data.resize(256); memset(data.data(), UINT8_MAX, 256);
+		size = uint4(1); type = Image::Type::Texture2D;
 		return;
 	}
 
 	auto compBinarySize = imageBinarySize / (componentCount * 16);
-	data.resize(imageBinarySize); size = uint4(4, 4, 1, 1);
+	data.resize(imageBinarySize);
 
 	if (compBinarySize == 4)
 	{
@@ -794,17 +794,20 @@ static void loadMissingImage(Image::Format& imageFormat, vector<uint8>& data, ui
 		else abort();
 	}
 	else memset(data.data(), UINT8_MAX, data.size());
+
+	size = uint4(4, 4, 1, 1);
+	type = Image::Type::Texture2D;
 }
-static void loadMissingImage(Image::Format& imageFormat, vector<uint8>& nx, vector<uint8>& px, 
-	vector<uint8>& ny, vector<uint8>& py, vector<uint8>& nz, vector<uint8>& pz, uint2& size) noexcept
+static void loadMissingImage(vector<uint8>& nx, vector<uint8>& px, vector<uint8>& ny, vector<uint8>& py, 
+	vector<uint8>& nz, vector<uint8>& pz, uint2& size, Image::Format& format) noexcept
 {
-	uint4 missingSize;
-	loadMissingImage(imageFormat, nx, missingSize);
-	loadMissingImage(imageFormat, px, missingSize);
-	loadMissingImage(imageFormat, ny, missingSize);
-	loadMissingImage(imageFormat, py, missingSize);
-	loadMissingImage(imageFormat, nz, missingSize);
-	loadMissingImage(imageFormat, pz, missingSize);
+	uint4 missingSize; Image::Type missingType;
+	loadMissingImage(nx, missingSize, missingType, format);
+	loadMissingImage(px, missingSize, missingType, format);
+	loadMissingImage(ny, missingSize, missingType, format);
+	loadMissingImage(py, missingSize, missingType, format);
+	loadMissingImage(nz, missingSize, missingType, format);
+	loadMissingImage(pz, missingSize, missingType, format);
 	size = (uint2)missingSize;
 }
 
@@ -916,7 +919,7 @@ static int32 getImageFilePath(const fs::path& appCachePath, const fs::path& appR
 #endif
 
 //**********************************************************************************************************************
-void ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& pixels, 
+bool ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& pixels, 
 	uint4& size, Image::Type& type, Image::Format& format, int32 threadIndex) const noexcept
 {
 	GARDEN_ASSERT(!path.empty());
@@ -942,8 +945,8 @@ void ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& pixels,
 	if (fileType == Image::FileType::Count)
 	{
 		GARDEN_LOG_ERROR("Image does not exist. (path: " + path.generic_string() + ")");
-		loadMissingImage(format, pixels, size);
-		return;
+		loadMissingImage(pixels, size, type, format);
+		return false;
 	}
 
 	packReader.readItemData(itemIndex, imageData, threadIndex);
@@ -954,25 +957,25 @@ void ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& pixels,
 	if (fileCount == 0)
 	{
 		GARDEN_LOG_ERROR("Image file does not exist. (path: " + path.generic_string() + ")");
-		loadMissingImage(format, pixels, size);
-		return;
+		loadMissingImage(pixels, size, type, format);
+		return false;
 	}
 	if (fileCount > 1)
 	{
 		GARDEN_LOG_ERROR("Image file is ambiguous. (path: " + path.generic_string() + ")");
-		loadMissingImage(format, pixels, size);
-		return;
+		loadMissingImage(pixels, size, type, format);
+		return false;
 	}
 
 	try
 	{
 		File::loadBinary(filePath, imageData);
 	}
-	catch (exception& e)
+	catch (const exception& e)
 	{
 		GARDEN_LOG_ERROR(string(e.what()));
-		loadMissingImage(format, pixels, size);
-		return;
+		loadMissingImage(pixels, size, type, format);
+		return false;
 	}
 	#endif
 
@@ -981,16 +984,38 @@ void ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& pixels,
 		Image::loadFileData(imageData.data(), imageData.size(), fileType, pixels, size, type, format);
 		GARDEN_LOG_TRACE("Loaded image. (path: " + path.generic_string() + ")");
 	}
-	catch (exception& e)
+	catch (const exception& e)
 	{
 		GARDEN_LOG_ERROR("Failed to load image data. (path: " + 
 			path.generic_string() + ", error: " + string(e.what()) + ")");
-		loadMissingImage(format, pixels, size);
+		loadMissingImage(pixels, size, type, format);
+		return false;
 	}
+
+	#if !GARDEN_PACK_RESOURCES
+	auto metadataPath = path; metadataPath.replace_extension(".meta");
+	float effort = 0.7f; bool isLossless = false, generateMips = false;
+
+	if (fs::exists(metadataPath))
+	{
+		try
+		{
+			Image::loadFileMetadata(metadataPath, pixels, size, 
+				type, format, effort, isLossless, generateMips);
+		}
+		catch (const exception& e)
+		{
+			GARDEN_LOG_ERROR("Failed to load image metadata. (path: " + 
+				path.generic_string() + ", error: " + string(e.what()) + ")");
+		}
+	}
+	#endif
+
+	return true;
 }
 
 //**********************************************************************************************************************
-void ResourceSystem::loadOrConvertCubemap(const fs::path& path, vector<uint8>& nx, 
+bool ResourceSystem::loadOrConvertCubemap(const fs::path& path, vector<uint8>& nx, 
 	vector<uint8>& px, vector<uint8>& ny, vector<uint8>& py, vector<uint8>& nz, 
 	vector<uint8>& pz, uint2& size, Image::Format& format, int32 threadIndex) const noexcept
 {
@@ -1001,14 +1026,14 @@ void ResourceSystem::loadOrConvertCubemap(const fs::path& path, vector<uint8>& n
 	if (fileCount == 0)
 	{
 		GARDEN_LOG_ERROR("Cubemap image file does not exist. (path: " + path.generic_string() + ")");
-		loadMissingImage(format, nx, px, ny, py, nz, pz, size);
-		return;
+		loadMissingImage(nx, px, ny, py, nz, pz, size, format);
+		return false;
 	}
 	if (fileCount > 1)
 	{
 		GARDEN_LOG_ERROR("Cubemap image file is ambiguous. (path: " + path.generic_string() + ")");
-		loadMissingImage(format, nx, px, ny, py, nz, pz, size);
-		return;
+		loadMissingImage(nx, px, ny, py, nz, pz, size, format);
+		return false;
 	}
 	
 	auto cacheFilePath = appCachePath / "images" / path;
@@ -1034,20 +1059,21 @@ void ResourceSystem::loadOrConvertCubemap(const fs::path& path, vector<uint8>& n
 				inputFilePath.parent_path(), cacheFilePath.parent_path(), threadPool);
 			GARDEN_LOG_DEBUG("Converted cubemap. (path: " + path.generic_string() + ")");
 		}
-		catch (exception& e)
+		catch (const exception& e)
 		{
-			GARDEN_LOG_ERROR(e.what());
-			loadMissingImage(format, nx, px, ny, py, nz, pz, size);
-			return;
+			GARDEN_LOG_ERROR("Failed to convert cubemap image. (path: " + 
+				path.generic_string() + ", error: " + string(e.what()) + ")");
+			loadMissingImage(nx, px, ny, py, nz, pz, size, format);
+			return false;
 		}
 	}
 	#endif
 
-	loadCubemapData(path, nx, px, ny, py, nz, pz, size, format);
+	return loadCubemapData(path, nx, px, ny, py, nz, pz, size, format);
 }
 
 //**********************************************************************************************************************
-void ResourceSystem::loadOrConvertImage(const fs::path& path, vector<uint8>& pixels, 
+bool ResourceSystem::loadOrConvertImage(const fs::path& path, vector<uint8>& pixels, 
 	uint4& size, Image::Type& type, Image::Format& format, int32 threadIndex) const noexcept
 {
 	#if !GARDEN_PACK_RESOURCES
@@ -1057,14 +1083,14 @@ void ResourceSystem::loadOrConvertImage(const fs::path& path, vector<uint8>& pix
 	if (fileCount == 0)
 	{
 		GARDEN_LOG_ERROR("Image file does not exist. (path: " + path.generic_string() + ")");
-		loadMissingImage(format, pixels, size);
-		return;
+		loadMissingImage(pixels, size, type, format);
+		return false;
 	}
 	if (fileCount > 1)
 	{
 		GARDEN_LOG_ERROR("Image file is ambiguous. (path: " + path.generic_string() + ")");
-		loadMissingImage(format, pixels, size);
-		return;
+		loadMissingImage(pixels, size, type, format);
+		return false;
 	}
 
 	auto cacheFilePath = appCachePath / "images" / path;
@@ -1079,20 +1105,23 @@ void ResourceSystem::loadOrConvertImage(const fs::path& path, vector<uint8>& pix
 				inputFilePath.parent_path(), cacheFilePath.parent_path());
 			GARDEN_LOG_DEBUG("Converted image. (path: " + path.generic_string() + ")");
 		}
-		catch (exception& e)
+		catch (const exception& e)
 		{
-			GARDEN_LOG_ERROR(e.what());
-			loadMissingImage(format, pixels, size);
-			return;
+			GARDEN_LOG_ERROR("Failed to compress image. (path: " + 
+				path.generic_string() + ", error: " + string(e.what()) + ")");
+			loadMissingImage(pixels, size, type, format);
+			return false;
 		}
+
+		// TODO: if failed remove cached image. Also the same for the cubemaps.
 	}
 	#endif
 
-	loadImageData(path, pixels, size, type, format, threadIndex);
+	return loadImageData(path, pixels, size, type, format, threadIndex);
 }
 
 //**********************************************************************************************************************
-void ResourceSystem::loadImageData(const fs::path* paths, psize pathCount, vector<vector<uint8>>& pixelArrays, 
+bool ResourceSystem::loadImageData(const fs::path* paths, psize pathCount, vector<vector<uint8>>& pixelArrays, 
 	uint4& size, Image::Type& type, Image::Format& format, int32 threadIndex) const noexcept
 {
 	GARDEN_ASSERT(paths);
@@ -1100,12 +1129,12 @@ void ResourceSystem::loadImageData(const fs::path* paths, psize pathCount, vecto
 	GARDEN_ASSERT(threadIndex < (int32)thread::hardware_concurrency());
 
 	auto pixelArrayData = pixelArrays.data();
-	loadOrConvertImage(paths[0], pixelArrayData[0], size, type, format, threadIndex);
+	auto result = loadOrConvertImage(paths[0], pixelArrayData[0], size, type, format, threadIndex);
 
 	for (psize i = 1; i < pathCount; i++)
 	{
 		uint4 elementSize;
-		loadOrConvertImage(paths[i], pixelArrayData[i], elementSize, type, format, threadIndex);
+		result &= loadOrConvertImage(paths[i], pixelArrayData[i], elementSize, type, format, threadIndex);
 
 		if (size != elementSize)
 		{
@@ -1135,13 +1164,16 @@ void ResourceSystem::loadImageData(const fs::path* paths, psize pathCount, vecto
 					pixels[j] = f32x4(1.0f, 0.0f, 1.0f, 1.0f); 
 			}
 			else memset(pixelArray.data(), UINT8_MAX, pixelArray.size());
+
 			GARDEN_LOG_ERROR("Different image array element size. (path: " + paths[i].generic_string() + ")");
+			result = false;
 		}
 	}
+	return result;
 }
 
 //**********************************************************************************************************************
-void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& nx, 
+bool ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& nx, 
 	vector<uint8>& px, vector<uint8>& ny, vector<uint8>& py, vector<uint8>& nz, 
 	vector<uint8>& pz, uint2& size, Image::Format& format, int32 threadIndex) const noexcept
 {
@@ -1151,11 +1183,13 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& nx,
 	auto threadSystem = ThreadSystem::tryGetInstance();
 	uint4 nxSize, pxSize, nySize, pySize, nzSize, pzSize;
 	Image::Type nxType, pxType, nyType, pyType, nzType, pzType;
-	Image::Format nxFormat, pxFormat, nyFormat, pyFormat, nzFormat, pzFormat;
+	Image::Format nxFormat, pxFormat, nyFormat, pyFormat, nzFormat, pzFormat; bool result;
 
 	if (threadIndex < 0 && threadSystem)
 	{
 		auto& threadPool = threadSystem->getForegroundPool();
+		atomic_uint8_t loadResult = 0;
+
 		threadPool.addTasks([&](const ThreadPool::Task& task)
 		{
 			SET_CPU_ZONE_SCOPED("Cubemap Data Load");
@@ -1165,28 +1199,36 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& nx,
 
 			switch (task.getTaskIndex())
 			{
-				case 0: loadImageData(filePath + "-nx", nx, nxSize, nxType, nxFormat, threadIndex); break;
-				case 1: loadImageData(filePath + "-px", px, pxSize, pxType, pxFormat, threadIndex); break;
-				case 2: loadImageData(filePath + "-ny", ny, nySize, nyType, nyFormat, threadIndex); break;
-				case 3: loadImageData(filePath + "-py", py, pySize, pyType, pyFormat, threadIndex); break;
-				case 4: loadImageData(filePath + "-nz", nz, nzSize, nzType, nzFormat, threadIndex); break;
-				case 5: loadImageData(filePath + "-pz", pz, pzSize, pzType, pzFormat, threadIndex); break;
+				case 0: loadResult += loadImageData(filePath + "-nx", 
+					nx, nxSize, nxType, nxFormat, threadIndex) ? 1 : 0; break;
+				case 1: loadResult += loadImageData(filePath + "-px", 
+					px, pxSize, pxType, pxFormat, threadIndex) ? 1 : 0; break;
+				case 2: loadResult += loadImageData(filePath + "-ny", 
+					ny, nySize, nyType, nyFormat, threadIndex) ? 1 : 0; break;
+				case 3: loadResult += loadImageData(filePath + "-py", 
+					py, pySize, pyType, pyFormat, threadIndex) ? 1 : 0; break;
+				case 4: loadResult += loadImageData(filePath + "-nz", 
+					nz, nzSize, nzType, nzFormat, threadIndex) ? 1 : 0; break;
+				case 5: loadResult += loadImageData(filePath + "-pz", 
+					pz, pzSize, pzType, pzFormat, threadIndex) ? 1 : 0; break;
 				default: abort();
 			}
 		}, Image::cubemapFaceCount);
 		threadPool.wait();
+
+		result = loadResult == 6;
 	}
 	else
 	{
 		SET_CPU_ZONE_SCOPED("Cubemap Data Load");
 
 		auto filePath = path.generic_string();
-		loadImageData(filePath + "-nx", nx, nxSize, nxType, nxFormat, threadIndex);
-		loadImageData(filePath + "-px", px, pxSize, pxType, pxFormat, threadIndex);
-		loadImageData(filePath + "-ny", ny, nySize, nyType, nyFormat, threadIndex);
-		loadImageData(filePath + "-py", py, pySize, pyType, pyFormat, threadIndex);
-		loadImageData(filePath + "-nz", nz, nzSize, nzType, nzFormat, threadIndex);
-		loadImageData(filePath + "-pz", pz, pzSize, pzType, pzFormat, threadIndex);
+		result = loadImageData(filePath + "-nx", nx, nxSize, nxType, nxFormat, threadIndex);
+		result &= loadImageData(filePath + "-px", px, pxSize, pxType, pxFormat, threadIndex);
+		result &= loadImageData(filePath + "-ny", ny, nySize, nyType, nyFormat, threadIndex);
+		result &= loadImageData(filePath + "-py", py, pySize, pyType, pyFormat, threadIndex);
+		result &= loadImageData(filePath + "-nz", nz, nzSize, nzType, nzFormat, threadIndex);
+		result &= loadImageData(filePath + "-pz", pz, pzSize, pzType, pzFormat, threadIndex);
 	}
 
 	if (nxSize.z != 1 || nxSize != pxSize || nxSize != nySize || 
@@ -1195,57 +1237,32 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& nx,
 		pySize.x % 32 != 0 || nzSize.x % 32 != 0 || pzSize.x % 32 != 0)
 	{
 		GARDEN_LOG_ERROR("Invalid cubemap size. (path: " + path.generic_string() + ")");
-		loadMissingImage(format, nx, px, ny, py, nz, pz, size);
-		return;
+		loadMissingImage(nx, px, ny, py, nz, pz, size, format);
+		return false;
 	}
 	if (nxSize.x != nxSize.y || pxSize.x != pxSize.y || nySize.x != nySize.y || 
 		pySize.x != pySize.y || nzSize.x != nzSize.y || pzSize.x != pzSize.y)
 	{
 		GARDEN_LOG_ERROR("Invalid cubemap face size. (path: " + path.generic_string() + ")");
-		loadMissingImage(format, nx, px, ny, py, nz, pz, size);
-		return;
+		loadMissingImage(nx, px, ny, py, nz, pz, size, format);
+		return false;
 	}
 	if (nxFormat != pxFormat || nxFormat != nyFormat || 
 		nxFormat != pyFormat || nxFormat != nzFormat || nxFormat != pzFormat)
 	{
 		GARDEN_LOG_ERROR("Invalid cubemap face format. (path: " + path.generic_string() + ")");
-		loadMissingImage(format, nx, px, ny, py, nz, pz, size);
-		return;
+		loadMissingImage(nx, px, ny, py, nz, pz, size, format);
+		return false;
 	}
 
 	format = nxFormat;
 	size = (uint2)nxSize;
+	return result;
 }
 
 //**********************************************************************************************************************
-/*
-
-
-static void calcLoadedImageDim(psize pathCount, uint2 realSize,
-	ImageLoadFlags flags, uint2& imageSize, uint32& layerCount) noexcept
-{
-	imageSize = realSize; layerCount = (uint32)pathCount;
-	if (hasAnyFlag(flags, ImageLoadFlags::LoadAsArray | ImageLoadFlags::LoadAs3D))
-	{
-		if (realSize.x > realSize.y)
-		{
-			layerCount = realSize.x / realSize.y;
-			imageSize.x = imageSize.y;
-		}
-		else
-		{
-			layerCount = realSize.y / realSize.x;
-			imageSize.y = imageSize.x;
-		}
-
-		if (layerCount == 0) layerCount = 1;
-	}
-}
-*/
-
-//**********************************************************************************************************************
-static constexpr Image::Usage imageLoadUsage = Image::Usage::Sampled | Image::Usage::TransferDst;
-static constexpr Image::Strategy imageLoadStrategy = Image::Strategy::Size;
+static constexpr Image::Usage loadedImageUsage = Image::Usage::Sampled | Image::Usage::TransferDst;
+static constexpr Image::Strategy loadedImageStrategy = Image::Strategy::Size;
 
 static void copyLoadedImageData(const vector<vector<uint8>>& pixelArrays, 
 	uint8* stagingMap, Image::Type imageType) noexcept
@@ -1268,7 +1285,8 @@ ID<Image> ResourceSystem::loadImage(const fs::path* paths, psize pathCount, bool
 	auto graphicsAPI = GraphicsAPI::get();
 	auto imageVersion = graphicsAPI->imageVersion++;
 
-	auto image = graphicsAPI->imagePool.create(imageLoadUsage, imageLoadStrategy, imageVersion);
+	auto image = graphicsAPI->imagePool.create(loadedImageUsage | 
+		Image::Usage::TransferQ, loadedImageStrategy, imageVersion);
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	auto imageView = graphicsAPI->imagePool.get(image);
@@ -1312,7 +1330,7 @@ ID<Image> ResourceSystem::loadImage(const fs::path* paths, psize pathCount, bool
 			
 			ImageQueueItem item =
 			{
-				ImageExt::create(type, format, imageLoadUsage, imageLoadStrategy, (u32x4)size, data->imageVersion),
+				ImageExt::create(type, format, loadedImageUsage, loadedImageStrategy, (u32x4)size, data->imageVersion),
 				BufferExt::create(Buffer::Usage::TransferSrc, Buffer::CpuAccess::SequentialWrite, 
 					Buffer::Location::Auto, Buffer::Strategy::Speed, imageBinarySize * filePaths.size(), 0),
 				std::move(filePaths), data->instance // Note: Staging does not need TransferQ flag.
@@ -1356,7 +1374,7 @@ ID<Image> ResourceSystem::loadImage(const fs::path* paths, psize pathCount, bool
 		GARDEN_ASSERT_MSG(imageBinarySize > 0, "Assert " + paths[0].generic_string());
 
 		auto imageInstance = ImageExt::create(type, format, 
-			imageLoadUsage, imageLoadStrategy, (u32x4)size, 0);
+			loadedImageUsage, loadedImageStrategy, (u32x4)size, 0);
 		auto imageView = graphicsAPI->imagePool.get(image);
 		ImageExt::moveInternalObjects(imageInstance, **imageView);
 
@@ -1398,19 +1416,24 @@ Ref<Image> ResourceSystem::loadSharedImage(const fs::path* paths, psize pathCoun
 	}
 	auto hash = Hash128::digestState(hashState);
 
-	auto result = sharedImages.find(hash);
-	if (result != sharedImages.end())
+	auto searchResult = sharedImages.find(hash);
+	if (searchResult != sharedImages.end())
 	{
-		auto imageView = GraphicsSystem::getInstance()->get(result->second);
+		auto imageView = GraphicsSystem::getInstance()->get(searchResult->second);
 		if (imageView->isLoaded())
 		{
 			LoadedImageItem item;
 			item.paths.assign(paths, paths + pathCount);
-			item.instance = ID<Image>(result->second);
+			item.instance = ID<Image>(searchResult->second);
 			loadedImageArray.push_back(std::move(item));
 		}
-		return result->second;
+		return searchResult->second;
 	}
+
+	auto image = Ref<Image>(loadImage(paths, pathCount, loadAsync)); 
+	auto result = sharedImages.emplace(hash, image);
+	GARDEN_ASSERT_MSG(result.second, "Detected memory corruption");
+	return image;
 }
 void ResourceSystem::destroyShared(Ref<Image>& image)
 {
@@ -2310,7 +2333,7 @@ ID<Entity> ResourceSystem::loadScene(const fs::path& path, bool addRootEntity)
 		deserializer.load(dataBuffer);
 		dataBuffer = {};
 	}
-	catch (exception& e)
+	catch (const exception& e)
 	{
 		GARDEN_LOG_ERROR("Failed to deserialize scene. (path: " + path.generic_string() + ")");
 		return {};
@@ -2327,7 +2350,7 @@ ID<Entity> ResourceSystem::loadScene(const fs::path& path, bool addRootEntity)
 	{
 		deserializer.load(scenePath);
 	}
-	catch (exception& e)
+	catch (const exception& e)
 	{
 		GARDEN_LOG_ERROR("Failed to deserialize scene. (path: " + 
 			path.generic_string() + ", error: " + string(e.what()) + ")");
@@ -2648,7 +2671,7 @@ ID<Animation> ResourceSystem::loadAnimation(const fs::path& path)
 		deserializer.load(dataBuffer);
 		dataBuffer = {};
 	}
-	catch (exception& e)
+	catch (const exception& e)
 	{
 		GARDEN_LOG_ERROR("Failed to deserialize animation. (path: " + path.generic_string() + ")");
 		return {};
@@ -2665,7 +2688,7 @@ ID<Animation> ResourceSystem::loadAnimation(const fs::path& path)
 	{
 		deserializer.load(animationPath);
 	}
-	catch (exception& e)
+	catch (const exception& e)
 	{
 		GARDEN_LOG_ERROR("Failed to deserialize animation. (path: " + 
 			path.generic_string() + ", error: " + string(e.what()) + ")");
@@ -2932,7 +2955,7 @@ Ref<Font> ResourceSystem::loadFont(const fs::path& path, int32 faceIndex, bool l
 	{
 		File::loadBinary(filePath, fontData);
 	}
-	catch (exception& e)
+	catch (const exception& e)
 	{
 		GARDEN_LOG_ERROR(string(e.what()));
 		return {};
@@ -3068,7 +3091,7 @@ bool ResourceSystem::loadData(const fs::path& path, vector<uint8>& data)
 	{
 		File::loadBinary(resourcePath, data);
 	}
-	catch (exception& e)
+	catch (const exception& e)
 	{
 		GARDEN_LOG_ERROR(string(e.what()));
 		return false;

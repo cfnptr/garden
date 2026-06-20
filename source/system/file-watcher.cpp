@@ -235,7 +235,7 @@ static bool addDirWatchers(int fd, const fs::path& resourcesPath, tsl::robin_map
 			watchers.emplace(wd, entry.path());
 		}
 	}
-	catch (exception& e)
+	catch (const exception& e)
 	{
 		GARDEN_LOG_ERROR("Failed to add inotify watches. (error: " + string(e.what()) + ")");
 		return false;

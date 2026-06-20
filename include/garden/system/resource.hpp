@@ -169,10 +169,10 @@ protected:
 	virtual void input();
 	virtual void fileChange();
 	
-	void loadOrConvertCubemap(const fs::path& path, vector<uint8>& nx, vector<uint8>& px, 
+	bool loadOrConvertCubemap(const fs::path& path, vector<uint8>& nx, vector<uint8>& px, 
 		vector<uint8>& ny, vector<uint8>& py, vector<uint8>& nz, vector<uint8>& pz, 
 		uint2& size, Image::Format& format, int32 threadIndex) const noexcept;
-	void loadOrConvertImage(const fs::path& path, vector<uint8>& pixels, uint4& size, 
+	bool loadOrConvertImage(const fs::path& path, vector<uint8>& pixels, uint4& size, 
 		Image::Type& type, Image::Format& format, int32 threadIndex) const noexcept;
 	friend class ecsm::Manager;
 public:
@@ -200,8 +200,10 @@ public:
 	 * @param[out] type loaded image dimensionality type
 	 * @param[out] format loaded image data format
 	 * @param threadIndex thread index in the pool (-1 = single threaded)
+	 *
+	 * @return True on success, otherwise false and missing image data.
 	 */
-	void loadImageData(const fs::path& path, vector<uint8>& pixels, uint4& size, 
+	bool loadImageData(const fs::path& path, vector<uint8>& pixels, uint4& size, 
 		Image::Type& type, Image::Format& format, int32 threadIndex = -1) const noexcept;
 	/**
 	 * @brief Loads image pixels from the resource pack.
@@ -214,8 +216,10 @@ public:
 	 * @param[out] type loaded image dimensionality type
 	 * @param[out] format loaded image data format
 	 * @param threadIndex thread index in the pool (-1 = single threaded)
+	 *
+	 * @return True on success, otherwise false and missing image data.
 	 */
-	void loadImageData(const fs::path* paths, psize pathCount, vector<vector<uint8>>& pixelArrays, 
+	bool loadImageData(const fs::path* paths, psize pathCount, vector<vector<uint8>>& pixelArrays, 
 		uint4& size, Image::Type& type, Image::Format& format, int32 threadIndex = -1) const noexcept;
 
 	/**
@@ -232,8 +236,10 @@ public:
 	 * @param[out] size loaded cubemap image size in pixels
 	 * @param[out] format loaded image data format
 	 * @param threadIndex thread index the pool (-1 = single threaded)
+	 *
+	 * @return True on success, otherwise false and missing image data.
 	 */
-	void loadCubemapData(const fs::path& path, vector<uint8>& nx, vector<uint8>& px, 
+	bool loadCubemapData(const fs::path& path, vector<uint8>& nx, vector<uint8>& px, 
 		vector<uint8>& ny, vector<uint8>& py, vector<uint8>& nz, vector<uint8>& pz, 
 		uint2& size, Image::Format& format, int32 threadIndex = -1) const noexcept;
 

@@ -639,7 +639,7 @@ static bool renderInspectorWindowPopup(const EditorRenderSystem::EntityInspector
 			}
 			
 		}
-		catch (exception&) { }
+		catch (const exception&) { }
 	
 		ImGui::EndPopup();
 	}
@@ -700,7 +700,7 @@ static bool renderInspectorComponentPopup(ID<Entity>& selectedEntity,
 				serializableSystem->postDeserialize(jsonDeserializer);
 			}
 		}
-		catch (exception&) { }
+		catch (const exception&) { }
 
 		ImGui::EndPopup();
 	}

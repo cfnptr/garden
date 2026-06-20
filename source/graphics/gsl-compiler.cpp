@@ -66,29 +66,24 @@ namespace garden::graphics
 		uint8 variantCount = 0;
 		uint16 pushConstantsSize = 0;
 		uint8 specConstCount = 0;
+		uint8 _alignment = 0;
 	};
 	struct GraphicsGslValues final : public GslValues
 	{
-		uint8 _alignment = 0;
 		uint8 vertexAttributeCount = 0;
 		uint8 blendStateCount = 0;
 		uint16 vertexAttributesSize = 0;
 		PipelineStage pushConstantsStages = {};
 		GraphicsPipeline::State pipelineState = {};
-		// Note: Should be aligned.
 	};
 	struct ComputeGslValues final : public GslValues
 	{
-		uint8 _alignment = 0;
 		uint3 localSize = uint3::zero;
-		// Note: Should be aligned.
 	};
 	struct RayTracingGslValues final : public GslValues
 	{
-		uint8 _alignment = 0;
 		PipelineStage pushConstantsStages = {};
 		uint32 rayRecursionDepth = 0;
-		// Note: Should be aligned.
 	};
 }
 

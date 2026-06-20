@@ -80,28 +80,28 @@ bool ImageConverter::compress(const fs::path& filePath, const fs::path& inputPat
 
 	auto extension = filePath.extension();
 	GARDEN_ASSERT(!extension.empty());
-	vector<uint8> pixels; uint4 size; Image::Type imageType; Image::Format format;
 
-	try
-	{
-		Image::loadFileData(imageData.data(), imageData.size(), toImageFileType(
-			extension.generic_string()), pixels, size, imageType, format);
-	}
-	catch (exception& e)
-	{
-		throw GardenError("Failed to load image data. (path: " + 
-			filePath.generic_string() + ", error: " + string(e.what()) + ")");
-	}
+	vector<uint8> pixels; uint4 size; Image::Type type; Image::Format format; 
+	Image::loadFileData(imageData.data(), imageData.size(), toImageFileType(
+		extension.generic_string()), pixels, size, type, format);
 
-	auto ktxFilePath = (outputPath / filePath).replace_extension(".gic");
+	auto metadataPath = path; metadataPath.replace_extension(".meta");
+	float effort = GARDEN_DEBUG ? 0.1f : 0.7f; bool isLossless = false, generateMips = false;
+
+	if (fs::exists(metadataPath))
+	{
+		Image::loadFileMetadata(metadataPath, pixels, size, 
+			type, format, effort, isLossless, generateMips);
+	}
 	fs::create_directories(outputPath);
 
-	constexpr auto fileType = Image::FileType::GIC;
-	constexpr auto effort = GARDEN_DEBUG ? 0.1f : 0.7f;
-
 	auto storeFlags = Image::StoreFlag::None;
-	if (size.w > 1) storeFlags |= Image::StoreFlag::GenerateMips;
-	Image::storeFileData(ktxFilePath, pixels.data(), (uint3)size, fileType, format, 1.0f, effort, storeFlags);
+	if (isLossless) storeFlags |= Image::StoreFlag::Lossless;
+	if (size.w > 1 || generateMips) storeFlags |= Image::StoreFlag::GenerateMips;
+
+	auto gicFilePath = (outputPath / filePath).replace_extension(".gic");
+	Image::storeFileData(gicFilePath, pixels.data(), (uint3)size, 
+		Image::FileType::GIC, format, 1.0f, effort, storeFlags);
 	return true;
 }
 
@@ -122,20 +122,12 @@ bool ImageConverter::equi2cube(const fs::path& filePath, const fs::path& inputPa
 	vector<uint8> equiPixels; uint4 equiSize; Image::Type imageType;
 	auto imageFormat = Image::Format::Undefined;
 
-	try
-	{
-		Image::loadFileData(imageData.data(), imageData.size(), toImageFileType(
-			extension.generic_string()), equiPixels, equiSize, imageType, imageFormat);
-	}
-	catch (exception& e)
-	{
-		throw GardenError("Failed to load equirectangular image data. (path: " + 
-			filePath.generic_string() + ", error: " + string(e.what()) + ")");
-	}
+	Image::loadFileData(imageData.data(), imageData.size(), toImageFileType(
+		extension.generic_string()), equiPixels, equiSize, imageType, imageFormat);
 
 	auto cubemapSize = equiSize.x / 4;
 	if (equiSize.z != 1 || equiSize.x / 2 != equiSize.y || cubemapSize % 32 != 0)
-		throw GardenError("Image is not a cubemap. (path: " + filePath.generic_string() + ")");
+		throw GardenError("Image is not a cubemap.");
 
 	auto invDim = 1.0f / cubemapSize; auto equiSizeMinus1 = (uint2)equiSize - 1u;
 	auto faceBinarySize = toBinarySize((psize)cubemapSize * cubemapSize, imageFormat);
@@ -170,13 +162,13 @@ bool ImageConverter::equi2cube(const fs::path& filePath, const fs::path& inputPa
 		};
 		convert(cubeFaces, cubemapSize, (uint2)equiSize, equiSizeMinus1, (Color*)equiPixels.data(), invDim);
 	}
-	else throw GardenError("Unsupported equi image data format.");
+	else throw GardenError("Unsupported equirectangular image data format.");
 	equiPixels = {}; // Note: Cleaning up memory.
 
 	auto imageSize = uint3(cubemapSize, cubemapSize, 1);
 	constexpr auto fileType = Image::FileType::GIC;
 	constexpr auto effort = GARDEN_DEBUG ? 0.1f : 0.7f;
-	auto ktxFilePath = (outputPath / filePath).replace_extension().generic_string();
+	auto gicFilePath = (outputPath / filePath).replace_extension().generic_string();
 	fs::create_directories(outputPath);
 
 	if (threadPool)
@@ -185,17 +177,17 @@ bool ImageConverter::equi2cube(const fs::path& filePath, const fs::path& inputPa
 		{
 			switch (task.getTaskIndex())
 			{
-				case 0: Image::storeFileData(ktxFilePath + "-nx.gic", nx.data(), 
+				case 0: Image::storeFileData(gicFilePath + "-nx.gic", nx.data(), 
 					imageSize, fileType, imageFormat, 1.0f, effort); break;
-				case 1: Image::storeFileData(ktxFilePath + "-px.gic", px.data(), 
+				case 1: Image::storeFileData(gicFilePath + "-px.gic", px.data(), 
 					imageSize, fileType, imageFormat, 1.0f, effort); break;
-				case 2: Image::storeFileData(ktxFilePath + "-ny.gic", ny.data(), 
+				case 2: Image::storeFileData(gicFilePath + "-ny.gic", ny.data(), 
 					imageSize, fileType, imageFormat, 1.0f, effort); break;
-				case 3: Image::storeFileData(ktxFilePath + "-py.gic", py.data(), 
+				case 3: Image::storeFileData(gicFilePath + "-py.gic", py.data(), 
 					imageSize, fileType, imageFormat, 1.0f, effort); break;
-				case 4: Image::storeFileData(ktxFilePath + "-nz.gic", nz.data(), 
+				case 4: Image::storeFileData(gicFilePath + "-nz.gic", nz.data(), 
 					imageSize, fileType, imageFormat, 1.0f, effort); break;
-				case 5: Image::storeFileData(ktxFilePath + "-pz.gic", pz.data(), 
+				case 5: Image::storeFileData(gicFilePath + "-pz.gic", pz.data(), 
 					imageSize, fileType, imageFormat, 1.0f, effort); break;
 				default: abort();
 			}
@@ -204,12 +196,12 @@ bool ImageConverter::equi2cube(const fs::path& filePath, const fs::path& inputPa
 	}
 	else
 	{
-		Image::storeFileData(ktxFilePath + "-nx.gic", nx.data(), imageSize, fileType, imageFormat, 1.0f, effort);
-		Image::storeFileData(ktxFilePath + "-px.gic", px.data(), imageSize, fileType, imageFormat, 1.0f, effort);
-		Image::storeFileData(ktxFilePath + "-ny.gic", ny.data(), imageSize, fileType, imageFormat, 1.0f, effort);
-		Image::storeFileData(ktxFilePath + "-py.gic", py.data(), imageSize, fileType, imageFormat, 1.0f, effort);
-		Image::storeFileData(ktxFilePath + "-nz.gic", nz.data(), imageSize, fileType, imageFormat, 1.0f, effort);
-		Image::storeFileData(ktxFilePath + "-pz.gic", pz.data(), imageSize, fileType, imageFormat, 1.0f, effort);
+		Image::storeFileData(gicFilePath + "-nx.gic", nx.data(), imageSize, fileType, imageFormat, 1.0f, effort);
+		Image::storeFileData(gicFilePath + "-px.gic", px.data(), imageSize, fileType, imageFormat, 1.0f, effort);
+		Image::storeFileData(gicFilePath + "-ny.gic", ny.data(), imageSize, fileType, imageFormat, 1.0f, effort);
+		Image::storeFileData(gicFilePath + "-py.gic", py.data(), imageSize, fileType, imageFormat, 1.0f, effort);
+		Image::storeFileData(gicFilePath + "-nz.gic", nz.data(), imageSize, fileType, imageFormat, 1.0f, effort);
+		Image::storeFileData(gicFilePath + "-pz.gic", pz.data(), imageSize, fileType, imageFormat, 1.0f, effort);
 	}
 	return true;
 }
@@ -317,7 +309,7 @@ int main(int argc, char *argv[])
 				// Note: Sending one batched message due to multithreading.
 				cout << string("Converting ") + arg + "\n" << flush;
 
-				auto result = equi2cube ? ImageConverter::equi2cube(arg, inputPath, outputPath)
+				auto result = equi2cube ? ImageConverter::equi2cube(arg, inputPath, outputPath) :
 					ImageConverter::compress(arg, inputPath, outputPath);
 				if (!result)
 					cout << string("imagec: error: no image file found (") + arg + ")\n" << flush;
