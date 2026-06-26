@@ -259,9 +259,9 @@ Image::Image(Type type, Format format, Usage usage, Strategy strategy, u32x4 siz
 		auto mipBinarySize = toBinarySize((psize)mipSize.getX() * 
 			mipSize.getY() * mipSize.getZ(), format);
 		GARDEN_ASSERT(mipBinarySize > 0);
-	
+
 		this->binarySize += mipBinarySize;
-		mipSize = max(mipSize / 2u, u32x4::one);	
+		mipSize = max(mipSize / 2u, u32x4::one);
 	}
 }
 
@@ -1104,7 +1104,7 @@ const void* Image::convertFormat(const void* src, uint3 size,
 	if (srcFormat == dstFormat)
 		return src;
 
-	auto srcCompCount = toComponentCount(dstFormat);
+	auto srcCompCount = toComponentCount(srcFormat);
 	auto dstCompCount = toComponentCount(dstFormat);
 	GARDEN_ASSERT(srcCompCount > 0 && dstCompCount > 0);
 
@@ -1124,7 +1124,14 @@ const void* Image::convertFormat(const void* src, uint3 size,
 	
 		for (auto i = tmpBuffer.data(); i < end; i += dstBinarySize, srcData += srcBinarySize)
 			memcpy(i, srcData, srcBinarySize);
+
+		// TODO: rethink this solution, not all formats are placed like that!!!
+		srcFormat = (Image::Format)(dstCompCount - srcCompCount > 2 ? 
+			(uint8)srcFormat + 2 : (uint8)srcFormat + 1);
 		src = tmpBuffer.data();
+
+		if (srcFormat == dstFormat)
+			return src;
 	}
 	else if (srcCompCount > dstCompCount)
 	{
@@ -1475,6 +1482,84 @@ const void* Image::convertFormat(const void* src, uint3 size,
 }
 
 //**********************************************************************************************************************
+void Image::pack3D(vector<uint8>& pixels, uint3& size, uint32 stride, vector<uint8>* tmpBuffer)
+{
+	GARDEN_ASSERT(!pixels.empty());
+	GARDEN_ASSERT(areAllTrue(size > uint3::zero));
+	GARDEN_ASSERT(stride > 0);
+
+	if (size.z == 1)
+		return;
+	if (size.x != size.y)
+		throw GardenError("Image 3D size X is equal to Y.");
+
+	vector<uint8> tmpLocal;
+	if (!tmpBuffer) tmpBuffer = &tmpLocal;
+
+	auto size2D = uint2(size.y * size.x, size.y);
+	auto rowSize3D = (psize)stride * size.x;
+	auto rowSize2D = (psize)stride * size2D.x;
+	tmpBuffer->resize((psize)size2D.x * size2D.y * stride);
+	auto dstPixels = tmpBuffer->data(), srcPixels = pixels.data();
+
+	for (uint32 z = 0; z < size.z; z++)
+	{
+		for (uint32 y = 0; y < size.y; y++)
+		{
+			memcpy(dstPixels + (z * rowSize3D + y * rowSize2D), srcPixels, rowSize3D);
+			srcPixels += rowSize3D;
+		}
+	}
+
+	std::swap(pixels, *tmpBuffer);
+	size = uint3(size2D, 1);
+}
+void Image::unpack3D(vector<uint8>& pixels, uint3& size, uint32 stride, vector<uint8>* tmpBuffer)
+{
+	GARDEN_ASSERT(!pixels.empty());
+	GARDEN_ASSERT(areAllTrue(size > uint3::zero));
+	GARDEN_ASSERT(stride > 0);
+
+	if (size.x == size.y)
+		return;
+
+	if (size.x < size.y)
+	{
+		if (size.y % size.x != 0)
+			throw GardenError("Image 3D size Y is not dividable by X.");
+
+		size.z = size.y / size.x;
+		size.y = size.x;
+		return;
+	}
+
+	if (size.x % size.y != 0)
+		throw GardenError("Image 3D size X is not dividable by Y.");
+
+	vector<uint8> tmpLocal;
+	if (!tmpBuffer) tmpBuffer = &tmpLocal;
+
+	auto size3D = uint3(size.y, size.y, size.y / size.x);
+	tmpBuffer->resize((psize)size3D.x * size3D.y * size3D.z * stride);
+	auto dstPixels = tmpBuffer->data(), srcPixels = pixels.data();
+
+	auto rowBinarySize = stride * size.x;
+	auto layerBinarySize = rowBinarySize * size.y;
+
+	for (uint32 z = 0; z < size.z; z++)
+	{
+		for (uint32 y = 0; y < size.y; y++)
+		{
+			memcpy(dstPixels, srcPixels + y * rowBinarySize + z * layerBinarySize, rowBinarySize);
+			dstPixels += rowBinarySize;
+		}
+	}
+
+	size.z = size.x / size.y;
+	size.x = size.y;
+}
+
+//**********************************************************************************************************************
 namespace garden::graphics
 {
 	class ExrMemoryStream final : public Imf::IStream
@@ -1607,7 +1692,8 @@ static basist::transcoder_texture_format toTranscoderFormat(Image::Format imageF
 			return basist::transcoder_texture_format::cTFBC3_RGBA;
 		case Image::Format::UnormBC4: return basist::transcoder_texture_format::cTFBC4_R;
 		case Image::Format::UnormBC5: return basist::transcoder_texture_format::cTFBC5_RG;
-		case Image::Format::UnormBC7: return basist::transcoder_texture_format::cTFBC7_RGBA;
+		case Image::Format::UnormBC7: case Image::Format::SrgbBC7:
+			return basist::transcoder_texture_format::cTFBC7_RGBA;
 		case Image::Format::SrgbAstc4x4: case Image::Format::UnormAstc4x4:
 			return basist::transcoder_texture_format::cTFASTC_LDR_4x4_RGBA;
 		case Image::Format::UfloatBC6H: return basist::transcoder_texture_format::cTFBC6H;
@@ -1619,13 +1705,16 @@ static basist::transcoder_texture_format toTranscoderFormat(Image::Format imageF
 		case Image::Format::UnormR4G4B4A4: return basist::transcoder_texture_format::cTFRGBA4444;
 		case Image::Format::SfloatR16G16B16A16: return basist::transcoder_texture_format::cTFRGBA_HALF;
 		case Image::Format::UfloatE5B9G9R9: return basist::transcoder_texture_format::cTFRGB_9E5;
-		default: throw GardenError("Unsupported basis universal transcoder format.");
+
+		default:
+			throw GardenError("Unsupported basis universal transcoder format. ("
+				"format: " + string(toString(imageFormat)) + ")");
 	}
 }
 
 //**********************************************************************************************************************
 static void loadImageDataPNG(const void* data, psize dataSize, vector<uint8>& pixels, 
-	uint4& imageSize, Image::Type& imageType, Image::Format& imageFormat)
+	uint4& imageSize, Image::Format& imageFormat, Image::Type imageType)
 {
 	png_image image; memset(&image, 0, sizeof(png_image));
 	image.version = PNG_IMAGE_VERSION;
@@ -1648,12 +1737,20 @@ static void loadImageDataPNG(const void* data, psize dataSize, vector<uint8>& pi
 	if (!png_image_finish_read(&image, nullptr, pixels.data(), 0, nullptr))
 		throw GardenError("Invalid PNG image data.");
 
-	imageSize = uint4(image.width, image.height, 1, 1);
-	imageType = Image::Type::Texture2D;
+	if (image.width != image.height && (imageType == Image::Type::Texture3D || 
+		imageType == Image::Type::Texture2DArray))
+	{
+		vector<uint8> pixels3D;
+		auto size3D = Image::unpack3D(pixels.data(), uint2(
+			image.width, image.height), componentCount, pixels3D);
+		imageSize = uint4(size3D, 1); std::swap(pixels, pixels3D);
+	}
+	else imageSize = uint4(image.width, image.height, 1, 1);
+
 	imageFormat = toSrgbFormat(componentCount);
 }
-static void loadImageDataWebP(const void* data, psize dataSize, vector<uint8>& pixels, 
-	uint4& imageSize, Image::Type& imageType, Image::Format& imageFormat)
+static void loadImageDataWebP(const void* data, psize dataSize, 
+	vector<uint8>& pixels, uint4& imageSize, Image::Format& imageFormat)
 {
 	int sizeX = 0, sizeY = 0;
 	if (!WebPGetInfo((const uint8_t*)data, dataSize, &sizeX, &sizeY))
@@ -1666,7 +1763,6 @@ static void loadImageDataWebP(const void* data, psize dataSize, vector<uint8>& p
 		throw GardenError("Invalid WebP image data.");
 
 	imageSize = uint4(sizeX, sizeY, 1, 1);
-	imageType = Image::Type::Texture2D;
 	imageFormat = Image::Format::SrgbR8G8B8A8;
 }
 
@@ -1685,12 +1781,12 @@ static Imf::FrameBuffer createExrFramebuffer(char* pixels, psize pixelBinarySize
 	return exrFrameBuffer;
 }
 static void loadImageDataEXR(const void* data, psize dataSize, vector<uint8>& pixels, 
-	uint4& imageSize, Image::Type& imageType, Image::Format& imageFormat)
+	uint4& imageSize, Image::Format& imageFormat, Image::Type imageType)
 {
 	ExrMemoryStream exrStream((const uint8*)data, dataSize);
 	Imf::InputFile exrFile(exrStream);
 	auto& header = exrFile.header(); auto dw = header.dataWindow();
-	imageSize = uint4(dw.max.x - dw.min.x + 1, dw.max.y - dw.min.y + 1, 1, 1); // TODO: support loading layers and mips.
+	imageSize = uint4(dw.max.x - dw.min.x + 1, dw.max.y - dw.min.y + 1, 1, 1);
 
 	auto& channels = header.channels();
 	auto channelR = channels.findChannel("R");
@@ -1704,6 +1800,8 @@ static void loadImageDataEXR(const void* data, psize dataSize, vector<uint8>& pi
 	auto floatSize = pixelBinarySize / componentCount;
 	auto strideY = pixelBinarySize * imageSize.x;
 	auto pixelType = channelR->type;
+
+	GARDEN_ASSERT(imageBinarySize > 0);
 	pixels.resize(imageBinarySize);
 
 	char* exrPixels;
@@ -1723,12 +1821,18 @@ static void loadImageDataEXR(const void* data, psize dataSize, vector<uint8>& pi
 		pixelBinarySize, floatSize, strideY, componentCount, pixelType);
 	exrFile.setFrameBuffer(exrFrameBuffer);
 	exrFile.readPixels(dw.min.y, dw.max.y);
-	imageType = Image::Type::Texture2D;
+
+	if (imageType == Image::Type::Texture3D || imageType == Image::Type::Texture2DArray)
+	{
+		vector<uint8> pixels3D;
+		auto size3D = Image::unpack3D(pixels.data(), (uint2)imageSize, pixelBinarySize, pixels3D);
+		imageSize = uint4(size3D, 1); std::swap(pixels, pixels3D);
+	}
 }
 
 //**********************************************************************************************************************
-static void loadImageDataHDR(const void* data, psize dataSize, vector<uint8>& pixels, 
-	uint4& imageSize, Image::Type& imageType, Image::Format& imageFormat)
+static void loadImageDataHDR(const void* data, psize dataSize, 
+	vector<uint8>& pixels, uint4& imageSize, Image::Format& imageFormat)
 {
 	if (dataSize > INT32_MAX)
 		throw GardenError("HDR image data size is too big.");
@@ -1740,14 +1844,13 @@ static void loadImageDataHDR(const void* data, psize dataSize, vector<uint8>& pi
 		throw GardenError("Invalid HDR file data.");
 
 	imageSize = uint4(sizeX, sizeY, 1, 1);
-	imageType = Image::Type::Texture2D;
 	imageFormat = Image::Format::SfloatR32G32B32A32;
 	pixels.assign((const uint8*)pixelData, (const uint8*)pixelData +
 		(psize)imageSize.x * imageSize.y * sizeof(float4));
 	stbi_image_free(pixelData); // TODO: this is suboptimal to copy data over.
 }
-static void loadImageDataSTB(const void* data, psize dataSize, vector<uint8>& pixels, 
-	uint4& imageSize, Image::Type& imageType, Image::Format& imageFormat)
+static void loadImageDataSTB(const void* data, psize dataSize, 
+	vector<uint8>& pixels, uint4& imageSize, Image::Format& imageFormat)
 {
 	if (dataSize > INT32_MAX)
 		throw GardenError("STB image data size is too big.");
@@ -1759,7 +1862,6 @@ static void loadImageDataSTB(const void* data, psize dataSize, vector<uint8>& pi
 		throw GardenError("Invalid STB file data.");
 
 	imageSize = uint4(sizeX, sizeY, 1, 1);
-	imageType = Image::Type::Texture2D;
 	imageFormat = Image::Format::SrgbR8G8B8A8;
 	pixels.assign(pixelData, pixelData + (psize)imageSize.x * imageSize.y * sizeof(Color));
 	stbi_image_free(pixelData); // TODO: this is suboptimal to copy data over.
@@ -1778,16 +1880,26 @@ static void loadImageDataGIC(const void* data, psize dataSize, vector<uint8>& pi
 		throw GardenError("Bad GIC file version.");
 	if (gicHeader.isLittleEndian != GARDEN_LITTLE_ENDIAN)
 		throw GardenError("Bad GIC file endianness.");
+
+	if (gicHeader.data.containerType >= (uint8)GicType::Count ||
+		gicHeader.data.imageType >= (uint8)Image::Type::Count ||
+		gicHeader.data.channelCount > 4 || gicHeader.data.encodeEffort > 100)
+	{
+		throw GardenError("Invalid GIC header data.");
+	}
+
+	imageType = (Image::Type)gicHeader.data.imageType;
 	data = (const uint8*)data + gicHeaderSize;
+	dataSize -= gicHeaderSize;
 
 	if (gicHeader.data.containerType == (uint8)GicType::PNG)
 	{
-		loadImageDataPNG(data, dataSize, pixels, imageSize, imageType, imageFormat);
+		loadImageDataPNG(data, dataSize, pixels, imageSize, imageFormat, imageType);
 		return;
 	}
 	if (gicHeader.data.containerType == (uint8)GicType::EXR)
 	{
-		loadImageDataEXR(data, dataSize, pixels, imageSize, imageType, imageFormat);
+		loadImageDataEXR(data, dataSize, pixels, imageSize, imageFormat, imageType);
 		return;
 	}
 
@@ -1810,30 +1922,42 @@ static void loadImageDataGIC(const void* data, psize dataSize, vector<uint8>& pi
 		auto transcoderFormat = toTranscoderFormat(imageFormat);
 		auto blockSize = basist::basis_transcoder_format_is_uncompressed(transcoderFormat) ? 1 : 
 			basist::basis_get_block_width(transcoderFormat) * basist::basis_get_block_height(transcoderFormat);
-		auto pixelCount = (psize)imageSize.x * imageSize.y * imageSize.y;
-		auto sizeInBlocks = pixelCount / blockSize;
-		auto imageBinarySize = toBinarySize(pixelCount, imageFormat);
+		auto sizeInBlocks = ((psize)imageSize.x * imageSize.y) / blockSize;
+
+		auto mipSize = (uint3)imageSize; psize imageBinarySize = 0;
+		for (uint32 mip = 0; mip < imageSize.w; mip++)
+		{
+			auto mipBinarySize = toBinarySize((psize)
+				mipSize.x * mipSize.y * mipSize.z, imageFormat);
+			GARDEN_ASSERT(mipBinarySize > 0);
+			imageBinarySize += mipBinarySize;
+			mipSize = max(mipSize / 2u, uint3::one);
+		}
 		pixels.resize(imageBinarySize); auto pixelData = pixels.data();
 
 		constexpr auto decodeFlags = basist::basisu_decode_flags::cDecodeFlagsHighQuality;
-		auto layerBinarySize = toBinarySize((psize)imageSize.x * imageSize.y * imageSize.z, imageFormat);
 		transcoder.start_transcoding();
 
-		for (uint32 layer = 0; layer < imageSize.y; layer++)
+		mipSize = (uint3)imageSize;
+		for (uint32 mip = 0; mip < imageSize.w; mip++)
 		{
-			if (!transcoder.transcode_image_level(0, layer, 0, 
-				pixelData, sizeInBlocks, transcoderFormat, decodeFlags))
+			auto layerBinarySize = toBinarySize((psize)mipSize.x * mipSize.y, imageFormat);
+			for (uint32 level = 0; level < mipSize.z; level++)
 			{
-				throw GardenError("Failed to transcode basis universal image.");
+				if (!transcoder.transcode_image_level(mip, level, 0, 
+					pixelData, sizeInBlocks, transcoderFormat, decodeFlags))
+				{
+					throw GardenError("Failed to transcode basis universal image.");
+				}
+				pixelData += layerBinarySize;
 			}
-			pixelData += layerBinarySize;
+			mipSize = max(mipSize / 2u, uint3::one);
 		}
 		return;
 		#else
 		throw GardenError("No basis universal image support.");
 		#endif
 	}
-	else throw GardenError("Invalid GIC file type.");
 }
 
 void Image::loadFileData(const void* data, psize dataSize, FileType fileType, 
@@ -1842,16 +1966,17 @@ void Image::loadFileData(const void* data, psize dataSize, FileType fileType,
 	GARDEN_ASSERT(data);
 	GARDEN_ASSERT(dataSize > 0);
 
+	imageType = Image::Type::Texture2D;
 	switch (fileType)
 	{
 		case FileType::GIC: loadImageDataGIC(data, dataSize, pixels, imageSize, imageType, imageFormat); return;
-		case FileType::PNG: loadImageDataPNG(data, dataSize, pixels, imageSize, imageType, imageFormat); return;
-		case FileType::WebP: loadImageDataWebP(data, dataSize, pixels, imageSize, imageType, imageFormat); return;
-		case FileType::EXR: loadImageDataEXR(data, dataSize, pixels, imageSize, imageType, imageFormat); return;
-		case FileType::HDR: loadImageDataHDR(data, dataSize, pixels, imageSize, imageType, imageFormat); return;
+		case FileType::PNG: loadImageDataPNG(data, dataSize, pixels, imageSize, imageFormat, imageType); return;
+		case FileType::WebP: loadImageDataWebP(data, dataSize, pixels, imageSize, imageFormat); return;
+		case FileType::EXR: loadImageDataEXR(data, dataSize, pixels, imageSize, imageFormat, imageType); return;
+		case FileType::HDR: loadImageDataHDR(data, dataSize, pixels, imageSize, imageFormat); return;
 		case FileType::JPEG: case FileType::BMP: case FileType::PSD: 
 		case FileType::TGA: case FileType::PIC: case FileType::GIF:
-			loadImageDataSTB(data, dataSize, pixels, imageSize, imageType, imageFormat); return;
+			loadImageDataSTB(data, dataSize, pixels, imageSize, imageFormat); return;
 		default: abort();
 	}
 }
@@ -1905,24 +2030,9 @@ void Image::loadFileMetadata(const fs::path& path, vector<uint8>& pixels, uint4&
 			throw GardenError("Texture 1D type and size mismatch.");
 	}
 
-	if ((imageType == Image::Type::Texture3D || imageType == Image::Type::Texture2DArray) && size.x > size.y)
+	if (imageType == Image::Type::Texture3D || imageType == Image::Type::Texture2DArray)
 	{
-		vector<uint8> tmpPixels(pixels.size());
-		auto dstPixels = (uint8*)tmpPixels.data();
-		auto srcPixels = (const uint8*)pixels.data();
-		auto pixelCount = (psize)size.x * size.y * size.z;
-		auto pixelBinarySize = pixels.size() / pixelCount;
-		auto rowBinarySize = pixelBinarySize * size.x;
-		auto layerBinarySize = rowBinarySize * size.y;
-
-		for (uint32 z = 0; z < size.z; z++)
-		{
-			for (uint32 y = 0; y < size.y; y++)
-			{
-				memcpy(dstPixels, srcPixels + y * rowBinarySize + z * layerBinarySize, rowBinarySize);
-				dstPixels += rowBinarySize;
-			}
-		}
+		Image::unpack3D(pixels.data(), (uint2)size, uint32 stride, vector<uint8> &pixels3D)
 	}
 }
 
@@ -1945,6 +2055,12 @@ static void storeImageDataPNG(const fs::path& filePath, const void* pixels, uint
 		default: throw GardenError("Unsupported PNG color type component count.");
 	}
 
+	vector<uint8> resPixels;
+	if (size.z > 1)
+	{
+		// TODO: pack
+	}
+
 	auto dstPixels = Image::convertFormat(pixels, size, tmpPixels, imageFormat, toSrgbFormat(componentCount));
 	auto png = png_create_write_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
 	auto pngInfo = png_create_info_struct(png);
@@ -1959,7 +2075,6 @@ static void storeImageDataPNG(const fs::path& filePath, const void* pixels, uint
 		png_destroy_write_struct(&png, &pngInfo);
 		throw GardenError("Failed to write PNG image.");
 	}
-	
 
 	ofstream tmpStream; ofstream* pngStream;
 	if (!outputStream)
@@ -1992,6 +2107,8 @@ static void storeImageDataPNG(const fs::path& filePath, const void* pixels, uint
 		png_write_row(png, pngPixels + y * rowStride);
 	png_write_end(png, nullptr);
 	png_destroy_write_struct(&png, &pngInfo);
+
+	// TODO: check if we have oxipng installed and reduce image size with it!!!
 }
 
 //**********************************************************************************************************************
@@ -2072,6 +2189,7 @@ static void storeImageDataEXR(const fs::path& filePath, const void* pixels, uint
 	auto pixelBinarySize = imageBinarySize / pixelCount;
 	auto floatSize = pixelBinarySize / componentCount;
 	auto strideY = pixelBinarySize * size.x;
+	GARDEN_ASSERT_MSG(imageBinarySize > 0, "Assert " + filePath.generic_string());
 
 	ExrFileStream exrStream(filePath, outputStream);
 	Imf::Header exrHeader(size.x, size.y, 1, Imath::V2f(0, 0), 1, Imf::INCREASING_Y, Imf::PIZ_COMPRESSION);
@@ -2143,7 +2261,7 @@ static void storeImageDataTGA(const fs::path& filePath, const void* pixels, uint
 
 //**********************************************************************************************************************
 static void storeImageDataGIC(const fs::path& filePath, const void* pixels, uint3 size, 
-	Image::Format imageFormat, float quality, float effort, Image::StoreFlag flags)
+	Image::Type imageType, Image::Format imageFormat, float quality, float effort, Image::StoreFlag flags)
 {
 	ofstream outputStream(filePath, ios::binary | ios::out);
 	if (!outputStream.is_open())
@@ -2152,10 +2270,12 @@ static void storeImageDataGIC(const fs::path& filePath, const void* pixels, uint
 	constexpr auto optimalTiling = (UINT16_MAX + 1); // Common VRAM 64kb alignment.
 	auto formatBinarySize = toBinarySize((psize)size.x * size.y * size.z, imageFormat);
 	auto isLessThan64k = formatBinarySize <= optimalTiling;
+	GARDEN_ASSERT_MSG(formatBinarySize > 0, "Assert " + filePath.generic_string());
 
 	GicHeader gicHeader = {};
 	gicHeader.data.containerType = hasAnyFlag(flags, Image::StoreFlag::Lossless) || isLessThan64k ? 
 		(uint8)(isFormatFloat(imageFormat) ? GicType::EXR : GicType::PNG) : (uint8)GicType::KTX2;
+	gicHeader.data.imageType = (uint8)imageType;
 	gicHeader.data.channelCount = toComponentCount(imageFormat);
 	gicHeader.data.encodeEffort = (uint8)std::fma(quality, 100.0f, 0.5f);
 
@@ -2178,6 +2298,8 @@ static void storeImageDataGIC(const fs::path& filePath, const void* pixels, uint
 	}
 
 	uint32_t basisFlags = basisu::cFlagUseOpenCL | basisu::cFlagKTX2 | basisu::cFlagKTX2UASTCSuperCompression;
+	if (imageType == Image::Type::Texture3D || imageType == Image::Type::Texture2DArray)
+		basisFlags |= basisu::cFlagTextureType2DArray;
 	if (hasAnyFlag(flags, Image::StoreFlag::GenerateMips))
 		basisFlags |= basisu::cFlagGenMipsClamp;
 
@@ -2223,37 +2345,53 @@ static void storeImageDataGIC(const fs::path& filePath, const void* pixels, uint
 		default: throw GardenError("Unsupported basis universal format conversion.");
 	}
 
-	auto pixelCount = (psize)size.x * size.y * size.z;
+	auto layerPixelCount = (psize)size.x * size.y, imagePixelCount = layerPixelCount * size.z;
 	auto basisQuality = (int)std::fma(quality, 100.0f, 0.5f);
 	auto basisEffort = (int)std::fma(effort, 10.0f, 0.5f);
 		
 	void* ktxData; size_t ktxDataSize = 0;
 	if (isHDR)
 	{
-		basisu::vector<basisu::imagef> images(1);
-		auto image = &images[0]; image->resize(size.x, size.y);
-		memcpy((void*)image->get_ptr(), dstPixels, pixelCount * sizeof(basisu::vec4F));
+		auto pixelData = (const uint8*)dstPixels;
+		auto layerBinarySize = layerPixelCount * sizeof(basisu::vec4F);
+		basisu::vector<basisu::imagef> images(size.z); 
+
+		for (uint32 level = 0; level < size.z; level++)
+		{
+			auto image = &images[level]; image->resize(size.x, size.y);
+			memcpy((void*)image->get_ptr(), pixelData, layerBinarySize);
+			pixelData += layerBinarySize;
+		}
+
 		ktxData = basisu::basis_compress2(basisFormat, images, 
 			basisFlags, basisQuality, basisEffort, &ktxDataSize);
 	}
 	else // LDR
 	{
+		auto pixelData = (const uint8*)dstPixels;
 		if (gicHeader.data.channelCount == 2) // Note: encoding RG channels as R and A channels.
 		{
-			tmpPixels.resize(pixelCount * sizeof(basisu::color_rgba));
-			dstPixels = tmpPixels.data(); auto inPixels = (const Color*)dstPixels;
+			tmpPixels.resize(imagePixelCount * sizeof(basisu::color_rgba));
+			pixelData = tmpPixels.data(); auto inPixels = (const Color*)dstPixels;
 			auto outPixels = (Color*)tmpPixels.data();
 
-			for (psize i = 0; i < pixelCount; i++)
+			for (psize i = 0; i < imagePixelCount; i++)
 			{
 				auto p = inPixels[i];
 				outPixels[i] = Color(p.r, 0, 0, p.g);
 			}
 		}
 
-		basisu::vector<basisu::image> images(1);
-		auto image = &images[0]; image->resize(size.x, size.y);
-		memcpy((void*)image->get_ptr(), dstPixels, pixelCount * sizeof(basisu::color_rgba));
+		auto layerBinarySize = layerPixelCount * sizeof(basisu::color_rgba);
+		basisu::vector<basisu::image> images(size.z);
+
+		for (uint32 level = 0; level < size.z; level++)
+		{
+			auto image = &images[level]; image->resize(size.x, size.y);
+			memcpy((void*)image->get_ptr(), pixelData, layerBinarySize);
+			pixelData += layerBinarySize;
+		}
+
 		ktxData = basisu::basis_compress2(basisFormat, images, 
 			basisFlags, basisQuality, basisEffort, &ktxDataSize);
 	}
@@ -2267,13 +2405,13 @@ static void storeImageDataGIC(const fs::path& filePath, const void* pixels, uint
 	if (!outputStream.good())
 		throw GardenError("Failed to write basis universal image file.");
 	#else
-	storeImageDataPNG(path, pixels, size, imageFormat, quality, effort, flags);
+	storeImageDataPNG(filePath, pixels, size, imageFormat, quality, effort, flags);
 	#endif
 }
 
 //**********************************************************************************************************************
-void Image::storeFileData(const fs::path& path, const void* pixels, uint3 size, 
-	FileType fileType, Format imageFormat, float quality, float effort, StoreFlag flags)
+void Image::storeFileData(const fs::path& path, const void* pixels, uint3 size, FileType fileType, 
+	Image::Type imageType, Format imageFormat, float quality, float effort, StoreFlag flags)
 {
 	GARDEN_ASSERT(!path.empty());
 	GARDEN_ASSERT_MSG(pixels, "Assert " + path.generic_string());
@@ -2286,7 +2424,7 @@ void Image::storeFileData(const fs::path& path, const void* pixels, uint3 size,
 	if (fileType == FileType::GIC)
 	{
 		filePath.replace_extension(".gic");
-		storeImageDataGIC(filePath, pixels, size, imageFormat, quality, effort, flags);
+		storeImageDataGIC(filePath, pixels, size, imageType, imageFormat, quality, effort, flags);
 	}
 	else if (fileType == FileType::PNG)
 	{

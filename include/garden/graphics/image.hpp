@@ -869,7 +869,11 @@ public:
 	void setDebugName(const string& name) override;
 	#endif
 
-	/*******************************************************************************************************************
+	//******************************************************************************************************************
+	// End of Render commands
+	//******************************************************************************************************************
+
+	/**
 	 * @brief Converts image data formats.
 	 * @note Clamps values if out of range.
 	 *
@@ -886,6 +890,31 @@ public:
 		vector<uint8>& dstPixels, Format srcFormat, Format dstFormat);
 
 	/**
+	 * @brief Converts 3D image pixels into the 2D horizontally packed.
+	 * @details Image layers are packed side by side for a better compression.
+	 *
+	 * @param[in,out] pixels image pixel data to pack
+	 * @param[in,out] size image data size in pixels
+	 * @param stride size of one pixel in bytes
+	 * @param[in] tmpBuffer temporary data buffer or null
+	 *
+	 * @throw GardenError on invalid unpacked image pixel size.
+	 */
+	static void pack3D(vector<uint8>& pixels, uint3& size, uint32 stride, vector<uint8>* tmpBuffer = nullptr);
+	/**
+	 * @brief Converts 2D horizontally packed image pixels to the 3D image.
+	 * @details See the @ref Image::pack3D().
+	 *
+	 * @param[in] pixels image pixel data to unpack
+	 * @param[in,out] size image data size in pixels
+	 * @param stride size of one pixel in bytes
+	 * @param[out] tmpBuffer temporary data buffer or null
+	 *
+	 * @throw GardenError on invalid packed image pixel size.
+	 */
+	static void unpack3D(vector<uint8>& pixels, uint3& size, uint32 stride, vector<uint8>* tmpBuffer = nullptr);
+
+	/*******************************************************************************************************************
 	 * @brief Loads image pixels from the specified file data.
 	 * @throw GardenError on image data loading error.
 	 * 
@@ -922,13 +951,15 @@ public:
 	 * @param[in] pixels image pixel data
 	 * @param size image size in pixels
 	 * @param fileType image file container type
+	 * @param imageType image dimensionality type
 	 * @param imageFormat image pixel data format
 	 * @param quality image quality (0.0 - 1.0)
 	 * @param effort image compression effort (0.0 - 1.0)
 	 * @param flags additional image store flags
 	 */
-	static void storeFileData(const fs::path& path, const void* pixels, uint3 size, FileType fileType, 
-		Format imageFormat, float quality = 1.0f, float effort = 0.7f, StoreFlag flags = StoreFlag::None);
+	static void storeFileData(const fs::path& path, const void* pixels, 
+		uint3 size, FileType fileType, Image::Type imageType, Format imageFormat, 
+		float quality = 1.0f, float effort = 0.7f, StoreFlag flags = StoreFlag::None);
 };
 
 DECLARE_ENUM_CLASS_FLAG_OPERATORS(Image::Usage)

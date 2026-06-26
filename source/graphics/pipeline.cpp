@@ -486,7 +486,7 @@ void Pipeline::fillVkSpecConsts(const fs::path& path, void* specInfo, const Pipe
 		#endif
 
 		const auto& value = specConstValues.at(pair.first);
-		GARDEN_ASSERT_MSG(value.constBase.type == pair.second.dataType, "Different pipeline "
+		GARDEN_ASSERT_MSG(value.constBase.type == pair.second.type, "Different pipeline "
 			"spec const [" + pair.first + "] and provided value types");
 		vk::SpecializationMapEntry entry(pair.second.index, dataOffset, sizeof(uint32));
 		entries[itemIndex++] = entry;

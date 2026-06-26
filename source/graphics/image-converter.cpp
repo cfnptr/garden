@@ -67,6 +67,8 @@ Color ImageConverter::filterCubeMap(float2 coords, const Color* pixels, uint2 si
 		f32x4(uv.x * invUV.y), fma(s2, f32x4(invUV.x * uv.y), s3 * (uv.x * uv.y)))));
 }
 
+// TODO: Use instead math::Sampler, implement linear filtering inside it.
+
 //******************************************************************************************************************
 bool ImageConverter::compress(const fs::path& filePath, const fs::path& inputPath, const fs::path& outputPath)
 {
@@ -101,7 +103,7 @@ bool ImageConverter::compress(const fs::path& filePath, const fs::path& inputPat
 
 	auto gicFilePath = (outputPath / filePath).replace_extension(".gic");
 	Image::storeFileData(gicFilePath, pixels.data(), (uint3)size, 
-		Image::FileType::GIC, format, 1.0f, effort, storeFlags);
+		Image::FileType::GIC, type, format, 1.0f, effort, storeFlags);
 	return true;
 }
 
@@ -178,17 +180,17 @@ bool ImageConverter::equi2cube(const fs::path& filePath, const fs::path& inputPa
 			switch (task.getTaskIndex())
 			{
 				case 0: Image::storeFileData(gicFilePath + "-nx.gic", nx.data(), 
-					imageSize, fileType, imageFormat, 1.0f, effort); break;
+					imageSize, fileType, imageType, imageFormat, 1.0f, effort); break;
 				case 1: Image::storeFileData(gicFilePath + "-px.gic", px.data(), 
-					imageSize, fileType, imageFormat, 1.0f, effort); break;
+					imageSize, fileType, imageType, imageFormat, 1.0f, effort); break;
 				case 2: Image::storeFileData(gicFilePath + "-ny.gic", ny.data(), 
-					imageSize, fileType, imageFormat, 1.0f, effort); break;
+					imageSize, fileType, imageType, imageFormat, 1.0f, effort); break;
 				case 3: Image::storeFileData(gicFilePath + "-py.gic", py.data(), 
-					imageSize, fileType, imageFormat, 1.0f, effort); break;
+					imageSize, fileType, imageType, imageFormat, 1.0f, effort); break;
 				case 4: Image::storeFileData(gicFilePath + "-nz.gic", nz.data(), 
-					imageSize, fileType, imageFormat, 1.0f, effort); break;
+					imageSize, fileType, imageType, imageFormat, 1.0f, effort); break;
 				case 5: Image::storeFileData(gicFilePath + "-pz.gic", pz.data(), 
-					imageSize, fileType, imageFormat, 1.0f, effort); break;
+					imageSize, fileType, imageType, imageFormat, 1.0f, effort); break;
 				default: abort();
 			}
 		}, Image::cubemapFaceCount);
@@ -196,12 +198,18 @@ bool ImageConverter::equi2cube(const fs::path& filePath, const fs::path& inputPa
 	}
 	else
 	{
-		Image::storeFileData(gicFilePath + "-nx.gic", nx.data(), imageSize, fileType, imageFormat, 1.0f, effort);
-		Image::storeFileData(gicFilePath + "-px.gic", px.data(), imageSize, fileType, imageFormat, 1.0f, effort);
-		Image::storeFileData(gicFilePath + "-ny.gic", ny.data(), imageSize, fileType, imageFormat, 1.0f, effort);
-		Image::storeFileData(gicFilePath + "-py.gic", py.data(), imageSize, fileType, imageFormat, 1.0f, effort);
-		Image::storeFileData(gicFilePath + "-nz.gic", nz.data(), imageSize, fileType, imageFormat, 1.0f, effort);
-		Image::storeFileData(gicFilePath + "-pz.gic", pz.data(), imageSize, fileType, imageFormat, 1.0f, effort);
+		Image::storeFileData(gicFilePath + "-nx.gic", nx.data(), 
+			imageSize, fileType, imageType, imageFormat, 1.0f, effort);
+		Image::storeFileData(gicFilePath + "-px.gic", px.data(), 
+			imageSize, fileType, imageType, imageFormat, 1.0f, effort);
+		Image::storeFileData(gicFilePath + "-ny.gic", ny.data(),
+			 imageSize, fileType, imageType, imageFormat, 1.0f, effort);
+		Image::storeFileData(gicFilePath + "-py.gic", py.data(), 
+			imageSize, fileType, imageType, imageFormat, 1.0f, effort);
+		Image::storeFileData(gicFilePath + "-nz.gic", nz.data(), 
+			imageSize, fileType, imageType, imageFormat, 1.0f, effort);
+		Image::storeFileData(gicFilePath + "-pz.gic", pz.data(), 
+			imageSize, fileType, imageType, imageFormat, 1.0f, effort);
 	}
 	return true;
 }

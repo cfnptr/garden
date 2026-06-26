@@ -68,6 +68,15 @@ public:
 		 */
 		constexpr Uniform() noexcept : readAccess(true), writeAccess(true), isMutable(false), isNoncoherent(false), 
 			isSamplerType(false), isImageType(false), isBufferType(false), _reserved(0) { }
+
+		/**
+		 * @brief Returns true if pipeline uniform is valid.
+		 */
+		constexpr bool isValid() const noexcept
+		{
+			return type < GslUniformType::Count && (readAccess | writeAccess) &&
+				(isSamplerType + isImageType + isBufferType == 1); // TODO: other possible checks.
+		}
 	};
 
 	/**
@@ -79,12 +88,12 @@ public:
 	 * flexible and efficient use of shaders, as you can customize shader behavior without needing 
 	 * to recompile the shader from source for each variation.
 	 */
-	struct SpecConst
+	struct SpecConst final
 	{
-		PipelineStage pipelineStages = {};
-		GslDataType dataType = {};
-		uint8 index = 0;
-		uint16 _alignment = 0;
+		PipelineStage pipelineStages = {}; /**< Pipeline stages where spec const is used. */
+		GslDataType type = {};             /**< Specialization constant variable type. */
+		uint8 index = 0;                   /**< Index of the specialization constant. */
+		uint16 _alignment = 0;             /**< [should be aligned] */
 	};
 
 	struct SpecConstBase { GslDataType type = {}; uint32 data = 0; };

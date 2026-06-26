@@ -1294,7 +1294,7 @@ static void onSpecConst(FileData& fileData, LineData& lineData,
 		{
 			Pipeline::SpecConst data;
 			data.pipelineStages = pipelineStage;
-			data.dataType = lineData.dataType;
+			data.type = lineData.dataType;
 			data.index = fileData.specConstIndex++;
 
 			if (!specConsts.emplace(lineData.word, data).second)
@@ -1302,7 +1302,7 @@ static void onSpecConst(FileData& fileData, LineData& lineData,
 		}
 		else
 		{
-			if (lineData.dataType != result->second.dataType)
+			if (lineData.dataType != result->second.type)
 				throw CompileError("different spec consts with the same name", fileData.lineIndex, lineData.word);
 			result.value().pipelineStages |= pipelineStage;
 		}
@@ -1442,7 +1442,7 @@ static void writeGslHeaderValues(const fs::path& filePath,
 	if (!headerStream.is_open())
 		throw CompileError("failed to open header file");
 
-	auto gslHeader = GslHeader();
+	GslHeader gslHeader = {};
 	headerStream.write((const char*)gslMagic.data(), gslMagic.length());
 	headerStream.write((const char*)&gslHeader, sizeof(GslHeader));
 	headerStream.write((const char*)&values, sizeof(T));
@@ -2435,25 +2435,59 @@ void GslCompiler::loadGraphicsShaders(GraphicsData& data)
 		throw GardenError("Invalid GSL header data size.");
 	}
 
+	if (!values.pipelineState.isValid() || values.pushConstantsSize > maxPushConstantsSize)
+		throw GardenError("Invalid GSL header pipeline state.");
+
 	if (values.vertexAttributeCount > 0)
 	{
 		auto vertAttribData = (const GraphicsPipeline::VertexAttribute*)(headerData + dataOffset);
 		data.vertexAttributes.assign(vertAttribData, vertAttribData + values.vertexAttributeCount);
 		dataOffset += values.vertexAttributeCount * sizeof(GraphicsPipeline::VertexAttribute);
+
+		for (uint8 i = 0; i < values.vertexAttributeCount; i++)
+		{
+			const auto& vertAttrib = vertAttribData[i];
+			if (!vertAttrib.isValid())
+				throw GardenError("Invalid GSL vertex attribute data.");
+		}
 	}
 	if (values.blendStateCount > 0)
 	{
 		auto blendStateData = (const GraphicsPipeline::BlendState*)(headerData + dataOffset);
 		data.blendStates.assign(blendStateData, blendStateData + values.blendStateCount);
 		dataOffset += values.blendStateCount * sizeof(GraphicsPipeline::BlendState);
+
+		for (uint8 i = 0; i < values.vertexAttributeCount; i++)
+		{
+			const auto& blendState = blendStateData[i];
+			if (!blendState.isValid())
+				throw GardenError("Invalid GSL blending state data.");
+		}
 	}
 
 	readGslHeaderArray<Pipeline::Uniform>(headerData, dataSize, 
 		dataOffset, values.uniformCount, data.uniforms);
+	for (const auto& uniform : data.uniforms)
+	{
+		if (!uniform.second.isValid())
+			throw GardenError("Invalid GSL uniform data.");
+	}
+
 	readGslHeaderArray<Sampler::State>(headerData, dataSize, 
 		dataOffset, values.samplerStateCount, data.samplerStates);
+	for (const auto& samplerState : data.samplerStates)
+	{
+		if (!samplerState.second.isValid())
+			throw GardenError("Invalid GSL sampler state data.");
+	}
+
 	readGslHeaderArray<Pipeline::SpecConst>(headerData, dataSize, 
 		dataOffset, values.specConstCount, data.specConsts);
+	for (const auto& specConst : data.specConsts)
+	{
+		if (specConst.second.type >= GslDataType::Count)
+			throw GardenError("Invalid GSL spec const data.");
+	}
 
 	data.pushConstantsStages = values.pushConstantsStages;
 	data.pushConstantsSize = values.pushConstantsSize;

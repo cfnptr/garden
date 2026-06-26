@@ -294,13 +294,15 @@ public:
 	 * @param[in] pixels image pixel data
 	 * @param size image size in pixels
 	 * @param fileType image file container type
+	 * @param imageType image dimensionality type
 	 * @param imageFormat required image data format
 	 * @param quality image visual quality (0.0 - 1.0)
 	 * @param effort image compression effort (0.0 - 1.0)
 	 * @param[in] directory scene resource directory
 	 */
-	void storeImage(const fs::path& path, const void* pixels, uint3 size, Image::FileType fileType, 
-		Image::Format imageFormat, float quality = 1.0f, float effort = 0.7f, const fs::path& directory = "");
+	void storeImage(const fs::path& path, const void* pixels, uint3 size, 
+		Image::FileType fileType, Image::Type imageType, Image::Format imageFormat, 
+		float quality = 1.0f, float effort = 0.7f, const fs::path& directory = "");
 	/**
 	 * @brief Stores specified image to the images directory.
 	 * 
@@ -308,16 +310,18 @@ public:
 	 * @param[in] pixels image pixel data
 	 * @param size image size in pixels
 	 * @param fileType image file container type
+	 * @param imageType image dimensionality type
 	 * @param imageFormat required image data format
 	 * @param quality image visual quality (0.0 - 1.0)
 	 * @param effort image compression effort (0.0 - 1.0)
 	 * @param[in] directory scene resource directory
 	 */
-	void storeImage(const fs::path& path, const vector<uint8>& pixels, uint3 size, Image::FileType fileType, 
-		Image::Format imageFormat, float quality = 1.0f, float effort = 0.7f, const fs::path& directory = "")
+	void storeImage(const fs::path& path, const vector<uint8>& pixels, uint3 size, 
+		Image::FileType fileType, Image::Type imageType, Image::Format imageFormat, 
+		float quality = 1.0f, float effort = 0.7f, const fs::path& directory = "")
 	{
 		GARDEN_ASSERT(pixels.size() == toBinarySize(size.x * size.y * size.z, imageFormat));
-		storeImage(path, pixels.data(), size, fileType, imageFormat, quality, effort, directory);
+		storeImage(path, pixels.data(), size, fileType, imageType, imageFormat, quality, effort, directory);
 	}
 
 	/*******************************************************************************************************************

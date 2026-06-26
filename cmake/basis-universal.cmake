@@ -35,3 +35,7 @@ FetchContent_GetProperties(basis-universal)
 list(APPEND GARDEN_INCLUDE_DIRS ${basis-universal_SOURCE_DIR}/encoder 
 	${basis-universal_SOURCE_DIR}/transcoder)
 list(APPEND GARDEN_LINK_LIBS basisu_encoder)
+
+if(GARDEN_DEBUG)
+	add_compile_definitions(BASISU_FORCE_DEVEL_MESSAGES=1)
+endif()

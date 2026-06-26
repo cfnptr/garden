@@ -231,6 +231,15 @@ public:
 		 * @param blending is blending enabled for the attachment
 		 */
 		constexpr BlendState(bool blending = false) noexcept : blending(blending) { }
+		/**
+		 * @brief Returns true if blend state is valid.
+		 */
+		constexpr bool isValid() const noexcept
+		{
+			return srcColorFactor < BlendFactor::Count && dstColorFactor < BlendFactor::Count &&
+				colorOperation < BlendOp::Count && srcAlphaFactor < BlendFactor::Count &&
+				dstAlphaFactor < BlendFactor::Count && alphaOperation < BlendOp::Count;
+		}
 	};
 
 	/**
@@ -253,6 +262,15 @@ public:
 		uint8 writeMask = 0xFF;   /**< Controls which bits in the stencil buffer can be modified by the update operations. */
 		uint8 reference = 0x00;   /**< Value used as the static source for the stencil comparison and the replace operation. */
 		uint8 _alignment = 0;     /**< Stencil state structure alignment. */
+
+		/**
+		 * @brief Returns true if stencil state is valid.
+		 */
+		bool isValid() const noexcept
+		{
+			return failOperation < StencilOp::Count && passOperation < StencilOp::Count &&
+				depthFailOperation < StencilOp::Count && compareOperator < CompareOp::Count;
+		}
 	};
 	/**
 	 * @brief Graphics pipeline state.
@@ -300,6 +318,16 @@ public:
 		 * @param state target stencil state to set
 		 */
 		void setStencilState(StencilState state) noexcept { frontFaceStencil = backFaceStencil = state; }
+
+		/**
+		 * @brief Returns true if graphics pipeline state is valid.
+		 */
+		constexpr bool isValid() const noexcept
+		{
+			return topology < Topology::Count && polygonMode < PolygonMode::Count && depthCompare < CompareOp::Count &&
+				depthBounds.x <= depthBounds.y && frontFaceStencil.isValid() && backFaceStencil.isValid() &&
+				cullFace < CullFace::Count && frontFace < FrontFace::Count; // TODO: other possible checks.
+		}
 	};
 
 	using PipelineStates = tsl::robin_map<uint8, State>;
@@ -318,6 +346,14 @@ public:
 		GslDataType type = {};     /**< Vertex attribute data type. */
 		GslDataFormat format = {}; /**< Vertex attribute data format. */
 		uint16 offset = 0;         /**< Byte offset of this attribute relative to the start of an element. */
+
+		/**
+		 * @brief Returns true if vertex attribute is valid.
+		 */
+		constexpr bool isValid() const noexcept
+		{
+			return type < GslDataType::Count && format < GslDataFormat::Count; // TODO: check offset.
+		}
 	};
 
 	/**

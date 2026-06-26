@@ -686,6 +686,7 @@ static void loadMissingImage(vector<uint8>& data, uint4& size, Image::Type& type
 {
 	if (format == Image::Format::Undefined)
 		format = Image::Format::SrgbR8G8B8A8;
+	type = Image::Type::Texture2D;
 
 	auto imageBinarySize = toBinarySize((psize)16, format);
 	auto componentCount = toComponentCount(format);
@@ -693,7 +694,7 @@ static void loadMissingImage(vector<uint8>& data, uint4& size, Image::Type& type
 	if (imageBinarySize == 0 || componentCount == 0)
 	{
 		data.resize(256); memset(data.data(), UINT8_MAX, 256);
-		size = uint4(1); type = Image::Type::Texture2D;
+		size = uint4(1);
 		return;
 	}
 
@@ -796,7 +797,6 @@ static void loadMissingImage(vector<uint8>& data, uint4& size, Image::Type& type
 	else memset(data.data(), UINT8_MAX, data.size());
 
 	size = uint4(4, 4, 1, 1);
-	type = Image::Type::Texture2D;
 }
 static void loadMissingImage(vector<uint8>& nx, vector<uint8>& px, vector<uint8>& ny, vector<uint8>& py, 
 	vector<uint8>& nz, vector<uint8>& pz, uint2& size, Image::Format& format) noexcept
@@ -1038,24 +1038,24 @@ bool ResourceSystem::loadOrConvertCubemap(const fs::path& path, vector<uint8>& n
 	
 	auto cacheFilePath = appCachePath / "images" / path;
 	auto cacheFileString = cacheFilePath.generic_string();
-	auto inputLastWriteTime = fs::last_write_time(inputFilePath);
+	auto cacheFileNX = cacheFileString + "-nx.gic", cacheFilePX = cacheFileString + "-px.gic";
+	auto cacheFileNY = cacheFileString + "-ny.gic", cacheFilePY = cacheFileString + "-py.gic";
+	auto cacheFileNZ = cacheFileString + "-nz.gic", cacheFilePZ = cacheFileString + "-pz.gic";
+	auto lastWriteTime = fs::last_write_time(inputFilePath);
 
-	if (!fs::exists(cacheFileString + "-nx.gic") || !fs::exists(cacheFileString + "-px.gic") ||
-		!fs::exists(cacheFileString + "-ny.gic") || !fs::exists(cacheFileString + "-py.gic") ||
-		!fs::exists(cacheFileString + "-nz.gic") || !fs::exists(cacheFileString + "-pz.gic") ||
-		inputLastWriteTime > fs::last_write_time(cacheFileString + "-nx.gic") ||
-		inputLastWriteTime > fs::last_write_time(cacheFileString + "-px.gic") ||
-		inputLastWriteTime > fs::last_write_time(cacheFileString + "-ny.gic") ||
-		inputLastWriteTime > fs::last_write_time(cacheFileString + "-py.gic") ||
-		inputLastWriteTime > fs::last_write_time(cacheFileString + "-nz.gic") ||
-		inputLastWriteTime > fs::last_write_time(cacheFileString + "-pz.gic"))
+	if (!fs::exists(cacheFileNX) || !fs::exists(cacheFilePX) || !fs::exists(cacheFileNY) || 
+		!fs::exists(cacheFilePY) || !fs::exists(cacheFileNZ) || !fs::exists(cacheFilePZ) ||
+		lastWriteTime > fs::last_write_time(cacheFileNX) || lastWriteTime > fs::last_write_time(cacheFilePX) ||
+		lastWriteTime > fs::last_write_time(cacheFileNY) || lastWriteTime > fs::last_write_time(cacheFilePY) ||
+		lastWriteTime > fs::last_write_time(cacheFileNZ) || lastWriteTime > fs::last_write_time(cacheFilePZ))
 	{
 		auto threadSystem = ThreadSystem::tryGetInstance();
 		auto threadPool = threadIndex < 0 && threadSystem ? &threadSystem->getForegroundPool() : nullptr;
 
+		auto equi2cubeResult = false;
 		try
 		{
-			ImageConverter::equi2cube(inputFilePath.filename(), 
+			equi2cubeResult = ImageConverter::equi2cube(inputFilePath.filename(), 
 				inputFilePath.parent_path(), cacheFilePath.parent_path(), threadPool);
 			GARDEN_LOG_DEBUG("Converted cubemap. (path: " + path.generic_string() + ")");
 		}
@@ -1064,8 +1064,15 @@ bool ResourceSystem::loadOrConvertCubemap(const fs::path& path, vector<uint8>& n
 			GARDEN_LOG_ERROR("Failed to convert cubemap image. (path: " + 
 				path.generic_string() + ", error: " + string(e.what()) + ")");
 			loadMissingImage(nx, px, ny, py, nz, pz, size, format);
+
+			fs::remove(cacheFileNX); fs::remove(cacheFilePX);
+			fs::remove(cacheFileNY); fs::remove(cacheFilePY);
+			fs::remove(cacheFileNZ); fs::remove(cacheFilePZ);
 			return false;
 		}
+
+		if (!equi2cubeResult)
+			GARDEN_LOG_ERROR("Cubemap file does not exist. (path: " + path.generic_string() + ")");
 	}
 	#endif
 
@@ -1094,14 +1101,14 @@ bool ResourceSystem::loadOrConvertImage(const fs::path& path, vector<uint8>& pix
 	}
 
 	auto cacheFilePath = appCachePath / "images" / path;
-	auto cacheFileString = cacheFilePath.generic_string();
-	auto inputLastWriteTime = fs::last_write_time(inputFilePath);
+	auto cacheGicPath = cacheFilePath.generic_string() + ".gic";
 
-	if (!fs::exists(cacheFileString + ".gic") || inputLastWriteTime > fs::last_write_time(cacheFileString + ".gic"))
+	if (!fs::exists(cacheGicPath) || fs::last_write_time(inputFilePath) > fs::last_write_time(cacheGicPath))
 	{
+		auto compressResult = false;
 		try
 		{
-			ImageConverter::compress(inputFilePath.filename(), 
+			compressResult = ImageConverter::compress(inputFilePath.filename(), 
 				inputFilePath.parent_path(), cacheFilePath.parent_path());
 			GARDEN_LOG_DEBUG("Converted image. (path: " + path.generic_string() + ")");
 		}
@@ -1110,10 +1117,12 @@ bool ResourceSystem::loadOrConvertImage(const fs::path& path, vector<uint8>& pix
 			GARDEN_LOG_ERROR("Failed to compress image. (path: " + 
 				path.generic_string() + ", error: " + string(e.what()) + ")");
 			loadMissingImage(pixels, size, type, format);
+			fs::remove(cacheGicPath);
 			return false;
 		}
 
-		// TODO: if failed remove cached image. Also the same for the cubemaps.
+		if (!compressResult)
+			GARDEN_LOG_ERROR("Image file does not exist. (path: " + path.generic_string() + ")");
 	}
 	#endif
 
@@ -1265,7 +1274,7 @@ static constexpr Image::Usage loadedImageUsage = Image::Usage::Sampled | Image::
 static constexpr Image::Strategy loadedImageStrategy = Image::Strategy::Size;
 
 static void copyLoadedImageData(const vector<vector<uint8>>& pixelArrays, 
-	uint8* stagingMap, Image::Type imageType) noexcept
+	uint8* stagingMap, const uint8* stagingMapEnd, Image::Type imageType) noexcept
 {
 	auto pixelData = pixelArrays.data();
 	auto layerCount = (uint32)pixelArrays.size();
@@ -1273,9 +1282,11 @@ static void copyLoadedImageData(const vector<vector<uint8>>& pixelArrays,
 	for (uint32 layer = 0; layer < layerCount; layer++)
 	{
 		auto& pixels = pixelData[Image::calcApiLayerIndex(imageType, layer)];
+		GARDEN_ASSERT(stagingMap < stagingMapEnd);
 		memcpy(stagingMap, pixels.data(), pixels.size());
 		stagingMap += pixels.size();
 	}
+	GARDEN_ASSERT(stagingMap == stagingMapEnd);
 }
 ID<Image> ResourceSystem::loadImage(const fs::path* paths, psize pathCount, bool loadAsync)
 {
@@ -1319,15 +1330,14 @@ ID<Image> ResourceSystem::loadImage(const fs::path* paths, psize pathCount, bool
 			}
 			else
 			{
-				loadImageData(filePaths.data(), filePaths.size(), pixelArrays, 
-					size, type, format, task.getThreadIndex());
+				loadImageData(filePaths.data(), filePaths.size(), 
+					pixelArrays, size, type, format, task.getThreadIndex());
 			}
 
 			auto pixelCount = (psize)size.x * size.y * size.z;
 			auto imageBinarySize = toBinarySize(pixelCount, format);
 			GARDEN_ASSERT_MSG(imageBinarySize > 0, "Assert " + filePaths[0].generic_string());
-			GARDEN_ASSERT_MSG(size.z == pixelArrays.size(), "Assert " + filePaths[0].generic_string());
-			
+
 			ImageQueueItem item =
 			{
 				ImageExt::create(type, format, loadedImageUsage, loadedImageStrategy, (u32x4)size, data->imageVersion),
@@ -1336,7 +1346,9 @@ ID<Image> ResourceSystem::loadImage(const fs::path* paths, psize pathCount, bool
 				std::move(filePaths), data->instance // Note: Staging does not need TransferQ flag.
 			};
 
-			copyLoadedImageData(pixelArrays, item.staging.getMap(), type);
+			auto stagingMap = item.staging.getMap();
+			copyLoadedImageData(pixelArrays, stagingMap, 
+				stagingMap + item.staging.getBinarySize(), type);
 			item.staging.flush();
 
 			queueLocker.lock();
@@ -1384,7 +1396,9 @@ ID<Image> ResourceSystem::loadImage(const fs::path* paths, psize pathCount, bool
 		SET_RESOURCE_DEBUG_NAME(stagingBuffer, "buffer.staging.loadedImage" + to_string(*stagingBuffer));
 
 		auto stagingView = graphicsAPI->bufferPool.get(stagingBuffer);
-		copyLoadedImageData(pixelArrays, stagingView->getMap(), type);
+		auto stagingMap = stagingView->getMap();
+		copyLoadedImageData(pixelArrays, stagingMap, 
+			stagingMap + stagingView->getBinarySize(), type);
 		stagingView->flush();
 
 		auto generateMipmap = imageView->getMipCount() > 1;
@@ -1453,7 +1467,7 @@ void ResourceSystem::destroyShared(Ref<Image>& image)
 
 //**********************************************************************************************************************
 void ResourceSystem::storeImage(const fs::path& path, const void* pixels, uint3 size, Image::FileType fileType, 
-	Image::Format imageFormat, float quality, float effort, const fs::path& directory)
+	Image::Type imageType, Image::Format imageFormat, float quality, float effort, const fs::path& directory)
 {
 	GARDEN_ASSERT(!path.empty());
 	GARDEN_ASSERT_MSG(pixels, "Assert " + path.generic_string());
@@ -1472,7 +1486,7 @@ void ResourceSystem::storeImage(const fs::path& path, const void* pixels, uint3 
 	if (!fs::exists(directoryPath))
 		fs::create_directories(directoryPath);
 
-	Image::storeFileData(imagesPath / path, pixels, size, fileType, imageFormat, quality, effort);
+	Image::storeFileData(imagesPath / path, pixels, size, fileType, imageType, imageFormat, quality, effort);
 	GARDEN_LOG_DEBUG("Stored image. (path: " + path.generic_string() + ")");
 }
 
@@ -1537,7 +1551,8 @@ void ResourceSystem::combineImages(const vector<fs::path>& inputPaths, const fs:
 	}
 
     auto outSize = uint2(inSize.x * (uint32)inputPaths.size(), inSize.y);
-	storeImage(outputPath, outBuffer.data(), uint3(outSize, 1), fileType, imageFormat, quality, effort);
+	storeImage(outputPath, outBuffer.data(), uint3(outSize, 1), 
+		fileType, Image::Type::Texture2D, imageFormat, quality, effort);
 }
 
 //**********************************************************************************************************************
@@ -1575,7 +1590,7 @@ void ResourceSystem::renormalizeImage(const fs::path& path,
 			"path: " + path.generic_string() + ")");
 	}
 	
-	storeImage(path, dataBuffer.data(), (uint3)size, fileType, imageFormat);
+	storeImage(path, dataBuffer.data(), (uint3)size, fileType, imageType, imageFormat);
 }
 
 //**********************************************************************************************************************
@@ -1700,8 +1715,7 @@ static bool loadOrCompileGraphics(GslCompiler::GraphicsData& data)
 	auto fragmentOutputPath = data.cachePath / fragmentPath;
 	// TODO: check for .gsl, .h header changes and recompile shaders!
 	
-	if (!fs::exists(headerFilePath) ||
-		(hasVertexShader && (!fs::exists(vertexOutputPath) ||
+	if (!fs::exists(headerFilePath) || (hasVertexShader && (!fs::exists(vertexOutputPath) ||
 		fs::last_write_time(vertexInputPath) > fs::last_write_time(vertexOutputPath))) ||
 		(hasFragmentShader && (!fs::exists(fragmentOutputPath) ||
 		fs::last_write_time(fragmentInputPath) > fs::last_write_time(fragmentOutputPath))))
@@ -1733,6 +1747,7 @@ static bool loadOrCompileGraphics(GslCompiler::GraphicsData& data)
 			if (strcmp(e.what(), "_GLSLC") != 0)
 				cout << vertexInputPath.generic_string() + "(.frag): " + e.what() + "\n"; // TODO: get info which stage throw.
 			GARDEN_LOG_ERROR("Failed to compile graphics shaders. (name: " + dataPath.generic_string() + ")");
+			fs::remove(headerFilePath);
 			return false;
 		}
 		
@@ -1955,6 +1970,7 @@ static bool loadOrCompileCompute(GslCompiler::ComputeData& data)
 			if (strcmp(e.what(), "_GLSLC") != 0)
 				cout << computeInputPath.generic_string() + ": " + e.what() + "\n";
 			GARDEN_LOG_ERROR("Failed to compile compute shader. (name: " + dataPath.generic_string() + ")");
+			fs::remove(headerFilePath);
 			return false;
 		}
 		
@@ -2161,6 +2177,7 @@ static bool loadOrCompileRayTracing(GslCompiler::RayTracingData& data)
 			if (strcmp(e.what(), "_GLSLC") != 0)
 				cout << rayGenInputPath.generic_string() + "(.rXXX): " + e.what() + "\n"; // TODO: get info which stage throw.
 			GARDEN_LOG_ERROR("Failed to compile ray tracing shaders. (name: " + dataPath.generic_string() + ")");
+			fs::remove(headerFilePath);
 			return false;
 		}
 		

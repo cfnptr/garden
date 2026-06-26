@@ -117,6 +117,9 @@ void GraphicsAPI::initialize(GraphicsBackend backendType, const string& appName,
 	bool useVsync, bool useTripleBuffering, bool isFullscreen, bool isDecorated)
 {
 	#if GARDEN_USE_BASIS_UNIVERSAL
+		#if GARDEN_DEBUG
+		// basisu::enable_debug_printf(true);
+		#endif
 		#if GARDEN_EDITOR
 		if (!basisu::basisu_encoder_init(GARDEN_USE_OPENCL ? true : false))
 			throw GardenError("Failed to initialize basis universal encoder.");

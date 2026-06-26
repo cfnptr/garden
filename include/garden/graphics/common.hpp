@@ -25,6 +25,18 @@
 namespace garden::graphics
 {
 
+struct SvHash
+{
+	using is_transparent = void;
+	std::size_t operator()(std::string_view sv) const { return std::hash<std::string_view>{}(sv); }
+	std::size_t operator()(const std::string& str) const { return std::hash<std::string>{}(str); }
+};
+struct SvEqual
+{
+	using is_transparent = void;
+	bool operator()(std::string_view lhs, std::string_view rhs) const noexcept { return lhs == rhs; }
+};
+
 /**
  * @brief Nvidia architecture maximum binary size.
  */
@@ -269,18 +281,6 @@ static string_view toString(CompareOp compareOperator) noexcept
 	GARDEN_ASSERT(compareOperator < CompareOp::Count);
 	return compareOperatorNames[(psize)compareOperator];
 }
-
-struct SvHash
-{
-	using is_transparent = void;
-	std::size_t operator()(std::string_view sv) const { return std::hash<std::string_view>{}(sv); }
-	std::size_t operator()(const std::string& str) const { return std::hash<std::string>{}(str); }
-};
-struct SvEqual
-{
-	using is_transparent = void;
-	bool operator()(std::string_view lhs, std::string_view rhs) const noexcept { return lhs == rhs; }
-};
 
 #if GARDEN_DEBUG
 /***********************************************************************************************************************
