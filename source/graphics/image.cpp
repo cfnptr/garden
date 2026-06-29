@@ -1482,16 +1482,16 @@ const void* Image::convertFormat(const void* src, uint3 size,
 }
 
 //**********************************************************************************************************************
-void Image::pack3D(vector<uint8>& pixels, uint3& size, uint32 stride, vector<uint8>* tmpBuffer)
+uint2 Image::pack3D(vector<uint8>& pixels, uint3 size, uint32 stride, vector<uint8>* tmpBuffer)
 {
 	GARDEN_ASSERT(!pixels.empty());
 	GARDEN_ASSERT(areAllTrue(size > uint3::zero));
 	GARDEN_ASSERT(stride > 0);
 
-	if (size.z == 1)
-		return;
-	if (size.x != size.y)
+	if (size.x != size.y) // TODO: support packing/unpacking non square 3D images? Any use cases?
 		throw GardenError("Image 3D size X is equal to Y.");
+	if (size.z == 1)
+		return (uint2)size;	
 
 	vector<uint8> tmpLocal;
 	if (!tmpBuffer) tmpBuffer = &tmpLocal;
@@ -1512,51 +1512,48 @@ void Image::pack3D(vector<uint8>& pixels, uint3& size, uint32 stride, vector<uin
 	}
 
 	std::swap(pixels, *tmpBuffer);
-	size = uint3(size2D, 1);
+	return size2D;
 }
-void Image::unpack3D(vector<uint8>& pixels, uint3& size, uint32 stride, vector<uint8>* tmpBuffer)
+uint3 Image::unpack3D(vector<uint8>& pixels, uint2 size, uint32 stride, vector<uint8>* tmpBuffer)
 {
 	GARDEN_ASSERT(!pixels.empty());
-	GARDEN_ASSERT(areAllTrue(size > uint3::zero));
+	GARDEN_ASSERT(areAllTrue(size > uint2::zero));
 	GARDEN_ASSERT(stride > 0);
 
 	if (size.x == size.y)
-		return;
+		return uint3(size, 1);
 
 	if (size.x < size.y)
 	{
 		if (size.y % size.x != 0)
-			throw GardenError("Image 3D size Y is not dividable by X.");
-
-		size.z = size.y / size.x;
-		size.y = size.x;
-		return;
+			throw GardenError("Image 2D size Y is not dividable by X.");
+		return uint3(size.x, size.x, size.y / size.x);
 	}
 
 	if (size.x % size.y != 0)
-		throw GardenError("Image 3D size X is not dividable by Y.");
+		throw GardenError("Image 2D size X is not dividable by Y.");
 
 	vector<uint8> tmpLocal;
 	if (!tmpBuffer) tmpBuffer = &tmpLocal;
 
-	auto size3D = uint3(size.y, size.y, size.y / size.x);
+	auto size3D = uint3(size.y, size.y, size.x / size.y);
 	tmpBuffer->resize((psize)size3D.x * size3D.y * size3D.z * stride);
 	auto dstPixels = tmpBuffer->data(), srcPixels = pixels.data();
 
 	auto rowBinarySize = stride * size.x;
 	auto layerBinarySize = rowBinarySize * size.y;
 
-	for (uint32 z = 0; z < size.z; z++)
+	for (uint32 z = 0; z < size3D.z; z++)
 	{
-		for (uint32 y = 0; y < size.y; y++)
+		for (uint32 y = 0; y < size3D.y; y++)
 		{
 			memcpy(dstPixels, srcPixels + y * rowBinarySize + z * layerBinarySize, rowBinarySize);
 			dstPixels += rowBinarySize;
 		}
 	}
 
-	size.z = size.x / size.y;
-	size.x = size.y;
+	std::swap(pixels, *tmpBuffer);
+	return size3D;
 }
 
 //**********************************************************************************************************************
@@ -1737,13 +1734,10 @@ static void loadImageDataPNG(const void* data, psize dataSize, vector<uint8>& pi
 	if (!png_image_finish_read(&image, nullptr, pixels.data(), 0, nullptr))
 		throw GardenError("Invalid PNG image data.");
 
-	if (image.width != image.height && (imageType == Image::Type::Texture3D || 
-		imageType == Image::Type::Texture2DArray))
+	if (imageType == Image::Type::Texture3D || imageType == Image::Type::Texture2DArray)
 	{
-		vector<uint8> pixels3D;
-		auto size3D = Image::unpack3D(pixels.data(), uint2(
-			image.width, image.height), componentCount, pixels3D);
-		imageSize = uint4(size3D, 1); std::swap(pixels, pixels3D);
+		auto size3D = Image::unpack3D(pixels, uint2(image.width, image.height), componentCount);
+		imageSize = uint4(size3D, 1);
 	}
 	else imageSize = uint4(image.width, image.height, 1, 1);
 
@@ -1824,9 +1818,8 @@ static void loadImageDataEXR(const void* data, psize dataSize, vector<uint8>& pi
 
 	if (imageType == Image::Type::Texture3D || imageType == Image::Type::Texture2DArray)
 	{
-		vector<uint8> pixels3D;
-		auto size3D = Image::unpack3D(pixels.data(), (uint2)imageSize, pixelBinarySize, pixels3D);
-		imageSize = uint4(size3D, 1); std::swap(pixels, pixels3D);
+		auto size3D = Image::unpack3D(pixels, (uint2)imageSize, pixelBinarySize);
+		imageSize = uint4(size3D, 1);
 	}
 }
 
@@ -2030,9 +2023,38 @@ void Image::loadFileMetadata(const fs::path& path, vector<uint8>& pixels, uint4&
 			throw GardenError("Texture 1D type and size mismatch.");
 	}
 
+	param = jsonData.find("sRGB");
+	if (param != jsonData.end())
+	{
+		if ((bool)param.value() == true)
+		{
+			switch (imageFormat)
+			{
+				case Image::Format::UnormR8G8B8A8: imageFormat = Image::Format::SrgbR8G8B8A8; break;
+				case Image::Format::UnormR8G8: imageFormat = Image::Format::SrgbR8G8; break;
+				case Image::Format::UnormR8: imageFormat = Image::Format::SrgbR8; break;
+				default: break; // Note: Otherwise skipping conversion.
+			}
+		}
+		else
+		{
+			switch (imageFormat)
+			{
+				case Image::Format::SrgbR8G8B8A8: imageFormat = Image::Format::UnormR8G8B8A8; break;
+				case Image::Format::SrgbR8G8: imageFormat = Image::Format::UnormR8G8; break;
+				case Image::Format::SrgbR8: imageFormat = Image::Format::UnormR8; break;
+				default: break; // Note: Otherwise skipping conversion.
+			}
+		}
+	}
+
 	if (imageType == Image::Type::Texture3D || imageType == Image::Type::Texture2DArray)
 	{
-		Image::unpack3D(pixels.data(), (uint2)size, uint32 stride, vector<uint8> &pixels3D)
+		auto pixelCount = (psize)size.x * size.y * size.z;
+		auto imageBinarySize = toBinarySize(pixelCount, imageFormat);
+		auto pixelBinarySize = imageBinarySize / pixelCount;
+		auto size3D = Image::unpack3D(pixels, (uint2)size, pixelBinarySize);
+		size = uint4(size3D, size.w);
 	}
 }
 
@@ -2055,10 +2077,13 @@ static void storeImageDataPNG(const fs::path& filePath, const void* pixels, uint
 		default: throw GardenError("Unsupported PNG color type component count.");
 	}
 
-	vector<uint8> resPixels;
 	if (size.z > 1)
 	{
-		// TODO: pack
+		auto pixelCount = (psize)size.x * size.y * size.z;
+		auto imageBinarySize = toBinarySize(pixelCount, imageFormat);
+		vector<uint8> tmpPixels((const uint8*)pixels, (const uint8*)pixels + imageBinarySize);
+		auto size2D = Image::pack3D(tmpPixels, size, imageBinarySize / pixelCount);
+		size = uint3(size2D, 1);
 	}
 
 	auto dstPixels = Image::convertFormat(pixels, size, tmpPixels, imageFormat, toSrgbFormat(componentCount));

@@ -2457,7 +2457,7 @@ void GslCompiler::loadGraphicsShaders(GraphicsData& data)
 		data.blendStates.assign(blendStateData, blendStateData + values.blendStateCount);
 		dataOffset += values.blendStateCount * sizeof(GraphicsPipeline::BlendState);
 
-		for (uint8 i = 0; i < values.vertexAttributeCount; i++)
+		for (uint8 i = 0; i < values.blendStateCount; i++)
 		{
 			const auto& blendState = blendStateData[i];
 			if (!blendState.isValid())

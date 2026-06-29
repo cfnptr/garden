@@ -900,7 +900,7 @@ public:
 	 *
 	 * @throw GardenError on invalid unpacked image pixel size.
 	 */
-	static void pack3D(vector<uint8>& pixels, uint3& size, uint32 stride, vector<uint8>* tmpBuffer = nullptr);
+	static uint2 pack3D(vector<uint8>& pixels, uint3 size, uint32 stride, vector<uint8>* tmpBuffer = nullptr);
 	/**
 	 * @brief Converts 2D horizontally packed image pixels to the 3D image.
 	 * @details See the @ref Image::pack3D().
@@ -912,7 +912,7 @@ public:
 	 *
 	 * @throw GardenError on invalid packed image pixel size.
 	 */
-	static void unpack3D(vector<uint8>& pixels, uint3& size, uint32 stride, vector<uint8>* tmpBuffer = nullptr);
+	static uint3 unpack3D(vector<uint8>& pixels, uint2 size, uint32 stride, vector<uint8>* tmpBuffer = nullptr);
 
 	/*******************************************************************************************************************
 	 * @brief Loads image pixels from the specified file data.
