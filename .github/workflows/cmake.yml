@@ -14,7 +14,7 @@ jobs:
         os: [ubuntu-latest, windows-latest]
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
       with:
         submodules: recursive
 
@@ -24,7 +24,7 @@ jobs:
       run: echo "VCPKG_ROOT=$VCPKG_INSTALLATION_ROOT" >> $GITHUB_ENV
 
     - name: Cache vcpkg packages
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       if: matrix.os == 'windows-latest'
       id: vcpkg-cache
       with:

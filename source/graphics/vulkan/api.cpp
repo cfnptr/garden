@@ -1273,8 +1273,7 @@ void VulkanAPI::storeShaderCache()
 		auto directory = mpio::Directory::getAppDataPath(appDataName) / "cache";
 		if (!fs::exists(directory))
 			fs::create_directories(directory);
-		auto path = directory / "shaders";
-		ofstream outputStream(path, ios::out | ios::binary);
+		ofstream outputStream(directory / "shaders", ios::out | ios::binary);
 
 		if (outputStream.is_open())
 		{

@@ -93,9 +93,12 @@ bool ImageConverter::compress(const fs::path& filePath, const fs::path& inputPat
 
 	if (fs::exists(metadataPath))
 		Image::loadFileMetadata(metadataPath, pixels, size, type, format, effort, storeFlags);
-	fs::create_directories(outputPath);
 
 	auto gicFilePath = (outputPath / filePath).replace_extension(".gic");
+	auto gicFileDirectory = gicFilePath.parent_path();
+	if (!fs::exists(gicFileDirectory))
+		fs::create_directories(gicFileDirectory);
+
 	Image::storeFileData(gicFilePath, pixels.data(), (uint3)size, 
 		Image::FileType::GIC, type, format, 1.0f, effort, storeFlags);
 	return true;
@@ -161,11 +164,13 @@ bool ImageConverter::equi2cube(const fs::path& filePath, const fs::path& inputPa
 	else throw GardenError("Unsupported equirectangular image data format.");
 	equiPixels = {}; // Note: Cleaning up memory.
 
-	auto imageSize = uint3(cubemapSize, cubemapSize, 1);
 	constexpr auto fileType = Image::FileType::GIC;
 	constexpr auto effort = GARDEN_DEBUG ? 0.0f : 0.7f;
+	auto imageSize = uint3(cubemapSize, cubemapSize, 1);
 	auto gicFilePath = (outputPath / filePath).replace_extension().generic_string();
-	fs::create_directories(outputPath);
+
+	if (!fs::exists(outputPath))
+		fs::create_directories(outputPath);
 
 	if (threadPool)
 	{

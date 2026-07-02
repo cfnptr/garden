@@ -2805,15 +2805,14 @@ int main(int argc, char *argv[])
 		}
 		else
 		{
+			if (fs::path(arg).generic_string().find('.') != string::npos)
+				continue;
 			if (!threadPool)
 				threadPool = new ThreadPool(false, "T");
+
 			threadPool->addTask([=, &compileResult](const ThreadPool::Task& task)
 			{
 				if (!compileResult)
-					return;
-
-				auto shaderPath = fs::path(arg);
-				if (shaderPath.filename().generic_string().find('.') != string::npos)
 					return;
 
 				// Note: Sending one batched message due to multithreading.
@@ -2823,7 +2822,7 @@ int main(int argc, char *argv[])
 				try
 				{
 					GslCompiler::GraphicsData graphicsData;
-					graphicsData.shaderPath = shaderPath;
+					graphicsData.shaderPath = arg;
 					result = GslCompiler::compileGraphicsShaders(inputPath, outputPath, includePaths, graphicsData);
 				}
 				catch (const exception& e)
@@ -2835,7 +2834,7 @@ int main(int argc, char *argv[])
 				try
 				{
 					GslCompiler::ComputeData computeData;
-					computeData.shaderPath = shaderPath;
+					computeData.shaderPath = arg;
 					result |= GslCompiler::compileComputeShader(inputPath, outputPath, includePaths, computeData);
 				}
 				catch (const exception& e)
@@ -2847,7 +2846,7 @@ int main(int argc, char *argv[])
 				try
 				{
 					GslCompiler::RayTracingData rayTracingData;
-					rayTracingData.shaderPath = shaderPath;
+					rayTracingData.shaderPath = arg;
 					result |= GslCompiler::compileRayTracingShaders(inputPath, outputPath, includePaths, rayTracingData);
 				}
 				catch (const exception& e)

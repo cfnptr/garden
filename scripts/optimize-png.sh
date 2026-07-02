@@ -9,7 +9,7 @@ if [ $status -ne 0 ]; then
     exit $status
 fi
 
-oxipng --opt max --strip all --zopfli --zi 500 --ziwi 60 *.png
+oxipng --opt max --strip all --zopfli --zi 100 --ziwi 50 *.png
 status=$?
 
 if [ $status -ne 0 ]; then

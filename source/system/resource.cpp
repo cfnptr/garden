@@ -546,7 +546,7 @@ static void collectGslHeaderUsers(const fs::path& appResourcesPath,
 			checkCount++;
 		}
 
-		if (checkCount >= 10000)
+		if (checkCount >= 1000)
 			GARDEN_LOG_ERROR("Detected shader GSL circular includes!");
 	}
 	catch (const exception& e)
