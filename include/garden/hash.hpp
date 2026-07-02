@@ -21,6 +21,7 @@
 #include "garden/defines.hpp"
 
 #include <vector>
+#include <random>
 #include <cstring>
 
 namespace garden
@@ -119,6 +120,10 @@ public:
 	 * @details It uses mt19937 generator. (pseudo-random)
 	 */
 	static Hash128 generateRandom(uint64 seed) noexcept;
+	/**
+	 * @brief Generates a new random hash. (non-cryptographic)
+	 */
+	static Hash128 generateRandom(random_device rd = {});
 
 	/******************************************************************************************************************
 	 * @brief Allocates a new hash state. (non-cryptographic)

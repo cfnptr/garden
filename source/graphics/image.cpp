@@ -14,6 +14,7 @@
 
 #include "garden/graphics/image.hpp"
 #include "garden/graphics/vulkan/api.hpp"
+#include "garden/hash.hpp"
 #include "garden/file.hpp"
 
 #include "png.h"
@@ -66,6 +67,12 @@ namespace garden::graphics
 		uint8 imageType = 0;
 		uint8 channelCount = 0;
 		uint8 encodeEffort = 0;
+		uint8 generateMips : 1;
+		uint8 linearAsSrgb : 1;
+		uint8 _reserved0 : 6;
+		uint16 _reserved1 = 0;
+
+		GicData() noexcept : generateMips(0), linearAsSrgb(0), _reserved0(0) { }
 	};
 	struct GicHeader final
 	{
@@ -1095,8 +1102,7 @@ static void throwFormatsConversion(Image::Format srcFormat, Image::Format dstFor
 		"src: " + string(toString(srcFormat)) + ", "
 		"dst: " + string(toString(dstFormat)) + ")");
 }
-const void* Image::convertFormat(const void* src, uint3 size, 
-	vector<uint8>& dst, Format srcFormat, Format dstFormat)
+const void* Image::convertFormat(const void* src, uint3 size, vector<uint8>& dst, Format srcFormat, Format dstFormat)
 {
 	GARDEN_ASSERT(src);
 	GARDEN_ASSERT(areAllTrue(size > uint3::zero));
@@ -1510,6 +1516,7 @@ uint2 Image::pack3D(vector<uint8>& pixels, uint3 size, uint32 stride, vector<uin
 			srcPixels += rowSize3D;
 		}
 	}
+	GARDEN_ASSERT(srcPixels == pixels.data() + pixels.size());
 
 	std::swap(pixels, *tmpBuffer);
 	return size2D;
@@ -1536,21 +1543,20 @@ uint3 Image::unpack3D(vector<uint8>& pixels, uint2 size, uint32 stride, vector<u
 	vector<uint8> tmpLocal;
 	if (!tmpBuffer) tmpBuffer = &tmpLocal;
 
+	tmpBuffer->resize((psize)size.x * size.y * stride);
+	auto dstPixels = tmpBuffer->data(); auto const srcPixels = pixels.data();
 	auto size3D = uint3(size.y, size.y, size.x / size.y);
-	tmpBuffer->resize((psize)size3D.x * size3D.y * size3D.z * stride);
-	auto dstPixels = tmpBuffer->data(), srcPixels = pixels.data();
+	auto rowSize2D = stride * size.x, rowSize3D = stride * size3D.x;
 
-	auto rowBinarySize = stride * size.x;
-	auto layerBinarySize = rowBinarySize * size.y;
-
-	for (uint32 z = 0; z < size3D.z; z++)
+	for (uint32 y = 0; y < size3D.y; y++)
 	{
-		for (uint32 y = 0; y < size3D.y; y++)
+		for (uint32 xz = 0; xz < size3D.z; xz++)
 		{
-			memcpy(dstPixels, srcPixels + y * rowBinarySize + z * layerBinarySize, rowBinarySize);
-			dstPixels += rowBinarySize;
+			memcpy(dstPixels, srcPixels + y * rowSize2D + xz * rowSize3D, rowSize3D);
+			dstPixels += rowSize3D;
 		}
 	}
+	GARDEN_ASSERT(dstPixels == tmpBuffer->data() + tmpBuffer->size());
 
 	std::swap(pixels, *tmpBuffer);
 	return size3D;
@@ -1711,7 +1717,7 @@ static basist::transcoder_texture_format toTranscoderFormat(Image::Format imageF
 
 //**********************************************************************************************************************
 static void loadImageDataPNG(const void* data, psize dataSize, vector<uint8>& pixels, 
-	uint4& imageSize, Image::Format& imageFormat, Image::Type imageType)
+	uint4& imageSize, Image::Format& imageFormat, Image::Type imageType, bool linearAsSrgb)
 {
 	png_image image; memset(&image, 0, sizeof(png_image));
 	image.version = PNG_IMAGE_VERSION;
@@ -1720,16 +1726,12 @@ static void loadImageDataPNG(const void* data, psize dataSize, vector<uint8>& pi
 		throw GardenError("Invalid PNG image info.");
 
 	auto componentCount = PNG_IMAGE_SAMPLE_CHANNELS(image.format);
-	if (componentCount == 3) componentCount = 4;
-	pixels.resize((psize)image.width * image.height * componentCount);
-
-	switch (componentCount)
+	if (componentCount == 3)
 	{
-		case 4: image.format = PNG_FORMAT_RGBA; break;
-		case 2: image.format = PNG_FORMAT_GA; break;
-		case 1: image.format = PNG_FORMAT_GRAY; break;
-		default: throw GardenError("Unsupported PNG format component count.");
+		componentCount = 4;
+		image.format = PNG_FORMAT_RGBA;
 	}
+	pixels.resize((psize)image.width * image.height * componentCount);
 
 	if (!png_image_finish_read(&image, nullptr, pixels.data(), 0, nullptr))
 		throw GardenError("Invalid PNG image data.");
@@ -1741,7 +1743,7 @@ static void loadImageDataPNG(const void* data, psize dataSize, vector<uint8>& pi
 	}
 	else imageSize = uint4(image.width, image.height, 1, 1);
 
-	imageFormat = toSrgbFormat(componentCount);
+	imageFormat = linearAsSrgb ? toUnormFormat(componentCount) : toSrgbFormat(componentCount);
 }
 static void loadImageDataWebP(const void* data, psize dataSize, 
 	vector<uint8>& pixels, uint4& imageSize, Image::Format& imageFormat)
@@ -1887,7 +1889,7 @@ static void loadImageDataGIC(const void* data, psize dataSize, vector<uint8>& pi
 
 	if (gicHeader.data.containerType == (uint8)GicType::PNG)
 	{
-		loadImageDataPNG(data, dataSize, pixels, imageSize, imageFormat, imageType);
+		loadImageDataPNG(data, dataSize, pixels, imageSize, imageFormat, imageType, gicHeader.data.linearAsSrgb);
 		return;
 	}
 	if (gicHeader.data.containerType == (uint8)GicType::EXR)
@@ -1963,7 +1965,7 @@ void Image::loadFileData(const void* data, psize dataSize, FileType fileType,
 	switch (fileType)
 	{
 		case FileType::GIC: loadImageDataGIC(data, dataSize, pixels, imageSize, imageType, imageFormat); return;
-		case FileType::PNG: loadImageDataPNG(data, dataSize, pixels, imageSize, imageFormat, imageType); return;
+		case FileType::PNG: loadImageDataPNG(data, dataSize, pixels, imageSize, imageFormat, imageType, false); return;
 		case FileType::WebP: loadImageDataWebP(data, dataSize, pixels, imageSize, imageFormat); return;
 		case FileType::EXR: loadImageDataEXR(data, dataSize, pixels, imageSize, imageFormat, imageType); return;
 		case FileType::HDR: loadImageDataHDR(data, dataSize, pixels, imageSize, imageFormat); return;
@@ -1976,7 +1978,7 @@ void Image::loadFileData(const void* data, psize dataSize, FileType fileType,
 
 //**********************************************************************************************************************
 void Image::loadFileMetadata(const fs::path& path, vector<uint8>& pixels, uint4& size, 
-	Type& imageType, Format& imageFormat, float& effort, bool& isLossless, bool& generateMips)
+	Type& imageType, Format& imageFormat, float& effort, StoreFlag& storeFlags)
 {
 	GARDEN_ASSERT(!path.empty());
 	GARDEN_ASSERT_MSG(!pixels.empty(), "Assert " + path.generic_string());
@@ -1995,11 +1997,11 @@ void Image::loadFileMetadata(const fs::path& path, vector<uint8>& pixels, uint4&
 
 	param = jsonData.find("lossless");
 	if (param != jsonData.end())
-		isLossless = (bool)param.value();
+		setFlags(storeFlags, Image::StoreFlag::Lossless, (bool)param.value());
 
 	param = jsonData.find("generateMips");
 	if (param != jsonData.end())
-		generateMips = (bool)param.value();
+		setFlags(storeFlags, Image::StoreFlag::GenerateMips, (bool)param.value());
 
 	param = jsonData.find("type");
 	if (param != jsonData.end())
@@ -2035,6 +2037,7 @@ void Image::loadFileMetadata(const fs::path& path, vector<uint8>& pixels, uint4&
 				case Image::Format::UnormR8: imageFormat = Image::Format::SrgbR8; break;
 				default: break; // Note: Otherwise skipping conversion.
 			}
+			unsetFlags(storeFlags, Image::StoreFlag::LinearAsSrgb);
 		}
 		else
 		{
@@ -2045,6 +2048,7 @@ void Image::loadFileMetadata(const fs::path& path, vector<uint8>& pixels, uint4&
 				case Image::Format::SrgbR8: imageFormat = Image::Format::UnormR8; break;
 				default: break; // Note: Otherwise skipping conversion.
 			}
+			setFlags(storeFlags, Image::StoreFlag::LinearAsSrgb);
 		}
 	}
 
@@ -2059,11 +2063,12 @@ void Image::loadFileMetadata(const fs::path& path, vector<uint8>& pixels, uint4&
 }
 
 //**********************************************************************************************************************
+static bool checkedOxipng = false, hasOxipng = false;
+
 static void storeImageDataPNG(const fs::path& filePath, const void* pixels, uint3 size, Image::Format imageFormat, 
 	float quality, float effort, Image::StoreFlag flags, ofstream* outputStream = nullptr)
 {
 	GARDEN_ASSERT_MSG(quality == 1.0f, "PNG is a lossless format, can't specify quality");
-	GARDEN_ASSERT_MSG(!hasAnyFlag(flags, Image::StoreFlag::GenerateMips), "PNG does not store mip map levels");
 	GARDEN_ASSERT_MSG(!hasAnyFlag(flags, Image::StoreFlag::BlockSizeMask), "PNG does not support block compression");
 
 	vector<uint8> tmpPixels; int pngColorType;
@@ -2077,16 +2082,19 @@ static void storeImageDataPNG(const fs::path& filePath, const void* pixels, uint
 		default: throw GardenError("Unsupported PNG color type component count.");
 	}
 
+	auto targetFormat = hasAnyFlag(flags, Image::StoreFlag::LinearAsSrgb) ? imageFormat : toSrgbFormat(componentCount);
+	auto dstPixels = Image::convertFormat(pixels, size, tmpPixels, imageFormat, targetFormat);
+
 	if (size.z > 1)
 	{
 		auto pixelCount = (psize)size.x * size.y * size.z;
 		auto imageBinarySize = toBinarySize(pixelCount, imageFormat);
-		vector<uint8> tmpPixels((const uint8*)pixels, (const uint8*)pixels + imageBinarySize);
+		if (dstPixels != tmpPixels.data())
+			tmpPixels.assign((const uint8*)dstPixels, (const uint8*)dstPixels + imageBinarySize);
 		auto size2D = Image::pack3D(tmpPixels, size, imageBinarySize / pixelCount);
-		size = uint3(size2D, 1);
+		size = uint3(size2D, 1); dstPixels = tmpPixels.data();
 	}
 
-	auto dstPixels = Image::convertFormat(pixels, size, tmpPixels, imageFormat, toSrgbFormat(componentCount));
 	auto png = png_create_write_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
 	auto pngInfo = png_create_info_struct(png);
 
@@ -2101,10 +2109,24 @@ static void storeImageDataPNG(const fs::path& filePath, const void* pixels, uint
 		throw GardenError("Failed to write PNG image.");
 	}
 
-	ofstream tmpStream; ofstream* pngStream;
-	if (!outputStream)
+	auto useOxipng = false;
+	if (effort == 1.0f && GARDEN_PACK_RESOURCES)
 	{
-		tmpStream.open(filePath, ios::binary | ios::out);
+		if (!checkedOxipng)
+		{
+			hasOxipng = mpio::OS::executeFile("oxipng", "--version", nullptr) == 0;
+			checkedOxipng = true;
+		}
+		useOxipng = hasOxipng;
+	}
+
+	fs::path tmpPath; ofstream tmpStream; ofstream* pngStream;
+	if (!outputStream || useOxipng)
+	{
+		tmpPath = useOxipng ? fs::temp_directory_path() / 
+			Hash128::generateRandom().toBase64URL() : filePath;
+		tmpStream.open(tmpPath, ios::binary | ios::out);
+
 		if (!tmpStream.is_open())
 		{
 			png_destroy_write_struct(&png, &pngInfo);
@@ -2116,7 +2138,8 @@ static void storeImageDataPNG(const fs::path& filePath, const void* pixels, uint
 
 	png_set_IHDR(png, pngInfo, size.x, size.y, 8, pngColorType, 
 		PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
-	png_set_compression_level(png, (int)std::fma(effort, 9.0f, 0.5f));
+	if (!useOxipng)
+		png_set_compression_level(png, (int)std::fma(effort, 9.0f, 0.5f));
 
 	png_set_write_fn(png, pngStream, [](png_structp pngPtr, png_bytep data, png_size_t length)
 	{
@@ -2127,24 +2150,46 @@ static void storeImageDataPNG(const fs::path& filePath, const void* pixels, uint
 
 	png_write_info(png, pngInfo);
 	auto pngPixels = (png_const_bytep)dstPixels;
-	auto rowStride = sizeof(Color) * size.x;
+	auto rowStride = (psize)size.x * componentCount;
 	for (uint32 y = 0; y < size.y; y++)
 		png_write_row(png, pngPixels + y * rowStride);
 	png_write_end(png, nullptr);
 	png_destroy_write_struct(&png, &pngInfo);
 
-	// TODO: check if we have oxipng installed and reduce image size with it!!!
+	if (useOxipng)
+	{
+		tmpStream.close();
+		auto result = mpio::OS::executeFile("oxipng", "--opt", "max", "--strip", "all", "--zopfli", 
+			"--zi", "500", "--ziwi", "50", tmpPath.generic_string().c_str(), nullptr);
+		if (result != 0)
+			throw GardenError("Failed to compress PNG image using oxipng.");
+
+		vector<uint8> zipData; File::loadBinary(tmpPath, zipData);
+		fs::remove(tmpPath);
+
+		if (!outputStream)
+		{
+			tmpStream.open(filePath, ios::binary | ios::out);
+			if (!tmpStream.is_open())
+				throw GardenError("Failed to open PNG image file.");
+			pngStream = &tmpStream;
+		}
+
+		if (!outputStream->write((const char*)zipData.data(), zipData.size()))
+			throw GardenError("Failed to write oxipng image data.");
+	}
 }
 
 //**********************************************************************************************************************
 static void storeImageDataWebP(const fs::path& filePath, const void* pixels, uint3 size, 
 	Image::Format imageFormat, float quality, float effort, Image::StoreFlag flags)
 {
-	GARDEN_ASSERT_MSG(!hasAnyFlag(flags, Image::StoreFlag::GenerateMips), "WebP does not store mip map levels");
+	GARDEN_ASSERT_MSG(size.z == 1, "Unsupported 3D image packing for WebP"); // Do we have any use cases?
 	GARDEN_ASSERT_MSG(!hasAnyFlag(flags, Image::StoreFlag::BlockSizeMask), "WebP does not support block compression");
 
 	vector<uint8> tmpPixels;
-	auto dstPixels = Image::convertFormat(pixels, size, tmpPixels, imageFormat, Image::Format::SrgbR8G8B8A8);
+	auto targetFormat = hasAnyFlag(flags, Image::StoreFlag::LinearAsSrgb) ? imageFormat : Image::Format::SrgbR8G8B8A8;
+	auto dstPixels = Image::convertFormat(pixels, size, tmpPixels, imageFormat, targetFormat);
 
 	WebPConfig config;
 	if (!WebPConfigPreset(&config, WEBP_PRESET_DEFAULT, quality * 100.0f))
@@ -2192,20 +2237,31 @@ static void storeImageDataWebP(const fs::path& filePath, const void* pixels, uin
 static void storeImageDataEXR(const fs::path& filePath, const void* pixels, uint3 size, Image::Format imageFormat, 
 	float quality, float effort, Image::StoreFlag flags, ofstream* outputStream = nullptr)
 {
-	GARDEN_ASSERT_MSG(quality == 1.0f, "EXR is a lossless format, can't specify quality");
-	GARDEN_ASSERT_MSG(!hasAnyFlag(flags, Image::StoreFlag::GenerateMips), "Not implemented yet");
 	GARDEN_ASSERT_MSG(!hasAnyFlag(flags, Image::StoreFlag::BlockSizeMask), "EXR does not support block compression");
+	GARDEN_ASSERT_MSG(!hasAnyFlag(flags, Image::StoreFlag::LinearAsSrgb), "EXR does not support linear as sRGB");
 
+	auto dstPixels = pixels;
 	vector<uint8> tmpPixels; Imf::PixelType pixelType;
+
 	if (isFormatFloat16(imageFormat))
 		pixelType = Imf::PixelType::HALF;
 	else if (isFormatFloat32(imageFormat))
 		pixelType = Imf::PixelType::FLOAT;
 	else
 	{
-		auto dstPixels = Image::convertFormat(pixels, size, tmpPixels, 
-			imageFormat, Image::Format::SfloatR16G16B16A16);;
-		pixelType = Imf::PixelType::HALF;
+		const auto targetFormat = Image::Format::SfloatR16G16B16A16;
+		dstPixels = Image::convertFormat(pixels, size, tmpPixels, imageFormat, targetFormat);
+		pixelType = Imf::PixelType::HALF; imageFormat = targetFormat;
+	}
+
+	if (size.z > 1)
+	{
+		auto pixelCount = (psize)size.x * size.y * size.z;
+		auto imageBinarySize = toBinarySize(pixelCount, imageFormat);
+		if (dstPixels != tmpPixels.data())
+			tmpPixels.assign((const uint8*)dstPixels, (const uint8*)dstPixels + imageBinarySize);
+		auto size2D = Image::pack3D(tmpPixels, size, imageBinarySize / pixelCount);
+		size = uint3(size2D, 1); dstPixels = tmpPixels.data();
 	}
 
 	auto pixelCount = (psize)size.x * size.y * size.z;
@@ -2216,8 +2272,17 @@ static void storeImageDataEXR(const fs::path& filePath, const void* pixels, uint
 	auto strideY = pixelBinarySize * size.x;
 	GARDEN_ASSERT_MSG(imageBinarySize > 0, "Assert " + filePath.generic_string());
 
+	auto compression = Imf::ZIP_COMPRESSION;
+	if (effort == 0.0f) compression = Imf::NO_COMPRESSION;
+	else
+	{
+		if (quality < 1.0f) compression = Imf::PXR24_COMPRESSION;
+		else if (effort < 0.25f) compression = Imf::RLE_COMPRESSION;
+		else if (effort < 0.75f) compression = Imf::PIZ_COMPRESSION;
+	}
+
 	ExrFileStream exrStream(filePath, outputStream);
-	Imf::Header exrHeader(size.x, size.y, 1, Imath::V2f(0, 0), 1, Imf::INCREASING_Y, Imf::PIZ_COMPRESSION);
+	Imf::Header exrHeader(size.x, size.y, 1, Imath::V2f(0, 0), 1, Imf::INCREASING_Y, compression);
 	Imf::OutputFile outputFile(exrStream, exrHeader);
 
 	auto framebuffer = createExrFramebuffer((char*)pixels, 
@@ -2244,12 +2309,13 @@ static void storeImageDataHDR(const fs::path& filePath, const void* pixels, uint
 static void storeImageDataJPEG(const fs::path& filePath, const void* pixels, uint3 size, 
 	Image::Format imageFormat, float quality, float effort, Image::StoreFlag flags)
 {
-	GARDEN_ASSERT_MSG(!hasAnyFlag(flags, Image::StoreFlag::GenerateMips), "JPEG does not store mip map levels");
+	GARDEN_ASSERT_MSG(size.z == 1, "Unsupported 3D image packing for JPEG");
 	GARDEN_ASSERT_MSG(!hasAnyFlag(flags, Image::StoreFlag::BlockSizeMask), "JPEG does not support custom block compression");
 
 	vector<uint8> tmpPixels;
 	auto componentCount = toComponentCount(imageFormat);
-	auto dstPixels = Image::convertFormat(pixels, size, tmpPixels, imageFormat, toSrgbFormat(componentCount));
+	auto targetFormat = hasAnyFlag(flags, Image::StoreFlag::LinearAsSrgb) ? imageFormat : toSrgbFormat(componentCount);
+	auto dstPixels = Image::convertFormat(pixels, size, tmpPixels, imageFormat, targetFormat);
 	auto jpgQuality = (int)std::fma(quality, 100.0f, 0.5f);
 
 	if (!stbi_write_jpg(filePath.generic_string().c_str(), size.x, size.y, componentCount, dstPixels, jpgQuality))
@@ -2258,13 +2324,14 @@ static void storeImageDataJPEG(const fs::path& filePath, const void* pixels, uin
 static void storeImageDataBMP(const fs::path& filePath, const void* pixels, uint3 size, 
 	Image::Format imageFormat, float quality, float effort, Image::StoreFlag flags)
 {
+	GARDEN_ASSERT_MSG(size.z == 1, "Unsupported 3D image packing for JPEG");
 	GARDEN_ASSERT_MSG(quality == 1.0f, "BMP is a lossless format, can't specify quality");
-	GARDEN_ASSERT_MSG(!hasAnyFlag(flags, Image::StoreFlag::GenerateMips), "BMP does not store mip map levels");
 	GARDEN_ASSERT_MSG(!hasAnyFlag(flags, Image::StoreFlag::BlockSizeMask), "BMP does not support block compression");
 
 	vector<uint8> tmpPixels;
 	auto componentCount = toComponentCount(imageFormat);
-	auto dstPixels = Image::convertFormat(pixels, size, tmpPixels, imageFormat, toFloatFormat32(componentCount));
+	auto targetFormat = hasAnyFlag(flags, Image::StoreFlag::LinearAsSrgb) ? imageFormat : toSrgbFormat(componentCount);
+	auto dstPixels = Image::convertFormat(pixels, size, tmpPixels, imageFormat, targetFormat);
 
 	if (!stbi_write_bmp(filePath.generic_string().c_str(), size.x, size.y, componentCount, dstPixels))
 		throw GardenError("Failed to write BMP image.");
@@ -2272,13 +2339,15 @@ static void storeImageDataBMP(const fs::path& filePath, const void* pixels, uint
 static void storeImageDataTGA(const fs::path& filePath, const void* pixels, uint3 size, 
 	Image::Format imageFormat, float quality, float effort, Image::StoreFlag flags)
 {
+	GARDEN_ASSERT_MSG(size.z == 1, "Unsupported 3D image packing for JPEG");
 	GARDEN_ASSERT_MSG(quality == 1.0f, "TGA is a lossless format, can't specify quality");
 	GARDEN_ASSERT_MSG(!hasAnyFlag(flags, Image::StoreFlag::GenerateMips), "TGA does not store mip map levels");
 	GARDEN_ASSERT_MSG(!hasAnyFlag(flags, Image::StoreFlag::BlockSizeMask), "TGA does not support block compression");
 
 	vector<uint8> tmpPixels;
 	auto componentCount = toComponentCount(imageFormat);
-	auto dstPixels = Image::convertFormat(pixels, size, tmpPixels, imageFormat, toFloatFormat32(componentCount));
+	auto targetFormat = hasAnyFlag(flags, Image::StoreFlag::LinearAsSrgb) ? imageFormat : toSrgbFormat(componentCount);
+	auto dstPixels = Image::convertFormat(pixels, size, tmpPixels, imageFormat, targetFormat);
 
 	if (!stbi_write_tga(filePath.generic_string().c_str(), size.x, size.y, componentCount, dstPixels))
 		throw GardenError("Failed to write TGA image.");
@@ -2303,6 +2372,8 @@ static void storeImageDataGIC(const fs::path& filePath, const void* pixels, uint
 	gicHeader.data.imageType = (uint8)imageType;
 	gicHeader.data.channelCount = toComponentCount(imageFormat);
 	gicHeader.data.encodeEffort = (uint8)std::fma(quality, 100.0f, 0.5f);
+	gicHeader.data.generateMips = hasAnyFlag(flags, Image::StoreFlag::GenerateMips) ? 1 : 0;
+	gicHeader.data.linearAsSrgb = hasAnyFlag(flags, Image::StoreFlag::LinearAsSrgb) ? 1 : 0;
 
 	if (!outputStream.write((const char*)gicMagic, sizeof(gicMagic)) ||
 		!outputStream.write((const char*)&gicHeader, sizeof(gicHeader)))
@@ -2339,7 +2410,7 @@ static void storeImageDataGIC(const fs::path& filePath, const void* pixels, uint
 		case Image::Format::SrgbR8G8B8A8:
 			basisFlags |= basisu::cFlagSRGB;
 			// Note: falling through to the next case.
-		case Image::Format::UintR8G8B8A8:
+		case Image::Format::UnormR8G8B8A8:
 			if (quality < 1.0f)
 			{
 				GARDEN_ASSERT_MSG(!hasAnyFlag(flags, Image::StoreFlag::BlockSizeMask), "Unsupported ETC1S block size.");

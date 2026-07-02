@@ -88,18 +88,12 @@ bool ImageConverter::compress(const fs::path& filePath, const fs::path& inputPat
 		extension.generic_string()), pixels, size, type, format);
 
 	auto metadataPath = path; metadataPath.replace_extension(".meta");
-	float effort = GARDEN_DEBUG ? 0.1f : 0.7f; bool isLossless = false, generateMips = false;
+	float effort = GARDEN_DEBUG ? 0.0f : 0.7f; auto storeFlags = Image::StoreFlag::None;
+	if (size.w > 1) storeFlags |= Image::StoreFlag::GenerateMips;
 
 	if (fs::exists(metadataPath))
-	{
-		Image::loadFileMetadata(metadataPath, pixels, size, 
-			type, format, effort, isLossless, generateMips);
-	}
+		Image::loadFileMetadata(metadataPath, pixels, size, type, format, effort, storeFlags);
 	fs::create_directories(outputPath);
-
-	auto storeFlags = Image::StoreFlag::None;
-	if (isLossless) storeFlags |= Image::StoreFlag::Lossless;
-	if (size.w > 1 || generateMips) storeFlags |= Image::StoreFlag::GenerateMips;
 
 	auto gicFilePath = (outputPath / filePath).replace_extension(".gic");
 	Image::storeFileData(gicFilePath, pixels.data(), (uint3)size, 
@@ -169,7 +163,7 @@ bool ImageConverter::equi2cube(const fs::path& filePath, const fs::path& inputPa
 
 	auto imageSize = uint3(cubemapSize, cubemapSize, 1);
 	constexpr auto fileType = Image::FileType::GIC;
-	constexpr auto effort = GARDEN_DEBUG ? 0.1f : 0.7f;
+	constexpr auto effort = GARDEN_DEBUG ? 0.0f : 0.7f;
 	auto gicFilePath = (outputPath / filePath).replace_extension().generic_string();
 	fs::create_directories(outputPath);
 

@@ -210,8 +210,9 @@ public:
 		None = 0x00,         /**< No additional image store flags. */
 		Lossless = 0x01,     /**< Store image without any visual regressions. */
 		GenerateMips = 0x02, /**< Generate and store image mip map levels. */
-		BlockSize6x6 = 0x04, /**< Use 6x6 block size for compressed formats. */
-		BlockSize8x8 = 0x08, /**< Use 8x8 block size for compressed formats. */
+		LinearAsSrgb = 0x04, /**< Store linear image data as sRGB, without conversion. */
+		BlockSize6x6 = 0x08, /**< Use 6x6 block size for compressed formats. */
+		BlockSize8x8 = 0x10, /**< Use 8x8 block size for compressed formats. */
 	
 		BlockSizeMask = BlockSize6x6 | BlockSize8x8 /**< Compressed format block size mask. */
 	};
@@ -937,12 +938,10 @@ public:
 	 * @param[in,out] size loaded image size in pixels
 	 * @param[in,out] imageType loaded image dimensionality type
 	 * @param[in,out] imageFormat loaded image data format
-	 * @param[out] effort loaded image compression effort
-	 * @param[out] isLossless loaded image data should be lossless
-	 * @param[out] generateMips loaded image should have mipmap
+	 * @param[in,out] storeFlags loaded image store flag bitmask
 	 */
 	static void loadFileMetadata(const fs::path& path, vector<uint8>& pixels, uint4& size, 
-		Type& imageType, Format& imageFormat, float& effort, bool& isLossless, bool& generateMips);
+		Type& imageType, Format& imageFormat, float& effort, StoreFlag& storeFlags);
 	/**
 	 * @brief Stores image pixels to the specified file.
 	 * @throw GardenError on image data writing error.
@@ -1403,6 +1402,21 @@ static Image::Format toSrgbFormat(int componentCount)
 		case 2: return Image::Format::SrgbR8G8;
 		case 1: return Image::Format::SrgbR8;
 		default: throw GardenError("Unsupported sRGB image channel count.");
+	}
+}
+/**
+ * @brief Returns image unorm format from the component count
+ * @param componentCount target channel count
+ * @throw GardenError on unsupported component count.
+ */
+static Image::Format toUnormFormat(int componentCount)
+{
+	switch (componentCount)
+	{
+		case 4: return Image::Format::UnormR8G8B8A8;
+		case 2: return Image::Format::UnormR8G8;
+		case 1: return Image::Format::UnormR8;
+		default: throw GardenError("Unsupported unorm image channel count.");
 	}
 }
 /**

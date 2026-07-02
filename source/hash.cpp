@@ -83,6 +83,13 @@ Hash128 Hash128::generateRandom(uint64 seed) noexcept
 	hash.high64 = mt();
 	return hash;
 }
+Hash128 Hash128::generateRandom(random_device rd)
+{
+	Hash128 hash;
+	hash.low64 = ((uint64)rd() << 32) | (uint64)rd();
+	hash.high64 = ((uint64)rd() << 32) | (uint64)rd();
+	return hash;
+}
 
 //**********************************************************************************************************************
 Hash128::State Hash128::createState()

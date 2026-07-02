@@ -994,14 +994,13 @@ bool ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& pixels,
 
 	#if !GARDEN_PACK_RESOURCES
 	auto metadataPath = path; metadataPath.replace_extension(".meta");
-	float effort = 0.7f; bool isLossless = false, generateMips = false;
+	float effort = 0.7f; auto storeFlags = Image::StoreFlag::None;
 
 	if (fs::exists(metadataPath))
 	{
 		try
 		{
-			Image::loadFileMetadata(metadataPath, pixels, size, 
-				type, format, effort, isLossless, generateMips);
+			Image::loadFileMetadata(metadataPath, pixels, size, type, format, effort, storeFlags);
 		}
 		catch (const exception& e)
 		{
