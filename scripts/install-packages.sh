@@ -28,12 +28,7 @@ echo
 echo "Installing Vulkan SDK..."
 rm -rf ~/vulkan-sdk
 
-if command -v brew &> /dev/null; then
-    VULKAN_SDK_VERSION=$(curl -s https://vulkan.lunarg.com/sdk/latest/mac.txt)
-    curl -O https://sdk.lunarg.com/sdk/download/latest/mac/vulkan_sdk.zip
-    unzip vulkan_sdk.zip
-    sudo ./vulkansdk-macOS-$VULKAN_SDK_VERSION.app/Contents/MacOS/vulkansdk-macOS-$VULKAN_SDK_VERSION --al --da -c install com.lunarg.vulkan.core com.lunarg.vulkan.usr
-else
+if ! command -v brew &> /dev/null; then
     curl -O https://sdk.lunarg.com/sdk/download/latest/linux/vulkan_sdk.tar.xz
     mkdir ~/vulkan-sdk && tar -xf vulkan_sdk.tar.xz --strip-components=1 -C ~/vulkan-sdk
     rm -f vulkan_sdk.tar.xz
