@@ -1,3 +1,5 @@
+Write-Host "Updating vcpkg package manager..."
+
 try {
     git --version > $null
 } catch {

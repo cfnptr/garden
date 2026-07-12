@@ -34,25 +34,24 @@ jobs:
     - name: Install Ubuntu packages
       if: matrix.os == 'ubuntu-latest'
       run: |
-        vulkanVersion=$(curl -s https://vulkan.lunarg.com/sdk/latest/linux.txt)
-        export VULKAN_SDK=~/vulkan-sdk/$vulkanVersion/x86_64
-        cd ~ && mkdir vulkan-sdk && curl -O https://sdk.lunarg.com/sdk/download/latest/linux/vulkan_sdk.tar.xz
-        tar xf vulkan_sdk.tar.xz -C vulkan-sdk
+        sudo apt-get update && sudo apt-get install clang lld zlib1g-dev libssl-dev libcurl4-openssl-dev libwayland-dev libxkbcommon-dev xorg-dev libassimp-dev libopenexr-dev
+        curl -O https://sdk.lunarg.com/sdk/download/latest/linux/vulkan_sdk.tar.xz
+        mkdir ~/vulkan-sdk tar -xf vulkan_sdk.tar.xz --strip-components=1 -C ~/vulkan-sdk
+        export VULKAN_SDK=~/vulkan-sdk/x86_64
         echo "VULKAN_SDK=$VULKAN_SDK" >> $GITHUB_ENV
         echo "PATH=$PATH:$VULKAN_SDK/bin" >> $GITHUB_ENV
         echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$VULKAN_SDK/lib" >> $GITHUB_ENV
         sudo cp -r $VULKAN_SDK/include/vulkan/ /usr/local/include/
         sudo cp -P $VULKAN_SDK/lib/VulkanLoader/lib/libvulkan.so* /usr/local/lib/
-        sudo apt-get update && sudo apt-get install clang lld zlib1g-dev libssl-dev libcurl4-openssl-dev libwayland-dev libxkbcommon-dev xorg-dev libassimp-dev libopenexr-dev
 
     - name: Install macOS packages
       if: matrix.os == 'macos-latest'
       run: |
-        vulkanVersion=$(curl -s https://vulkan.lunarg.com/sdk/latest/mac.txt)
+        brew update && brew install zlib openssl curl oxipng assimp openexr
+        VULKAN_SDK_VERSION=$(curl -s https://vulkan.lunarg.com/sdk/latest/mac.txt)
         curl -O https://sdk.lunarg.com/sdk/download/latest/mac/vulkan_sdk.zip
         unzip vulkan_sdk.zip
-        sudo ./vulkansdk-macOS-$vulkanVersion.app/Contents/MacOS/vulkansdk-macOS-$vulkanVersion --al --da -c install com.lunarg.vulkan.core com.lunarg.vulkan.usr
-        brew update && brew install zlib openssl curl oxipng assimp openexr
+        sudo ./vulkansdk-macOS-$VULKAN_SDK_VERSION.app/Contents/MacOS/vulkansdk-macOS-$VULKAN_SDK_VERSION --al --da -c install com.lunarg.vulkan.core com.lunarg.vulkan.usr
 
     - name: Install Windows packages
       if: ${{matrix.os == 'windows-latest' && steps.vcpkg-cache.outputs.cache-hit != 'true'}}
@@ -64,12 +63,12 @@ jobs:
         SDK_PATH: C:/VulkanSDK
       shell: bash
       run: |
-        vulkanVersion=$(curl -s https://vulkan.lunarg.com/sdk/latest/windows.txt)
+        VULKAN_SDK_VERSION=$(curl -s https://vulkan.lunarg.com/sdk/latest/windows.txt)
         curl -O https://sdk.lunarg.com/sdk/download/latest/windows/vulkan_sdk.exe
         ./vulkan_sdk.exe --al --da -c install
-        echo "VK_SDK_PATH=${{env.SDK_PATH}}/$vulkanVersion" >> $GITHUB_ENV
-        echo "VULKAN_SDK=${{env.SDK_PATH}}/$vulkanVersion" >> $GITHUB_ENV
-        echo "${{env.SDK_PATH}}/$vulkanVersion/Bin" >> $GITHUB_PATH
+        echo "VK_SDK_PATH=${{env.SDK_PATH}}/$VULKAN_SDK_VERSION" >> $GITHUB_ENV
+        echo "VULKAN_SDK=${{env.SDK_PATH}}/$VULKAN_SDK_VERSION" >> $GITHUB_ENV
+        echo "${{env.SDK_PATH}}/$VULKAN_SDK_VERSION/Bin" >> $GITHUB_PATH
 
     - name: Create build environment
       run: cmake -E make_directory ${{runner.workspace}}/build

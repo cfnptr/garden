@@ -1,6 +1,7 @@
 @ECHO OFF
 CD /D "%~dp0"
 
+ECHO Installing packages required for the Garden engine compilation...
 vcpkg --version > nul
 
 IF NOT %ERRORLEVEL% == 0 (
