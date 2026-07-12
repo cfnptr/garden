@@ -36,7 +36,7 @@ jobs:
       run: |
         sudo apt-get update && sudo apt-get install clang lld zlib1g-dev libssl-dev libcurl4-openssl-dev libwayland-dev libxkbcommon-dev xorg-dev libassimp-dev libopenexr-dev
         curl -O https://sdk.lunarg.com/sdk/download/latest/linux/vulkan_sdk.tar.xz
-        mkdir ~/vulkan-sdk tar -xf vulkan_sdk.tar.xz --strip-components=1 -C ~/vulkan-sdk
+        mkdir ~/vulkan-sdk && tar -xf vulkan_sdk.tar.xz --strip-components=1 -C ~/vulkan-sdk
         export VULKAN_SDK=~/vulkan-sdk/x86_64
         echo "VULKAN_SDK=$VULKAN_SDK" >> $GITHUB_ENV
         echo "PATH=$PATH:$VULKAN_SDK/bin" >> $GITHUB_ENV
@@ -79,11 +79,11 @@ jobs:
       shell: bash
       run: cmake $GITHUB_WORKSPACE -G Ninja -DCMAKE_BUILD_TYPE=$BUILD_TYPE -D GARDEN_USE_CLANG=TRUE
 
-    - name: Configure CMake
-      if: matrix.os != 'ubuntu-latest'
+    - name: Configure Windows CMake
+      if: matrix.os == 'windows-latest'
       working-directory: ${{runner.workspace}}/build
       shell: bash
-      run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE
+      run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE -T ClangCL -A x64
 
     - name: Build project
       working-directory: ${{runner.workspace}}/build
