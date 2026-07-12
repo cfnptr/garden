@@ -48,7 +48,7 @@ public:
 		Load,     /**< Load existing content of an attachment image. */
 		Clear,    /**< Clear render pass content with specified value. */
 		DontCare, /**< Existing attachment image content may be undefined. */
-		None,     /**< Undefined existing attachment image content. (Read only) */
+		None,     /**< Undefined existing attachment image content. (No image access) */
 		Count,    /**< Framebuffer attachment content load operation count. */
 	};
 	/**

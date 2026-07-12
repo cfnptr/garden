@@ -76,7 +76,7 @@ void ClientNetworkSystem::onDisconnect(int reason)
 	clientDatagramIdx = 1; serverDatagramIdx = 0; datagramUID = 0;
 	datagramLocker.unlock();
 
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	manager->lock();
 	pingMessageDelay = 0.0; serverPing = 0.0f;
 	lastDisconnectReason = reason;
@@ -237,7 +237,7 @@ ClientNetworkSystem::ClientNetworkSystem(psize receiveBufferSize, psize messageB
 	: 
 	Singleton(setSingleton), nets::IStreamClient(receiveBufferSize, timeoutTime), clientLengthSize(clientLengthSize)
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("PreInit", ClientNetworkSystem::preInit);
 	ECSM_SUBSCRIBE_TO_EVENT("PreDeinit", ClientNetworkSystem::preDeinit);
 	ECSM_SUBSCRIBE_TO_EVENT("Update", ClientNetworkSystem::update);
@@ -257,7 +257,7 @@ void ClientNetworkSystem::preInit()
 	if (!isNetworkInitialized())
 		throw GardenError("Failed to initialize network subsystems.");
 
-	auto systemGroup = Manager::Instance::get()->tryGetSystemGroup<INetworkable>();
+	auto systemGroup = Manager::getInstance()->tryGetSystemGroup<INetworkable>();
 	if (systemGroup)
 	{
 		for (auto system : *systemGroup)
@@ -284,7 +284,7 @@ void ClientNetworkSystem::preInit()
 			return BAD_DATA_NETS_RESULT;
 
 		auto currentTime = mpio::OS::getCurrentClock();
-		auto manager = Manager::Instance::get();
+		auto manager = Manager::getInstance();
 		manager->lock();
 		serverPing = currentTime - (pingMessageDelay - 1.0);
 		manager->unlock();

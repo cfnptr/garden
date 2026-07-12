@@ -28,7 +28,7 @@ ID<Entity> SpawnerComponent::loadPrefab()
 {
 	if (prefab)
 	{
-		auto entity = LinkSystem::Instance::get()->tryGet(prefab);
+		auto entity = LinkSystem::getInstance()->tryGet(prefab);
 		if (entity)
 			return entity;
 	}
@@ -36,23 +36,23 @@ ID<Entity> SpawnerComponent::loadPrefab()
 	if (path.empty())
 		return {};
 
-	auto spawnerSystem = SpawnerSystem::Instance::get();
+	auto spawnerSystem = SpawnerSystem::getInstance();
 	ID<Entity> entity;
 
 	auto pathString = path.generic_string();
 	if (spawnerSystem->tryGetSharedPrefab(pathString, prefab, entity))
 		return entity;
 
-	entity = ResourceSystem::Instance::get()->loadScene(path, true);
+	entity = ResourceSystem::getInstance()->loadScene(path, true);
 	if (entity)
 	{
-		auto manager = Manager::Instance::get();
+		auto manager = Manager::getInstance();
 		manager->add<DoNotSerializeComponent>(entity);
 
 		auto transformView = manager->get<TransformComponent>(entity);
 		transformView->setActive(false);
 
-		auto prefabs = LinkSystem::Instance::get()->tryGetFirst("Prefabs");
+		auto prefabs = LinkSystem::getInstance()->tryGetFirst("Prefabs");
 		transformView->setParent(prefabs); // Note: sets null if not found.
 
 		auto linkView = manager->add<LinkComponent>(entity);
@@ -74,10 +74,10 @@ void SpawnerComponent::spawn(uint32 count)
 	if (!prefabEntity)
 		return;
 
-	auto manager = Manager::Instance::get();
-	auto transformSystem = TransformSystem::Instance::get();
-	auto physicsSystem = PhysicsSystem::Instance::tryGet();
-	auto characterSystem = CharacterSystem::Instance::tryGet();
+	auto manager = Manager::getInstance();
+	auto transformSystem = TransformSystem::getInstance();
+	auto physicsSystem = PhysicsSystem::tryGetInstance();
+	auto characterSystem = CharacterSystem::tryGetInstance();
 
 	for (uint32 i = 0; i < count; i++)
 	{
@@ -134,15 +134,15 @@ void SpawnerComponent::spawn(uint32 count)
 	}
 
 	if (delay != 0.0f)
-		delayTime = InputSystem::Instance::get()->getCurrentTime() + delay;
+		delayTime = InputSystem::getInstance()->getCurrentTime() + delay;
 }
 void SpawnerComponent::destroySpawned()
 {
 	if (spawnedEntities.empty())
 		return;
 
-	auto linkSystem = LinkSystem::Instance::get();
-	auto transformSystem = TransformSystem::Instance::get();
+	auto linkSystem = LinkSystem::getInstance();
+	auto transformSystem = TransformSystem::getInstance();
 	for (const auto& uuid : spawnedEntities)
 	{
 		auto entity = linkSystem->tryGet(uuid);
@@ -154,7 +154,7 @@ void SpawnerComponent::destroySpawned()
 //**********************************************************************************************************************
 SpawnerSystem::SpawnerSystem(bool setSingleton) : Singleton(setSingleton)
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	manager->addGroupSystem<ISerializable>(this);
 
 	ECSM_SUBSCRIBE_TO_EVENT("PreInit", SpawnerSystem::preInit);
@@ -163,7 +163,7 @@ SpawnerSystem::SpawnerSystem(bool setSingleton) : Singleton(setSingleton)
 
 void SpawnerSystem::preInit()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	auto prefabs = manager->createEntity();
 	manager->reserveComponents(prefabs, 4);
 
@@ -186,11 +186,11 @@ void SpawnerSystem::update()
 	SET_CPU_ZONE_SCOPED("Spawners Update");
 
 	double currentTime;
-	auto inputSystem = InputSystem::Instance::tryGet();
+	auto inputSystem = InputSystem::tryGetInstance();
 	if (inputSystem) currentTime = inputSystem->getCurrentTime();
-	else currentTime = LoopSystem::Instance::get()->getCurrentTime();
+	else currentTime = LoopSystem::getInstance()->getCurrentTime();
 
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	for (auto& spawner : components)
 	{
 		if (!spawner.getEntity() || !spawner.isActive || (spawner.path.empty() && !spawner.prefab))
@@ -253,8 +253,8 @@ void SpawnerSystem::serialize(ISerializer& serializer, const View<Component> com
 
 	if (componentView->prefab)
 	{
-		auto entity = LinkSystem::Instance::get()->tryGet(componentView->prefab);
-		if (entity && !Manager::Instance::get()->has<DoNotSerializeComponent>(entity))
+		auto entity = LinkSystem::getInstance()->tryGet(componentView->prefab);
+		if (entity && !Manager::getInstance()->has<DoNotSerializeComponent>(entity))
 		{
 			componentView->prefab.toBase64URL(valueStringCache);
 			serializer.write("prefab", valueStringCache);
@@ -293,7 +293,7 @@ bool SpawnerSystem::tryAddSharedPrefab(string_view path, const Hash128& uuid)
 {
 	GARDEN_ASSERT(!path.empty());
 	GARDEN_ASSERT_MSG(uuid, "Assert " + string(path));
-	auto linkSystem = LinkSystem::Instance::get();
+	auto linkSystem = LinkSystem::getInstance();
 
 	auto searchResult = sharedPrefabs.find(path);
 	if (searchResult != sharedPrefabs.end())
@@ -312,7 +312,7 @@ bool SpawnerSystem::tryAddSharedPrefab(string_view path, ID<Entity> prefab)
 {
 	GARDEN_ASSERT(!path.empty());
 	GARDEN_ASSERT_MSG(prefab, "Assert " + string(path));
-	auto linkSystem = LinkSystem::Instance::get();
+	auto linkSystem = LinkSystem::getInstance();
 
 	auto searchResult = sharedPrefabs.find(path);
 	if (searchResult != sharedPrefabs.end())
@@ -321,7 +321,7 @@ bool SpawnerSystem::tryAddSharedPrefab(string_view path, ID<Entity> prefab)
 			return false;
 	}
 
-	auto linkView = Manager::Instance::get()->getOrAdd<LinkComponent>(prefab);
+	auto linkView = Manager::getInstance()->getOrAdd<LinkComponent>(prefab);
 	if (!linkView->getUUID())
 		linkView->regenerateUUID();
 	
@@ -343,7 +343,7 @@ bool SpawnerSystem::tryGetSharedPrefab(string_view path, Hash128& uuid)
 	GARDEN_ASSERT(!path.empty());
 	auto searchResult = sharedPrefabs.find(path);
 	if (searchResult == sharedPrefabs.end() ||
-		!LinkSystem::Instance::get()->tryGet(searchResult->second))
+		!LinkSystem::getInstance()->tryGet(searchResult->second))
 	{
 		return false;
 	}
@@ -357,7 +357,7 @@ bool SpawnerSystem::tryGetSharedPrefab(string_view path, ID<Entity>& prefab)
 	if (searchResult == sharedPrefabs.end())
 		return false;
 
-	auto entity = LinkSystem::Instance::get()->tryGet(searchResult->second);
+	auto entity = LinkSystem::getInstance()->tryGet(searchResult->second);
 	if (!entity)
 		return false;
 
@@ -371,7 +371,7 @@ bool SpawnerSystem::tryGetSharedPrefab(string_view path, Hash128& uuid, ID<Entit
 	if (searchResult == sharedPrefabs.end())
 		return false;
 
-	auto entity = LinkSystem::Instance::get()->tryGet(searchResult->second);
+	auto entity = LinkSystem::getInstance()->tryGet(searchResult->second);
 	if (!entity)
 		return false;
 
@@ -382,8 +382,8 @@ bool SpawnerSystem::tryGetSharedPrefab(string_view path, Hash128& uuid, ID<Entit
 
 void SpawnerSystem::destroySharedPrefabs()
 {
-	auto linkSystem = LinkSystem::Instance::get();
-	auto transformSystem = TransformSystem::Instance::get();
+	auto linkSystem = LinkSystem::getInstance();
+	auto transformSystem = TransformSystem::getInstance();
 
 	for (const auto& pair : sharedPrefabs)
 	{

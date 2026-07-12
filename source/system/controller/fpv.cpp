@@ -30,25 +30,25 @@ using namespace garden;
 //**********************************************************************************************************************
 FpvControllerSystem::FpvControllerSystem(bool setSingleton) : Singleton(setSingleton)
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", FpvControllerSystem::init);
 	ECSM_SUBSCRIBE_TO_EVENT("Update", FpvControllerSystem::update);
 }
 void FpvControllerSystem::init()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("SwapchainRecreate", FpvControllerSystem::swapchainRecreate);
 
 	camera = manager->createEntity();
 	manager->reserveComponents(camera, 8);
 
-	if (DoNotDestroySystem::Instance::has())
+	if (DoNotDestroySystem::hasInstance())
 		manager->add<DoNotDestroyComponent>(camera);
-	if (DoNotSerializeSystem::Instance::has())
+	if (DoNotSerializeSystem::hasInstance())
 		manager->add<DoNotSerializeComponent>(camera);
-	if (SkyboxRenderSystem::Instance::has())
+	if (SkyboxRenderSystem::hasInstance())
 		manager->add<SkyboxRenderComponent>(camera);
-	if (PbrLightingSystem::Instance::has())
+	if (PbrLightingSystem::hasInstance())
 		manager->add<PbrLightingComponent>(camera);
 
 	auto transformView = manager->add<TransformComponent>(camera);
@@ -60,7 +60,7 @@ void FpvControllerSystem::init()
 	auto linkView = manager->add<LinkComponent>(camera);
 	linkView->setTag("MainCamera");
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	auto frameSize = graphicsSystem->getFramebufferSize();
 
 	auto cameraView = manager->add<CameraComponent>(camera);
@@ -83,12 +83,12 @@ void FpvControllerSystem::update()
 
 void FpvControllerSystem::swapchainRecreate()
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	const auto& swapchainChanges = graphicsSystem->getSwapchainChanges();
 
 	if (swapchainChanges.framebufferSize)
 	{
-		auto cameraView = Manager::Instance::get()->tryGet<CameraComponent>(camera);
+		auto cameraView = Manager::getInstance()->tryGet<CameraComponent>(camera);
 		if (cameraView)
 		{
 			auto frameSize = graphicsSystem->getFramebufferSize();
@@ -99,7 +99,7 @@ void FpvControllerSystem::swapchainRecreate()
 
 void FpvControllerSystem::updateMouseLock()
 {
-	auto inputSystem = InputSystem::Instance::get();
+	auto inputSystem = InputSystem::getInstance();
 
 	// TODO: && get the exact button from the input system
 	if (inputSystem->cursorCapturers == 0 && inputSystem->isKeyPressed(KeyboardButton::Tab)) 
@@ -131,11 +131,11 @@ void FpvControllerSystem::updateMouseLock()
 //**********************************************************************************************************************
 quat FpvControllerSystem::updateCameraRotation()
 {
-	auto transformView = Manager::Instance::get()->tryGet<TransformComponent>(camera);
+	auto transformView = Manager::getInstance()->tryGet<TransformComponent>(camera);
 	if (!isMouseLocked || !transformView || !transformView->isActive() )
 		return quat::identity;
 
-	auto cursorDelta = InputSystem::Instance::get()->getCursorDelta();
+	auto cursorDelta = InputSystem::getInstance()->getCursorDelta();
 	rotation += cursorDelta * mouseSensitivity * radians(0.1f);
 	rotation.y = std::clamp(rotation.y, radians(-89.99f), radians(89.99f));
 	auto cameraRotation = quat(rotation.y, f32x4::right) * quat(rotation.x, f32x4::bottom);
@@ -147,16 +147,16 @@ quat FpvControllerSystem::updateCameraRotation()
 void FpvControllerSystem::updateCameraControl(quat cameraRotation)
 {
 	#if GARDEN_EDITOR
-	auto editorSystem = EditorRenderSystem::Instance::tryGet();
+	auto editorSystem = EditorRenderSystem::tryGetInstance();
 	if (editorSystem && editorSystem->isPlaying())
 		return;
 	#endif
 
-	auto transformView = Manager::Instance::get()->tryGet<TransformComponent>(camera);
+	auto transformView = Manager::getInstance()->tryGet<TransformComponent>(camera);
 	if (!transformView || !transformView->isActive())
 		return;
 
-	auto inputSystem = InputSystem::Instance::get();
+	auto inputSystem = InputSystem::getInstance();
 	auto deltaTime = (float)inputSystem->getDeltaTime();
 	auto flyVector = f32x4::zero;
 
@@ -196,21 +196,21 @@ void FpvControllerSystem::updateCameraControl(quat cameraRotation)
 void FpvControllerSystem::updateCharacterControl()
 {
 	#if GARDEN_EDITOR
-	auto editorSystem = EditorRenderSystem::Instance::tryGet();
+	auto editorSystem = EditorRenderSystem::tryGetInstance();
 	if (editorSystem && !editorSystem->isPlaying())
 		return;
 	#endif
 
-	auto characterEntities = LinkSystem::Instance::get()->tryGet(characterEntityTag);
+	auto characterEntities = LinkSystem::getInstance()->tryGet(characterEntityTag);
 	if (characterEntities.first == characterEntities.second)
 		return;
 
-	auto manager = Manager::Instance::get();
-	auto inputSystem = InputSystem::Instance::get();
+	auto manager = Manager::getInstance();
+	auto inputSystem = InputSystem::getInstance();
 	auto deltaTime = (float)inputSystem->getDeltaTime();
 	auto isJumping = inputSystem->getKeyState(KeyboardButton::Space);
-	const auto& gravity = PhysicsSystem::Instance::get()->getGravity();
-	const auto& cc = GraphicsSystem::Instance::get()->getCommonConstants();
+	const auto& gravity = PhysicsSystem::getInstance()->getGravity();
+	const auto& cc = GraphicsSystem::getInstance()->getCommonConstants();
 
 	auto velocity = f32x4::zero;
 	if (inputSystem->getKeyState(KeyboardButton::W))

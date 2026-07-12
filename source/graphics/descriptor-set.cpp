@@ -636,8 +636,8 @@ void DescriptorSet::recreate(Uniforms&& uniforms, Samplers&& samplers)
 	#if GARDEN_DEBUG
 	for (const auto& pair : uniforms)
 	{
-		GARDEN_ASSERT_MSG(setCount == pair.second.resourceSets.size(), "Different descriptor set [" + 
-			debugName + "] count and resource sets array size");
+		GARDEN_ASSERT_MSG(setCount == pair.second.resourceSets.size(), 
+			"Different descriptor set [" + debugName + "] count and resource sets array size");
 		GARDEN_ASSERT_MSG(!pair.first.empty(), "Descriptor set [" + debugName + "] uniform name is empty");
 	}
 

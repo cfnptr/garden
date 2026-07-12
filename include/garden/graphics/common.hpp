@@ -25,12 +25,39 @@
 namespace garden::graphics
 {
 
+struct SvHash
+{
+	using is_transparent = void;
+	std::size_t operator()(std::string_view sv) const { return std::hash<std::string_view>{}(sv); }
+	std::size_t operator()(const std::string& str) const { return std::hash<std::string>{}(str); }
+};
+struct SvEqual
+{
+	using is_transparent = void;
+	bool operator()(std::string_view lhs, std::string_view rhs) const noexcept { return lhs == rhs; }
+};
+
 /**
  * @brief Nvidia architecture maximum binary size.
  */
 constexpr psize maxPushConstantsSize = 128;
 
-/***********************************************************************************************************************
+/**
+ * @brief Rendering pipeline type.
+ * 
+ * @details
+ * Each pipeline type is optimized for a specific set of tasks and operations within the engine, 
+ * reflecting the different requirements of rendering graphics and performing compute operations.
+ */
+enum class PipelineType : uint8
+{
+	Graphics,   /**< Designed for rendering operations. */
+	Compute,    /**< Designed for compute operations. */
+	RayTracing, /**< Designed for ray tracing operations. */ 
+	Count       /**< Pipeline type count. */
+};
+
+/**
  * @brief Pipeline point where programmable shading occurs.
  * 
  * @details 
@@ -58,22 +85,7 @@ enum class PipelineStage : uint32
 
 constexpr uint8 pipelineStageCount = 12; /**< Pipeline stage type count. */
 
-/**
- * @brief Rendering pipeline type.
- * 
- * @details
- * Each pipeline type is optimized for a specific set of tasks and operations within the engine, 
- * reflecting the different requirements of rendering graphics and performing compute operations.
- */
-enum class PipelineType : uint8
-{
-	Graphics,   /**< Designed for rendering operations. */
-	Compute,    /**< Designed for compute operations. */
-	RayTracing, /**< Designed for ray tracing operations. */ 
-	Count       /**< Pipeline type count. */
-};
-
-/**
+/***********************************************************************************************************************
  * @brief Type of the index buffer indices.
  * @details Supported 16-bit and 32-bit unsigned integers.
  */
@@ -236,7 +248,7 @@ static string_view toPipelineStageExt(PipelineStage pipelineStage)
 	}
 }
 
-/**
+/***********************************************************************************************************************
  * @brief Sampler compare operator name strings.
  */
 constexpr const char* compareOperatorNames[(psize)CompareOp::Count] =
@@ -269,18 +281,6 @@ static string_view toString(CompareOp compareOperator) noexcept
 	GARDEN_ASSERT(compareOperator < CompareOp::Count);
 	return compareOperatorNames[(psize)compareOperator];
 }
-
-struct SvHash
-{
-	using is_transparent = void;
-	std::size_t operator()(std::string_view sv) const { return std::hash<std::string_view>{}(sv); }
-	std::size_t operator()(const std::string& str) const { return std::hash<std::string>{}(str); }
-};
-struct SvEqual
-{
-	using is_transparent = void;
-	bool operator()(std::string_view lhs, std::string_view rhs) const noexcept { return lhs == rhs; }
-};
 
 #if GARDEN_DEBUG
 /***********************************************************************************************************************

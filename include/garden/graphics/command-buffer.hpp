@@ -128,11 +128,11 @@ struct BindDescriptorSetsCommandBase : public Command
 };
 struct BindDescriptorSetsCommand final : public BindDescriptorSetsCommandBase
 {
-	const DescriptorSet::Range* descriptorSetRanges = nullptr;
+	const DescriptorSet::Range* ranges = nullptr;
 };
 struct BindDescriptorSetsAsyncCommand final : public BindDescriptorSetsCommandBase
 {
-	DescriptorSet::Range descriptorSetRanges[3]; // TODO: Looks like there is no more than 3 for an async bind. Rethink later?
+	DescriptorSet::Range ranges[3]; // TODO: Looks like there is no more than 3 for an async bind. Rethink later?
 };
 
 //**********************************************************************************************************************
@@ -610,7 +610,7 @@ public:
 			type == CommandBufferType::Graphics || type == CommandBufferType::Compute);
 		auto commandSize = sizeof(BindDescriptorSetsCommandBase) + command.rangeCount * sizeof(DescriptorSet::Range);
 		auto allocation = allocateCommand<BindDescriptorSetsCommandBase>(command, (uint32)commandSize);
-		memcpy(allocation + 1, command.descriptorSetRanges, command.rangeCount * sizeof(DescriptorSet::Range));
+		memcpy(allocation + 1, command.ranges, command.rangeCount * sizeof(DescriptorSet::Range));
 	}
 	void addCommand(const BindDescriptorSetsAsyncCommand& command, int32 threadIndex = -1)
 	{

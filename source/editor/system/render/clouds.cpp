@@ -23,12 +23,12 @@ using namespace garden;
 //**********************************************************************************************************************
 CloudsEditorSystem::CloudsEditorSystem()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", CloudsEditorSystem::init);
 }
 void CloudsEditorSystem::init()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("PreUiRender", CloudsEditorSystem::preUiRender);
 	ECSM_SUBSCRIBE_TO_EVENT("EditorBarToolPP", CloudsEditorSystem::editorBarToolPP);
 }
@@ -40,7 +40,7 @@ void CloudsEditorSystem::preUiRender()
 
 	if (ImGui::Begin("Volumetric Clouds", &showWindow, ImGuiWindowFlags_AlwaysAutoResize))
 	{
-		auto cloudsSystem = CloudsRenderSystem::Instance::get();
+		auto cloudsSystem = CloudsRenderSystem::getInstance();
 		ImGui::Checkbox("Enabled", &cloudsSystem->isEnabled); ImGui::SameLine();
 
 		ImGui::Checkbox("No-Delay Mode", &cloudsSystem->noDelay);
@@ -54,7 +54,7 @@ void CloudsEditorSystem::preUiRender()
 		if (ImGui::Combo("Quality", &quality, graphicsQualityNames, (int)GraphicsQuality::Count))
 		{
 			cloudsSystem->setQuality(quality);
-			auto settingsSystem = SettingsSystem::Instance::tryGet();
+			auto settingsSystem = SettingsSystem::tryGetInstance();
 			if (settingsSystem)
 				settingsSystem->setString("clouds.quality", toString((GraphicsQuality)quality));
 		}

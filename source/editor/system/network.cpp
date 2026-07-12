@@ -22,12 +22,12 @@ using namespace garden;
 //**********************************************************************************************************************
 NetworkEditorSystem::NetworkEditorSystem()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", NetworkEditorSystem::init);
 }
 void NetworkEditorSystem::init()
 {
-	EditorRenderSystem::Instance::get()->registerEntityInspector<NetworkComponent>(
+	EditorRenderSystem::getInstance()->registerEntityInspector<NetworkComponent>(
 	[this](ID<Entity> entity, bool isOpened)
 	{
 		onEntityInspector(entity, isOpened);
@@ -39,7 +39,7 @@ void NetworkEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 {
 	if (ImGui::BeginItemTooltip())
 	{
-		auto networkView = Manager::Instance::get()->get<NetworkComponent>(entity);
+		auto networkView = Manager::getInstance()->get<NetworkComponent>(entity);
 		ImGui::Text("Client Owned: %s", networkView->isClientOwned ? "true" : "false");
 		ImGui::EndTooltip();
 	}
@@ -47,7 +47,7 @@ void NetworkEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	if (!isOpened)
 		return;
 
-	auto networkView = Manager::Instance::get()->get<NetworkComponent>(entity);
+	auto networkView = Manager::getInstance()->get<NetworkComponent>(entity);
 	auto uid = to_string(networkView->getEntityUID());
 	if (ImGui::InputText("Entity UID", &uid))
 		networkView->trySetEntityUID((uint32)strtoul(uid.c_str(), nullptr, 10));

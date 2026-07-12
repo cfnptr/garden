@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "garden/graphics/modelc.hpp"
+#include "garden/graphics/model-converter.hpp"
 #include "garden/thread-pool.hpp"
 
 #include "assimp/Importer.hpp"

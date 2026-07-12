@@ -79,16 +79,16 @@ LogSystem::LogSystem(LogLevel level, double rotationTime, bool setSingleton) : S
 {
 	mpmt::Thread::setName("MAIN");
 
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("PostDeinit", LogSystem::postDeinit);
 
-	auto appInfoSystem = AppInfoSystem::Instance::get();
+	auto appInfoSystem = AppInfoSystem::getInstance();
 	auto directoryPath = rotationTime == 0.0 ? appInfoSystem->getAppDataName() : "logs";
 	try
 	{
 		this->logger = logy::Logger(directoryPath, level, (bool)GARDEN_DEBUG, rotationTime, rotationTime == 0.0);
 	}
-	catch (exception& e)
+	catch (const exception& e)
 	{
 		this->logger = logy::Logger(directoryPath / File::createTmpName(), level, (bool)GARDEN_DEBUG, rotationTime);
 	}
@@ -134,7 +134,7 @@ void LogSystem::log(LogLevel level, string_view message) noexcept
 	logger.log(level, "%.*s", message.length(), message.data());
 
 	#if GARDEN_EDITOR
-	auto logEditorSystem = LogEditorSystem::Instance::tryGet();
+	auto logEditorSystem = LogEditorSystem::tryGetInstance();
 	if (logEditorSystem)
 		logEditorSystem->log(level, message);
 	#endif

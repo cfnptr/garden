@@ -20,12 +20,12 @@ using namespace garden;
 //**********************************************************************************************************************
 EcsEditorSystem::EcsEditorSystem()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", EcsEditorSystem::init);
 }
 void EcsEditorSystem::init()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("PreUiRender", EcsEditorSystem::preUiRender);
 	ECSM_SUBSCRIBE_TO_EVENT("EditorBarTool", EcsEditorSystem::editorBarTool);
 }
@@ -34,7 +34,7 @@ static void renderOrderedEvents()
 {
 	ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyle().Colors[ImGuiCol_Button]);
 
-	const auto& orderedEvents = Manager::Instance::get()->getOrderedEvents();
+	const auto& orderedEvents = Manager::getInstance()->getOrderedEvents();
 	for (auto orderedEvent : orderedEvents)
 	{
 		auto flags = (int)ImGuiTreeNodeFlags_None;
@@ -69,7 +69,7 @@ static void renderUnorderedEvents()
 {
 	ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyle().Colors[ImGuiCol_Button]);
 
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	const auto& events = manager->getEvents();
 	const auto& orderedEvents = manager->getOrderedEvents();
 
@@ -122,7 +122,7 @@ static void renderRegisteredSystems()
 {
 	ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyle().Colors[ImGuiCol_Button]);
 
-	const auto& systems = Manager::Instance::get()->getSystems();
+	const auto& systems = Manager::getInstance()->getSystems();
 	for (const auto& pair : systems)
 	{
 		auto name = typeToString(pair.first);
@@ -144,7 +144,7 @@ static void renderRegisteredComponents()
 {
 	ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyle().Colors[ImGuiCol_Button]);
 
-	const auto& componentTypes = Manager::Instance::get()->getComponentTypes();
+	const auto& componentTypes = Manager::getInstance()->getComponentTypes();
 	for (const auto& pair : componentTypes)
 	{
 		auto name = string(pair.second->getComponentName());

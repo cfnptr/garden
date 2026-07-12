@@ -25,20 +25,19 @@ using namespace garden;
 //**********************************************************************************************************************
 static ID<GraphicsPipeline> createPipeline()
 {
-	auto deferredSystem = DeferredRenderSystem::Instance::get();
+	auto deferredSystem = DeferredRenderSystem::getInstance();
 
-	ResourceSystem::GraphicsOptions options;
-	options.useAsyncRecording = true;
+	ResourceSystem::GraphicsLoadOptions options;
 	options.loadAsync = false; // Note: we need text immediately.
 
-	return ResourceSystem::Instance::get()->loadGraphicsPipeline(
-		"text/ui", deferredSystem->getUiFramebuffer(), options);
+	return ResourceSystem::getInstance()->loadGraphicsPipeline(
+		"text/ui", deferredSystem->getUiFramebuffer(), &options);
 }
 static DescriptorSet::Uniforms getUniforms(ID<Text> text)
 {
-	auto textSystem = TextSystem::Instance::get();
-	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto textView = TextSystem::Instance::get()->get(text);
+	auto textSystem = TextSystem::getInstance();
+	auto graphicsSystem = GraphicsSystem::getInstance();
+	auto textView = TextSystem::getInstance()->get(text);
 	auto fontAtlasView = textSystem->get(textView->getFontAtlas());
 	auto fontAtlas = graphicsSystem->get(fontAtlasView->getImage());
 
@@ -52,22 +51,22 @@ static DescriptorSet::Uniforms getUniforms(ID<Text> text)
 
 static uint32 calcTotalFontSize(uint32 fontSize, bool adjustCJK) noexcept
 {
-	auto isBigFontSize = LocaleSystem::Instance::get()->isBigFontSize();
+	auto isBigFontSize = LocaleSystem::getInstance()->isBigFontSize();
 	auto cjkFontSize = (uint32)round((float)fontSize * 1.2f);
 	return adjustCJK && isBigFontSize ? cjkFontSize : fontSize;
 }
 static uint32 calcScaledFontSize(uint32 totalFontSize) noexcept
 {
 	// TODO: take into account macOS different window and framebuffer scale!
-	auto uiScale = UiTransformSystem::Instance::get()->uiScale;
+	auto uiScale = UiTransformSystem::getInstance()->uiScale;
 	return (uint32)ceil(totalFontSize / uiScale);
 }
 
 static ID<DescriptorSet> createDescriptorSet(ID<Text> textData)
 {
 	auto uniforms = getUniforms(textData);
-	auto descriptorSet = GraphicsSystem::Instance::get()->createDescriptorSet(
-		UiLabelSystem::Instance::get()->getPipeline(), std::move(uniforms));
+	auto descriptorSet = GraphicsSystem::getInstance()->createDescriptorSet(
+		UiLabelSystem::getInstance()->getPipeline(), std::move(uniforms));
 	SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.uiLabel" + to_string(*descriptorSet));
 	return descriptorSet;
 }
@@ -75,8 +74,8 @@ static ID<DescriptorSet> createDescriptorSet(ID<Text> textData)
 //**********************************************************************************************************************
 bool UiLabelComponent::updateText(bool shrink)
 {
-	auto textSystem = TextSystem::Instance::get();
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto textSystem = TextSystem::getInstance();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 
 	if (shrink)
 	{
@@ -100,7 +99,7 @@ bool UiLabelComponent::updateText(bool shrink)
 	u32string_view textString; u32string utf32;
 	if (useLocale)
 	{
-		LocaleSystem::Instance::get()->get(text, utf32);
+		LocaleSystem::getInstance()->get(text, utf32);
 		if (utf32.empty())
 		{
 			isEnabled = false;
@@ -135,7 +134,7 @@ bool UiLabelComponent::updateText(bool shrink)
 	else
 	{
 		#if GARDEN_DEBUG || GARDEN_EDITOR
-		auto fonts = ResourceSystem::Instance::get()->loadFonts(fontPaths, 0, loadNoto);
+		auto fonts = ResourceSystem::getInstance()->loadFonts(fontPaths, 0, loadNoto);
 		if (fonts.empty())
 			return false;
 
@@ -163,7 +162,7 @@ bool UiLabelComponent::updateText(bool shrink)
 //**********************************************************************************************************************
 UiLabelSystem::UiLabelSystem(bool setSingleton) : Singleton(setSingleton)
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	manager->addGroupSystem<ISerializable>(this);
 	manager->addGroupSystem<IAnimatable>(this);
 	manager->addGroupSystem<IMeshRenderSystem>(this);
@@ -174,7 +173,7 @@ UiLabelSystem::UiLabelSystem(bool setSingleton) : Singleton(setSingleton)
 
 void UiLabelSystem::update()
 {
-	auto newUiScale = UiTransformSystem::Instance::get()->uiScale;
+	auto newUiScale = UiTransformSystem::getInstance()->uiScale;
 	if (lastUiScale != newUiScale)
 	{
 		for (auto& component : components)
@@ -202,8 +201,8 @@ void UiLabelSystem::localeChange()
 void UiLabelSystem::resetComponent(View<Component> component, bool full)
 {
 	auto componentView = View<UiLabelComponent>(component);
-	GraphicsSystem::Instance::get()->destroy(componentView->descriptorSet);
-	TextSystem::Instance::get()->destroy(componentView->textData);
+	GraphicsSystem::getInstance()->destroy(componentView->descriptorSet);
+	TextSystem::getInstance()->destroy(componentView->textData);
 
 	if (full)
 		**componentView = {};
@@ -215,15 +214,15 @@ void UiLabelSystem::copyComponent(View<Component> source, View<Component> destin
 	**destinationView = **sourceView;
 
 	if (sourceView->textData && !sourceView->text.empty() && sourceView->fontSize > 0 &&
-		UiTransformSystem::Instance::get()->uiScale > 0.0f)
+		UiTransformSystem::getInstance()->uiScale > 0.0f)
 	{
-		auto textSystem = TextSystem::Instance::get();
+		auto textSystem = TextSystem::getInstance();
 		auto srcTextView = textSystem->get(sourceView->textData);
 
 		u32string_view textString; u32string utf32;
 		if (destinationView->useLocale)
 		{
-			LocaleSystem::Instance::get()->get(destinationView->text, utf32);
+			LocaleSystem::getInstance()->get(destinationView->text, utf32);
 			if (utf32.empty())
 			{
 				destinationView->isEnabled = false;
@@ -265,8 +264,8 @@ bool UiLabelSystem::isDrawReady(int8 shadowPass)
 		return false; // Note: No shadow pass for UI.
 	if (!pipeline)
 		pipeline = createPipeline();
-	textSystem = TextSystem::Instance::get();
-	return GraphicsSystem::Instance::get()->get(pipeline)->isReady();
+	textSystem = TextSystem::getInstance();
+	return GraphicsSystem::getInstance()->get(pipeline)->isReady();
 }
 uint32 UiLabelSystem::getReadyMeshesAsync(MeshRenderComponent* meshRenderView, 
 	const f32x4& cameraPosition, const Frustum& frustum, f32x4x4& model)
@@ -279,9 +278,9 @@ uint32 UiLabelSystem::getReadyMeshesAsync(MeshRenderComponent* meshRenderView,
 }
 void UiLabelSystem::prepareDraw(const f32x4x4& viewProj, uint32 drawCount, uint32 instanceCount, int8 shadowPass)
 {
-	manager = Manager::Instance::get();
-	uiScissorSystem = UiScissorSystem::Instance::tryGet();
-	pipelineView = OptView<GraphicsPipeline>(GraphicsSystem::Instance::get()->get(pipeline));
+	manager = Manager::getInstance();
+	uiScissorSystem = UiScissorSystem::tryGetInstance();
+	pipelineView = OptView<GraphicsPipeline>(GraphicsSystem::getInstance()->get(pipeline));
 }
 void UiLabelSystem::beginDrawAsync(int32 taskIndex)
 {
@@ -412,15 +411,15 @@ void UiLabelSystem::deserialize(IDeserializer& deserializer, View<Component> com
 	u32string_view textString; u32string utf32;
 	if (componentView->useLocale)
 	{
-		LocaleSystem::Instance::get()->get(componentView->text, utf32);
+		LocaleSystem::getInstance()->get(componentView->text, utf32);
 		if (utf32.empty())
 			return;
 		textString = utf32;
 	}
 	else textString = componentView->text;
 
-	auto textSystem = TextSystem::Instance::get();
-	auto fonts = ResourceSystem::Instance::get()->loadFonts(fontPaths, 0, loadNoto);
+	auto textSystem = TextSystem::getInstance();
+	auto fonts = ResourceSystem::getInstance()->loadFonts(fontPaths, 0, loadNoto);
 	auto textData = textSystem->createText(textString, std::move(fonts), scaledFontSize, componentView->properties);
 	componentView->textData = textData;
 
@@ -489,7 +488,7 @@ void UiLabelSystem::deserializeAnimation(IDeserializer& deserializer, View<Anima
 	if (deserializer.read("alignment", alignment))
 		toTextAlignment(alignment, frameView->properties.alignment);
 
-	auto uiScale = UiTransformSystem::Instance::get()->uiScale;
+	auto uiScale = UiTransformSystem::getInstance()->uiScale;
 	// TODO: take into account macOS different window and framebuffer scale!
 	frameView->fontSize = max((uint32)ceil(frameView->fontSize / uiScale), 1u);
 
@@ -535,15 +534,15 @@ void UiLabelSystem::deserializeAnimation(IDeserializer& deserializer, View<Anima
 	u32string_view textString; u32string utf32;
 	if (frameView->useLocale)
 	{
-		LocaleSystem::Instance::get()->get(frameView->text, utf32);
+		LocaleSystem::getInstance()->get(frameView->text, utf32);
 		if (utf32.empty())
 			return;
 		textString = utf32;
 	}
 	else textString = frameView->text;
 
-	auto fonts = ResourceSystem::Instance::get()->loadFonts(fontPaths, 0, loadNoto);
-	auto textData = TextSystem::Instance::get()->createText(textString, 
+	auto fonts = ResourceSystem::getInstance()->loadFonts(fontPaths, 0, loadNoto);
+	auto textData = TextSystem::getInstance()->createText(textString, 
 		std::move(fonts), scaledFontSize, frameView->properties);
 	frameView->textData = textData;
 
@@ -597,7 +596,7 @@ void UiLabelSystem::animateAsync(View<Component> component, View<AnimationFrame>
 
 	if (componentView->textData)
 	{
-		auto textView = TextSystem::Instance::get()->get(componentView->textData);
+		auto textView = TextSystem::getInstance()->get(componentView->textData);
 		auto totalFontSize = calcTotalFontSize(componentView->fontSize, componentView->adjustCJK);
 		componentView->aabb.setSize(f32x4(float3(textView->getSize() * totalFontSize, 1.0f)));
 		componentView->isEnabled = true;
@@ -611,8 +610,8 @@ void UiLabelSystem::animateAsync(View<Component> component, View<AnimationFrame>
 void UiLabelSystem::resetAnimation(View<AnimationFrame> frame, bool full)
 {
 	auto frameView = View<UiLabelFrame>(frame);
-	GraphicsSystem::Instance::get()->destroy(frameView->descriptorSet);
-	TextSystem::Instance::get()->destroy(frameView->textData);
+	GraphicsSystem::getInstance()->destroy(frameView->descriptorSet);
+	TextSystem::getInstance()->destroy(frameView->textData);
 
 	if (full)
 		**frameView = {};

@@ -35,46 +35,46 @@ static ID<Buffer> createGgxKernel(GraphicsSystem* graphicsSystem)
 
 static ID<ComputePipeline> createDownsampleNorm()
 {
-	ResourceSystem::ComputeOptions options;
+	ResourceSystem::ComputeLoadOptions options;
 	options.loadAsync = false;
-	return ResourceSystem::Instance::get()->loadComputePipeline("process/downsample-norm", options);
+	return ResourceSystem::getInstance()->loadComputePipeline("process/downsample-norm", &options);
 }
 static ID<ComputePipeline> createDownsampleNormA()
 {
-	ResourceSystem::ComputeOptions options;
+	ResourceSystem::ComputeLoadOptions options;
 	options.loadAsync = false;
-	return ResourceSystem::Instance::get()->loadComputePipeline("process/downsample-norm-a", options);
+	return ResourceSystem::getInstance()->loadComputePipeline("process/downsample-norm-a", &options);
 }
 static ID<GraphicsPipeline> createBoxBlur(ID<Framebuffer> framebuffer)
 {
-	ResourceSystem::GraphicsOptions options;
+	ResourceSystem::GraphicsLoadOptions options;
 	options.loadAsync = false;
-	return ResourceSystem::Instance::get()->loadGraphicsPipeline("process/box-blur", framebuffer, options);
+	return ResourceSystem::getInstance()->loadGraphicsPipeline("process/box-blur", framebuffer, &options);
 }
 static ID<GraphicsPipeline> createBilateralBlurD(ID<Framebuffer> framebuffer, uint32 kernelRadius)
 {
 	Pipeline::SpecConstValues specConsts = { { "KERNEL_RADIUS", Pipeline::SpecConstValue(kernelRadius) }, };
 
-	ResourceSystem::GraphicsOptions options;
+	ResourceSystem::GraphicsLoadOptions options;
 	options.specConstValues = &specConsts;
 	options.loadAsync = false;
-	return ResourceSystem::Instance::get()->loadGraphicsPipeline("process/bilateral-blur-d", framebuffer, options);
+	return ResourceSystem::getInstance()->loadGraphicsPipeline("process/bilateral-blur-d", framebuffer, &options);
 }
 static ID<GraphicsPipeline> createGaussianBlur(ID<Framebuffer> framebuffer, uint32 coeffCount)
 {
 	Pipeline::SpecConstValues specConsts = { { "COEFF_COUNT", Pipeline::SpecConstValue(coeffCount) }, };
 
-	ResourceSystem::GraphicsOptions options;
+	ResourceSystem::GraphicsLoadOptions options;
 	options.specConstValues = &specConsts;
 	options.loadAsync = false;
-	return ResourceSystem::Instance::get()->loadGraphicsPipeline("process/gaussian-blur", framebuffer, options);
+	return ResourceSystem::getInstance()->loadGraphicsPipeline("process/gaussian-blur", framebuffer, &options);
 }
 
 //**********************************************************************************************************************
 ID<Buffer> GpuProcessSystem::getGgxBlurKernel()
 {
 	if (!ggxBlurKernel)
-		ggxBlurKernel = createGgxKernel(GraphicsSystem::Instance::get());
+		ggxBlurKernel = createGgxKernel(GraphicsSystem::getInstance());
 	return ggxBlurKernel;
 }
 ID<ComputePipeline> GpuProcessSystem::getDownsampleNorm()
@@ -94,9 +94,9 @@ void GpuProcessSystem::generateMips(ID<Image> image, ID<ComputePipeline> pipelin
 {
 	GARDEN_ASSERT(image);
 	GARDEN_ASSERT(pipeline);
-	GARDEN_ASSERT(GraphicsSystem::Instance::get()->isRecording());
+	GARDEN_ASSERT(GraphicsSystem::getInstance()->isRecording());
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	auto baseImageView = graphicsSystem->get(image);
 	auto mipCount = baseImageView->getMipCount();
 	GARDEN_ASSERT_MSG(mipCount > 1, "Image have only one mip level");
@@ -138,9 +138,9 @@ void GpuProcessSystem::generateMips(ID<Image> image, ID<ComputePipeline> pipelin
 void GpuProcessSystem::normalMapMips(ID<Image> normalMap)
 {
 	GARDEN_ASSERT(normalMap);
-	GARDEN_ASSERT(GraphicsSystem::Instance::get()->isRecording());
+	GARDEN_ASSERT(GraphicsSystem::getInstance()->isRecording());
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	auto normalMapView = graphicsSystem->get(normalMap);
 
 	ID<ComputePipeline> pipeline;
@@ -193,9 +193,9 @@ void GpuProcessSystem::gaussianBlur(ID<ImageView> srcBuffer, ID<Framebuffer> dst
 	GARDEN_ASSERT(dstFramebuffer);
 	GARDEN_ASSERT(tmpFramebuffer);
 	GARDEN_ASSERT(kernelBuffer);
-	GARDEN_ASSERT(GraphicsSystem::Instance::get()->isRecording());
+	GARDEN_ASSERT(GraphicsSystem::getInstance()->isRecording());
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	if (!pipeline)
 	{
 		auto kernelBufferView = graphicsSystem->get(kernelBuffer);
@@ -259,12 +259,12 @@ void GpuProcessSystem::depthBilateralBlur(ID<ImageView> srcBuffer, ID<ImageView>
 	GARDEN_ASSERT(tmpFramebuffer);
 	GARDEN_ASSERT(sharpness > 0.0f);
 	GARDEN_ASSERT(kernelRadius > 0);
-	GARDEN_ASSERT(GraphicsSystem::Instance::get()->isRecording());
+	GARDEN_ASSERT(GraphicsSystem::getInstance()->isRecording());
 
 	if (!pipeline)
 		pipeline = createBilateralBlurD(dstFramebuffer, kernelRadius);
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	if (!descriptorSet)
 	{
 		auto tmpFramebufferView = graphicsSystem->get(tmpFramebuffer);
@@ -316,7 +316,7 @@ void GpuProcessSystem::prepareGgxBlur(ID<Image> buffer, vector<ID<Framebuffer>>&
 {
 	GARDEN_ASSERT(buffer);
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	auto bufferView = graphicsSystem->get(buffer);
 	auto roughnessLodCount = bufferView->getMipCount();
 	auto frameSize = (uint2)bufferView->getSize();
@@ -360,7 +360,7 @@ bool GpuProcessSystem::ggxBlur(ID<Image> buffer, const vector<ID<Framebuffer>>& 
 	GARDEN_ASSERT(buffer);
 	GARDEN_ASSERT(framebuffers.size() > 2);
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	auto bufferView = graphicsSystem->get(buffer);
 	auto roughnessLodCount = bufferView->getMipCount();
 	GARDEN_ASSERT(bufferView->getLayerCount() >= 2);

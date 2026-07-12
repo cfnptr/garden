@@ -37,7 +37,7 @@ static ID<Buffer> createHistogramBuffer(GraphicsSystem* graphicsSystem)
 
 static DescriptorSet::Uniforms getHistogramUniforms(GraphicsSystem* graphicsSystem, ID<Buffer> histogramBuffer)
 {
-	auto hdrBufferView = DeferredRenderSystem::Instance::get()->getHdrImageView();
+	auto hdrBufferView = DeferredRenderSystem::getInstance()->getHdrImageView();
 	DescriptorSet::Uniforms uniforms =
 	{ 
 		{ "hdrBuffer", DescriptorSet::Uniform(hdrBufferView) },
@@ -47,7 +47,7 @@ static DescriptorSet::Uniforms getHistogramUniforms(GraphicsSystem* graphicsSyst
 }
 static DescriptorSet::Uniforms getAverageUniforms(ID<Buffer> histogramBuffer)
 {
-	auto toneMappingSystem = ToneMappingSystem::Instance::get();
+	auto toneMappingSystem = ToneMappingSystem::getInstance();
 	DescriptorSet::Uniforms uniforms =
 	{ 
 		{ "histogram", DescriptorSet::Uniform(histogramBuffer) },
@@ -58,27 +58,27 @@ static DescriptorSet::Uniforms getAverageUniforms(ID<Buffer> histogramBuffer)
 
 static ID<ComputePipeline> createHistogramPipeline()
 {
-	ResourceSystem::ComputeOptions options;
-	return ResourceSystem::Instance::get()->loadComputePipeline("auto-exposure/histogram", options);
+	return ResourceSystem::getInstance()->loadComputePipeline("auto-exposure/histogram");
 }
 static ID<ComputePipeline> createAveragePipeline(GraphicsSystem* graphicsSystem)
 {
 	Pipeline::SpecConstValues specConstValues =
 	{ { "SG_SHARED_SIZE", Pipeline::SpecConstValue(graphicsSystem->calcSubgroupSize(WG_LOCAL_SIZE)) } };
-	ResourceSystem::ComputeOptions options;
+
+	ResourceSystem::ComputeLoadOptions options;
 	options.specConstValues = &specConstValues;
-	return ResourceSystem::Instance::get()->loadComputePipeline("auto-exposure/average", options);
+	return ResourceSystem::getInstance()->loadComputePipeline("auto-exposure/average", &options);
 }
 
 //**********************************************************************************************************************
 AutoExposureSystem::AutoExposureSystem(bool setSingleton) : Singleton(setSingleton)
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", AutoExposureSystem::init);
 }
 void AutoExposureSystem::init()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("Render", AutoExposureSystem::render);
 	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", AutoExposureSystem::gBufferRecreate);
 }
@@ -95,7 +95,7 @@ void AutoExposureSystem::render()
 	if (!isEnabled)
 		return;
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	if (!isInitialized)
 	{
 		if (!histogramBuffer)
@@ -107,7 +107,7 @@ void AutoExposureSystem::render()
 		isInitialized = true;
 	}
 
-	auto toneMappingSystem = ToneMappingSystem::Instance::get();
+	auto toneMappingSystem = ToneMappingSystem::getInstance();
 	auto histogramPipelineView = graphicsSystem->get(histogramPipeline);
 	auto averagePipelineView = graphicsSystem->get(averagePipeline);
 	auto luminanceBufferView = graphicsSystem->get(toneMappingSystem->getLuminanceBuffer());
@@ -127,7 +127,7 @@ void AutoExposureSystem::render()
 		SET_RESOURCE_DEBUG_NAME(averageDS, "descriptorSet.autoExposure.average");
 	}
 
-	auto inputSystem = InputSystem::Instance::get();
+	auto inputSystem = InputSystem::getInstance();
 	auto frameSize = graphicsSystem->getScaledFrameSize();
 	auto logLumRange = maxLogLum - minLogLum;
 	auto deltaTime = (float)inputSystem->getDeltaTime();
@@ -169,7 +169,7 @@ void AutoExposureSystem::render()
 //**********************************************************************************************************************
 void AutoExposureSystem::gBufferRecreate()
 {
-	GraphicsSystem::Instance::get()->destroy(histogramDS);
+	GraphicsSystem::getInstance()->destroy(histogramDS);
 }
 
 ID<ComputePipeline> AutoExposureSystem::getHistogramPipeline()
@@ -181,13 +181,13 @@ ID<ComputePipeline> AutoExposureSystem::getHistogramPipeline()
 ID<ComputePipeline> AutoExposureSystem::getAveragePipeline()
 {
 	if (!averagePipeline)
-		averagePipeline = createAveragePipeline(GraphicsSystem::Instance::get());
+		averagePipeline = createAveragePipeline(GraphicsSystem::getInstance());
 	return averagePipeline;
 }
 
 ID<Buffer> AutoExposureSystem::getHistogramBuffer()
 {
 	if (!histogramBuffer)
-		histogramBuffer = createHistogramBuffer(GraphicsSystem::Instance::get());
+		histogramBuffer = createHistogramBuffer(GraphicsSystem::getInstance());
 	return histogramBuffer;
 }

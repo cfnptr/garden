@@ -37,7 +37,7 @@ class GraphicsSystem;
  * @param resource target resource instance
  * @param[in] name resource debug name
  */
-#define SET_RESOURCE_DEBUG_NAME(resource, name) GraphicsSystem::Instance::get()->setDebugName(resource, name)
+#define SET_RESOURCE_DEBUG_NAME(resource, name) GraphicsSystem::getInstance()->setDebugName(resource, name)
 #else
 /**
  * @brief Sets GPU resource debug name. (visible in GPU profiler)
@@ -78,10 +78,10 @@ struct SwapchainChanges final
  */
 class GraphicsSystem final : public System, public Singleton<GraphicsSystem>
 {
-	DescriptorSet::Buffers commonConstantsBuffers;
-	CommonConstants commonConstants = {};
 	vector<float2> jitterOffsets;
 	vector<ID<Buffer>> barrierBuffers;
+	DescriptorSet::Buffers commonConstantsBuffers;
+	CommonConstants commonConstants = {};
 	uint64 frameIndex = 0, tickIndex = 0;
 	double beginSleepClock = 0.0;
 	ID<Buffer> cubeVertexBuffer = {};
@@ -247,7 +247,6 @@ public:
 	 * @details Each tick is a update function call by the manager.
 	 */
 	uint64 getCurrentTickIndex() const noexcept { return tickIndex; }
-
 
 	/**
 	 * @brief Use multithreaded command buffer recording.

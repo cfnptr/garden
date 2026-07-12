@@ -20,7 +20,7 @@ using namespace garden;
 CutoutSpriteSystem::CutoutSpriteSystem(bool setSingleton) : 
 	SpriteCompAnimSystem("sprite/cutout"), Singleton(setSingleton)
 {
-	Manager::Instance::get()->addGroupSystem<IMeshRenderSystem>(this);
+	Manager::getInstance()->addGroupSystem<IMeshRenderSystem>(this);
 }
 
 void CutoutSpriteSystem::setPushConstants(SpriteRenderComponent* spriteRenderView, PushConstants* pushConstants,

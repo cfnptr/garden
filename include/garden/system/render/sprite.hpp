@@ -35,11 +35,8 @@ struct SpriteRenderComponent : public MeshRenderComponent
 	float2 uvOffset = float2::zero;        /**< Texture UV offset. */
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	fs::path colorMapPath = "";            /**< Color map texture path. */
-	float taskPriority = 0.0f;             /**< Texture load task priority. */
 	#endif
 	float colorMapLayer = 0.0f;            /**< Color map texture layer index. */
-	bool isArray = false;                  /**< Is sprite texture type array. */
-	bool useMipmap = false;                /**< Use sprite texture mipmap. */
 };
 
 /**
@@ -47,18 +44,17 @@ struct SpriteRenderComponent : public MeshRenderComponent
  */
 struct SpriteAnimFrame : public AnimationFrame
 {
+	uint8 animateIsEnabled : 1;
+	uint8 animateColor : 1;
+	uint8 animateUvSize : 1;
+	uint8 animateUvOffset : 1;
+	uint8 animateColorMapLayer : 1;
+	uint8 animateColorMap : 1;
+	uint8 isEnabled : 1;
 protected:
-	uint8 _alignment0 = 0;
+	uint8 _unused : 1;
+	uint16 _alignment0 = 0;
 public:
-	uint16 animateIsEnabled : 1;
-	uint16 animateColor : 1;
-	uint16 animateUvSize : 1;
-	uint16 animateUvOffset : 1;
-	uint16 animateColorMapLayer : 1;
-	uint16 animateColorMap : 1;
-	uint16 isEnabled : 1;
-	uint16 isArray : 1;
-	uint16 useMipmap : 1;
 	float2 uvSize = float2::one;
 	float2 uvOffset = float2::zero;
 	f32x4 color = f32x4::one;
@@ -68,12 +64,11 @@ public:
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	fs::path colorMapPath = "";
-	float taskPriority = 0.0f;
 	#endif
 
 	SpriteAnimFrame() noexcept : animateIsEnabled(false), animateColor(false), 
 		animateUvSize(false), animateUvOffset(false), animateColorMapLayer(false), 
-		animateColorMap(false), isEnabled(true), isArray(false), useMipmap(false) { }
+		animateColorMap(false), isEnabled(true), _unused(0) { }
 
 	bool hasAnimation() override
 	{

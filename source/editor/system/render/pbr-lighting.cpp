@@ -23,16 +23,16 @@ using namespace garden;
 //**********************************************************************************************************************
 PbrLightingEditorSystem::PbrLightingEditorSystem()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", PbrLightingEditorSystem::init);
 }
 void PbrLightingEditorSystem::init()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("PreUiRender", PbrLightingEditorSystem::preUiRender);
 	ECSM_SUBSCRIBE_TO_EVENT("EditorBarToolPP", PbrLightingEditorSystem::editorBarToolPP);
 
-	EditorRenderSystem::Instance::get()->registerEntityInspector<PbrLightingComponent>(
+	EditorRenderSystem::getInstance()->registerEntityInspector<PbrLightingComponent>(
 	[this](ID<Entity> entity, bool isOpened)
 	{
 		onEntityInspector(entity, isOpened);
@@ -47,13 +47,13 @@ void PbrLightingEditorSystem::preUiRender()
 
 	if (ImGui::Begin("PBR Lighting", &showWindow, ImGuiWindowFlags_AlwaysAutoResize))
 	{
-		auto pbrLightingSystem = PbrLightingSystem::Instance::get();
+		auto pbrLightingSystem = PbrLightingSystem::getInstance();
 
 		auto quality = pbrLightingSystem->getQuality();
 		if (ImGui::Combo("Quality", &quality, graphicsQualityNames, (int)GraphicsQuality::Count))
 		{
 			pbrLightingSystem->setQuality(quality);
-			auto settingsSystem = SettingsSystem::Instance::tryGet();
+			auto settingsSystem = SettingsSystem::tryGetInstance();
 			if (settingsSystem)
 				settingsSystem->setString("pbrLighting.quality", toString((GraphicsQuality)quality));
 		}
@@ -75,8 +75,8 @@ void PbrLightingEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened
 	if (!isOpened)
 		return;
 
-	auto pbrLightingView = Manager::Instance::get()->get<PbrLightingComponent>(entity);
-	auto editorSystem = EditorRenderSystem::Instance::get();
+	auto pbrLightingView = Manager::getInstance()->get<PbrLightingComponent>(entity);
+	auto editorSystem = EditorRenderSystem::getInstance();
 
 	constexpr const char* cubemapModes[] = { "Static", "Dynamic" };
 	auto cubemapMode = pbrLightingView->getCubemapMode();
@@ -86,9 +86,8 @@ void PbrLightingEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened
 	
 	if (cubemapMode == PbrCubemapMode::Static)
 	{
-		constexpr auto flags = ImageLoadFlags::TypeCubemap | ImageLoadFlags::LoadShared;
 		editorSystem->drawImageSelector("Skybox", pbrLightingView->skyboxPath, pbrLightingView->skybox, 
-			pbrLightingView->descriptorSet, pbrLightingView->getEntity(), typeid(PbrLightingComponent), 1, flags);
+			pbrLightingView->descriptorSet, pbrLightingView->getEntity(), typeid(PbrLightingComponent));
 	}
 	else if (cubemapMode == PbrCubemapMode::Dynamic)
 	{

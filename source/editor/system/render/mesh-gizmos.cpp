@@ -62,28 +62,27 @@ constexpr array<float3, 18> arrowVertices =
 
 MeshGizmosEditorSystem::MeshGizmosEditorSystem()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", MeshGizmosEditorSystem::init);
 }
 void MeshGizmosEditorSystem::init()
 {
-	auto manager = Manager::Instance::get();
-	if (DeferredRenderSystem::Instance::has())
+	auto manager = Manager::getInstance();
+	if (DeferredRenderSystem::hasInstance())
 		ECSM_SUBSCRIBE_TO_EVENT("DsLdrRender", MeshGizmosEditorSystem::render);
 	else ECSM_SUBSCRIBE_TO_EVENT("DsForwardRender", MeshGizmosEditorSystem::render);
 	ECSM_SUBSCRIBE_TO_EVENT("EditorSettings", MeshGizmosEditorSystem::editorSettings);
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto resourceSystem = ResourceSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
+	auto resourceSystem = ResourceSystem::getInstance();
 
 	ID<Framebuffer> framebuffer;
-	if (DeferredRenderSystem::Instance::has())
-		framebuffer = DeferredRenderSystem::Instance::get()->getDepthStencilLdrFB();
-	else framebuffer = ForwardRenderSystem::Instance::get()->getFullFramebuffer();
+	if (DeferredRenderSystem::hasInstance())
+		framebuffer = DeferredRenderSystem::getInstance()->getDepthStencilLdrFB();
+	else framebuffer = ForwardRenderSystem::getInstance()->getFullFramebuffer();
 
-	ResourceSystem::GraphicsOptions options;
-	frontGizmosPipeline = resourceSystem->loadGraphicsPipeline("editor/gizmos-front", framebuffer, options);
-	backGizmosPipeline = resourceSystem->loadGraphicsPipeline("editor/gizmos-back", framebuffer, options);
+	frontGizmosPipeline = resourceSystem->loadGraphicsPipeline("editor/gizmos-front", framebuffer);
+	backGizmosPipeline = resourceSystem->loadGraphicsPipeline("editor/gizmos-back", framebuffer);
 
 	graphicsSystem->getCubeVertexBuffer(); // Note: Allocating default cube in advance.
 	arrowVertexBuffer = graphicsSystem->createBuffer(Buffer::Usage::Vertex | 
@@ -91,7 +90,7 @@ void MeshGizmosEditorSystem::init()
 		arrowVertices, 0, 0, Buffer::Location::PreferGPU, Buffer::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(arrowVertexBuffer, "buffer.vertex.gizmos.arrow");
 
-	auto settingsSystem = SettingsSystem::Instance::tryGet();
+	auto settingsSystem = SettingsSystem::tryGetInstance();
 	if (settingsSystem)
 	{
 		settingsSystem->getColor("meshGizmos.handleColor", handleColor);
@@ -179,17 +178,17 @@ static void renderGizmosMeshes(vector<MeshGizmosEditorSystem::GizmosMesh>& gizmo
 //**********************************************************************************************************************
 void MeshGizmosEditorSystem::render()
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto selectedEntity = EditorRenderSystem::Instance::get()->selectedEntity;
+	auto graphicsSystem = GraphicsSystem::getInstance();
+	auto selectedEntity = EditorRenderSystem::getInstance()->selectedEntity;
 	if (!isEnabled || !selectedEntity || !graphicsSystem->camera || selectedEntity == graphicsSystem->camera)
 		return;
 
-	auto inputSystem = InputSystem::Instance::get();
+	auto inputSystem = InputSystem::getInstance();
 	if (!inputSystem->getMouseState(MouseButton::Left))
 		dragMode = 0;
 	
-	auto manager = Manager::Instance::get();
-	auto uiTransformSystem = UiTriggerSystem::Instance::tryGet();
+	auto manager = Manager::getInstance();
+	auto uiTransformSystem = UiTriggerSystem::tryGetInstance();
 	auto transformView = manager->tryGet<TransformComponent>(selectedEntity);
 	auto frontPipelineView = graphicsSystem->get(frontGizmosPipeline);
 	auto backPipelineView = graphicsSystem->get(backGizmosPipeline);
@@ -353,7 +352,7 @@ void MeshGizmosEditorSystem::editorSettings()
 
 		ImGui::Checkbox("Enabled", &isEnabled);
 
-		auto settingsSystem = SettingsSystem::Instance::tryGet();
+		auto settingsSystem = SettingsSystem::tryGetInstance();
 		if (ImGui::ColorEdit4("Handle Color", &handleColor))
 		{
 			if (settingsSystem)

@@ -13,13 +13,14 @@
 // limitations under the License.
 
 /***********************************************************************************************************************
- * @file Application resource loading functions. (images, models, shaders, pipelines, scenes, sounds, etc.)
+ * @file Application resource loading functions. (images, models, shaders, scenes, fonts, animations, sounds, etc.)
  */
 
 #pragma once
 #include "garden/hash.hpp"
 #include "garden/font.hpp"
 #include "garden/animate.hpp"
+#include "garden/system/thread.hpp"
 #include "garden/graphics/pipeline/compute.hpp"
 #include "garden/graphics/pipeline/graphics.hpp"
 #include "garden/graphics/pipeline/ray-tracing.hpp"
@@ -35,37 +36,6 @@ namespace garden
 using namespace garden::graphics;
 
 /**
- * @brief Additional buffer load flags.
- */
-enum class BufferLoadFlags : uint8
-{
-	None          = 0x00, /**< No additional image load flags. */
-	LoadSync      = 0x01, /**< Load buffer synchronously. (Blocking call) */
-	LoadShared    = 0x02, /**< Load and share instance on second load call. */
-	DoNotOptimize = 0x04  /**< Do not apply mesh optimizations and fixes. */
-};
-
-DECLARE_ENUM_CLASS_FLAG_OPERATORS(BufferLoadFlags)
-
-/**
- * @brief Additional image load flags.
- */
-enum class ImageLoadFlags : uint8
-{
-	None        = 0x00, /**< No additional image load flags. */
-	LoadSync    = 0x01, /**< Load image synchronously. (Blocking call) */
-	LoadShared  = 0x02, /**< Load and share instance on second load call. */
-	LoadAsArray = 0x04, /**< Load as image array. (Slice to layers) */
-	LoadAs3D    = 0x08, /**< Load as 3D image. (Slice to layers) */
-	LoadAsSrgb  = 0x10, /**< Load as sRGB data. (No format conversion) */
-	TypeArray   = 0x20, /**< Load with array image type. (Texture2DArray) */
-	Type3D      = 0x40, /**< Load with 3D image type. (Texture3D) */
-	TypeCubemap = 0x80, /**< Load with cubemap image type. (Cubemap) */
-};
-
-DECLARE_ENUM_CLASS_FLAG_OPERATORS(ImageLoadFlags)
-
-/***********************************************************************************************************************
  * @brief Game or application resource loader. (images, models, shader, scenes, sounds, etc.)
  * 
  * @details
@@ -84,19 +54,18 @@ public:
 	/**
 	 * @brief Pipeline load options container.
 	 */
-	struct PipelineOptions
+	struct PipelineLoadOptions
 	{
 		Pipeline::SpecConstValues* specConstValues = nullptr;     /**< Specialization constants array or null. */
 		Pipeline::SamplerStates* samplerStateOverrides = nullptr; /**< Pipeline sampler state overrides or null. */
-		uint32 maxBindlessCount = 0;    /**< Maximum pipeline bindless descriptor array size. */
-		float taskPriority = 10.0f;     /**< Thread pool pipeline load task priority. */
-		bool useAsyncRecording = false; /**< Can be used for multithreaded commands recording. */
-		bool loadAsync = true;          /**< Load pipeline asynchronously without blocking. [See isReady() func] */
+		uint32 maxBindlessCount = 0;                 /**< Maximum pipeline bindless descriptor array size. */
+		float taskPriority = TaskPriority::pipeline; /**< Thread pool pipeline load task priority. */
+		bool loadAsync = true; /**< Load pipeline asynchronously without blocking. [See isReady() func] */
 	};
 	/**
 	 * @brief Graphics pipeline load options container.
 	 */
-	struct GraphicsOptions final : public PipelineOptions
+	struct GraphicsLoadOptions final : public PipelineLoadOptions
 	{
 		GraphicsPipeline::PipelineStates* pipelineStateOverrides = nullptr; /**< Pipeline state overrides or null. */
 		GraphicsPipeline::BlendStates* blendStateOverrides = nullptr; /**< Pipeline blend state overrides or null. */
@@ -105,14 +74,14 @@ public:
 	/**
 	 * @brief Compute pipeline load options container.
 	 */
-	struct ComputeOptions final : public PipelineOptions
+	struct ComputeLoadOptions final : public PipelineLoadOptions
 	{
 		ComputePipeline::ShaderOverrides* shaderOverrides = nullptr; /**< Pipeline shader code overrides or null. */
 	};
 	/**
 	 * @brief Ray tracing pipeline load options container.
 	 */
-	struct RayTracingOptions final : public PipelineOptions
+	struct RayTracingLoadOptions final : public PipelineLoadOptions
 	{
 		RayTracingPipeline::ShaderOverrides* shaderOverrides = nullptr; /**< Pipeline shader code overrides or null. */
 	};
@@ -145,9 +114,7 @@ protected:
 		Image image;
 		Buffer staging;
 		vector<fs::path> paths = {};
-		uint2 realSize = uint2::zero;
 		ID<Image> instance = {};
-		ImageLoadFlags flags = {};
 	};
 
 	struct LoadedBufferItem final
@@ -202,6 +169,11 @@ protected:
 	virtual void input();
 	virtual void fileChange();
 	
+	bool loadOrConvertCubemap(const fs::path& path, vector<uint8>& nx, vector<uint8>& px, 
+		vector<uint8>& ny, vector<uint8>& py, vector<uint8>& nz, vector<uint8>& pz, 
+		uint2& size, Image::Format& format, int32 threadIndex) const noexcept;
+	bool loadOrConvertImage(const fs::path& path, vector<uint8>& pixels, uint4& size, 
+		Image::Type& type, Image::Format& format, int32 threadIndex) const noexcept;
 	friend class ecsm::Manager;
 public:
 	/*******************************************************************************************************************
@@ -225,11 +197,14 @@ public:
 	 * @param[in] path target image resource path
 	 * @param[out] pixels loaded image pixel data
 	 * @param[out] size loaded image size in pixels
-	 * @param[in,out] format image data format or undefined
+	 * @param[out] type loaded image dimensionality type
+	 * @param[out] format loaded image data format
 	 * @param threadIndex thread index in the pool (-1 = single threaded)
+	 *
+	 * @return True on success, otherwise false and missing image data.
 	 */
-	void loadImageData(const fs::path& path, vector<uint8>& pixels, 
-		uint2& size, Image::Format& format, int32 threadIndex = -1) const noexcept;
+	bool loadImageData(const fs::path& path, vector<uint8>& pixels, uint4& size, 
+		Image::Type& type, Image::Format& format, int32 threadIndex = -1) const noexcept;
 	/**
 	 * @brief Loads image pixels from the resource pack.
 	 * @note Loads from the images directory in debug build.
@@ -238,11 +213,14 @@ public:
 	 * @param pathCount image resource path array size
 	 * @param[out] pixelArrays loaded image pixel data arrays
 	 * @param[out] size loaded image size in pixels
-	 * @param[in,out] format image data format or undefined
+	 * @param[out] type loaded image dimensionality type
+	 * @param[out] format loaded image data format
 	 * @param threadIndex thread index in the pool (-1 = single threaded)
+	 *
+	 * @return True on success, otherwise false and missing image data.
 	 */
-	void loadImageData(const fs::path* paths, psize pathCount, vector<vector<uint8>>& pixelArrays, 
-		uint2& size, Image::Format& format, int32 threadIndex = -1) const noexcept;
+	bool loadImageData(const fs::path* paths, psize pathCount, vector<vector<uint8>>& pixelArrays, 
+		uint4& size, Image::Type& type, Image::Format& format, int32 threadIndex = -1) const noexcept;
 
 	/**
 	 * @brief Loads cubemap image pixels the resource pack.
@@ -256,48 +234,58 @@ public:
 	 * @param[out] nz negative Z side image pixel data container
 	 * @param[out] px positive Z side image pixel data container
 	 * @param[out] size loaded cubemap image size in pixels
-	 * @param[in,out] format image data format or undefined
+	 * @param[out] format loaded image data format
 	 * @param threadIndex thread index the pool (-1 = single threaded)
+	 *
+	 * @return True on success, otherwise false and missing image data.
 	 */
-	void loadCubemapData(const fs::path& path, vector<uint8>& nx, vector<uint8>& px, 
+	bool loadCubemapData(const fs::path& path, vector<uint8>& nx, vector<uint8>& px, 
 		vector<uint8>& ny, vector<uint8>& py, vector<uint8>& nz, vector<uint8>& pz, 
 		uint2& size, Image::Format& format, int32 threadIndex = -1) const noexcept;
 
 	/*******************************************************************************************************************
-	 * @brief Loads image pixels from the resource pack.
+	 * @brief Loads image from the resource pack.
 	 * @note Loads from the images directory in debug build.
 	 *
 	 * @param[in] paths target image resource path array
 	 * @param pathCount image resource path array size
-	 * @param format required image data format
-	 * @param usage image usage flags (affects driver optimization)
-	 * @param maxMipCount maximum mipmap level count (0 = unlimited)
-	 * @param strategy image memory allocation strategy
-	 * @param flags additional image load flags
-	 * @param taskPriority thread pool image load task priority
+	 * @param loadAsync load image asynchronously without blocking
 	 */
-	Ref<Image> loadImage(const fs::path* paths, psize pathCount, Image::Format format, 
-		Image::Usage usage, uint8 maxMipCount = 1, Image::Strategy strategy = Buffer::Strategy::Default, 
-		ImageLoadFlags flags = ImageLoadFlags::None, float taskPriority = 0.0f);
-
+	ID<Image> loadImage(const fs::path* paths, psize pathCount, bool loadAsync = true);
 	/**
-	 * @brief Loads image pixels from the resource pack.
+	 * @brief Loads image from the resource pack.
 	 * @note Loads from the images directory in debug build.
 	 *
 	 * @param[in] path target image resource path
-	 * @param format required image data format
-	 * @param usage image usage flags (affects driver optimization)
-	 * @param maxMipCount maximum mipmap level count (0 = unlimited)
-	 * @param strategy image memory allocation strategy
-	 * @param flags additional image load flags
-	 * @param taskPriority thread pool image load task priority
+	 * @param loadAsync load image asynchronously without blocking
 	 */
-	Ref<Image> loadImage(const fs::path& path, Image::Format format, Image::Usage usage, 
-		uint8 maxMipCount = 1, Image::Strategy strategy = Buffer::Strategy::Default, 
-		ImageLoadFlags flags = ImageLoadFlags::None, float taskPriority = 0.0f)
+	ID<Image> loadImage(const fs::path& path, bool loadAsync = true) { return loadImage(&path, 1, loadAsync); }
+
+	/**
+	 * @brief Loads shared image from the resource pack.
+	 * @note Loads from the images directory in debug build.
+	 *
+	 * @param[in] paths target image resource path array
+	 * @param pathCount image resource path array size
+	 * @param loadAsync load image asynchronously without blocking
+	 */
+	Ref<Image> loadSharedImage(const fs::path* paths, psize pathCount, bool loadAsync = true);
+	/**
+	 * @brief Loads shared image from the resource pack.
+	 * @note Loads from the images directory in debug build.
+	 *
+	 * @param[in] path target image resource path
+	 * @param loadAsync load image asynchronously without blocking
+	 */
+	Ref<Image> loadSharedImage(const fs::path& path, bool loadAsync = true)
 	{
-		return loadImage(&path, 1, format, usage, maxMipCount, strategy, flags, taskPriority);
+		return loadSharedImage(&path, 1, loadAsync);
 	}
+	/**
+	 * @brief Destroys shared image if it's the last one.
+	 * @param[in] image target shared image reference
+	 */
+	void destroyShared(Ref<Image>& image);
 
 	/**
 	 * @brief Stores specified image to the images directory.
@@ -306,13 +294,15 @@ public:
 	 * @param[in] pixels image pixel data
 	 * @param size image size in pixels
 	 * @param fileType image file container type
+	 * @param imageType image dimensionality type
 	 * @param imageFormat required image data format
-	 * @param quality image quality (0.0 - 1.0)
+	 * @param quality image visual quality (0.0 - 1.0)
 	 * @param effort image compression effort (0.0 - 1.0)
 	 * @param[in] directory scene resource directory
 	 */
-	void storeImage(const fs::path& path, const void* pixels, uint2 size, Image::FileType fileType, 
-		Image::Format imageFormat, float quality = 1.0f, float effort = 0.7f, const fs::path& directory = "");
+	void storeImage(const fs::path& path, const void* pixels, uint3 size, 
+		Image::FileType fileType, Image::Type imageType, Image::Format imageFormat, 
+		float quality = 1.0f, float effort = 0.7f, const fs::path& directory = "");
 	/**
 	 * @brief Stores specified image to the images directory.
 	 * 
@@ -320,43 +310,45 @@ public:
 	 * @param[in] pixels image pixel data
 	 * @param size image size in pixels
 	 * @param fileType image file container type
+	 * @param imageType image dimensionality type
 	 * @param imageFormat required image data format
-	 * @param quality image quality (0.0 - 1.0)
+	 * @param quality image visual quality (0.0 - 1.0)
 	 * @param effort image compression effort (0.0 - 1.0)
 	 * @param[in] directory scene resource directory
 	 */
-	void storeImage(const fs::path& path, const vector<uint8>& pixels, uint2 size, Image::FileType fileType, 
-		Image::Format imageFormat, float quality = 1.0f, float effort = 0.7f, const fs::path& directory = "")
+	void storeImage(const fs::path& path, const vector<uint8>& pixels, uint3 size, 
+		Image::FileType fileType, Image::Type imageType, Image::Format imageFormat, 
+		float quality = 1.0f, float effort = 0.7f, const fs::path& directory = "")
 	{
-		GARDEN_ASSERT(pixels.size() == toBinarySize(size.x * size.y, imageFormat));
-		storeImage(path, pixels.data(), size, fileType, imageFormat, quality, effort, directory);
+		GARDEN_ASSERT(pixels.size() == toBinarySize(size.x * size.y * size.z, imageFormat));
+		storeImage(path, pixels.data(), size, fileType, imageType, imageFormat, quality, effort, directory);
 	}
 
-	/**
+	/*******************************************************************************************************************
 	 * @brief Combines images into the one image.
 	 *
 	 * @param[in] inputPaths input image path array
 	 * @param[in] outputPath output image path
 	 * @param fileType output image file container type
 	 * @param imageFormat required image data format
+	 * @param quality image visual quality (0.0 - 1.0)
+	 * @param effort image compression effort (0.0 - 1.0)
 	 * @param threadIndex thread index in the pool (-1 = single threaded)
 	 */
-	void combineImages(const vector<fs::path>& inputPaths, const fs::path& outputPath, 
-		Image::FileType fileType, Image::Format imageFormat, int32 threadIndex = -1);
+	void combineImages(const vector<fs::path>& inputPaths, const fs::path& outputPath, Image::FileType fileType, 
+		Image::Format imageFormat, float quality = 1.0f, float effort = 1.0f, int32 threadIndex = -1);
+
 	/**
 	 * @brief Renormalizes specified normal map image.
 	 *
 	 * @param[in] path target image resource path
 	 * @param fileType output image file container type
+	 * @param quality image visual quality (0.0 - 1.0)
+	 * @param effort image compression effort (0.0 - 1.0)
 	 * @param threadIndex thread index in the pool (-1 = single threaded)
 	 */
-	void renormalizeImage(const fs::path& path, Image::FileType fileType, int32 threadIndex = -1);
-
-	/**
-	 * @brief Destroys shared image if it's the last one.
-	 * @param[in] image target shared image reference
-	 */
-	void destroyShared(Ref<Image>& image);
+	void renormalizeImage(const fs::path& path, Image::FileType fileType, 
+		float quality = 1.0f, float effort = 0.7f, int32 threadIndex = -1);
 
 	/**
 	 * @brief Returns current loaded image instance.
@@ -374,12 +366,9 @@ public:
 	 * @note Loads from the models directory in debug build.
 	 *
 	 * @param[in] path target buffer resource path
-	 * @param strategy buffers memory allocation strategy
-	 * @param flags additional buffer load flags
 	 * @param taskPriority thread pool buffer load task priority
 	 */
-	Ref<Buffer> loadBuffer(const fs::path& path, Buffer::Strategy strategy = Buffer::Strategy::Default, 
-		BufferLoadFlags flags = BufferLoadFlags::None, float taskPriority = 0.0f);
+	Ref<Buffer> loadBuffer(const fs::path& path, float taskPriority = TaskPriority::normal);
 	/**
 	 * @brief Destroys shared buffer if it's the last one.
 	 * @param[in] buffer target shared buffer reference
@@ -426,32 +415,32 @@ public:
 	 * 
 	 * @param[in] path target graphics pipeline resource path
 	 * @param framebuffer parent pipeline framebuffer
-	 * @param[in,out] options graphics pipeline load options
+	 * @param[in] options graphics pipeline load options or null
 	 * 
 	 * @throw GardenError if failed to load graphics pipeline.
 	 */
 	ID<GraphicsPipeline> loadGraphicsPipeline(const fs::path& path, 
-		ID<Framebuffer> framebuffer, const GraphicsOptions& options);
+		ID<Framebuffer> framebuffer, const GraphicsLoadOptions* options = nullptr);
 	/**
 	 * @brief Loads compute pipeline from the resource pack shaders.
 	 * @note Loads from the shaders directory in debug build.
 	 * 
 	 * @param[in] path target compute pipeline resource path
-	 * @param[in,out] options compute pipeline load options
+	 * @param[in] options compute pipeline load options or null
 	 * 
 	 * @throw GardenError if failed to load compute pipeline.
 	 */
-	ID<ComputePipeline> loadComputePipeline(const fs::path& path, const ComputeOptions& options);
+	ID<ComputePipeline> loadComputePipeline(const fs::path& path, const ComputeLoadOptions* options = nullptr);
 	/**
 	 * @brief Loads ray tracing pipeline from the resource pack shaders.
 	 * @note Loads from the shaders directory in debug build.
 	 * 
 	 * @param[in] path target ray tracing pipeline resource path
-	 * @param[in,out] options ray tracing pipeline load options
+	 * @param[in] options ray tracing pipeline load options or null
 	 * 
 	 * @throw GardenError if failed to load ray tracing pipeline.
 	 */
-	ID<RayTracingPipeline> loadRayTracingPipeline(const fs::path& path, const RayTracingOptions& options);
+	ID<RayTracingPipeline> loadRayTracingPipeline(const fs::path& path, const RayTracingLoadOptions* options = nullptr);
 
 	/*******************************************************************************************************************
 	 * @brief Loads scene from the resource pack.
@@ -478,12 +467,15 @@ public:
 	/*******************************************************************************************************************
 	 * @brief Loads animation from the resource pack.
 	 * @note Loads from the animations directory in debug build.
-	 * 
 	 * @param[in] path target animation resource path
-	 * @param loadShared load and share instance on second load call
 	 */
-	Ref<Animation> loadAnimation(const fs::path& path, bool loadShared = false);
-
+	ID<Animation> loadAnimation(const fs::path& path);
+	/**
+	 * @brief Loads shared animation from the resource pack.
+	 * @note Loads from the animations directory in debug build.
+	 * @param[in] path target animation resource path
+	 */
+	Ref<Animation> loadSharedAnimation(const fs::path& path);
 	/**
 	 * @brief Destroys shared animation if it's the last one.
 	 * @param[in] animation target shared animation reference

@@ -281,9 +281,9 @@ public:
 	virtual void flushDestroyBuffer() = 0;
 
 	/**
-	 * @brief Stores shader pipeline cache to the disk.
+	 * @brief Stores shader cache to the disk.
 	 */
-	virtual void storePipelineCache() { }
+	virtual void storeShaderCache() { }
 	/**
 	 * @brief Wait for a GPU to become idle.
 	 */

@@ -23,12 +23,12 @@ using namespace garden;
 //**********************************************************************************************************************
 HbaoRenderEditorSystem::HbaoRenderEditorSystem()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", HbaoRenderEditorSystem::init);
 }
 void HbaoRenderEditorSystem::init()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("PreUiRender", HbaoRenderEditorSystem::preUiRender);
 	ECSM_SUBSCRIBE_TO_EVENT("EditorBarToolPP", HbaoRenderEditorSystem::editorBarToolPP);
 }
@@ -40,10 +40,10 @@ void HbaoRenderEditorSystem::preUiRender()
 
 	if (ImGui::Begin("HBAO (Ambient Occlusion)", &showWindow, ImGuiWindowFlags_AlwaysAutoResize))
 	{
-		auto hbaoSystem = HbaoRenderSystem::Instance::get();
+		auto hbaoSystem = HbaoRenderSystem::getInstance();
 		if (ImGui::Checkbox("Enabled", &hbaoSystem->isEnabled))
 		{
-			auto settingsSystem = SettingsSystem::Instance::tryGet();
+			auto settingsSystem = SettingsSystem::tryGetInstance();
 			if (settingsSystem)
 				settingsSystem->setBool("hbao.enabled", hbaoSystem->isEnabled);
 		}

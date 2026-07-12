@@ -153,12 +153,12 @@ public:
 	 */
 	enum class BlendOp : uint8
 	{
-		Add,             /**< finalColor = (srcColor * srcBlendFactor) + (dstColor * dstBlendFactor) */
-		Subtract,        /**< finalColor = (srcColor * srcBlendFactor) - (dstColor * dstBlendFactor) */
-		RevSubtract,     /**< finalColor = (dstColor * dstBlendFactor) - (srcColor * srcBlendFactor) */
-		Minimum,         /**< finalColor = min(srcColor * srcBlendFactor, dstColor * dstBlendFactor) */
-		Maximum,         /**< finalColor = max(srcColor * srcBlendFactor, dstColor * dstBlendFactor) */
-		Count            /**< Framebuffer blending operation count. */
+		Add,         /**< finalColor = (srcColor * srcBlendFactor) + (dstColor * dstBlendFactor) */
+		Subtract,    /**< finalColor = (srcColor * srcBlendFactor) - (dstColor * dstBlendFactor) */
+		RevSubtract, /**< finalColor = (dstColor * dstBlendFactor) - (srcColor * srcBlendFactor) */
+		Minimum,     /**< finalColor = min(srcColor * srcBlendFactor, dstColor * dstBlendFactor) */
+		Maximum,     /**< finalColor = max(srcColor * srcBlendFactor, dstColor * dstBlendFactor) */
+		Count        /**< Framebuffer blending operation count. */
 	};
 
 	/**
@@ -231,6 +231,15 @@ public:
 		 * @param blending is blending enabled for the attachment
 		 */
 		constexpr BlendState(bool blending = false) noexcept : blending(blending) { }
+		/**
+		 * @brief Returns true if blend state is valid.
+		 */
+		constexpr bool isValid() const noexcept
+		{
+			return srcColorFactor < BlendFactor::Count && dstColorFactor < BlendFactor::Count &&
+				colorOperation < BlendOp::Count && srcAlphaFactor < BlendFactor::Count &&
+				dstAlphaFactor < BlendFactor::Count && alphaOperation < BlendOp::Count;
+		}
 	};
 
 	/**
@@ -253,6 +262,15 @@ public:
 		uint8 writeMask = 0xFF;   /**< Controls which bits in the stencil buffer can be modified by the update operations. */
 		uint8 reference = 0x00;   /**< Value used as the static source for the stencil comparison and the replace operation. */
 		uint8 _alignment = 0;     /**< Stencil state structure alignment. */
+
+		/**
+		 * @brief Returns true if stencil state is valid.
+		 */
+		bool isValid() const noexcept
+		{
+			return failOperation < StencilOp::Count && passOperation < StencilOp::Count &&
+				depthFailOperation < StencilOp::Count && compareOperator < CompareOp::Count;
+		}
 	};
 	/**
 	 * @brief Graphics pipeline state.
@@ -273,7 +291,7 @@ public:
 		uint8 depthBounding : 1;                           /**< Is depth bounds testing enabled. */
 		uint8 stencilTesting : 1;                          /**< Is stencil value testing enabled. */
 		uint8 discarding : 1;                              /**< Is fragment discarding enabled. */
-		uint8 _reserved0 : 1;                             /**< [reserved for future use] */
+		uint8 _reserved0 : 1;                              /**< [reserved for future use] */
 		Topology topology = Topology::TriangleList;        /**< Primitive topology type. */
 		PolygonMode polygonMode = PolygonMode::Fill;       /**< Polygon rasterization mode. */
 		CompareOp depthCompare = CompareOp::Greater;       /**< Depth compare operator. */
@@ -300,6 +318,16 @@ public:
 		 * @param state target stencil state to set
 		 */
 		void setStencilState(StencilState state) noexcept { frontFaceStencil = backFaceStencil = state; }
+
+		/**
+		 * @brief Returns true if graphics pipeline state is valid.
+		 */
+		constexpr bool isValid() const noexcept
+		{
+			return topology < Topology::Count && polygonMode < PolygonMode::Count && depthCompare < CompareOp::Count &&
+				depthBounds.x <= depthBounds.y && frontFaceStencil.isValid() && backFaceStencil.isValid() &&
+				cullFace < CullFace::Count && frontFace < FrontFace::Count; // TODO: other possible checks.
+		}
 	};
 
 	using PipelineStates = tsl::robin_map<uint8, State>;
@@ -313,12 +341,19 @@ public:
 	 * These attributes are essential for rendering as they provide the necessary information to 
 	 * the graphics pipeline about how to process and display each vertex in 3D space.
 	 */
-	struct VertexAttribute final
+	struct alignas(4) VertexAttribute final
 	{
 		GslDataType type = {};     /**< Vertex attribute data type. */
 		GslDataFormat format = {}; /**< Vertex attribute data format. */
 		uint16 offset = 0;         /**< Byte offset of this attribute relative to the start of an element. */
-		// Note: Should be aligned.
+
+		/**
+		 * @brief Returns true if vertex attribute is valid.
+		 */
+		constexpr bool isValid() const noexcept
+		{
+			return type < GslDataType::Count && format < GslDataFormat::Count; // TODO: check offset.
+		}
 	};
 
 	/**
@@ -354,11 +389,11 @@ private:
 	uint8 attachmentCount = 0;
 	ID<Framebuffer> framebuffer = {};
 
-	GraphicsPipeline(const fs::path& path, uint32 maxBindlessCount, bool useAsyncRecording,
-		uint64 pipelineVersion, ID<Framebuffer> framebuffer) noexcept : Pipeline(
-		PipelineType::Graphics, path, maxBindlessCount, useAsyncRecording, pipelineVersion), 
+	GraphicsPipeline(const fs::path& path, uint32 maxBindlessCount,
+		uint64 pipelineVersion, ID<Framebuffer> framebuffer) noexcept : 
+		Pipeline(PipelineType::Graphics, path, maxBindlessCount, pipelineVersion), 
 		framebuffer(framebuffer) { }
-	GraphicsPipeline(GraphicsCreateData& createData, bool useAsyncRecording);
+	GraphicsPipeline(GraphicsCreateData& createData);
 
 	void createVkInstance(GraphicsCreateData& createData);
 
@@ -683,13 +718,11 @@ public:
 	/**
 	 * @brief Creates a new graphics pipeline data.
 	 * @warning In most cases you should use @ref GraphicsSystem functions.
-	 * 
 	 * @param[in,out] createData target graphics pipeline create data
-	 * @param useAsyncRecording use multithreaded render commands recording
 	 */
-	static GraphicsPipeline create(GraphicsPipeline::GraphicsCreateData& createData, bool useAsyncRecording)
+	static GraphicsPipeline create(GraphicsPipeline::GraphicsCreateData& createData)
 	{
-		return GraphicsPipeline(createData, useAsyncRecording);
+		return GraphicsPipeline(createData);
 	}
 	/**
 	 * @brief Moves internal graphics pipeline objects.

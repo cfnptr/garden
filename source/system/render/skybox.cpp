@@ -24,13 +24,12 @@ using namespace garden::primitive;
 //**********************************************************************************************************************
 static ID<GraphicsPipeline> createPipeline()
 {
-	auto deferredSystem = DeferredRenderSystem::Instance::get();
-	ResourceSystem::GraphicsOptions options;
-	options.useAsyncRecording = deferredSystem->getOptions().useAsyncRecording;
+	auto deferredSystem = DeferredRenderSystem::getInstance();
+	ResourceSystem::GraphicsLoadOptions options;
 	options.loadAsync = false; // We can't load async due to imageLoaded() usage.
 
-	return ResourceSystem::Instance::get()->loadGraphicsPipeline(
-		"skybox", deferredSystem->getDepthStencilHdrFB(), options);
+	return ResourceSystem::getInstance()->loadGraphicsPipeline(
+		"skybox", deferredSystem->getDepthStencilHdrFB(), &options);
 }
 static DescriptorSet::Uniforms getUniforms(GraphicsSystem* graphicsSystem, ID<Image> cubemap)
 {
@@ -40,19 +39,19 @@ static DescriptorSet::Uniforms getUniforms(GraphicsSystem* graphicsSystem, ID<Im
 
 SkyboxRenderSystem::SkyboxRenderSystem(bool setSingleton) : Singleton(setSingleton)
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", SkyboxRenderSystem::init);
 }
 void SkyboxRenderSystem::init()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("ImageLoaded", SkyboxRenderSystem::imageLoaded);
 	ECSM_SUBSCRIBE_TO_EVENT("DsHdrRender", SkyboxRenderSystem::dsHdrRender);
 }
 
 void SkyboxRenderSystem::resetComponent(View<Component> component, bool full)
 {
-	auto resourceSystem = ResourceSystem::Instance::get();
+	auto resourceSystem = ResourceSystem::getInstance();
 	auto componentView = View<SkyboxRenderComponent>(component);
 	resourceSystem->destroyShared(componentView->cubemap);
 	resourceSystem->destroyShared(componentView->descriptorSet);
@@ -72,7 +71,7 @@ string_view SkyboxRenderSystem::getComponentName() const
 //**********************************************************************************************************************
 void SkyboxRenderSystem::imageLoaded()
 {
-	auto resourceSystem = ResourceSystem::Instance::get();
+	auto resourceSystem = ResourceSystem::getInstance();
 	auto image = resourceSystem->getLoadedImage();
 	auto& imagePath = resourceSystem->getLoadedImagePaths()[0];
 	Ref<DescriptorSet> descriptorSet = {};
@@ -94,8 +93,8 @@ void SkyboxRenderSystem::dsHdrRender()
 	if (!isEnabled)
 		return;
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto skyboxView = Manager::Instance::get()->tryGet<SkyboxRenderComponent>(graphicsSystem->camera);
+	auto graphicsSystem = GraphicsSystem::getInstance();
+	auto skyboxView = Manager::getInstance()->tryGet<SkyboxRenderComponent>(graphicsSystem->camera);
 	if (!skyboxView || !skyboxView->cubemap)
 		return;
 
@@ -153,7 +152,7 @@ Ref<DescriptorSet> SkyboxRenderSystem::createSharedDS(string_view path, ID<Image
 	GARDEN_ASSERT(!path.empty());
 	GARDEN_ASSERT(cubemap);
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	auto cubemapView = graphicsSystem->get(cubemap);
 	auto imageSize = (uint2)cubemapView->getSize();
 	auto imageType = cubemapView->getType();
@@ -166,7 +165,7 @@ Ref<DescriptorSet> SkyboxRenderSystem::createSharedDS(string_view path, ID<Image
 	Hash128::updateState(hashState, &imageType, sizeof(Image::Type));
 
 	auto uniforms = getUniforms(graphicsSystem, cubemap);
-	auto descriptorSet = ResourceSystem::Instance::get()->createSharedDS(
+	auto descriptorSet = ResourceSystem::getInstance()->createSharedDS(
 		Hash128::digestState(hashState), getPipeline(), std::move(uniforms));
 	SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.shared." + string(path));
 	return descriptorSet;

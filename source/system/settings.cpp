@@ -26,14 +26,14 @@ using json = nlohmann::json;
 //**********************************************************************************************************************
 SettingsSystem::SettingsSystem(bool setSingleton) : Singleton(setSingleton)
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("PreInit", SettingsSystem::preInit);
 	ECSM_SUBSCRIBE_TO_EVENT("PostDeinit", SettingsSystem::postDeinit);
 }
 
 void SettingsSystem::preInit()
 {
-	auto appInfoSystem = AppInfoSystem::Instance::get();
+	auto appInfoSystem = AppInfoSystem::getInstance();
 	try
 	{
 		auto appDataPath = mpio::Directory::getAppDataPath(appInfoSystem->getAppDataName());
@@ -50,7 +50,7 @@ void SettingsSystem::preInit()
 }
 void SettingsSystem::postDeinit()
 {
-	auto appInfoSystem = AppInfoSystem::Instance::get();
+	auto appInfoSystem = AppInfoSystem::getInstance();
 	try
 	{
 		json data;

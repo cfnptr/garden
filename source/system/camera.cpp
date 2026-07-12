@@ -19,7 +19,7 @@ using namespace garden;
 //**********************************************************************************************************************
 CameraSystem::CameraSystem(bool setSingleton) : Singleton(setSingleton)
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	manager->addGroupSystem<ISerializable>(this);
 	manager->addGroupSystem<IAnimatable>(this);
 }

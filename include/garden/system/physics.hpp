@@ -1082,7 +1082,7 @@ public:
 	 * @brief Returns physics system internal instance.
 	 * @warning Use only if you know what you are doing!
 	 */
-	void* getInstance() const noexcept { return physicsInstance; }
+	void* getInternal() const noexcept { return physicsInstance; }
 };
 
 } // namespace garden

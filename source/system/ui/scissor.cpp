@@ -22,7 +22,7 @@ using namespace garden;
 //**********************************************************************************************************************
 UiScissorSystem::UiScissorSystem(bool setSingleton) : Singleton(setSingleton)
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	manager->addGroupSystem<ISerializable>(this);
 	manager->addGroupSystem<IAnimatable>(this);
 }
@@ -94,13 +94,13 @@ static int4 calcUiScissor(const UiScissorComponent* uiScissorView, const Transfo
 }
 int4 UiScissorSystem::calcScissor(ID<Entity> entity) const noexcept
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	auto transformView = manager->tryGet<TransformComponent>(entity);
 	if (!transformView)
 		return int4::zero;
 
-	auto inputSystem = InputSystem::Instance::get();
-	auto uiTransformSystem = UiTransformSystem::Instance::get();
+	auto inputSystem = InputSystem::getInstance();
+	auto uiTransformSystem = UiTransformSystem::getInstance();
 	auto windowScale = inputSystem->getWindowScale();
 	auto frameSize = (int2)inputSystem->getFramebufferSize();
 	auto uiHalfSize = uiTransformSystem->getUiSize() * 0.5f;

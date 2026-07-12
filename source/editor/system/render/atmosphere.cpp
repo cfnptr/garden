@@ -23,16 +23,15 @@ using namespace garden;
 //**********************************************************************************************************************
 AtmosphereEditorSystem::AtmosphereEditorSystem()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", AtmosphereEditorSystem::init);
 }
 void AtmosphereEditorSystem::init()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("PreUiRender", AtmosphereEditorSystem::preUiRender);
 	ECSM_SUBSCRIBE_TO_EVENT("EditorBarToolPP", AtmosphereEditorSystem::editorBarToolPP);
 }
-
 void AtmosphereEditorSystem::preUiRender()
 {
 	if (!showWindow)
@@ -40,7 +39,7 @@ void AtmosphereEditorSystem::preUiRender()
 
 	if (ImGui::Begin("Sky Atmosphere", &showWindow, ImGuiWindowFlags_AlwaysAutoResize))
 	{
-		auto atmosphereSystem = AtmosphereRenderSystem::Instance::get();
+		auto atmosphereSystem = AtmosphereRenderSystem::getInstance();
 		ImGui::Checkbox("Enabled", &atmosphereSystem->isEnabled); ImGui::SameLine();
 
 		ImGui::Checkbox("No-Delay Mode", &atmosphereSystem->noDelay);
@@ -54,7 +53,7 @@ void AtmosphereEditorSystem::preUiRender()
 		if (ImGui::Combo("Quality", &quality, graphicsQualityNames, (int)GraphicsQuality::Count))
 		{
 			atmosphereSystem->setQuality(quality);
-			auto settingsSystem = SettingsSystem::Instance::tryGet();
+			auto settingsSystem = SettingsSystem::tryGetInstance();
 			if (settingsSystem)
 				settingsSystem->setString("atmosphere.quality", toString((GraphicsQuality)quality));
 		}

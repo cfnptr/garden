@@ -113,23 +113,18 @@ static void setImGuiStyle()
 //**********************************************************************************************************************
 static ID<GraphicsPipeline> createPipeline()
 {
-	ID<Framebuffer> framebuffer; bool asyncRecording;
-	if (DeferredRenderSystem::Instance::has())
+	ID<Framebuffer> framebuffer;
+	if (DeferredRenderSystem::hasInstance())
 	{
-		auto deferredSystem = DeferredRenderSystem::Instance::get();
+		auto deferredSystem = DeferredRenderSystem::getInstance();
 		framebuffer = deferredSystem->getUiFramebuffer();
-		asyncRecording = deferredSystem->getOptions().useAsyncRecording;
 	}
 	else
 	{
-		auto forwardSystem = ForwardRenderSystem::Instance::get();
+		auto forwardSystem = ForwardRenderSystem::getInstance();
 		framebuffer = forwardSystem->getColorFramebuffer();
-		asyncRecording = forwardSystem->useAsyncRecording();
 	}
-
-	ResourceSystem::GraphicsOptions options;
-	options.useAsyncRecording = asyncRecording;
-	return ResourceSystem::Instance::get()->loadGraphicsPipeline("imgui", framebuffer, options);
+	return ResourceSystem::getInstance()->loadGraphicsPipeline("imgui", framebuffer);
 }
 static ID<Sampler> createLinearSampler(GraphicsSystem* graphicsSystem)
 {
@@ -174,7 +169,7 @@ static void createBuffers(GraphicsSystem* graphicsSystem,
 ImGuiRenderSystem::ImGuiRenderSystem(bool setSingleton, 
 	const fs::path& fontPath) : Singleton(setSingleton), fontPath(fontPath)
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("PreInit", ImGuiRenderSystem::preInit);
 	ECSM_SUBSCRIBE_TO_EVENT("PostInit", ImGuiRenderSystem::postInit);
 	ECSM_SUBSCRIBE_TO_EVENT("Update", ImGuiRenderSystem::update);
@@ -217,13 +212,13 @@ static LRESULT CALLBACK imGuiWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM 
 //**********************************************************************************************************************
 void ImGuiRenderSystem::preInit()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("Input", ImGuiRenderSystem::input);
 
 	auto& io = ImGui::GetIO();
 	auto graphicsAPI = GraphicsAPI::get();
-	auto inputSystem = InputSystem::Instance::get();
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto inputSystem = InputSystem::getInstance();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	auto windowSize = inputSystem->getWindowSize();
 	auto windowScale = inputSystem->getWindowScale();
 	io.DisplaySize = ImVec2(windowSize.x, windowSize.y);
@@ -239,11 +234,11 @@ void ImGuiRenderSystem::preInit()
 	auto& platformIO = ImGui::GetPlatformIO();
 	platformIO.Platform_SetClipboardTextFn = [](ImGuiContext*, const char* text)
 	{
-		InputSystem::Instance::get()->setClipboard(text);
+		InputSystem::getInstance()->setClipboard(text);
 	};
 	platformIO.Platform_GetClipboardTextFn = [](ImGuiContext*)
 	{
-		auto inputSystem = InputSystem::Instance::get();
+		auto inputSystem = InputSystem::getInstance();
 		return inputSystem->getClipboard().empty() ? nullptr : inputSystem->getClipboard().c_str();
 	};
 
@@ -271,7 +266,7 @@ void ImGuiRenderSystem::preInit()
 	auto fontResult = io.Fonts->AddFontFromFileTTF(fontString.c_str(), fontSize);
 	GARDEN_ASSERT_MSG(fontResult, "Failed to load ImGui font [" + fontString + "]");
 	#else
-	auto& packReader = ResourceSystem::Instance::get()->getPackReader();
+	auto& packReader = ResourceSystem::getInstance()->getPackReader();
 	auto fontIndex = packReader.getItemIndex(fontPath);
 	auto fontDataSize = packReader.getItemDataSize(fontIndex);
 	auto fontData = malloc<uint8>(fontDataSize);
@@ -281,7 +276,7 @@ void ImGuiRenderSystem::preInit()
 }
 void ImGuiRenderSystem::postInit()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("PostLdrToUI", ImGuiRenderSystem::postLdrToUI);
 	ECSM_SUBSCRIBE_TO_EVENT("UiRender", ImGuiRenderSystem::uiRender);
 }
@@ -429,7 +424,7 @@ static void updateImGuiKeyModifiers(InputSystem* inputSystem, ImGuiIO& io)
 void ImGuiRenderSystem::input()
 {
 	auto& io = ImGui::GetIO();
-	auto inputSystem = InputSystem::Instance::get();
+	auto inputSystem = InputSystem::getInstance();
 
 	if (inputSystem->isCursorEntered())
 	{
@@ -524,7 +519,7 @@ void ImGuiRenderSystem::update()
 		return;
 
 	auto& io = ImGui::GetIO();
-	auto inputSystem = InputSystem::Instance::get();
+	auto inputSystem = InputSystem::getInstance();
 	auto windowSize = inputSystem->getWindowSize();
 	auto windowScale = inputSystem->getWindowScale();
 	io.DisplaySize = ImVec2(windowSize.x, windowSize.y);
@@ -580,7 +575,7 @@ void ImGuiRenderSystem::update()
 static void updateImGuiTextures(ImVector<ImTextureData*>& textures, 
 	tsl::robin_map<ID<ImageView>, ID<DescriptorSet>>& dsCache)
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	graphicsSystem->startRecording(CommandBufferType::Frame);
 
 	for (auto texture : textures)
@@ -654,7 +649,7 @@ void ImGuiRenderSystem::postLdrToUI()
 	if (!isEnabled)
 		return;
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	if (!isInitialized)
 	{
 		if (!pipeline)
@@ -684,7 +679,7 @@ void ImGuiRenderSystem::uiRender()
 	if (!isEnabled)
 		return;
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	auto pipelineView = graphicsSystem->get(pipeline);
 	if (!pipelineView->isReady())
 		return;
@@ -734,7 +729,7 @@ void ImGuiRenderSystem::uiRender()
 	auto framebufferView = graphicsSystem->get(pipelineView->getFramebuffer());
 	auto frameSize = (float2)framebufferView->getSize();
 	auto isRenderPassAsync = graphicsSystem->isRenderPassAsync();
-	auto threadSystem = ThreadSystem::Instance::tryGet();
+	auto threadSystem = ThreadSystem::tryGetInstance();
 
 	PushConstants pc;
 	pc.scale = float2(2.0f / drawData->DisplaySize.x, 2.0f / drawData->DisplaySize.y);

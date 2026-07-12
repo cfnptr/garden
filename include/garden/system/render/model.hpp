@@ -37,7 +37,7 @@ struct ModelLOD final
  */
 struct ModelRenderComponent final : public Component
 {
-	vector<ModelLOD> lods;
+	vector<ModelLOD> lods; /**< 3D model levels of detail. */
 };
 
 /**
@@ -58,6 +58,16 @@ class ModelRenderSystem final : public ComponentSystem<
 	string_view getComponentName() const override;
 
 	friend class ecsm::Manager;
+public:
+	/**
+	 * @brief Loads 3D model from the specified file data.
+	 * @throw GardenError on 3d model data loading error.
+	 * 
+	 * @param[in] data 3d model file binary data
+	 * @param dataSize 3d model file data size in bytes
+	 * @param fileType 3d model file container type
+	 */
+	static void loadFileData(const void* data, psize dataSize);
 };
 
 } // namespace garden

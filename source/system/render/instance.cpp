@@ -20,7 +20,7 @@ using namespace garden;
 static void createInstanceBuffers(uint64 bufferSize, DescriptorSet::Buffers& instanceBuffers, 
 	bool isShadow, InstanceRenderSystem* system)
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	auto inFlightCount = graphicsSystem->getInFlightCount();
 	instanceBuffers.resize(inFlightCount);
 
@@ -46,12 +46,12 @@ static void createInstanceBuffers(uint64 bufferSize, DescriptorSet::Buffers& ins
 
 InstanceRenderSystem::InstanceRenderSystem()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", InstanceRenderSystem::init);
 }
 void InstanceRenderSystem::init()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	if (manager->hasEvent("GBufferRecreate"))
 		ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", InstanceRenderSystem::gBufferRecreate);
 	else ECSM_SUBSCRIBE_TO_EVENT("SwapchainRecreate", InstanceRenderSystem::gBufferRecreate);
@@ -60,7 +60,7 @@ void InstanceRenderSystem::init()
 //**********************************************************************************************************************
 bool InstanceRenderSystem::isDrawReady(int8 shadowPass)
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	if (shadowPass < 0)
 	{
 		if (!basePipeline)
@@ -119,7 +119,7 @@ bool InstanceRenderSystem::isDrawReady(int8 shadowPass)
 //**********************************************************************************************************************
 void InstanceRenderSystem::prepareDraw(const f32x4x4& viewProj, uint32 drawCount, uint32 instanceCount, int8 shadowPass)
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	inFlightIndex = graphicsSystem->getInFlightIndex();
 
 	if (shadowPass < 0)
@@ -206,7 +206,7 @@ void InstanceRenderSystem::finalizeDraw(uint32 instanceCount)
 		if (!baseInstanceBuffers.empty())
 		{
 			auto instanceBuffer = baseInstanceBuffers[inFlightIndex][0];
-			auto bufferView = GraphicsSystem::Instance::get()->get(instanceBuffer);
+			auto bufferView = GraphicsSystem::getInstance()->get(instanceBuffer);
 			bufferView->flush(instanceCount * getBaseInstanceDataSize());
 		}
 	}
@@ -222,7 +222,7 @@ void InstanceRenderSystem::renderCleanup()
 		if (!shadowInstanceBuffers.empty())
 		{
 			auto instanceBuffer = shadowInstanceBuffers[inFlightIndex][0];
-			auto bufferView = GraphicsSystem::Instance::get()->get(instanceBuffer);
+			auto bufferView = GraphicsSystem::getInstance()->get(instanceBuffer);
 			bufferView->flush(shadowInstanceIndex * getShadowInstanceDataSize());
 		}
 		shadowInstanceIndex = 0;
@@ -231,7 +231,7 @@ void InstanceRenderSystem::renderCleanup()
 
 void InstanceRenderSystem::gBufferRecreate()
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	graphicsSystem->destroy(baseDescriptorSet);
 	graphicsSystem->destroy(shadowDescriptorSet);
 }

@@ -22,12 +22,12 @@ using namespace garden;
 //**********************************************************************************************************************
 UiCheckboxEditorSystem::UiCheckboxEditorSystem(bool setSingleton) : Singleton(setSingleton)
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", UiCheckboxEditorSystem::init);
 }
 void UiCheckboxEditorSystem::init()
 {
-	EditorRenderSystem::Instance::get()->registerEntityInspector<UiCheckboxComponent>(
+	EditorRenderSystem::getInstance()->registerEntityInspector<UiCheckboxComponent>(
 	[this](ID<Entity> entity, bool isOpened)
 	{
 		onEntityInspector(entity, isOpened);
@@ -40,7 +40,7 @@ void UiCheckboxEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	if (!isOpened)
 		return;
 
-	auto uiCheckboxView = Manager::Instance::get()->get<UiCheckboxComponent>(entity);
+	auto uiCheckboxView = Manager::getInstance()->get<UiCheckboxComponent>(entity);
 
 	auto isEnabled = uiCheckboxView->isEnabled();
 	if (ImGui::Checkbox("Enabled", &isEnabled))

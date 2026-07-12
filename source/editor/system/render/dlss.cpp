@@ -23,12 +23,12 @@ using namespace garden;
 //**********************************************************************************************************************
 DlssRenderEditorSystem::DlssRenderEditorSystem()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", DlssRenderEditorSystem::init);
 }
 void DlssRenderEditorSystem::init()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("EditorSettings", DlssRenderEditorSystem::editorSettings);
 }
 
@@ -37,14 +37,14 @@ void DlssRenderEditorSystem::editorSettings()
 	ImGui::Spacing();
 	ImGui::PushID("dlss");
 
-	auto dlssSystem = DlssRenderSystem::Instance::get();
+	auto dlssSystem = DlssRenderSystem::getInstance();
 	ImGui::BeginDisabled(!dlssSystem->isInitialized());
 
 	auto quality = dlssSystem->getQuality();
 	if (ImGui::Combo("DLSS Quality", &quality, dlssQualityNames, (int)DlssQuality::Count))
 	{
 		dlssSystem->setQuality(quality);
-		auto settingsSystem = SettingsSystem::Instance::tryGet();
+		auto settingsSystem = SettingsSystem::tryGetInstance();
 		if (settingsSystem)
 			settingsSystem->setString("dlss.quality", toString((DlssQuality)quality));
 	}

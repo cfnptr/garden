@@ -200,7 +200,7 @@ public:
 	 */
 	enum class FileType : uint8
 	{
-		KTX2, WebP, PNG, JPEG, EXR, HDR, BMP, PSD, TGA, PIC, GIF, Count
+		GIC, WebP, PNG, JPEG, EXR, HDR, BMP, PSD, TGA, PIC, GIF, Count
 	};
 	/**
 	 * @brief Image file store flags.
@@ -208,9 +208,13 @@ public:
 	enum class StoreFlag : uint8
 	{
 		None = 0x00,         /**< No additional image store flags. */
-		GenerateMips = 0x01, /**< Generate and store image mip map levels. */
-		BlockSize6x6 = 0x02, /**< Use 6x6 block size for compressed formats. */
-		BlockSize8x8 = 0x04  /**< Use 8x8 block size for compressed formats. */
+		Lossless = 0x01,     /**< Store image without any visual regressions. */
+		GenerateMips = 0x02, /**< Generate and store image mip map levels. */
+		LinearAsSrgb = 0x04, /**< Store linear image data as sRGB, without conversion. */
+		BlockSize6x6 = 0x08, /**< Use 6x6 block size for compressed formats. */
+		BlockSize8x8 = 0x10, /**< Use 8x8 block size for compressed formats. */
+	
+		BlockSizeMask = BlockSize6x6 | BlockSize8x8 /**< Compressed format block size mask. */
 	};
 
 	/*******************************************************************************************************************
@@ -866,7 +870,11 @@ public:
 	void setDebugName(const string& name) override;
 	#endif
 
-	/*******************************************************************************************************************
+	//******************************************************************************************************************
+	// End of Render commands
+	//******************************************************************************************************************
+
+	/**
 	 * @brief Converts image data formats.
 	 * @note Clamps values if out of range.
 	 *
@@ -879,22 +887,61 @@ public:
 	 * @return pointer to the converted image pixel data.
 	 * @throw GardenError on image data conversion error.
 	 */
-	static const void* convertFormat(const void* srcPixels, uint2 size, 
+	static const void* convertFormat(const void* srcPixels, uint3 size, 
 		vector<uint8>& dstPixels, Format srcFormat, Format dstFormat);
 
 	/**
+	 * @brief Converts 3D image pixels into the 2D horizontally packed.
+	 * @details Image layers are packed side by side for a better compression.
+	 *
+	 * @param[in,out] pixels image pixel data to pack
+	 * @param[in,out] size image data size in pixels
+	 * @param stride size of one pixel in bytes
+	 * @param[in] tmpBuffer temporary data buffer or null
+	 *
+	 * @throw GardenError on invalid unpacked image pixel size.
+	 */
+	static uint2 pack3D(vector<uint8>& pixels, uint3 size, uint32 stride, vector<uint8>* tmpBuffer = nullptr);
+	/**
+	 * @brief Converts 2D horizontally packed image pixels to the 3D image.
+	 * @details See the @ref Image::pack3D().
+	 *
+	 * @param[in] pixels image pixel data to unpack
+	 * @param[in,out] size image data size in pixels
+	 * @param stride size of one pixel in bytes
+	 * @param[out] tmpBuffer temporary data buffer or null
+	 *
+	 * @throw GardenError on invalid packed image pixel size.
+	 */
+	static uint3 unpack3D(vector<uint8>& pixels, uint2 size, uint32 stride, vector<uint8>* tmpBuffer = nullptr);
+
+	/*******************************************************************************************************************
 	 * @brief Loads image pixels from the specified file data.
 	 * @throw GardenError on image data loading error.
 	 * 
 	 * @param[in] data image file binary data
 	 * @param dataSize image file data size in bytes
+	 * @param fileType image file container type
 	 * @param[out] pixels loaded image pixel data
 	 * @param[out] imageSize loaded image size in pixels
-	 * @param fileType image file container type
-	 * @param[in,out] imageFormat image data format or undefined
+	 * @param[out] imageType loaded image dimensionality type
+	 * @param[out] imageFormat loaded image data format
 	 */
-	static void loadFileData(const void* data, psize dataSize, vector<uint8>& pixels, 
-		uint2& imageSize, FileType fileType, Format& imageFormat);
+	static void loadFileData(const void* data, psize dataSize, FileType fileType, 
+		vector<uint8>& pixels, uint4& imageSize, Type& imageType, Format& imageFormat);
+	/**
+	 * @brief Loads and applies image metadata from the specified file.
+	 * @throw GardenError on image metadata loading error.
+	 * 
+	 * @param[in] path target image metadata file path
+	 * @param[in,out] pixels loaded image pixel data
+	 * @param[in,out] size loaded image size in pixels
+	 * @param[in,out] imageType loaded image dimensionality type
+	 * @param[in,out] imageFormat loaded image data format
+	 * @param[in,out] storeFlags loaded image store flag bitmask
+	 */
+	static void loadFileMetadata(const fs::path& path, vector<uint8>& pixels, uint4& size, 
+		Type& imageType, Format& imageFormat, float& effort, StoreFlag& storeFlags);
 	/**
 	 * @brief Stores image pixels to the specified file.
 	 * @throw GardenError on image data writing error.
@@ -903,13 +950,15 @@ public:
 	 * @param[in] pixels image pixel data
 	 * @param size image size in pixels
 	 * @param fileType image file container type
+	 * @param imageType image dimensionality type
 	 * @param imageFormat image pixel data format
 	 * @param quality image quality (0.0 - 1.0)
 	 * @param effort image compression effort (0.0 - 1.0)
 	 * @param flags additional image store flags
 	 */
-	static void storeFileData(const fs::path& path, const void* pixels, uint2 size, FileType fileType, 
-		Format imageFormat, float quality = 1.0f, float effort = 0.7f, StoreFlag flags = StoreFlag::None);
+	static void storeFileData(const fs::path& path, const void* pixels, 
+		uint3 size, FileType fileType, Image::Type imageType, Format imageFormat, 
+		float quality = 1.0f, float effort = 0.7f, StoreFlag flags = StoreFlag::None);
 };
 
 DECLARE_ENUM_CLASS_FLAG_OPERATORS(Image::Usage)
@@ -1125,6 +1174,22 @@ static constexpr bool isFormatFloat(Image::Format formatType)
 	return Image::Format::SfloatR16 <= formatType && formatType <= Image::Format::UfloatBC6H;
 }
 /**
+ * @brief Is the image data format a 32-bit floating point.
+ * @param formatType target image format
+ */
+static constexpr bool isFormatFloat32(Image::Format formatType)
+{
+	return Image::Format::SfloatR32 <= formatType && formatType <= Image::Format::SfloatR32G32B32A32;
+}
+/**
+ * @brief Is the image data format a 16-bit floating point.
+ * @param formatType target image format
+ */
+static constexpr bool isFormatFloat16(Image::Format formatType)
+{
+	return Image::Format::SfloatR16 <= formatType && formatType <= Image::Format::SfloatR16G16B16A16;
+}
+/**
  * @brief Is the image data format a sRGB encoded.
  * @param formatType target image format
  */
@@ -1325,6 +1390,67 @@ static constexpr uint8 toComponentCount(Image::Format imageFormat) noexcept
 }
 
 /***********************************************************************************************************************
+ * @brief Returns image sRGB format from the component count
+ * @param componentCount target channel count
+ * @throw GardenError on unsupported component count.
+ */
+static Image::Format toSrgbFormat(int componentCount)
+{
+	switch (componentCount)
+	{
+		case 4: return Image::Format::SrgbR8G8B8A8;
+		case 2: return Image::Format::SrgbR8G8;
+		case 1: return Image::Format::SrgbR8;
+		default: throw GardenError("Unsupported sRGB image channel count.");
+	}
+}
+/**
+ * @brief Returns image unorm format from the component count
+ * @param componentCount target channel count
+ * @throw GardenError on unsupported component count.
+ */
+static Image::Format toUnormFormat(int componentCount)
+{
+	switch (componentCount)
+	{
+		case 4: return Image::Format::UnormR8G8B8A8;
+		case 2: return Image::Format::UnormR8G8;
+		case 1: return Image::Format::UnormR8;
+		default: throw GardenError("Unsupported unorm image channel count.");
+	}
+}
+/**
+ * @brief Returns image 16-bit float format from the component count
+ * @param componentCount target channel count
+ * @throw GardenError on unsupported component count.
+ */
+static Image::Format toFloatFormat16(int componentCount)
+{
+	switch (componentCount)
+	{
+		case 4: return Image::Format::SfloatR16G16B16A16;
+		case 2: return Image::Format::SfloatR16G16;
+		case 1: return Image::Format::SfloatR16;
+		default: throw GardenError("Unsupported half float image channel count.");
+	}
+}
+/**
+ * @brief Returns image 32-bit float format from the component count
+ * @param componentCount target channel count
+ * @throw GardenError on unsupported component count.
+ */
+static Image::Format toFloatFormat32(int componentCount)
+{
+	switch (componentCount)
+	{
+		case 4: return Image::Format::SfloatR32G32B32A32;
+		case 2: return Image::Format::SfloatR32G32;
+		case 1: return Image::Format::SfloatR32;
+		default: throw GardenError("Unsupported float image channel count.");
+	}
+}
+
+/***********************************************************************************************************************
  * @brief Returns image dimensionality type from the uniform type.
  * @param uniformType target uniform type
  * @throw GardenError on unsupported uniform type.
@@ -1482,24 +1608,24 @@ static string_view toString(Image::Format imageFormat) noexcept
 }
 
 /**
- * @brief Returns image file type.
- * @param name target file type name
+ * @brief Returns image file type from extension.
+ * @param extension target file type extension
  * @throw GardenError on unknown image file type.
  */
-static Image::FileType toImageFileType(string_view name)
+static Image::FileType toImageFileType(string_view extension)
 {
-	if (name == "ktx2") return Image::FileType::KTX2;
-	if (name == "webp") return Image::FileType::WebP;
-	if (name == "png") return Image::FileType::PNG;
-	if (name == "jpg" || name == "jpeg") return Image::FileType::JPEG;
-	if (name == "exr") return Image::FileType::EXR;
-	if (name == "hdr") return Image::FileType::HDR;
-	if (name == "bmp") return Image::FileType::BMP;
-	if (name == "psd") return Image::FileType::PSD;
-	if (name == "tga") return Image::FileType::TGA;
-	if (name == "pic") return Image::FileType::PIC;
-	if (name == "gif") return Image::FileType::GIF;
-	throw GardenError("Unknown image file type. (name: " + string(name) + ")");
+	if (extension == ".gic") return Image::FileType::GIC;
+	if (extension == ".webp") return Image::FileType::WebP;
+	if (extension == ".png") return Image::FileType::PNG;
+	if (extension == ".jpg" || extension == ".jpeg") return Image::FileType::JPEG;
+	if (extension == ".exr") return Image::FileType::EXR;
+	if (extension == ".hdr") return Image::FileType::HDR;
+	if (extension == ".bmp") return Image::FileType::BMP;
+	if (extension == ".psd") return Image::FileType::PSD;
+	if (extension == ".tga") return Image::FileType::TGA;
+	if (extension == ".pic") return Image::FileType::PIC;
+	if (extension == ".gif") return Image::FileType::GIF;
+	throw GardenError("Unknown image file type. (extension: " + string(extension) + ")");
 }
 
 /***********************************************************************************************************************

@@ -22,12 +22,12 @@ using namespace garden;
 //**********************************************************************************************************************
 CameraEditorSystem::CameraEditorSystem()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", CameraEditorSystem::init);
 }
 void CameraEditorSystem::init()
 {
-	EditorRenderSystem::Instance::get()->registerEntityInspector<CameraComponent>(
+	EditorRenderSystem::getInstance()->registerEntityInspector<CameraComponent>(
 	[this](ID<Entity> entity, bool isOpened)
 	{
 		onEntityInspector(entity, isOpened);
@@ -39,7 +39,7 @@ void CameraEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 {
 	if (ImGui::BeginItemTooltip())
 	{
-		auto cameraView = Manager::Instance::get()->get<CameraComponent>(entity);
+		auto cameraView = Manager::getInstance()->get<CameraComponent>(entity);
 		ImGui::Text("Projection: %s", cameraView->type ==
 			ProjectionType::Perspective ? "Perspective" : "Orthographic");
 		ImGui::EndTooltip();
@@ -48,7 +48,7 @@ void CameraEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	if (!isOpened)
 		return;
 
-	auto cameraView = Manager::Instance::get()->get<CameraComponent>(entity);
+	auto cameraView = Manager::getInstance()->get<CameraComponent>(entity);
 	if (cameraView->type == ProjectionType::Perspective)
 	{
 		float fov = degrees(cameraView->p.perspective.fieldOfView);

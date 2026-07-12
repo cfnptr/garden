@@ -15,7 +15,7 @@
 // TODO: Refactor this dumpster fire. Use proper C tokenizer and transpiler.
 //       Or even better fork glslc compiler and integrate this into it.
 
-#include "garden/graphics/gslc.hpp"
+#include "garden/graphics/gsl-compiler.hpp"
 #include "garden/thread-pool.hpp"
 #include "garden/file.hpp"
 
@@ -34,7 +34,9 @@ using namespace garden;
 using namespace garden::graphics;
 
 //**********************************************************************************************************************
-constexpr uint8 gslHeader[4] = { 1, 0, 0, GARDEN_LITTLE_ENDIAN, };
+#define GSL_VERSION_MAJOR 1
+#define GSL_VERSION_MINOR 0
+#define GSL_VERSION_PATCH 0
 
 #define COMMON_GLSL_EXTENSIONS ""                                           \
 	"#extension GL_EXT_scalar_block_layout : require\n"                     \
@@ -49,6 +51,13 @@ constexpr uint8 gslHeader[4] = { 1, 0, 0, GARDEN_LITTLE_ENDIAN, };
 
 namespace garden::graphics
 {
+	struct GslHeader
+	{
+		uint8 versionMajor = GSL_VERSION_MAJOR;
+		uint8 versionMinor = GSL_VERSION_MINOR;
+		uint8 versionPatch = GSL_VERSION_PATCH;
+		uint8 isLittleEndian = GARDEN_LITTLE_ENDIAN;
+	};
 	struct GslValues
 	{
 		uint8 uniformCount = 0;
@@ -57,29 +66,24 @@ namespace garden::graphics
 		uint8 variantCount = 0;
 		uint16 pushConstantsSize = 0;
 		uint8 specConstCount = 0;
+		uint8 _alignment = 0;
 	};
 	struct GraphicsGslValues final : public GslValues
 	{
-		uint8 _alignment = 0;
 		uint8 vertexAttributeCount = 0;
 		uint8 blendStateCount = 0;
 		uint16 vertexAttributesSize = 0;
 		PipelineStage pushConstantsStages = {};
 		GraphicsPipeline::State pipelineState = {};
-		// Note: Should be aligned.
 	};
 	struct ComputeGslValues final : public GslValues
 	{
-		uint8 _alignment = 0;
 		uint3 localSize = uint3::zero;
-		// Note: Should be aligned.
 	};
 	struct RayTracingGslValues final : public GslValues
 	{
-		uint8 _alignment = 0;
 		PipelineStage pushConstantsStages = {};
 		uint32 rayRecursionDepth = 0;
-		// Note: Should be aligned.
 	};
 }
 
@@ -1290,7 +1294,7 @@ static void onSpecConst(FileData& fileData, LineData& lineData,
 		{
 			Pipeline::SpecConst data;
 			data.pipelineStages = pipelineStage;
-			data.dataType = lineData.dataType;
+			data.type = lineData.dataType;
 			data.index = fileData.specConstIndex++;
 
 			if (!specConsts.emplace(lineData.word, data).second)
@@ -1298,7 +1302,7 @@ static void onSpecConst(FileData& fileData, LineData& lineData,
 		}
 		else
 		{
-			if (lineData.dataType != result->second.dataType)
+			if (lineData.dataType != result->second.type)
 				throw CompileError("different spec consts with the same name", fileData.lineIndex, lineData.word);
 			result.value().pipelineStages |= pipelineStage;
 		}
@@ -1375,7 +1379,7 @@ static bool openShaderFileStream(const fs::path& inputFilePath,
 	auto directory = outputFilePath.parent_path();
 	if (!fs::exists(directory))
 		fs::create_directories(directory);
-	outputFileStream = ofstream(outputFilePath);
+	outputFileStream.open(outputFilePath);
 	if (!outputFileStream.is_open())
 		throw CompileError("failed to open output shader file");
 	outputFileStream.exceptions(ios::failbit | ios::badbit);
@@ -1437,8 +1441,10 @@ static void writeGslHeaderValues(const fs::path& filePath,
 	headerStream.open(filePath, ios::out | ios::binary);
 	if (!headerStream.is_open())
 		throw CompileError("failed to open header file");
+
+	GslHeader gslHeader = {};
 	headerStream.write((const char*)gslMagic.data(), gslMagic.length());
-	headerStream.write((const char*)gslHeader, sizeof(gslHeader));
+	headerStream.write((const char*)&gslHeader, sizeof(GslHeader));
 	headerStream.write((const char*)&values, sizeof(T));
 }
 
@@ -2350,16 +2356,21 @@ template<typename T>
 static void readGslHeaderValues(const uint8* data, uint32 dataSize,
 	uint32& dataOffset, string_view gslMagic, T& values)
 {
-	if (dataOffset + gslMagic.size() + sizeof(gslHeader) > dataSize)
-		throw GardenError("Invalid GSL header size.");
+	if (dataOffset + gslMagic.size() + sizeof(GslHeader) > dataSize)
+		throw GardenError("Invalid GSL file size.");
 	if (memcmp(data + dataOffset, gslMagic.data(), gslMagic.size()) != 0)
-		throw GardenError("Invalid GSL header magic value.");
+		throw GardenError("Invalid GSL file magic value.");
 	dataOffset += gslMagic.size();
-	if (memcmp(data + dataOffset, gslHeader, sizeof(gslHeader)) != 0)
-		throw GardenError("Invalid GSL header version or endianness.");
-	dataOffset += sizeof(gslHeader);
+
+	auto gslHeader = *(const GslHeader*)(data + dataOffset);
+	if (gslHeader.versionMajor != GSL_VERSION_MAJOR || gslHeader.versionMinor != GSL_VERSION_MINOR)
+		throw GardenError("Bad GSL file version.");
+	if (gslHeader.isLittleEndian != GARDEN_LITTLE_ENDIAN)
+		throw GardenError("Bad GSL file endianness.");
+	dataOffset += sizeof(GslHeader);
+
 	if (dataOffset + sizeof(T) > dataSize)
-		throw GardenError("Invalid GSL header data size.");
+		throw GardenError("Invalid GSL file data size.");
 	values = *(const T*)(data + dataOffset);
 	dataOffset += sizeof(T);
 }
@@ -2371,17 +2382,17 @@ static void readGslHeaderArray(const uint8* data, uint32 dataSize,
 	for (uint8 i = 0; i < count; i++)
 	{
 		if (dataOffset + sizeof(uint8) > dataSize)
-			throw GardenError("Invalid GSL header data size.");
+			throw GardenError("Invalid GSL file data size.");
 		auto nameLength = *(const uint8*)(data + dataOffset);
 		dataOffset += sizeof(uint8);
 		if (dataOffset + nameLength + sizeof(T) > dataSize)
-			throw GardenError("Invalid GSL header data size.");
+			throw GardenError("Invalid GSL file data size.");
 		string name((const char*)(data + dataOffset), nameLength);
 		dataOffset += nameLength;
 		const auto& value = *(const T*)(data + dataOffset);
 		dataOffset += sizeof(T);
 		if (!valueArray.emplace(std::move(name), value).second)
-			throw GardenError("Invalid GSL header data.");
+			throw GardenError("Invalid GSL file data.");
 	}
 }
 
@@ -2424,25 +2435,59 @@ void GslCompiler::loadGraphicsShaders(GraphicsData& data)
 		throw GardenError("Invalid GSL header data size.");
 	}
 
+	if (!values.pipelineState.isValid() || values.pushConstantsSize > maxPushConstantsSize)
+		throw GardenError("Invalid GSL header pipeline state.");
+
 	if (values.vertexAttributeCount > 0)
 	{
 		auto vertAttribData = (const GraphicsPipeline::VertexAttribute*)(headerData + dataOffset);
 		data.vertexAttributes.assign(vertAttribData, vertAttribData + values.vertexAttributeCount);
 		dataOffset += values.vertexAttributeCount * sizeof(GraphicsPipeline::VertexAttribute);
+
+		for (uint8 i = 0; i < values.vertexAttributeCount; i++)
+		{
+			const auto& vertAttrib = vertAttribData[i];
+			if (!vertAttrib.isValid())
+				throw GardenError("Invalid GSL vertex attribute data.");
+		}
 	}
 	if (values.blendStateCount > 0)
 	{
 		auto blendStateData = (const GraphicsPipeline::BlendState*)(headerData + dataOffset);
 		data.blendStates.assign(blendStateData, blendStateData + values.blendStateCount);
 		dataOffset += values.blendStateCount * sizeof(GraphicsPipeline::BlendState);
+
+		for (uint8 i = 0; i < values.blendStateCount; i++)
+		{
+			const auto& blendState = blendStateData[i];
+			if (!blendState.isValid())
+				throw GardenError("Invalid GSL blending state data.");
+		}
 	}
 
 	readGslHeaderArray<Pipeline::Uniform>(headerData, dataSize, 
 		dataOffset, values.uniformCount, data.uniforms);
+	for (const auto& uniform : data.uniforms)
+	{
+		if (!uniform.second.isValid())
+			throw GardenError("Invalid GSL uniform data.");
+	}
+
 	readGslHeaderArray<Sampler::State>(headerData, dataSize, 
 		dataOffset, values.samplerStateCount, data.samplerStates);
+	for (const auto& samplerState : data.samplerStates)
+	{
+		if (!samplerState.second.isValid())
+			throw GardenError("Invalid GSL sampler state data.");
+	}
+
 	readGslHeaderArray<Pipeline::SpecConst>(headerData, dataSize, 
 		dataOffset, values.specConstCount, data.specConsts);
+	for (const auto& specConst : data.specConsts)
+	{
+		if (specConst.second.type >= GslDataType::Count)
+			throw GardenError("Invalid GSL spec const data.");
+	}
 
 	data.pushConstantsStages = values.pushConstantsStages;
 	data.pushConstantsSize = values.pushConstantsSize;
@@ -2760,15 +2805,14 @@ int main(int argc, char *argv[])
 		}
 		else
 		{
+			if (fs::path(arg).generic_string().find('.') != string::npos)
+				continue;
 			if (!threadPool)
 				threadPool = new ThreadPool(false, "T");
+
 			threadPool->addTask([=, &compileResult](const ThreadPool::Task& task)
 			{
 				if (!compileResult)
-					return;
-
-				auto shaderPath = fs::path(arg);
-				if (shaderPath.filename().generic_string().find('.') != string::npos)
 					return;
 
 				// Note: Sending one batched message due to multithreading.
@@ -2778,7 +2822,7 @@ int main(int argc, char *argv[])
 				try
 				{
 					GslCompiler::GraphicsData graphicsData;
-					graphicsData.shaderPath = shaderPath;
+					graphicsData.shaderPath = arg;
 					result = GslCompiler::compileGraphicsShaders(inputPath, outputPath, includePaths, graphicsData);
 				}
 				catch (const exception& e)
@@ -2790,7 +2834,7 @@ int main(int argc, char *argv[])
 				try
 				{
 					GslCompiler::ComputeData computeData;
-					computeData.shaderPath = shaderPath;
+					computeData.shaderPath = arg;
 					result |= GslCompiler::compileComputeShader(inputPath, outputPath, includePaths, computeData);
 				}
 				catch (const exception& e)
@@ -2802,7 +2846,7 @@ int main(int argc, char *argv[])
 				try
 				{
 					GslCompiler::RayTracingData rayTracingData;
-					rayTracingData.shaderPath = shaderPath;
+					rayTracingData.shaderPath = arg;
 					result |= GslCompiler::compileRayTracingShaders(inputPath, outputPath, includePaths, rayTracingData);
 				}
 				catch (const exception& e)

@@ -22,12 +22,12 @@ using namespace garden;
 //**********************************************************************************************************************
 UiLabelEditorSystem::UiLabelEditorSystem(bool setSingleton) : Singleton(setSingleton)
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", UiLabelEditorSystem::init);
 }
 void UiLabelEditorSystem::init()
 {
-	EditorRenderSystem::Instance::get()->registerEntityInspector<UiLabelComponent>(
+	EditorRenderSystem::getInstance()->registerEntityInspector<UiLabelComponent>(
 	[this](ID<Entity> entity, bool isOpened)
 	{
 		onEntityInspector(entity, isOpened);
@@ -40,7 +40,7 @@ void UiLabelEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	if (!isOpened)
 		return;
 
-	auto uiLabelView = Manager::Instance::get()->get<UiLabelComponent>(entity);
+	auto uiLabelView = Manager::getInstance()->get<UiLabelComponent>(entity);
 
 	string text; UTF::convert(uiLabelView->text, text);
 	if (ImGui::InputTextMultiline("Text", &text))

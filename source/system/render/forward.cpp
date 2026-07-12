@@ -95,7 +95,7 @@ static ID<Framebuffer> createUiFramebuffer(GraphicsSystem* graphicsSystem, ID<Im
 ForwardRenderSystem::ForwardRenderSystem(bool useAsyncRecording, bool useHdrColorBuffer, bool setSingleton) : 
 	Singleton(setSingleton), asyncRecording(useAsyncRecording), hdrColorBuffer(useHdrColorBuffer)
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	manager->registerEvent("PreForwardRender");
 	manager->registerEvent("ForwardRender");
 	manager->registerEvent("PreDsForwardRender");
@@ -107,10 +107,10 @@ ForwardRenderSystem::ForwardRenderSystem(bool useAsyncRecording, bool useHdrColo
 }
 void ForwardRenderSystem::init()
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	GARDEN_ASSERT(asyncRecording == graphicsSystem->useAsyncRecording());
 
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("Render", ForwardRenderSystem::render);
 	ECSM_SUBSCRIBE_TO_EVENT("SwapchainRecreate", ForwardRenderSystem::swapchainRecreate);
 }
@@ -119,20 +119,20 @@ void ForwardRenderSystem::render()
 {
 	SET_CPU_ZONE_SCOPED("Forward Render");
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	if (!isEnabled || !graphicsSystem->camera)
 		return;
 
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	auto cameraView = manager->tryGet<CameraComponent>(graphicsSystem->camera);
 	auto transformView = manager->tryGet<TransformComponent>(graphicsSystem->camera);
 	if (!cameraView || !transformView || !transformView->isActive())
 		return;
 
 	#if GARDEN_DEBUG
-	if (DeferredRenderSystem::Instance::tryGet())
+	if (DeferredRenderSystem::tryGetInstance())
 	{
-		GARDEN_ASSERT_MSG(!DeferredRenderSystem::Instance::get()->isEnabled, 
+		GARDEN_ASSERT_MSG(!DeferredRenderSystem::getInstance()->isEnabled, 
 			"Can't use forward and deferred render system at the same time"); 
 	}
 	#endif
@@ -229,7 +229,7 @@ void ForwardRenderSystem::render()
 //**********************************************************************************************************************
 void ForwardRenderSystem::swapchainRecreate()
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	const auto& swapchainChanges = graphicsSystem->getSwapchainChanges();
 
 	if (swapchainChanges.framebufferSize)
@@ -255,21 +255,21 @@ void ForwardRenderSystem::swapchainRecreate()
 	}
 
 	if (swapchainChanges.framebufferSize)
-		Manager::Instance::get()->runEvent("ColorBufferRecreate");
+		Manager::getInstance()->runEvent("ColorBufferRecreate");
 }
 
 //**********************************************************************************************************************
 ID<Image> ForwardRenderSystem::getColorBuffer()
 {
 	if (!colorBuffer)
-		colorBuffer = createColorBuffer(GraphicsSystem::Instance::get(), hdrColorBuffer);
+		colorBuffer = createColorBuffer(GraphicsSystem::getInstance(), hdrColorBuffer);
 	return colorBuffer;
 }
 ID<Image> ForwardRenderSystem::getUiBuffer()
 {
 	if (!uiBuffer)
 	{
-		auto graphicsSystem = GraphicsSystem::Instance::get();
+		auto graphicsSystem = GraphicsSystem::getInstance();
 		uiBuffer = graphicsSystem->getScaledFrameSize() != graphicsSystem->getFramebufferSize() ? 
 			createUiBuffer(graphicsSystem) : colorBuffer;
 	}
@@ -278,21 +278,21 @@ ID<Image> ForwardRenderSystem::getUiBuffer()
 ID<Image> ForwardRenderSystem::getDepthStencilBuffer()
 {
 	if (!depthStencilBuffer)
-		depthStencilBuffer = createDepthStencilBuffer(GraphicsSystem::Instance::get());
+		depthStencilBuffer = createDepthStencilBuffer(GraphicsSystem::getInstance());
 	return depthStencilBuffer;
 }
 
 ID<Framebuffer> ForwardRenderSystem::getColorFramebuffer()
 {
 	if (!colorFramebuffer)
-		colorFramebuffer = createColorFramebuffer(GraphicsSystem::Instance::get(), getColorBuffer());
+		colorFramebuffer = createColorFramebuffer(GraphicsSystem::getInstance(), getColorBuffer());
 	return colorFramebuffer;
 }
 ID<Framebuffer> ForwardRenderSystem::getFullFramebuffer()
 {
 	if (!fullFramebuffer)
 	{
-		fullFramebuffer = createFullFramebuffer(GraphicsSystem::Instance::get(), 
+		fullFramebuffer = createFullFramebuffer(GraphicsSystem::getInstance(), 
 			getColorBuffer(), getDepthStencilBuffer());
 	}
 	return fullFramebuffer;
@@ -301,7 +301,7 @@ ID<Framebuffer> ForwardRenderSystem::getUiFramebuffer()
 {
 	if (!uiFramebuffer)
 	{
-		auto graphicsSystem = GraphicsSystem::Instance::get();
+		auto graphicsSystem = GraphicsSystem::getInstance();
 		uiFramebuffer = graphicsSystem->getScaledFrameSize() != graphicsSystem->getFramebufferSize() ? 
 			createUiFramebuffer(graphicsSystem, getUiBuffer()) : getColorFramebuffer();
 	}

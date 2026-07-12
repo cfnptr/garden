@@ -174,7 +174,7 @@ static void entryPoint()
 	manager->createSystem<MeshSelectorEditorSystem>();
 	manager->createSystem<MeshGizmosEditorSystem>();
 	manager->createSystem<DeferredRenderEditorSystem>();
-	manager->createSystem<SkyboxRenderEditorSystem>();
+	// manager->createSystem<SkyboxRenderEditorSystem>();
 	manager->createSystem<AtmosphereEditorSystem>();
 	manager->createSystem<CloudsEditorSystem>();
 	manager->createSystem<SpriteRenderEditorSystem>();

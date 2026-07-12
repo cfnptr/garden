@@ -20,7 +20,7 @@ using namespace garden;
 TransSpriteSystem::TransSpriteSystem(bool setSingleton) : 
 	SpriteCompAnimSystem("sprite/translucent"), Singleton(setSingleton)
 {
-	Manager::Instance::get()->addGroupSystem<IMeshRenderSystem>(this);
+	Manager::getInstance()->addGroupSystem<IMeshRenderSystem>(this);
 }
 
 string_view TransSpriteSystem::getComponentName() const

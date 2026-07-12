@@ -43,10 +43,9 @@ class DeferredRenderEditorSystem final : public System
 		uint32 materialID = G_MATERIAL_BASE;
 	};
 
-	ID<Image> blackPlaceholder = {};
-	ID<GraphicsPipeline> bufferPipeline = {};
+	ID<GraphicsPipeline> gBufferPipeline = {};
 	ID<GraphicsPipeline> pbrLightingPipeline = {};
-	ID<DescriptorSet> bufferDescriptorSet = {};
+	ID<DescriptorSet> gBufferDS = {};
 	LightingPC lightingPC = {};
 	float ambientOcclusion = 1.0f;
 	uint8 drawMode = G_BUFFER_DRAW_MODE_OFF;

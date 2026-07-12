@@ -29,7 +29,7 @@ class PbrLightingSystem;
 /**
  * @brief PBR lighting cubemap rendering modes.
  */
-enum class PbrCubemapMode
+enum class PbrCubemapMode : uint8
 {
 	Static,  /**< Cubemap is loaded once and reused for rendering. (Skybox) */
 	Dynamic, /**< Cubemap is rendered and updated at runtime. (Atmosphere) */
@@ -56,7 +56,6 @@ struct PbrLightingComponent final : public Component
 	Ref<DescriptorSet> descriptorSet = {}; /**< PBR lighting descriptor set. */
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	fs::path skyboxPath = "";              /**< Skybox cubemap texture path. */
-	float taskPriority = 0.0f;             /**< Texture load task priority. */
 	#endif
 private:
 	PbrCubemapMode mode = PbrCubemapMode::Dynamic;

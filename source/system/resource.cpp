@@ -18,11 +18,10 @@
 #include "garden/system/animation.hpp"
 #include "garden/system/graphics.hpp"
 #include "garden/system/app-info.hpp"
-#include "garden/system/thread.hpp"
 #include "garden/system/text.hpp"
 #include "garden/system/log.hpp"
-#include "garden/graphics/equi2cube.hpp"
-#include "garden/graphics/gslc.hpp"
+#include "garden/graphics/image-converter.hpp"
+#include "garden/graphics/gsl-compiler.hpp"
 #include "garden/graphics/api.hpp"
 #include "garden/json-serialize.hpp"
 #include "garden/profiler.hpp"
@@ -47,11 +46,6 @@ namespace garden::graphics
 		uint64 imageVersion = 0;
 		vector<fs::path> paths;
 		ID<Image> instance = {};
-		Image::Format format = {};
-		Image::Usage usage = {};
-		Image::Strategy strategy = {};
-		uint8 maxMipCount = 0;
-		ImageLoadFlags flags = {};
 	};
 	struct LodBufferLoadData final
 	{
@@ -62,7 +56,6 @@ namespace garden::graphics
 		const vector<ID<Buffer>>* indexBuffers;
 		Buffer::Strategy strategy = {};
 		uint8 maxLodCount = 0;
-		BufferLoadFlags flags = {};
 	};
 
 	struct PipelineLoadData
@@ -84,7 +77,6 @@ namespace garden::graphics
 		GraphicsPipeline::BlendStates blendStateOverrides;
 		ID<GraphicsPipeline> instance = {};
 		Image::Format depthStencilFormat = {};
-		bool useAsyncRecording = false;
 	};
 	struct ComputePipelineLoadData final : public PipelineLoadData
 	{
@@ -100,11 +92,11 @@ namespace garden::graphics
 
 const vector<string_view> ResourceSystem::imageFileExts =
 {
-	".ktx2", ".webp", ".png", ".jpg", ".jpeg", ".exr", ".hdr", ".bmp", ".psd", ".tga", ".pic", ".gif"
+	".gic", ".png", ".webp", ".jpg", ".jpeg", ".exr", ".hdr", ".bmp", ".psd", ".tga", ".pic", ".gif"
 };
 const vector<Image::FileType> ResourceSystem::imageFileTypes =
 {
-	Image::FileType::KTX2, Image::FileType::WebP, Image::FileType::PNG, Image::FileType::JPEG, Image::FileType::JPEG, 
+	Image::FileType::GIC, Image::FileType::PNG, Image::FileType::WebP, Image::FileType::JPEG, Image::FileType::JPEG, 
 	Image::FileType::EXR, Image::FileType::HDR, Image::FileType::BMP, Image::FileType::PSD,  Image::FileType::TGA, 
 	Image::FileType::PIC, Image::FileType::GIF
 };
@@ -119,12 +111,12 @@ ResourceSystem::ResourceSystem(bool setSingleton) : Singleton(setSingleton)
 {
 	static_assert(std::numeric_limits<float>::is_iec559, "Floats are not IEEE 754");
 
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	manager->registerEvent("ImageLoaded");
 	manager->registerEvent("BufferLoaded");
 	ECSM_SUBSCRIBE_TO_EVENT("Init", ResourceSystem::init);
 
-	auto appInfoSystem = AppInfoSystem::Instance::get();
+	auto appInfoSystem = AppInfoSystem::getInstance();
 	appVersion = appInfoSystem->getVersion();
 
 	#if GARDEN_PACK_RESOURCES
@@ -147,7 +139,7 @@ ResourceSystem::ResourceSystem(bool setSingleton) : Singleton(setSingleton)
 }
 void ResourceSystem::init()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("Input", ResourceSystem::input);
 	#if GARDEN_DEBUG || GARDEN_EDITOR || !GARDEN_PACK_RESOURCES
 	ECSM_TRY_SUBSCRIBE_TO_EVENT("FileChange", ResourceSystem::fileChange);
@@ -236,8 +228,8 @@ void ResourceSystem::dequeueBuffers()
 	SET_CPU_ZONE_SCOPED("Loaded Buffers Dequeue");
 
 	auto graphicsAPI = GraphicsAPI::get();
-	auto manager = Manager::Instance::get();
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto manager = Manager::getInstance();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 
 	#if GARDEN_DEBUG
 	auto hasDequeueItems = !loadedBufferQueue.empty();
@@ -306,8 +298,8 @@ void ResourceSystem::dequeueImages()
 	SET_CPU_ZONE_SCOPED("Loaded Images Dequeue");
 
 	auto graphicsAPI = GraphicsAPI::get();
-	auto manager = Manager::Instance::get();
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto manager = Manager::getInstance();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 
 	#if GARDEN_DEBUG
 	auto hasDequeueItems = !loadedImageQueue.empty();
@@ -380,7 +372,7 @@ void ResourceSystem::input()
 {
 	SET_CPU_ZONE_SCOPED("Loaded Resources Update");
 
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	for (auto& buffer : loadedBufferArray)
 	{
 		loadedBuffer = buffer.instance;
@@ -554,10 +546,10 @@ static void collectGslHeaderUsers(const fs::path& appResourcesPath,
 			checkCount++;
 		}
 
-		if (checkCount >= 10000)
+		if (checkCount >= 1000)
 			GARDEN_LOG_ERROR("Detected shader GSL circular includes!");
 	}
-	catch (exception& e)
+	catch (const exception& e)
 	{
 		GARDEN_LOG_ERROR("Failed to iterate shader dirs. (error: " + string(e.what()) + ")");
 		return;
@@ -579,17 +571,16 @@ static void recompilePipelines(ResourceSystem* resourceSystem,
 			auto pipelineView = graphicsPipelinePool.get(pair.second);
 			auto specConstValues = pipelineView->getSpecConstValues();
 
-			ResourceSystem::GraphicsOptions options;
+			ResourceSystem::GraphicsLoadOptions options;
 			options.specConstValues = &specConstValues;
 			options.maxBindlessCount = pipelineView->getMaxBindlessCount();
-			options.useAsyncRecording = pipelineView->useAsyncRecording();
 			options.loadAsync = false;
 			// TODO: store and load overrides?
 
 			try
 			{
 				auto newPipeline = resourceSystem->loadGraphicsPipeline(
-					pair.first, pipelineView->getFramebuffer(), options);
+					pair.first, pipelineView->getFramebuffer(), &options);
 				auto newPipelineView = graphicsPipelinePool.get(newPipeline);
 				swap(**graphicsPipelinePool.get(pair.second), **newPipelineView);
 
@@ -597,7 +588,7 @@ static void recompilePipelines(ResourceSystem* resourceSystem,
 				// graphicsPipelinePool.destroy(newPipeline);
 				newPipelineView->setDebugName(newPipelineView->getDebugName() + ".old");
 			}
-			catch (exception& e)
+			catch (const exception& e)
 			{
 				GARDEN_LOG_ERROR(string(e.what()));
 			}
@@ -611,20 +602,19 @@ static void recompilePipelines(ResourceSystem* resourceSystem,
 			auto pipelineView = computePipelinePool.get(pair.second);
 			auto specConstValues = pipelineView->getSpecConstValues();
 
-			ResourceSystem::ComputeOptions options;
+			ResourceSystem::ComputeLoadOptions options;
 			options.specConstValues = &specConstValues;
 			options.maxBindlessCount = pipelineView->getMaxBindlessCount();
-			options.useAsyncRecording = pipelineView->useAsyncRecording();
 			options.loadAsync = false;
 
 			try
 			{
-				auto newPipeline = resourceSystem->loadComputePipeline(pair.first, options);
+				auto newPipeline = resourceSystem->loadComputePipeline(pair.first, &options);
 				auto newPipelineView = computePipelinePool.get(newPipeline);
 				swap(**computePipelinePool.get(pair.second), **newPipelineView);
 				newPipelineView->setDebugName(newPipelineView->getDebugName() + ".old");
 			}
-			catch (exception& e)
+			catch (const exception& e)
 			{
 				GARDEN_LOG_ERROR(string(e.what()));
 			}
@@ -638,20 +628,19 @@ static void recompilePipelines(ResourceSystem* resourceSystem,
 			auto pipelineView = rayTracingPipelinePool.get(pair.second);
 			auto specConstValues = pipelineView->getSpecConstValues();
 
-			ResourceSystem::RayTracingOptions options;
+			ResourceSystem::RayTracingLoadOptions options;
 			options.specConstValues = &specConstValues;
 			options.maxBindlessCount = pipelineView->getMaxBindlessCount();
-			options.useAsyncRecording = pipelineView->useAsyncRecording();
 			options.loadAsync = false;
 
 			try
 			{
-				auto newPipeline = resourceSystem->loadRayTracingPipeline(pair.first, options);
+				auto newPipeline = resourceSystem->loadRayTracingPipeline(pair.first, &options);
 				auto newPipelineView = rayTracingPipelinePool.get(newPipeline);
 				swap(**rayTracingPipelinePool.get(pair.second), **newPipelineView);
 				newPipelineView->setDebugName(newPipelineView->getDebugName() + ".old");
 			}
-			catch (exception& e)
+			catch (const exception& e)
 			{
 				GARDEN_LOG_ERROR(string(e.what()));
 			}
@@ -664,7 +653,7 @@ static void recompilePipelines(ResourceSystem* resourceSystem,
 void ResourceSystem::fileChange()
 {
 	#if GARDEN_DEBUG || GARDEN_EDITOR
-	auto fileWatcherSystem = FileWatcherSystem::Instance::get();
+	auto fileWatcherSystem = FileWatcherSystem::getInstance();
 	auto shaderFilePath = fileWatcherSystem->getFilePath();
 	auto fileExt = shaderFilePath.extension();
 	shaderFilePath.replace_extension();
@@ -693,23 +682,24 @@ void ResourceSystem::fileChange()
 }
 
 //**********************************************************************************************************************
-static void loadMissingImage(Image::Format& imageFormat, vector<uint8>& data, uint2& size) noexcept
+static void loadMissingImage(vector<uint8>& data, uint4& size, Image::Type& type, Image::Format& format) noexcept
 {
-	if (imageFormat == Image::Format::Undefined)
-		imageFormat = Image::Format::SrgbR8G8B8A8;
+	if (format == Image::Format::Undefined)
+		format = Image::Format::SrgbR8G8B8A8;
+	type = Image::Type::Texture2D;
 
-	auto imageBinarySize = toBinarySize((psize)16, imageFormat);
-	auto componentCount = toComponentCount(imageFormat);
+	auto imageBinarySize = toBinarySize((psize)16, format);
+	auto componentCount = toComponentCount(format);
 
 	if (imageBinarySize == 0 || componentCount == 0)
 	{
-		data.resize(256);
-		memset(data.data(), UINT8_MAX, 256);
+		data.resize(256); memset(data.data(), UINT8_MAX, 256);
+		size = uint4(1);
 		return;
 	}
 
 	auto compBinarySize = imageBinarySize / (componentCount * 16);
-	data.resize(imageBinarySize); size = uint2(4, 4);
+	data.resize(imageBinarySize);
 
 	if (compBinarySize == 4)
 	{
@@ -805,16 +795,20 @@ static void loadMissingImage(Image::Format& imageFormat, vector<uint8>& data, ui
 		else abort();
 	}
 	else memset(data.data(), UINT8_MAX, data.size());
+
+	size = uint4(4, 4, 1, 1);
 }
-static void loadMissingImage(Image::Format& imageFormat, vector<uint8>& nx, vector<uint8>& px, 
-	vector<uint8>& ny, vector<uint8>& py, vector<uint8>& nz, vector<uint8>& pz, uint2& size) noexcept
+static void loadMissingImage(vector<uint8>& nx, vector<uint8>& px, vector<uint8>& ny, vector<uint8>& py, 
+	vector<uint8>& nz, vector<uint8>& pz, uint2& size, Image::Format& format) noexcept
 {
-	loadMissingImage(imageFormat, nx, size);
-	loadMissingImage(imageFormat, px, size);
-	loadMissingImage(imageFormat, ny, size);
-	loadMissingImage(imageFormat, py, size);
-	loadMissingImage(imageFormat, nz, size);
-	loadMissingImage(imageFormat, pz, size);
+	uint4 missingSize; Image::Type missingType;
+	loadMissingImage(nx, missingSize, missingType, format);
+	loadMissingImage(px, missingSize, missingType, format);
+	loadMissingImage(ny, missingSize, missingType, format);
+	loadMissingImage(py, missingSize, missingType, format);
+	loadMissingImage(nz, missingSize, missingType, format);
+	loadMissingImage(pz, missingSize, missingType, format);
+	size = (uint2)missingSize;
 }
 
 //**********************************************************************************************************************
@@ -925,13 +919,12 @@ static int32 getImageFilePath(const fs::path& appCachePath, const fs::path& appR
 #endif
 
 //**********************************************************************************************************************
-void ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& pixels, 
-	uint2& size, Image::Format& format, int32 threadIndex) const noexcept
+bool ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& pixels, 
+	uint4& size, Image::Type& type, Image::Format& format, int32 threadIndex) const noexcept
 {
 	GARDEN_ASSERT(!path.empty());
 	GARDEN_ASSERT(threadIndex < (int32)thread::hardware_concurrency());
-
-	vector<uint8> dataBuffer; Image::FileType fileType;
+	vector<uint8> imageData; Image::FileType fileType;
 
 	#if GARDEN_PACK_RESOURCES
 	if (threadIndex < 0)
@@ -952,11 +945,11 @@ void ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& pixels,
 	if (fileType == Image::FileType::Count)
 	{
 		GARDEN_LOG_ERROR("Image does not exist. (path: " + path.generic_string() + ")");
-		loadMissingImage(format, pixels, size);
-		return;
+		loadMissingImage(pixels, size, type, format);
+		return false;
 	}
 
-	packReader.readItemData(itemIndex, dataBuffer, threadIndex);
+	packReader.readItemData(itemIndex, imageData, threadIndex);
 	#else
 	fs::path filePath;
 	auto fileCount = getImageFilePath(appCachePath, appResourcesPath, path, filePath, fileType);
@@ -964,54 +957,192 @@ void ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& pixels,
 	if (fileCount == 0)
 	{
 		GARDEN_LOG_ERROR("Image file does not exist. (path: " + path.generic_string() + ")");
-		loadMissingImage(format, pixels, size);
-		return;
+		loadMissingImage(pixels, size, type, format);
+		return false;
 	}
 	if (fileCount > 1)
 	{
 		GARDEN_LOG_ERROR("Image file is ambiguous. (path: " + path.generic_string() + ")");
-		loadMissingImage(format, pixels, size);
-		return;
+		loadMissingImage(pixels, size, type, format);
+		return false;
 	}
 
 	try
 	{
-		File::loadBinary(filePath, dataBuffer);
+		File::loadBinary(filePath, imageData);
 	}
-	catch (exception& e)
+	catch (const exception& e)
 	{
 		GARDEN_LOG_ERROR(string(e.what()));
-		loadMissingImage(format, pixels, size);
-		return;
+		loadMissingImage(pixels, size, type, format);
+		return false;
 	}
 	#endif
 
 	try
 	{
-		Image::loadFileData(dataBuffer.data(), dataBuffer.size(), pixels, size, fileType, format);
+		Image::loadFileData(imageData.data(), imageData.size(), fileType, pixels, size, type, format);
 		GARDEN_LOG_TRACE("Loaded image. (path: " + path.generic_string() + ")");
 	}
-	catch (exception& e)
+	catch (const exception& e)
 	{
 		GARDEN_LOG_ERROR("Failed to load image data. (path: " + 
 			path.generic_string() + ", error: " + string(e.what()) + ")");
-		loadMissingImage(format, pixels, size);
+		loadMissingImage(pixels, size, type, format);
+		return false;
 	}
+
+	#if !GARDEN_PACK_RESOURCES
+	auto metadataPath = path; metadataPath.replace_extension(".meta");
+	float effort = 0.7f; auto storeFlags = Image::StoreFlag::None;
+
+	if (fs::exists(metadataPath))
+	{
+		try
+		{
+			Image::loadFileMetadata(metadataPath, pixels, size, type, format, effort, storeFlags);
+		}
+		catch (const exception& e)
+		{
+			GARDEN_LOG_ERROR("Failed to load image metadata. (path: " + 
+				path.generic_string() + ", error: " + string(e.what()) + ")");
+		}
+	}
+	#endif
+
+	return true;
 }
-void ResourceSystem::loadImageData(const fs::path* paths, psize pathCount, 
-	vector<vector<uint8>>& pixelArrays, uint2& size, Image::Format& format, int32 threadIndex) const noexcept
+
+//**********************************************************************************************************************
+bool ResourceSystem::loadOrConvertCubemap(const fs::path& path, vector<uint8>& nx, 
+	vector<uint8>& px, vector<uint8>& ny, vector<uint8>& py, vector<uint8>& nz, 
+	vector<uint8>& pz, uint2& size, Image::Format& format, int32 threadIndex) const noexcept
+{
+	#if !GARDEN_PACK_RESOURCES
+	fs::path inputFilePath; Image::FileType inputFileType; 
+	auto fileCount = getImageFilePath(appCachePath, appResourcesPath, path, inputFilePath, inputFileType);
+
+	if (fileCount == 0)
+	{
+		GARDEN_LOG_ERROR("Cubemap image file does not exist. (path: " + path.generic_string() + ")");
+		loadMissingImage(nx, px, ny, py, nz, pz, size, format);
+		return false;
+	}
+	if (fileCount > 1)
+	{
+		GARDEN_LOG_ERROR("Cubemap image file is ambiguous. (path: " + path.generic_string() + ")");
+		loadMissingImage(nx, px, ny, py, nz, pz, size, format);
+		return false;
+	}
+	
+	auto cacheFilePath = appCachePath / "images" / path;
+	auto cacheFileString = cacheFilePath.generic_string();
+	auto cacheFileNX = cacheFileString + "-nx.gic", cacheFilePX = cacheFileString + "-px.gic";
+	auto cacheFileNY = cacheFileString + "-ny.gic", cacheFilePY = cacheFileString + "-py.gic";
+	auto cacheFileNZ = cacheFileString + "-nz.gic", cacheFilePZ = cacheFileString + "-pz.gic";
+	auto lastWriteTime = fs::last_write_time(inputFilePath);
+
+	if (!fs::exists(cacheFileNX) || !fs::exists(cacheFilePX) || !fs::exists(cacheFileNY) || 
+		!fs::exists(cacheFilePY) || !fs::exists(cacheFileNZ) || !fs::exists(cacheFilePZ) ||
+		lastWriteTime > fs::last_write_time(cacheFileNX) || lastWriteTime > fs::last_write_time(cacheFilePX) ||
+		lastWriteTime > fs::last_write_time(cacheFileNY) || lastWriteTime > fs::last_write_time(cacheFilePY) ||
+		lastWriteTime > fs::last_write_time(cacheFileNZ) || lastWriteTime > fs::last_write_time(cacheFilePZ))
+	{
+		auto threadSystem = ThreadSystem::tryGetInstance();
+		auto threadPool = threadIndex < 0 && threadSystem ? &threadSystem->getForegroundPool() : nullptr;
+
+		auto equi2cubeResult = false;
+		try
+		{
+			equi2cubeResult = ImageConverter::equi2cube(inputFilePath.filename(), 
+				inputFilePath.parent_path(), cacheFilePath.parent_path(), threadPool);
+			GARDEN_LOG_DEBUG("Converted cubemap. (path: " + path.generic_string() + ")");
+		}
+		catch (const exception& e)
+		{
+			GARDEN_LOG_ERROR("Failed to convert cubemap image. (path: " + 
+				path.generic_string() + ", error: " + string(e.what()) + ")");
+			loadMissingImage(nx, px, ny, py, nz, pz, size, format);
+
+			fs::remove(cacheFileNX); fs::remove(cacheFilePX);
+			fs::remove(cacheFileNY); fs::remove(cacheFilePY);
+			fs::remove(cacheFileNZ); fs::remove(cacheFilePZ);
+			return false;
+		}
+
+		if (!equi2cubeResult)
+			GARDEN_LOG_ERROR("Cubemap file does not exist. (path: " + path.generic_string() + ")");
+	}
+	#endif
+
+	return loadCubemapData(path, nx, px, ny, py, nz, pz, size, format);
+}
+
+//**********************************************************************************************************************
+bool ResourceSystem::loadOrConvertImage(const fs::path& path, vector<uint8>& pixels, 
+	uint4& size, Image::Type& type, Image::Format& format, int32 threadIndex) const noexcept
+{
+	#if !GARDEN_PACK_RESOURCES
+	fs::path inputFilePath; Image::FileType inputFileType; 
+	auto fileCount = getImageFilePath(appCachePath, appResourcesPath, path, inputFilePath, inputFileType);
+
+	if (fileCount == 0)
+	{
+		GARDEN_LOG_ERROR("Image file does not exist. (path: " + path.generic_string() + ")");
+		loadMissingImage(pixels, size, type, format);
+		return false;
+	}
+	if (fileCount > 1)
+	{
+		GARDEN_LOG_ERROR("Image file is ambiguous. (path: " + path.generic_string() + ")");
+		loadMissingImage(pixels, size, type, format);
+		return false;
+	}
+
+	auto cacheFilePath = appCachePath / "images" / path;
+	auto cacheGicPath = cacheFilePath.generic_string() + ".gic";
+
+	if (!fs::exists(cacheGicPath) || fs::last_write_time(inputFilePath) > fs::last_write_time(cacheGicPath))
+	{
+		auto compressResult = false;
+		try
+		{
+			compressResult = ImageConverter::compress(inputFilePath.filename(), 
+				inputFilePath.parent_path(), cacheFilePath.parent_path());
+			GARDEN_LOG_DEBUG("Converted image. (path: " + path.generic_string() + ")");
+		}
+		catch (const exception& e)
+		{
+			GARDEN_LOG_ERROR("Failed to compress image. (path: " + 
+				path.generic_string() + ", error: " + string(e.what()) + ")");
+			loadMissingImage(pixels, size, type, format);
+			fs::remove(cacheGicPath);
+			return false;
+		}
+
+		if (!compressResult)
+			GARDEN_LOG_ERROR("Image file does not exist. (path: " + path.generic_string() + ")");
+	}
+	#endif
+
+	return loadImageData(path, pixels, size, type, format, threadIndex);
+}
+
+//**********************************************************************************************************************
+bool ResourceSystem::loadImageData(const fs::path* paths, psize pathCount, vector<vector<uint8>>& pixelArrays, 
+	uint4& size, Image::Type& type, Image::Format& format, int32 threadIndex) const noexcept
 {
 	GARDEN_ASSERT(paths);
 	GARDEN_ASSERT(pathCount > 0);
 	GARDEN_ASSERT(threadIndex < (int32)thread::hardware_concurrency());
 
 	auto pixelArrayData = pixelArrays.data();
-	loadImageData(paths[0], pixelArrayData[0], size, format, threadIndex);
+	auto result = loadOrConvertImage(paths[0], pixelArrayData[0], size, type, format, threadIndex);
 
 	for (psize i = 1; i < pathCount; i++)
 	{
-		uint2 elementSize;
-		loadImageData(paths[i], pixelArrayData[i], elementSize, format, threadIndex);
+		uint4 elementSize;
+		result &= loadOrConvertImage(paths[i], pixelArrayData[i], elementSize, type, format, threadIndex);
 
 		if (size != elementSize)
 		{
@@ -1041,92 +1172,32 @@ void ResourceSystem::loadImageData(const fs::path* paths, psize pathCount,
 					pixels[j] = f32x4(1.0f, 0.0f, 1.0f, 1.0f); 
 			}
 			else memset(pixelArray.data(), UINT8_MAX, pixelArray.size());
+
 			GARDEN_LOG_ERROR("Different image array element size. (path: " + paths[i].generic_string() + ")");
+			result = false;
 		}
 	}
+	return result;
 }
 
 //**********************************************************************************************************************
-void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& nx, 
+bool ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& nx, 
 	vector<uint8>& px, vector<uint8>& ny, vector<uint8>& py, vector<uint8>& nz, 
 	vector<uint8>& pz, uint2& size, Image::Format& format, int32 threadIndex) const noexcept
 {
 	GARDEN_ASSERT(!path.empty());
 	GARDEN_ASSERT(threadIndex < (int32)thread::hardware_concurrency());
 
-	auto threadSystem = ThreadSystem::Instance::tryGet();
-	auto threadPool = threadIndex < 0 && threadSystem ? &threadSystem->getForegroundPool() : nullptr;
-	
-	#if !GARDEN_PACK_RESOURCES
-	auto cacheFilePath = appCachePath / "images" / path;
-	auto cacheFileString = cacheFilePath.generic_string();
-
-	fs::path inputFilePath; Image::FileType inputFileType; 
-	auto fileCount = getImageFilePath(appCachePath, appResourcesPath, path, inputFilePath, inputFileType);
-
-	if (fileCount == 0)
-	{
-		GARDEN_LOG_ERROR("Cubemap image file does not exist. (path: " + path.generic_string() + ")");
-		loadMissingImage(format, nx, px, ny, py, nz, pz, size);
-		return;
-	}
-	if (fileCount > 1)
-	{
-		GARDEN_LOG_ERROR("Cubemap image file is ambiguous. (path: " + path.generic_string() + ")");
-		loadMissingImage(format, nx, px, ny, py, nz, pz, size);
-		return;
-	}
-	
-	auto inputLastWriteTime = fs::last_write_time(inputFilePath);
-	if (!fs::exists(cacheFileString + "-nx.ktx2") || !fs::exists(cacheFileString + "-px.ktx2") ||
-		!fs::exists(cacheFileString + "-ny.ktx2") || !fs::exists(cacheFileString + "-py.ktx2") ||
-		!fs::exists(cacheFileString + "-nz.ktx2") || !fs::exists(cacheFileString + "-pz.ktx2") ||
-		inputLastWriteTime > fs::last_write_time(cacheFileString + "-nx.ktx2") ||
-		inputLastWriteTime > fs::last_write_time(cacheFileString + "-px.ktx2") ||
-		inputLastWriteTime > fs::last_write_time(cacheFileString + "-ny.ktx2") ||
-		inputLastWriteTime > fs::last_write_time(cacheFileString + "-py.ktx2") ||
-		inputLastWriteTime > fs::last_write_time(cacheFileString + "-nz.ktx2") ||
-		inputLastWriteTime > fs::last_write_time(cacheFileString + "-pz.ktx2"))
-	{
-		vector<uint8> equiData; uint2 equiSize; Image::Format equiFormat;
-		loadImageData(path, equiData, equiSize, equiFormat, threadIndex);
-
-		auto cubemapSize = equiSize.x / 4;
-		if (equiSize.x / 2 != equiSize.y)
-		{
-			GARDEN_LOG_ERROR("Invalid equi cubemap size. (path: " + path.generic_string() + ")");
-			loadMissingImage(equiFormat, nx, px, ny, py, nz, pz, size);
-			return;
-		}
-		if (cubemapSize % 32 != 0)
-		{
-			GARDEN_LOG_ERROR("Invalid cubemap image size. (path: " + path.generic_string() + ")");
-			loadMissingImage(equiFormat, nx, px, ny, py, nz, pz, size);
-			return;
-		}
-
-		try
-		{
-			Equi2Cube::convertImage(inputFilePath.filename(), 
-				inputFilePath.parent_path(), cacheFilePath.parent_path(), threadPool);
-			GARDEN_LOG_DEBUG("Converted spherical cubemap. (path: " + path.generic_string() + ")");
-		}
-		catch (exception& e)
-		{
-			GARDEN_LOG_ERROR(e.what());
-			loadMissingImage(equiFormat, nx, px, ny, py, nz, pz, size);
-			return;
-		}
-	}
-	#endif
-
-	uint2 nxSize, pxSize, nySize, pySize, nzSize, pzSize;
-	Image::Format nxFormat, pxFormat, nyFormat, pyFormat, nzFormat, pzFormat;
-	nxFormat = pxFormat = nyFormat = pyFormat = nzFormat = pzFormat = format;
+	auto threadSystem = ThreadSystem::tryGetInstance();
+	uint4 nxSize, pxSize, nySize, pySize, nzSize, pzSize;
+	Image::Type nxType, pxType, nyType, pyType, nzType, pzType;
+	Image::Format nxFormat, pxFormat, nyFormat, pyFormat, nzFormat, pzFormat; bool result;
 
 	if (threadIndex < 0 && threadSystem)
 	{
 		auto& threadPool = threadSystem->getForegroundPool();
+		atomic_uint8_t loadResult = 0;
+
 		threadPool.addTasks([&](const ThreadPool::Task& task)
 		{
 			SET_CPU_ZONE_SCOPED("Cubemap Data Load");
@@ -1136,283 +1207,147 @@ void ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& nx,
 
 			switch (task.getTaskIndex())
 			{
-				case 0: loadImageData(filePath + "-nx", nx, nxSize, nxFormat, threadIndex); break;
-				case 1: loadImageData(filePath + "-px", px, pxSize, pxFormat, threadIndex); break;
-				case 2: loadImageData(filePath + "-ny", ny, nySize, nyFormat, threadIndex); break;
-				case 3: loadImageData(filePath + "-py", py, pySize, pyFormat, threadIndex); break;
-				case 4: loadImageData(filePath + "-nz", nz, nzSize, nzFormat, threadIndex); break;
-				case 5: loadImageData(filePath + "-pz", pz, pzSize, pzFormat, threadIndex); break;
+				case 0: loadResult += loadImageData(filePath + "-nx", 
+					nx, nxSize, nxType, nxFormat, threadIndex) ? 1 : 0; break;
+				case 1: loadResult += loadImageData(filePath + "-px", 
+					px, pxSize, pxType, pxFormat, threadIndex) ? 1 : 0; break;
+				case 2: loadResult += loadImageData(filePath + "-ny", 
+					ny, nySize, nyType, nyFormat, threadIndex) ? 1 : 0; break;
+				case 3: loadResult += loadImageData(filePath + "-py", 
+					py, pySize, pyType, pyFormat, threadIndex) ? 1 : 0; break;
+				case 4: loadResult += loadImageData(filePath + "-nz", 
+					nz, nzSize, nzType, nzFormat, threadIndex) ? 1 : 0; break;
+				case 5: loadResult += loadImageData(filePath + "-pz", 
+					pz, pzSize, pzType, pzFormat, threadIndex) ? 1 : 0; break;
 				default: abort();
 			}
 		}, Image::cubemapFaceCount);
 		threadPool.wait();
+
+		result = loadResult == 6;
 	}
 	else
 	{
 		SET_CPU_ZONE_SCOPED("Cubemap Data Load");
 
 		auto filePath = path.generic_string();
-		loadImageData(filePath + "-nx", nx, nxSize, nxFormat, threadIndex);
-		loadImageData(filePath + "-px", px, pxSize, pxFormat, threadIndex);
-		loadImageData(filePath + "-ny", ny, nySize, nyFormat, threadIndex);
-		loadImageData(filePath + "-py", py, pySize, pyFormat, threadIndex);
-		loadImageData(filePath + "-nz", nz, nzSize, nzFormat, threadIndex);
-		loadImageData(filePath + "-pz", pz, pzSize, pzFormat, threadIndex);
+		result = loadImageData(filePath + "-nx", nx, nxSize, nxType, nxFormat, threadIndex);
+		result &= loadImageData(filePath + "-px", px, pxSize, pxType, pxFormat, threadIndex);
+		result &= loadImageData(filePath + "-ny", ny, nySize, nyType, nyFormat, threadIndex);
+		result &= loadImageData(filePath + "-py", py, pySize, pyType, pyFormat, threadIndex);
+		result &= loadImageData(filePath + "-nz", nz, nzSize, nzType, nzFormat, threadIndex);
+		result &= loadImageData(filePath + "-pz", pz, pzSize, pzType, pzFormat, threadIndex);
 	}
 
-	if (nxSize != pxSize || nxSize != nySize || 
+	if (nxSize.z != 1 || nxSize != pxSize || nxSize != nySize || 
 		nxSize != pySize || nxSize != nzSize || nxSize != pzSize ||
 		nxSize.x % 32 != 0 || pxSize.x % 32 != 0 || nySize.x % 32 != 0 ||
 		pySize.x % 32 != 0 || nzSize.x % 32 != 0 || pzSize.x % 32 != 0)
 	{
 		GARDEN_LOG_ERROR("Invalid cubemap size. (path: " + path.generic_string() + ")");
-		loadMissingImage(format, nx, px, ny, py, nz, pz, size);
-		return;
+		loadMissingImage(nx, px, ny, py, nz, pz, size, format);
+		return false;
 	}
 	if (nxSize.x != nxSize.y || pxSize.x != pxSize.y || nySize.x != nySize.y || 
 		pySize.x != pySize.y || nzSize.x != nzSize.y || pzSize.x != pzSize.y)
 	{
 		GARDEN_LOG_ERROR("Invalid cubemap face size. (path: " + path.generic_string() + ")");
-		loadMissingImage(format, nx, px, ny, py, nz, pz, size);
-		return;
+		loadMissingImage(nx, px, ny, py, nz, pz, size, format);
+		return false;
+	}
+	if (nxFormat != pxFormat || nxFormat != nyFormat || 
+		nxFormat != pyFormat || nxFormat != nzFormat || nxFormat != pzFormat)
+	{
+		GARDEN_LOG_ERROR("Invalid cubemap face format. (path: " + path.generic_string() + ")");
+		loadMissingImage(nx, px, ny, py, nz, pz, size, format);
+		return false;
 	}
 
-	if (format == Image::Format::Undefined)
-	{
-		if (nxFormat != pxFormat || nxFormat != nyFormat || 
-			nxFormat != pyFormat || nxFormat != nzFormat || nxFormat != pzFormat)
-		{
-			GARDEN_LOG_ERROR("Invalid cubemap face format. (path: " + path.generic_string() + ")");
-			loadMissingImage(format, nx, px, ny, py, nz, pz, size);
-			return;
-		}
-		format = nxFormat;
-	}
-	size = nxSize;
+	format = nxFormat;
+	size = (uint2)nxSize;
+	return result;
 }
 
 //**********************************************************************************************************************
-static void copyLoadedImageData(const vector<vector<uint8>>& pixelArrays, uint8* stagingMap, uint2 realSize, 
-	uint2 imageSize, psize pixelBinarySize, Image::Type imageType, ImageLoadFlags flags) noexcept
+static constexpr Image::Usage loadedImageUsage = Image::Usage::Sampled | Image::Usage::TransferDst;
+static constexpr Image::Strategy loadedImageStrategy = Image::Strategy::Size;
+
+static void copyLoadedImageData(const vector<vector<uint8>>& pixelArrays, 
+	uint8* stagingMap, const uint8* stagingMapEnd, Image::Type imageType) noexcept
 {
-	if (hasAnyFlag(flags, ImageLoadFlags::LoadAsArray | ImageLoadFlags::LoadAs3D) && realSize.x > realSize.y)
+	auto pixelData = pixelArrays.data();
+	auto layerCount = (uint32)pixelArrays.size();
+
+	for (uint32 layer = 0; layer < layerCount; layer++)
 	{
-		auto pixels = pixelArrays[0].data();
-		auto layerCount = realSize.x / realSize.y;
-		auto lineSize = pixelBinarySize * imageSize.x;
-
-		uint32 offsetX = 0;
-		for (uint32 l = 0; l < layerCount; l++)
-		{
-			for (uint32 y = 0; y < imageSize.y; y++)
-			{
-				auto pixelsOffset = pixelBinarySize * (y * realSize.x + offsetX);
-				memcpy(stagingMap, pixels + pixelsOffset, lineSize);
-				stagingMap += lineSize;
-			}
-			offsetX += imageSize.x;
-		}
+		auto& pixels = pixelData[Image::calcApiLayerIndex(imageType, layer)];
+		GARDEN_ASSERT(stagingMap < stagingMapEnd);
+		memcpy(stagingMap, pixels.data(), pixels.size());
+		stagingMap += pixels.size();
 	}
-	else
-	{
-		auto pixelData = pixelArrays.data();
-		auto layerCount = (uint32)pixelArrays.size();
-
-		for (uint32 layer = 0; layer < layerCount; layer++)
-		{
-			auto& pixels = pixelData[Image::calcApiLayerIndex(imageType, layer)];
-			memcpy(stagingMap, pixels.data(), pixels.size());
-			stagingMap += pixels.size();
-		}
-	}
+	GARDEN_ASSERT(stagingMap == stagingMapEnd);
 }
-
-static void calcLoadedImageDim(psize pathCount, uint2 realSize,
-	ImageLoadFlags flags, uint2& imageSize, uint32& layerCount) noexcept
-{
-	imageSize = realSize; layerCount = (uint32)pathCount;
-	if (hasAnyFlag(flags, ImageLoadFlags::LoadAsArray | ImageLoadFlags::LoadAs3D))
-	{
-		if (realSize.x > realSize.y)
-		{
-			layerCount = realSize.x / realSize.y;
-			imageSize.x = imageSize.y;
-		}
-		else
-		{
-			layerCount = realSize.y / realSize.x;
-			imageSize.y = imageSize.x;
-		}
-
-		if (layerCount == 0) layerCount = 1;
-	}
-}
-static Image::Type calcLoadedImageType(uint32 sizeY, ImageLoadFlags flags) noexcept
-{
-	if (hasAnyFlag(flags, ImageLoadFlags::TypeCubemap))
-		return Image::Type::Cubemap;
-	if (hasAnyFlag(flags, ImageLoadFlags::LoadAsArray | ImageLoadFlags::TypeArray))
-		return sizeY == 1 ? Image::Type::Texture1DArray : Image::Type::Texture2DArray;
-	if (hasAnyFlag(flags, ImageLoadFlags::LoadAs3D | ImageLoadFlags::Type3D))
-		return Image::Type::Texture3D;
-	return sizeY == 1 ? Image::Type::Texture1D : Image::Type::Texture2D;
-}
-static uint8 calcLoadedImageMipCount(uint8 maxMipCount, uint2 imageSize) noexcept
-{
-	return maxMipCount == 0 ? calcMipCount(imageSize) : std::min(maxMipCount, calcMipCount(imageSize));
-}
-static Image::Format toSrgbFormat(int componentCount)
-{
-	switch (componentCount)
-	{
-		case 4: return Image::Format::SrgbR8G8B8A8;
-		case 2: return Image::Format::SrgbR8G8;
-		case 1: return Image::Format::SrgbR8;
-		default: throw GardenError("Unsupported sRGB image channel count.");
-	}
-}
-
-//**********************************************************************************************************************
-Ref<Image> ResourceSystem::loadImage(const fs::path* paths, psize pathCount, Image::Format format, 
-	Image::Usage usage, uint8 maxMipCount, Image::Strategy strategy, ImageLoadFlags flags, float taskPriority)
+ID<Image> ResourceSystem::loadImage(const fs::path* paths, psize pathCount, bool loadAsync)
 {
 	GARDEN_ASSERT(paths);
 	GARDEN_ASSERT(pathCount > 0);
-	GARDEN_ASSERT_MSG(hasAnyFlag(usage, Image::Usage::TransferDst), "Assert " + paths[0].generic_string());
-	GARDEN_ASSERT_MSG(hasAnyFlag(usage, Image::Usage::TransferQ), "Assert " + paths[0].generic_string());
-
-	#if GARDEN_DEBUG || GARDEN_EDITOR
-	if (pathCount > 1)
-	{
-		GARDEN_ASSERT_MSG(!hasAnyFlag(flags, ImageLoadFlags::LoadAsArray | 
-			ImageLoadFlags::LoadAs3D), "Assert " + paths[0].generic_string());
-		if (hasAnyFlag(flags, ImageLoadFlags::TypeCubemap))
-		{
-			GARDEN_ASSERT_MSG(pathCount == 1 || pathCount == 
-				Image::cubemapFaceCount, "Assert " + paths[0].generic_string());
-		}
-	}
-	if (hasAnyFlag(flags, ImageLoadFlags::LoadAsArray | ImageLoadFlags::TypeArray))
-	{
-		GARDEN_ASSERT_MSG(!hasAnyFlag(flags, ImageLoadFlags::LoadAs3D | ImageLoadFlags::Type3D | 
-			ImageLoadFlags::TypeCubemap), "Assert " + paths[0].generic_string());
-	}
-	if (hasAnyFlag(flags, ImageLoadFlags::LoadAs3D | ImageLoadFlags::Type3D))
-	{
-		GARDEN_ASSERT_MSG(!hasAnyFlag(flags, ImageLoadFlags::LoadAsArray | ImageLoadFlags::TypeArray | 
-			ImageLoadFlags::TypeCubemap), "Assert " + paths[0].generic_string());
-	}
-	if (hasAnyFlag(flags, ImageLoadFlags::TypeCubemap))
-	{
-		GARDEN_ASSERT_MSG(!hasAnyFlag(flags, ImageLoadFlags::LoadAsArray | ImageLoadFlags::TypeArray | 
-			ImageLoadFlags::LoadAs3D | ImageLoadFlags::Type3D), "Assert " + paths[0].generic_string());
-	}
-	string debugName = hasAnyFlag(flags, ImageLoadFlags::LoadShared) ? "shared." : "";
-	#endif
-
-	Hash128 hash;
-	if (hasAnyFlag(flags, ImageLoadFlags::LoadShared))
-	{
-		auto hashState = Hash128::getState();
-		Hash128::resetState(hashState);
-		for (psize i = 0; i < pathCount; i++)
-		{
-			auto path = paths[i].generic_string();
-			Hash128::updateState(hashState, path.c_str(), path.length());
-		}
-
-		Hash128::updateState(hashState, &usage, sizeof(Image::Usage));
-		Hash128::updateState(hashState, &maxMipCount, sizeof(uint8));
-		Hash128::updateState(hashState, &flags, sizeof(ImageLoadFlags));
-		hash = Hash128::digestState(hashState);
-
-		auto result = sharedImages.find(hash);
-		if (result != sharedImages.end())
-		{
-			auto imageView = GraphicsSystem::Instance::get()->get(result->second);
-			if (imageView->isLoaded())
-			{
-				LoadedImageItem item;
-				item.paths.assign(paths, paths + pathCount);
-				item.instance = ID<Image>(result->second);
-				loadedImageArray.push_back(std::move(item));
-			}
-			return result->second;
-		}
-	}
 	
 	auto graphicsAPI = GraphicsAPI::get();
 	auto imageVersion = graphicsAPI->imageVersion++;
-	auto image = graphicsAPI->imagePool.create(usage, strategy, imageVersion);
+
+	auto image = graphicsAPI->imagePool.create(loadedImageUsage | 
+		Image::Usage::TransferQ, loadedImageStrategy, imageVersion);
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
-	auto resource = graphicsAPI->imagePool.get(image);
-	if (pathCount > 1)
-	{
-		if (hasAnyFlag(flags, ImageLoadFlags::LoadAsArray))
-			resource->setDebugName("imageArray." + debugName + paths[0].generic_string());
-		else resource->setDebugName("image3D." + debugName + paths[0].generic_string());
-	}
-	else resource->setDebugName("image." + debugName + paths[0].generic_string());
+	auto imageView = graphicsAPI->imagePool.get(image);
+	imageView->setDebugName("image." + paths[0].generic_string());
 	#endif
 
-	auto threadSystem = ThreadSystem::Instance::tryGet();
-	if (!hasAnyFlag(flags, ImageLoadFlags::LoadSync) && threadSystem)
+	auto threadSystem = ThreadSystem::tryGetInstance();
+	if (loadAsync && threadSystem)
 	{
 		auto data = new ImageLoadData();
 		data->imageVersion = imageVersion;
 		data->paths.assign(paths, paths + pathCount);
 		data->instance = image;
-		data->format = format;
-		data->usage = usage;
-		data->strategy = strategy;
-		data->maxMipCount = maxMipCount;
-		data->flags = flags;
 
 		threadSystem->getBackgroundPool().addTask([this, data](const ThreadPool::Task& task)
 		{
 			SET_CPU_ZONE_SCOPED("Image Load");
 
-			auto& paths = data->paths; auto flags = data->flags;
-			vector<vector<uint8>> pixelArrays(paths.size()); uint2 realSize;
-			auto dataFormat = hasAnyFlag(flags, ImageLoadFlags::LoadAsSrgb) ? 
-				toSrgbFormat(toComponentCount(data->format)) : data->format;
-
-			if (hasAnyFlag(flags, ImageLoadFlags::TypeCubemap) && paths.size() == 1)
+			auto& filePaths = data->paths; Image::Type type; Image::Format format;
+			vector<vector<uint8>> pixelArrays(filePaths.size()); uint4 size;
+	
+			auto p = filePaths[0].generic_string();
+			if (p.find("cubemap") != string::npos)
 			{
-				pixelArrays.resize(Image::cubemapFaceCount);
-				loadCubemapData(paths[0], pixelArrays[0], pixelArrays[1], pixelArrays[2], pixelArrays[3], 
-					pixelArrays[4], pixelArrays[5], realSize, dataFormat, task.getThreadIndex());
-				auto p = paths[0].generic_string();
-				paths = { p + "-nx", p + "-px", p + "-ny", p + "-py", p + "-nz", p + "-pz" };
+				pixelArrays.resize(Image::cubemapFaceCount); uint2 cubeSize;
+				loadOrConvertCubemap(filePaths[0], pixelArrays[0], pixelArrays[1], pixelArrays[2], pixelArrays[3], 
+					pixelArrays[4], pixelArrays[5], cubeSize, format, task.getThreadIndex());
+				filePaths = { p + "-nx", p + "-px", p + "-ny", p + "-py", p + "-nz", p + "-pz" };
+				size = uint4(cubeSize.x, cubeSize.y, 1, 1); type = Image::Type::Cubemap;
 			}
 			else
 			{
-				loadImageData(paths.data(), paths.size(), pixelArrays, 
-					realSize, dataFormat, task.getThreadIndex());
+				loadImageData(filePaths.data(), filePaths.size(), 
+					pixelArrays, size, type, format, task.getThreadIndex());
 			}
 
-			uint2 imageSize; uint32 layerCount; calcLoadedImageDim(
-				paths.size(), realSize, flags, imageSize, layerCount);
-			auto mipCount = calcLoadedImageMipCount(data->maxMipCount, imageSize);
-			auto imageType = calcLoadedImageType(realSize.y, flags);
-			auto pixelCount = (psize)realSize.x * realSize.y;
-			auto imageBinarySize = toBinarySize(pixelCount, dataFormat);
-			if (data->format != Image::Format::Undefined) dataFormat = data->format;
-			GARDEN_ASSERT_MSG(imageBinarySize > 0, "Assert " + paths[0].generic_string());
-			
+			auto pixelCount = (psize)size.x * size.y * size.z;
+			auto imageBinarySize = toBinarySize(pixelCount, format);
+			GARDEN_ASSERT_MSG(imageBinarySize > 0, "Assert " + filePaths[0].generic_string());
+
 			ImageQueueItem item =
 			{
-				ImageExt::create(imageType, dataFormat, data->usage, data->strategy, 
-					u32x4(imageSize.x, imageSize.y, layerCount, mipCount), data->imageVersion),
+				ImageExt::create(type, format, loadedImageUsage, loadedImageStrategy, (u32x4)size, data->imageVersion),
 				BufferExt::create(Buffer::Usage::TransferSrc, Buffer::CpuAccess::SequentialWrite, 
-					Buffer::Location::Auto, Buffer::Strategy::Speed, // Note: Staging does not need TransferQ flag.
-					imageBinarySize * paths.size(), 0),
-				std::move(paths), realSize, data->instance, flags
+					Buffer::Location::Auto, Buffer::Strategy::Speed, imageBinarySize * filePaths.size(), 0),
+				std::move(filePaths), data->instance // Note: Staging does not need TransferQ flag.
 			};
 
-			copyLoadedImageData(pixelArrays, item.staging.getMap(), realSize, 
-				imageSize, imageBinarySize / pixelCount, imageType, flags);
+			auto stagingMap = item.staging.getMap();
+			copyLoadedImageData(pixelArrays, stagingMap, 
+				stagingMap + item.staging.getBinarySize(), type);
 			item.staging.flush();
 
 			queueLocker.lock();
@@ -1421,53 +1356,48 @@ Ref<Image> ResourceSystem::loadImage(const fs::path* paths, psize pathCount, Ima
 
 			delete data;
 		},
-		taskPriority);
+		TaskPriority::image);
 	}
 	else
 	{
 		SET_CPU_ZONE_SCOPED("Image Load");
 
-		LoadedImageItem item;
-		vector<vector<uint8>> pixelArrays(pathCount); uint2 realSize;
-		auto dataFormat = hasAnyFlag(flags, ImageLoadFlags::LoadAsSrgb) ? 
-			toSrgbFormat(toComponentCount(format)) : format;
+		LoadedImageItem item; Image::Type type; Image::Format format;
+		vector<vector<uint8>> pixelArrays(pathCount); uint4 size;
 
-		if (hasAnyFlag(flags, ImageLoadFlags::TypeCubemap) && pathCount == 1)
+		auto p = paths[0].generic_string();
+		if (p.find("cubemap") != string::npos)
 		{
-			pixelArrays.resize(Image::cubemapFaceCount);
-			loadCubemapData(paths[0], pixelArrays[0], pixelArrays[1], pixelArrays[2], 
-				pixelArrays[3], pixelArrays[4], pixelArrays[5], realSize, dataFormat, -1);
-			auto p = paths[0].generic_string();
+			pixelArrays.resize(Image::cubemapFaceCount); uint2 cubeSize;
+			loadOrConvertCubemap(paths[0], pixelArrays[0], pixelArrays[1], pixelArrays[2], 
+				pixelArrays[3], pixelArrays[4], pixelArrays[5], cubeSize, format, -1);
 			item.paths = { p + "-nx", p + "-px", p + "-ny", p + "-py", p + "-nz", p + "-pz" };
+			size = uint4(cubeSize.x, cubeSize.y, 1, 1); type = Image::Type::Cubemap;
 		}
 		else
 		{
-			loadImageData(paths, pathCount, pixelArrays, realSize, dataFormat, -1);
+			loadImageData(paths, pathCount, pixelArrays, size, type, format, -1);
 			item.paths.assign(paths, paths + pathCount);
 		}
 
-		uint2 imageSize; uint32 layerCount; calcLoadedImageDim(
-			pathCount, realSize, flags, imageSize, layerCount);
-		auto mipCount = calcLoadedImageMipCount(maxMipCount, imageSize);
-		auto imageType = calcLoadedImageType(realSize.y, flags);
-		auto pixelCount = (psize)realSize.x * realSize.y;
-		auto imageBinarySize = toBinarySize(pixelCount, dataFormat);
-		if (format != Image::Format::Undefined) dataFormat = format;
+		auto pixelCount = (psize)size.x * size.y * size.z;
+		auto imageBinarySize = toBinarySize(pixelCount, format);
 		GARDEN_ASSERT_MSG(imageBinarySize > 0, "Assert " + paths[0].generic_string());
 
-		auto imageInstance = ImageExt::create(imageType, format, usage, 
-			strategy, u32x4(imageSize.x, imageSize.y, layerCount, mipCount), 0);
+		auto imageInstance = ImageExt::create(type, format, 
+			loadedImageUsage, loadedImageStrategy, (u32x4)size, 0);
 		auto imageView = graphicsAPI->imagePool.get(image);
 		ImageExt::moveInternalObjects(imageInstance, **imageView);
 
-		auto graphicsSystem = GraphicsSystem::Instance::get();
+		auto graphicsSystem = GraphicsSystem::getInstance();
 		auto stagingBuffer =  graphicsSystem->createStagingBuffer(
 			Buffer::CpuAccess::SequentialWrite, imageBinarySize * pathCount);
 		SET_RESOURCE_DEBUG_NAME(stagingBuffer, "buffer.staging.loadedImage" + to_string(*stagingBuffer));
 
 		auto stagingView = graphicsAPI->bufferPool.get(stagingBuffer);
-		copyLoadedImageData(pixelArrays, stagingView->getMap(), realSize, 
-			imageSize, imageBinarySize / pixelCount, imageType, flags);
+		auto stagingMap = stagingView->getMap();
+		copyLoadedImageData(pixelArrays, stagingMap, 
+			stagingMap + stagingView->getBinarySize(), type);
 		stagingView->flush();
 
 		auto generateMipmap = imageView->getMipCount() > 1;
@@ -1481,24 +1411,67 @@ Ref<Image> ResourceSystem::loadImage(const fs::path* paths, psize pathCount, Ima
 		item.instance = image;
 		loadedImageArray.push_back(std::move(item));
 	}
-
-	auto imageRef = Ref<Image>(image);
-	if (hasAnyFlag(flags, ImageLoadFlags::LoadShared))
-	{
-		auto result = sharedImages.emplace(hash, imageRef);
-		GARDEN_ASSERT_MSG(result.second, "Detected memory corruption");
-	}
-
-	return imageRef;
+	return image;
 }
 
 //**********************************************************************************************************************
-void ResourceSystem::storeImage(const fs::path& path, const void* pixels, uint2 size, Image::FileType fileType, 
-	Image::Format imageFormat, float quality, float effort, const fs::path& directory)
+Ref<Image> ResourceSystem::loadSharedImage(const fs::path* paths, psize pathCount, bool loadAsync)
+{
+	GARDEN_ASSERT(paths);
+	GARDEN_ASSERT(pathCount > 0);
+
+	auto hashState = Hash128::getState();
+	Hash128::resetState(hashState);
+	for (psize i = 0; i < pathCount; i++)
+	{
+		auto path = paths[i].generic_string();
+		Hash128::updateState(hashState, path.c_str(), path.length());
+	}
+	auto hash = Hash128::digestState(hashState);
+
+	auto searchResult = sharedImages.find(hash);
+	if (searchResult != sharedImages.end())
+	{
+		auto imageView = GraphicsSystem::getInstance()->get(searchResult->second);
+		if (imageView->isLoaded())
+		{
+			LoadedImageItem item;
+			item.paths.assign(paths, paths + pathCount);
+			item.instance = ID<Image>(searchResult->second);
+			loadedImageArray.push_back(std::move(item));
+		}
+		return searchResult->second;
+	}
+
+	auto image = Ref<Image>(loadImage(paths, pathCount, loadAsync)); 
+	auto result = sharedImages.emplace(hash, image);
+	GARDEN_ASSERT_MSG(result.second, "Detected memory corruption");
+	return image;
+}
+void ResourceSystem::destroyShared(Ref<Image>& image)
+{
+	if (!image || image.getRefCount() > 2)
+		return;
+
+	for (auto i = sharedImages.begin(); i != sharedImages.end(); i++)
+	{
+		if (i->second != image)
+			continue;
+		sharedImages.erase(i);
+		break;
+	}
+
+	GraphicsSystem::getInstance()->destroy(image);
+}
+
+//**********************************************************************************************************************
+void ResourceSystem::storeImage(const fs::path& path, const void* pixels, uint3 size, Image::FileType fileType, 
+	Image::Type imageType, Image::Format imageFormat, float quality, float effort, const fs::path& directory)
 {
 	GARDEN_ASSERT(!path.empty());
 	GARDEN_ASSERT_MSG(pixels, "Assert " + path.generic_string());
-	GARDEN_ASSERT_MSG(areAllTrue(size > uint2::zero), "Assert " + path.generic_string());
+	GARDEN_ASSERT_MSG(areAllTrue(size > uint3::zero), "Assert " + path.generic_string());
+	GARDEN_ASSERT_MSG(imageFormat != Image::Format::Undefined, "Assert " + path.generic_string());
 	GARDEN_ASSERT_MSG(quality >= 0.0f && quality <= 1.0f, "Assert " + path.generic_string());
 	GARDEN_ASSERT_MSG(effort >= 0.0f && effort <= 1.0f, "Assert " + path.generic_string());
 
@@ -1512,20 +1485,26 @@ void ResourceSystem::storeImage(const fs::path& path, const void* pixels, uint2 
 	if (!fs::exists(directoryPath))
 		fs::create_directories(directoryPath);
 
-	Image::storeFileData(imagesPath / path, pixels, size, fileType, imageFormat, quality, effort);
+	Image::storeFileData(imagesPath / path, pixels, size, fileType, imageType, imageFormat, quality, effort);
 	GARDEN_LOG_DEBUG("Stored image. (path: " + path.generic_string() + ")");
 }
 
 void ResourceSystem::combineImages(const vector<fs::path>& inputPaths, const fs::path& outputPath, 
-	Image::FileType fileType, Image::Format imageFormat, int32 threadIndex)
+	Image::FileType fileType, Image::Format imageFormat, float quality, float effort, int32 threadIndex)
 {
 	GARDEN_ASSERT(!inputPaths.empty());
 	GARDEN_ASSERT(!inputPaths[0].empty());
 	GARDEN_ASSERT(!outputPath.empty());
 	GARDEN_ASSERT(threadIndex < (int32)thread::hardware_concurrency());
 
-	vector<uint8> inBuffer; uint2 inSize;
-	loadImageData(inputPaths[0], inBuffer, inSize, imageFormat, threadIndex);
+	vector<uint8> inBuffer; uint4 inSize; Image::Type inType; Image::Format inFormat;
+	loadImageData(inputPaths[0], inBuffer, inSize, inType, inFormat, threadIndex);
+
+	if (inSize.z != 1 || inType != Image::Type::Texture2D)
+	{
+		throw GardenError("Failed to combine images, image is not 2D. ("
+			"path: " + inputPaths[0].generic_string() + ")");
+	}
 
 	auto pathCount = (uint32)inputPaths.size();
 	auto pixelCount = (psize)inSize.x * inSize.y;
@@ -1535,47 +1514,57 @@ void ResourceSystem::combineImages(const vector<fs::path>& inputPaths, const fs:
 	auto pixelBinarySize = imageBinarySize / pixelCount;
 	auto inBinSizeX = pixelBinarySize * inSize.x, inBinSizeY = pixelBinarySize * inSize.y;
 	auto outBinSizeY = pixelBinarySize * inSize.y * pathCount;
-	vector<uint8> outBuffer(inSize.x * outBinSizeY);
+	vector<uint8> outBuffer(inSize.x * outBinSizeY), tmpBuffer;
 
-	auto inData = inBuffer.data(), outData = outBuffer.data();
+	auto tmpData = (const uint8*)Image::convertFormat(inBuffer.data(), 
+		uint3((uint2)inSize, 1), tmpBuffer, inFormat, imageFormat);
+	auto outData = outBuffer.data();
+
 	for (uint32 y = 0; y < inSize.y; y++)
 	{
-		memcpy(outData, inData, inBinSizeX);
-		inData += inBinSizeY; outData += outBinSizeY;
+		memcpy(outData, tmpData, inBinSizeX);
+		tmpData += inBinSizeY; outData += outBinSizeY;
 	}
 
 	auto inputPathData = inputPaths.data();
 	for (uint32 i = 1; i < pathCount; i++)
 	{
-		uint2 otherSize;
-		loadImageData(inputPathData[i], inBuffer, otherSize, imageFormat, threadIndex);
+		uint4 otherSize; Image::Type otherType; Image::Format otherFormat;
+		loadImageData(inputPathData[i], inBuffer, otherSize, otherType, otherFormat, threadIndex);
 
-		if (inSize != otherSize)
-			throw GardenError("Failed to combine images, different sizes.");
+		if (inSize != otherSize || inType != otherType)
+		{
+			throw GardenError("Failed to combine images, different sizes or types. ("
+				"path: " + inputPaths[0].generic_string() + ")");
+		}
 
-		inData = inBuffer.data(); outData = outBuffer.data() + inBinSizeX * i;
+		tmpData = (const uint8*)Image::convertFormat(inBuffer.data(), 
+			uint3((uint2)inSize, 1), tmpBuffer, inFormat, imageFormat);
+		outData = outBuffer.data() + inBinSizeX * i;
+
 		for (uint32 y = 0; y < inSize.y; y++)
 		{
-			memcpy(outData, inData, inBinSizeX);
-			inData += inBinSizeY; outData += outBinSizeY;
+			memcpy(outData, tmpData, inBinSizeX);
+			tmpData += inBinSizeY; outData += outBinSizeY;
 		}
 	}
 
     auto outSize = uint2(inSize.x * (uint32)inputPaths.size(), inSize.y);
-	storeImage(outputPath, outBuffer.data(), outSize, fileType, imageFormat);
+	storeImage(outputPath, outBuffer.data(), uint3(outSize, 1), 
+		fileType, Image::Type::Texture2D, imageFormat, quality, effort);
 }
 
 //**********************************************************************************************************************
-void ResourceSystem::renormalizeImage(const fs::path& path, Image::FileType fileType, int32 threadIndex)
+void ResourceSystem::renormalizeImage(const fs::path& path, 
+	Image::FileType fileType, float quality, float effort, int32 threadIndex)
 {
 	GARDEN_ASSERT(!path.empty());
 	GARDEN_ASSERT(threadIndex < (int32)thread::hardware_concurrency());
 
-	vector<uint8> dataBuffer; uint2 size;
-	auto imageFormat = Image::Format::Undefined;
-	loadImageData(path, dataBuffer, size, imageFormat, threadIndex);
+	vector<uint8> dataBuffer; uint4 size; Image::Type imageType; Image::Format imageFormat;
+	loadImageData(path, dataBuffer, size, imageType, imageFormat, threadIndex);
 
-	auto pixelCount = (psize)size.x * size.y;
+	auto pixelCount = (psize)size.x * size.y * size.z;
 	if (imageFormat == Image::Format::SrgbR8G8B8A8 || imageFormat == Image::Format::UnormR8G8B8A8)
 	{
 		auto pixelData = (Color*)dataBuffer.data();
@@ -1600,28 +1589,11 @@ void ResourceSystem::renormalizeImage(const fs::path& path, Image::FileType file
 			"path: " + path.generic_string() + ")");
 	}
 	
-	storeImage(path, dataBuffer.data(), size, fileType, imageFormat);
-}
-
-void ResourceSystem::destroyShared(Ref<Image>& image)
-{
-	if (!image || image.getRefCount() > 2)
-		return;
-
-	for (auto i = sharedImages.begin(); i != sharedImages.end(); i++)
-	{
-		if (i->second != image)
-			continue;
-		sharedImages.erase(i);
-		break;
-	}
-
-	GraphicsSystem::Instance::get()->destroy(image);
+	storeImage(path, dataBuffer.data(), (uint3)size, fileType, imageType, imageFormat);
 }
 
 //**********************************************************************************************************************
-Ref<Buffer> ResourceSystem::loadBuffer(const fs::path& path, 
-	Buffer::Strategy strategy, BufferLoadFlags flags, float taskPriority)
+Ref<Buffer> ResourceSystem::loadBuffer(const fs::path& path, float taskPriority)
 {
 	GARDEN_ASSERT(!path.empty());
 	abort(); // TODO: load plain buffer binary data.
@@ -1639,7 +1611,7 @@ void ResourceSystem::destroyShared(Ref<Buffer>& buffer)
 		break;
 	}
 
-	GraphicsSystem::Instance::get()->destroy(buffer);
+	GraphicsSystem::getInstance()->destroy(buffer);
 }
 
 //**********************************************************************************************************************
@@ -1654,7 +1626,7 @@ Ref<DescriptorSet> ResourceSystem::createSharedDS(const Hash128& hash,
 	if (searchResult != sharedDescriptorSets.end())
 		return searchResult->second;
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	auto descriptorSet = graphicsSystem->createDescriptorSet(graphicsPipeline, std::move(uniforms), {}, index);
 	SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.shared." + hash.toBase64URL());
 
@@ -1674,7 +1646,7 @@ Ref<DescriptorSet> ResourceSystem::createSharedDS(const Hash128& hash,
 	if (searchResult != sharedDescriptorSets.end())
 		return searchResult->second;
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	auto descriptorSet = graphicsSystem->createDescriptorSet(computePipeline, std::move(uniforms), {}, index);
 	SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.shared." + hash.toBase64URL());
 
@@ -1697,10 +1669,11 @@ void ResourceSystem::destroyShared(Ref<DescriptorSet>& descriptorSet)
 		break;
 	}
 
-	GraphicsSystem::Instance::get()->destroy(descriptorSet);
+	GraphicsSystem::getInstance()->destroy(descriptorSet);
 }
 
 //**********************************************************************************************************************
+#if !GARDEN_PACK_RESOURCES
 static bool tryGetShaderPath(const fs::path& appResourcesPath, const fs::path& resourcePath, fs::path& filePath)
 {
 	GARDEN_ASSERT(!resourcePath.empty());
@@ -1711,10 +1684,12 @@ static bool tryGetShaderPath(const fs::path& appResourcesPath, const fs::path& r
 
 	if ((hasEngineFile && hasAppFile) || (!hasEngineFile && !hasAppFile))
 		return false;
-	
+
 	filePath = hasEngineFile ? enginePath : appPath;
 	return true;
 }
+#endif
+
 static bool loadOrCompileGraphics(GslCompiler::GraphicsData& data)
 {
 	#if !GARDEN_PACK_RESOURCES
@@ -1739,8 +1714,7 @@ static bool loadOrCompileGraphics(GslCompiler::GraphicsData& data)
 	auto fragmentOutputPath = data.cachePath / fragmentPath;
 	// TODO: check for .gsl, .h header changes and recompile shaders!
 	
-	if (!fs::exists(headerFilePath) ||
-		(hasVertexShader && (!fs::exists(vertexOutputPath) ||
+	if (!fs::exists(headerFilePath) || (hasVertexShader && (!fs::exists(vertexOutputPath) ||
 		fs::last_write_time(vertexInputPath) > fs::last_write_time(vertexOutputPath))) ||
 		(hasFragmentShader && (!fs::exists(fragmentOutputPath) ||
 		fs::last_write_time(fragmentInputPath) > fs::last_write_time(fragmentOutputPath))))
@@ -1772,6 +1746,7 @@ static bool loadOrCompileGraphics(GslCompiler::GraphicsData& data)
 			if (strcmp(e.what(), "_GLSLC") != 0)
 				cout << vertexInputPath.generic_string() + "(.frag): " + e.what() + "\n"; // TODO: get info which stage throw.
 			GARDEN_LOG_ERROR("Failed to compile graphics shaders. (name: " + dataPath.generic_string() + ")");
+			fs::remove(headerFilePath);
 			return false;
 		}
 		
@@ -1788,8 +1763,8 @@ static bool loadOrCompileGraphics(GslCompiler::GraphicsData& data)
 	}
 	catch (const exception& e)
 	{
-		GARDEN_LOG_ERROR("Failed to load graphics shaders. ("
-			"name: " + data.shaderPath.generic_string() + ", error: " + string(e.what()) + ")");
+		GARDEN_LOG_ERROR("Failed to load graphics shaders. (name: " + 
+			data.shaderPath.generic_string() + ", error: " + string(e.what()) + ")");
 		return false;
 	}
 
@@ -1798,7 +1773,7 @@ static bool loadOrCompileGraphics(GslCompiler::GraphicsData& data)
 
 //**********************************************************************************************************************
 ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
-	ID<Framebuffer> framebuffer, const GraphicsOptions& options)
+	ID<Framebuffer> framebuffer, const GraphicsLoadOptions* options)
 {
 	GARDEN_ASSERT(!path.empty());
 	GARDEN_ASSERT_MSG(framebuffer, "Assert " + path.generic_string());
@@ -1806,8 +1781,10 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 
 	auto graphicsAPI = GraphicsAPI::get();
 	auto pipelineVersion = graphicsAPI->graphicsPipelineVersion++;
+	auto loadOptions = options ? *options : GraphicsLoadOptions();
+
 	auto pipeline = graphicsAPI->graphicsPipelinePool.create(path, 
-		options.maxBindlessCount, options.useAsyncRecording, pipelineVersion, framebuffer);
+		loadOptions.maxBindlessCount, pipelineVersion, framebuffer);
 
 	auto framebufferView = graphicsAPI->framebufferPool.get(framebuffer);
 	const auto& colorAttachments = framebufferView->getColorAttachments();
@@ -1836,26 +1813,26 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 		depthStencilFormat = attachment->getFormat();
 	}
 
-	auto threadSystem = ThreadSystem::Instance::tryGet();
-	if (options.loadAsync && threadSystem && !options.shaderOverrides)
+	auto threadSystem = ThreadSystem::tryGetInstance();
+	if (loadOptions.loadAsync && threadSystem && !loadOptions.shaderOverrides)
 	{
-		GARDEN_ASSERT_MSG(!options.shaderOverrides, "Nothing to load asynchronously");
+		GARDEN_ASSERT_MSG(!loadOptions.shaderOverrides, "Nothing to load asynchronously");
+	
 		auto data = new GraphicsPipelineLoadData();
 		data->shaderPath = path;
 		data->pipelineVersion = pipelineVersion;
 		data->colorFormats = std::move(colorFormats);
-		if (options.specConstValues)
-			data->specConstValues = std::move(*options.specConstValues);
-		if (options.samplerStateOverrides)
-			data->samplerStateOverrides = std::move(*options.samplerStateOverrides);
-		if (options.pipelineStateOverrides)
-			data->pipelineStateOverrides = std::move(*options.pipelineStateOverrides);
-		if (options.blendStateOverrides)
-			data->blendStateOverrides = std::move(*options.blendStateOverrides);
+		if (loadOptions.specConstValues)
+			data->specConstValues = std::move(*loadOptions.specConstValues);
+		if (loadOptions.samplerStateOverrides)
+			data->samplerStateOverrides = std::move(*loadOptions.samplerStateOverrides);
+		if (loadOptions.pipelineStateOverrides)
+			data->pipelineStateOverrides = std::move(*loadOptions.pipelineStateOverrides);
+		if (loadOptions.blendStateOverrides)
+			data->blendStateOverrides = std::move(*loadOptions.blendStateOverrides);
 		data->instance = pipeline;
-		data->maxBindlessCount = options.maxBindlessCount;
+		data->maxBindlessCount = loadOptions.maxBindlessCount;
 		data->depthStencilFormat = depthStencilFormat;
-		data->useAsyncRecording = options.useAsyncRecording;
 		#if !GARDEN_PACK_RESOURCES
 		data->resourcesPath = appResourcesPath;
 		data->cachePath = appCachePath;
@@ -1891,7 +1868,7 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 
 			GraphicsQueueItem item =
 			{
-				GraphicsPipelineExt::create(pipelineData, data->useAsyncRecording),
+				GraphicsPipelineExt::create(pipelineData),
 				data->instance
 			};
 
@@ -1901,23 +1878,23 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 
 			delete data;
 		},
-		options.taskPriority);
+		loadOptions.taskPriority);
 	}
 	else
 	{
 		SET_CPU_ZONE_SCOPED("Graphics Pipeline Load");
 
 		GslCompiler::GraphicsData pipelineData;
-		if (options.specConstValues)
-			pipelineData.specConstValues = std::move(*options.specConstValues);
-		if (options.samplerStateOverrides)
-			pipelineData.samplerStateOverrides = std::move(*options.samplerStateOverrides);
-		if (options.pipelineStateOverrides)
-			pipelineData.pipelineStateOverrides = std::move(*options.pipelineStateOverrides);
-		if (options.blendStateOverrides)
-			pipelineData.blendStateOverrides = std::move(*options.blendStateOverrides);
+		if (loadOptions.specConstValues)
+			pipelineData.specConstValues = std::move(*loadOptions.specConstValues);
+		if (loadOptions.samplerStateOverrides)
+			pipelineData.samplerStateOverrides = std::move(*loadOptions.samplerStateOverrides);
+		if (loadOptions.pipelineStateOverrides)
+			pipelineData.pipelineStateOverrides = std::move(*loadOptions.pipelineStateOverrides);
+		if (loadOptions.blendStateOverrides)
+			pipelineData.blendStateOverrides = std::move(*loadOptions.blendStateOverrides);
 		pipelineData.pipelineVersion = pipelineVersion;
-		pipelineData.maxBindlessCount = options.maxBindlessCount;
+		pipelineData.maxBindlessCount = loadOptions.maxBindlessCount;
 		pipelineData.colorFormats = std::move(colorFormats);
 		pipelineData.depthStencilFormat = depthStencilFormat;
 		#if GARDEN_PACK_RESOURCES
@@ -1928,11 +1905,11 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 		pipelineData.cachePath = appCachePath;
 		#endif
 
-		if (options.shaderOverrides)
+		if (loadOptions.shaderOverrides)
 		{
-			pipelineData.headerData = std::move(options.shaderOverrides->headerData);
-			pipelineData.vertexCode = std::move(options.shaderOverrides->vertexCode);
-			pipelineData.fragmentCode = std::move(options.shaderOverrides->fragmentCode);
+			pipelineData.headerData = std::move(loadOptions.shaderOverrides->headerData);
+			pipelineData.vertexCode = std::move(loadOptions.shaderOverrides->vertexCode);
+			pipelineData.fragmentCode = std::move(loadOptions.shaderOverrides->fragmentCode);
 			GslCompiler::loadGraphicsShaders(pipelineData);
 		}
 		else
@@ -1941,12 +1918,11 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 			if (!loadOrCompileGraphics(pipelineData))
 			{
 				graphicsAPI->graphicsPipelinePool.destroy(pipeline);
-				throw GardenError("Failed to load graphics pipeline. ("
-					"path: " + path.generic_string() + ")");
+				throw GardenError("Failed to load graphics pipeline. (path: " + path.generic_string() + ")");
 			}
 		}
 			
-		auto graphicsPipeline = GraphicsPipelineExt::create(pipelineData, options.useAsyncRecording);
+		auto graphicsPipeline = GraphicsPipelineExt::create(pipelineData);
 		auto pipelineView = graphicsAPI->graphicsPipelinePool.get(pipeline);
 		GraphicsPipelineExt::moveInternalObjects(graphicsPipeline, **pipelineView);
 		GARDEN_LOG_TRACE("Loaded graphics pipeline. (path: " +  path.generic_string() + ")");
@@ -1993,6 +1969,7 @@ static bool loadOrCompileCompute(GslCompiler::ComputeData& data)
 			if (strcmp(e.what(), "_GLSLC") != 0)
 				cout << computeInputPath.generic_string() + ": " + e.what() + "\n";
 			GARDEN_LOG_ERROR("Failed to compile compute shader. (name: " + dataPath.generic_string() + ")");
+			fs::remove(headerFilePath);
 			return false;
 		}
 		
@@ -2009,8 +1986,8 @@ static bool loadOrCompileCompute(GslCompiler::ComputeData& data)
 	}
 	catch (const exception& e)
 	{
-		GARDEN_LOG_ERROR("Failed to load compute shader. ("
-			"name: " + data.shaderPath.generic_string() + ", error: " + string(e.what()) + ")");
+		GARDEN_LOG_ERROR("Failed to load compute shader. (name: " + 
+			data.shaderPath.generic_string() + ", error: " + string(e.what()) + ")");
 		return false;
 	}
 
@@ -2018,30 +1995,32 @@ static bool loadOrCompileCompute(GslCompiler::ComputeData& data)
 }
 
 //**********************************************************************************************************************
-ID<ComputePipeline> ResourceSystem::loadComputePipeline(const fs::path& path, const ComputeOptions& options)
+ID<ComputePipeline> ResourceSystem::loadComputePipeline(const fs::path& path, const ComputeLoadOptions* options)
 {
 	GARDEN_ASSERT(!path.empty());
 	// TODO: validate specConstValues and samplerStateOverrides
 
 	auto graphicsAPI = GraphicsAPI::get();
 	auto pipelineVersion = graphicsAPI->computePipelineVersion++;
-	auto pipeline = graphicsAPI->computePipelinePool.create(path, 
-		options.maxBindlessCount, options.useAsyncRecording, pipelineVersion);
+	auto loadOptions = options ? *options : ComputeLoadOptions();
 
-	auto threadSystem = ThreadSystem::Instance::tryGet();
-	if (options.loadAsync && threadSystem && !options.shaderOverrides)
+	auto pipeline = graphicsAPI->computePipelinePool.create(
+		path, loadOptions.maxBindlessCount, pipelineVersion);
+
+	auto threadSystem = ThreadSystem::tryGetInstance();
+	if (loadOptions.loadAsync && threadSystem && !loadOptions.shaderOverrides)
 	{
-		GARDEN_ASSERT_MSG(!options.shaderOverrides, "Nothing to load asynchronously");
+		GARDEN_ASSERT_MSG(!loadOptions.shaderOverrides, "Nothing to load asynchronously");
+
 		auto data = new ComputePipelineLoadData();
 		data->pipelineVersion = pipelineVersion;
 		data->shaderPath = path;
-		if (options.specConstValues)
-			data->specConstValues = std::move(*options.specConstValues);
-		if (options.samplerStateOverrides)
-			data->samplerStateOverrides = std::move(*options.samplerStateOverrides);
-		data->maxBindlessCount = options.maxBindlessCount;
+		if (loadOptions.specConstValues)
+			data->specConstValues = std::move(*loadOptions.specConstValues);
+		if (loadOptions.samplerStateOverrides)
+			data->samplerStateOverrides = std::move(*loadOptions.samplerStateOverrides);
+		data->maxBindlessCount = loadOptions.maxBindlessCount;
 		data->instance = pipeline;
-		data->useAsyncRecording = options.useAsyncRecording;
 		#if !GARDEN_PACK_RESOURCES
 		data->resourcesPath = appResourcesPath;
 		data->cachePath = appCachePath;
@@ -2073,7 +2052,7 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(const fs::path& path, co
 
 			ComputeQueueItem item = 
 			{
-				ComputePipelineExt::create(pipelineData, data->useAsyncRecording),
+				ComputePipelineExt::create(pipelineData),
 				data->instance
 			};
 
@@ -2083,20 +2062,19 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(const fs::path& path, co
 
 			delete data;
 		},
-		options.taskPriority);
+		loadOptions.taskPriority);
 	}
 	else
 	{
 		SET_CPU_ZONE_SCOPED("Compute Pipeline Load");
 
 		GslCompiler::ComputeData pipelineData;
-		
-		if (options.specConstValues)
-			pipelineData.specConstValues = std::move(*options.specConstValues);
-		if (options.samplerStateOverrides)
-			pipelineData.samplerStateOverrides = std::move(*options.samplerStateOverrides);
+		if (loadOptions.specConstValues)
+			pipelineData.specConstValues = std::move(*loadOptions.specConstValues);
+		if (loadOptions.samplerStateOverrides)
+			pipelineData.samplerStateOverrides = std::move(*loadOptions.samplerStateOverrides);
 		pipelineData.pipelineVersion = pipelineVersion;
-		pipelineData.maxBindlessCount = options.maxBindlessCount;
+		pipelineData.maxBindlessCount = loadOptions.maxBindlessCount;
 		#if GARDEN_PACK_RESOURCES
 		pipelineData.packReader = &packReader;
 		pipelineData.threadIndex = -1;
@@ -2105,10 +2083,10 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(const fs::path& path, co
 		pipelineData.cachePath = appCachePath;
 		#endif
 		
-		if (options.shaderOverrides)
+		if (loadOptions.shaderOverrides)
 		{
-			pipelineData.headerData = std::move(options.shaderOverrides->headerData);
-			pipelineData.code = std::move(options.shaderOverrides->code);
+			pipelineData.headerData = std::move(loadOptions.shaderOverrides->headerData);
+			pipelineData.code = std::move(loadOptions.shaderOverrides->code);
 			GslCompiler::loadComputeShader(pipelineData);
 		}
 		else
@@ -2117,12 +2095,11 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(const fs::path& path, co
 			if (!loadOrCompileCompute(pipelineData))
 			{
 				graphicsAPI->computePipelinePool.destroy(pipeline);
-				throw GardenError("Failed to load compute pipeline. ("
-					"path: " + path.generic_string() + ")");
+				throw GardenError("Failed to load compute pipeline. (path: " + path.generic_string() + ")");
 			}
 		}
 
-		auto computePipeline = ComputePipelineExt::create(pipelineData, options.useAsyncRecording);
+		auto computePipeline = ComputePipelineExt::create(pipelineData);
 		auto pipelineView = graphicsAPI->computePipelinePool.get(pipeline);
 		ComputePipelineExt::moveInternalObjects(computePipeline, **pipelineView);
 		GARDEN_LOG_TRACE("Loaded compute pipeline. (path: " + path.generic_string() + ")");
@@ -2199,6 +2176,7 @@ static bool loadOrCompileRayTracing(GslCompiler::RayTracingData& data)
 			if (strcmp(e.what(), "_GLSLC") != 0)
 				cout << rayGenInputPath.generic_string() + "(.rXXX): " + e.what() + "\n"; // TODO: get info which stage throw.
 			GARDEN_LOG_ERROR("Failed to compile ray tracing shaders. (name: " + dataPath.generic_string() + ")");
+			fs::remove(headerFilePath);
 			return false;
 		}
 		
@@ -2215,8 +2193,8 @@ static bool loadOrCompileRayTracing(GslCompiler::RayTracingData& data)
 	}
 	catch (const exception& e)
 	{
-		GARDEN_LOG_ERROR("Failed to load ray tracing shaders. ("
-			"name: " + data.shaderPath.generic_string() + ", error: " + string(e.what()) + ")");
+		GARDEN_LOG_ERROR("Failed to load ray tracing shaders. (name: " + 
+			data.shaderPath.generic_string() + ", error: " + string(e.what()) + ")");
 		return false;
 	}
 
@@ -2224,30 +2202,33 @@ static bool loadOrCompileRayTracing(GslCompiler::RayTracingData& data)
 }
 
 //**********************************************************************************************************************
-ID<RayTracingPipeline> ResourceSystem::loadRayTracingPipeline(const fs::path& path, const RayTracingOptions& options)
+ID<RayTracingPipeline> ResourceSystem::loadRayTracingPipeline(
+	const fs::path& path, const RayTracingLoadOptions* options)
 {
 	GARDEN_ASSERT(!path.empty());
 	// TODO: validate specConstValues and samplerStateOverrides
 
 	auto graphicsAPI = GraphicsAPI::get();
 	auto pipelineVersion = graphicsAPI->rayTracingPipelineVersion++;
-	auto pipeline = graphicsAPI->rayTracingPipelinePool.create(path, 
-		options.maxBindlessCount, options.useAsyncRecording, pipelineVersion);
+	auto loadOptions = options ? *options : RayTracingLoadOptions();
 
-	auto threadSystem = ThreadSystem::Instance::tryGet();
-	if (options.loadAsync && threadSystem && !options.shaderOverrides)
+	auto pipeline = graphicsAPI->rayTracingPipelinePool.create(
+		path, loadOptions.maxBindlessCount, pipelineVersion);
+
+	auto threadSystem = ThreadSystem::tryGetInstance();
+	if (loadOptions.loadAsync && threadSystem && !loadOptions.shaderOverrides)
 	{
-		GARDEN_ASSERT_MSG(!options.shaderOverrides, "Nothing to load asynchronously");
+		GARDEN_ASSERT_MSG(!loadOptions.shaderOverrides, "Nothing to load asynchronously");
+	
 		auto data = new RayTracingPipelineLoadData();
 		data->pipelineVersion = pipelineVersion;
 		data->shaderPath = path;
-		if (options.specConstValues)
-			data->specConstValues = std::move(*options.specConstValues);
-		if (options.samplerStateOverrides)
-			data->samplerStateOverrides = std::move(*options.samplerStateOverrides);
-		data->maxBindlessCount = options.maxBindlessCount;
+		if (loadOptions.specConstValues)
+			data->specConstValues = std::move(*loadOptions.specConstValues);
+		if (loadOptions.samplerStateOverrides)
+			data->samplerStateOverrides = std::move(*loadOptions.samplerStateOverrides);
+		data->maxBindlessCount = loadOptions.maxBindlessCount;
 		data->instance = pipeline;
-		data->useAsyncRecording = options.useAsyncRecording;
 		#if !GARDEN_PACK_RESOURCES
 		data->resourcesPath = appResourcesPath;
 		data->cachePath = appCachePath;
@@ -2279,7 +2260,7 @@ ID<RayTracingPipeline> ResourceSystem::loadRayTracingPipeline(const fs::path& pa
 
 			RayTracingQueueItem item = 
 			{
-				RayTracingPipelineExt::create(pipelineData, data->useAsyncRecording),
+				RayTracingPipelineExt::create(pipelineData),
 				data->instance
 			};
 
@@ -2289,20 +2270,19 @@ ID<RayTracingPipeline> ResourceSystem::loadRayTracingPipeline(const fs::path& pa
 
 			delete data;
 		},
-		options.taskPriority);
+		loadOptions.taskPriority);
 	}
 	else
 	{
 		SET_CPU_ZONE_SCOPED("Ray Tracing Pipeline Load");
 
 		GslCompiler::RayTracingData pipelineData;
-		
-		if (options.specConstValues)
-			pipelineData.specConstValues = std::move(*options.specConstValues);
-		if (options.samplerStateOverrides)
-			pipelineData.samplerStateOverrides = std::move(*options.samplerStateOverrides);
+		if (loadOptions.specConstValues)
+			pipelineData.specConstValues = std::move(*loadOptions.specConstValues);
+		if (loadOptions.samplerStateOverrides)
+			pipelineData.samplerStateOverrides = std::move(*loadOptions.samplerStateOverrides);
 		pipelineData.pipelineVersion = pipelineVersion;
-		pipelineData.maxBindlessCount = options.maxBindlessCount;
+		pipelineData.maxBindlessCount = loadOptions.maxBindlessCount;
 		#if GARDEN_PACK_RESOURCES
 		pipelineData.packReader = &packReader;
 		pipelineData.threadIndex = -1;
@@ -2311,13 +2291,13 @@ ID<RayTracingPipeline> ResourceSystem::loadRayTracingPipeline(const fs::path& pa
 		pipelineData.cachePath = appCachePath;
 		#endif
 		
-		if (options.shaderOverrides)
+		if (loadOptions.shaderOverrides)
 		{
-			pipelineData.headerData = std::move(options.shaderOverrides->headerData);
-			pipelineData.rayGenGroups = std::move(options.shaderOverrides->rayGenGroups);
-			pipelineData.missGroups = std::move(options.shaderOverrides->missGroups);
-			pipelineData.callGroups = std::move(options.shaderOverrides->callGroups);
-			pipelineData.hitGroups = std::move(options.shaderOverrides->hitGroups);
+			pipelineData.headerData = std::move(loadOptions.shaderOverrides->headerData);
+			pipelineData.rayGenGroups = std::move(loadOptions.shaderOverrides->rayGenGroups);
+			pipelineData.missGroups = std::move(loadOptions.shaderOverrides->missGroups);
+			pipelineData.callGroups = std::move(loadOptions.shaderOverrides->callGroups);
+			pipelineData.hitGroups = std::move(loadOptions.shaderOverrides->hitGroups);
 			GslCompiler::loadRayTracingShaders(pipelineData);
 		}
 		else
@@ -2326,12 +2306,11 @@ ID<RayTracingPipeline> ResourceSystem::loadRayTracingPipeline(const fs::path& pa
 			if (!loadOrCompileRayTracing(pipelineData))
 			{
 				graphicsAPI->rayTracingPipelinePool.destroy(pipeline);
-				throw GardenError("Failed to load ray tracing pipeline. ("
-					"path: " + path.generic_string() + ")");
+				throw GardenError("Failed to load ray tracing pipeline. (path: " + path.generic_string() + ")");
 			}
 		}
 
-		auto rayTracingPipeline = RayTracingPipelineExt::create(pipelineData, options.useAsyncRecording);
+		auto rayTracingPipeline = RayTracingPipelineExt::create(pipelineData);
 		auto pipelineView = graphicsAPI->rayTracingPipelinePool.get(pipeline);
 		RayTracingPipelineExt::moveInternalObjects(rayTracingPipeline, **pipelineView);
 		GARDEN_LOG_TRACE("Loaded ray tracing pipeline. (path: " + path.generic_string() + ")");
@@ -2345,7 +2324,7 @@ ID<Entity> ResourceSystem::loadScene(const fs::path& path, bool addRootEntity)
 {
 	GARDEN_ASSERT(!path.empty());
 
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	auto systemGroup = manager->tryGetSystemGroup<ISerializable>();
 	if (!systemGroup)
 	{
@@ -2370,7 +2349,7 @@ ID<Entity> ResourceSystem::loadScene(const fs::path& path, bool addRootEntity)
 		deserializer.load(dataBuffer);
 		dataBuffer = {};
 	}
-	catch (exception& e)
+	catch (const exception& e)
 	{
 		GARDEN_LOG_ERROR("Failed to deserialize scene. (path: " + path.generic_string() + ")");
 		return {};
@@ -2387,7 +2366,7 @@ ID<Entity> ResourceSystem::loadScene(const fs::path& path, bool addRootEntity)
 	{
 		deserializer.load(scenePath);
 	}
-	catch (exception& e)
+	catch (const exception& e)
 	{
 		GARDEN_LOG_ERROR("Failed to deserialize scene. (path: " + 
 			path.generic_string() + ", error: " + string(e.what()) + ")");
@@ -2398,7 +2377,7 @@ ID<Entity> ResourceSystem::loadScene(const fs::path& path, bool addRootEntity)
 	ID<Entity> rootEntity = {};
 	if (addRootEntity)
 	{
-		if (TransformSystem::Instance::has())
+		if (TransformSystem::hasInstance())
 		{
 			rootEntity = manager->createEntity();
 			auto transformView = manager->add<TransformComponent>(rootEntity);
@@ -2524,7 +2503,7 @@ ID<Entity> ResourceSystem::loadScene(const fs::path& path, bool addRootEntity)
 
 void ResourceSystem::clearScene()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	const auto& entities = manager->getEntities();
 
 	for (const auto& entity : entities)
@@ -2547,7 +2526,7 @@ void ResourceSystem::storeScene(const fs::path& path, ID<Entity> rootEntity, con
 {
 	GARDEN_ASSERT(!path.empty());
 
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	auto systemGroup = manager->tryGetSystemGroup<ISerializable>();
 	if (!systemGroup)
 	{
@@ -2578,7 +2557,7 @@ void ResourceSystem::storeScene(const fs::path& path, ID<Entity> rootEntity, con
 	serializer.beginChild("entities");
 	
 	const auto& entities = manager->getEntities();
-	auto dnsSystem = DoNotSerializeSystem::Instance::tryGet();
+	auto dnsSystem = DoNotSerializeSystem::tryGetInstance();
 	stack<ID<Entity>, vector<ID<Entity>>> childEntities;
 
 	ID<Entity> rootParent = {};
@@ -2688,24 +2667,9 @@ void ResourceSystem::storeScene(const fs::path& path, ID<Entity> rootEntity, con
 }
 
 //**********************************************************************************************************************
-Ref<Animation> ResourceSystem::loadAnimation(const fs::path& path, bool loadShared)
+ID<Animation> ResourceSystem::loadAnimation(const fs::path& path)
 {
 	GARDEN_ASSERT(!path.empty());
-	
-	Hash128 hash;
-	if (loadShared)
-	{
-		auto pathString = path.generic_string();
-		auto hashState = Hash128::getState();
-		Hash128::resetState(hashState);
-		Hash128::updateState(hashState, pathString.c_str(), pathString.length());
-		hash = Hash128::digestState(hashState);
-
-		auto result = sharedAnimations.find(hash);
-		if (result != sharedAnimations.end())
-			return result->second;
-	}
-
 	JsonDeserializer deserializer;
 	fs::path filePath = "animations" / path; filePath += ".anim";
 
@@ -2723,7 +2687,7 @@ Ref<Animation> ResourceSystem::loadAnimation(const fs::path& path, bool loadShar
 		deserializer.load(dataBuffer);
 		dataBuffer = {};
 	}
-	catch (exception& e)
+	catch (const exception& e)
 	{
 		GARDEN_LOG_ERROR("Failed to deserialize animation. (path: " + path.generic_string() + ")");
 		return {};
@@ -2740,7 +2704,7 @@ Ref<Animation> ResourceSystem::loadAnimation(const fs::path& path, bool loadShar
 	{
 		deserializer.load(animationPath);
 	}
-	catch (exception& e)
+	catch (const exception& e)
 	{
 		GARDEN_LOG_ERROR("Failed to deserialize animation. (path: " + 
 			path.generic_string() + ", error: " + string(e.what()) + ")");
@@ -2748,7 +2712,7 @@ Ref<Animation> ResourceSystem::loadAnimation(const fs::path& path, bool loadShar
 	}
 	#endif
 
-	auto animationSystem = AnimationSystem::Instance::get();
+	auto animationSystem = AnimationSystem::getInstance();
 	auto animation = animationSystem->createAnimation();
 	auto animationView = animationSystem->get(animation);
 
@@ -2757,7 +2721,7 @@ Ref<Animation> ResourceSystem::loadAnimation(const fs::path& path, bool loadShar
 
 	if (deserializer.beginChild("keyframes"))
 	{
-		const auto& componentNames = Manager::Instance::get()->getComponentNames();
+		const auto& componentNames = Manager::getInstance()->getComponentNames();
 		auto keyframeCount = (uint32)deserializer.getArraySize();
 
 		for (uint32 i = 0; i < keyframeCount; i++)
@@ -2854,17 +2818,27 @@ Ref<Animation> ResourceSystem::loadAnimation(const fs::path& path, bool loadShar
 		return {};
 	}
 
-	auto animationRef = Ref<Animation>(animation);
-	if (loadShared)
-	{
-		auto result = sharedAnimations.emplace(hash, animationRef);
-		GARDEN_ASSERT_MSG(result.second, "Detected memory corruption");
-	}
-
 	GARDEN_LOG_TRACE("Loaded animation. (path: " + path.generic_string() + ")");
-	return animationRef;
+	return animation;
 }
+Ref<Animation> ResourceSystem::loadSharedAnimation(const fs::path& path)
+{
+	GARDEN_ASSERT(!path.empty());
+	auto pathString = path.generic_string();
+	auto hashState = Hash128::getState();
+	Hash128::resetState(hashState);
+	Hash128::updateState(hashState, pathString.c_str(), pathString.length());
+	auto hash = Hash128::digestState(hashState);
 
+	auto searchResult = sharedAnimations.find(hash);
+	if (searchResult != sharedAnimations.end())
+		return searchResult->second;
+
+	auto animation = Ref<Animation>(loadAnimation(path)); 
+	auto result = sharedAnimations.emplace(hash, animation);
+	GARDEN_ASSERT_MSG(result.second, "Detected memory corruption");
+	return animation;
+}
 void ResourceSystem::destroyShared(Ref<Animation>& animation)
 {
 	if (!animation || animation.getRefCount() > 2)
@@ -2878,7 +2852,7 @@ void ResourceSystem::destroyShared(Ref<Animation>& animation)
 		break;
 	}
 
-	AnimationSystem::Instance::get()->destroy(animation);
+	AnimationSystem::getInstance()->destroy(animation);
 }
 
 //**********************************************************************************************************************
@@ -2900,7 +2874,7 @@ void ResourceSystem::storeAnimation(const fs::path& path, ID<Animation> animatio
 	auto filePath = animationsPath / path; filePath += ".anim";
 	JsonSerializer serializer(filePath);
 
-	const auto animationView = AnimationSystem::Instance::get()->get(animation);
+	const auto animationView = AnimationSystem::getInstance()->get(animation);
 	if (animationView->frameRate != 30.0f)
 		serializer.write("frameRate", animationView->frameRate);
 	if (!animationView->isLooped)
@@ -2971,7 +2945,7 @@ Ref<Font> ResourceSystem::loadFont(const fs::path& path, int32 faceIndex, bool l
 	if (result != sharedFonts.end())
 		return result->second;
 
-	auto textSystem = TextSystem::Instance::get();
+	auto textSystem = TextSystem::getInstance();
 	fs::path filePath = "fonts" / path; filePath += ".ttf";
 	vector<uint8> fontData;
 
@@ -2997,7 +2971,7 @@ Ref<Font> ResourceSystem::loadFont(const fs::path& path, int32 faceIndex, bool l
 	{
 		File::loadBinary(filePath, fontData);
 	}
-	catch (exception& e)
+	catch (const exception& e)
 	{
 		GARDEN_LOG_ERROR(string(e.what()));
 		return {};
@@ -3005,7 +2979,7 @@ Ref<Font> ResourceSystem::loadFont(const fs::path& path, int32 faceIndex, bool l
 	#endif
 
 	auto ftLibrary = (FT_Library)textSystem->ftLibrary;
-	auto threadSystem = ThreadSystem::Instance::tryGet();
+	auto threadSystem = ThreadSystem::tryGetInstance();
 	vector<void*> faces(threadSystem ? threadSystem->getForegroundPool().getThreadCount() : 1);
 
 	for (auto& face : faces)
@@ -3097,7 +3071,7 @@ void ResourceSystem::destroyShared(Ref<Font>& font)
 	}
 
 	auto item = ID<Font>(font); font = {};
-	TextSystem::Instance::get()->fonts.destroy(item);
+	TextSystem::getInstance()->fonts.destroy(item);
 }
 void ResourceSystem::destroyShared(FontArray& fonts)
 {
@@ -3133,7 +3107,7 @@ bool ResourceSystem::loadData(const fs::path& path, vector<uint8>& data)
 	{
 		File::loadBinary(resourcePath, data);
 	}
-	catch (exception& e)
+	catch (const exception& e)
 	{
 		GARDEN_LOG_ERROR(string(e.what()));
 		return false;

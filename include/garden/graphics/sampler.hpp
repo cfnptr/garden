@@ -59,7 +59,7 @@ public:
 		Count    /**< Sampler filter type count. */
 	};
 	/**
-	 * @brief Texture sampler addressing mode.
+	 * @brief Texture (image) sampler addressing mode.
 	 * 
 	 * @details
 	 * Setting that determines how a texture is applied (or "sampled") when texture coordinates (also known as UV 
@@ -137,6 +137,17 @@ public:
 		 * @brief Sets sampler U, V and W coordinates addressing mode.
 		 */
 		constexpr void setAddressMode(AddressMode mode) noexcept { addressModeX = addressModeY = addressModeZ = mode; }
+
+		/**
+		 * @brief Returns true if sampler state is valid.
+		 */
+		constexpr bool isValid() const noexcept
+		{
+			return minFilter < Filter::Count && magFilter < Filter::Count && minFilter < Filter::Count &&
+				addressModeX < AddressMode::Count && addressModeY < AddressMode::Count && 
+				addressModeZ < AddressMode::Count && compareOperator < CompareOp::Count &&
+				maxAnisotropy >= 1.0f && minLod <= maxLod && borderColor < BorderColor::Count; // TODO: other possible checks.
+		}
 	};
 private:
 	State state = {};

@@ -35,8 +35,8 @@ static ID<Buffer> createReadbackBuffer(GraphicsSystem* graphicsSystem)
 
 static DescriptorSet::Uniforms getLimitsUniforms(GraphicsSystem* graphicsSystem)
 {
-	auto hdrBufferView = DeferredRenderSystem::Instance::get()->getHdrImageView();
-	auto luminanceBuffer = ToneMappingSystem::Instance::get()->getLuminanceBuffer();
+	auto hdrBufferView = DeferredRenderSystem::getInstance()->getHdrImageView();
+	auto luminanceBuffer = ToneMappingSystem::getInstance()->getLuminanceBuffer();
 				
 	DescriptorSet::Uniforms uniforms =
 	{ 
@@ -49,12 +49,12 @@ static DescriptorSet::Uniforms getLimitsUniforms(GraphicsSystem* graphicsSystem)
 //**********************************************************************************************************************
 AutoExposureEditorSystem::AutoExposureEditorSystem()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", AutoExposureEditorSystem::init);
 }
 void AutoExposureEditorSystem::init()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("PreUiRender", AutoExposureEditorSystem::preUiRender);
 	ECSM_SUBSCRIBE_TO_EVENT("UiRender", AutoExposureEditorSystem::uiRender);
 	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", AutoExposureEditorSystem::gBufferRecreate);
@@ -68,14 +68,14 @@ void AutoExposureEditorSystem::preUiRender()
 
 	if (ImGui::Begin("Automatic Exposure (AE)", &showWindow, ImGuiWindowFlags_AlwaysAutoResize))
 	{
-		auto graphicsSystem = GraphicsSystem::Instance::get();
+		auto graphicsSystem = GraphicsSystem::getInstance();
 		if (!readbackBuffer)
 		{
 			readbackBuffer = createReadbackBuffer(graphicsSystem);
 			histogramSamples.resize(AutoExposureSystem::histogramSize);
 		}
 
-		auto autoExposureSystem = AutoExposureSystem::Instance::get();
+		auto autoExposureSystem = AutoExposureSystem::getInstance();
 		ImGui::Checkbox("Enabled", &autoExposureSystem->isEnabled);
 		ImGui::DragFloat("Min Log Luminance", &autoExposureSystem->minLogLum, 0.1f);
 		ImGui::DragFloat("Max Log Luminance", &autoExposureSystem->maxLogLum, 0.1f);
@@ -127,11 +127,9 @@ void AutoExposureEditorSystem::preUiRender()
 		{
 			if (!limitsPipeline)
 			{	
-				auto deferredSystem = DeferredRenderSystem::Instance::get();
-				ResourceSystem::GraphicsOptions options;
-				options.useAsyncRecording = deferredSystem->getOptions().useAsyncRecording;
-				limitsPipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline(
-					"editor/auto-exposure-limits", deferredSystem->getUiFramebuffer(), options);
+				auto deferredSystem = DeferredRenderSystem::getInstance();
+				limitsPipeline = ResourceSystem::getInstance()->loadGraphicsPipeline(
+					"editor/auto-exposure-limits", deferredSystem->getUiFramebuffer());
 			}
 
 			auto pipelineView = graphicsSystem->get(limitsPipeline);
@@ -139,7 +137,7 @@ void AutoExposureEditorSystem::preUiRender()
 				ImGui::TextDisabled("Limits pipeline is loading...");
 		}
 
-		auto toneMappingSystem = ToneMappingSystem::Instance::get();
+		auto toneMappingSystem = ToneMappingSystem::getInstance();
 		graphicsSystem->startRecording(CommandBufferType::Frame);
 		{
 			SET_GPU_DEBUG_LABEL("Readback Auto Exposure Data");
@@ -163,7 +161,7 @@ void AutoExposureEditorSystem::uiRender()
 	if (!visualizeLimits)
 		return;
 	
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	auto pipelineView = graphicsSystem->get(limitsPipeline);
 	if (!pipelineView->isReady())
 		return;
@@ -175,7 +173,7 @@ void AutoExposureEditorSystem::uiRender()
 		SET_RESOURCE_DEBUG_NAME(limitsDS, "descriptorSet.editor.autoExposure.limits");
 	}
 
-	auto autoExposureSystem = AutoExposureSystem::Instance::get();
+	auto autoExposureSystem = AutoExposureSystem::getInstance();
 
 	PushConstants pc;
 	pc.minLum = std::exp2(autoExposureSystem->minLogLum);
@@ -204,7 +202,7 @@ void AutoExposureEditorSystem::uiRender()
 //**********************************************************************************************************************
 void AutoExposureEditorSystem::gBufferRecreate()
 {
-	GraphicsSystem::Instance::get()->destroy(limitsDS);
+	GraphicsSystem::getInstance()->destroy(limitsDS);
 }
 
 void AutoExposureEditorSystem::editorBarToolPP()

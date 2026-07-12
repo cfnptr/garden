@@ -131,8 +131,8 @@ public:
 		const vector<string_view>&  extensions = {});
 	void drawFileSelector(const char* name, fs::path& path, ID<Entity> entity, 
 		type_index componentType, const fs::path& directory, const vector<string_view>& extensions);
-	void drawImageSelector(const char* name, fs::path& path, Ref<Image>& image, Ref<DescriptorSet>& descriptorSet, 
-		ID<Entity> entity, type_index componentType, uint8 maxMipCount = 1, ImageLoadFlags loadFlags = {});
+	void drawImageSelector(const char* name, fs::path& path, Ref<Image>& image, 
+		Ref<DescriptorSet>& descriptorSet, ID<Entity> entity, type_index componentType);
 	void drawModelSelector(const char* name, fs::path& path, Ref<Buffer>& vertexBuffer, 
 		Ref<Buffer>& indexBuffer, ID<Entity> entity, type_index componentType);
 

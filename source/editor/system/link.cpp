@@ -23,16 +23,16 @@ using namespace garden;
 //**********************************************************************************************************************
 LinkEditorSystem::LinkEditorSystem()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", LinkEditorSystem::init);
 }
 void LinkEditorSystem::init()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("PreUiRender", LinkEditorSystem::preUiRender);
 	ECSM_SUBSCRIBE_TO_EVENT("EditorBarTool", LinkEditorSystem::editorBarTool);
 
-	EditorRenderSystem::Instance::get()->registerEntityInspector<LinkComponent>(
+	EditorRenderSystem::getInstance()->registerEntityInspector<LinkComponent>(
 	[this](ID<Entity> entity, bool isOpened)
 	{
 		onEntityInspector(entity, isOpened);
@@ -42,8 +42,8 @@ void LinkEditorSystem::init()
 
 static void renderUuidList(const string& searchString, bool searchCaseSensitive)
 {
-	auto linkSystem = LinkSystem::Instance::get();
-	auto editorSystem = EditorRenderSystem::Instance::get();
+	auto linkSystem = LinkSystem::getInstance();
+	auto editorSystem = EditorRenderSystem::getInstance();
 	const auto& uuidMap = linkSystem->getUuidMap();
 
 	ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyle().Colors[ImGuiCol_Button]);
@@ -84,9 +84,9 @@ static void renderUuidList(const string& searchString, bool searchCaseSensitive)
 //**********************************************************************************************************************
 static void renderTagList(const string& searchString, bool searchCaseSensitive)
 {
-	auto manager = Manager::Instance::get();
-	auto linkSystem = LinkSystem::Instance::get();
-	auto editorSystem = EditorRenderSystem::Instance::get();
+	auto manager = Manager::getInstance();
+	auto linkSystem = LinkSystem::getInstance();
+	auto editorSystem = EditorRenderSystem::getInstance();
 	const auto& tagMap = linkSystem->getTagMap();
 	map<string, uint32> uniqueTags;
 
@@ -180,7 +180,7 @@ void LinkEditorSystem::editorBarTool()
 //**********************************************************************************************************************
 void LinkEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 {
-	auto linkView = Manager::Instance::get()->get<LinkComponent>(entity);
+	auto linkView = Manager::getInstance()->get<LinkComponent>(entity);
 	if ((linkView->getUUID() || !linkView->getTag().empty()) && ImGui::BeginItemTooltip())
 	{
 		if (linkView->getUUID())

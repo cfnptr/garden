@@ -136,11 +136,9 @@ static void updateTransFramebuffers(GraphicsSystem* graphicsSystem, ID<Image> de
 //**********************************************************************************************************************
 static ID<GraphicsPipeline> createPipeline()
 {
-	auto pbrLightingSystem = PbrLightingSystem::Instance::get();
+	auto pbrLightingSystem = PbrLightingSystem::getInstance();
 	GARDEN_ASSERT(pbrLightingSystem->getOptions().useShadBuffer);
-
-	ResourceSystem::GraphicsOptions options;
-	return ResourceSystem::Instance::get()->loadGraphicsPipeline("csm", pbrLightingSystem->getShadBaseFB(), options);
+	return ResourceSystem::getInstance()->loadGraphicsPipeline("csm", pbrLightingSystem->getShadBaseFB());
 }
 
 static DescriptorSet::Uniforms getUniforms(GraphicsSystem* graphicsSystem, ID<Image> depthMap, 
@@ -148,8 +146,8 @@ static DescriptorSet::Uniforms getUniforms(GraphicsSystem* graphicsSystem, ID<Im
 {
 	auto depthMapView = graphicsSystem->get(depthMap)->getView();
 	auto transMapView = graphicsSystem->get(transMap)->getView();
-	auto hizBufferView = HizRenderSystem::Instance::get()->getView(1);
-	auto gFramebufferView = graphicsSystem->get(DeferredRenderSystem::Instance::get()->getGFramebuffer());
+	auto hizBufferView = HizRenderSystem::getInstance()->getView(1);
+	auto gFramebufferView = graphicsSystem->get(DeferredRenderSystem::getInstance()->getGFramebuffer());
 	auto gNormalsView = gFramebufferView->getColorAttachments()[G_BUFFER_NORMALS].imageView;
 	auto inFlightCount = graphicsSystem->getInFlightCount();
 	
@@ -167,25 +165,25 @@ static DescriptorSet::Uniforms getUniforms(GraphicsSystem* graphicsSystem, ID<Im
 //**********************************************************************************************************************
 CsmRenderSystem::CsmRenderSystem(bool setSingleton) : Singleton(setSingleton)
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	manager->addGroupSystem<IShadowMeshRenderSystem>(this);
 	ECSM_SUBSCRIBE_TO_EVENT("Init", CsmRenderSystem::init);
 }
 void CsmRenderSystem::init()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("PreShadowRender", CsmRenderSystem::preShadowRender);
 	ECSM_SUBSCRIBE_TO_EVENT("ShadowRender", CsmRenderSystem::shadowRender);
 	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", CsmRenderSystem::gBufferRecreate);
 
-	auto settingsSystem = SettingsSystem::Instance::tryGet();
+	auto settingsSystem = SettingsSystem::tryGetInstance();
 	if (settingsSystem)
 		settingsSystem->getInt("csm.shadowMapSize", shadowMapSize);
 }
 
 void CsmRenderSystem::preShadowRender()
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	const auto& cc = graphicsSystem->getCommonConstants();
 	hasShadows = false;
 
@@ -213,7 +211,7 @@ void CsmRenderSystem::preShadowRender()
 	if (!pipelineView->isReady())
 		return;
 
-	PbrLightingSystem::Instance::get()->markFbShadow();
+	PbrLightingSystem::getInstance()->markFbShadow();
 	hasShadows = true;
 }
 void CsmRenderSystem::shadowRender()
@@ -223,7 +221,7 @@ void CsmRenderSystem::shadowRender()
 	if (!hasShadows)
 		return;
 	
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	auto pipelineView = graphicsSystem->get(pipeline);
 
 	if (!descriptorSet)
@@ -243,12 +241,12 @@ void CsmRenderSystem::shadowRender()
 	pipelineView->bindDescriptorSet(descriptorSet, inFlightIndex);
 	pipelineView->drawFullscreen();
 
-	PbrLightingSystem::Instance::get()->markAnyShadow();
+	PbrLightingSystem::getInstance()->markAnyShadow();
 }
 
 void CsmRenderSystem::gBufferRecreate()
 {
-	GraphicsSystem::Instance::get()->destroy(descriptorSet);
+	GraphicsSystem::getInstance()->destroy(descriptorSet);
 }
 
 //**********************************************************************************************************************
@@ -313,8 +311,8 @@ bool CsmRenderSystem::prepareShadowRender(uint32 passIndex, f32x4x4& viewProj, f
 	if (!hasShadows)
 		return false;
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto cameraView = Manager::Instance::get()->get<CameraComponent>(graphicsSystem->camera);
+	auto graphicsSystem = GraphicsSystem::getInstance();
+	auto cameraView = Manager::getInstance()->get<CameraComponent>(graphicsSystem->camera);
 	auto nearPlane = cameraView->p.perspective.nearPlane;
 	if (passIndex > 0)
 		nearPlane = distance * cascadeSplits[passIndex - 1];
@@ -362,8 +360,8 @@ bool CsmRenderSystem::beginShadowRender(uint32 passIndex, MeshRenderType renderT
 	}
 	else abort();
 
-	auto asyncRecording = MeshRenderSystem::Instance::get()->useAsyncRecording();
-	auto framebufferView = GraphicsSystem::Instance::get()->get(framebuffer);
+	auto asyncRecording = MeshRenderSystem::getInstance()->useAsyncRecording();
+	auto framebufferView = GraphicsSystem::getInstance()->get(framebuffer);
 
 	BEGIN_GPU_DEBUG_LABEL("CSM Pass");
 	framebufferView->beginRenderPass(clearColors, clearColorCount, 0.0f, 0x00, int4::zero, asyncRecording);
@@ -379,7 +377,7 @@ void CsmRenderSystem::endShadowRender(uint32 passIndex, MeshRenderType renderTyp
 		framebuffer = transFramebuffers[passIndex];
 	else abort();
 
-	auto framebufferView = GraphicsSystem::Instance::get()->get(framebuffer);
+	auto framebufferView = GraphicsSystem::getInstance()->get(framebuffer);
 	framebufferView->endRenderPass();
 	END_GPU_DEBUG_LABEL();
 }
@@ -390,7 +388,7 @@ void CsmRenderSystem::setShadowMapSize(uint32 size)
 	if (shadowMapSize == size)
 		return;
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	graphicsSystem->destroy(descriptorSet);
 
 	if (depthMap)
@@ -419,34 +417,34 @@ ID<GraphicsPipeline> CsmRenderSystem::getPipeline()
 const DescriptorSet::Buffers& CsmRenderSystem::getDataBuffers()
 {
 	if (dataBuffers.empty())
-		createDataBuffers(GraphicsSystem::Instance::get(), dataBuffers);
+		createDataBuffers(GraphicsSystem::getInstance(), dataBuffers);
 	return dataBuffers;
 }
 
 ID<Image> CsmRenderSystem::getDepthMap()
 {
 	if (!depthMap)
-		depthMap = createDepthMap(GraphicsSystem::Instance::get(), shadowMapSize);
+		depthMap = createDepthMap(GraphicsSystem::getInstance(), shadowMapSize);
 	return depthMap;
 }
 ID<Image> CsmRenderSystem::getTransMap()
 {
 	if (!transMap)
-		transMap = createTransMap(GraphicsSystem::Instance::get(), shadowMapSize);
+		transMap = createTransMap(GraphicsSystem::getInstance(), shadowMapSize);
 	return transMap;
 }
 
 const vector<ID<Framebuffer>>& CsmRenderSystem::getShadowFramebuffers()
 {
 	if (shadowFramebuffers.empty())
-		createShadowFramebuffers(GraphicsSystem::Instance::get(), getDepthMap(), shadowFramebuffers, shadowMapSize);
+		createShadowFramebuffers(GraphicsSystem::getInstance(), getDepthMap(), shadowFramebuffers, shadowMapSize);
 	return shadowFramebuffers;
 }
 const vector<ID<Framebuffer>>& CsmRenderSystem::getTransFramebuffers()
 {
 	if (transFramebuffers.empty())
 	{
-		createTransFramebuffers(GraphicsSystem::Instance::get(), 
+		createTransFramebuffers(GraphicsSystem::getInstance(), 
 			getDepthMap(), getTransMap(), transFramebuffers, shadowMapSize);
 	}
 	return transFramebuffers;

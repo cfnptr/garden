@@ -215,7 +215,7 @@ constexpr const char* gslUniformTypeNames[(psize)GslUniformType::Count] =
 };
 
 /***********************************************************************************************************************
- * @brief Returns GSL data type.
+ * @brief Returns GSL data type from string.
  * @param dataType target GSL data type name string (camelCase)
  * @throw GardenError on unknown GSL data type.
  */
@@ -309,7 +309,7 @@ static GslDataFormat toGslDataFormat(string_view dataFormat)
 }
 
 /***********************************************************************************************************************
- * @brief Returns GSL uniform type.
+ * @brief Returns GSL uniform type from string.
  * @param uniformType target GSL uniform type name string (camelCase)
  * @throw GardenError on unknown GSL uniform type.
  */

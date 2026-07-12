@@ -143,9 +143,9 @@ public:
 	 */
 	void flushDestroyBuffer() override;
 	/**
-	 * @brief Stores shader pipeline cache to the disk.
+	 * @brief Stores shader cache to the disk.
 	 */
-	void storePipelineCache() override;
+	void storeShaderCache() override;
 	/**
 	 * @brief Wait for a GPU to become idle.
 	 */

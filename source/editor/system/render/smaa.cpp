@@ -23,12 +23,12 @@ using namespace garden;
 //**********************************************************************************************************************
 SmaaRenderEditorSystem::SmaaRenderEditorSystem()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", SmaaRenderEditorSystem::init);
 }
 void SmaaRenderEditorSystem::init()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("EditorSettings", SmaaRenderEditorSystem::editorSettings);
 }
 
@@ -39,10 +39,10 @@ void SmaaRenderEditorSystem::editorSettings()
 		ImGui::Indent();
 		ImGui::PushID("smaa");
 
-		auto smaaSystem = SmaaRenderSystem::Instance::get();
+		auto smaaSystem = SmaaRenderSystem::getInstance();
 		if (ImGui::Checkbox("Enabled", &smaaSystem->isEnabled))
 		{
-			auto settingsSystem = SettingsSystem::Instance::tryGet();
+			auto settingsSystem = SettingsSystem::tryGetInstance();
 			if (settingsSystem)
 				settingsSystem->setBool("smaa.enabled", smaaSystem->isEnabled);
 		}
@@ -53,14 +53,14 @@ void SmaaRenderEditorSystem::editorSettings()
 		if (ImGui::Combo("Quality", &quality, graphicsQualityNames, (int)GraphicsQuality::Count))
 		{
 			smaaSystem->setQuality(quality, cornerRounding);
-			auto settingsSystem = SettingsSystem::Instance::tryGet();
+			auto settingsSystem = SettingsSystem::tryGetInstance();
 			if (settingsSystem)
 				settingsSystem->setString("smaa.quality", toString((GraphicsQuality)quality));
 		}
 		if (ImGui::SliderInt("Corner Rounding", &cornerRounding, 0, 100))
 		{
 			smaaSystem->setQuality(quality, cornerRounding);
-			auto settingsSystem = SettingsSystem::Instance::tryGet();
+			auto settingsSystem = SettingsSystem::tryGetInstance();
 			if (settingsSystem)
 				settingsSystem->setInt("smaa.cornerRounding", cornerRounding);
 		}

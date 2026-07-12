@@ -22,8 +22,7 @@
 using namespace garden;
 
 //**********************************************************************************************************************
-static DescriptorSet::Uniforms getBufferUniforms(GraphicsSystem* graphicsSystem, 
-	DeferredRenderSystem* deferredSystem, ID<Image>& blackPlaceholder)
+static DescriptorSet::Uniforms getBufferUniforms(GraphicsSystem* graphicsSystem, DeferredRenderSystem* deferredSystem)
 {
 	auto hdrBufferView = deferredSystem->getHdrImageView();
 	auto oitAccumBufferView = deferredSystem->getOitAccumIV();
@@ -34,7 +33,7 @@ static DescriptorSet::Uniforms getBufferUniforms(GraphicsSystem* graphicsSystem,
 	auto gColorAttachments = gFramebufferView->getColorAttachments().data();
 	auto emptyTexture = graphicsSystem->getEmptyTexture();
 	
-	auto pbrLightingSystem = PbrLightingSystem::Instance::tryGet();
+	auto pbrLightingSystem = PbrLightingSystem::tryGetInstance();
 	ID<ImageView> shadBuffer, shadBlurBuffer, aoBuffer, aoBlurBuffer, giBuffer, reflBuffer;
 
 	if (pbrLightingSystem)
@@ -85,12 +84,12 @@ static DescriptorSet::Uniforms getBufferUniforms(GraphicsSystem* graphicsSystem,
 //**********************************************************************************************************************
 DeferredRenderEditorSystem::DeferredRenderEditorSystem()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", DeferredRenderEditorSystem::init);
 }
 void DeferredRenderEditorSystem::init()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("DeferredRender", DeferredRenderEditorSystem::deferredRender);
 	ECSM_SUBSCRIBE_TO_EVENT("PreLdrRender", DeferredRenderEditorSystem::preLdrRender);
 	ECSM_SUBSCRIBE_TO_EVENT("LdrRender", DeferredRenderEditorSystem::ldrRender);
@@ -105,14 +104,12 @@ void DeferredRenderEditorSystem::deferredRender()
 
 	if (!pbrLightingPipeline)
 	{
-		auto deferredSystem = DeferredRenderSystem::Instance::get();
-		ResourceSystem::GraphicsOptions options;
-		options.useAsyncRecording = deferredSystem->getOptions().useAsyncRecording;
-		pbrLightingPipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline(
-			"editor/pbr-lighting", deferredSystem->getGFramebuffer(), options);
+		auto deferredSystem = DeferredRenderSystem::getInstance();
+		pbrLightingPipeline = ResourceSystem::getInstance()->loadGraphicsPipeline(
+			"editor/pbr-lighting", deferredSystem->getGFramebuffer());
 	}
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	auto pipelineView = graphicsSystem->get(pbrLightingPipeline);
 
 	if (!pipelineView->isReady())
@@ -147,7 +144,7 @@ void DeferredRenderEditorSystem::preLdrRender()
 	{
 		ImGui::Combo("Draw Mode", &drawMode, G_BUFFER_DRAW_MODE_NAMES, G_BUFFER_DRAW_MODE_COUNT);
 
-		auto deferredSystem = DeferredRenderSystem::Instance::get();
+		auto deferredSystem = DeferredRenderSystem::getInstance();
 		if (drawMode == G_BUFFER_DRAW_MODE_LIGHTING_DEBUG)
 		{
 			auto isSpecular = bool(lightingPC.materialID & G_MATERIAL_SPECULAR);
@@ -207,15 +204,15 @@ void DeferredRenderEditorSystem::preLdrRender()
 			ImGui::Checkbox("<- B", &showChannelB);
 		}
 
-		if (bufferPipeline)
+		if (gBufferPipeline)
 		{
-			auto pipelineView = GraphicsSystem::Instance::get()->get(bufferPipeline);
+			auto pipelineView = GraphicsSystem::getInstance()->get(gBufferPipeline);
 			if (!pipelineView->isReady())
 				ImGui::TextDisabled("G-Buffer pipeline is loading...");
 		}
 		if (pbrLightingPipeline)
 		{
-			auto pipelineView = GraphicsSystem::Instance::get()->get(pbrLightingPipeline);
+			auto pipelineView = GraphicsSystem::getInstance()->get(pbrLightingPipeline);
 			if (!pipelineView->isReady())
 				ImGui::TextDisabled("PBR lighting pipeline is loading...");
 		}
@@ -225,18 +222,17 @@ void DeferredRenderEditorSystem::preLdrRender()
 	if (drawMode == G_BUFFER_DRAW_MODE_OFF || drawMode == G_BUFFER_DRAW_MODE_LIGHTING_DEBUG)
 		return;
 
-	if (!bufferPipeline)
+	if (!gBufferPipeline)
 	{
-		auto deferredSystem = DeferredRenderSystem::Instance::get();
-		ResourceSystem::GraphicsOptions options;
-		bufferPipeline = ResourceSystem::Instance::get()->loadGraphicsPipeline(
-			"editor/gbuffer-data", deferredSystem->getLdrFramebuffer(), options);
+		auto deferredSystem = DeferredRenderSystem::getInstance();
+		gBufferPipeline = ResourceSystem::getInstance()->loadGraphicsPipeline(
+			"editor/gbuffer-data", deferredSystem->getLdrFramebuffer());
 	}
 }
 //**********************************************************************************************************************
 void DeferredRenderEditorSystem::ldrRender()
 {
-	auto deferredSystem = DeferredRenderSystem::Instance::get();
+	auto deferredSystem = DeferredRenderSystem::getInstance();
 	if ((drawMode == G_BUFFER_DRAW_MODE_VELOCITY && !deferredSystem->getOptions().useVelocity) ||
 		(drawMode == G_BUFFER_DRAW_MODE_DISOCCLUSION && !deferredSystem->getOptions().useDisoccl))
 	{
@@ -246,16 +242,16 @@ void DeferredRenderEditorSystem::ldrRender()
 	if (drawMode == G_BUFFER_DRAW_MODE_OFF || drawMode == G_BUFFER_DRAW_MODE_LIGHTING_DEBUG)
 		return;
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto pipelineView = graphicsSystem->get(bufferPipeline);
+	auto graphicsSystem = GraphicsSystem::getInstance();
+	auto pipelineView = graphicsSystem->get(gBufferPipeline);
 	if (!pipelineView->isReady())
 		return;
 
-	if (!bufferDescriptorSet)
+	if (!gBufferDS)
 	{
-		auto uniforms = getBufferUniforms(graphicsSystem, deferredSystem, blackPlaceholder);
-		bufferDescriptorSet = graphicsSystem->createDescriptorSet(bufferPipeline, std::move(uniforms));
-		SET_RESOURCE_DEBUG_NAME(bufferDescriptorSet, "descriptorSet.editor.deferred.buffer");
+		auto uniforms = getBufferUniforms(graphicsSystem, deferredSystem);
+		gBufferDS = graphicsSystem->createDescriptorSet(gBufferPipeline, std::move(uniforms));
+		SET_RESOURCE_DEBUG_NAME(gBufferDS, "descriptorSet.editor.deferred.buffer");
 	}
 
 	const auto& cc = graphicsSystem->getCommonConstants();
@@ -269,7 +265,7 @@ void DeferredRenderEditorSystem::ldrRender()
 	SET_GPU_DEBUG_LABEL("G-Buffer Visualizer");
 	pipelineView->bind(drawMode);
 	pipelineView->setViewportScissor();
-	pipelineView->bindDescriptorSet(bufferDescriptorSet);
+	pipelineView->bindDescriptorSet(gBufferDS);
 	pipelineView->pushConstants(&pc);
 	pipelineView->drawFullscreen();
 }
@@ -277,7 +273,7 @@ void DeferredRenderEditorSystem::ldrRender()
 //**********************************************************************************************************************
 void DeferredRenderEditorSystem::gBufferRecreate()
 {
-	GraphicsSystem::Instance::get()->destroy(bufferDescriptorSet);
+	GraphicsSystem::getInstance()->destroy(gBufferDS);
 }
 
 void DeferredRenderEditorSystem::editorBarTool()

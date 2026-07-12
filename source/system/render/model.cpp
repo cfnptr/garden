@@ -20,7 +20,7 @@ using namespace garden;
 //**********************************************************************************************************************
 ModelRenderSystem::ModelRenderSystem(bool setSingleton) : Singleton(setSingleton)
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", ModelRenderSystem::init);
 }
 void ModelRenderSystem::init()
@@ -30,7 +30,7 @@ void ModelRenderSystem::init()
 
 void ModelRenderSystem::resetComponent(View<Component> component, bool full)
 {
-	auto resourceSystem = ResourceSystem::Instance::get();
+	auto resourceSystem = ResourceSystem::getInstance();
 	auto componentView = View<ModelRenderComponent>(component);
 
 	if (!componentView->lods.empty())
@@ -54,4 +54,9 @@ void ModelRenderSystem::copyComponent(View<Component> source, View<Component> de
 string_view ModelRenderSystem::getComponentName() const
 {
 	return "Model";
+}
+
+void ModelRenderSystem::loadFileData(const void* data, psize dataSize)
+{
+	abort(); // TODO:
 }

@@ -23,12 +23,12 @@ using namespace garden;
 //**********************************************************************************************************************
 BlurRenderSystem::BlurRenderSystem(bool setSingleton) : Singleton(setSingleton)
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", BlurRenderSystem::init);
 }
 void BlurRenderSystem::init()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("PreDsLdrRender", BlurRenderSystem::preDsLdrRender);
 	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", BlurRenderSystem::gBufferRecreate);
 }
@@ -40,9 +40,9 @@ void BlurRenderSystem::preDsLdrRender()
 	if (!ldrGgxBlur || intensity <= 0.0f)
 		return;
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto deferredSystem = DeferredRenderSystem::Instance::get();
-	auto gpuProcessSystem = GpuProcessSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
+	auto deferredSystem = DeferredRenderSystem::getInstance();
+	auto gpuProcessSystem = GpuProcessSystem::getInstance();
 	auto frameSize = graphicsSystem->getScaledFrameSize();
 	auto kernelBuffer = gpuProcessSystem->getGgxBlurKernel();
 	auto ldrBufferView = deferredSystem->getLdrImageView();
@@ -73,12 +73,12 @@ void BlurRenderSystem::preDsLdrRender()
 }
 void BlurRenderSystem::gBufferRecreate()
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	graphicsSystem->destroy(ldrGgxDS);
 
 	if (ldrGgxFramebuffers[0])
 	{
-		auto deferredSystem = DeferredRenderSystem::Instance::get();
+		auto deferredSystem = DeferredRenderSystem::getInstance();
 		auto frameSize = graphicsSystem->getScaledFrameSize();
 		auto framebufferView = graphicsSystem->get(ldrGgxFramebuffers[0]);
 		framebufferView->update(frameSize, deferredSystem->getLdrImageView());
@@ -90,8 +90,8 @@ void BlurRenderSystem::gBufferRecreate()
 
 ID<ImageView> BlurRenderSystem::getLdrGgxView()
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
-	auto gBuffer = DeferredRenderSystem::Instance::get()->getGBuffers()[G_BUFFER_BASE_COLOR]; 
+	auto graphicsSystem = GraphicsSystem::getInstance();
+	auto gBuffer = DeferredRenderSystem::getInstance()->getGBuffers()[G_BUFFER_BASE_COLOR]; 
 	auto imageView = graphicsSystem->get(gBuffer)->getView(); // Note: Reusing G-Buffer memory.
 	GARDEN_ASSERT(graphicsSystem->get(gBuffer)->getFormat() == DeferredRenderSystem::ldrBufferFormat);
 	return imageView;

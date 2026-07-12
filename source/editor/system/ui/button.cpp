@@ -22,12 +22,12 @@ using namespace garden;
 //**********************************************************************************************************************
 UiButtonEditorSystem::UiButtonEditorSystem(bool setSingleton) : Singleton(setSingleton)
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", UiButtonEditorSystem::init);
 }
 void UiButtonEditorSystem::init()
 {
-	EditorRenderSystem::Instance::get()->registerEntityInspector<UiButtonComponent>(
+	EditorRenderSystem::getInstance()->registerEntityInspector<UiButtonComponent>(
 	[this](ID<Entity> entity, bool isOpened)
 	{
 		onEntityInspector(entity, isOpened);
@@ -40,7 +40,7 @@ void UiButtonEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	if (!isOpened)
 		return;
 
-	auto uiButtonView = Manager::Instance::get()->get<UiButtonComponent>(entity);
+	auto uiButtonView = Manager::getInstance()->get<UiButtonComponent>(entity);
 
 	auto isEnabled = uiButtonView->isEnabled();
 	if (ImGui::Checkbox("Enabled", &isEnabled))

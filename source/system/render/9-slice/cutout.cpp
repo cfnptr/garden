@@ -20,7 +20,7 @@ using namespace garden;
 Cutout9SliceSystem::Cutout9SliceSystem(bool setSingleton) : 
 	NineSliceCompAnimSystem("9-slice/cutout"), Singleton(setSingleton)
 {
-	Manager::Instance::get()->addGroupSystem<IMeshRenderSystem>(this);
+	Manager::getInstance()->addGroupSystem<IMeshRenderSystem>(this);
 }
 
 void Cutout9SliceSystem::setPushConstants(SpriteRenderComponent* spriteRenderView, PushConstants* pushConstants,

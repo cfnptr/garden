@@ -32,7 +32,7 @@ static void eraseEntityTag(LinkSystem::TagMap& tagMap, ID<Entity> entity, string
 
 void LinkComponent::regenerateUUID()
 {
-	auto linkSystem = LinkSystem::Instance::get();
+	auto linkSystem = LinkSystem::getInstance();
 	if (uuid)
 	{
 		auto result = linkSystem->uuidMap.erase(uuid);
@@ -54,14 +54,14 @@ bool LinkComponent::trySetUUID(const Hash128& uuid)
 
 	if (uuid)
 	{
-		auto linkSystem = LinkSystem::Instance::get();
+		auto linkSystem = LinkSystem::getInstance();
 		auto result = linkSystem->uuidMap.emplace(uuid, entity);
 		if (!result.second)
 			return false;
 	}
 	if (this->uuid)
 	{
-		auto linkSystem = LinkSystem::Instance::get();
+		auto linkSystem = LinkSystem::getInstance();
 		auto result = linkSystem->uuidMap.erase(this->uuid);
 		GARDEN_ASSERT_MSG(result == 1, "Detected memory corruption");
 	}
@@ -74,7 +74,7 @@ void LinkComponent::setTag(string_view tag)
 	if (this->tag == tag)
 		return;
 
-	auto linkSystem = LinkSystem::Instance::get();
+	auto linkSystem = LinkSystem::getInstance();
 	if (!this->tag.empty())
 		eraseEntityTag(linkSystem->tagMap, entity, this->tag);
 	if (!tag.empty())
@@ -86,7 +86,7 @@ void LinkComponent::setTag(string_view tag)
 //**********************************************************************************************************************
 LinkSystem::LinkSystem(bool setSingleton) : Singleton(setSingleton)
 {
-	Manager::Instance::get()->addGroupSystem<ISerializable>(this);
+	Manager::getInstance()->addGroupSystem<ISerializable>(this);
 }
 
 void LinkSystem::resetComponent(View<Component> component, bool full)

@@ -26,12 +26,12 @@ using namespace garden;
 //**********************************************************************************************************************
 TransformEditorSystem::TransformEditorSystem(bool setSingleton) : Singleton(setSingleton)
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", TransformEditorSystem::init);
 }
 void TransformEditorSystem::init()
 {
-	EditorRenderSystem::Instance::get()->registerEntityInspector<TransformComponent>(
+	EditorRenderSystem::getInstance()->registerEntityInspector<TransformComponent>(
 	[this](ID<Entity> entity, bool isOpened)
 	{
 		onEntityInspector(entity, isOpened);
@@ -41,7 +41,7 @@ void TransformEditorSystem::init()
 
 void TransformEditorSystem::onEntityDestroy(ID<Entity> entity)
 {
-	auto editorSystem = EditorRenderSystem::Instance::get();
+	auto editorSystem = EditorRenderSystem::getInstance();
 	if (editorSystem->selectedEntity == entity)
 		editorSystem->selectedEntity = {};
 
@@ -58,7 +58,7 @@ void TransformEditorSystem::onEntityDestroy(ID<Entity> entity)
 //**********************************************************************************************************************
 void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	if (ImGui::BeginItemTooltip())
 	{
 		auto transformView = manager->get<TransformComponent>(entity);
@@ -112,7 +112,7 @@ void TransformEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	if (ImGui::Checkbox("Active", &isSelfActive))
 		transformView->setActive(isSelfActive);
 
-	auto unitScale = EditorRenderSystem::Instance::get()->unitScale;
+	auto unitScale = EditorRenderSystem::getInstance()->unitScale;
 	auto isStatic = manager->has<StaticTransformComponent>(entity);
 	ImGui::BeginDisabled(isStatic);
 

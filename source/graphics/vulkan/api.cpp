@@ -31,6 +31,8 @@
 
 using namespace garden;
 
+static constexpr string_view shaderCacheMagic = "GDNS";
+
 //**********************************************************************************************************************
 #if GARDEN_DEBUG
 constexpr vk::DebugUtilsMessageSeverityFlagsEXT debugMessageSeverity =
@@ -1000,7 +1002,7 @@ static vk::PipelineCache createPipelineCache(const string& appDataName, Version 
 			if (inputStream.read((char*)fileData.data(), fileSize))
 			{
 				PipelineCacheHeader targetHeader;
-				memcpy(targetHeader.magic, "GSLC", 4);
+				memcpy(targetHeader.magic, shaderCacheMagic.data(), 4);
 				targetHeader.engineVersion = VK_MAKE_API_VERSION(0, GARDEN_VERSION_MAJOR,
 					GARDEN_VERSION_MINOR, GARDEN_VERSION_PATCH);
 				targetHeader.appVersion = VK_MAKE_API_VERSION(0,
@@ -1263,7 +1265,7 @@ void VulkanAPI::flushDestroyBuffer()
 	destroyBuffer.clear();
 }
 
-void VulkanAPI::storePipelineCache()
+void VulkanAPI::storeShaderCache()
 {
 	auto cacheData = device.getPipelineCacheData((VkPipelineCache)pipelineCache);
 	if (cacheData.size() > sizeof(VkPipelineCacheHeaderVersionOne))
@@ -1271,12 +1273,11 @@ void VulkanAPI::storePipelineCache()
 		auto directory = mpio::Directory::getAppDataPath(appDataName) / "cache";
 		if (!fs::exists(directory))
 			fs::create_directories(directory);
-		auto path = directory / "shaders";
-		ofstream outputStream(path, ios::out | ios::binary);
+		ofstream outputStream(directory / "shaders", ios::out | ios::binary);
 
 		if (outputStream.is_open())
 		{
-			outputStream.write("GSLC", 4);
+			outputStream.write(shaderCacheMagic.data(), 4);
 			constexpr uint32 vkEngineVersion = VK_MAKE_API_VERSION(0, 
 				GARDEN_VERSION_MAJOR, GARDEN_VERSION_MINOR, GARDEN_VERSION_PATCH);
 			const uint32 vkAppVersion = VK_MAKE_API_VERSION(0,

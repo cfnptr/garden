@@ -27,7 +27,7 @@ static void setUiButtonAnimation(ID<Entity> element, string_view animationPath,
 	if (animationPath.empty())
 		return;
 
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	auto transformView = manager->tryGet<TransformComponent>(element);
 	auto animationView = manager->tryGet<AnimationComponent>(element);
 	if (!transformView || !animationView)
@@ -54,14 +54,14 @@ void UiButtonComponent::setEnabled(bool state)
 	if (enabled == state)
 		return;
 
-	auto hoveredElement = UiTriggerSystem::Instance::get()->getHovered();
+	auto hoveredElement = UiTriggerSystem::getInstance()->getHovered();
 	auto currState = hoveredElement == entity ? "hovered" : "default";
 	setUiButtonAnimation(entity, animationPath, enabled ? 
 		currState : "disabled", state ? currState : "disabled");
 
 	if (!noCursorHand && hoveredElement == entity)
 	{
-		InputSystem::Instance::get()->setCursorType(
+		InputSystem::getInstance()->setCursorType(
 			state ? CursorType::PointingHand : CursorType::Default);
 	}
 	enabled = state;
@@ -70,7 +70,7 @@ void UiButtonComponent::setEnabled(bool state)
 //**********************************************************************************************************************
 UiButtonSystem::UiButtonSystem(bool setSingleton) : Singleton(setSingleton)
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	manager->addGroupSystem<ISerializable>(this);
 	manager->addGroupSystem<IAnimatable>(this);
 
@@ -85,14 +85,14 @@ UiButtonSystem::UiButtonSystem(bool setSingleton) : Singleton(setSingleton)
 
 void UiButtonSystem::uiButtonEnter()
 {
-	auto hoveredElement = UiTriggerSystem::Instance::get()->getHovered();
+	auto hoveredElement = UiTriggerSystem::getInstance()->getHovered();
 	if (!hoveredElement)
 		return;
-	auto uiButtonView = Manager::Instance::get()->tryGet<UiButtonComponent>(hoveredElement);
+	auto uiButtonView = Manager::getInstance()->tryGet<UiButtonComponent>(hoveredElement);
 	if (!uiButtonView || !uiButtonView->enabled)
 		return;
 
-	auto inputSystem = InputSystem::Instance::get();
+	auto inputSystem = InputSystem::getInstance();
 	auto mouseState = inputSystem->getMouseState(MouseButton::Left);
 	auto newState = pressedButton == hoveredElement && mouseState ? "active" : "hovered";
 	setUiButtonAnimation(hoveredElement, uiButtonView->animationPath, "default", newState);
@@ -104,14 +104,14 @@ void UiButtonSystem::uiButtonEnter()
 }
 void UiButtonSystem::uiButtonExit()
 {
-	auto hoveredElement = UiTriggerSystem::Instance::get()->getHovered();
+	auto hoveredElement = UiTriggerSystem::getInstance()->getHovered();
 	if (!hoveredElement)
 		return;
-	auto uiButtonView = Manager::Instance::get()->tryGet<UiButtonComponent>(hoveredElement);
+	auto uiButtonView = Manager::getInstance()->tryGet<UiButtonComponent>(hoveredElement);
 	if (!uiButtonView || !uiButtonView->enabled)
 		return;
 
-	auto inputSystem = InputSystem::Instance::get();
+	auto inputSystem = InputSystem::getInstance();
 	auto mouseState = inputSystem->getMouseState(MouseButton::Left);
 	auto currState = pressedButton == hoveredElement && mouseState ? "active" : "hovered";
 	setUiButtonAnimation(hoveredElement, uiButtonView->animationPath, currState, "default");
@@ -123,14 +123,14 @@ void UiButtonSystem::uiButtonExit()
 }
 void UiButtonSystem::uiButtonStay()
 {
-	auto hoveredElement = UiTriggerSystem::Instance::get()->getHovered();
+	auto hoveredElement = UiTriggerSystem::getInstance()->getHovered();
 	if (!hoveredElement)
 		return;
-	auto uiButtonView = Manager::Instance::get()->tryGet<UiButtonComponent>(hoveredElement);
+	auto uiButtonView = Manager::getInstance()->tryGet<UiButtonComponent>(hoveredElement);
 	if (!uiButtonView || !uiButtonView->enabled)
 		return;
 
-	auto inputSystem = InputSystem::Instance::get();
+	auto inputSystem = InputSystem::getInstance();
 	if (inputSystem->isMousePressed(MouseButton::Left))
 	{
 		setUiButtonAnimation(hoveredElement, uiButtonView->animationPath, "hovered", "active");
@@ -142,7 +142,7 @@ void UiButtonSystem::uiButtonStay()
 		{
 			setUiButtonAnimation(hoveredElement, uiButtonView->animationPath, "active", "hovered");
 			if (!uiButtonView->onClick.empty())
-				Manager::Instance::get()->tryRunEvent(uiButtonView->onClick);
+				Manager::getInstance()->tryRunEvent(uiButtonView->onClick);
 		}
 		pressedButton = {};
 	}

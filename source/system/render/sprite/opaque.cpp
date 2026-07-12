@@ -20,7 +20,7 @@ using namespace garden;
 OpaqueSpriteSystem::OpaqueSpriteSystem(bool setSingleton) : 
 	SpriteCompAnimSystem("sprite/opaque"), Singleton(setSingleton)
 {
-	Manager::Instance::get()->addGroupSystem<IMeshRenderSystem>(this);
+	Manager::getInstance()->addGroupSystem<IMeshRenderSystem>(this);
 }
 
 string_view OpaqueSpriteSystem::getComponentName() const

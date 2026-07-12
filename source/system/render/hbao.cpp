@@ -48,19 +48,19 @@ static ID<Image> createNoiseImage(GraphicsSystem* graphicsSystem)
 
 static ID<GraphicsPipeline> createPipeline(uint32 stepCount)
 {
-	auto pbrLightingSystem = PbrLightingSystem::Instance::get();
+	auto pbrLightingSystem = PbrLightingSystem::getInstance();
 	GARDEN_ASSERT(pbrLightingSystem->getOptions().useAoBuffer);
 
 	Pipeline::SpecConstValues specConsts = { { "STEP_COUNT", Pipeline::SpecConstValue(stepCount) } };
-	ResourceSystem::GraphicsOptions options;
+	ResourceSystem::GraphicsLoadOptions options;
 	options.specConstValues = &specConsts;
 
-	return ResourceSystem::Instance::get()->loadGraphicsPipeline(
-		"hbao", pbrLightingSystem->getAoBaseFB(), options);
+	return ResourceSystem::getInstance()->loadGraphicsPipeline(
+		"hbao", pbrLightingSystem->getAoBaseFB(), &options);
 }
 static DescriptorSet::Uniforms getUniforms(GraphicsSystem* graphicsSystem, ID<Image> noiseImage)
 {
-	auto hizBufferView = HizRenderSystem::Instance::get()->getView(1);
+	auto hizBufferView = HizRenderSystem::getInstance()->getView(1);
 	auto noiseView = graphicsSystem->get(noiseImage)->getView();
 
 	DescriptorSet::Uniforms uniforms =
@@ -74,17 +74,17 @@ static DescriptorSet::Uniforms getUniforms(GraphicsSystem* graphicsSystem, ID<Im
 //**********************************************************************************************************************
 HbaoRenderSystem::HbaoRenderSystem(bool setSingleton) : Singleton(setSingleton)
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", HbaoRenderSystem::init);
 }
 void HbaoRenderSystem::init()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("PreAoRender", HbaoRenderSystem::preAoRender);
 	ECSM_SUBSCRIBE_TO_EVENT("AoRender", HbaoRenderSystem::aoRender);
 	ECSM_SUBSCRIBE_TO_EVENT("GBufferRecreate", HbaoRenderSystem::gBufferRecreate);
 
-	auto settingsSystem = SettingsSystem::Instance::tryGet();
+	auto settingsSystem = SettingsSystem::tryGetInstance();
 	if (settingsSystem)
 		settingsSystem->getBool("hbao.enabled", isEnabled);
 }
@@ -99,7 +99,7 @@ void HbaoRenderSystem::preAoRender()
 	if (!isInitialized)
 	{
 		if (!noiseImage)
-			noiseImage = createNoiseImage(GraphicsSystem::Instance::get());
+			noiseImage = createNoiseImage(GraphicsSystem::getInstance());
 		if (!pipeline)
 			pipeline = createPipeline(stepCount);
 		isInitialized = true;
@@ -112,7 +112,7 @@ void HbaoRenderSystem::aoRender()
 	if (!isEnabled || intensity <= 0.0f)
 		return;
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	auto pipelineView = graphicsSystem->get(pipeline);
 	auto noiseImageView = graphicsSystem->get(noiseImage);
 	if (!pipelineView->isReady() || !noiseImageView->isReady())
@@ -125,7 +125,7 @@ void HbaoRenderSystem::aoRender()
 		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.hbao");
 	}
 
-	auto cameraView = Manager::Instance::get()->get<CameraComponent>(graphicsSystem->camera);
+	auto cameraView = Manager::getInstance()->get<CameraComponent>(graphicsSystem->camera);
 	auto framebufferView = graphicsSystem->get(graphicsSystem->getRenderPassFB());
 	auto aoFrameSize = framebufferView->getSize();
 	const auto& cc = graphicsSystem->getCommonConstants();
@@ -179,13 +179,13 @@ void HbaoRenderSystem::aoRender()
 	pipelineView->pushConstants(&pc);
 	pipelineView->drawFullscreen();
 
-	PbrLightingSystem::Instance::get()->markAnyAO();
+	PbrLightingSystem::getInstance()->markAnyAO();
 }
 
 //**********************************************************************************************************************
 void HbaoRenderSystem::gBufferRecreate()
 {
-	GraphicsSystem::Instance::get()->destroy(descriptorSet);
+	GraphicsSystem::getInstance()->destroy(descriptorSet);
 }
 
 void HbaoRenderSystem::setConsts(uint32 stepCount)
@@ -195,7 +195,7 @@ void HbaoRenderSystem::setConsts(uint32 stepCount)
 
 	this->stepCount = stepCount;
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	graphicsSystem->destroy(descriptorSet);
 
 	if (pipeline)
@@ -208,7 +208,7 @@ void HbaoRenderSystem::setConsts(uint32 stepCount)
 ID<Image> HbaoRenderSystem::getNoiseImage()
 {
 	if (!noiseImage)
-		noiseImage = createNoiseImage(GraphicsSystem::Instance::get());
+		noiseImage = createNoiseImage(GraphicsSystem::getInstance());
 	return noiseImage;
 }
 ID<GraphicsPipeline> HbaoRenderSystem::getPipeline()

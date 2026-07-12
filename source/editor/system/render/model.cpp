@@ -22,12 +22,12 @@ using namespace garden;
 //**********************************************************************************************************************
 ModelRenderEditorSystem::ModelRenderEditorSystem()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", ModelRenderEditorSystem::init);
 }
 void ModelRenderEditorSystem::init()
 {
-	EditorRenderSystem::Instance::get()->registerEntityInspector<ModelRenderComponent>(
+	EditorRenderSystem::getInstance()->registerEntityInspector<ModelRenderComponent>(
 	[this](ID<Entity> entity, bool isOpened)
 	{
 		onEntityInspector(entity, isOpened);
@@ -40,8 +40,8 @@ void ModelRenderEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened
 	if (!isOpened)
 		return;
 
-	auto modelView = Manager::Instance::get()->get<ModelRenderComponent>(entity);
-	auto editorSystem = EditorRenderSystem::Instance::get();
+	auto modelView = Manager::getInstance()->get<ModelRenderComponent>(entity);
+	auto editorSystem = EditorRenderSystem::getInstance();
 	auto& lods = modelView->lods; auto levelData = lods.data();
 	auto levelCount = (uint32)lods.size();
 

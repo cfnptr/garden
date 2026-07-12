@@ -26,36 +26,36 @@ using namespace garden;
 //**********************************************************************************************************************
 MeshSelectorEditorSystem::MeshSelectorEditorSystem()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", MeshSelectorEditorSystem::init);
 }
 void MeshSelectorEditorSystem::init()
 {
-	auto manager = Manager::Instance::get();
-	if (DeferredRenderSystem::Instance::has())
+	auto manager = Manager::getInstance();
+	if (DeferredRenderSystem::hasInstance())
 		ECSM_SUBSCRIBE_TO_EVENT("DsLdrRender", MeshSelectorEditorSystem::render);
 	else ECSM_SUBSCRIBE_TO_EVENT("DsForwardRender", MeshSelectorEditorSystem::render);
 	ECSM_SUBSCRIBE_TO_EVENT("EditorSettings", MeshSelectorEditorSystem::editorSettings);
 
-	auto settingsSystem = SettingsSystem::Instance::tryGet();
+	auto settingsSystem = SettingsSystem::tryGetInstance();
 	if (settingsSystem)
 		settingsSystem->getColor("meshSelector.aabbColor", aabbColor);
 }
 
 void MeshSelectorEditorSystem::render()
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	if (!isEnabled || !graphicsSystem->camera)
 		return;
 
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	auto systemGroup = manager->tryGetSystemGroup<IMeshRenderSystem>();
 	if (!systemGroup)
 		return;
 
-	auto inputSystem = InputSystem::Instance::get();
-	auto editorSystem = EditorRenderSystem::Instance::get();
-	auto uiTransformSystem = UiTriggerSystem::Instance::tryGet();
+	auto inputSystem = InputSystem::getInstance();
+	auto editorSystem = EditorRenderSystem::getInstance();
+	auto uiTransformSystem = UiTriggerSystem::tryGetInstance();
 	const auto& commonConstants = graphicsSystem->getCommonConstants();
 	auto cameraPosition = (f32x4)commonConstants.cameraPos;
 	auto selectedEntity = editorSystem->selectedEntity;
@@ -171,7 +171,7 @@ void MeshSelectorEditorSystem::editorSettings()
 
 		if (ImGui::ColorEdit4("AABB Color", &aabbColor))
 		{
-			auto settingsSystem = SettingsSystem::Instance::tryGet();
+			auto settingsSystem = SettingsSystem::tryGetInstance();
 			if (settingsSystem)
 				settingsSystem->setColor("meshSelector.aabbColor", aabbColor);
 		}

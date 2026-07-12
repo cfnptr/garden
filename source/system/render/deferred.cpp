@@ -328,14 +328,11 @@ static ID<Framebuffer> createTransDepthFB(GraphicsSystem* graphicsSystem,
 
 static ID<GraphicsPipeline> createVelocityPipeline(ID<Framebuffer> gFramebuffer, bool useAsyncRecording)
 {
-	ResourceSystem::GraphicsOptions options;
-	options.useAsyncRecording = useAsyncRecording;
-	return ResourceSystem::Instance::get()->loadGraphicsPipeline("velocity", gFramebuffer, options);
+	return ResourceSystem::getInstance()->loadGraphicsPipeline("velocity", gFramebuffer);
 }
 static ID<GraphicsPipeline> createDisocclPipeline(ID<Framebuffer> disocclusionFB)
 {
-	ResourceSystem::GraphicsOptions options;
-	return ResourceSystem::Instance::get()->loadGraphicsPipeline("disocclusion", disocclusionFB, options);
+	return ResourceSystem::getInstance()->loadGraphicsPipeline("disocclusion", disocclusionFB);
 }
 static DescriptorSet::Uniforms getVelocityUniforms(GraphicsSystem* graphicsSystem)
 {
@@ -360,7 +357,7 @@ static DescriptorSet::Uniforms getDisocclUniforms(GraphicsSystem* graphicsSystem
 DeferredRenderSystem::DeferredRenderSystem(Options options, 
 	bool setSingleton) : Singleton(setSingleton), options(options)
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	manager->registerEvent("PreDeferredRender");
 	manager->registerEvent("DeferredRender");
 	manager->registerEvent("PreHdrRender");
@@ -387,7 +384,7 @@ DeferredRenderSystem::DeferredRenderSystem(Options options,
 }
 void DeferredRenderSystem::init()
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	GARDEN_ASSERT(options.useAsyncRecording == graphicsSystem->useAsyncRecording());
 
 	if (!velocityPipeline)
@@ -399,7 +396,7 @@ void DeferredRenderSystem::init()
 			disocclPipeline = createDisocclPipeline(getDisocclusionFB());
 	}
 
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("Render", DeferredRenderSystem::render);
 	ECSM_SUBSCRIBE_TO_EVENT("SwapchainRecreate", DeferredRenderSystem::swapchainRecreate);
 }
@@ -409,11 +406,11 @@ void DeferredRenderSystem::render()
 {
 	SET_CPU_ZONE_SCOPED("Deferred Render");
 
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	if (!isEnabled || !graphicsSystem->camera)
 		return;
 
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	auto cameraView = manager->tryGet<CameraComponent>(graphicsSystem->camera);
 	auto transformView = manager->tryGet<TransformComponent>(graphicsSystem->camera);
 	if (!cameraView || !transformView || !transformView->isActive())
@@ -431,9 +428,9 @@ void DeferredRenderSystem::render()
 	}
 
 	#if GARDEN_DEBUG
-	if (ForwardRenderSystem::Instance::tryGet())
+	if (ForwardRenderSystem::tryGetInstance())
 	{
-		GARDEN_ASSERT_MSG(!ForwardRenderSystem::Instance::get()->isEnabled, 
+		GARDEN_ASSERT_MSG(!ForwardRenderSystem::getInstance()->isEnabled, 
 			"Can't' use deferred and forward render system at the same time"); 
 	}
 	#endif
@@ -582,7 +579,7 @@ void DeferredRenderSystem::render()
 		SET_CPU_ZONE_SCOPED("Refracted Render Pass");
 
 		auto _hdrCopyBuffer = getHdrCopyBuffer();
-		auto gpuProcessSystem = GpuProcessSystem::Instance::get();
+		auto gpuProcessSystem = GpuProcessSystem::getInstance();
 		gpuProcessSystem->prepareGgxBlur(_hdrCopyBuffer, hdrCopyBlurFBs);
 		
 		graphicsSystem->startRecording(CommandBufferType::Frame);
@@ -779,7 +776,7 @@ void DeferredRenderSystem::render()
 //**********************************************************************************************************************
 void DeferredRenderSystem::swapchainRecreate()
 {
-	auto graphicsSystem = GraphicsSystem::Instance::get();
+	auto graphicsSystem = GraphicsSystem::getInstance();
 	const auto& swapchainChanges = graphicsSystem->getSwapchainChanges();
 
 	if (swapchainChanges.framebufferSize)
@@ -878,7 +875,7 @@ void DeferredRenderSystem::swapchainRecreate()
 	}
 
 	if (swapchainChanges.framebufferSize)
-		Manager::Instance::get()->runEvent("GBufferRecreate");
+		Manager::getInstance()->runEvent("GBufferRecreate");
 }
 
 void DeferredRenderSystem::setOptions(Options options)
@@ -903,32 +900,32 @@ ID<GraphicsPipeline> DeferredRenderSystem::getDisocclPipeline()
 const vector<ID<Image>>& DeferredRenderSystem::getGBuffers()
 {
 	if (gBuffers.empty())
-		createGBuffers(GraphicsSystem::Instance::get(), gBuffers, options);
+		createGBuffers(GraphicsSystem::getInstance(), gBuffers, options);
 	return gBuffers;
 }
 ID<Image> DeferredRenderSystem::getHdrBuffer()
 {
 	if (!hdrBuffer)
-		hdrBuffer = createHdrBuffer(GraphicsSystem::Instance::get(), false, false);
+		hdrBuffer = createHdrBuffer(GraphicsSystem::getInstance(), false, false);
 	return hdrBuffer;
 }
 ID<Image> DeferredRenderSystem::getHdrCopyBuffer()
 {
 	if (!hdrCopyBuffer)
-		hdrCopyBuffer = createHdrBuffer(GraphicsSystem::Instance::get(), true, false);
+		hdrCopyBuffer = createHdrBuffer(GraphicsSystem::getInstance(), true, false);
 	return hdrCopyBuffer;
 }
 ID<Image> DeferredRenderSystem::getLdrBuffer()
 {
 	if (!ldrBuffer)
-		ldrBuffer = createLdrBuffer(GraphicsSystem::Instance::get());
+		ldrBuffer = createLdrBuffer(GraphicsSystem::getInstance());
 	return ldrBuffer;
 }
 ID<Image> DeferredRenderSystem::getUiBuffer()
 {
 	if (!uiBuffer)
 	{
-		auto graphicsSystem = GraphicsSystem::Instance::get();
+		auto graphicsSystem = GraphicsSystem::getInstance();
 		uiBuffer = graphicsSystem->getScaledFrameSize() != graphicsSystem->getFramebufferSize() ? 
 			createUiBuffer(graphicsSystem) : getGBuffers()[0];
 	}
@@ -939,38 +936,38 @@ ID<Image> DeferredRenderSystem::getUiBuffer()
 ID<Image> DeferredRenderSystem::getOitAccumBuffer()
 {
 	if (!oitAccumBuffer)
-		oitAccumBuffer = createOitAccumBuffer(GraphicsSystem::Instance::get());
+		oitAccumBuffer = createOitAccumBuffer(GraphicsSystem::getInstance());
 	return oitAccumBuffer;
 }
 ID<Image> DeferredRenderSystem::getOitRevealBuffer()
 {
 	if (!oitRevealBuffer)
-		oitRevealBuffer = createOitRevealBuffer(GraphicsSystem::Instance::get());
+		oitRevealBuffer = createOitRevealBuffer(GraphicsSystem::getInstance());
 	return oitRevealBuffer;
 }
 ID<Image> DeferredRenderSystem::getDepthStencilBuffer()
 {
 	if (!depthStencilBuffer)
-		depthStencilBuffer = createDepthStencilBuffer(GraphicsSystem::Instance::get(), options.useStencil, false);
+		depthStencilBuffer = createDepthStencilBuffer(GraphicsSystem::getInstance(), options.useStencil, false);
 	return depthStencilBuffer;
 }
 ID<Image> DeferredRenderSystem::getDepthCopyBuffer()
 {
 	if (!depthCopyBuffer)
-		depthCopyBuffer = createDepthStencilBuffer(GraphicsSystem::Instance::get(), options.useStencil, true);
+		depthCopyBuffer = createDepthStencilBuffer(GraphicsSystem::getInstance(), options.useStencil, true);
 	return depthCopyBuffer;
 }
 ID<Image> DeferredRenderSystem::getTransBuffer()
 {
 	if (!transBuffer)
-		transBuffer = createTransBuffer(GraphicsSystem::Instance::get());
+		transBuffer = createTransBuffer(GraphicsSystem::getInstance());
 	return transBuffer;
 }
 ID<Image> DeferredRenderSystem::getUpscaleHdrBuffer()
 {
 	if (!upscaleHdrBuffer)
 	{
-		auto graphicsSystem = GraphicsSystem::Instance::get();
+		auto graphicsSystem = GraphicsSystem::getInstance();
 		upscaleHdrBuffer = graphicsSystem->useUpscaling ? 
 			createHdrBuffer(graphicsSystem, false, true) : getHdrBuffer();
 	}
@@ -979,42 +976,42 @@ ID<Image> DeferredRenderSystem::getUpscaleHdrBuffer()
 ID<Image> DeferredRenderSystem::getDisocclMap()
 {
 	if (options.useDisoccl && !disocclMap)
-		disocclMap = createDisocclMap(GraphicsSystem::Instance::get());
+		disocclMap = createDisocclMap(GraphicsSystem::getInstance());
 	return disocclMap;
 }
 
 //**********************************************************************************************************************
 ID<ImageView> DeferredRenderSystem::getHdrImageView()
 {
-	return GraphicsSystem::Instance::get()->get(getHdrBuffer())->getView();
+	return GraphicsSystem::getInstance()->get(getHdrBuffer())->getView();
 }
 ID<ImageView> DeferredRenderSystem::getHdrCopyIV()
 {
 	if (!hdrCopyIV)
-		hdrCopyIV = createHdrCopyIV(GraphicsSystem::Instance::get(), getHdrCopyBuffer());
+		hdrCopyIV = createHdrCopyIV(GraphicsSystem::getInstance(), getHdrCopyBuffer());
 	return hdrCopyIV;
 }
 ID<ImageView> DeferredRenderSystem::getLdrImageView()
 {
-	return GraphicsSystem::Instance::get()->get(getLdrBuffer())->getView();
+	return GraphicsSystem::getInstance()->get(getLdrBuffer())->getView();
 }
 ID<ImageView> DeferredRenderSystem::getUiImageView()
 {
-	return GraphicsSystem::Instance::get()->get(getUiBuffer())->getView();
+	return GraphicsSystem::getInstance()->get(getUiBuffer())->getView();
 }
 ID<ImageView> DeferredRenderSystem::getOitAccumIV()
 {
-	return GraphicsSystem::Instance::get()->get(getOitAccumBuffer())->getView();
+	return GraphicsSystem::getInstance()->get(getOitAccumBuffer())->getView();
 }
 ID<ImageView> DeferredRenderSystem::getOitRevealIV()
 {
-	return GraphicsSystem::Instance::get()->get(getOitRevealBuffer())->getView();
+	return GraphicsSystem::getInstance()->get(getOitRevealBuffer())->getView();
 }
 ID<ImageView> DeferredRenderSystem::getDepthStencilIV()
 {
 	if (!depthStencilIV)
 	{
-		depthStencilIV = createDepthStencilIV(GraphicsSystem::Instance::get(), 
+		depthStencilIV = createDepthStencilIV(GraphicsSystem::getInstance(), 
 			getDepthStencilBuffer(), options.useStencil);
 	}
 	return depthStencilIV;
@@ -1022,54 +1019,54 @@ ID<ImageView> DeferredRenderSystem::getDepthStencilIV()
 ID<ImageView> DeferredRenderSystem::getDepthCopyIV()
 {
 	if (!depthCopyIV)
-		depthCopyIV = createDepthCopyIV(GraphicsSystem::Instance::get(), getDepthCopyBuffer());
+		depthCopyIV = createDepthCopyIV(GraphicsSystem::getInstance(), getDepthCopyBuffer());
 	return depthCopyIV;
 }
 ID<ImageView> DeferredRenderSystem::getDepthOnlyIV()
 {
 	if (!depthOnlyIV)
-		depthOnlyIV = createDepthOnlyIV(GraphicsSystem::Instance::get(), getDepthStencilBuffer());
+		depthOnlyIV = createDepthOnlyIV(GraphicsSystem::getInstance(), getDepthStencilBuffer());
 	return depthOnlyIV;
 }
 ID<ImageView> DeferredRenderSystem::getStencilOnlyIV()
 {
 	if (!stencilOnlyIV)
-		stencilOnlyIV = createStencilOnlyIV(GraphicsSystem::Instance::get(), getDepthStencilBuffer());
+		stencilOnlyIV = createStencilOnlyIV(GraphicsSystem::getInstance(), getDepthStencilBuffer());
 	return stencilOnlyIV;
 }
 ID<ImageView> DeferredRenderSystem::getTransImageView()
 {
-	return GraphicsSystem::Instance::get()->get(getTransBuffer())->getView();
+	return GraphicsSystem::getInstance()->get(getTransBuffer())->getView();
 }
 ID<ImageView> DeferredRenderSystem::getUpscaleHdrIV()
 {
-	return GraphicsSystem::Instance::get()->get(getUpscaleHdrBuffer())->getView();
+	return GraphicsSystem::getInstance()->get(getUpscaleHdrBuffer())->getView();
 }
 ID<ImageView> DeferredRenderSystem::getDisocclView(uint8 mip)
 {
 	if (!options.useDisoccl)
 		return {};
-	return GraphicsSystem::Instance::get()->get(getDisocclMap())->getView(0, mip);
+	return GraphicsSystem::getInstance()->get(getDisocclMap())->getView(0, mip);
 }
 
 //**********************************************************************************************************************
 ID<Framebuffer> DeferredRenderSystem::getGFramebuffer()
 {
 	if (!gFramebuffer)
-		gFramebuffer = createGFramebuffer(GraphicsSystem::Instance::get(), getGBuffers(), getDepthStencilIV());
+		gFramebuffer = createGFramebuffer(GraphicsSystem::getInstance(), getGBuffers(), getDepthStencilIV());
 	return gFramebuffer;
 }
 ID<Framebuffer> DeferredRenderSystem::getHdrFramebuffer()
 {
 	if (!hdrFramebuffer)
-		hdrFramebuffer = createHdrFramebuffer(GraphicsSystem::Instance::get(),getHdrBuffer(), false);
+		hdrFramebuffer = createHdrFramebuffer(GraphicsSystem::getInstance(),getHdrBuffer(), false);
 	return hdrFramebuffer;
 }
 ID<Framebuffer> DeferredRenderSystem::getDepthStencilHdrFB()
 {
 	if (!depthStencilHdrFB)
 	{
-		depthStencilHdrFB = createDepthStencilHdrFB(GraphicsSystem::Instance::get(), 
+		depthStencilHdrFB = createDepthStencilHdrFB(GraphicsSystem::getInstance(), 
 			getHdrBuffer(), getDepthStencilIV());
 	}
 	return depthStencilHdrFB;
@@ -1077,14 +1074,14 @@ ID<Framebuffer> DeferredRenderSystem::getDepthStencilHdrFB()
 ID<Framebuffer> DeferredRenderSystem::getLdrFramebuffer()
 {
 	if (!ldrFramebuffer)
-		ldrFramebuffer = createLdrFramebuffer(GraphicsSystem::Instance::get(),getLdrBuffer());
+		ldrFramebuffer = createLdrFramebuffer(GraphicsSystem::getInstance(),getLdrBuffer());
 	return ldrFramebuffer;
 }
 ID<Framebuffer> DeferredRenderSystem::getDepthStencilLdrFB()
 {
 	if (!depthStencilLdrFB)
 	{
-		depthStencilLdrFB = createDepthStencilLdrFB(GraphicsSystem::Instance::get(), 
+		depthStencilLdrFB = createDepthStencilLdrFB(GraphicsSystem::getInstance(), 
 			getLdrBuffer(), getDepthStencilIV());
 	}
 	return depthStencilLdrFB;
@@ -1092,14 +1089,14 @@ ID<Framebuffer> DeferredRenderSystem::getDepthStencilLdrFB()
 ID<Framebuffer> DeferredRenderSystem::getUiFramebuffer()
 {
 	if (!uiFramebuffer)
-		uiFramebuffer = createUiFramebuffer(GraphicsSystem::Instance::get(), getUiBuffer());
+		uiFramebuffer = createUiFramebuffer(GraphicsSystem::getInstance(), getUiBuffer());
 	return uiFramebuffer;
 }
 ID<Framebuffer> DeferredRenderSystem::getOitFramebuffer()
 {
 	if (!oitFramebuffer)
 	{
-		oitFramebuffer = createOitFramebuffer(GraphicsSystem::Instance::get(), 
+		oitFramebuffer = createOitFramebuffer(GraphicsSystem::getInstance(), 
 			getOitAccumBuffer(), getOitRevealBuffer(), getDepthStencilIV());
 	}
 	return oitFramebuffer;
@@ -1107,24 +1104,24 @@ ID<Framebuffer> DeferredRenderSystem::getOitFramebuffer()
 ID<Framebuffer> DeferredRenderSystem::getTransDepthFB()
 {
 	if (!transDepthFB)
-		transDepthFB = createTransDepthFB(GraphicsSystem::Instance::get(), getTransBuffer(), getDepthOnlyIV());
+		transDepthFB = createTransDepthFB(GraphicsSystem::getInstance(), getTransBuffer(), getDepthOnlyIV());
 	return transDepthFB;
 }
 ID<Framebuffer> DeferredRenderSystem::getUpscaleHdrFB()
 {
 	if (!upscaleHdrFB)
-		upscaleHdrFB = createHdrFramebuffer(GraphicsSystem::Instance::get(), getUpscaleHdrBuffer(), true);
+		upscaleHdrFB = createHdrFramebuffer(GraphicsSystem::getInstance(), getUpscaleHdrBuffer(), true);
 	return upscaleHdrFB;
 }
 ID<Framebuffer> DeferredRenderSystem::getDisocclusionFB()
 {
 	if (options.useDisoccl && !disocclusionFB)
-		disocclusionFB = createDisocclusionFB(GraphicsSystem::Instance::get(), getDisocclMap());
+		disocclusionFB = createDisocclusionFB(GraphicsSystem::getInstance(), getDisocclMap());
 	return disocclusionFB;
 }
 const vector<ID<Framebuffer>>& DeferredRenderSystem::getHdrCopyBlurFBs()
 {
 	if (hdrCopyBlurFBs.empty())
-		GpuProcessSystem::Instance::get()->prepareGgxBlur(getHdrCopyBuffer(), hdrCopyBlurFBs);
+		GpuProcessSystem::getInstance()->prepareGgxBlur(getHdrCopyBuffer(), hdrCopyBlurFBs);
 	return hdrCopyBlurFBs;
 }

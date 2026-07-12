@@ -23,12 +23,12 @@ using namespace garden;
 //**********************************************************************************************************************
 FxaaRenderEditorSystem::FxaaRenderEditorSystem()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("Init", FxaaRenderEditorSystem::init);
 }
 void FxaaRenderEditorSystem::init()
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("EditorSettings", FxaaRenderEditorSystem::editorSettings);
 }
 
@@ -39,30 +39,30 @@ void FxaaRenderEditorSystem::editorSettings()
 		ImGui::Indent();
 		ImGui::PushID("fxaa");
 
-		auto fxaaSystem = FxaaRenderSystem::Instance::get();
+		auto fxaaSystem = FxaaRenderSystem::getInstance();
 		if (ImGui::Checkbox("Enabled", &fxaaSystem->isEnabled))
 		{
-			auto settingsSystem = SettingsSystem::Instance::tryGet();
+			auto settingsSystem = SettingsSystem::tryGetInstance();
 			if (settingsSystem)
 				settingsSystem->setBool("fxaa.enabled", fxaaSystem->isEnabled);
 		}
 
 		auto quality = fxaaSystem->getQuality();
-		auto subpixelQualit = fxaaSystem->getSubpixelQuality();
+		auto subpixelQuality= fxaaSystem->getSubpixelQuality();
 
 		if (ImGui::Combo("Quality", &quality, graphicsQualityNames, (int)GraphicsQuality::Count))
 		{
-			fxaaSystem->setQuality(quality, subpixelQualit);
-			auto settingsSystem = SettingsSystem::Instance::tryGet();
+			fxaaSystem->setQuality(quality, subpixelQuality);
+			auto settingsSystem = SettingsSystem::tryGetInstance();
 			if (settingsSystem)
 				settingsSystem->setString("fxaa.quality", toString((GraphicsQuality)quality));
 		}
-		if (ImGui::SliderFloat("Subpixel Quality", &subpixelQualit, 0.0f, 1.0f))
+		if (ImGui::SliderFloat("Subpixel Quality", &subpixelQuality, 0.0f, 1.0f))
 		{
-			fxaaSystem->setQuality(quality, subpixelQualit);
-			auto settingsSystem = SettingsSystem::Instance::tryGet();
+			fxaaSystem->setQuality(quality, subpixelQuality);
+			auto settingsSystem = SettingsSystem::tryGetInstance();
 			if (settingsSystem)
-				settingsSystem->setFloat("fxaa.subpixelQuality", subpixelQualit);
+				settingsSystem->setFloat("fxaa.subpixelQuality", subpixelQuality);
 		}
 		ImGui::Checkbox("Visualize", &fxaaSystem->visualize);
 

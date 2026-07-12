@@ -20,7 +20,7 @@ using namespace garden;
 Opaque9SliceSystem::Opaque9SliceSystem(bool setSingleton) : 
 	NineSliceCompAnimSystem("9-slice/opaque"), Singleton(setSingleton)
 {
-	Manager::Instance::get()->addGroupSystem<IMeshRenderSystem>(this);
+	Manager::getInstance()->addGroupSystem<IMeshRenderSystem>(this);
 }
 
 string_view Opaque9SliceSystem::getComponentName() const

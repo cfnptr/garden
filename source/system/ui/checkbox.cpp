@@ -25,7 +25,7 @@ static void setUiCheckboxAnimation(ID<Entity> element, string_view animationPath
 	if (animationPath.empty())
 		return;
 
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	auto transformView = manager->tryGet<TransformComponent>(element);
 	if (!transformView)
 		return;
@@ -47,7 +47,7 @@ void UiCheckboxComponent::setEnabled(bool state)
 	if (enabled == state)
 		return;
 
-	auto uiCheckboxView = Manager::Instance::get()->tryGet<UiButtonComponent>(entity);
+	auto uiCheckboxView = Manager::getInstance()->tryGet<UiButtonComponent>(entity);
 	if (uiCheckboxView)
 		uiCheckboxView->setEnabled(state);
 	enabled = state;
@@ -64,7 +64,7 @@ void UiCheckboxComponent::setChecked(bool state)
 //**********************************************************************************************************************
 UiCheckboxSystem::UiCheckboxSystem(bool setSingleton) : Singleton(setSingleton)
 {
-	auto manager = Manager::Instance::get();
+	auto manager = Manager::getInstance();
 	manager->addGroupSystem<ISerializable>(this);
 	manager->addGroupSystem<IAnimatable>(this);
 
@@ -74,8 +74,8 @@ UiCheckboxSystem::UiCheckboxSystem(bool setSingleton) : Singleton(setSingleton)
 
 void UiCheckboxSystem::uiCheckboxClick()
 {
-	auto manager = Manager::Instance::get();
-	auto hoveredElement = UiTriggerSystem::Instance::get()->getHovered();
+	auto manager = Manager::getInstance();
+	auto hoveredElement = UiTriggerSystem::getInstance()->getHovered();
 	if (!hoveredElement)
 		return;
 	auto uiCheckboxView = manager->tryGet<UiCheckboxComponent>(hoveredElement);
