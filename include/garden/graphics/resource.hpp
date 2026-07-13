@@ -76,7 +76,7 @@ public:
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	/**
 	 * @brief Returns resource debug name. (Debug Only)
-	 * @details Also visible inside GPU profilers. (RenderDoc, Nsight, Xcode...)
+	 * @details Also visible inside GPU profilers. (RenderDoc, Nsight, RGP, Xcode...)
 	 */
 	const string& getDebugName() const noexcept { return debugName; }
 	/**

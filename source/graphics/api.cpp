@@ -17,6 +17,11 @@
 #include "garden/graphics/glfw.hpp" // Note: Do not move it.
 #include "garden/system/log.hpp" // TODO: we should not include system here
 
+#if GARDEN_DEBUG
+#include "garden/graphics/renderdoc-app.h"
+static RENDERDOC_API_1_7_0* rdocApi = NULL;
+#endif
+
 #if GARDEN_USE_BASIS_UNIVERSAL
 	#if GARDEN_EDITOR
 	#include "basisu_enc.h"
@@ -116,6 +121,25 @@ void GraphicsAPI::initialize(GraphicsBackend backendType, const string& appName,
 	const string& appDataName, Version appVersion, uint2 windowSize, ThreadPool* threadPool, 
 	bool useVsync, bool useTripleBuffering, bool isFullscreen, bool isDecorated)
 {
+	#if GARDEN_DEBUG
+		#if GARDEN_OS_LINUX || GARDEN_OS_APPLE
+		int result = 1;
+		if(auto mod = dlopen("librenderdoc.so", RTLD_NOW | RTLD_NOLOAD))
+		{
+			// TODO: For android replace librenderdoc.so with libVkLayer_GLES_RenderDoc.so
+			auto renderDocGetAPI = (pRENDERDOC_GetAPI)dlsym(mod, "RENDERDOC_GetAPI");
+			result = renderDocGetAPI(eRENDERDOC_API_Version_1_7_0, (void**)&rdocApi);
+		}
+		#elif GARDEN_OS_WINDOWS
+		if(auto mod = GetModuleHandleA("renderdoc.dll"))
+		{
+			auto renderDocGetAPI = (pRENDERDOC_GetAPI)GetProcAddress(mod, "RENDERDOC_GetAPI");
+			result = renderDocGetAPI(eRENDERDOC_API_Version_1_7_0, (void**)&rdocApi);
+		}
+		#endif
+		GARDEN_ASSERT_MSG(result == 1, "Failed to get RenderDoc API instance");
+	#endif
+
 	#if GARDEN_USE_BASIS_UNIVERSAL
 		#if GARDEN_DEBUG
 		// basisu::enable_debug_printf(true);
@@ -128,13 +152,7 @@ void GraphicsAPI::initialize(GraphicsBackend backendType, const string& appName,
 	#endif
 
 	#if GARDEN_OS_LINUX
-		#if GARDEN_MESA_RGP
-		const auto forceX11 = true;
-		#else
-		const auto forceX11 = false;
-		#endif
-
-	if (isEnv("GLFW_PLATFORM", "x11") || forceX11)
+	if (isEnv("GLFW_PLATFORM", "x11") || GARDEN_USE_MESA_RGP)
 		glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_X11);
 	#endif
 
@@ -161,3 +179,20 @@ void GraphicsAPI::terminate()
 	apiInstance = nullptr;
 	glfwTerminate();
 }
+
+#if GARDEN_DEBUG
+bool GraphicsAPI::hasFrameDebugger()
+{
+	return rdocApi;
+}
+void GraphicsAPI::startFrameCapture()
+{
+	if (rdocApi) rdocApi->StartFrameCapture(NULL, NULL);
+	else abort(); // TODO: implement other graphics debuggers.
+}
+void GraphicsAPI::stopFrameCapture()
+{
+	if (rdocApi) rdocApi->EndFrameCapture(NULL, NULL);
+	else abort();
+}
+#endif

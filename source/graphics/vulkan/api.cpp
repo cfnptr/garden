@@ -1053,7 +1053,7 @@ VulkanAPI::VulkanAPI(const string& appName, const string& appDataName, Version a
 		this->bindDescriptorSets.resize(threadCount);
 	}
 
-	#if GARDEN_OS_LINUX && GARDEN_MESA_RGP
+	#if GARDEN_OS_LINUX && GARDEN_USE_MESA_RGP
 	setenv("MESA_VK_TRACE", "rgp", 0);
 	#endif
 

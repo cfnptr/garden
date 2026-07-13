@@ -345,6 +345,22 @@ public:
 		GARDEN_ASSERT_MSG(apiInstance, "Graphics API is not initialized");
 		return apiInstance;
 	}
+
+	#if GARDEN_DEBUG
+	/**
+	 * @brief Returns true if have connected frame debugger.
+	 * @details See the @ref startFrameCapture().
+	 */
+	static bool hasFrameDebugger();
+	/**
+	 * @brief Starts current frame capture using connected debugger. (RenderDoc, Nsight, RGP, Xcode...)
+	 */
+	static void startFrameCapture();
+	/**
+	 * @brief Stops current frame capture using connected debugger.
+	 */
+	static void stopFrameCapture();
+	#endif
 };
 
 } // namespace garden
