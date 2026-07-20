@@ -619,25 +619,27 @@ static bool renderInspectorWindowPopup(const EditorRenderSystem::EntityInspector
 			auto manager = Manager::getInstance();
 			auto& componentNames = manager->getComponentNames();
 			JsonDeserializer jsonDeserializer = JsonDeserializer(string_view(ImGui::GetClipboardText()));
-			string jsonComponentName; jsonDeserializer.read(".type", jsonComponentName);
-			auto componentName = componentNames.find(jsonComponentName);
 
-			if (componentName != componentNames.end())
+			string jsonComponentName;
+			if (jsonDeserializer.read(".type", jsonComponentName))
 			{
-				auto itemName = "Paste " + jsonComponentName + " Component";
-				auto componentType = componentName->second->getComponentType();
-				auto serializableSystem = dynamic_cast<ISerializable*>(componentName->second);
-
-				if (ImGui::MenuItem(itemName.c_str(), nullptr, false, 
-					serializableSystem && !manager->has(selectedEntity, componentType)))
+				auto componentName = componentNames.find(jsonComponentName);
+				if (componentName != componentNames.end())
 				{
-					serializableSystem->preDeserialize(jsonDeserializer);
-					auto componentView = manager->add(selectedEntity, componentType);
-					serializableSystem->deserialize(jsonDeserializer, componentView);
-					serializableSystem->postDeserialize(jsonDeserializer);
+					auto itemName = "Paste " + jsonComponentName + " Component";
+					auto componentType = componentName->second->getComponentType();
+					auto serializableSystem = dynamic_cast<ISerializable*>(componentName->second);
+
+					if (ImGui::MenuItem(itemName.c_str(), nullptr, false, 
+						serializableSystem && !manager->has(selectedEntity, componentType)))
+					{
+						serializableSystem->preDeserialize(jsonDeserializer);
+						auto componentView = manager->add(selectedEntity, componentType);
+						serializableSystem->deserialize(jsonDeserializer, componentView);
+						serializableSystem->postDeserialize(jsonDeserializer);
+					}
 				}
 			}
-			
 		}
 		catch (const exception&) { }
 	
@@ -687,8 +689,8 @@ static bool renderInspectorComponentPopup(ID<Entity>& selectedEntity,
 		{
 			JsonDeserializer jsonDeserializer = JsonDeserializer(string_view(ImGui::GetClipboardText()));
 			string jsonComponentName; jsonDeserializer.read(".type", jsonComponentName);
-
 			auto itemName = "Paste " + jsonComponentName + " Data";
+
 			if (ImGui::MenuItem(itemName.c_str(), nullptr, false, 
 				serializableSystem && componentName == jsonComponentName))
 			{
@@ -766,7 +768,9 @@ void EditorRenderSystem::showEntityInspector()
 				ImGui::Spacing();
 			ImGui::PopID();
 		}
+
 		onComponents.clear();
+		ImGui::Spacing();
 
 		for (uint32 i = 0; i < componentCount; i++)
 		{

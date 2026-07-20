@@ -35,7 +35,7 @@ using namespace garden;
 
 //**********************************************************************************************************************
 static constexpr int32 shCacheBinarySize = sh3Count * sizeof(f32x4);
-static constexpr int32 shBinarySize = 3 * 4 * sizeof(f16x4);
+static constexpr int32 shBinarySize = 3 * 4 * sizeof(half4);
 
 static ID<Image> createTransLUT(GraphicsSystem* graphicsSystem, Image::Format format)
 {
@@ -851,11 +851,11 @@ void AtmosphereRenderSystem::generateSkyShDiffuse(ID<Buffer> shDiffuse, f32x4x4*
 		for (uint8 i = 0; i < sh3Count; i++)
 			shCache[i] = min(shCache[i], f32x4(65504.0f));
 
-		f16x4 shCoeffs16[3 * 4] =
+		half4 shCoeffs16[3 * 4] =
 		{
-			(f16x4)shCache[0], (f16x4)shCache[1], (f16x4)shCache[2], f16x4(f32x4::zero),
-			(f16x4)shCache[3], (f16x4)shCache[4], (f16x4)shCache[5], f16x4(f32x4::zero),
-			(f16x4)shCache[6], (f16x4)shCache[7], (f16x4)shCache[8], f16x4(f32x4::zero)
+			(half4)shCache[0], (half4)shCache[1], (half4)shCache[2], half4(f32x4::zero),
+			(half4)shCache[3], (half4)shCache[4], (half4)shCache[5], half4(f32x4::zero),
+			(half4)shCache[6], (half4)shCache[7], (half4)shCache[8], half4(f32x4::zero)
 		};
 
 		auto shStaging = shStagings[shInFlightIndex][0];

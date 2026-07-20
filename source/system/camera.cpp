@@ -97,9 +97,9 @@ void CameraSystem::serializeAnimation(ISerializer& serializer, View<AnimationFra
 void CameraSystem::deserializeAnimation(IDeserializer& deserializer, View<AnimationFrame> frame)
 {
 	auto frameView = View<CameraFrame>(frame);
-	string type; deserializer.read("projection", type);
+	deserializer.read("projection", valueStringCache);
 
-	if (type == "Perspective")
+	if (valueStringCache == "Perspective")
 	{
 		frameView->f.perspective.type = ProjectionType::Perspective;
 		frameView->f.perspective.animateFieldOfView = deserializer.read(
@@ -109,7 +109,7 @@ void CameraSystem::deserializeAnimation(IDeserializer& deserializer, View<Animat
 		frameView->f.perspective.animateNearPlane = deserializer.read(
 			"nearPlane", frameView->c.perspective.nearPlane);
 	}
-	else if (type == "Orthographic")
+	else if (valueStringCache == "Orthographic")
 	{
 		frameView->f.orthographic.type = ProjectionType::Orthographic;
 		frameView->f.orthographic.animateWidth = deserializer.read("width", frameView->c.orthographic.width);

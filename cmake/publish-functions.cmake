@@ -14,14 +14,14 @@
 
 #***********************************************************************************************************************
 function(stripExecutable STRIP_TARGET)
-    if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    if(LINUX)
 		add_custom_command(TARGET ${STRIP_TARGET} POST_BUILD VERBATIM
 			COMMAND ${CMAKE_COMMAND} -E echo "Stripping $<TARGET_FILE_NAME:${STRIP_TARGET}> executable..."
 			COMMAND objcopy --only-keep-debug "$<TARGET_FILE:${STRIP_TARGET}>" 
 				"$<TARGET_FILE_NAME:${STRIP_TARGET}>.debug"
 			COMMAND strip ARGS --strip-all "$<TARGET_FILE:${STRIP_TARGET}>")
 			# TODO: objcopy --add-gnu-debuglink=myprogram.debug myprogram
-	elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+	elseif(APPLE)
 		add_custom_command(TARGET ${STRIP_TARGET} POST_BUILD VERBATIM
 			COMMAND ${CMAKE_COMMAND} -E echo "Stripping $<TARGET_FILE_NAME:${STRIP_TARGET}> executable..."
 			COMMAND strip ARGS "$<TARGET_FILE:${STRIP_TARGET}>")
@@ -141,9 +141,9 @@ macro(collectPackResources PACK_RESOURCES_DIR INCLUDE_EDITOR INCLUDE_DEBUG PACK_
 			continue()
 		endif()
 
-		if((NOT CMAKE_SYSTEM_NAME STREQUAL "Windows" AND ANY_RESOURCE MATCHES "windows") OR
-			(NOT CMAKE_SYSTEM_NAME STREQUAL "Darwin" AND ANY_RESOURCE MATCHES "macos") OR
-			(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux" AND ANY_RESOURCE MATCHES "linux"))
+		if((NOT WIN32 AND ANY_RESOURCE MATCHES "windows") OR
+			(NOT APPLE AND ANY_RESOURCE MATCHES "apple") OR
+			(NOT LINUX AND ANY_RESOURCE MATCHES "linux"))
 			continue()
 		endif()
 

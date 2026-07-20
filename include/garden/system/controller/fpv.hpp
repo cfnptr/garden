@@ -56,7 +56,7 @@ public:
 	float2 rotation = float2::zero;
 	float mouseSensitivity = 1.0f;
 	float moveSpeed = 2.0f;
-	float moveLerpFactor = 0.99999f;
+	float moveDecayRate = 15.0f;
 	float boostFactor = 2.0f;
 	float jumpSpeed = 5.0f;
 	float swimSpeed = 1.0f;

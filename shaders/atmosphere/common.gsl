@@ -82,7 +82,7 @@ ScatteringResult initScatteringResult()
 float raycastAtmosphere(Sphere sphere, Ray ray)
 {
 	float2 t = raycast2(sphere, ray);
-	if (all(lessThan(t, float2(0.0f)))) return -FLOAT32_MAX;
+	if (all(lessThan(t, float2(0.0f)))) return -FLT_MAX;
 	if (t.x < 0.0f) return max(t.y, 0.0f);
 	return max(min(t.x, t.y), 0.0f);
 }
@@ -337,7 +337,7 @@ ScatteringResult integrateScatteredLuminance(float2 texCoords, Ray ray,
 		result.multiScattAs1 = fma(throughput * medium.scattering, float3(deltaT), result.multiScattAs1);
 
 		// Integrate along the current step segment.
-		float3 sInt = (s - (s * sampleTransmittance)) / max(medium.extinction, FLOAT_EPS9); 
+		float3 sInt = (s - (s * sampleTransmittance)) / max(medium.extinction, FLT_EPSILON9); 
 		l = fma(throughput, sInt, l); // Accumulate and also take into account the transmittance from previous steps.
 		throughput *= sampleTransmittance;
 		#endif

@@ -484,9 +484,8 @@ void UiLabelSystem::deserializeAnimation(IDeserializer& deserializer, View<Anima
 	deserializer.read("useLocale", frameView->useLocale);
 	deserializer.read("adjustCJK", frameView->adjustCJK);
 
-	string alignment;
-	if (deserializer.read("alignment", alignment))
-		toTextAlignment(alignment, frameView->properties.alignment);
+	if (deserializer.read("alignment", valueStringCache))
+		toTextAlignment(valueStringCache, frameView->properties.alignment);
 
 	auto uiScale = UiTransformSystem::getInstance()->uiScale;
 	// TODO: take into account macOS different window and framebuffer scale!

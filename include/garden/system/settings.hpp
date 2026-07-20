@@ -221,18 +221,6 @@ public:
 		getColor(name, colorValue);
 		value = (float3)colorValue;
 	}
-	/**
-	 * @brief Returns settings color value.
-	 * @param[in] name target setting name
-	 * @param[out] value reference to the setting value
-	 * @return Setting value if exists, otherwise adds and returns initial value.
-	 */
-	void getColor(const string& name, float2& value)
-	{
-		auto colorValue = (Color)value;
-		getColor(name, colorValue);
-		value = (float2)colorValue;
-	}
 
 	/**
 	 * @brief Returns settings type value.

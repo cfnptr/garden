@@ -103,6 +103,17 @@ public:
 	 */
 	void setRotation(quat rotation) noexcept { this->rotation = rotation; }
 
+	/**
+	 * @brief Sets entity transform from the model matrix.
+	 * @param model target entity model matrix
+	 */
+	void setTransform(const f32x4x4& model) noexcept
+	{
+		f32x4 position, scale;
+		extractTransform(model, position, rotation, scale);
+		setPosition(position); setScale(scale);
+	}
+
 	/*******************************************************************************************************************
 	 * @brief Is this entity and its ancestors active.
 	 * @details Is this entity should be processed and used by other systems.

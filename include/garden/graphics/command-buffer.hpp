@@ -448,7 +448,7 @@ protected:
 			if (this->size + size > this->capacity)
 			{
 				this->capacity = this->size + size;
-				this->data = realloc<uint8>(this->data, this->capacity);
+				this->data = realloc(this->data, this->capacity);
 			}
 
 			allocation = (T*)(this->data + this->size);
@@ -464,7 +464,7 @@ protected:
 			if (async.size + size > async.capacity)
 			{
 				async.capacity = async.size + size;
-				async.data = realloc<uint8>(async.data, capacity);
+				async.data = realloc(async.data, capacity);
 			}
 
 			allocation = (T*)(async.data + async.size);
@@ -739,7 +739,7 @@ public:
 		if (async.size + asyncCommandSize > async.capacity)
 		{
 			async.capacity = async.size + sizeof(AsyncRenderCommand);
-			async.data = realloc<uint8>(async.data, capacity);
+			async.data = realloc(async.data, capacity);
 		}
 
 		memcpy(async.data + async.size, (const uint8*)&command + asyncCommandOffset, asyncCommandSize);

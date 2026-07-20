@@ -35,9 +35,14 @@ static const uint32 bayerIndices4x4[16] =
 static ID<Image> createCloudsCamView(GraphicsSystem* graphicsSystem)
 {
 	auto frameSize = max(graphicsSystem->getScaledFrameSize() / 2, uint2::one);
-	auto image = graphicsSystem->createImage(CloudsRenderSystem::cloudsColorFormat, Image::Usage::Sampled | 
-		Image::Usage::ColorAttachment, { { nullptr, nullptr } }, frameSize, Image::Strategy::Size);
+	auto image = graphicsSystem->createImage(CloudsRenderSystem::cloudsColorFormat, 
+		Image::Usage::Sampled | Image::Usage::ColorAttachment | Image::Usage::TransferDst, 
+		{ { nullptr, nullptr } }, frameSize, Image::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(image, "image.clouds.camView");
+
+	graphicsSystem->startRecording(CommandBufferType::Frame);
+	graphicsSystem->get(image)->clear(float4::zero);
+	graphicsSystem->stopRecording();
 	return image;
 }
 static ID<Image> createCloudsSkybox(GraphicsSystem* graphicsSystem, ID<Image> skybox)

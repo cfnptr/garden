@@ -64,7 +64,7 @@ float3 encodeNormalOct3(float3 normal) // [result in 0.0 - 1.0 range]
 	float y = fma(normal.y, 0.5f, 0.5f);
 	float x = fma(normal.x, 0.5f, y);
 	y = fma(normal.x, -0.5f, y);
-	float z = saturate(normal.z * FLOAT32_MAX);
+	float z = saturate(normal.z * FLT_MAX);
 	return float3(x, y, z);
 }
 float3 decodeNormalOct3(float3 encoded)

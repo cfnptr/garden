@@ -283,7 +283,7 @@ void evaluateClouds(sampler2D transLUT, sampler3D cameraVolume, sampler2D dataFi
 
 			float cloudDensity = calcCloudDensity(noiseShape, clouds.cameraPos, 
 				samplePos, cloudData, dimProfile, shapeWindDir);
-			if (cloudDensity < FLOAT_EPS6)
+			if (cloudDensity < FLT_EPSILON6)
 			{
 				rayT.x += stepSize;
 				continue;
@@ -338,7 +338,7 @@ void evaluateClouds(sampler2D transLUT, sampler3D cameraVolume, sampler2D dataFi
 		float cloudCoverage = calcCloudCoverage(clouds.cirrusCoverage, cloudData);
 		float cirrusDensity = calcCirrusDensity(cloudData, cirrusShapeData, cloudCoverage);
 
-		if (cirrusDensity > FLOAT_EPS6)
+		if (cirrusDensity > FLT_EPSILON6)
 		{
 			float occlusion = cirrusDensity * (1.0f - lightAbsorption);
 			float attenuation = beerLambertCloud(cirrusDensity, cosTheta) * densityFactor;
@@ -392,7 +392,7 @@ void evaluateClouds(sampler2D transLUT, sampler3D cameraVolume, sampler2D dataFi
 	float4 ap = getAerialPerspLuminance(cameraVolume, clouds.texCoords, length(cloudCamPos));
 	lightEnergy = lerp(lightEnergy, ap.rgb, ap.a);
 	#endif
-	color = float4(min(lightEnergy, FLOAT_BIG_16), lightAbsorption);
+	color = float4(min(lightEnergy, FLT16_MAX), lightAbsorption);
 }
 
 #endif // CLOUDS_GSL

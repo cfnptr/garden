@@ -59,8 +59,9 @@ public:
 	virtual void write(int8 value) = 0;
 	virtual void write(uint8 value) = 0;
 	virtual void write(bool value) = 0;
-	virtual void write(float value) = 0;
 	virtual void write(double value) = 0;
+	virtual void write(float value) = 0;
+	virtual void write(half value) = 0;
 	virtual void write(string_view value) = 0;
 	virtual void endArrayElement() = 0;
 
@@ -73,8 +74,9 @@ public:
 	virtual void write(string_view name, int8 value) = 0;
 	virtual void write(string_view name, uint8 value) = 0;
 	virtual void write(string_view name, bool value) = 0;
-	virtual void write(string_view name, float value) = 0;
 	virtual void write(string_view name, double value) = 0;
+	virtual void write(string_view name, float value) = 0;
+	virtual void write(string_view name, half value) = 0;
 	virtual void write(string_view name, string_view value) = 0;
 	virtual void write(string_view name, u32string_view value) = 0;
 	virtual void write(string_view name, int2 value) = 0;
@@ -86,8 +88,11 @@ public:
 	virtual void write(string_view name, float2 value) = 0;
 	virtual void write(string_view name, float3 value) = 0;
 	virtual void write(string_view name, float4 value) = 0;
+	virtual void write(string_view name, half2 value) = 0;
+	virtual void write(string_view name, half3 value) = 0;
+	virtual void write(string_view name, half4 value) = 0;
 	virtual void write(string_view name, quat value) = 0;
-	virtual void write(string_view name, const float2x2& value) = 0;
+	virtual void write(string_view name, float2x2 value) = 0;
 	virtual void write(string_view name, const float3x3& value) = 0;
 	virtual void write(string_view name, const float4x4& value) = 0;
 	virtual void write(string_view name, const Aabb& value) = 0;
@@ -117,8 +122,9 @@ public:
 	virtual bool read(int8& value) = 0;
 	virtual bool read(uint8& value) = 0;
 	virtual bool read(bool& value) = 0;
-	virtual bool read(float& value) = 0;
 	virtual bool read(double& value) = 0;
+	virtual bool read(float& value) = 0;
+	virtual bool read(half& value) = 0;
 	virtual bool read(string& value) = 0;
 	virtual void endArrayElement() = 0;
 
@@ -132,8 +138,9 @@ public:
 	virtual bool read(string_view name, uint8& value) = 0;
 	virtual bool read(string_view name, bool& value) = 0;
 	virtual bool read(string_view name, volatile bool& value) = 0;
-	virtual bool read(string_view name, float& value) = 0;
 	virtual bool read(string_view name, double& value) = 0;
+	virtual bool read(string_view name, float& value) = 0;
+	virtual bool read(string_view name, half& value) = 0;
 	virtual bool read(string_view name, string& value) = 0;
 	virtual bool read(string_view name, u32string& value) = 0;
 	virtual bool read(string_view name, int2& value) = 0;
@@ -145,6 +152,9 @@ public:
 	virtual bool read(string_view name, float2& value) = 0;
 	virtual bool read(string_view name, float3& value) = 0;
 	virtual bool read(string_view name, float4& value) = 0;
+	virtual bool read(string_view name, half2& value) = 0;
+	virtual bool read(string_view name, half3& value) = 0;
+	virtual bool read(string_view name, half4& value) = 0;
 	virtual bool read(string_view name, quat& value) = 0;
 	virtual bool read(string_view name, float2x2& value) = 0;
 	virtual bool read(string_view name, float3x3& value) = 0;
@@ -152,6 +162,7 @@ public:
 	virtual bool read(string_view name, Aabb& value) = 0;
 	virtual bool read(string_view name, Color& value) = 0;
 	virtual bool read(string_view name, f32x4& value, uint8 components = 4) = 0;
+	virtual bool read(string_view name, f16x4& value, uint8 components = 4) = 0;
 	// TODO: read array of values.
 };
 

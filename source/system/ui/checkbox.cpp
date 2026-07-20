@@ -129,14 +129,11 @@ void UiCheckboxSystem::serializeAnimation(ISerializer& serializer, View<Animatio
 }
 void UiCheckboxSystem::deserializeAnimation(IDeserializer& deserializer, View<AnimationFrame> frame)
 {
-	auto frameView = View<UiCheckboxFrame>(frame); auto boolValue = true;
+	auto frameView = View<UiCheckboxFrame>(frame); bool boolValue;
 	frameView->animateIsEnabled = deserializer.read("isEnabled", boolValue);
-	frameView->isEnabled = boolValue;
-
-	boolValue = false;
+	if (frameView->animateIsEnabled) frameView->isEnabled = boolValue;
 	frameView->animateIsChecked = deserializer.read("isChecked", boolValue);
-	frameView->isChecked = boolValue;
-
+	if (frameView->animateIsChecked) frameView->isChecked = boolValue;
 	frameView->animateOnChange = deserializer.read("onChange", frameView->onChange);
 	frameView->animateAnimationPath = deserializer.read("animationPath", frameView->animationPath);
 }

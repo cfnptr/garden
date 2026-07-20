@@ -38,10 +38,10 @@ else() # Clang or GCC compiler
 		add_compile_options(-flto) # Use link time optimizations.
 	endif()
 	if(CMAKE_CXX_COMPILER_ID MATCHES "Clang") # Note: Do not remove MATCHES!
-		if(NOT CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+		if(APPLE)
 			add_link_options(-fuse-ld=lld) # There is no lld in AppleClang.
 		endif()
-		if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
+		if(WIN32)
 			add_compile_options(-ffp-model=precise) # Disabling fast-math, it breaks math.
 		endif()
 		if(CMAKE_BUILD_TYPE STREQUAL "Debug")

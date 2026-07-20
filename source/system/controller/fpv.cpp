@@ -188,7 +188,7 @@ void FpvControllerSystem::updateCameraControl(quat cameraRotation)
 		flyVector = (flyVector * boost) * cameraRotation;
 	}
 
-	velocity = lerpDelta(velocity, flyVector, 1.0f - moveLerpFactor, deltaTime);
+	velocity = lerpDelta(velocity, flyVector, moveDecayRate, deltaTime);
 	transformView->translate(velocity * deltaTime);
 }
 
@@ -252,8 +252,8 @@ void FpvControllerSystem::updateCharacterControl()
 			velocity += characterView->getGroundVelocity();
 
 		auto linearVelocity = characterView->getLinearVelocity();
-		linearVelocity.setX(lerpDelta(linearVelocity.getX(), velocity.getX(), 1.0f - moveLerpFactor, deltaTime));
-		linearVelocity.setZ(lerpDelta(linearVelocity.getZ(), velocity.getZ(), 1.0f - moveLerpFactor, deltaTime));
+		linearVelocity.setX(lerpDelta(linearVelocity.getX(), velocity.getX(), moveDecayRate, deltaTime));
+		linearVelocity.setZ(lerpDelta(linearVelocity.getZ(), velocity.getZ(), moveDecayRate, deltaTime));
 
 		if (canSwim)
 		{

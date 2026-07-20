@@ -988,5 +988,5 @@ void MeshRenderSystem::uiRender()
 }
 
 //**********************************************************************************************************************
-ModelStoreSystem::ModelStoreSystem(bool setSingleton) : Singleton(setSingleton) { }
-string_view ModelStoreSystem::getComponentName() const { return "Model Store"; }
+ModelMatrixSystem::ModelMatrixSystem(bool setSingleton) : Singleton(setSingleton) { }
+string_view ModelMatrixSystem::getComponentName() const { return "Model Matrix"; }

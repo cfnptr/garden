@@ -732,11 +732,12 @@ static void loadMissingImage(vector<uint8>& data, uint4& size, Image::Type& type
 	}
 	else if (compBinarySize == 2)
 	{
-		static const f16x4 colorMagenta = (f16x4)(f32x4)Color::magenta, 
-			colorBlack = (f16x4)(f32x4)Color::black, colorWhite = (f16x4)(f32x4)Color::white;
+		static const half4 colorMagenta = (half4)Color::magenta, 
+			colorBlack = (half4)Color::black, colorWhite = (half4)Color::white;
+
 		if (componentCount == 4)
 		{
-			auto pixels = (f16x4*)data.data();
+			auto pixels = (half4*)data.data();
 			pixels[0] = colorMagenta; pixels[1] = colorBlack;    pixels[2] = colorMagenta;  pixels[3] = colorBlack;
 			pixels[4] = colorBlack;   pixels[5] = colorMagenta;  pixels[6] = colorBlack;    pixels[7] = colorMagenta;
 			pixels[8] = colorMagenta; pixels[9] = colorBlack;    pixels[10] = colorMagenta; pixels[11] = colorBlack;
@@ -753,7 +754,7 @@ static void loadMissingImage(vector<uint8>& data, uint4& size, Image::Type& type
 		}
 		else if (componentCount == 1)
 		{
-			static const half white = colorWhite.getX(), black = colorBlack.getX();
+			static const half white = colorWhite.x, black = colorBlack.x;
 			auto pixels = (half*)data.data();
 			pixels[0] = white;  pixels[1] = black;  pixels[2] = white;  pixels[3] = black;
 			pixels[4] = black;  pixels[5] = white;  pixels[6] = black;  pixels[7] = white;
@@ -1161,9 +1162,9 @@ bool ResourceSystem::loadImageData(const fs::path* paths, psize pathCount, vecto
 			}
 			else if (format == Image::Format::SfloatR16G16B16A16)
 			{
-				auto pixels = (f16x4*)pixelArray.data();
+				auto pixels = (half4*)pixelArray.data();
 				for (uint32 j = 0; j < pixelCount; j++)
-					pixels[j] = f16x4(1.0f, 0.0f, 1.0f, 1.0f); 
+					pixels[j] = half4(1.0f, 0.0f, 1.0f, 1.0f); 
 			}
 			else if (format == Image::Format::SfloatR32G32B32A32)
 			{
@@ -1579,9 +1580,9 @@ void ResourceSystem::renormalizeImage(const fs::path& path,
 	}
 	else if (imageFormat == Image::Format::SfloatR16G16B16A16)
 	{
-		auto pixelData = (f16x4*)dataBuffer.data();
+		auto pixelData = (half4*)dataBuffer.data();
 		for (psize i = 0; i < 0; i++)
-			pixelData[i] = (f16x4)normalize3((f32x4)pixelData[i]);
+			pixelData[i] = (half4)normalize3((f32x4)pixelData[i]);
 	}
 	else
 	{

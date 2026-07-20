@@ -577,7 +577,7 @@ void PbrLightingSystem::preHdrRender()
 	{
 		pbrLightingView->shDiffuse = Ref<Buffer>(graphicsSystem->createBuffer(
 			Buffer::Usage::Uniform | Buffer::Usage::TransferDst, Buffer::CpuAccess::None, 
-			3 * 4 * sizeof(f16x4), Buffer::Location::PreferGPU, Buffer::Strategy::Size));
+			3 * 4 * sizeof(half4), Buffer::Location::PreferGPU, Buffer::Strategy::Size));
 		SET_RESOURCE_DEBUG_NAME(pbrLightingView->shDiffuse, 
 			"buffer.uniform.shDiffuse" + to_string(*pbrLightingView->shDiffuse));
 	}
@@ -1545,16 +1545,16 @@ void PbrLightingSystem::loadCubemap(const fs::path& path, Image::Format& format,
 		for (uint8 i = 0; i < sh3Count; i++)
 			shCacheData[i] = min(shCacheData[i], f32x4(65504.0f));
 
-		f16x4 shCoeffs16[3 * 4] =
+		half4 shCoeffs16[3 * 4] =
 		{
-			(f16x4)shCacheData[0], (f16x4)shCacheData[1], (f16x4)shCacheData[2], f16x4(f32x4::zero),
-			(f16x4)shCacheData[3], (f16x4)shCacheData[4], (f16x4)shCacheData[5], f16x4(f32x4::zero),
-			(f16x4)shCacheData[6], (f16x4)shCacheData[7], (f16x4)shCacheData[8], f16x4(f32x4::zero)
+			(half4)shCacheData[0], (half4)shCacheData[1], (half4)shCacheData[2], half4(half4::zero),
+			(half4)shCacheData[3], (half4)shCacheData[4], (half4)shCacheData[5], half4(half4::zero),
+			(half4)shCacheData[6], (half4)shCacheData[7], (half4)shCacheData[8], half4(half4::zero)
 		};
 
 		shDiffuse = Ref<Buffer>(graphicsSystem->createBuffer(Buffer::Usage::Uniform | 
 			Buffer::Usage::TransferDst, Buffer::CpuAccess::None, shCoeffs16, 
-			3 * 4 * sizeof(f16x4), Buffer::Location::PreferGPU, strategy));
+			3 * 4 * sizeof(half4), Buffer::Location::PreferGPU, strategy));
 		SET_RESOURCE_DEBUG_NAME(shDiffuse, "buffer.uniform.shBuffer." + path.generic_string());
 
 		vector<float> iblWeightBuffer; vector<uint32> iblCountBuffer;

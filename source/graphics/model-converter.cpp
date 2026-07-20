@@ -13,13 +13,6 @@
 // limitations under the License.
 
 #include "garden/graphics/model-converter.hpp"
-#include "garden/thread-pool.hpp"
-
-#include "assimp/Importer.hpp"
-#include "assimp/DefaultLogger.hpp"
-#include "assimp/scene.h"
-#include "assimp/postprocess.h"
-#include "zstd.h"
 
 using namespace garden;
 using namespace garden::graphics;

@@ -56,10 +56,10 @@ public:
 	string characterEntityTag = "MainCharacter";
 	float scrollSensitivity = 1.0f;
 	float horizontalSpeed = 2.0f;
-	float horizontalLerpFactor = 0.99999f;
+	float horizontalDecayRate = 15.0f;
 	float jumpSpeed = 4.0f;
 	float followThreshold = 0.6f;
-	float followLerpFactor = 0.8f;
+	float followDecayRate = 7.6f;
 	float2 followCenter = float2(0.0f, 0.25f);
 	bool useMouseControl = (bool)GARDEN_DEBUG;
 	bool useDoubleJump = true;

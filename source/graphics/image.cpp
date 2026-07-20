@@ -1445,7 +1445,7 @@ const void* Image::convertFormat(const void* src, uint3 size, vector<uint8>& dst
 	case Format::SfloatR32: case Format::SfloatD32:
 		switch (dstFormat)
 		{
-			case Format::SfloatR16: convertPixelsMin<float, math::half>(src, dst, count, FLOAT_BIG_16); break;
+			case Format::SfloatR16: convertPixelsMin<float, math::half>(src, dst, count, FLT16_MAX); break;
 			case Format::UnormR8: convertPixelsFromFloat<math::half, uint8, UINT8_MAX>(src, dst, count); break;
 			case Format::UnormR16: convertPixelsFromFloat<math::half, uint16, UINT16_MAX>(src, dst, count); break;
 			default: throwFormatsConversion(srcFormat, dstFormat);
@@ -1454,7 +1454,7 @@ const void* Image::convertFormat(const void* src, uint3 size, vector<uint8>& dst
 	case Format::SfloatR32G32:
 		switch (dstFormat)
 		{
-			case Format::SfloatR16G16: convertPixelsMin<float, math::half>(src, dst, count, FLOAT_BIG_16); break;
+			case Format::SfloatR16G16: convertPixelsMin<float, math::half>(src, dst, count, FLT16_MAX); break;
 			case Format::UnormR8G8: convertPixelsFromFloat<math::half, uint8, UINT8_MAX>(src, dst, count); break;
 			case Format::UnormR16G16: convertPixelsFromFloat<math::half, uint16, UINT16_MAX>(src, dst, count); break;
 			default: throwFormatsConversion(srcFormat, dstFormat);
@@ -1463,7 +1463,7 @@ const void* Image::convertFormat(const void* src, uint3 size, vector<uint8>& dst
 	case Format::SfloatR32G32B32A32:
 		switch (dstFormat)
 		{
-			case Format::SfloatR16G16B16A16: convertPixelsMin<float, math::half>(src, dst, count, FLOAT_BIG_16); break;
+			case Format::SfloatR16G16B16A16: convertPixelsMin<float, math::half>(src, dst, count, FLT16_MAX); break;
 			case Format::UnormR8G8B8A8: convertPixelsFromFloat<math::half, uint8, UINT8_MAX>(src, dst, count); break;
 			case Format::UnormR16G16B16A16: convertPixelsFromFloat<math::half, uint16, UINT16_MAX>(src, dst, count); break;
 			default: throwFormatsConversion(srcFormat, dstFormat);
@@ -1474,7 +1474,7 @@ const void* Image::convertFormat(const void* src, uint3 size, vector<uint8>& dst
 		switch (dstFormat)
 		{
 			case Format::UintR8G8B8A8: convertPixelsFromSrgb<Color, Color>(src, dst, count); break;
-			case Format::SfloatR16G16B16A16: convertPixelsFromSrgb<Color, f16x4>(src, dst, count); break;
+			case Format::SfloatR16G16B16A16: convertPixelsFromSrgb<Color, half4>(src, dst, count); break;
 			case Format::SfloatR32G32B32A32: convertPixelsFromSrgb<Color, f32x4>(src, dst, count); break;
 			default: throwFormatsConversion(srcFormat, dstFormat);
 		}

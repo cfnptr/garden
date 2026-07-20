@@ -122,7 +122,7 @@ endif()
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 
-if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+if(APPLE)
 	enable_language(OBJC OBJCXX)
 endif()
 
@@ -154,7 +154,7 @@ endif()
 math(EXPR GARDEN_APP_VERSION "((${GARDEN_APP_VERSION_MAJOR} << 24) | (${GARDEN_APP_VERSION_MINOR} << 16) | (${GARDEN_APP_VERSION_PATCH} << 8))")
 set(GARDEN_APP_VERSION_STRING "${GARDEN_APP_VERSION_MAJOR}.${GARDEN_APP_VERSION_MINOR}.${GARDEN_APP_VERSION_PATCH}")
 
-if(DEFINED GARDEN_APP_ICON_PATH AND CMAKE_SYSTEM_NAME STREQUAL "Windows")
+if(DEFINED GARDEN_APP_ICON_PATH AND WIN32)
 	set(GARDEN_APP_WINDOWS_ICON "IDI_ICON1 ICON \"${GARDEN_APP_ICON_PATH}\"")
 endif()
 
@@ -170,7 +170,7 @@ set(GARDEN_LINK_LIBS Vulkan::Vulkan volk nlohmann_json::nlohmann_json xxHash::xx
 	nets-static glfw webp png_static freetype meshoptimizer FastNoise Jolt)
 set(GARDEN_LINK_DIRS)
 
-if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+if(APPLE)
 	list(APPEND GARDEN_LINK_LIBS "-framework CoreServices")
 endif()
 if(NOT GARDEN_PACK_RESOURCES)
@@ -183,7 +183,7 @@ find_package(assimp REQUIRED) # libassimp-dev
 find_package(OpenEXR REQUIRED) # libopenexr-dev
 
 find_package(ZLIB) # zlib1g-dev
-if(NOT ZLIB_FOUND AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
+if(NOT ZLIB_FOUND AND LINUX)
 	set(ZLIB_LIBRARY /usr/lib64/libz.so)
 	find_package(ZLIB REQUIRED)
 endif()
@@ -197,12 +197,12 @@ if(GARDEN_USE_OPENCL)
 	endif()
 endif()
 
-if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+if(APPLE)
 	set(VOLK_STATIC_DEFINES VK_USE_PLATFORM_METAL_MVK)
-elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+elseif(LINUX)
 	set(VOLK_STATIC_DEFINES VK_USE_PLATFORM_XCB_KHR 
 		VK_USE_PLATFORM_XLIB_KHR VK_USE_PLATFORM_WAYLAND_KHR)
-elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+elseif(WIN32)
 	set(VOLK_STATIC_DEFINES VK_USE_PLATFORM_WIN32_KHR)
 endif()
 add_subdirectory(libraries/volk)
@@ -366,7 +366,7 @@ if(GARDEN_BUILD_EDITOR) # Use this as an application example
 	configure_file(${Garden_SOURCE_DIR}/cmake/app-defines.hpp.in include/garden-editor/app-defines.hpp)
 	set(GARDEN_EDITOR_SOURCES source/editor/entry.cpp)
 
-	if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+	if(WIN32)
 		configure_file(${Garden_SOURCE_DIR}/cmake/windows.rc.in garden-editor.rc)
 		list(APPEND GARDEN_EDITOR_SOURCES ${PROJECT_BINARY_DIR}/garden-editor.rc)
 		if(GARDEN_DEBUG)
@@ -398,7 +398,7 @@ if(NOT PROJECT_IS_TOP_LEVEL)
 	set(GARDEN_LITTLE_ENDIAN ${GARDEN_LITTLE_ENDIAN} PARENT_SCOPE)
 	set(GARDEN_APP_VERSION ${GARDEN_APP_VERSION} PARENT_SCOPE)
 	set(GARDEN_APP_VERSION_STRING ${GARDEN_APP_VERSION_STRING} PARENT_SCOPE)
-	if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+	if(WIN32)
 		set(GARDEN_APP_WINDOWS_ICON ${GARDEN_APP_WINDOWS_ICON} PARENT_SCOPE)
 	endif()
 	set(GARDEN_DEPENDENCIES ${GARDEN_DEPENDENCIES} PARENT_SCOPE)

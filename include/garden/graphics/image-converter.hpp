@@ -32,7 +32,7 @@ class ImageConverter final
 {
 public:
 	static f32x4 filterCubeMap(float2 coords, const f32x4* pixels, uint2 sizeMinus1, uint32 sizeX) noexcept;
-	static f16x4 filterCubeMap(float2 coords, const f16x4* pixels, uint2 sizeMinus1, uint32 sizeX) noexcept;
+	static half4 filterCubeMap(float2 coords, const half4* pixels, uint2 sizeMinus1, uint32 sizeX) noexcept;
 	static Color filterCubeMap(float2 coords, const Color* pixels, uint2 sizeMinus1, uint32 sizeX) noexcept;
 
 	template<class T>

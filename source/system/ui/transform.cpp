@@ -155,28 +155,26 @@ void UiTransformSystem::serializeAnimation(ISerializer& serializer, View<Animati
 }
 void UiTransformSystem::deserializeAnimation(IDeserializer& deserializer, View<AnimationFrame> frame)
 {
-	auto frameView = View<UiTransformFrame>(frame); string anchor;
+	auto frameView = View<UiTransformFrame>(frame);
 	frameView->animatePosition = deserializer.read("position", frameView->position, 3);
 	frameView->animateScale = deserializer.read("scale", frameView->scale, 3);
 	frameView->animateRotation = deserializer.read("rotation", frameView->rotation);
-	frameView->animateAnchor = deserializer.read("rotation", anchor);
-
-	if (frameView->animateAnchor)
-		toUiAnchor(anchor, frameView->anchor);
+	frameView->animateAnchor = deserializer.read("rotation", valueStringCache);
+	if (frameView->animateAnchor) toUiAnchor(valueStringCache, frameView->anchor);
 }
 
 void UiTransformSystem::animateAsync(View<Component> component, View<AnimationFrame> a, View<AnimationFrame> b, float t)
 {
-	auto componentiew = View<UiTransformComponent>(component);
+	auto componentView = View<UiTransformComponent>(component);
 	const auto frameA = View<UiTransformFrame>(a);
 	const auto frameB = View<UiTransformFrame>(b);
 
 	if (frameA->animatePosition)
-		componentiew->position = lerp(frameA->position, frameB->position, t);
+		componentView->position = lerp(frameA->position, frameB->position, t);
 	if (frameA->animateScale)
-		componentiew->scale = lerp(frameA->scale, frameB->scale, t);
+		componentView->scale = lerp(frameA->scale, frameB->scale, t);
 	if (frameA->animateRotation)
-		componentiew->rotation = slerp(frameA->rotation, frameB->rotation, t);
+		componentView->rotation = slerp(frameA->rotation, frameB->rotation, t);
 	if (frameA->animateAnchor)
-		componentiew->anchor = (bool)round(t) ? frameB->anchor : frameA->anchor;
+		componentView->anchor = (bool)round(t) ? frameB->anchor : frameA->anchor;
 }

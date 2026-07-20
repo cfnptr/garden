@@ -171,14 +171,12 @@ REMOVED_FROM_PARENT:
 			if (parentTransformView->childs)
 			{
 				auto newCapacity = parentTransformView->childCapacity() * 2;
-				auto newChilds = realloc<ID<Entity>>(parentTransformView->childs, newCapacity);
-				parentTransformView->childs = newChilds;
+				parentTransformView->childs = realloc(parentTransformView->childs, newCapacity);
 				parentTransformView->childCapacity() = newCapacity;
 			}
 			else
 			{
-				auto childs = malloc<ID<Entity>>(1);
-				parentTransformView->childs = childs;
+				parentTransformView->childs = malloc<ID<Entity>>(1);
 				parentTransformView->childCapacity() = 1;
 			}
 		}
@@ -210,8 +208,7 @@ bool TransformComponent::tryAddChild(ID<Entity> child)
 		if (childs)
 		{
 			auto newCapacity = childCapacity() * 2;
-			auto newChilds = realloc<ID<Entity>>(childs, newCapacity);
-			childs = newChilds;
+			childs = realloc(childs, newCapacity);
 			childCapacity() = newCapacity;
 		}
 		else
@@ -298,16 +295,12 @@ void TransformComponent::shrinkChilds()
 	if (!childs)
 		return;
 
-	if (childCount() > 0)
-	{
-		auto newChilds = realloc<ID<Entity>>(childs, childCount());
-		childs = newChilds;
-	}
-	else
+	if (childCount() == 0)
 	{
 		free(childs);
 		childs = nullptr;
 	}
+	else childs = realloc(childs, childCount());
 }
 
 //**********************************************************************************************************************
@@ -532,17 +525,14 @@ void TransformSystem::deserialize(IDeserializer& deserializer, View<Component> c
 		}
 	}
 
-	auto f32x4Value = f32x4::zero; auto rotation = quat::identity;
-	deserializer.read("position", f32x4Value, 3);
-	componentView->setPosition(f32x4Value);
-	deserializer.read("rotation", rotation);
-	componentView->setRotation(rotation);
-	f32x4Value = f32x4::one;
-	deserializer.read("scale", f32x4Value, 3);
-	componentView->setScale(f32x4Value);
-	auto boolValue = true;
-	deserializer.read("isActive", boolValue);
-	componentView->selfActive = boolValue;
+	f32x4 f32x4Value; quat rotation;
+	if (deserializer.read("position", f32x4Value, 3))
+		componentView->setPosition(f32x4Value);
+	if (deserializer.read("rotation", rotation))
+		componentView->setRotation(rotation);
+	if (deserializer.read("scale", f32x4Value, 3))
+		componentView->setScale(f32x4Value);
+	deserializer.read("isActive", componentView->selfActive);
 
 	if (deserializer.read("parent", uidStringCache) &&
 		uidStringCache.size() + 1 == modp_b64_encode_data_len(sizeof(uint64)))
@@ -597,12 +587,12 @@ void TransformSystem::serializeAnimation(ISerializer& serializer, View<Animation
 }
 void TransformSystem::deserializeAnimation(IDeserializer& deserializer, View<AnimationFrame> frame)
 {
-	auto frameView = View<TransformFrame>(frame); auto isActive = true;
+	auto frameView = View<TransformFrame>(frame); bool boolValue;
 	frameView->animatePosition = deserializer.read("position", frameView->position, 3);
 	frameView->animateScale = deserializer.read("scale", frameView->scale, 3);
 	frameView->animateRotation = deserializer.read("rotation", frameView->rotation);
-	frameView->animateIsActive = deserializer.read("isActive", isActive);
-	frameView->isActive = isActive;
+	frameView->animateIsActive = deserializer.read("isActive", boolValue);
+	if (frameView->animateIsActive) frameView->isActive = boolValue;
 }
 
 //**********************************************************************************************************************

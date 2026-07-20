@@ -224,7 +224,7 @@ static void recreateVkDescriptorSet(const DescriptorSet::Uniforms& oldUniforms,
 			auto result = vulkanAPI->device.freeDescriptorSets(descriptorPool ? descriptorPool : 
 				vulkanAPI->descriptorPool, oldSetCount, (vk::DescriptorSet*)instance);
 			vk::detail::resultCheck(result, "vk::Device::freeDescriptorSets");
-			instance = realloc<vk::DescriptorSet>((vk::DescriptorSet*)instance, newSetCount);
+			instance = realloc((vk::DescriptorSet*)instance, newSetCount);
 
 			vulkanAPI->descriptorSetLayouts.assign(newSetCount, descriptorSetLayout);
 			allocateInfo.pSetLayouts = vulkanAPI->descriptorSetLayouts.data();

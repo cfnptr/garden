@@ -476,10 +476,7 @@ void CharacterSystem::deserialize(IDeserializer& deserializer, View<Component> c
 			deserializer.read("rotation", rotation);
 			if (f32x4Value != f32x4::zero || rotation != quat::identity)
 				componentView->setPosAndRot(f32x4Value, rotation);
-
-			f32x4Value = f32x4::zero;
-			deserializer.read("linearVelocity", f32x4Value, 3);
-			if (f32x4Value != f32x4::zero)
+			if (deserializer.read("linearVelocity", f32x4Value, 3) && f32x4Value != f32x4::zero)
 				componentView->setLinearVelocity(f32x4Value);
 		}
 	}

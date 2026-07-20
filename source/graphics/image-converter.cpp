@@ -38,7 +38,7 @@ f32x4 ImageConverter::filterCubeMap(float2 coords, const f32x4* pixels, uint2 si
 	return fma(s0, f32x4(invUV.x * invUV.y), fma(s1, f32x4(uv.x * invUV.y),
 		fma(s2, f32x4(invUV.x * uv.y), s3 * (uv.x * uv.y))));
 }
-f16x4 ImageConverter::filterCubeMap(float2 coords, const f16x4* pixels, uint2 sizeMinus1, uint32 sizeX) noexcept
+half4 ImageConverter::filterCubeMap(float2 coords, const half4* pixels, uint2 sizeMinus1, uint32 sizeX) noexcept
 {
 	auto coords0 = min((uint2)coords, sizeMinus1);
 	auto coords1 = min(coords0 + uint2::one, sizeMinus1);
@@ -49,8 +49,8 @@ f16x4 ImageConverter::filterCubeMap(float2 coords, const f16x4* pixels, uint2 si
 	auto s2 = f32x4(pixels[coords1.y * sizeX + coords0.x]);
 	auto s3 = f32x4(pixels[coords1.y * sizeX + coords1.x]);
 
-	return f16x4(min(fma(s0, f32x4(invUV.x * invUV.y), fma(s1, f32x4(uv.x * invUV.y),
-		fma(s2, f32x4(invUV.x * uv.y), s3 * (uv.x * uv.y)))), f32x4(FLOAT_BIG_16)));
+	return half4(min(fma(s0, f32x4(invUV.x * invUV.y), fma(s1, f32x4(uv.x * invUV.y),
+		fma(s2, f32x4(invUV.x * uv.y), s3 * (uv.x * uv.y)))), f32x4(FLT16_MAX)));
 }
 Color ImageConverter::filterCubeMap(float2 coords, const Color* pixels, uint2 sizeMinus1, uint32 sizeX) noexcept
 {
@@ -136,12 +136,12 @@ bool ImageConverter::equi2cube(const fs::path& filePath, const fs::path& inputPa
 		py(faceBinarySize), nz(faceBinarySize), pz(faceBinarySize);
 	if (imageFormat == Image::Format::SfloatR16G16B16A16)
 	{
-		f16x4* cubeFaces[Image::cubemapFaceCount] =
+		half4* cubeFaces[Image::cubemapFaceCount] =
 		{
-			(f16x4*)nx.data(), (f16x4*)px.data(), (f16x4*)ny.data(), 
-			(f16x4*)py.data(), (f16x4*)nz.data(), (f16x4*)pz.data(),
+			(half4*)nx.data(), (half4*)px.data(), (half4*)ny.data(), 
+			(half4*)py.data(), (half4*)nz.data(), (half4*)pz.data(),
 		};
-		convert(cubeFaces, cubemapSize, (uint2)equiSize, equiSizeMinus1, (f16x4*)equiPixels.data(), invDim);
+		convert(cubeFaces, cubemapSize, (uint2)equiSize, equiSizeMinus1, (half4*)equiPixels.data(), invDim);
 	}
 	else if (imageFormat == Image::Format::SfloatR32G32B32A32)
 	{

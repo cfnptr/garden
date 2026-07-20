@@ -1586,9 +1586,8 @@ ID<Shape> PhysicsSystem::deserializeDecoratedShape(IDeserializer& deserializer, 
 		auto innerShape = deserializeShape(deserializer, valueStringCache, true);
 		if (!innerShape)
 			return {};
-		auto position = f32x4::zero;
+		auto position = f32x4::zero; auto rotation = quat::identity;
 		deserializer.read("shapePosition", position, 3);
-		auto rotation = quat::identity;
 		deserializer.read("shapeRotation", rotation);
 		return PhysicsSystem::getInstance()->createSharedRotTransShape(innerShape, position, rotation);
 	}
@@ -1634,25 +1633,23 @@ void PhysicsSystem::deserialize(IDeserializer& deserializer, View<Component> com
 			int32 collisionLayer = -1;
 			deserializer.read("collisionLayer", collisionLayer);
 
-			auto allowedDOF = AllowedDOF::All;
-			auto allowedDofValue = true;
-			if (deserializer.read("allowedDofTransX", allowedDofValue))
-			{ if (!allowedDofValue) unsetFlags(allowedDOF, AllowedDOF::TranslationX); }
-			if (deserializer.read("allowedDofTransY", allowedDofValue))
-			{ if (!allowedDofValue) unsetFlags(allowedDOF, AllowedDOF::TranslationY); }
-			if (deserializer.read("allowedDofTransZ", allowedDofValue))
-			{ if (!allowedDofValue) unsetFlags(allowedDOF, AllowedDOF::TranslationZ); }
-			if (deserializer.read("allowedDofRotX", allowedDofValue))
-			{ if (!allowedDofValue) unsetFlags(allowedDOF, AllowedDOF::RotationX); }
-			if (deserializer.read("allowedDofRotY", allowedDofValue))
-			{ if (!allowedDofValue) unsetFlags(allowedDOF, AllowedDOF::RotationY); }
-			if (deserializer.read("allowedDofRotZ", allowedDofValue))
-			{ if (!allowedDofValue) unsetFlags(allowedDOF, AllowedDOF::RotationZ); }
+			auto allowedDOF = AllowedDOF::All; bool boolValue;
+			if (deserializer.read("allowedDofTransX", boolValue))
+			{ if (!boolValue) unsetFlags(allowedDOF, AllowedDOF::TranslationX); }
+			if (deserializer.read("allowedDofTransY", boolValue))
+			{ if (!boolValue) unsetFlags(allowedDOF, AllowedDOF::TranslationY); }
+			if (deserializer.read("allowedDofTransZ", boolValue))
+			{ if (!boolValue) unsetFlags(allowedDOF, AllowedDOF::TranslationZ); }
+			if (deserializer.read("allowedDofRotX", boolValue))
+			{ if (!boolValue) unsetFlags(allowedDOF, AllowedDOF::RotationX); }
+			if (deserializer.read("allowedDofRotY", boolValue))
+			{ if (!boolValue) unsetFlags(allowedDOF, AllowedDOF::RotationY); }
+			if (deserializer.read("allowedDofRotZ", boolValue))
+			{ if (!boolValue) unsetFlags(allowedDOF, AllowedDOF::RotationZ); }
 
 			componentView->setShape(shape, motionType, collisionLayer,
 				isActive, allowDynamicOrKinematic, allowedDOF);
 
-			auto boolValue = false;
 			if (deserializer.read("isSensor", boolValue))
 				componentView->setSensor(boolValue);
 			if (deserializer.read("isKinematicVsStatic", boolValue))
@@ -1663,14 +1660,9 @@ void PhysicsSystem::deserialize(IDeserializer& deserializer, View<Component> com
 			deserializer.read("rotation", rotation);
 			if (f32x4Value != f32x4::zero || rotation != quat::identity)
 				componentView->setPosAndRot(f32x4Value, rotation, isActive);
-
-			f32x4Value = f32x4::zero;
-			deserializer.read("linearVelocity", f32x4Value, 3);
-			if (f32x4Value != f32x4::zero)
+			if (deserializer.read("linearVelocity", f32x4Value, 3) && f32x4Value != f32x4::zero)
 				componentView->setLinearVelocity(f32x4Value);
-			f32x4Value = f32x4::zero;
-			deserializer.read("angularVelocity", f32x4Value, 3);
-			if (f32x4Value != f32x4::zero)
+			if (deserializer.read("angularVelocity", f32x4Value, 3) && f32x4Value != f32x4::zero)
 				componentView->setAngularVelocity(f32x4Value);
 		}
 	}

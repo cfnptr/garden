@@ -52,8 +52,9 @@ public:
 	void write(int8 value) override;
 	void write(uint8 value) override;
 	void write(bool value) override;
-	void write(float value) override;
 	void write(double value) override;
+	void write(float value) override;
+	void write(half value) override;
 	void write(string_view value) override;
 	void endArrayElement() override;
 
@@ -66,8 +67,9 @@ public:
 	void write(string_view name, int8 value) override;
 	void write(string_view name, uint8 value) override;
 	void write(string_view name, bool value) override;
-	void write(string_view name, float value) override;
 	void write(string_view name, double value) override;
+	void write(string_view name, float value) override;
+	void write(string_view name, half value) override;
 	void write(string_view name, string_view value) override;
 	void write(string_view name, u32string_view value) override;
 	void write(string_view name, int2 value) override;
@@ -79,8 +81,11 @@ public:
 	void write(string_view name, float2 value) override;
 	void write(string_view name, float3 value) override;
 	void write(string_view name, float4 value) override;
+	void write(string_view name, half2 value) override;
+	void write(string_view name, half3 value) override;
+	void write(string_view name, half4 value) override;
 	void write(string_view name, quat value) override;
-	void write(string_view name, const float2x2& value) override;
+	void write(string_view name, float2x2 value) override;
 	void write(string_view name, const float3x3& value) override;
 	void write(string_view name, const float4x4& value) override;
 	void write(string_view name, const Aabb& value) override;
@@ -122,8 +127,9 @@ public:
 	bool read(int8& value) override;
 	bool read(uint8& value) override;
 	bool read(bool& value) override;
-	bool read(float& value) override;
 	bool read(double& value) override;
+	bool read(float& value) override;
+	bool read(half& value) override;
 	bool read(string& value) override;
 	void endArrayElement() override;
 
@@ -137,8 +143,9 @@ public:
 	bool read(string_view name, uint8& value) override;
 	bool read(string_view name, bool& value) override;
 	bool read(string_view name, volatile bool& value) override;
-	bool read(string_view name, float& value) override;
 	bool read(string_view name, double& value) override;
+	bool read(string_view name, float& value) override;
+	bool read(string_view name, half& value) override;
 	bool read(string_view name, string& value) override;
 	bool read(string_view name, u32string& value) override;
 	bool read(string_view name, int2& value) override;
@@ -150,6 +157,9 @@ public:
 	bool read(string_view name, float2& value) override;
 	bool read(string_view name, float3& value) override;
 	bool read(string_view name, float4& value) override;
+	bool read(string_view name, half2& value) override;
+	bool read(string_view name, half3& value) override;
+	bool read(string_view name, half4& value) override;
 	bool read(string_view name, quat& value) override;
 	bool read(string_view name, float2x2& value) override;
 	bool read(string_view name, float3x3& value) override;
@@ -157,6 +167,7 @@ public:
 	bool read(string_view name, Aabb& value) override;
 	bool read(string_view name, Color& value) override;
 	bool read(string_view name, f32x4& value, uint8 components = 4) override;
+	bool read(string_view name, f16x4& value, uint8 components = 4) override;
 };
 
 } // namespace garden

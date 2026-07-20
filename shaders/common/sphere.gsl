@@ -52,7 +52,7 @@ float2 raycast2(Sphere sphere, Ray ray)
 	float c = dot(l, l) - sphere.radius * sphere.radius;
 	float discriminant = fma(b, b, c * -4.0f);
 	if (discriminant < 0.0f)
-		return float2(-FLOAT32_MAX);
+		return float2(-FLT_MAX);
 
 	float discrSqrt = sqrt(discriminant);
 	return float2(b - discrSqrt, b + discrSqrt) * 0.5f;

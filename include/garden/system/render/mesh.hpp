@@ -45,9 +45,9 @@ enum class MeshRenderType : uint8
 struct MeshRenderComponent : public Component
 {
 protected:
-	uint32 reserved0 = 0;
-	uint32 reserved1 = 0;
-	uint16 reserved2 = 0;
+	uint32 reserved0 = 0; /**< Can be used by the inheriting structs. */
+	uint32 reserved1 = 0; /**< Can be used by the inheriting structs. */
+	uint16 reserved2 = 0; /**< Can be used by the inheriting structs. */
 public:
 	volatile bool isEnabled = true;  /**< Is mesh should be rendered. */
 	volatile bool isVisible = false; /**< Is mesh visible on camera after last frustum culling. */
@@ -289,7 +289,7 @@ public:
 /***********************************************************************************************************************
  * @brief Model matrix container.
  */
-struct ModelStoreComponent : public Component
+struct ModelMatrixComponent : public Component
 {
 protected:
 	uint32 _alignment0 = 0;
@@ -310,13 +310,13 @@ public:
 /**
  * @brief Handles model matrix containers.
  */
-class ModelStoreSystem : public ComponentSystem<ModelStoreComponent, false>, public Singleton<ModelStoreSystem>
+class ModelMatrixSystem : public ComponentSystem<ModelMatrixComponent, false>, public Singleton<ModelMatrixSystem>
 {
 	/**
 	 * @brief Creates a new model matrix container system instance.
 	 * @param setSingleton set system singleton instance
 	 */
-	ModelStoreSystem(bool setSingleton = true);
+	ModelMatrixSystem(bool setSingleton = true);
 
 	string_view getComponentName() const override;
 	friend class ecsm::Manager;

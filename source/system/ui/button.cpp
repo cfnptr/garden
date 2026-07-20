@@ -190,16 +190,11 @@ void UiButtonSystem::serializeAnimation(ISerializer& serializer, View<AnimationF
 }
 void UiButtonSystem::deserializeAnimation(IDeserializer& deserializer, View<AnimationFrame> frame)
 {
-	auto frameView = View<UiButtonFrame>(frame);
-	
-	auto boolValue = true;
+	auto frameView = View<UiButtonFrame>(frame); bool boolValue;
 	frameView->animateIsEnabled = deserializer.read("isEnabled", boolValue);
-	frameView->isEnabled = boolValue;
-
-	boolValue = false;
+	if (frameView->animateIsEnabled) frameView->isEnabled = boolValue;
 	frameView->animateNoCursorHand = deserializer.read("noCursorHand", boolValue);
-	frameView->noCursorHand = boolValue;
-
+	if (frameView->animateNoCursorHand) frameView->noCursorHand = boolValue;
 	frameView->animateOnClick = deserializer.read("onClick", frameView->onClick);
 	frameView->animateAnimationPath = deserializer.read("animationPath", frameView->animationPath);
 }

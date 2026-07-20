@@ -193,7 +193,7 @@ void Controller2DSystem::updateCameraFollowing()
 		auto posOffset = float2(cameraWidth.y - cameraWidth.x, 
 			cameraHeight.y - cameraHeight.x) * followCenter;
 		auto newPosition = lerpDelta((float2)cameraTransformView->getPosition(),
-			(float2)characterView->getPosition() + posOffset, 1.0f - followLerpFactor, deltaTime);
+			(float2)characterView->getPosition() + posOffset, followDecayRate, deltaTime);
 		cameraTransformView->setPosition(f32x4(newPosition.x, newPosition.y, 
 			cameraTransformView->getPosition().getZ()));
 		break;
@@ -241,7 +241,7 @@ void Controller2DSystem::updateCharacterControl()
 
 		auto linearVelocity = characterView->getLinearVelocity();
 		linearVelocity.setX(lerpDelta(linearVelocity.getX(),
-			horizontalVelocity, 1.0f - horizontalLerpFactor, deltaTime));
+			horizontalVelocity, horizontalDecayRate, deltaTime));
 
 		if (characterView->getGroundState() == CharacterGround::OnGround)
 		{

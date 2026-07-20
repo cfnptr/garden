@@ -74,7 +74,7 @@ void main()
 		float2 uv = skyViewToUV(skyViewLUT, pc.cameraPos, pc.bottomRadius, 
 			pc.starDir, viewHeight, intersectGround, worldDir);
 		float3 skyColor = textureLod(skyViewLUT, uv, 0.0f).rgb + getStarLuminance(worldDir, intersectGround);
-		fb.color = float4(min(skyColor, float3(FLOAT_BIG_16)), 1.0f);
+		fb.color = float4(min(skyColor, float3(FLT16_MAX)), 1.0f);
 		return;
 	}
 
