@@ -50,6 +50,7 @@ class SettingsSystem final : public System, public Singleton<SettingsSystem>
 
 	void* settings = nullptr;
 	map<string, Item> items;
+	Version oldVersion;
 
 	/**
 	 * @brief Creates a new settings system instance.
@@ -63,6 +64,12 @@ class SettingsSystem final : public System, public Singleton<SettingsSystem>
 	friend class ecsm::Manager;
 	friend class SettingsEditor;
 public:
+	/**
+	 * @brief Returns old settings file version during migration.
+	 * @note Use it inside the "SettingsMigrate" event.
+	 */
+	Version getOldVersion() const noexcept { return oldVersion; }
+
 	/*******************************************************************************************************************
 	 * @brief Returns settings integer value. (int64)
 	 * @param[in] name target setting name

@@ -413,7 +413,9 @@ static bool find(const string& haystack, const string& needle, bool caseSensitiv
 }
 static bool find(const string& haystack, const string& needle, uint32 id, bool caseSensitive)
 {
-	auto needleID = (uint32)strtoul(needle.c_str(), nullptr, 10);
+	uint32 needleID = 0;
+	if (from_chars(needle.c_str(), needle.c_str() + needle.size(), needleID).ec != errc())
+		return false;
 	return id == needleID || find(haystack, needle, caseSensitive);
 }
 

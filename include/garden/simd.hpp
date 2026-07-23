@@ -79,6 +79,12 @@
 #define GARDEN_SIMD_FMA 0
 #endif
 
+#if __F16C__
+#define GARDEN_SIMD_F16C 1
+#else
+#define GARDEN_SIMD_F16C 0
+#endif
+
 #if __AVX512F__
 #define GARDEN_SIMD_AVX512F 1
 #else
@@ -131,6 +137,9 @@ constexpr const char* GARDEN_SIMD_STRING = ""
 	#endif
 	#if GARDEN_SIMD_FMA
 	"FMA "
+	#endif
+	#if GARDEN_SIMD_F16C
+	"F16C "
 	#endif
 	#if GARDEN_SIMD_AVX512F
 	"AVX512F "

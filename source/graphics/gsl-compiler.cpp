@@ -20,11 +20,11 @@
 #include "garden/file.hpp"
 
 #include <cmath>
+#include <string>
 #include <exception>
 #include <fstream>
 #include <sstream>
 #include <iostream>
-#include <string>
 
 #if GARDEN_OS_WINDOWS
 #include <windows.h>
@@ -353,8 +353,8 @@ static void onShaderUniform(FileData& fileData, LineData& lineData, PipelineStag
 		else if (lineData.word == "reference") lineData.isReference = true;
 		else if (lineData.word.length() > 3 && memcmp(lineData.word.data(), "set", 3) == 0) // Note: Do not move down.
 		{
-			auto index = strtoul(lineData.word.c_str() + 3, nullptr, 10);
-			if (index > UINT8_MAX)
+			auto wordStr = lineData.word.c_str(); uint8 index = 0;
+			if (from_chars(wordStr, wordStr + lineData.word.size(), index).ec == errc())
 				throw CompileError("invalid descriptor set index", fileData.lineIndex, lineData.word);
 			fileData.descriptorSetIndex = (uint8)index;
 		}
@@ -446,6 +446,7 @@ static void onShaderUniform(FileData& fileData, LineData& lineData, PipelineStag
 		auto arrayOpenPos = lineData.uniformName.find_first_of('[');
 		if (arrayOpenPos != string::npos)
 		{
+			// TODO: replace all strtoul with the from_chars()
 			auto arraySize = strtoul(lineData.uniformName.c_str() + arrayOpenPos + 1, nullptr, 10);
 			if (arraySize == 0)
 			{
@@ -1328,10 +1329,9 @@ static void onSpecConst(FileData& fileData, LineData& lineData,
 
 static void onShaderVariantCount(FileData& fileData, LineData& lineData, uint8& variantCount)
 {
-	auto count = strtoul(lineData.word.c_str(), nullptr, 10);
-	if (count <= 1 || count > UINT8_MAX)
+	auto wordStr = lineData.word.c_str();
+	if (from_chars(wordStr, wordStr + lineData.word.length(), variantCount).ec != errc() || variantCount <= 1)
 		throw CompileError("invalid variant count", fileData.lineIndex, lineData.word);
-	variantCount = (uint8)count;
 	fileData.outputFileStream << "layout(constant_id = 0) const uint gsl_variant = 0; ";
 	lineData.isVariantCount = false;
 }
@@ -1672,8 +1672,8 @@ static bool compileGraphicsShader(const fs::path& inputPath, const fs::path& out
 			}
 			else if (lineData.isAttributeOffset)
 			{
-				auto offset = strtoul(lineData.word.c_str(), nullptr, 10);
-				if (offset > UINT16_MAX)
+				auto wordStr = lineData.word.c_str(); uint16 offset = 0;
+				if (from_chars(wordStr, wordStr + lineData.word.length(), variantCount).ec != errc())
 					throw CompileError("invalid vertex attribute binary offset", fileData.lineIndex, lineData.word);
 				fileData.outputFileStream << "// #attributeOffset ";
 				data.vertexAttributesSize += (uint16)offset; lineData.isAttributeOffset = 0;
@@ -1897,15 +1897,17 @@ bool GslCompiler::compileComputeShader(const fs::path& inputPath,
 				if (lineData.isLocalSize == 1)
 				{
 					if (lineData.word != "=")
-						throw CompileError("no '=' after localSize declaration", fileData.lineIndex);
+						throw CompileError("no '=' after local size declaration", fileData.lineIndex);
 					lineData.isLocalSize = 2;
 				}
 				else if (lineData.isLocalSize == 4)
 				{
 					if (lineData.word.find_first_of(';') == string::npos)
 						throw CompileError("no ';' after local size", fileData.lineIndex);
-					data.localSize.z = (uint32)strtoul(lineData.word.c_str(), nullptr, 10);
-					if (data.localSize.z <= 0)
+					auto wordStr = lineData.word.c_str();
+					if (from_chars(wordStr, wordStr + lineData.word.length(), data.localSize.z).ec != errc())
+						throw CompileError("invalid local size 'z' value", fileData.lineIndex);
+					if (data.localSize.z == 0)
 						throw CompileError("local size 'z' can not be less than one", fileData.lineIndex);
 					fileData.outputFileStream << "layout(local_size_x = " <<
 						data.localSize.x << ", local_size_y = " << data.localSize.y <<
@@ -1919,14 +1921,18 @@ bool GslCompiler::compileComputeShader(const fs::path& inputPath,
 
 					if (lineData.isLocalSize == 2)
 					{
-						data.localSize.x = (uint32)strtoul(lineData.word.c_str(), nullptr, 10);
+						auto wordStr = lineData.word.c_str();
+						if (from_chars(wordStr, wordStr + lineData.word.length(), data.localSize.x).ec != errc())
+							throw CompileError("invalid local size 'x' value", fileData.lineIndex);
 						if (data.localSize.x <= 0)
 							throw CompileError("local size 'x' can not be less than one", fileData.lineIndex);
 						lineData.isLocalSize = 3;
 					}
 					else if (lineData.isLocalSize == 3)
 					{
-						data.localSize.y = (uint32)strtoul(lineData.word.c_str(), nullptr, 10);
+						auto wordStr = lineData.word.c_str();
+						if (from_chars(wordStr, wordStr + lineData.word.length(), data.localSize.y).ec != errc())
+							throw CompileError("invalid local size 'y' value", fileData.lineIndex);
 						if (data.localSize.y <= 0)
 							throw CompileError("local size 'y' can not be less than one", fileData.lineIndex);
 						lineData.isLocalSize = 4;
@@ -2078,24 +2084,24 @@ static bool compileRayTracingShader(const fs::path& inputPath, const fs::path& o
 			}
 			else if (lineData.isRayPayloadOffset)
 			{
-				auto offset = strtoul(lineData.word.c_str(), nullptr, 10);
-				if (offset > UINT8_MAX)
+				auto wordStr = lineData.word.c_str(); uint8 offset = 0;
+				if (from_chars(wordStr, wordStr + lineData.word.length(), variantCount).ec != errc())
 					throw CompileError("invalid ray payload index offset", fileData.lineIndex, lineData.word);
 				fileData.outputFileStream << "// #rayPayloadOffset ";
-				fileData.rayPayloadIndex += (uint8)offset; lineData.isRayPayloadOffset = 0;
+				fileData.rayPayloadIndex += offset; lineData.isRayPayloadOffset = 0;
 			}
 			else if (lineData.isCallableDataOffset)
 			{
-				auto offset = strtoul(lineData.word.c_str(), nullptr, 10);
-				if (offset > UINT8_MAX)
+				auto wordStr = lineData.word.c_str(); uint8 offset = 0;
+				if (from_chars(wordStr, wordStr + lineData.word.length(), variantCount).ec != errc())
 					throw CompileError("invalid callable data index offset", fileData.lineIndex, lineData.word);
 				fileData.outputFileStream << "// #callableDataOffset ";
-				fileData.callableDataIndex += (uint8)offset; lineData.isCallableDataOffset = 0;
+				fileData.callableDataIndex += offset; lineData.isCallableDataOffset = 0;
 			}
 			else if (lineData.isRayRecursionDepth)
 			{
-				auto depth = strtoul(lineData.word.c_str(), nullptr, 10);
-				if (depth < 1)
+				auto wordStr = lineData.word.c_str(); uint32 depth = 0;
+				if (from_chars(wordStr, wordStr + lineData.word.length(), variantCount).ec != errc() || depth < 1)
 					throw CompileError("invalid max ray recursion depth", fileData.lineIndex, lineData.word);
 				fileData.outputFileStream << "#define gsl_rayRecursionDepth ";
 				rayRecursionDepth = (uint32)depth; lineData.isRayRecursionDepth = 0;

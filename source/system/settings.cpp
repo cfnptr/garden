@@ -27,6 +27,8 @@ using json = nlohmann::json;
 SettingsSystem::SettingsSystem(bool setSingleton) : Singleton(setSingleton)
 {
 	auto manager = Manager::getInstance();
+	manager->registerEvent("SettingsMigrate");
+
 	ECSM_SUBSCRIBE_TO_EVENT("PreInit", SettingsSystem::preInit);
 	ECSM_SUBSCRIBE_TO_EVENT("PostDeinit", SettingsSystem::postDeinit);
 }
@@ -40,7 +42,19 @@ void SettingsSystem::preInit()
 		std::ifstream inputStream(appDataPath / "settings.json");
 		if (!inputStream.is_open())
 			throw GardenError("File does not exist.");
-		settings = new json(json::parse(inputStream));
+
+		auto jsonData = new json(json::parse(inputStream));
+		if (!Version::fromString((const string&)(*jsonData)["version"], oldVersion))
+			throw GardenError("Invalid version string formatting.");
+
+		if (oldVersion != appInfoSystem->getVersion())
+		{
+			Manager::getInstance()->runEvent("SettingsMigrate");
+			GARDEN_LOG_INFO("Migrated settings from version: " + oldVersion.toString3());
+			oldVersion = appInfoSystem->getVersion();
+		}
+
+		settings = &(*jsonData)["settings"];
 		GARDEN_LOG_INFO("Loaded settings file.");
 	}
 	catch (const exception& e)
