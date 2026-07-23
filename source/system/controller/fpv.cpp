@@ -132,13 +132,21 @@ void FpvControllerSystem::updateMouseLock()
 quat FpvControllerSystem::updateCameraRotation()
 {
 	auto transformView = Manager::getInstance()->tryGet<TransformComponent>(camera);
-	if (!isMouseLocked || !transformView || !transformView->isActive() )
+	if (!transformView || !transformView->isActive())
 		return quat::identity;
 
-	auto cursorDelta = InputSystem::getInstance()->getCursorDelta();
-	rotation += cursorDelta * mouseSensitivity * radians(0.1f);
-	rotation.y = std::clamp(rotation.y, radians(-89.99f), radians(89.99f));
-	auto cameraRotation = quat(rotation.y, f32x4::right) * quat(rotation.x, f32x4::bottom);
+	auto inputSystem = InputSystem::getInstance();	
+	auto deltaTime = (float)inputSystem->getDeltaTime();
+
+	if (isMouseLocked)
+	{
+		auto cursorDelta = inputSystem->getCursorDelta();
+		rotation += cursorDelta * mouseSensitivity * radians(0.1f);
+		rotation.y = std::clamp(rotation.y, radians(-89.99f), radians(89.99f));
+	}
+
+	currRotation = mouseDecayRate > 0.0f ? lerpDelta(currRotation, rotation, mouseDecayRate, deltaTime) : rotation;
+	auto cameraRotation = quat(currRotation.y, f32x4::right) * quat(currRotation.x, f32x4::bottom);
 	transformView->setRotation(cameraRotation);
 	return cameraRotation;
 }

@@ -30,9 +30,10 @@ using namespace ecsm;
  */
 class FpvControllerSystem final : public System, public Singleton<FpvControllerSystem>
 {
+	f32x4 velocity = f32x4::zero;
 	ID<Entity> camera = {};
 	float boostAccum = 1.0f;
-	f32x4 velocity = f32x4::zero;
+	float2 currRotation = float2::zero;
 
 	/**
 	 * @brief Creates a new first person view controller system instance.
@@ -55,6 +56,7 @@ public:
 	string characterEntityTag = "MainCharacter";
 	float2 rotation = float2::zero;
 	float mouseSensitivity = 1.0f;
+	float mouseDecayRate = 0.0f;
 	float moveSpeed = 2.0f;
 	float moveDecayRate = 15.0f;
 	float boostFactor = 2.0f;

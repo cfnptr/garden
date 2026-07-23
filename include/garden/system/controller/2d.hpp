@@ -53,6 +53,8 @@ class Controller2DSystem final : public System, public Singleton<Controller2DSys
 	
 	friend class ecsm::Manager;
 public:
+	bool useMouseControl = (bool)GARDEN_DEBUG;
+	bool useDoubleJump = true;
 	string characterEntityTag = "MainCharacter";
 	float scrollSensitivity = 1.0f;
 	float horizontalSpeed = 2.0f;
@@ -61,8 +63,6 @@ public:
 	float followThreshold = 0.6f;
 	float followDecayRate = 7.6f;
 	float2 followCenter = float2(0.0f, 0.25f);
-	bool useMouseControl = (bool)GARDEN_DEBUG;
-	bool useDoubleJump = true;
 
 	bool isDoubleJumped() const noexcept { return !canDoubleJump; }
 };
