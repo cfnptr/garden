@@ -30,7 +30,7 @@ void CutoutSpriteSystem::setPushConstants(SpriteRenderComponent* spriteRenderVie
 		pushConstants, viewProj, model, instanceIndex, threadIndex);
 	auto cutoutSpriteView = (CutoutSpriteComponent*)spriteRenderView;
 	auto cutoutPushConstants = (CutoutPushConstants*)pushConstants;
-	cutoutPushConstants->alphaCutoff = cutoutSpriteView->alphaCutoff;
+	cutoutPushConstants->alphaCutoff = cutoutSpriteView->getAlphaCutoff();
 }
 
 string_view CutoutSpriteSystem::getComponentName() const
@@ -47,14 +47,17 @@ void CutoutSpriteSystem::serialize(ISerializer& serializer, const View<Component
 {
 	SpriteRenderSystem::serialize(serializer, component);
 	const auto componentView = View<CutoutSpriteComponent>(component);
-	if (componentView->alphaCutoff != 0.5f)
-		serializer.write("alphaCutoff", componentView->alphaCutoff);
+	if (componentView->getAlphaCutoff() != 0.5f)
+		serializer.write("alphaCutoff", componentView->getAlphaCutoff());
 }
 void CutoutSpriteSystem::deserialize(IDeserializer& deserializer, View<Component> component)
 {
 	SpriteRenderSystem::deserialize(deserializer, component);
 	auto componentView = View<CutoutSpriteComponent>(component);
-	deserializer.read("alphaCutoff", componentView->alphaCutoff);
+
+	float alphaCutoff = componentView->getAlphaCutoff();
+	if (deserializer.read("alphaCutoff", alphaCutoff))
+		componentView->setAlphaCutoff(alphaCutoff);
 }
 
 void CutoutSpriteSystem::serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame)
@@ -79,5 +82,5 @@ void CutoutSpriteSystem::animateAsync(View<Component> component,
 	const auto frameA = View<CutoutSpriteFrame>(a);
 	const auto frameB = View<CutoutSpriteFrame>(b);
 	if (frameA->animateAlphaCutoff)
-		componentView->alphaCutoff = lerp(frameA->alphaCutoff, frameB->alphaCutoff, t);
+		componentView->setAlphaCutoff(lerp(frameA->alphaCutoff, frameB->alphaCutoff, t));
 }

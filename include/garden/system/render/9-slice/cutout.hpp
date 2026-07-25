@@ -30,7 +30,20 @@ using namespace garden::graphics;
  */
 struct Cutout9SliceComponent final : public NineSliceComponent
 {
-	float alphaCutoff = 0.5f;
+	/**
+	 * @brief Creates a new 9-slice sprite container.
+	 */
+	Cutout9SliceComponent() { setAlphaCutoff(0.5f); }
+
+	/**
+	 * @brief Returns 9-slice sprite alpha cutoff threshold.
+	 */
+	float getAlphaCutoff() const noexcept { return *((const float*)&reserved1); }
+	/**
+	 * @brief Sets 9-slice sprite alpha cutoff threshold.
+	 * @param value target alpha cutoff value
+	 */
+	void setAlphaCutoff(float value) noexcept { *((float*)&reserved1) = value; }
 };
 /**
  * @brief Cutout 9-slice sprite animation frame container.

@@ -126,7 +126,7 @@ bool File::tryGetResourcePath(const fs::path& appResourcesPath, const fs::path& 
 	if ((hasEngineFile && hasAppFile) || (!hasEngineFile && !hasAppFile))
 		return false;
 	
-	filePath = hasEngineFile ? enginePath : appPath;
+	filePath = hasEngineFile ? std::move(enginePath) : std::move(appPath);
 	return true;
 }
 #endif

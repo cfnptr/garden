@@ -50,8 +50,12 @@ void NetworkEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 	auto networkView = Manager::getInstance()->get<NetworkComponent>(entity);
 	auto uid = to_string(networkView->getEntityUID());
 	if (ImGui::InputText("Entity UID", &uid))
-		networkView->trySetEntityUID((uint32)strtoul(uid.c_str(), nullptr, 10));
-	
+	{
+		uint32 entityUID = 0;
+		if (from_chars(uid.c_str(), uid.c_str() + uid.size(), entityUID).ec == errc())
+			networkView->trySetEntityUID(entityUID);
+	}
+
 	uid = networkView->getClientUID() ? networkView->getClientUID() : "";
 	if (ImGui::InputText("Client UID", &uid))
 		networkView->setClientUID(uid);

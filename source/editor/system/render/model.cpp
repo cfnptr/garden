@@ -40,21 +40,21 @@ void ModelRenderEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened
 	if (!isOpened)
 		return;
 
-	auto modelView = Manager::getInstance()->get<ModelRenderComponent>(entity);
+	auto modelRenderView = Manager::getInstance()->get<ModelRenderComponent>(entity);
 	auto editorSystem = EditorRenderSystem::getInstance();
-	auto& lods = modelView->lods; auto levelData = lods.data();
-	auto levelCount = (uint32)lods.size();
+	const auto lods = modelRenderView->getLods();
+	auto lodCount = modelRenderView->getLodCount();
 
-	if (!lods.empty())
+	if (lodCount > 0)
 	{
-		for (uint32 i = 0; i < levelCount; i++)
+		for (uint32 i = 0; i < lodCount; i++)
 		{
-			auto& level = levelData[i];
+			const auto& lod = lods[i];
 			auto indexStr = to_string(i);
 			ImGui::PushID(indexStr.c_str());
 			ImGui::SeparatorText(indexStr.c_str());
-			editorSystem->drawResource(level.vertexBuffer, "Vertex Buffer");
-			editorSystem->drawResource(level.indexBuffer, "Index Buffer");
+			editorSystem->drawResource(lod.vertexBuffer, "Vertex Buffer");
+			editorSystem->drawResource(lod.indexBuffer, "Index Buffer");
 			ImGui::PopID();
 		}
 	}
@@ -64,9 +64,9 @@ void ModelRenderEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened
 	}
 
 	if (ImGui::SmallButton(" + "))
-		lods.push_back({});
+		modelRenderView->addLod();
 	ImGui::SameLine();
-	if (ImGui::SmallButton(" - ") && !lods.empty())
-		lods.resize(lods.size() - 1);
+	if (ImGui::SmallButton(" - ") && modelRenderView->getLodCount() > 0)
+		modelRenderView->removeLod();
 }
 #endif

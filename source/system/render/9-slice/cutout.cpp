@@ -30,7 +30,7 @@ void Cutout9SliceSystem::setPushConstants(SpriteRenderComponent* spriteRenderVie
 		pushConstants, viewProj, model, instanceIndex, threadIndex);
 	auto cutout9SliceView = (Cutout9SliceComponent*)spriteRenderView;
 	auto cutoutPushConstants = (CutoutPushConstants*)pushConstants;
-	cutoutPushConstants->alphaCutoff = cutout9SliceView->alphaCutoff;
+	cutoutPushConstants->alphaCutoff = cutout9SliceView->getAlphaCutoff();
 }
 
 string_view Cutout9SliceSystem::getComponentName() const
@@ -46,14 +46,17 @@ void Cutout9SliceSystem::serialize(ISerializer& serializer, const View<Component
 {
 	SpriteRenderSystem::serialize(serializer, component);
 	const auto componentView = View<Cutout9SliceComponent>(component);
-	if (componentView->alphaCutoff != 0.5f)
-		serializer.write("alphaCutoff", componentView->alphaCutoff);
+	if (componentView->getAlphaCutoff() != 0.5f)
+		serializer.write("alphaCutoff", componentView->getAlphaCutoff());
 }
 void Cutout9SliceSystem::deserialize(IDeserializer& deserializer, View<Component> component)
 {
 	SpriteRenderSystem::deserialize(deserializer, component);
 	auto componentView = View<Cutout9SliceComponent>(component);
-	deserializer.read("alphaCutoff", componentView->alphaCutoff);
+
+	auto alphaCutoff = componentView->getAlphaCutoff();
+	if (deserializer.read("alphaCutoff", alphaCutoff))
+		componentView->setAlphaCutoff(alphaCutoff);
 }
 
 void Cutout9SliceSystem::serializeAnimation(ISerializer& serializer, View<AnimationFrame> frame)
@@ -77,5 +80,5 @@ void Cutout9SliceSystem::animateAsync(View<Component> component,
 	const auto frameA = View<Cutout9SliceFrame>(a);
 	const auto frameB = View<Cutout9SliceFrame>(b);
 	if (frameA->animateAlphaCutoff)
-		componentView->alphaCutoff = lerp(frameA->alphaCutoff, frameB->alphaCutoff, t);
+		componentView->setAlphaCutoff(lerp(frameA->alphaCutoff, frameB->alphaCutoff, t));
 }

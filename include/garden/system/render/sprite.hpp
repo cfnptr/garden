@@ -23,20 +23,41 @@
 namespace garden
 {
 
+class SpriteRenderSystem;
+
 /**
  * @brief Sprite rendering data container.
  */
 struct SpriteRenderComponent : public MeshRenderComponent
 {
-	f32x4 color = f32x4::one;              /**< Texture sRGB color multiplier. */
 	Ref<Image> colorMap = {};              /**< Color map texture instance. */
 	Ref<DescriptorSet> descriptorSet = {}; /**< Descriptor set instance. */
-	float2 uvSize = float2::one;           /**< Texture UV size. */
-	float2 uvOffset = float2::zero;        /**< Texture UV offset. */
+	half2 uvSize = half2::one;             /**< Texture UV size. */
+	half2 uvOffset = half2::zero;          /**< Texture UV offset. */
+	Color colorAdd = Color::transparent;   /**< Added to the color map. */
+	Color colorMul = Color::white;         /**< Multiplied by the color map. */
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	fs::path colorMapPath = "";            /**< Color map texture path. */
 	#endif
-	float colorMapLayer = 0.0f;            /**< Color map texture layer index. */
+
+	/**
+	 * @brief Creates a new sprite rendering data container.
+	 */
+	SpriteRenderComponent() { setColorMapLayer(0.0f); }
+
+	/**
+	 * @brief Returns sprite alpha cutoff threshold.
+	 */
+	float getColorMapLayer() const noexcept { return *((const float*)&reserved0); }
+	/**
+	 * @brief Sets sprite alpha cutoff threshold.
+	 * @param value target alpha cutoff value
+	 */
+	void setColorMapLayer(float value) noexcept { _colorMapLayer() = value; }
+
+protected:
+	float& _colorMapLayer() noexcept { return *((float*)&reserved0); }
+	friend class SpriteRenderSystem;
 };
 
 /**
@@ -45,19 +66,20 @@ struct SpriteRenderComponent : public MeshRenderComponent
 struct SpriteAnimFrame : public AnimationFrame
 {
 	uint8 animateIsEnabled : 1;
-	uint8 animateColor : 1;
 	uint8 animateUvSize : 1;
 	uint8 animateUvOffset : 1;
+	uint8 animateColorAdd : 1;
+	uint8 animateColorMul : 1;
 	uint8 animateColorMapLayer : 1;
 	uint8 animateColorMap : 1;
 	uint8 isEnabled : 1;
 protected:
-	uint8 _unused : 1;
 	uint16 _alignment0 = 0;
 public:
-	float2 uvSize = float2::one;
-	float2 uvOffset = float2::zero;
-	f32x4 color = f32x4::one;
+	half2 uvSize = half2::one;
+	half2 uvOffset = half2::zero;
+	Color colorAdd = Color::transparent;
+	Color colorMul = Color::white;
 	Ref<Image> colorMap = {};
 	Ref<DescriptorSet> descriptorSet = {};
 	float colorMapLayer = 0.0f;
@@ -66,14 +88,14 @@ public:
 	fs::path colorMapPath = "";
 	#endif
 
-	SpriteAnimFrame() noexcept : animateIsEnabled(false), animateColor(false), 
-		animateUvSize(false), animateUvOffset(false), animateColorMapLayer(false), 
-		animateColorMap(false), isEnabled(true), _unused(0) { }
+	SpriteAnimFrame() noexcept : animateIsEnabled(false),  animateUvSize(false), 
+		animateUvOffset(false), animateColorAdd(false), animateColorMul(false), 
+		animateColorMapLayer(false), animateColorMap(false), isEnabled(true) { }
 
 	bool hasAnimation() override
 	{
-		return animateIsEnabled | animateColor | animateUvSize | 
-			animateUvOffset | animateColorMapLayer | animateColorMap;
+		return animateIsEnabled | animateUvSize | animateUvOffset | animateColorAdd | 
+			animateColorMul | animateColorMapLayer | animateColorMap;
 	}
 };
 
@@ -98,13 +120,12 @@ public:
 protected:
 	fs::path pipelinePath = "";
 	string valueStringCache;
-	ID<ImageView> defaultImageView = {};
 
 	/**
 	 * @brief Creates a new sprite mesh render system instance.
 	 * @param[in] pipelinePath target rendering pipeline path
 	 */
-	SpriteRenderSystem(const fs::path& pipelinePath);
+	SpriteRenderSystem(const fs::path& pipelinePath) : pipelinePath(pipelinePath) { }
 
 	void init() override;
 	virtual void imageLoaded();

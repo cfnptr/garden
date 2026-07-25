@@ -28,7 +28,20 @@ namespace garden
  */
 struct CutoutSpriteComponent final : public SpriteRenderComponent
 {
-	float alphaCutoff = 0.5f;
+	/**
+	 * @brief Creates a new cutout sprite container.
+	 */
+	CutoutSpriteComponent() { setAlphaCutoff(0.5f); }
+
+	/**
+	 * @brief Returns sprite alpha cutoff threshold.
+	 */
+	float getAlphaCutoff() const noexcept { return *((const float*)&reserved1); }
+	/**
+	 * @brief Sets sprite alpha cutoff threshold.
+	 * @param value target alpha cutoff value
+	 */
+	void setAlphaCutoff(float value) noexcept { *((float*)&reserved1) = value; }
 };
 /**
  * @brief Cutout sprite animation frame container.

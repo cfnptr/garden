@@ -12,18 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef SPRITE_INSTANCE_DATA_H
-#define SPRITE_INSTANCE_DATA_H
+#include "garden/system/render/model/opaque.hpp"
 
-#include "garden/math.h"
+using namespace garden;
 
-struct BaseInstanceData
+//**********************************************************************************************************************
+OpaqueModelSystem::OpaqueModelSystem(bool setSingleton) : 
+	ModelCompAnimSystem("model/opaque"), Singleton(setSingleton)
 {
-	float3x4 model;
-	half2 uvSize;
-	half2 uvOffset;
-	Color colorAdd;
-	Color colorMul;
-};
+	Manager::getInstance()->addGroupSystem<IMeshRenderSystem>(this);
+}
 
-#endif // SPRITE_INSTANCE_DATA_H
+string_view OpaqueModelSystem::getComponentName() const
+{
+	return "Opaque Model";
+}
+MeshRenderType OpaqueModelSystem::getMeshRenderType() const
+{
+	return MeshRenderType::Opaque;
+}

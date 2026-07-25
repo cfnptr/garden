@@ -47,9 +47,18 @@ using namespace garden::graphics;
 class ResourceSystem : public System, public Singleton<ResourceSystem>
 {
 public:
+	/**
+	 * @brief 3D model file container types.
+	 */
+	enum class ModelFileType : uint8
+	{
+		USD, glTF, FBX, OBJ, Count
+	};
+
 	static const vector<string_view> imageFileExts;      /**< Supported image file extensions. */
 	static const vector<Image::FileType> imageFileTypes; /**< Supported image file types. */
 	static const vector<string_view> modelFileExts;      /**< Supported model file extensions. */
+	static const vector<ModelFileType> modelFileTypes;   /**< Supported model file types. */
 
 	/**
 	 * @brief Pipeline load options container.
@@ -128,8 +137,8 @@ protected:
 		ID<Image> instance = {};
 	};
 	
-	tsl::robin_map<Hash128, Ref<Buffer>> sharedBuffers;
 	tsl::robin_map<Hash128, Ref<Image>> sharedImages;
+	tsl::robin_map<Hash128, Ref<Buffer>> sharedBuffers;
 	tsl::robin_map<Hash128, Ref<DescriptorSet>> sharedDescriptorSets;
 	tsl::robin_map<Hash128, Ref<Animation>> sharedAnimations;
 	tsl::robin_map<Hash128, Ref<Font>> sharedFonts;
@@ -138,11 +147,11 @@ protected:
 	queue<RayTracingQueueItem> loadedRayTracingQueue;
 	queue<BufferQueueItem> loadedBufferQueue;
 	queue<ImageQueueItem> loadedImageQueue;
-	vector<LoadedBufferItem> loadedBufferArray;
 	vector<LoadedImageItem> loadedImageArray;
+	vector<LoadedBufferItem> loadedBufferArray;
 	mutex queueLocker = {};
-	ID<Buffer> loadedBuffer = {};
 	ID<Image> loadedImage = {};
+	ID<Buffer> loadedBuffer = {};
 	vector<fs::path> loadedImagePaths = {};
 	fs::path loadedBufferPath = "";
 	Version appVersion = {};
@@ -162,12 +171,13 @@ protected:
 	ResourceSystem(bool setSingleton = true);
 
 	void dequeuePipelines();
-	void dequeueBuffers();
 	void dequeueImages();
+	void dequeueBuffers();
 
 	virtual void init();
 	virtual void input();
 	virtual void fileChange();
+	virtual void fileDrop();
 	
 	bool loadOrConvertCubemap(const fs::path& path, vector<uint8>& nx, vector<uint8>& px, 
 		vector<uint8>& ny, vector<uint8>& py, vector<uint8>& nz, vector<uint8>& pz, 
@@ -363,12 +373,22 @@ public:
 
 	/*******************************************************************************************************************
 	 * @brief Loads buffer from the resource pack.
-	 * @note Loads from the models directory in debug build.
+	 * @note Loads from the resources directory in debug build.
 	 *
 	 * @param[in] path target buffer resource path
 	 * @param taskPriority thread pool buffer load task priority
+	 * @param loadAsync load buffer asynchronously without blocking
 	 */
-	Ref<Buffer> loadBuffer(const fs::path& path, float taskPriority = TaskPriority::normal);
+	ID<Buffer> loadBuffer(const fs::path& path, float taskPriority = TaskPriority::normal, bool loadAsync = true);
+	/**
+	 * @brief Loads shared buffer from the resource pack.
+	 * @note Loads from the resources directory in debug build.
+	 *
+	 * @param[in] path target buffer resource path
+	 * @param taskPriority thread pool buffer load task priority
+	 * @param loadAsync load buffer asynchronously without blocking
+	 */
+	Ref<Buffer> loadSharedBuffer(const fs::path& path, float taskPriority = TaskPriority::normal, bool loadAsync = true);
 	/**
 	 * @brief Destroys shared buffer if it's the last one.
 	 * @param[in] buffer target shared buffer reference
@@ -451,11 +471,6 @@ public:
 	 */
 	ID<Entity> loadScene(const fs::path& path, bool addRootEntity = false);
 	/**
-	 * @brief Destroys all current scene entities.
-	 */
-	void clearScene();
-
-	/**
 	 * @brief Stores curent scene to the scenes directory.
 	 * 
 	 * @param[in] path target scene resource path
@@ -463,6 +478,21 @@ public:
 	 * @param[in] directory scene resource directory
 	 */
 	void storeScene(const fs::path& path, ID<Entity> rootEntity = {}, const fs::path& directory = "");
+
+	/**
+	 * @brief Destroys all current scene entities.
+	 */
+	void clearScene();
+
+	#if GARDEN_DEBUG || GARDEN_EDITOR
+	/**
+	 * @brief Loads 3D model from the models directory.
+	 * @param[in] path target 3D model file path
+	 */
+	ID<Entity> loadModel(const fs::path& path);
+
+	// TODO: void storeModel(ID<Entity> model, const fs::path& path);
+	#endif
 
 	/*******************************************************************************************************************
 	 * @brief Loads animation from the resource pack.

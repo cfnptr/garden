@@ -35,7 +35,7 @@ void NineSliceRenderSystem::setInstanceData(SpriteRenderComponent* spriteRenderV
 	if (nineSliceView->colorMap)
 	{
 		auto imageView = GraphicsSystem::getInstance()->get(nineSliceView->colorMap);
-		imageSize = (float2)(uint2)imageView->getSize();
+		imageSize = (float2)imageView->getSize();
 	}
 	auto scale = imageSize / extractScale2(model);
 

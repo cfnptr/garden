@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "garden/system/resource.hpp"
+#include "garden/system/render/model.hpp"
 #include "garden/system/file-watcher.hpp"
 #include "garden/system/transform.hpp"
 #include "garden/system/animation.hpp"
@@ -103,7 +104,12 @@ const vector<Image::FileType> ResourceSystem::imageFileTypes =
 
 const vector<string_view> ResourceSystem::modelFileExts =
 {
-	".fbx", ".dae", ".gltf", ".glb", ".blend", ".3ds", ".ase", ".obj"
+	".usd", ".usda", ".usdc", ".gltf", ".glb", ".fbx", ".obj"
+};
+const vector<ResourceSystem::ModelFileType> ResourceSystem::modelFileTypes =
+{
+	ModelFileType::USD, ModelFileType::USD, ModelFileType::USD, ModelFileType::glTF, ModelFileType::glTF,
+	ModelFileType::FBX, ModelFileType::OBJ
 };
 
 //**********************************************************************************************************************
@@ -141,7 +147,9 @@ void ResourceSystem::init()
 {
 	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("Input", ResourceSystem::input);
+
 	#if GARDEN_DEBUG || GARDEN_EDITOR || !GARDEN_PACK_RESOURCES
+	ECSM_SUBSCRIBE_TO_EVENT("FileDrop", ResourceSystem::fileDrop);
 	ECSM_TRY_SUBSCRIBE_TO_EVENT("FileChange", ResourceSystem::fileChange);
 	#endif
 }
@@ -223,76 +231,6 @@ void ResourceSystem::dequeuePipelines()
 }
 
 //**********************************************************************************************************************
-void ResourceSystem::dequeueBuffers()
-{
-	SET_CPU_ZONE_SCOPED("Loaded Buffers Dequeue");
-
-	auto graphicsAPI = GraphicsAPI::get();
-	auto manager = Manager::getInstance();
-	auto graphicsSystem = GraphicsSystem::getInstance();
-
-	#if GARDEN_DEBUG
-	auto hasDequeueItems = !loadedBufferQueue.empty();
-	if (hasDequeueItems)
-	{
-		graphicsSystem->startRecording(CommandBufferType::TransferOnly);
-		BEGIN_GPU_DEBUG_LABEL("Buffers Transfer");
-		graphicsSystem->stopRecording();
-	}
-	#endif
-
-	while (!loadedBufferQueue.empty())
-	{
-		auto& item = loadedBufferQueue.front();
-		auto buffer = *item.bufferInstance <= graphicsAPI->bufferPool.getOccupancy() ? // Note: getOccupancy() required, do not optimize!
-			&graphicsAPI->bufferPool.getData()[*item.bufferInstance - 1] : nullptr;
-
-		if (!buffer || MemoryExt::getVersion(*buffer) != MemoryExt::getVersion(item.buffer))
-		{
-			graphicsAPI->forceResourceDestroy = true;
-			BufferExt::destroy(item.buffer);
-			graphicsAPI->forceResourceDestroy = false;
-			loadedBufferQueue.pop();
-			continue;
-		}
-
-		BufferExt::moveInternalObjects(item.buffer, *buffer);
-		#if GARDEN_DEBUG || GARDEN_EDITOR
-		buffer->setDebugName(buffer->getDebugName());
-		#endif
-
-		auto stagingBuffer = graphicsAPI->bufferPool.create(Buffer::Usage::TransferSrc,
-			Buffer::CpuAccess::SequentialWrite, Buffer::Location::Auto, Buffer::Strategy::Speed, 0);
-		SET_RESOURCE_DEBUG_NAME(stagingBuffer, "buffer.staging.loaded" + to_string(*stagingBuffer));
-
-		auto stagingView = graphicsAPI->bufferPool.get(stagingBuffer);
-		BufferExt::moveInternalObjects(item.staging, **stagingView);
-		graphicsSystem->startRecording(CommandBufferType::TransferOnly);
-		Buffer::copy(stagingBuffer, item.bufferInstance);
-		graphicsSystem->stopRecording();
-		graphicsAPI->bufferPool.destroy(stagingBuffer);
-
-		loadedBuffer = item.bufferInstance;
-		loadedBufferPath = std::move(item.path);
-		manager->runEvent("BufferLoaded");
-
-		loadedBufferQueue.pop();
-	}
-
-	#if GARDEN_DEBUG
-	if (hasDequeueItems)
-	{
-		graphicsSystem->startRecording(CommandBufferType::TransferOnly);
-		END_GPU_DEBUG_LABEL();
-		graphicsSystem->stopRecording();
-	}
-	#endif
-
-	loadedBuffer = {};
-	loadedBufferPath = "";
-}
-
-//**********************************************************************************************************************
 void ResourceSystem::dequeueImages()
 {
 	SET_CPU_ZONE_SCOPED("Loaded Images Dequeue");
@@ -368,19 +306,81 @@ void ResourceSystem::dequeueImages()
 }
 
 //**********************************************************************************************************************
+void ResourceSystem::dequeueBuffers()
+{
+	SET_CPU_ZONE_SCOPED("Loaded Buffers Dequeue");
+
+	auto graphicsAPI = GraphicsAPI::get();
+	auto manager = Manager::getInstance();
+	auto graphicsSystem = GraphicsSystem::getInstance();
+
+	#if GARDEN_DEBUG
+	auto hasDequeueItems = !loadedBufferQueue.empty();
+	if (hasDequeueItems)
+	{
+		graphicsSystem->startRecording(CommandBufferType::TransferOnly);
+		BEGIN_GPU_DEBUG_LABEL("Buffers Transfer");
+		graphicsSystem->stopRecording();
+	}
+	#endif
+
+	while (!loadedBufferQueue.empty())
+	{
+		auto& item = loadedBufferQueue.front(); // Note: getOccupancy() required, do not optimize!
+		auto buffer = *item.bufferInstance <= graphicsAPI->bufferPool.getOccupancy() ? 
+			&graphicsAPI->bufferPool.getData()[*item.bufferInstance - 1] : nullptr;
+
+		if (!buffer || MemoryExt::getVersion(*buffer) != MemoryExt::getVersion(item.buffer))
+		{
+			graphicsAPI->forceResourceDestroy = true;
+			BufferExt::destroy(item.buffer);
+			graphicsAPI->forceResourceDestroy = false;
+			loadedBufferQueue.pop();
+			continue;
+		}
+
+		BufferExt::moveInternalObjects(item.buffer, *buffer);
+		#if GARDEN_DEBUG || GARDEN_EDITOR
+		buffer->setDebugName(buffer->getDebugName());
+		#endif
+
+		auto stagingBuffer = graphicsAPI->bufferPool.create(Buffer::Usage::TransferSrc,
+			Buffer::CpuAccess::SequentialWrite, Buffer::Location::Auto, Buffer::Strategy::Speed, 0);
+		SET_RESOURCE_DEBUG_NAME(stagingBuffer, "buffer.staging.loaded" + to_string(*stagingBuffer));
+
+		auto stagingView = graphicsAPI->bufferPool.get(stagingBuffer);
+		BufferExt::moveInternalObjects(item.staging, **stagingView);
+		graphicsSystem->startRecording(CommandBufferType::TransferOnly);
+		Buffer::copy(stagingBuffer, item.bufferInstance);
+		graphicsSystem->stopRecording();
+		graphicsAPI->bufferPool.destroy(stagingBuffer);
+
+		loadedBuffer = item.bufferInstance;
+		loadedBufferPath = std::move(item.path);
+		manager->runEvent("BufferLoaded");
+
+		loadedBufferQueue.pop();
+	}
+
+	#if GARDEN_DEBUG
+	if (hasDequeueItems)
+	{
+		graphicsSystem->startRecording(CommandBufferType::TransferOnly);
+		END_GPU_DEBUG_LABEL();
+		graphicsSystem->stopRecording();
+	}
+	#endif
+
+	loadedBuffer = {};
+	loadedBufferPath = "";
+}
+
+//**********************************************************************************************************************
 void ResourceSystem::input()
 {
 	SET_CPU_ZONE_SCOPED("Loaded Resources Update");
 
 	auto manager = Manager::getInstance();
-	for (auto& buffer : loadedBufferArray)
-	{
-		loadedBuffer = buffer.instance;
-		loadedBufferPath = std::move(buffer.path);
-		manager->runEvent("BufferLoaded");
-	}
-	loadedBufferArray.clear();
-	
 	for (auto& image : loadedImageArray)
 	{
 		loadedImage = image.instance;
@@ -389,10 +389,18 @@ void ResourceSystem::input()
 	}
 	loadedImageArray.clear();
 
+	for (auto& buffer : loadedBufferArray)
+	{
+		loadedBuffer = buffer.instance;
+		loadedBufferPath = std::move(buffer.path);
+		manager->runEvent("BufferLoaded");
+	}
+	loadedBufferArray.clear();
+	
 	queueLocker.lock();
 	dequeuePipelines();
-	dequeueBuffers();
 	dequeueImages();
+	dequeueBuffers();
 	queueLocker.unlock();
 }
 
@@ -650,6 +658,32 @@ static void recompilePipelines(ResourceSystem* resourceSystem,
 #endif
 
 //**********************************************************************************************************************
+void ResourceSystem::fileDrop()
+{
+	#if GARDEN_DEBUG || GARDEN_EDITOR
+	auto inputSystem = InputSystem::getInstance();
+	auto& filePath = inputSystem->getCurrentFileDropPath();
+	auto extension = filePath.extension();
+
+	if (extension == ".scene")
+		loadScene(filePath);
+	else
+	{
+		auto isModelFormat = false;
+		for (auto modelFormat : modelFileExts)
+		{
+			if (extension == modelFormat)
+			{
+				isModelFormat = true;
+				break;
+			}
+		}
+
+		if (isModelFormat)
+			loadModel(filePath);
+	}
+	#endif
+}
 void ResourceSystem::fileChange()
 {
 	#if GARDEN_DEBUG || GARDEN_EDITOR
@@ -872,8 +906,6 @@ static int32 getImageFilePath(const fs::path& appResourcesPath,
 	fs::path imagePath, fs::path& filePath, Image::FileType& fileType)
 {
 	int32 fileCount = 0;
-	imagePath += ".ext";
-
 	for (uint8 i = 0; i < (uint8)ResourceSystem::imageFileExts.size(); i++)
 	{
 		imagePath.replace_extension(ResourceSystem::imageFileExts[i]);
@@ -886,35 +918,38 @@ static int32 getImageFilePath(const fs::path& appResourcesPath,
 
 	return fileCount;
 }
-static int32 getCacheImageFilePath(const fs::path& appCachePath,
-	fs::path imagePath, fs::path& filePath, Image::FileType& fileType)
+static int32 getImageFilePath(const fs::path& appCachePath, const fs::path& appResourcesPath,
+	const fs::path& imagePath, fs::path& filePath, Image::FileType& fileType)
+{
+	auto cacheImagePath = appCachePath / fs::path("images") / imagePath;
+	cacheImagePath.replace_extension(".gic");
+	if (fs::exists(cacheImagePath))
+	{
+		filePath = std::move(cacheImagePath);
+		fileType = Image::FileType::GIC;
+		return 1;
+	}
+
+	auto fileCount = getImageFilePath(appResourcesPath, fs::path("images") / imagePath, filePath, fileType);
+	fileCount += getImageFilePath(appResourcesPath, fs::path("models") / imagePath, filePath, fileType);
+	return fileCount;
+}
+
+//**********************************************************************************************************************
+static int32 getModelFilePath(const fs::path& appResourcesPath, fs::path modelPath, 
+	fs::path& filePath, ResourceSystem::ModelFileType& fileType)
 {
 	int32 fileCount = 0;
-	imagePath = appCachePath / fs::path("images") / imagePath;
-	imagePath += ".ext";
-
-	for (uint8 i = 0; i < (uint8)ResourceSystem::imageFileExts.size(); i++)
+	for (uint8 i = 0; i < (uint8)ResourceSystem::modelFileExts.size(); i++)
 	{
-		imagePath.replace_extension(ResourceSystem::imageFileExts[i]);
-		if (fs::exists(imagePath))
+		modelPath.replace_extension(ResourceSystem::modelFileExts[i]);
+		if (File::tryGetResourcePath(appResourcesPath, modelPath, filePath))
 		{
-			filePath = imagePath;
-			fileType = ResourceSystem::imageFileTypes[i];
+			fileType = ResourceSystem::modelFileTypes[i];
 			fileCount++;
 		}
 	}
 
-	return fileCount;
-}
-static int32 getImageFilePath(const fs::path& appCachePath, const fs::path& appResourcesPath,
-	const fs::path& imagePath, fs::path& filePath, Image::FileType& fileType)
-{
-	auto fileCount = getCacheImageFilePath(appCachePath, imagePath, filePath, fileType);
-	if (fileCount > 0)
-		return fileCount;
-
-	fileCount += getImageFilePath(appResourcesPath, fs::path("images") / imagePath, filePath, fileType);
-	fileCount += getImageFilePath(appResourcesPath, fs::path("models") / imagePath, filePath, fileType);
 	return fileCount;
 }
 #endif
@@ -933,9 +968,8 @@ bool ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& pixels,
 	else threadIndex++;
 
 	auto imagePath = fs::path("images") / path;
-	imagePath += ".ext";
-
 	uint64 itemIndex = 0;
+
 	for (uint8 i = 0; i < (uint8)imageFileExts.size(); i++)
 	{
 		imagePath.replace_extension(imageFileExts[i]);
@@ -1594,11 +1628,41 @@ void ResourceSystem::renormalizeImage(const fs::path& path,
 }
 
 //**********************************************************************************************************************
-Ref<Buffer> ResourceSystem::loadBuffer(const fs::path& path, float taskPriority)
+ID<Buffer> ResourceSystem::loadBuffer(const fs::path& path, float taskPriority, bool loadAsync)
 {
 	GARDEN_ASSERT(!path.empty());
 	abort(); // TODO: load plain buffer binary data.
 }
+Ref<Buffer> ResourceSystem::loadSharedBuffer(const fs::path& path, float taskPriority, bool loadAsync)
+{
+	GARDEN_ASSERT(!path.empty());
+
+	auto hashState = Hash128::getState();
+	Hash128::resetState(hashState);
+	auto pathString = path.generic_string();
+	Hash128::updateState(hashState, pathString.c_str(), pathString.length());
+	auto hash = Hash128::digestState(hashState);
+
+	auto searchResult = sharedBuffers.find(hash);
+	if (searchResult != sharedBuffers.end())
+	{
+		auto bufferView = GraphicsSystem::getInstance()->get(searchResult->second);
+		if (bufferView->isLoaded())
+		{
+			LoadedBufferItem item;
+			item.path = path;
+			item.instance = ID<Buffer>(searchResult->second);
+			loadedBufferArray.push_back(std::move(item));
+		}
+		return searchResult->second;
+	}
+
+	auto buffer = Ref<Buffer>(loadBuffer(path, taskPriority, loadAsync)); 
+	auto result = sharedBuffers.emplace(hash, buffer);
+	GARDEN_ASSERT_MSG(result.second, "Detected memory corruption");
+	return buffer;
+}
+
 void ResourceSystem::destroyShared(Ref<Buffer>& buffer)
 {
 	if (!buffer || buffer.getRefCount() > 2)
@@ -2502,26 +2566,6 @@ ID<Entity> ResourceSystem::loadScene(const fs::path& path, bool addRootEntity)
 	return rootEntity;
 }
 
-void ResourceSystem::clearScene()
-{
-	auto manager = Manager::getInstance();
-	const auto& entities = manager->getEntities();
-
-	for (const auto& entity : entities)
-	{
-		auto entityID = entities.getID(&entity);
-		if (!entity.hasComponents() || manager->has<DoNotDestroyComponent>(entityID))
-			continue;
-
-		auto transformView = manager->tryGet<TransformComponent>(entityID);
-		if (transformView)
-			transformView->setParent({});
-		manager->destroy(entityID);
-	}
-
-	GARDEN_LOG_TRACE("Cleaned scene.");
-}
-
 //**********************************************************************************************************************
 void ResourceSystem::storeScene(const fs::path& path, ID<Entity> rootEntity, const fs::path& directory)
 {
@@ -2665,6 +2709,35 @@ void ResourceSystem::storeScene(const fs::path& path, ID<Entity> rootEntity, con
 	}
 
 	GARDEN_LOG_TRACE("Stored scene. (path: " + path.generic_string() + ")");
+}
+
+//**********************************************************************************************************************
+void ResourceSystem::clearScene()
+{
+	auto manager = Manager::getInstance();
+	const auto& entities = manager->getEntities();
+
+	for (const auto& entity : entities)
+	{
+		auto entityID = entities.getID(&entity);
+		if (!entity.hasComponents() || manager->has<DoNotDestroyComponent>(entityID))
+			continue;
+
+		auto transformView = manager->tryGet<TransformComponent>(entityID);
+		if (transformView)
+			transformView->setParent({});
+		manager->destroy(entityID);
+	}
+
+	GARDEN_LOG_TRACE("Cleaned scene.");
+}
+
+ID<Entity> ResourceSystem::loadModel(const fs::path& path)
+{
+	GARDEN_ASSERT(!path.empty());
+
+	
+	// ModelRenderSystem::loadFileData(const void *data, psize dataSize)
 }
 
 //**********************************************************************************************************************

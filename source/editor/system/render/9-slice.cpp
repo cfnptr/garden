@@ -95,11 +95,13 @@ void NineSliceEditorSystem::onCutoutEntityInspector(ID<Entity> entity, bool isOp
 		auto cutout9SliceView = Manager::getInstance()->get<Cutout9SliceComponent>(entity);
 		renderComponent(*cutout9SliceView, typeid(Cutout9SliceComponent));
 
-		ImGui::SliderFloat("Alpha Cutoff", &cutout9SliceView->alphaCutoff, 0.0f, 1.0f);
+		auto alphaCutoff = cutout9SliceView->getAlphaCutoff();
+		if (ImGui::SliderFloat("Alpha Cutoff", &alphaCutoff, 0.0f, 1.0f))
+			cutout9SliceView->setAlphaCutoff(alphaCutoff);
 		if (ImGui::BeginPopupContextItem("alphaCutoff"))
 		{
 			if (ImGui::MenuItem("Reset Default"))
-				cutout9SliceView->alphaCutoff = 0.5f;
+				cutout9SliceView->setAlphaCutoff(0.5f);
 			ImGui::EndPopup();
 		}
 	}

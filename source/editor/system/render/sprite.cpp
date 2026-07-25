@@ -97,11 +97,13 @@ void SpriteRenderEditorSystem::onCutoutEntityInspector(ID<Entity> entity, bool i
 		auto cutoutSpriteView = Manager::getInstance()->get<CutoutSpriteComponent>(entity);
 		renderComponent(*cutoutSpriteView, typeid(CutoutSpriteComponent));
 
-		ImGui::SliderFloat("Alpha Cutoff", &cutoutSpriteView->alphaCutoff, 0.0f, 1.0f);
+		auto alphaCutoff = cutoutSpriteView->getAlphaCutoff();
+		if (ImGui::SliderFloat("Alpha Cutoff", &alphaCutoff, 0.0f, 1.0f))
+			cutoutSpriteView->setAlphaCutoff(alphaCutoff);
 		if (ImGui::BeginPopupContextItem("alphaCutoff"))
 		{
 			if (ImGui::MenuItem("Reset Default"))
-				cutoutSpriteView->alphaCutoff = 0.5f;
+				cutoutSpriteView->setAlphaCutoff(0.5f);
 			ImGui::EndPopup();
 		}
 	}
@@ -190,7 +192,7 @@ void SpriteRenderEditorSystem::renderComponent(SpriteRenderComponent* componentV
 	if (ImGui::BeginPopupContextItem("uvSize"))
 	{
 		if (ImGui::MenuItem("Reset Default"))
-			componentView->uvSize = float2::one;
+			componentView->uvSize = half2::one;
 		ImGui::EndPopup();
 	}
 
@@ -198,23 +200,33 @@ void SpriteRenderEditorSystem::renderComponent(SpriteRenderComponent* componentV
 	if (ImGui::BeginPopupContextItem("uvOffset"))
 	{
 		if (ImGui::MenuItem("Reset Default"))
-			componentView->uvOffset = float2::zero;
+			componentView->uvOffset = half2::zero;
 		ImGui::EndPopup();
 	}
 
-	ImGui::SliderFloat("Color Map Layer", &componentView->colorMapLayer, 0.0f, maxColorMapLayer);
-	if (ImGui::BeginPopupContextItem("colorLayer"))
+	auto colorMapLayer = componentView->getColorMapLayer();
+	if (ImGui::SliderFloat("Color Map Layer", &colorMapLayer, 0.0f, maxColorMapLayer))
+		componentView->setColorMapLayer(colorMapLayer);
+	if (ImGui::BeginPopupContextItem("colorMapLayer"))
 	{
 		if (ImGui::MenuItem("Reset Default"))
-			componentView->colorMapLayer = 0.0f;
+			componentView->setColorMapLayer(0.0f);
 		ImGui::EndPopup();
 	}
 
-	ImGui::ColorEdit4("Color", &componentView->color, ImGuiColorEditFlags_Float);
-	if (ImGui::BeginPopupContextItem("colorFactor"))
+	ImGui::ColorEdit4("Color Add", &componentView->colorAdd, ImGuiColorEditFlags_Float);
+	if (ImGui::BeginPopupContextItem("colorAdd"))
 	{
 		if (ImGui::MenuItem("Reset Default"))
-			componentView->color = f32x4::one;
+			componentView->colorAdd = Color::transparent;
+		ImGui::EndPopup();
+	}
+
+	ImGui::ColorEdit4("Color Mul", &componentView->colorMul, ImGuiColorEditFlags_Float);
+	if (ImGui::BeginPopupContextItem("colorMul"))
+	{
+		if (ImGui::MenuItem("Reset Default"))
+			componentView->colorMul = Color::white;
 		ImGui::EndPopup();
 	}
 
