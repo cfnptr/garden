@@ -322,10 +322,10 @@ bool VulkanSwapchain::acquireNextImage()
 	auto& inFlightFrame = inFlightFrames[inFlightIndex];
 	auto waitResult = vulkanAPI->device.waitForFences(1, &inFlightFrame.fence, VK_TRUE, timeout);
 	vk::detail::resultCheck(waitResult, "vk::Device::waitForFences");
-	
+
 	auto result = vulkanAPI->device.acquireNextImageKHR(instance, UINT64_MAX, 
 		inFlightFrame.imageAvailableSemaphore, nullptr, &imageIndex);
-		
+
 	if (result == vk::Result::eErrorOutOfDateKHR)
 		return false;
 	else if (result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR)

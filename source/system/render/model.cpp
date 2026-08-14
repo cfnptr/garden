@@ -361,7 +361,7 @@ ID<Entity> ModelRenderSystem::loadFileData(const void* data, psize dataSize, con
 					auto searchResult = sharedLods.find(meshId);
 					if (searchResult != sharedLods.end())
 					{
-
+						
 					}
 
 					//auto mesh = meshes[];

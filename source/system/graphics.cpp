@@ -986,8 +986,9 @@ ID<DescriptorSet> GraphicsSystem::createDescriptorSet(ID<GraphicsPipeline> graph
 	auto pipelineView = GraphicsAPI::get()->graphicsPipelinePool.get(graphicsPipeline);
 	GARDEN_ASSERT_MSG(ResourceExt::getInstance(**pipelineView), 
 		"Pipeline [" + pipelineView->getDebugName() + "] is not ready");
-	GARDEN_ASSERT_MSG(index < PipelineExt::getDescriptorSetLayouts(**pipelineView).size(),
-		"Out of pipeline [" + pipelineView->getDebugName() + "] descriptor set count bounds");
+	auto layoutCount = PipelineExt::getDescriptorSetLayouts(**pipelineView).size();
+	GARDEN_ASSERT_MSG(index < layoutCount, "Out of pipeline [" + 
+		pipelineView->getDebugName() + "] descriptor set count bounds");
 	// TODO: check if all items initialized if not using bindless.
 	#endif
 

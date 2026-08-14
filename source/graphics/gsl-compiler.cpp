@@ -353,8 +353,8 @@ static void onShaderUniform(FileData& fileData, LineData& lineData, PipelineStag
 		else if (lineData.word == "reference") lineData.isReference = true;
 		else if (lineData.word.length() > 3 && memcmp(lineData.word.data(), "set", 3) == 0) // Note: Do not move down.
 		{
-			auto wordStr = lineData.word.c_str(); uint8 index = 0;
-			if (from_chars(wordStr, wordStr + lineData.word.size(), index).ec == errc())
+			auto wordStr = lineData.word.c_str() + 3; uint8 index = 0;
+			if (from_chars(wordStr, wordStr + (lineData.word.size() - 3), index).ec != errc())
 				throw CompileError("invalid descriptor set index", fileData.lineIndex, lineData.word);
 			fileData.descriptorSetIndex = (uint8)index;
 		}

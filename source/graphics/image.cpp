@@ -1648,6 +1648,7 @@ namespace garden::graphics
 }
 
 //**********************************************************************************************************************
+#if GARDEN_USE_BASIS_UNIVERSAL
 static Image::Format toImageFormat(basist::basis_tex_format texFormat, int channelCount, bool isSrgb)
 {
 	bool hasASTC_LDR, hasASTC_HDR, hasBCn;
@@ -1712,6 +1713,7 @@ static basist::transcoder_texture_format toTranscoderFormat(Image::Format imageF
 				"format: " + string(toString(imageFormat)) + ")");
 	}
 }
+#endif
 
 //**********************************************************************************************************************
 static void loadImageDataPNG(const void* data, psize dataSize, vector<uint8>& pixels, 
@@ -2362,10 +2364,12 @@ static void storeImageDataGIC(const fs::path& filePath, const void* pixels, uint
 	constexpr auto optimalTiling = (UINT16_MAX + 1); // Common VRAM 64kb alignment.
 	auto formatBinarySize = toBinarySize((psize)size.x * size.y * size.z, imageFormat);
 	auto isLessThan64k = formatBinarySize <= optimalTiling;
+	constexpr auto noBasisUniversal = GARDEN_USE_BASIS_UNIVERSAL ? false : true;
 	GARDEN_ASSERT_MSG(formatBinarySize > 0, "Assert " + filePath.generic_string());
 
 	GicHeader gicHeader = {};
-	gicHeader.data.containerType = hasAnyFlag(flags, Image::StoreFlag::Lossless) || isLessThan64k ? 
+	gicHeader.data.containerType = 
+		hasAnyFlag(flags, Image::StoreFlag::Lossless) || isLessThan64k || noBasisUniversal ? 
 		(uint8)(isFormatFloat(imageFormat) ? GicType::EXR : GicType::PNG) : (uint8)GicType::KTX2;
 	gicHeader.data.imageType = (uint8)imageType;
 	gicHeader.data.channelCount = toComponentCount(imageFormat);
@@ -2416,6 +2420,7 @@ static void storeImageDataGIC(const fs::path& filePath, const void* pixels, uint
 		return;
 	}
 
+	#if GARDEN_USE_BASIS_UNIVERSAL
 	uint32_t basisFlags = basisu::cFlagUseOpenCL | basisu::cFlagKTX2 | basisu::cFlagKTX2UASTCSuperCompression;
 	if (imageType == Image::Type::Texture3D || imageType == Image::Type::Texture2DArray)
 		basisFlags |= basisu::cFlagTextureType2DArray;
@@ -2564,6 +2569,10 @@ static void storeImageDataGIC(const fs::path& filePath, const void* pixels, uint
 	}
 
 	basisu::basis_free_data(ktxData);
+	#else
+	throw GardenError("No basis universal image support.");
+	#endif
+
 	fclose(outputFile);
 }
 
