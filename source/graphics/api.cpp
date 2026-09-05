@@ -41,9 +41,13 @@ static RENDERDOC_API_1_7_0* rdocApi = NULL;
 
 using namespace garden;
 
-GraphicsAPI::GraphicsAPI(const string& appName, uint2 windowSize, 
+GraphicsAPI::GraphicsAPI(const string& appName, const string& appID, uint2 windowSize, 
 	ThreadPool* threadPool, bool isFullscreen, bool isDecorated) : threadPool(threadPool)
 {
+	#if GARDEN_OS_LINUX
+	glfwWindowHintString(GLFW_WAYLAND_APP_ID, appID.c_str());
+	#endif
+
 	GLFWmonitor* primaryMonitor = nullptr;
 	if (isFullscreen)
 	{
@@ -117,7 +121,7 @@ static bool isEnv(const char* name, const char* value) noexcept
 	return strcmp(envValue, value) == 0;
 }
 
-void GraphicsAPI::initialize(GraphicsBackend backendType, const string& appName, 
+void GraphicsAPI::initialize(GraphicsBackend backendType, const string& appName, const string& appID, 
 	const string& appDataName, Version appVersion, uint2 windowSize, ThreadPool* threadPool, 
 	bool useVsync, bool useTripleBuffering, bool isFullscreen, bool isDecorated)
 {
@@ -167,7 +171,7 @@ void GraphicsAPI::initialize(GraphicsBackend backendType, const string& appName,
 	GARDEN_ASSERT_MSG(!apiInstance, "Graphics API is already initialized");
 	if (backendType == GraphicsBackend::VulkanAPI)
 	{
-		apiInstance = new VulkanAPI(appName, appDataName, appVersion, windowSize, 
+		apiInstance = new VulkanAPI(appName, appID, appDataName, appVersion, windowSize, 
 			threadPool, useVsync, useTripleBuffering, isFullscreen, isDecorated);
 	}
 	else abort();

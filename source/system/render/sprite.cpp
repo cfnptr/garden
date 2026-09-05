@@ -33,7 +33,7 @@ void SpriteRenderSystem::init()
 	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("ImageLoaded", SpriteRenderSystem::imageLoaded);
 
-	#if GARDEN_DEBUG
+	#if GARDEN_DEBUG || GARDEN_EDITOR
 	debugResourceName = pipelinePath.generic_string();
 	#endif
 }

@@ -22,7 +22,6 @@ using namespace garden;
 using namespace garden::graphics;
 using namespace math::ibl;
 
-#if GARDEN_DEBUG || defined(GARDEN_IMAGE_CONVERTER)
 //**********************************************************************************************************************
 f32x4 ImageConverter::filterCubeMap(float2 coords, const f32x4* pixels, uint2 sizeMinus1, uint32 sizeX) noexcept
 {
@@ -69,6 +68,7 @@ Color ImageConverter::filterCubeMap(float2 coords, const Color* pixels, uint2 si
 
 // TODO: Use instead math::Sampler, implement linear filtering inside it.
 
+#if GARDEN_DEBUG || GARDEN_EDITOR || defined(GARDEN_IMAGE_CONVERTER)
 //******************************************************************************************************************
 bool ImageConverter::compress(const fs::path& filePath, const fs::path& inputPath, const fs::path& outputPath)
 {

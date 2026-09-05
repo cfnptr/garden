@@ -29,14 +29,7 @@ namespace garden::graphics
 class ModelConverter final
 {
 public:
-	/**
-	 * @brief Loads 3D model data. (Vertices and indices)
-	 *
-	 * @param[in,out] data target shader data container
-	 */
-	// static void loadModel();
-
-	#if GARDEN_DEBUG || defined(GARDEN_MODEL_CONVERTER)
+	#if GARDEN_DEBUG || GARDEN_EDITOR || defined(GARDEN_MODEL_CONVERTER)
 	/**
 	 * @brief Converts specified 3D model to the Garden model format.
 	 * 

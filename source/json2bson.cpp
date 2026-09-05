@@ -26,7 +26,7 @@
 using namespace garden;
 using json = nlohmann::json;
 
-#if GARDEN_DEBUG || defined(JSON2BSON)
+#if GARDEN_DEBUG || GARDEN_EDITOR || defined(JSON2BSON)
 //**********************************************************************************************************************
 bool Json2Bson::convertFile(const fs::path& filePath, const fs::path& inputPath, const fs::path& outputPath)
 {	

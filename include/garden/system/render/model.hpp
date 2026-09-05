@@ -26,6 +26,14 @@ namespace garden
 class ModelRenderSystem;
 
 /**
+ * @brief 3D model file container types.
+ */
+enum class ModelFileType : uint8
+{
+	USD, glTF, FBX, OBJ, Count
+};
+
+/**
  * @brief 3D model LOD rendering data container. (Levels of detail)
  */
 struct ModelLOD
@@ -178,6 +186,9 @@ public:
 		uint32 instanceIndex;
 	};
 
+	static const vector<string_view> modelFileExts;    /**< Supported model file extensions. */
+	static const vector<ModelFileType> modelFileTypes; /**< Supported model file types. */
+
 	using ModelFramePool = LinearPool<ModelAnimFrame>;
 protected:
 	fs::path pipelinePath = "";
@@ -191,6 +202,7 @@ protected:
 
 	void init() override;
 	virtual void imageLoaded();
+	virtual void fileDrop();
 
 	static void resetComponent(View<Component> component);
 
@@ -225,16 +237,16 @@ public:
 	 */
 	virtual psize getModelFrameSize() const = 0;
 
+	#if GARDEN_DEBUG || GARDEN_EDITOR || defined(GARDEN_MODEL_CONVERTER)
 	/**
-	 * @brief Loads 3D model from the specified file data.
+	 * @brief Loads 3D model from the specified file.
 	 * @throw GardenError on 3D model data loading error.
 	 * 
-	 * @param[in] data 3d model file binary data
-	 * @param dataSize 3d model file data size in bytes
+	 * @param[in] path target 3d model file path
 	 * @param[in] components model rendering component types or null
 	 */
-	static ID<Entity> loadFileData(const void* data, psize dataSize, 
-		const map<string, type_index>* components = nullptr);
+	static ID<Entity> loadModel(const fs::path& path, const map<string, type_index>* components = nullptr);
+	#endif
 };
 
 /***********************************************************************************************************************

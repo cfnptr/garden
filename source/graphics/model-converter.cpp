@@ -17,7 +17,7 @@
 using namespace garden;
 using namespace garden::graphics;
 
-#if GARDEN_DEBUG || defined(GARDEN_MODEL_CONVERTER)
+#if GARDEN_DEBUG || GARDEN_EDITOR || defined(GARDEN_MODEL_CONVERTER)
 //******************************************************************************************************************
 bool ModelConverter::convertModel(const fs::path& filePath, const fs::path& inputPath, const fs::path& outputPath)
 {
@@ -25,7 +25,7 @@ bool ModelConverter::convertModel(const fs::path& filePath, const fs::path& inpu
 }
 #endif
 
-#if true
+#ifdef GARDEN_MODEL_CONVERTER
 //******************************************************************************************************************
 int main(int argc, char* argv[])
 {

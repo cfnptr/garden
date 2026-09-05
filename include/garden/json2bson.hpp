@@ -29,7 +29,7 @@ namespace garden
 class Json2Bson final
 {
 public:
-	#if GARDEN_DEBUG || defined(JSON2BSON)
+	#if GARDEN_DEBUG || GARDEN_EDITOR || defined(JSON2BSON)
 	/**
 	 * @brief Converts input JSON file to binary JSON. 
 	 * 

@@ -84,24 +84,25 @@ Use building [instructions](BUILDING.md) to install all required tools and libra
 
 ### CMake variables
 
-| Name                          | Description                        | Default value                              |
-|-------------------------------|------------------------------------|--------------------------------------------|
-| GARDEN_APP_NAME               | Application name                   | `Garden Editor`                            |
-| GARDEN_APP_NAME_LOWERCASE     | Application lowercase name         | `garden-editor`                            |
-| GARDEN_APP_NAMESPACE          | Application C++ namespace name     | `garden::editor`                           |
-| GARDEN_APP_FILE_NAME          | Application file name (executable) | `garden-editor`                            |
-| GARDEN_APP_ICON_PATH          | Application icon file path         |                                            |
-| GARDEN_APP_DESCRIPTION        | Application description            | `Made using Garden engine.`                |
-| GARDEN_APP_CREATOR            | Application creator (company)      | `{creator} Team`                           |
-| GARDEN_APP_COPYRIGHT          | Application copyright (license)    | `(C) 20XX {creator}. All rights reserved.` |
-| GARDEN_APP_VERSION_MAJOR      | Application major version          | `1`                                        |
-| GARDEN_APP_VERSION_MINOR      | Application minor version          | `0`                                        |
-| GARDEN_APP_VERSION_PATCH      | Application patch version          | `0`                                        |
-| GARDEN_APP_RESOURCES_DIR      | Application resources directory    | `garden/resources/default`                 |
-| GARDEN_APP_CACHE_DIR          | Application cache directory        | `garden/.cache`                            |
-| GARDEN_STEAMWORKS_SDK_DIR     | Valve Steamworks SDK directory     | `libraries/steamworks-sdk`                 |
-| GARDEN_NVIDIA_DLSS_APP_ID     | Nvidia DLSS application ID         |                                            |
-| GARDEN_NVIDIA_DLSS_PROJECT_ID | Nvidia DLSS project ID (GUID)      | `5df9fb9c-bec4-4cf0-99c4-27b54fd7237e`     |
+| Name                          | Description                        | Default value                               |
+|-------------------------------|------------------------------------|---------------------------------------------|
+| GARDEN_APP_NAME               | Application name                   | `Garden Editor`                             |
+| GARDEN_APP_NAME_LOWERCASE     | Application lowercase name         | `garden-editor`                             |
+| GARDEN_APP_ID                 | Application ID (bundle ID)         | `com.gardenengine.editor`                   |
+| GARDEN_APP_NAMESPACE          | Application C++ namespace name     | `garden::editor`                            |
+| GARDEN_APP_FILE_NAME          | Application file name (executable) | `garden-editor`                             |
+| GARDEN_APP_ICON_PATH          | Application icon file path         |                                             |
+| GARDEN_APP_DESCRIPTION        | Application description            | `Made using Garden engine.`                 |
+| GARDEN_APP_CREATOR            | Application creator (company)      | `{app-name} Team`                           |
+| GARDEN_APP_COPYRIGHT          | Application copyright (license)    | `(C) 20XX {app-name}. All rights reserved.` |
+| GARDEN_APP_VERSION_MAJOR      | Application major version          | `1`                                         |
+| GARDEN_APP_VERSION_MINOR      | Application minor version          | `0`                                         |
+| GARDEN_APP_VERSION_PATCH      | Application patch version          | `0`                                         |
+| GARDEN_APP_RESOURCES_DIR      | Application resources directory    | `garden/resources/default`                  |
+| GARDEN_APP_CACHE_DIR          | Application cache directory        | `garden/.cache`                             |
+| GARDEN_STEAMWORKS_SDK_DIR     | Valve Steamworks SDK directory     | `libraries/steamworks-sdk`                  |
+| GARDEN_NVIDIA_DLSS_APP_ID     | Nvidia DLSS application ID         |                                             |
+| GARDEN_NVIDIA_DLSS_PROJECT_ID | Nvidia DLSS project ID (GUID)      | `5df9fb9c-bec4-4cf0-99c4-27b54fd7237e`      |
 
 ### Environment variable
 

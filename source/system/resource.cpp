@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "garden/system/resource.hpp"
-#include "garden/system/render/model.hpp"
 #include "garden/system/file-watcher.hpp"
 #include "garden/system/transform.hpp"
 #include "garden/system/animation.hpp"
@@ -100,16 +99,6 @@ const vector<Image::FileType> ResourceSystem::imageFileTypes =
 	Image::FileType::GIC, Image::FileType::PNG, Image::FileType::WebP, Image::FileType::JPEG, Image::FileType::JPEG, 
 	Image::FileType::EXR, Image::FileType::HDR, Image::FileType::BMP, Image::FileType::PSD,  Image::FileType::TGA, 
 	Image::FileType::PIC, Image::FileType::GIF
-};
-
-const vector<string_view> ResourceSystem::modelFileExts =
-{
-	".usd", ".usda", ".usdc", ".gltf", ".glb", ".fbx", ".obj"
-};
-const vector<ResourceSystem::ModelFileType> ResourceSystem::modelFileTypes =
-{
-	ModelFileType::USD, ModelFileType::USD, ModelFileType::USD, ModelFileType::glTF, ModelFileType::glTF,
-	ModelFileType::FBX, ModelFileType::OBJ
 };
 
 //**********************************************************************************************************************
@@ -660,27 +649,16 @@ static void recompilePipelines(ResourceSystem* resourceSystem,
 //**********************************************************************************************************************
 void ResourceSystem::fileDrop()
 {
-	#if GARDEN_DEBUG || GARDEN_EDITOR
+	#if GARDEN_DEBUG || GARDEN_EDITOR || !GARDEN_PACK_RESOURCES
 	auto inputSystem = InputSystem::getInstance();
 	auto& filePath = inputSystem->getCurrentFileDropPath();
 	auto extension = filePath.extension();
 
+	string_view resourcePath;
 	if (extension == ".scene")
-		loadScene(filePath);
-	else
 	{
-		auto isModelFormat = false;
-		for (auto modelFormat : modelFileExts)
-		{
-			if (extension == modelFormat)
-			{
-				isModelFormat = true;
-				break;
-			}
-		}
-
-		if (isModelFormat)
-			loadModel(filePath);
+		if (InputSystem::getResourcePath("scenes/", filePath.generic_string(), resourcePath))
+			loadScene(resourcePath);
 	}
 	#endif
 }
@@ -932,24 +910,6 @@ static int32 getImageFilePath(const fs::path& appCachePath, const fs::path& appR
 
 	auto fileCount = getImageFilePath(appResourcesPath, fs::path("images") / imagePath, filePath, fileType);
 	fileCount += getImageFilePath(appResourcesPath, fs::path("models") / imagePath, filePath, fileType);
-	return fileCount;
-}
-
-//**********************************************************************************************************************
-static int32 getModelFilePath(const fs::path& appResourcesPath, fs::path modelPath, 
-	fs::path& filePath, ResourceSystem::ModelFileType& fileType)
-{
-	int32 fileCount = 0;
-	for (uint8 i = 0; i < (uint8)ResourceSystem::modelFileExts.size(); i++)
-	{
-		modelPath.replace_extension(ResourceSystem::modelFileExts[i]);
-		if (File::tryGetResourcePath(appResourcesPath, modelPath, filePath))
-		{
-			fileType = ResourceSystem::modelFileTypes[i];
-			fileCount++;
-		}
-	}
-
 	return fileCount;
 }
 #endif
@@ -1364,7 +1324,7 @@ ID<Image> ResourceSystem::loadImage(const fs::path* paths, psize pathCount, bool
 			}
 			else
 			{
-				loadImageData(filePaths.data(), filePaths.size(), 
+				loadImageData(filePaths.data(), filePaths.size(), // Note: loads or converts inside.
 					pixelArrays, size, type, format, task.getThreadIndex());
 			}
 
@@ -1411,6 +1371,7 @@ ID<Image> ResourceSystem::loadImage(const fs::path* paths, psize pathCount, bool
 		}
 		else
 		{
+			// Note: loads or converts inside.
 			loadImageData(paths, pathCount, pixelArrays, size, type, format, -1);
 			item.paths.assign(paths, paths + pathCount);
 		}
@@ -2730,14 +2691,6 @@ void ResourceSystem::clearScene()
 	}
 
 	GARDEN_LOG_TRACE("Cleaned scene.");
-}
-
-ID<Entity> ResourceSystem::loadModel(const fs::path& path)
-{
-	GARDEN_ASSERT(!path.empty());
-
-	
-	// ModelRenderSystem::loadFileData(const void *data, psize dataSize)
 }
 
 //**********************************************************************************************************************

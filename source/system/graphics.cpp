@@ -85,8 +85,9 @@ GraphicsSystem::GraphicsSystem(uint2 windowSize, bool isFullscreen, bool isDecor
 	auto threadSystem = ThreadSystem::tryGetInstance();
 	auto threadPool = threadSystem ? &threadSystem->getForegroundPool() : nullptr;
 
-	GraphicsAPI::initialize(GraphicsBackend::VulkanAPI, appInfoSystem->getName(), appInfoSystem->getAppDataName(),
-		appInfoSystem->getVersion(), windowSize, threadPool, useVsync, useTripleBuffering, isFullscreen, isDecorated);
+	GraphicsAPI::initialize(GraphicsBackend::VulkanAPI, appInfoSystem->getName(), appInfoSystem->getID(), 
+		appInfoSystem->getAppDataName(), appInfoSystem->getVersion(), windowSize, threadPool, useVsync, 
+		useTripleBuffering, isFullscreen, isDecorated);
 
 	auto graphicsAPI = GraphicsAPI::get();
 	auto swapchainImage = graphicsAPI->imagePool.get(graphicsAPI->getSwapchain()->getCurrentImage());

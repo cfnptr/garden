@@ -17,26 +17,24 @@
 #include "garden/system/render/forward.hpp"
 #include "garden/system/transform.hpp"
 #include "garden/system/resource.hpp"
-#include "garden/system/log.hpp"
+#include "garden/system/app-info.hpp"
+#include "garden/file.hpp"
 #include "model/instance-data.h"
 
 #include "assimp/Importer.hpp"
-#include "assimp/DefaultLogger.hpp"
 #include "assimp/scene.h"
 #include "assimp/postprocess.h"
 
 using namespace garden;
 
-namespace garden
+const vector<string_view> ModelRenderSystem::modelFileExts =
 {
-	class ErrorLogStream : public Assimp::LogStream
-	{
-	public:
-		void write(const char* message) override
-		{
-			GARDEN_LOG_ERROR(message);
-		}
-	};
+	".usd", ".usda", ".usdc", ".gltf", ".glb", ".fbx", ".obj"
+};
+const vector<ModelFileType> ModelRenderSystem::modelFileTypes =
+{
+	ModelFileType::USD, ModelFileType::USD, ModelFileType::USD, ModelFileType::glTF, ModelFileType::glTF,
+	ModelFileType::FBX, ModelFileType::OBJ
 };
 
 void ModelRenderComponent::setLodCount(uint8 count)
@@ -61,16 +59,45 @@ void ModelRenderSystem::init()
 	auto manager = Manager::getInstance();
 	ECSM_SUBSCRIBE_TO_EVENT("ImageLoaded", ModelRenderSystem::imageLoaded);
 
-	#if GARDEN_DEBUG
-	Assimp::DefaultLogger::create("");
-	Assimp::DefaultLogger::get()->attachStream(new ErrorLogStream, Assimp::Logger::Err);
+	#if GARDEN_DEBUG || GARDEN_EDITOR || !GARDEN_PACK_RESOURCES
+	ECSM_SUBSCRIBE_TO_EVENT("FileDrop", ModelRenderSystem::fileDrop);
+	#endif
+
+	#if GARDEN_DEBUG || GARDEN_EDITOR
 	debugResourceName = pipelinePath.generic_string();
 	#endif
 }
 
+//**********************************************************************************************************************
 void ModelRenderSystem::imageLoaded()
 {
 	// TODO: update bindless pool and model components.
+}
+
+void ModelRenderSystem::fileDrop()
+{
+	#if GARDEN_DEBUG || GARDEN_EDITOR || !GARDEN_PACK_RESOURCES
+	auto inputSystem = InputSystem::getInstance();
+	auto& filePath = inputSystem->getCurrentFileDropPath();
+	auto extension = filePath.extension();
+
+	auto isModelFormat = false;
+	for (auto modelFormat : modelFileExts)
+	{
+		if (extension == modelFormat)
+		{
+			isModelFormat = true;
+			break;
+		}
+	}
+
+	if (!isModelFormat)
+		return;
+
+	string_view resourcePath;
+	if (InputSystem::getResourcePath("models/", filePath.generic_string(), resourcePath))
+		loadModel(resourcePath);
+	#endif
 }
 
 void ModelRenderSystem::resetComponent(View<Component> component)
@@ -297,21 +324,46 @@ void ModelRenderSystem::animateAsync(View<Component> component,
 		componentView->ormMul = lerp(frameA->ormMul, frameB->ormMul, t);
 }
 
+#if GARDEN_DEBUG || GARDEN_EDITOR || defined(GARDEN_MODEL_CONVERTER)
 //**********************************************************************************************************************
-ID<Entity> ModelRenderSystem::loadFileData(const void* data, psize dataSize, const map<string, type_index>* components)
+static int32 getModelFilePath(const fs::path& modelPath, fs::path& filePath, ModelFileType& fileType)
 {
-	GARDEN_ASSERT(data);
-	GARDEN_ASSERT(dataSize > 0);
+	auto& appResourcesPath = AppInfoSystem::getInstance()->getResourcesPath();
+	auto path = fs::path("models") / modelPath;
+
+	int32 fileCount = 0;
+	for (uint8 i = 0; i < (uint8)ModelRenderSystem::modelFileExts.size(); i++)
+	{
+		path.replace_extension(ModelRenderSystem::modelFileExts[i]);
+		if (File::tryGetResourcePath(appResourcesPath, path, filePath))
+		{
+			fileType = ModelRenderSystem::modelFileTypes[i];
+			fileCount++;
+		}
+	}
+
+	return fileCount;
+}
+ID<Entity> ModelRenderSystem::loadModel(const fs::path& path, const map<string, type_index>* components)
+{
+	GARDEN_ASSERT(!path.empty());
+
+	fs::path inputFilePath; ModelFileType inputFileType;
+	auto fileCount = getModelFilePath(path, inputFilePath, inputFileType);
+	if (fileCount == 0)
+		throw GardenError("3D model file does not exist. (path: " + path.generic_string() + ")");
+	if (fileCount > 1)
+		throw GardenError("3D model file is ambiguous. (path: " + path.generic_string() + ")");
 
 	constexpr uint32 processFlags = aiProcess_CalcTangentSpace | aiProcess_Triangulate | 
 		aiProcess_JoinIdenticalVertices | aiProcess_SortByPType;
 
 	Assimp::Importer importer;
-	auto scene = importer.ReadFileFromMemory(data, dataSize, processFlags);
+	auto scene = importer.ReadFile(inputFilePath.generic_string().c_str(), processFlags);
 	if (!scene)
 	{
-		throw GardenError("Invalid Assimp 3D model data. ("
-			"error: " + string(importer.GetErrorString()) + ")");
+		throw GardenError("Invalid Assimp 3D model file data. (path: " +
+			path.generic_string() + ", error: " + string(importer.GetErrorString()) + ")");
 	}
 
 	auto manager = Manager::getInstance();
@@ -343,13 +395,13 @@ ID<Entity> ModelRenderSystem::loadFileData(const void* data, psize dataSize, con
 		auto& lods = modelRenderView->lods;
 		auto childrenCount = node->mNumChildren;
 		auto children = node->mChildren;
-	
+
 		for (uint32 i = 0; i < childrenCount; i++)
 		{
 			auto child = children[i];
 			auto lodStr = strstr(child->mName.C_Str(), "_LOD");
 			auto lodStrLength = lodStr ? strlen(lodStr) : 0;
-	
+
 			if (lodStrLength > 4)
 			{
 				auto meshIds = child->mMeshes;
@@ -386,3 +438,4 @@ ID<Entity> ModelRenderSystem::loadFileData(const void* data, psize dataSize, con
 
 	return rootEntity;
 }
+#endif

@@ -64,8 +64,9 @@ public:
 		bool nvLowLatency = false;
 	};
 private:
-	VulkanAPI(const string& appName, const string& appDataName, Version appVersion, uint2 windowSize, 
-		ThreadPool* threadPool, bool useVsync, bool useTripleBuffering, bool isFullscreen, bool isDecorated);
+	VulkanAPI(const string& appName, const string& appID, const string& appDataName, 
+		Version appVersion, uint2 windowSize, ThreadPool* threadPool, bool useVsync, 
+		bool useTripleBuffering, bool isFullscreen, bool isDecorated);
 	~VulkanAPI() override;
 
 	friend class GraphicsAPI;

@@ -1,0 +1,7 @@
+[Desktop Entry]
+Version=@GARDEN_APP_VERSION_STRING@
+Type=Application
+Name=@GARDEN_APP_NAME@
+Comment=@GARDEN_APP_DESCRIPTION@
+StartupWMClass=@GARDEN_APP_ID@
+Terminal=false

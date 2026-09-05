@@ -1227,6 +1227,7 @@ void EditorRenderSystem::drawModelSelector(const char* name, fs::path& path, Ref
 	{
 		if (ImGui::MenuItem("Select Model"))
 		{
+			/*
 			openFileSelector([&](const fs::path& selectedFile)
 			{
 				if (EditorRenderSystem::getInstance()->selectedEntity != entity ||
@@ -1245,7 +1246,8 @@ void EditorRenderSystem::drawModelSelector(const char* name, fs::path& path, Ref
 				abort();
 				// TODO: resourceSystem->loadModel(path, );
 			},
-			AppInfoSystem::getInstance()->getResourcesPath() / "models", ResourceSystem::modelFileExts);
+			AppInfoSystem::getInstance()->getResourcesPath() / "models", ModelRenderSystem::modelFileExts);
+			*/
 		}
 
 		auto gpuResourceSystem = Manager::getInstance()->tryGet<GpuResourceEditorSystem>();

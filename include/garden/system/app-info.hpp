@@ -34,6 +34,8 @@ class AppInfoSystem final : public System, public Singleton<AppInfoSystem>
 {
 	string name;
 	string nameLowercase;
+	string _namespace;
+	string id;
 	string description;
 	string creator;
 	string copyright;
@@ -55,8 +57,8 @@ class AppInfoSystem final : public System, public Singleton<AppInfoSystem>
 	 * @param version application version
 	 * @param setSingleton set system singleton instance
 	 */
-	AppInfoSystem(string_view name, string_view nameLowercase, string_view description,
-		string_view creator, string_view copyright, Version version,
+	AppInfoSystem(string_view name, string_view nameLowercase, string_view id, string_view _namespace, 
+		string_view description, string_view creator, string_view copyright, Version version,
 		#if GARDEN_DEBUG || GARDEN_EDITOR || !GARDEN_PACK_RESOURCES
 		const fs::path& cachePath, const fs::path& resourcesPath,
 		#endif
@@ -74,6 +76,16 @@ public:
 	 * @details See the GARDEN_APP_NAME_LOWERCASE.
 	 */
 	const string& getNameLowercase() const noexcept { return nameLowercase; }
+	/**
+	 * @brief Returns application namespace string.
+	 * @details See the GARDEN_APP_NAMESPACE.
+	 */
+	const string& getNamespace() const noexcept { return _namespace; }
+	/**
+	 * @brief Returns application ID string.
+	 * @details See the GARDEN_APP_ID.
+	 */
+	const string& getID() const noexcept { return id; }
 	/**
 	 * @brief Returns application description string.
 	 * @details See the GARDEN_APP_DESCRIPTION.

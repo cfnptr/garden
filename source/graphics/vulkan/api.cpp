@@ -1034,9 +1034,10 @@ static vk::PipelineCache createPipelineCache(const string& appDataName, Version 
 }
 
 //**********************************************************************************************************************
-VulkanAPI::VulkanAPI(const string& appName, const string& appDataName, Version appVersion, uint2 windowSize, 
-	ThreadPool* threadPool, bool useVsync, bool useTripleBuffering, bool isFullscreen, bool isDecorated) : 
-	GraphicsAPI(appName, windowSize, threadPool, isFullscreen, isDecorated)
+VulkanAPI::VulkanAPI(const string& appName, const string& appID, const string& appDataName, 
+	Version appVersion, uint2 windowSize, ThreadPool* threadPool, bool useVsync, 
+	bool useTripleBuffering, bool isFullscreen, bool isDecorated) : 
+	GraphicsAPI(appName, appID, windowSize, threadPool, isFullscreen, isDecorated)
 {
 	this->backendType = GraphicsBackend::VulkanAPI;
 	this->appDataName = appDataName;

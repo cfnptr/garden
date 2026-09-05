@@ -61,7 +61,7 @@ public:
 		}
 	}
 
-	#if GARDEN_DEBUG || defined(GARDEN_IMAGE_CONVERTER)
+	#if GARDEN_DEBUG || GARDEN_EDITOR || defined(GARDEN_IMAGE_CONVERTER)
 	/*******************************************************************************************************************
 	 * @brief Compresses input image using block compression. (MT-Safe)
 	 * 

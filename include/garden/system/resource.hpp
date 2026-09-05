@@ -47,18 +47,8 @@ using namespace garden::graphics;
 class ResourceSystem : public System, public Singleton<ResourceSystem>
 {
 public:
-	/**
-	 * @brief 3D model file container types.
-	 */
-	enum class ModelFileType : uint8
-	{
-		USD, glTF, FBX, OBJ, Count
-	};
-
 	static const vector<string_view> imageFileExts;      /**< Supported image file extensions. */
 	static const vector<Image::FileType> imageFileTypes; /**< Supported image file types. */
-	static const vector<string_view> modelFileExts;      /**< Supported model file extensions. */
-	static const vector<ModelFileType> modelFileTypes;   /**< Supported model file types. */
 
 	/**
 	 * @brief Pipeline load options container.
@@ -483,16 +473,6 @@ public:
 	 * @brief Destroys all current scene entities.
 	 */
 	void clearScene();
-
-	#if GARDEN_DEBUG || GARDEN_EDITOR
-	/**
-	 * @brief Loads 3D model from the models directory.
-	 * @param[in] path target 3D model file path
-	 */
-	ID<Entity> loadModel(const fs::path& path);
-
-	// TODO: void storeModel(ID<Entity> model, const fs::path& path);
-	#endif
 
 	/*******************************************************************************************************************
 	 * @brief Loads animation from the resource pack.
