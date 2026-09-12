@@ -36,12 +36,12 @@ struct CutoutSpriteComponent final : public SpriteRenderComponent
 	/**
 	 * @brief Returns sprite alpha cutoff threshold.
 	 */
-	float getAlphaCutoff() const noexcept { return *((const float*)&reserved1); }
+	float getAlphaCutoff() const noexcept { return *((const float*)&unused1); }
 	/**
 	 * @brief Sets sprite alpha cutoff threshold.
-	 * @param value target alpha cutoff value
+	 * @param threshold target alpha cutoff threshold
 	 */
-	void setAlphaCutoff(float value) noexcept { *((float*)&reserved1) = value; }
+	void setAlphaCutoff(float threshold) noexcept { *((float*)&unused1) = threshold; }
 };
 /**
  * @brief Cutout sprite animation frame container.

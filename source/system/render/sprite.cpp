@@ -219,9 +219,9 @@ void SpriteRenderSystem::serializeAnimation(ISerializer& serializer, View<Animat
 	if (frameView->animateIsEnabled)
 		serializer.write("isEnabled", (bool)frameView->isEnabled);
 	if (frameView->animateUvSize)
-		serializer.write("uvSize", frameView->uvSize);
+		serializer.write("uvSize", frameView->uvSize());
 	if (frameView->animateUvOffset)
-		serializer.write("uvOffset", frameView->uvOffset);
+		serializer.write("uvOffset", frameView->uvOffset());
 	if (frameView->animateColorAdd)
 		serializer.write("colorAdd", frameView->colorAdd);
 	if (frameView->animateColorMul)
@@ -241,8 +241,8 @@ void SpriteRenderSystem::deserializeAnimation(IDeserializer& deserializer, View<
 {
 	auto frameView = View<SpriteAnimFrame>(frame); auto boolValue = true;
 	frameView->animateIsEnabled = deserializer.read("isEnabled", boolValue);
-	frameView->animateUvSize = deserializer.read("uvSize", frameView->uvSize);
-	frameView->animateUvOffset = deserializer.read("uvOffset", frameView->uvOffset);
+	frameView->animateUvSize = deserializer.read("uvSize", frameView->uvSize());
+	frameView->animateUvOffset = deserializer.read("uvOffset", frameView->uvOffset());
 	frameView->animateColorAdd = deserializer.read("colorAdd", frameView->colorAdd);
 	frameView->animateColorMul = deserializer.read("colorMul", frameView->colorMul);
 	frameView->animateColorMapLayer = deserializer.read("colorMapLayer", frameView->colorMapLayer);
@@ -270,9 +270,9 @@ void SpriteRenderSystem::animateAsync(View<Component> component,
 	if (frameA->animateIsEnabled)
 		componentView->isEnabled = (bool)round(t) ? frameB->isEnabled : frameA->isEnabled;
 	if (frameA->animateUvSize)
-		componentView->uvSize = (half2)lerp((float2)frameA->uvSize, (float2)frameB->uvSize, t);
+		componentView->uvSize = (half2)lerp((float2)frameA->uvSize(), (float2)frameB->uvSize(), t);
 	if (frameA->animateUvOffset)
-		componentView->uvOffset = (half2)lerp((float2)frameA->uvOffset, (float2)frameB->uvOffset, t);
+		componentView->uvOffset = (half2)lerp((float2)frameA->uvOffset(), (float2)frameB->uvOffset(), t);
 	if (frameA->animateColorAdd)
 		componentView->colorAdd = lerp(frameA->colorAdd, frameB->colorAdd, t);
 	if (frameA->animateColorMul)

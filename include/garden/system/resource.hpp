@@ -455,6 +455,7 @@ public:
 	/*******************************************************************************************************************
 	 * @brief Loads scene from the resource pack.
 	 * @note Loads from the scenes directory in debug build.
+	 * @return Null entity on scene loading error.
 	 * 
 	 * @param[in] path target scene resource path
 	 * @param addRootEntity create root entity for a scene

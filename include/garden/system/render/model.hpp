@@ -34,38 +34,17 @@ enum class ModelFileType : uint8
 };
 
 /**
- * @brief 3D model LOD rendering data container. (Levels of detail)
- */
-struct ModelLOD
-{
-	Ref<Buffer> vertexBuffer = {}; /**< Buffer containing 3D model vertex data. */
-	Ref<Buffer> indexBuffer = {};  /**< Buffer containing 3D model indices. */
-
-	static constexpr uint8 maxCount = UINT8_MAX; /**< Maximal 3D model lod count. */
-};
-/**
  * @brief General 3D model rendering data container.
  */
 struct ModelRenderComponent : public MeshRenderComponent
 {
 protected:
 	float3x4 lastModel = float3x4::identity;
-	ModelLOD* lods = nullptr;
-
-	uint32& _colorMapID() noexcept { return reserved0; }
-	uint32& _normalMapID() noexcept { return reserved1; }
-	uint32& _ormMapID() noexcept { return ormMapID; }
-
-	void _setLodCount(uint8 value) noexcept { reserved2 = (reserved2 & 0xFF00u) | value; }
-	void _setLodCapacity(uint8 value) noexcept { reserved2 = (reserved2 & 0xFFu) | (value << 8u); }
-
-	friend class ModelRenderSystem;
+	MeshLOD* lods = nullptr;
 public:
 	Ref<Image> colorMap = {};            /**< Color map texture instance. */
-	Ref<Image> normalMap = {};            /**< Color map texture instance. */
+	Ref<Image> normalMap = {};           /**< Color map texture instance. */
 	Ref<Image> ormMap = {};              /**< ORM map texture instance. */
-	half2 uvSize = half2::one;           /**< Texture UV size. */
-	half2 uvOffset = half2::zero;        /**< Texture UV offset. */
 	Color colorAdd = Color::transparent; /**< Added to the color map. */
 	Color colorMul = Color::white;       /**< Multiplied by the color map. */
 	Color ormAdd = Color::transparent;   /**< Added to the ORM map. */
@@ -75,41 +54,59 @@ public:
 	fs::path normalMapPath = "";         /**< Normal map texture path. */
 	fs::path ormMapPath = "";            /**< ORM map texture path. */
 	#endif
-protected:
-	uint32 ormMapID = 0;
-public:
-	/**
-	 * @brief Returns 3D model LOD array. (Levels of detail)
-	 */
-	ModelLOD* getLods() noexcept { return lods; }
-	/**
-	 * @brief Returns 3D model LOD array. (Levels of detail)
-	 */
-	const ModelLOD* getLods() const noexcept { return lods; }
 
 	/**
-	 * @brief Returns 3D model LOD array size.
+	 * @brief Returns 3D model texture UV size.
 	 */
-	uint8 getLodCount() const noexcept { return reserved2 & 0xFFu; }
+	half2 getUvSize() const noexcept { return *((const half2*)&colorMap.unused); }
 	/**
-	 * @brief Returns 3D model LOD array capacity.
+	 * @brief Sets 3D model texture UV size.
+	 * @param size target texture UV size
 	 */
-	uint8 getLodCapacity() const noexcept { return (reserved2 >> 8u) & 0xFFu; }
+	void setUvSize(half2 size) noexcept { _uvSize() = size; }
 
 	/**
-	 * @brief Returns 3D model LOD at specified index. (Level of detail)
-	 * @param index target level of detail index
+	 * @brief Returns 3D model texture UV offset.
 	 */
-	ModelLOD& getLod(uint8 index) noexcept
+	half2 getUvOffset() const noexcept { return *((const half2*)&normalMap.unused); }
+	/**
+	 * @brief Sets 3D model texture UV offset.
+	 * @param offset target texture UV offset
+	 */
+	void setUvOffset(half2 offset) noexcept { _uvOffset() = offset; }
+
+	/*******************************************************************************************************************
+	 * @brief Returns 3D model mesh LOD array. (Levels of detail)
+	 */
+	MeshLOD* getLods() noexcept { return lods; }
+	/**
+	 * @brief Returns 3D model mesh LOD array. (Levels of detail)
+	 */
+	const MeshLOD* getLods() const noexcept { return lods; }
+
+	/**
+	 * @brief Returns 3D model mesh LOD array size.
+	 */
+	uint8 getLodCount() const noexcept { return unused2 & 0xFFu; }
+	/**
+	 * @brief Returns 3D model mesh LOD array capacity.
+	 */
+	uint8 getLodCapacity() const noexcept { return (unused2 >> 8u) & 0xFFu; }
+
+	/**
+	 * @brief Returns 3D model mesh LOD at specified index. (Level of detail)
+	 * @param index target mesh level of detail index
+	 */
+	MeshLOD& getLod(uint8 index) noexcept
 	{
 		GARDEN_ASSERT(index < getLodCount());
 		return lods[index];
 	}
 	/**
-	 * @brief Returns 3D model LOD at specified index. (Level of detail)
-	 * @param index target level of detail index
+	 * @brief Returns 3D model mesh LOD at specified index. (Level of detail)
+	 * @param index target mesh level of detail index
 	 */
-	const ModelLOD& getLod(uint8 index) const noexcept
+	const MeshLOD& getLod(uint8 index) const noexcept
 	{
 		GARDEN_ASSERT(index < getLodCount());
 		return lods[index];
@@ -117,22 +114,22 @@ public:
 
 	/**
 	 * @brief Sets 3D model LOD array size.
-	 * @param count target level of detail count
+	 * @param count target mesh level of detail count
 	 */
 	void setLodCount(uint8 count);
 
-	/**
-	 * @brief Adds a new 3D model level of detail.
-	 * @param lod target level of detail to add
+	/*******************************************************************************************************************
+	 * @brief Adds a new 3D model mesh level of detail.
+	 * @param[in] lod target mesh level of detail to add
 	 */
-	void addLod(const ModelLOD& lod = {})
+	void addLod(const MeshLOD& lod = {})
 	{
 		auto lodIndex = getLodCount();
 		setLodCount(lodIndex + 1);
 		getLod(lodIndex) = lod;
 	}
 	/**
-	 * @brief Removes 3D model level of detail.
+	 * @brief Removes 3D model mesh level of detail.
 	 */
 	void removeLod()
 	{
@@ -140,6 +137,32 @@ public:
 		GARDEN_ASSERT(lodCount > 0);
 		setLodCount(lodCount - 1);
 	}
+	/**
+	 * @brief Sets 3D model mesh level of detail.
+	 * @note Extends the LOD array if index is out of range. 
+	 *
+	 * @param[in] lod target mesh level of detail to set
+	 * @param index level of detail index in the array
+	 */
+	void setLod(const MeshLOD& lod, uint8 index)
+	{
+		if (index >= getLodCount())
+			setLodCount(index + 1);
+		getLod(index) = lod;
+	}
+
+protected:
+	uint32& _colorMapID() noexcept { return unused0; }
+	uint32& _normalMapID() noexcept { return unused1; }
+	uint32& _ormMapID() noexcept { return ormMap.unused; }
+
+	half2& _uvSize() noexcept { return *((half2*)&colorMap.unused); }
+	half2& _uvOffset() noexcept { return *((half2*)&normalMap.unused); }
+
+	void _setLodCount(uint8 value) noexcept { unused2 = (unused2 & 0xFF00u) | value; }
+	void _setLodCapacity(uint8 value) noexcept { unused2 = (unused2 & 0xFFu) | (value << 8u); }
+
+	friend class ModelRenderSystem;
 };
 
 /**
@@ -238,14 +261,16 @@ public:
 	virtual psize getModelFrameSize() const = 0;
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR || defined(GARDEN_MODEL_CONVERTER)
+	using ModelComponents = map<string, type_index, less<>>;
 	/**
 	 * @brief Loads 3D model from the specified file.
-	 * @throw GardenError on 3D model data loading error.
+	 * @return Null entity on model loading error.
 	 * 
 	 * @param[in] path target 3d model file path
 	 * @param[in] components model rendering component types or null
+	 * @param attributes required 3D model mesh attributes
 	 */
-	static ID<Entity> loadModel(const fs::path& path, const map<string, type_index>* components = nullptr);
+	static ID<Entity> loadModel(const fs::path& path, const ModelComponents* components = nullptr);
 	#endif
 };
 

@@ -46,17 +46,40 @@ struct SpriteRenderComponent : public MeshRenderComponent
 	SpriteRenderComponent() { setColorMapLayer(0.0f); }
 
 	/**
-	 * @brief Returns sprite alpha cutoff threshold.
+	 * @brief Returns sprite texture UV size.
 	 */
-	float getColorMapLayer() const noexcept { return *((const float*)&reserved0); }
+	half2 getUvSize() const noexcept { return *((const half2*)&colorMap.unused); }
 	/**
-	 * @brief Sets sprite alpha cutoff threshold.
-	 * @param value target alpha cutoff value
+	 * @brief Sets sprite texture UV size.
+	 * @param size target texture UV size
 	 */
-	void setColorMapLayer(float value) noexcept { _colorMapLayer() = value; }
+	void setUvSize(half2 size) noexcept { _uvSize() = size; }
+
+	/**
+	 * @brief Returns sprite texture UV offset.
+	 */
+	half2 getUvOffset() const noexcept { return *((const half2*)&descriptorSet.unused); }
+	/**
+	 * @brief Sets sprite texture UV offset.
+	 * @param offset target texture UV offset
+	 */
+	void setUvOffset(half2 offset) noexcept { _uvOffset() = offset; }
+
+	/**
+	 * @brief Returns sprite color map layer.
+	 */
+	float getColorMapLayer() const noexcept { return *((const float*)&unused0); }
+	/**
+	 * @brief Sets sprite color map layer.
+	 * @param layer target color map layer
+	 */
+	void setColorMapLayer(float layer) noexcept { _colorMapLayer() = layer; }
 
 protected:
-	float& _colorMapLayer() noexcept { return *((float*)&reserved0); }
+	half2& _uvSize() noexcept { return *((half2*)&colorMap.unused); }
+	half2& _uvOffset() noexcept { return *((half2*)&descriptorSet.unused); }
+	float& _colorMapLayer() noexcept { return *((float*)&unused0); }
+
 	friend class SpriteRenderSystem;
 };
 
@@ -76,8 +99,6 @@ struct SpriteAnimFrame : public AnimationFrame
 protected:
 	uint16 _alignment0 = 0;
 public:
-	half2 uvSize = half2::one;
-	half2 uvOffset = half2::zero;
 	Color colorAdd = Color::transparent;
 	Color colorMul = Color::white;
 	Ref<Image> colorMap = {};
@@ -97,6 +118,11 @@ public:
 		return animateIsEnabled | animateUvSize | animateUvOffset | animateColorAdd | 
 			animateColorMul | animateColorMapLayer | animateColorMap;
 	}
+
+	half2& uvSize() noexcept { return *((half2*)&colorMap.unused); }
+	half2 uvSize() const noexcept { return *((const half2*)&colorMap.unused); }
+	half2& uvOffset() noexcept { return *((half2*)&descriptorSet.unused); }
+	half2 uvOffset() const noexcept { return *((const half2*)&descriptorSet.unused); }
 };
 
 /***********************************************************************************************************************

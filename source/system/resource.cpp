@@ -47,16 +47,6 @@ namespace garden::graphics
 		vector<fs::path> paths;
 		ID<Image> instance = {};
 	};
-	struct LodBufferLoadData final
-	{
-		uint64 bufferVersion = 0;
-		vector<BufferChannel> channels;
-		vector<fs::path> paths;
-		const vector<ID<Buffer>>* vertexBuffers;
-		const vector<ID<Buffer>>* indexBuffers;
-		Buffer::Strategy strategy = {};
-		uint8 maxLodCount = 0;
-	};
 
 	struct PipelineLoadData
 	{
@@ -822,60 +812,6 @@ static void loadMissingImage(vector<uint8>& nx, vector<uint8>& px, vector<uint8>
 	loadMissingImage(nz, missingSize, missingType, format);
 	loadMissingImage(pz, missingSize, missingType, format);
 	size = (uint2)missingSize;
-}
-
-//**********************************************************************************************************************
-static void loadMissingModel(const vector<BufferChannel>& channels, vector<uint8>& vertexData, 
-	vector<uint8>& indexData, uint32& vertexCount, uint32& indexCount)
-{
-	const float4 colorMagenta = (float4)Color::magenta; const float4 colorBlack = (float4)Color::black;
-	auto vertexBinarySize = toBinarySize(channels);
-	vertexData.resize(vertexBinarySize * 3);
-	auto vertices = vertexData.data();
-
-	for (auto channel : channels)
-	{
-		switch (channel)
-		{
-		case BufferChannel::Positions:
-			*(float3*)(vertices                       ) = float3(-1.0f, -1.0f, 0.0f);
-			*(float3*)(vertices + vertexBinarySize    ) = float3( 1.0f, -1.0f, 0.0f);
-			*(float3*)(vertices + vertexBinarySize * 2) = float3( 1.0f,  1.0f, 0.0f);
-			vertices += sizeof(float3);
-			break;
-		case BufferChannel::Normals:
-			*(float3*)(vertices                       ) = float3(0.0f, 0.0f, -1.0f);
-			*(float3*)(vertices + vertexBinarySize    ) = float3(0.0f, 0.0f, -1.0f);
-			*(float3*)(vertices + vertexBinarySize * 2) = float3(0.0f, 0.0f, -1.0f);
-			vertices += sizeof(float3);
-			break;
-		case BufferChannel::Tangents:
-			*(float3*)(vertices                       ) = float3(1.0f, 0.0f, 0.0f);
-			*(float3*)(vertices + vertexBinarySize    ) = float3(1.0f, 0.0f, 0.0f);
-			*(float3*)(vertices + vertexBinarySize * 2) = float3(1.0f, 0.0f, 0.0f);
-			vertices += sizeof(float3);
-			break;
-		case BufferChannel::Bitangents:
-			*(float3*)(vertices                       ) = float3(0.0f, 1.0f, 0.0f);
-			*(float3*)(vertices + vertexBinarySize    ) = float3(0.0f, 1.0f, 0.0f);
-			*(float3*)(vertices + vertexBinarySize * 2) = float3(0.0f, 1.0f, 0.0f);
-			vertices += sizeof(float3);
-			break;
-		case BufferChannel::TextureCoords:
-			*(float2*)(vertices                       ) = float2(0.0f, 0.0f);
-			*(float2*)(vertices + vertexBinarySize    ) = float2(1.0f, 0.0f);
-			*(float2*)(vertices + vertexBinarySize * 2) = float2(0.5f, 1.0f);
-			vertices += sizeof(float2);
-			break;
-		case BufferChannel::VertexColors:
-			*(float4*)(vertices                       ) = colorBlack;
-			*(float4*)(vertices + vertexBinarySize    ) = colorBlack;
-			*(float4*)(vertices + vertexBinarySize * 2) = colorMagenta;
-			vertices += sizeof(float4);
-			break;
-		default: abort();
-		}
-	}
 }
 
 #if !GARDEN_PACK_RESOURCES

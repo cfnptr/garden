@@ -14,7 +14,7 @@
 
 /***********************************************************************************************************************
  * @file
- * @brief Translucent 3D model rendering functions.
+ * @brief Color 3D model rendering functions.
  */
 
 #pragma once
@@ -24,25 +24,25 @@ namespace garden
 {
 
 /**
- * @brief Translucent 3D model rendering data container.
+ * @brief Color 3D model rendering data container.
  */
-struct TransModelComponent final : public ModelRenderComponent { };
+struct ColorModelComponent final : public ModelRenderComponent { };
 /**
- * @brief Translucent 3D model animation frame container.
+ * @brief Color 3D model animation frame container.
  */
-struct TransModelFrame final : public ModelAnimFrame { };
+struct ColorModelFrame final : public ModelAnimFrame { };
 
 /**
- * @brief Translucent 3D model rendering system.
+ * @brief Color 3D model rendering system.
  */
-class TransModelSystem final : public ModelCompAnimSystem<
-	TransModelComponent, TransModelFrame, false, false>, public Singleton<TransModelSystem>
+class ColorModelSystem final : public ModelCompAnimSystem<
+	ColorModelComponent, ColorModelFrame, false, false>, public Singleton<ColorModelSystem>
 {
 	/**
-	 * @brief Creates a new translucent 3D model rendering system instance.
+	 * @brief Creates a new color 3D model rendering system instance.
 	 * @param setSingleton set system singleton instance
 	 */
-	TransModelSystem(bool setSingleton = true);
+	ColorModelSystem(bool setSingleton = true);
 
 	string_view getComponentName() const override;
 	MeshRenderType getMeshRenderType() const override;

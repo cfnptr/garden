@@ -13,17 +13,23 @@
 // limitations under the License.
 
 #include "garden/system/render/model.hpp"
+#include "garden/system/render/model/translucent.hpp"
+#include "garden/system/render/model/opaque.hpp"
+#include "garden/system/render/model/cutout.hpp"
+#include "garden/system/render/model/color.hpp"
 #include "garden/system/render/deferred.hpp"
 #include "garden/system/render/forward.hpp"
 #include "garden/system/transform.hpp"
 #include "garden/system/resource.hpp"
 #include "garden/system/app-info.hpp"
+#include "garden/system/log.hpp"
 #include "garden/file.hpp"
 #include "model/instance-data.h"
 
 #include "assimp/Importer.hpp"
 #include "assimp/scene.h"
 #include "assimp/postprocess.h"
+#include "meshoptimizer.h"
 
 using namespace garden;
 
@@ -39,16 +45,20 @@ const vector<ModelFileType> ModelRenderSystem::modelFileTypes =
 
 void ModelRenderComponent::setLodCount(uint8 count)
 {
-	auto lodCount = getLodCount(), lodCapacity = getLodCapacity();
+	auto lodCount = getLodCount();
+	if (count == lodCount)
+		return;
+	
+	auto lodCapacity = getLodCapacity();
 	if (count > lodCapacity)
 	{
 		if (lods) lods = realloc(lods, count);
-		else lods = calloc<ModelLOD>(count);
+		else lods = calloc<MeshLOD>(count);
 		_setLodCapacity(count);
 	}
 	
-	if (count > lodCount) // Note: assuming that ModelLOD can be zero initialized.
-		memset((uint8*)lods + lodCount * sizeof(ModelLOD), 0, (count - lodCount) * sizeof(ModelLOD));
+	if (count > lodCount) // Note: assuming that MeshLOD can be zero initialized.
+		memset((uint8*)lods + lodCount * sizeof(MeshLOD), 0, (count - lodCount) * sizeof(MeshLOD));
 	_setLodCount(count);
 }
 
@@ -158,8 +168,8 @@ void ModelRenderSystem::setInstanceData(ModelRenderComponent* modelRenderView, v
 	auto currModel = (float3x4)transpose4x4(model);
 	auto modelData = (BaseInstanceData*)instanceData;
 	modelData->currModel = currModel;
-	modelData->uvSize = modelRenderView->uvSize;
-	modelData->uvOffset = modelRenderView->uvOffset;
+	modelData->uvSize = modelRenderView->getUvSize();
+	modelData->uvOffset = modelRenderView->getUvOffset();
 	modelData->colorAdd = modelRenderView->colorAdd;
 	modelData->colorMul = modelRenderView->colorMul;
 	modelData->prevModel = modelRenderView->lastModel;
@@ -217,10 +227,10 @@ void ModelRenderSystem::serialize(ISerializer& serializer, const View<Component>
 		serializer.write("aabb", componentView->aabb);
 	if (!componentView->isEnabled)
 		serializer.write("isEnabled", false);
-	if (componentView->uvSize != half2::one)
-		serializer.write("uvSize", componentView->uvSize);
-	if (componentView->uvOffset != half2::zero)
-		serializer.write("uvOffset", componentView->uvOffset);
+	if (componentView->getUvSize() != half2::one)
+		serializer.write("uvSize", componentView->getUvSize());
+	if (componentView->getUvOffset() != half2::zero)
+		serializer.write("uvOffset", componentView->getUvOffset());
 	if (componentView->colorAdd != Color::transparent)
 		serializer.write("colorAdd", componentView->colorAdd);
 	if (componentView->colorMul != Color::white)
@@ -240,8 +250,8 @@ void ModelRenderSystem::deserialize(IDeserializer& deserializer, View<Component>
 	auto componentView = View<ModelRenderComponent>(component);
 	deserializer.read("aabb", componentView->aabb);
 	deserializer.read("isEnabled", componentView->isEnabled);
-	deserializer.read("uvSize", componentView->uvSize);
-	deserializer.read("uvOffset", componentView->uvOffset);
+	deserializer.read("uvSize", componentView->_uvSize());
+	deserializer.read("uvOffset", componentView->_uvOffset());
 	deserializer.read("colorAdd", componentView->colorAdd);
 	deserializer.read("colorMul", componentView->colorMul);
 
@@ -311,9 +321,9 @@ void ModelRenderSystem::animateAsync(View<Component> component,
 	if (frameA->animateIsEnabled)
 		componentView->isEnabled = (bool)round(t) ? frameB->isEnabled : frameA->isEnabled;
 	if (frameA->animateUvSize)
-		componentView->uvSize = (half2)lerp((float2)frameA->uvSize, (float2)frameB->uvSize, t);
+		componentView->_uvSize() = (half2)lerp((float2)frameA->uvSize, (float2)frameB->uvSize, t);
 	if (frameA->animateUvOffset)
-		componentView->uvOffset = (half2)lerp((float2)frameA->uvOffset, (float2)frameB->uvOffset, t);
+		componentView->_uvOffset() = (half2)lerp((float2)frameA->uvOffset, (float2)frameB->uvOffset, t);
 	if (frameA->animateColorAdd)
 		componentView->colorAdd = lerp(frameA->colorAdd, frameB->colorAdd, t);
 	if (frameA->animateColorMul)
@@ -344,35 +354,68 @@ static int32 getModelFilePath(const fs::path& modelPath, fs::path& filePath, Mod
 
 	return fileCount;
 }
-ID<Entity> ModelRenderSystem::loadModel(const fs::path& path, const map<string, type_index>* components)
+static uint8 combineVertexData(const aiMesh* mesh, vector<uint8>& vertices)
+{
+	
+}
+//**********************************************************************************************************************
+ID<Entity> ModelRenderSystem::loadModel(const fs::path& path, const ModelComponents* components)
 {
 	GARDEN_ASSERT(!path.empty());
+
+	if (!components)
+	{
+		static const ModelComponents defaultComponents =
+		{
+			{ "Opaque", typeid(OpaqueModelComponent) },
+			{ "Cutout", typeid(CutoutModelComponent) },
+			{ "Translucent", typeid(TransModelComponent) },
+			{ "Color", typeid(ColorModelComponent) }
+		};
+		components = &defaultComponents;
+	}
+	else 
+	{
+		#if GARDEN_DEBUG
+		GARDEN_ASSERT(!components->empty());
+		for (const auto& pair : *components)
+		{
+			GARDEN_ASSERT(!pair.first.empty());
+		}
+		#endif
+	}
 
 	fs::path inputFilePath; ModelFileType inputFileType;
 	auto fileCount = getModelFilePath(path, inputFilePath, inputFileType);
 	if (fileCount == 0)
-		throw GardenError("3D model file does not exist. (path: " + path.generic_string() + ")");
+	{
+		GARDEN_LOG_ERROR("3D model file does not exist. (path: " + path.generic_string() + ")");
+		return {};
+	}
 	if (fileCount > 1)
-		throw GardenError("3D model file is ambiguous. (path: " + path.generic_string() + ")");
+	{
+		GARDEN_LOG_ERROR("3D model file is ambiguous. (path: " + path.generic_string() + ")");
+		return {};
+	}
 
-	constexpr uint32 processFlags = aiProcess_CalcTangentSpace | aiProcess_Triangulate | 
-		aiProcess_JoinIdenticalVertices | aiProcess_SortByPType;
+	constexpr uint32 processFlags = aiProcess_CalcTangentSpace | 
+		aiProcess_JoinIdenticalVertices | aiProcess_Triangulate | aiProcess_GenNormals |
+		aiProcess_PopulateArmatureData | aiProcess_SortByPType | aiProcess_GenBoundingBoxes;
 
 	Assimp::Importer importer;
 	auto scene = importer.ReadFile(inputFilePath.generic_string().c_str(), processFlags);
 	if (!scene)
 	{
-		throw GardenError("Invalid Assimp 3D model file data. (path: " +
+		GARDEN_LOG_ERROR("Invalid Assimp 3D model file data. (path: " +
 			path.generic_string() + ", error: " + string(importer.GetErrorString()) + ")");
+		return {};
 	}
 
 	auto manager = Manager::getInstance();
 	auto graphicsSystem = GraphicsSystem::getInstance();
 	auto meshes = scene->mMeshes; auto materials = scene->mMaterials;
-
 	stack<aiNode*> nodes; nodes.push(scene->mRootNode);
-	vector<ModelLOD> tmpLods; map<uint32, ModelLOD> sharedLods;
-	ID<Entity> rootEntity = {}, lastEntity = {}; uint32 lodCount = 0;
+	map<uint32, MeshLOD> sharedLods; ID<Entity> rootEntity = {}, lastEntity = {};
 
 	while (!nodes.empty())
 	{
@@ -391,8 +434,6 @@ ID<Entity> ModelRenderSystem::loadModel(const fs::path& path, const map<string, 
 		transformView->debugName = node->mName.C_Str();
 		#endif
 
-		auto modelRenderView = manager->add<ModelRenderComponent>(newEntity);
-		auto& lods = modelRenderView->lods;
 		auto childrenCount = node->mNumChildren;
 		auto children = node->mChildren;
 
@@ -404,33 +445,70 @@ ID<Entity> ModelRenderSystem::loadModel(const fs::path& path, const map<string, 
 
 			if (lodStrLength > 4)
 			{
+				uint8 lodIndex = 0; lodStr += 4;
+				if (from_chars(lodStr, lodStr + lodStrLength, lodIndex).ec != errc())
+				{
+					GARDEN_LOG_ERROR("Invalid Assimp 3D model LOD format. ("
+						"node: " + string(child->mName.C_Str()) + ", "
+						"path: " + path.generic_string() + ")");
+					continue;
+				}
+
 				auto meshIds = child->mMeshes;
 				auto meshIdCount = child->mNumMeshes;
 
 				for (uint32 j = 0; j < meshIdCount; j++)
 				{
-					auto meshId = meshIds[j];
-					auto searchResult = sharedLods.find(meshId);
-					if (searchResult != sharedLods.end())
+					auto meshId = meshIds[j]; auto mesh = meshes[meshId];
+					if (mesh->mPrimitiveTypes != aiPrimitiveType_TRIANGLE)
+						continue; // Note: skipping non triangle primitives.
+
+					if (!mesh->HasPositions() || !mesh->HasFaces())
 					{
-						
+						GARDEN_LOG_ERROR("Missing Assimp 3D model attributes. ("
+							"mesh: " + string(mesh->mName.C_Str()) + ", "
+							"node: " + string(child->mName.C_Str()) + ", "
+							"path: " + path.generic_string() + ")");
+						continue;
 					}
 
-					//auto mesh = meshes[];
-					//mesh->mMethod
+					auto materialId = mesh->mMaterialIndex;
+					auto material = materials[materialId];
+					auto componentType = components->begin()->second;
+					auto componentResult = components->find(material->GetName().C_Str());
+
+					if (componentResult != components->end())
+						componentType = componentResult->second;
+					else
+					{
+						GARDEN_LOG_ERROR("Unknown Assimp 3D model material type. ("
+							"material: " + string(material->GetName().C_Str()) + ", "
+							"node: " + string(child->mName.C_Str()) + ", "
+							"path: " + path.generic_string() + ")");
+					}
+					
+					bool isAdded;
+					auto modelRenderView = View<ModelRenderComponent>(
+						manager->getOrAdd(newEntity, componentType, isAdded));
+					if (isAdded)
+					{
+						// TODO: get and set material params
+					}
+
+					auto lodResult = sharedLods.find(meshId);
+					if (lodResult != sharedLods.end())
+					{
+						modelRenderView->setLod(lodResult->second, lodIndex);
+						continue;
+					}
+
+					// TODO: combine vertex data
+
+					//auto vertexBuffer = graphicsSystem->createBuffer(Buffer::Usage::Vertex | 
+					//	Buffer::Usage::TransferDst, 
+					//	Buffer::CpuAccess::None, );
+					//tmpLods[lodIndex].vertexBuffer = 
 				}
-
-				uint8 lodIndex = 0; lodStr += 4;
-				if (from_chars(lodStr, lodStr + lodStrLength, lodIndex).ec != errc())
-					continue; // TODO: should we throw an error if invalid lod index format?
-				if (lodIndex >= tmpLods.size()) tmpLods.resize(lodIndex + 1);
-
-				/*
-				auto vertexBuffer = graphicsSystem->createBuffer(Buffer::Usage::Vertex | 
-					Buffer::Usage::TransferDst, 
-					Buffer::CpuAccess::None, )
-				tmpLods[lodIndex].vertexBuffer = 
-				*/
 			}
 			else nodes.push(child);
 		}

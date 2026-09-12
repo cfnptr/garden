@@ -28,14 +28,6 @@ using namespace ecsm;
 class BufferExt;
 
 /**
- * @brief Common buffer data channels.
- */
-enum class BufferChannel : uint8
-{
-	Positions, Normals, Tangents, Bitangents, TextureCoords, VertexColors, Count
-};
-
-/**
  * @brief Graphics rendering data storage.
  * 
  * @details
@@ -441,34 +433,5 @@ public:
 	 */
 	static void destroy(Buffer& buffer) { buffer.destroy(); }
 };
-
-/**
- * @brief Returns buffer channel binary size in bytes.
- * @param channel target buffer channel
- */
-static psize toBinarySize(BufferChannel channel) noexcept
-{
-	switch (channel)
-	{
-		case BufferChannel::Positions: return sizeof(float3);
-		case BufferChannel::Normals: return sizeof(float3);
-		case BufferChannel::Tangents: return sizeof(float3);
-		case BufferChannel::Bitangents: return sizeof(float3);
-		case BufferChannel::TextureCoords: return sizeof(float2);
-		case BufferChannel::VertexColors: return sizeof(float4);
-		default: abort();
-	}
-}
-/**
- * @brief Returns buffer channels binary size in bytes.
- * @param[in] channels target buffer channels
- */
-static psize toBinarySize(const vector<BufferChannel>& channels) noexcept
-{
-	psize binarySize = 0;
-	for (auto channel : channels)
-		binarySize += toBinarySize(channel);
-	return binarySize;
-}
 
 } // namespace garden::graphics

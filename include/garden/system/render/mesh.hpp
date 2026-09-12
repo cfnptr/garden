@@ -39,15 +39,46 @@ enum class MeshRenderType : uint8
 	Count        /**< Common mesh render type count. */
 };
 
+/**
+ * @brief Common mesh attributes.
+ */
+enum class MeshAttribute : uint8
+{
+	None         = 0x00,
+	Position     = 0x01,
+	Normal       = 0x02,
+	Tangent      = 0x04,
+	Bitangent    = 0x08,
+	TextureCoord = 0x10,
+	VertexColor  = 0x20,
+};
+
+static constexpr uint8 meshAttributeCount = 6; /**< Common mesh attribute count. */
+DECLARE_ENUM_CLASS_FLAG_OPERATORS(MeshAttribute)
+
+/**
+ * @brief Mesh LOD rendering data container. (Levels of detail)
+ */
+struct MeshLOD
+{
+	Ref<Buffer> vertexBuffer = {}; /**< Buffer containing mesh vertex data. */
+	Ref<Buffer> indexBuffer = {};  /**< Buffer containing mesh indices. */
+	#if GARDEN_DEBUG || GARDEN_EDITOR
+	fs::path vertexBufferPath = ""; /**< Mesh vertex buffer path. */
+	fs::path indexBufferPath = "";  /**< Mesh index buffer path. */
+	#endif
+	static constexpr uint8 maxCount = UINT8_MAX; /**< Maximal mesh LOD count. */
+};
+
 /***********************************************************************************************************************
  * @brief General mesh rendering data container.
  */
 struct MeshRenderComponent : public Component
 {
 protected:
-	uint32 reserved0 = 0; /**< Can be used by the inheriting structs. */
-	uint32 reserved1 = 0; /**< Can be used by the inheriting structs. */
-	uint16 reserved2 = 0; /**< Can be used by the inheriting structs. */
+	uint32 unused0 = 0; /**< Can be used by the inheriting structs. */
+	uint32 unused1 = 0; /**< Can be used by the inheriting structs. */
+	uint16 unused2 = 0; /**< Can be used by the inheriting structs. */
 public:
 	volatile bool isEnabled = true;  /**< Is mesh should be rendered. */
 	volatile bool isVisible = false; /**< Is mesh visible on camera after last frustum culling. */
@@ -321,5 +352,23 @@ class ModelMatrixSystem : public ComponentSystem<ModelMatrixComponent, false>, p
 	string_view getComponentName() const override;
 	friend class ecsm::Manager;
 };
+
+/**
+ * @brief Returns mesh attribute binary size in bytes.
+ * @param attribute target mesh attribute
+ */
+static psize toBinarySize(MeshAttribute attribute) noexcept
+{
+	switch (attribute)
+	{
+		case MeshAttribute::Position: return sizeof(float3);
+		case MeshAttribute::Normal: return sizeof(float3);
+		case MeshAttribute::Tangent: return sizeof(float3);
+		case MeshAttribute::Bitangent: return sizeof(float3);
+		case MeshAttribute::TextureCoord: return sizeof(float2);
+		case MeshAttribute::VertexColor: return sizeof(float4);
+		default: abort();
+	}
+}
 
 } // namespace garden
