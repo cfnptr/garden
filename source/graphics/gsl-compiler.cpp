@@ -1734,7 +1734,7 @@ static bool compileGraphicsShader(const fs::path& inputPath, const fs::path& out
 	fileData.outputFileStream.close();
 	compileShaderFile(outputFilePath, includePaths);
 
-	vector<uint8>* shaderCode;
+	raw_vector<uint8>* shaderCode;
 	if (pipelineStage == PipelineStage::Vertex) shaderCode = &data.vertexCode;
 	else if (pipelineStage == PipelineStage::Fragment) shaderCode = &data.fragmentCode;
 	else abort();
@@ -2148,7 +2148,7 @@ static bool compileRayTracingShader(const fs::path& inputPath, const fs::path& o
 	fileData.outputFileStream.close();
 	compileShaderFile(outputFilePath, includePaths);
 
-	vector<uint8>* shaderCode;
+	raw_vector<uint8>* shaderCode;
 	if (pipelineStage == PipelineStage::RayGeneration)
 	{
 		if (data.rayGenGroups.size() <= groupIndex) data.rayGenGroups.push_back({});

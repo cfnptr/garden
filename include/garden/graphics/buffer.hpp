@@ -179,8 +179,8 @@ public:
 	 * 
 	 * @throw GardenError if failed to map buffer memory.
 	 */
-	template<typename T = float>
-	void writeData(const vector<T>& data, psize count = 0, psize arrayOffset = 0, uint64 bufferOffset = 0)
+	template<typename T = float, class A = allocator<T>>
+	void writeData(const vector<T, A>& data, psize count = 0, psize arrayOffset = 0, uint64 bufferOffset = 0)
 	{
 		if (count == 0)
 		{

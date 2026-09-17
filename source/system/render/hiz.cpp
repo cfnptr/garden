@@ -41,7 +41,7 @@ static void createHizFramebuffers(GraphicsSystem* graphicsSystem,
 	auto frameSize = graphicsSystem->getScaledFrameSize();
 	auto hisBufferView = graphicsSystem->get(hizBuffer);
 	auto mipCount = hisBufferView->getMipCount();
-	framebuffers.resize(mipCount); auto framebufferData = framebuffers.data();
+	framebuffers.reserve(mipCount);
 
 	for (uint8 i = 0; i < mipCount; i++)
 	{
@@ -52,7 +52,7 @@ static void createHizFramebuffers(GraphicsSystem* graphicsSystem,
 		};
 		auto framebuffer = graphicsSystem->createFramebuffer(frameSize, std::move(colorAttachments));
 		SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.hiz" + to_string(i));
-		framebufferData[i] = framebuffer; frameSize = max(frameSize / 2u, uint2::one);
+		framebuffers.push_back(framebuffer); frameSize = max(frameSize / 2u, uint2::one);
 	}
 }
 
@@ -66,19 +66,19 @@ static void createHizDescriptorSets(GraphicsSystem* graphicsSystem, ID<GraphicsP
 	auto deferredSystem = DeferredRenderSystem::getInstance();
 	auto hisBufferView = graphicsSystem->get(hizBuffer);
 	auto mipCount = hisBufferView->getMipCount();
-	descriptorSets.resize(mipCount); auto descriptorSetData = descriptorSets.data();
+	descriptorSets.reserve(mipCount);
 
 	auto uniforms = getUniforms(deferredSystem->getDepthOnlyIV());
 	auto descriptorSet = graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms));
 	SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.hiz0");
-	descriptorSetData[0] = descriptorSet;
+	descriptorSets.push_back(descriptorSet);
 
 	for (uint8 i = 1; i < mipCount; i++)
 	{
 		uniforms = getUniforms(hisBufferView->getView(0, i - 1));
 		descriptorSet = graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms));
 		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.hiz" + to_string(i));
-		descriptorSetData[i] = descriptorSet;
+		descriptorSets.push_back(descriptorSet);
 	}
 }
 

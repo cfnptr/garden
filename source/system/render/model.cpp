@@ -24,6 +24,8 @@
 #include "garden/system/app-info.hpp"
 #include "garden/system/log.hpp"
 #include "garden/file.hpp"
+
+#include "math/normal-mapping.hpp"
 #include "model/instance-data.h"
 
 #include "assimp/Importer.hpp"
@@ -336,6 +338,16 @@ void ModelRenderSystem::animateAsync(View<Component> component,
 
 #if GARDEN_DEBUG || GARDEN_EDITOR || defined(GARDEN_MODEL_CONVERTER)
 //**********************************************************************************************************************
+namespace garden
+{
+	struct MeshOptVertex
+	{
+		float3 position;
+		half2 normal;
+		short2 texCoords;
+	};
+}
+
 static int32 getModelFilePath(const fs::path& modelPath, fs::path& filePath, ModelFileType& fileType)
 {
 	auto& appResourcesPath = AppInfoSystem::getInstance()->getResourcesPath();
@@ -354,10 +366,24 @@ static int32 getModelFilePath(const fs::path& modelPath, fs::path& filePath, Mod
 
 	return fileCount;
 }
-static uint8 combineVertexData(const aiMesh* mesh, vector<uint8>& vertices)
+static void optimizeVertexData(const aiMesh* mesh, raw_vector<uint8>& vertices)
 {
-	
+	auto vertexCount = mesh->mNumVertices;
+	vertices.resize(vertexCount * sizeof(MeshOptVertex));
+	auto vertexData = (MeshOptVertex*)vertices.data();
+	const auto meshVertices = mesh->mVertices, meshNormals = mesh->mNormals;
+	const auto meshTexCoords = mesh->mTextureCoords[0];
+
+	for (uint32 i = 0; i < vertexCount; i++)
+	{
+		auto& vertex = vertexData[i];
+		auto position = meshVertices[i], normal = meshNormals[i], texCoords = meshTexCoords[i];
+		vertex.position = float3(position.x, position.y, position.z);
+		vertex.normal = (half2)encodeNormalOct2(float3(normal.x, normal.y, normal.z));
+		vertex.texCoords = (short2)fma(saturate(float2(texCoords.x, texCoords.y)), float2(UINT16_MAX), float2(0.5f));
+	}
 }
+
 //**********************************************************************************************************************
 ID<Entity> ModelRenderSystem::loadModel(const fs::path& path, const ModelComponents* components)
 {
@@ -398,9 +424,8 @@ ID<Entity> ModelRenderSystem::loadModel(const fs::path& path, const ModelCompone
 		return {};
 	}
 
-	constexpr uint32 processFlags = aiProcess_CalcTangentSpace | 
-		aiProcess_JoinIdenticalVertices | aiProcess_Triangulate | aiProcess_GenNormals |
-		aiProcess_PopulateArmatureData | aiProcess_SortByPType | aiProcess_GenBoundingBoxes;
+	constexpr uint32 processFlags = aiProcess_JoinIdenticalVertices | aiProcess_Triangulate | 
+		aiProcess_GenNormals | aiProcess_PopulateArmatureData | aiProcess_SortByPType | aiProcess_GenBoundingBoxes;
 
 	Assimp::Importer importer;
 	auto scene = importer.ReadFile(inputFilePath.generic_string().c_str(), processFlags);
@@ -415,7 +440,8 @@ ID<Entity> ModelRenderSystem::loadModel(const fs::path& path, const ModelCompone
 	auto graphicsSystem = GraphicsSystem::getInstance();
 	auto meshes = scene->mMeshes; auto materials = scene->mMaterials;
 	stack<aiNode*> nodes; nodes.push(scene->mRootNode);
-	map<uint32, MeshLOD> sharedLods; ID<Entity> rootEntity = {}, lastEntity = {};
+	map<uint32, MeshLOD> sharedLods; raw_vector<uint8> vertices;
+	ID<Entity> rootEntity = {}, lastEntity = {};
 
 	while (!nodes.empty())
 	{
@@ -463,7 +489,8 @@ ID<Entity> ModelRenderSystem::loadModel(const fs::path& path, const ModelCompone
 					if (mesh->mPrimitiveTypes != aiPrimitiveType_TRIANGLE)
 						continue; // Note: skipping non triangle primitives.
 
-					if (!mesh->HasPositions() || !mesh->HasFaces())
+					if (!mesh->HasPositions() || !mesh->HasFaces() || 
+						!mesh->HasNormals() || !mesh->HasTextureCoords(0))
 					{
 						GARDEN_LOG_ERROR("Missing Assimp 3D model attributes. ("
 							"mesh: " + string(mesh->mName.C_Str()) + ", "

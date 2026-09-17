@@ -368,7 +368,7 @@ void JsonDeserializer::load(string_view json)
 	hierarchy = {};
 	hierarchy.emplace(&data);
 }
-void JsonDeserializer::load(const vector<uint8>& bson)
+void JsonDeserializer::load(const raw_vector<uint8>& bson)
 {
 	GARDEN_ASSERT(!bson.empty());
 	data = json::from_bson(bson);

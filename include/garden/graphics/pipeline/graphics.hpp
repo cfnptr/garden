@@ -362,9 +362,9 @@ public:
 	 */
 	struct ShaderOverrides final
 	{
-		vector<uint8> headerData;
-		vector<uint8> vertexCode;
-		vector<uint8> fragmentCode;
+		raw_vector<uint8> headerData;
+		raw_vector<uint8> vertexCode;
+		raw_vector<uint8> fragmentCode;
 	};
 	/**
 	 * @brief Graphics pipeline create data container.
@@ -372,8 +372,8 @@ public:
 	 */
 	struct GraphicsCreateData : public CreateData
 	{
-		vector<uint8> vertexCode;
-		vector<uint8> fragmentCode;
+		raw_vector<uint8> vertexCode;
+		raw_vector<uint8> fragmentCode;
 		vector<VertexAttribute> vertexAttributes;
 		vector<BlendState> blendStates;
 		vector<Image::Format> colorFormats;

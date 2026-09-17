@@ -239,7 +239,7 @@ psize UTF::convert(u32string_view utf32, string& utf8)
 {
 	if (utf32.empty())
 	{
-		utf8.resize(0);
+		utf8.clear();
 		return 0;
 	}
 
@@ -277,7 +277,7 @@ psize UTF::convert(string_view utf8, u32string& utf32)
 {
 	if (utf8.empty())
 	{
-		utf32.resize(0);
+		utf32.clear();
 		return 0;
 	}
 

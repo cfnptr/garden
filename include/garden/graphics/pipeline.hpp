@@ -137,7 +137,7 @@ public:
 		SpecConsts specConsts;
 		SpecConstValues specConstValues;
 		SamplerStates samplerStateOverrides;
-		vector<uint8> headerData;
+		raw_vector<uint8> headerData;
 		fs::path shaderPath;
 		uint64 pipelineVersion = 0;
 		uint32 maxBindlessCount = 0;
@@ -181,7 +181,7 @@ protected:
 	}
 	bool destroy() override;
 
-	static vector<void*> createShaders(const vector<uint8>* codeArray, uint8 shaderCount, const fs::path& path);
+	static vector<void*> createShaders(const raw_vector<uint8>* codeArray, uint8 shaderCount, const fs::path& path);
 	static void destroyShaders(const vector<void*>& shaders);
 
 	static void fillVkSpecConsts(const fs::path& path, void* specInfo, const SpecConsts& specConsts, 

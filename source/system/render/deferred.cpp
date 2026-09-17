@@ -44,19 +44,19 @@ static void createGBuffers(GraphicsSystem* graphicsSystem,
 
 	const Image::Mips mips = { { nullptr } };
 	auto frameSize = graphicsSystem->getScaledFrameSize();
-	gBuffers.resize(G_BUFFER_COUNT); auto gBufferData = gBuffers.data();
+	gBuffers.reserve(G_BUFFER_COUNT);
 
 	for (uint8 i = 0; i < G_BUFFER_COUNT; i++)
 	{
 		if (formats[i] == Image::Format::Undefined)
 		{
-			gBufferData[i] = {};
+			gBuffers.push_back({});
 			continue;
 		}
 
 		auto gBuffer = graphicsSystem->createImage(formats[i], usage, mips, frameSize, strategy);
 		SET_RESOURCE_DEBUG_NAME(gBuffer, "image.deferred.gBuffer" + to_string(i));
-		gBufferData[i] = gBuffer;
+		gBuffers.push_back(gBuffer);
 	}
 }
 

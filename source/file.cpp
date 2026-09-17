@@ -32,7 +32,7 @@ psize File::getFileSize(const fs::path& filePath)
 	return (psize)inputStream.tellg();
 }
 
-void File::loadBinary(const fs::path& filePath, vector<uint8>& data)
+void File::loadBinary(const fs::path& filePath, raw_vector<uint8>& data)
 {
 	GARDEN_ASSERT(!filePath.empty());
 	ifstream inputStream(filePath, ios::in | ios::binary | ios::ate);
@@ -50,7 +50,7 @@ void File::loadBinary(const fs::path& filePath, vector<uint8>& data)
 	if (!inputStream.read((char*)data.data(), fileSize))
 		throw GardenError("Failed to read binary file. (path: " + filePath.generic_string() + ")");
 }
-bool File::tryLoadBinary(const fs::path& filePath, vector<uint8>& data)
+bool File::tryLoadBinary(const fs::path& filePath, raw_vector<uint8>& data)
 {
 	GARDEN_ASSERT(!filePath.empty());
 	ifstream inputStream(filePath, ios::in | ios::binary | ios::ate);

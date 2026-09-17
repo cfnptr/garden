@@ -44,8 +44,8 @@ public:
 	 */
 	struct ShaderOverrides final
 	{
-		vector<uint8> headerData;
-		vector<uint8> code;
+		raw_vector<uint8> headerData;
+		raw_vector<uint8> code;
 	};
 	/**
 	 * @brief Compute pipeline create data container.
@@ -56,7 +56,7 @@ public:
 		uint8 _alignment0 = 0;
 		uint16 _alignment1 = 0;
 		uint3 localSize = uint3::zero;
-		vector<uint8> code;
+		raw_vector<uint8> code;
 	};
 private:
 	uint8 _alignment0 = 0;

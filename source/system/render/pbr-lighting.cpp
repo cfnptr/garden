@@ -1359,8 +1359,7 @@ void PbrLightingSystem::createIblSpecularViews(ID<Image> specular, vector<ID<Ima
 	auto specularView = graphicsSystem->get(specular);
 	auto specularFormat = specularView->getFormat();
 	auto specularViewCount = (uint8)(specularView->getMipCount() - 1);
-	specularViews.resize(specularViewCount);
-	auto specularViewData = specularViews.data();
+	specularViews.reserve(specularViewCount);
 
 	for (uint8 i = 0; i < specularViewCount; i++)
 	{
@@ -1368,7 +1367,7 @@ void PbrLightingSystem::createIblSpecularViews(ID<Image> specular, vector<ID<Ima
 			Image::Type::Texture2DArray, specularFormat, 0, Image::cubemapFaceCount, i + 1, 1);
 		SET_RESOURCE_DEBUG_NAME(specularView, "imageView.pbrLighting.specular" + 
 			to_string(*specularView) + "_" + to_string(i));
-		specularViewData[i] = specularView;
+		specularViews.push_back(specularView);
 	}
 }
 void PbrLightingSystem::createIblDescriptorSets(ID<Image> skybox, ID<Buffer> specularCache, 
@@ -1384,9 +1383,8 @@ void PbrLightingSystem::createIblDescriptorSets(ID<Image> skybox, ID<Buffer> spe
 	auto graphicsSystem = GraphicsSystem::getInstance();
 	auto skyboxView = graphicsSystem->get(skybox)->getView();
 	auto specularViewCount = (uint8)specularViews.size();
-	iblDescriptorSets.resize(specularViews.size());
-	auto descriptorSetData = iblDescriptorSets.data();
 	auto specularViewData = specularViews.data();
+	iblDescriptorSets.reserve(specularViews.size());
 
 	for (uint8 i = 0; i < specularViewCount; i++)
 	{
@@ -1399,7 +1397,7 @@ void PbrLightingSystem::createIblDescriptorSets(ID<Image> skybox, ID<Buffer> spe
 
 		auto descriptorSet = graphicsSystem->createDescriptorSet(iblSpecularPipeline, std::move(iblSpecularUniforms));
 		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.pbrLighting.iblSpecular" + to_string(*descriptorSet));
-		descriptorSetData[i] = descriptorSet;
+		iblDescriptorSets.push_back(descriptorSet);
 	}
 }
 void PbrLightingSystem::dispatchIblSpecular(ID<Image> skybox, ID<Image> specular,
@@ -1515,7 +1513,7 @@ void PbrLightingSystem::loadCubemap(const fs::path& path, Image::Format& format,
 	GARDEN_ASSERT(!path.empty());
 	SET_CPU_ZONE_SCOPED("PBR Cubemap Load");
 	
-	vector<uint8> nx, px, ny, py, nz, pz; uint2 size;
+	raw_vector<uint8> nx, px, ny, py, nz, pz; uint2 size;
 	ResourceSystem::getInstance()->loadCubemapData(path, nx, px, ny, py, nz, pz, size, format, true);
 	auto cubemapSize = size.x;
 

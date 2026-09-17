@@ -14,6 +14,7 @@
 
 #pragma once
 #include "garden/serialize.hpp"
+#include "garden/raw-vector.hpp"
 #include "nlohmann/json.hpp"
 #include <stack>
 
@@ -101,7 +102,7 @@ class JsonDeserializer final : public IDeserializer
 public:
 	JsonDeserializer();
 	JsonDeserializer(string_view json) { load(json); }
-	JsonDeserializer(const vector<uint8>& bson) { load(bson); }
+	JsonDeserializer(const raw_vector<uint8>& bson) { load(bson); }
 	JsonDeserializer(const fs::path& filePath) { load(filePath); }
 
 	JsonDeserializer(const JsonDeserializer&) = delete;
@@ -110,7 +111,7 @@ public:
 	JsonDeserializer& operator=(JsonDeserializer&&) = delete;
 
 	void load(string_view json);
-	void load(const vector<uint8>& bson);
+	void load(const raw_vector<uint8>& bson);
 	void load(const fs::path& filePath);
 
 	bool beginChild(string_view name) override;

@@ -19,7 +19,7 @@
 
 #pragma once
 #include "garden/defines.hpp"
-#include <vector>
+#include "garden/raw-vector.hpp"
 
 namespace garden
 {
@@ -41,7 +41,7 @@ public:
 	 * 
 	 * @throw GardenError if failed to load file data.
 	 */
-	static void loadBinary(const fs::path& filePath, vector<uint8>& data);
+	static void loadBinary(const fs::path& filePath, raw_vector<uint8>& data);
 	/**
 	 * @brief Loads binary data from the file.
 	 * 
@@ -50,7 +50,7 @@ public:
 	 * 
 	 * @return True on success, otherwise false.
 	 */
-	static bool tryLoadBinary(const fs::path& filePath, vector<uint8>& data);
+	static bool tryLoadBinary(const fs::path& filePath, raw_vector<uint8>& data);
 
 	/**
 	 * @brief Loads binary data from the file.
@@ -91,8 +91,8 @@ public:
 	 * 
 	 * @throw GardenError if failed to store file data.
 	 */
-	template<class T>
-	static void storeBinary(const fs::path& filePath, const vector<T>& data)
+	template<typename T = uint8, class A = allocator<T>>
+	static void storeBinary(const fs::path& filePath, const vector<T, A>& data)
 	{
 		storeBinary(filePath, data.data(), data.size() * sizeof(T));
 	}

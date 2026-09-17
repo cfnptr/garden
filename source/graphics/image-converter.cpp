@@ -76,14 +76,14 @@ bool ImageConverter::compress(const fs::path& filePath, const fs::path& inputPat
 	GARDEN_ASSERT(!inputPath.empty());
 	GARDEN_ASSERT(!outputPath.empty());
 
-	auto path = inputPath / filePath; vector<uint8> imageData;
+	auto path = inputPath / filePath; raw_vector<uint8> imageData;
 	if (!File::tryLoadBinary(path, imageData))
 		return false;
 
 	auto extension = filePath.extension();
 	GARDEN_ASSERT(!extension.empty());
 
-	vector<uint8> pixels; uint4 size; Image::Type type; Image::Format format; 
+	raw_vector<uint8> pixels; uint4 size; Image::Type type; Image::Format format; 
 	Image::loadFileData(imageData.data(), imageData.size(), toImageFileType(
 		extension.generic_string()), pixels, size, type, format);
 
@@ -112,13 +112,13 @@ bool ImageConverter::equi2cube(const fs::path& filePath, const fs::path& inputPa
 	GARDEN_ASSERT(!inputPath.empty());
 	GARDEN_ASSERT(!outputPath.empty());
 
-	auto path = inputPath / filePath; vector<uint8> imageData;
+	auto path = inputPath / filePath; raw_vector<uint8> imageData;
 	if (!File::tryLoadBinary(path, imageData))
 		return false;
 
 	auto extension = filePath.extension();
 	GARDEN_ASSERT(!extension.empty());
-	vector<uint8> equiPixels; uint4 equiSize; Image::Type imageType;
+	raw_vector<uint8> equiPixels; uint4 equiSize; Image::Type imageType;
 	auto imageFormat = Image::Format::Undefined;
 
 	Image::loadFileData(imageData.data(), imageData.size(), toImageFileType(
@@ -132,7 +132,7 @@ bool ImageConverter::equi2cube(const fs::path& filePath, const fs::path& inputPa
 	auto faceBinarySize = toBinarySize((psize)cubemapSize * cubemapSize, imageFormat);
 	GARDEN_ASSERT_MSG(faceBinarySize > 0, "Assert " + filePath.generic_string());
 
-	vector<uint8> nx(faceBinarySize), px(faceBinarySize), ny(faceBinarySize), 
+	raw_vector<uint8> nx(faceBinarySize), px(faceBinarySize), ny(faceBinarySize), 
 		py(faceBinarySize), nz(faceBinarySize), pz(faceBinarySize);
 	if (imageFormat == Image::Format::SfloatR16G16B16A16)
 	{

@@ -157,7 +157,7 @@ static void createVkBlas(const void* geometryArray, uint32 geometryCount, uint8 
 	geometryInfo.geometryCount = geometryCount;
 	geometryInfo.pGeometries = asArray;
 
-	vector<uint32_t> maxPrimitiveCounts(geometryCount);
+	raw_vector<uint32_t> maxPrimitiveCounts(geometryCount);
 	auto maxPrimitiveCountData = maxPrimitiveCounts.data();
 	for (uint32 i = 0; i < geometryCount; i++)
 		maxPrimitiveCountData[i] = rangeInfos[i].primitiveCount;

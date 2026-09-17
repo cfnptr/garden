@@ -34,36 +34,32 @@ float3 unpackNormal3x10(uint32 packed)
 }
 
 //**********************************************************************************************************************
-// Signed Octahedron Normal Encoding (R10G10B10A2)
+// Signed Octahedron Normal Encoding (R16G16 or R10G10B10A2)
 // https://johnwhite3d.blogspot.com/2017/10/signed-octahedron-normal-encoding.html
 
-float3 projectNormToOctXY(float3 normal)
-{
-	normal.xy /= (abs(normal.x) + abs(normal.y) + abs(normal.z));
-	return normal;
-}
-float2 wrapNormOct(float2 normal)
-{
-	return (1.0f - abs(normal.yx)) * float2(normal.x >= 0.0f ? 1.0f : -1.0f, normal.y >= 0.0f ? 1.0f : -1.0f);
-}
+float2 projectNormToOctXY(float3 normal) { return normal.xy / dot(abs(normal), float3(1.0f)); }
 
 float2 encodeNormalOct2(float3 normal) // [result in -1.0 - 1.0 range]
 {
-	normal = projectNormToOctXY(normalize(normal));
-	return normal.z >= 0.0f ? normal.xy : wrapNormOct(normal.xy);
+	float2 projNorm = projectNormToOctXY(normal);
+	float2 normSign = float2(normal.x >= 0.0f ? 1.0f : -1.0f, normal.y >= 0.0f ? 1.0f : -1.0f);
+	return normal.z >= 0.0f ? projNorm : (1.0f - abs(projNorm.yx)) * normSign;
 }
 float3 decodeNormalOct2(float2 encoded)
 {
-	float z = 1.0f - abs(encoded.x) - abs(encoded.y);
-	return normalize(float3(z >= 0.0f ? encoded.xy : wrapNormOct(encoded.xy), z));
+	float3 normal = float3(encoded, 1.0f - (abs(encoded.x) + abs(encoded.y)));
+	float t = saturate(-normal.z);
+	normal.x += normal.x >= 0.0f ? -t : t;
+	normal.y += normal.y >= 0.0f ? -t : t;
+	return normalize(normal);
 }
 
 float3 encodeNormalOct3(float3 normal) // [result in 0.0 - 1.0 range]
 {
-	normal = projectNormToOctXY(normalize(normal));
-	float y = fma(normal.y, 0.5f, 0.5f);
-	float x = fma(normal.x, 0.5f, y);
-	y = fma(normal.x, -0.5f, y);
+	float2 projNorm = projectNormToOctXY(normal);
+	float y = fma(projNorm.y, 0.5f, 0.5f);
+	float x = fma(projNorm.x, 0.5f, y);
+	y = fma(projNorm.x, -0.5f, y);
 	float z = saturate(normal.z * FLT_MAX);
 	return float3(x, y, z);
 }
@@ -71,7 +67,7 @@ float3 decodeNormalOct3(float3 encoded)
 {
 	float3 normal = float3(encoded.x - encoded.y, 
 		encoded.x + encoded.y - 1.0f, fma(encoded.z, 2.0f, -1.0f));
-	normal.z *= 1.0f - abs(normal.x) - abs(normal.y);
+	normal.z *= 1.0f - (abs(normal.x) + abs(normal.y));
 	return normalize(normal);
 }
 

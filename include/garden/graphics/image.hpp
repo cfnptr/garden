@@ -19,6 +19,7 @@
  */
 
 #pragma once
+#include "garden/raw-vector.hpp"
 #include "garden/graphics/gsl.hpp"
 #include "garden/graphics/buffer.hpp"
 #include "garden/graphics/sampler.hpp"
@@ -888,7 +889,7 @@ public:
 	 * @throw GardenError on image data conversion error.
 	 */
 	static const void* convertFormat(const void* srcPixels, uint3 size, 
-		vector<uint8>& dstPixels, Format srcFormat, Format dstFormat);
+		raw_vector<uint8>& dstPixels, Format srcFormat, Format dstFormat);
 
 	/**
 	 * @brief Converts 3D image pixels into the 2D horizontally packed.
@@ -901,7 +902,7 @@ public:
 	 *
 	 * @throw GardenError on invalid unpacked image pixel size.
 	 */
-	static uint2 pack3D(vector<uint8>& pixels, uint3 size, uint32 stride, vector<uint8>* tmpBuffer = nullptr);
+	static uint2 pack3D(raw_vector<uint8>& pixels, uint3 size, uint32 stride, raw_vector<uint8>* tmpBuffer = nullptr);
 	/**
 	 * @brief Converts 2D horizontally packed image pixels to the 3D image.
 	 * @details See the @ref Image::pack3D().
@@ -913,7 +914,7 @@ public:
 	 *
 	 * @throw GardenError on invalid packed image pixel size.
 	 */
-	static uint3 unpack3D(vector<uint8>& pixels, uint2 size, uint32 stride, vector<uint8>* tmpBuffer = nullptr);
+	static uint3 unpack3D(raw_vector<uint8>& pixels, uint2 size, uint32 stride, raw_vector<uint8>* tmpBuffer = nullptr);
 
 	/*******************************************************************************************************************
 	 * @brief Loads image pixels from the specified file data.
@@ -928,7 +929,7 @@ public:
 	 * @param[out] imageFormat loaded image data format
 	 */
 	static void loadFileData(const void* data, psize dataSize, FileType fileType, 
-		vector<uint8>& pixels, uint4& imageSize, Type& imageType, Format& imageFormat);
+		raw_vector<uint8>& pixels, uint4& imageSize, Type& imageType, Format& imageFormat);
 	/**
 	 * @brief Loads and applies image metadata from the specified file.
 	 * @throw GardenError on image metadata loading error.
@@ -940,7 +941,7 @@ public:
 	 * @param[in,out] imageFormat loaded image data format
 	 * @param[in,out] storeFlags loaded image store flag bitmask
 	 */
-	static void loadFileMetadata(const fs::path& path, vector<uint8>& pixels, uint4& size, 
+	static void loadFileMetadata(const fs::path& path, raw_vector<uint8>& pixels, uint4& size, 
 		Type& imageType, Format& imageFormat, float& effort, StoreFlag& storeFlags);
 	/**
 	 * @brief Stores image pixels to the specified file.

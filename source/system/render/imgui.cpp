@@ -154,14 +154,14 @@ static void createBuffers(GraphicsSystem* graphicsSystem,
 	vector<ID<Buffer>>& buffers, uint64 bufferSize, Buffer::Usage usage)
 {
 	auto inFlightCount = graphicsSystem->getInFlightCount();
-	buffers.resize(inFlightCount); auto bufferData = buffers.data();
+	buffers.reserve(inFlightCount);
 
 	for (uint32 i = 0; i < inFlightCount; i++)
 	{
 		auto buffer = graphicsSystem->createBuffer(usage, Buffer::CpuAccess::SequentialWrite,
 			bufferSize, Buffer::Location::Auto, Buffer::Strategy::Size);
 		SET_RESOURCE_DEBUG_NAME(buffer, "buffer.imgui." + string(toString(usage)) + to_string(i));
-		bufferData[i] = buffer;
+		buffers.push_back(buffer);
 	}
 }
 

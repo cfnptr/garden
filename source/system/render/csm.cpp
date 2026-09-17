@@ -68,9 +68,7 @@ static void createShadowFramebuffers(GraphicsSystem* graphicsSystem,
 		Framebuffer::LoadOp::Clear, Framebuffer::StoreOp::Store);
 	auto depthMapView = graphicsSystem->get(depthMap);
 	auto size = uint2(shadowMapSize);
-
-	framebuffers.resize(CsmRenderSystem::cascadeCount);
-	auto framebufferData = framebuffers.data();
+	framebuffers.reserve(CsmRenderSystem::cascadeCount);
 
 	for (uint8 i = 0; i < CsmRenderSystem::cascadeCount; i++)
 	{
@@ -78,7 +76,7 @@ static void createShadowFramebuffers(GraphicsSystem* graphicsSystem,
 		auto framebuffer = graphicsSystem->createFramebuffer(size, 
 			std::move(colorAttachments), depthStencilAttachment);
 		SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.csm.shadowCascade" + to_string(i));
-		framebufferData[i] = framebuffer;
+		framebuffers.push_back(framebuffer);
 	}
 }
 static void updateShadowFramebuffers(GraphicsSystem* graphicsSystem, 
@@ -103,8 +101,8 @@ static void createTransFramebuffers(GraphicsSystem* graphicsSystem, ID<Image> de
 	Framebuffer::Attachment depthStencilAttachment({}, 
 		Framebuffer::LoadOp::Load, Framebuffer::StoreOp::None);
 	auto size = uint2(shadowMapSize);
+	framebuffers.reserve(CsmRenderSystem::cascadeCount);
 
-	framebuffers.resize(CsmRenderSystem::cascadeCount);
 	for (uint8 i = 0; i < CsmRenderSystem::cascadeCount; i++)
 	{
 		vector<Framebuffer::Attachment> colorAttachments =
@@ -116,7 +114,7 @@ static void createTransFramebuffers(GraphicsSystem* graphicsSystem, ID<Image> de
 		auto framebuffer = graphicsSystem->createFramebuffer(size, 
 			std::move(colorAttachments), depthStencilAttachment);
 		SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.csm.transparentCascade" + to_string(i));
-		framebuffers[i] = framebuffer;
+		framebuffers.push_back(framebuffer);
 	}
 }
 static void updateTransFramebuffers(GraphicsSystem* graphicsSystem, ID<Image> depthMap,

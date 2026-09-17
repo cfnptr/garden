@@ -66,21 +66,16 @@ static void createVkDescriptorSetLayouts(vector<void*>& descriptorSetLayouts, ve
 	const fs::path& pipelinePath, uint32 maxBindlessCount, uint8 descriptorSetCount)
 {
 	auto vulkanAPI = VulkanAPI::get();
-	vector<vk::DescriptorSetLayoutBinding> descriptorSetBindings;
+	vector<vk::DescriptorSetLayoutBinding> descriptorSetBindings(pipelineUniforms.size());
 	vector<vk::DescriptorBindingFlags> descriptorBindingFlags;
 	vector<vector<vk::Sampler>> samplerArrays;
 	vector<vk::DescriptorPoolSize> descriptorPoolSizes;
-	descriptorSetLayouts.resize(descriptorSetCount);
-	descriptorPools.resize(descriptorSetCount);
-	auto descriptorSetLayoutData = descriptorSetLayouts.data();
-	auto descriptorPoolData = descriptorPools.data();
+	descriptorSetLayouts.reserve(descriptorSetCount);
+	descriptorPools.reserve(descriptorSetCount);
 
 	for (uint8 dsIndex = 0; dsIndex < descriptorSetCount; dsIndex++)
 	{
 		uint32 bindingIndex = 0; auto isBindless = false;
-		if (descriptorSetBindings.size() < pipelineUniforms.size())
-			descriptorSetBindings.resize(pipelineUniforms.size());
-
 		for	(const auto& uniformPair : pipelineUniforms)
 		{
 			auto pipelineUniform = uniformPair.second;
@@ -186,7 +181,7 @@ static void createVkDescriptorSetLayouts(vector<void*>& descriptorSetLayouts, ve
 
 			vk::DescriptorPoolCreateInfo descriptorPoolInfo(vk::DescriptorPoolCreateFlagBits::eUpdateAfterBind, 
 				maxSetCount, (uint32)descriptorPoolSizes.size(), descriptorPoolSizes.data());
-			descriptorPoolData[dsIndex] = vulkanAPI->device.createDescriptorPool(descriptorPoolInfo);
+			descriptorPools.push_back(vulkanAPI->device.createDescriptorPool(descriptorPoolInfo));
 			descriptorPoolSizes.clear();
 
 			#if GARDEN_DEBUG // Note: No GARDEN_EDITOR
@@ -199,9 +194,9 @@ static void createVkDescriptorSetLayouts(vector<void*>& descriptorSetLayouts, ve
 			}
 			#endif
 		}
-		else descriptorPoolData[dsIndex] = nullptr;
+		else descriptorPools.push_back(nullptr);
 
-		descriptorSetLayoutData[dsIndex] = vulkanAPI->device.createDescriptorSetLayout(descriptorSetLayoutInfo);
+		descriptorSetLayouts.push_back(vulkanAPI->device.createDescriptorSetLayout(descriptorSetLayoutInfo));
 		samplerArrays.clear();
 
 		#if GARDEN_DEBUG // Note: No GARDEN_EDITOR
@@ -209,7 +204,7 @@ static void createVkDescriptorSetLayouts(vector<void*>& descriptorSetLayouts, ve
 		{
 			auto name = "descriptorSetLayout." + pipelinePath.generic_string() + to_string(dsIndex);
 			vk::DebugUtilsObjectNameInfoEXT nameInfo(vk::ObjectType::eDescriptorSetLayout,
-				(uint64)descriptorSetLayoutData[dsIndex], name.c_str());
+				(uint64)descriptorSetLayouts.back(), name.c_str());
 			vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo);
 		}
 		#endif
@@ -327,7 +322,7 @@ static void destroyVkPipeline(void* instance, void* pipelineLayout, const vector
 }
 
 //**********************************************************************************************************************
-static vector<void*> createVkShaders(const vector<uint8>* codeArray, uint8 shaderCount, const fs::path& pipelinePath)
+static vector<void*> createVkShaders(const raw_vector<uint8>* codeArray, uint8 shaderCount, const fs::path& pipelinePath)
 {
 	auto vulkanAPI = VulkanAPI::get();
 	vector<void*> shaders(shaderCount);
@@ -416,7 +411,7 @@ bool Pipeline::destroy()
 	return true;
 }
 
-vector<void*> Pipeline::createShaders(const vector<uint8>* codeArray, uint8 shaderCount, const fs::path& pipelinePath)
+vector<void*> Pipeline::createShaders(const raw_vector<uint8>* codeArray, uint8 shaderCount, const fs::path& pipelinePath)
 {
 	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)

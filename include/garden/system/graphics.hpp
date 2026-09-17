@@ -412,9 +412,9 @@ public:
 	 * 
 	 * @throw GardenError if failed to allocate buffer.
 	 */
-	template<typename T = float>
+	template<typename T = float, class A = allocator<T>>
 	ID<Buffer> createBuffer(
-		Buffer::Usage usage, Buffer::CpuAccess cpuAccess, const vector<T>& data, psize count = 0, psize offset = 0,
+		Buffer::Usage usage, Buffer::CpuAccess cpuAccess, const vector<T, A>& data, psize count = 0, psize offset = 0,
 		Buffer::Location location = Buffer::Location::Auto, Buffer::Strategy strategy = Buffer::Strategy::Default)
 	{
 		if (count == 0)

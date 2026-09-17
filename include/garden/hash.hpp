@@ -73,8 +73,8 @@ public:
 	 * 
 	 * @throw GardenError on hash creation error.
 	 */
-	template<typename T>
-	Hash128(const vector<T>& data, State state = nullptr) :
+	template<typename T = uint8, class A = allocator<T>>
+	Hash128(const vector<T, A>& data, State state = nullptr) :
 		Hash128(data.data(), data.size() * sizeof(T), state) { }
 	/**
 	 * @brief Creates a new hash of the array data. (non-cryptographic)
@@ -169,8 +169,8 @@ public:
 	 * 
 	 * @throw GardenError on hash state update error.
 	 */
-	template<typename T>
-	static void updateState(State state, const vector<T>& data) {
+	template<typename T = uint8, class A = allocator<T>>
+	static void updateState(State state, const vector<T, A>& data) {
 		updateState(state, data.data(), data.size() * sizeof(T)); }
 	/**
 	 * @brief Consumes a block of array data to hash state.

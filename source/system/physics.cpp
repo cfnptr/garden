@@ -2118,7 +2118,7 @@ void PhysicsSystem::castRay(const Ray& ray, vector<RayCastHit>& hits,
 		{}, castInactive ? defaultBodyFilter : activeBodyFilter);
 	if (!collector.HadHit())
 	{
-		hits.resize(0);
+		hits.clear();
 		return;
 	}
 
@@ -2157,7 +2157,7 @@ void PhysicsSystem::collideAABB(const Aabb& aabb, vector<ShapeHit>& hits, int8 b
 		broadPhaseLayer > -1 ? broadPhaseFilter : defaultBroadPhaseFilter);
 	if (!collector.HadHit())
 	{
-		hits.resize(0);
+		hits.clear();
 		return;
 	}
 
@@ -2186,7 +2186,7 @@ void PhysicsSystem::collideSphere(Sphere sphere, vector<ShapeHit>& hits, int8 br
 		collector, broadPhaseLayer > -1 ? broadPhaseFilter : defaultBroadPhaseFilter);
 	if (!collector.HadHit())
 	{
-		hits.resize(0);
+		hits.clear();
 		return;
 	}
 
@@ -2241,7 +2241,7 @@ void PhysicsSystem::collidePoint(f32x4 point, vector<ShapeHit>& hits, int8 broad
 		{}, collideInactive ? defaultBodyFilter : activeBodyFilter);
 	if (!collector.HadHit())
 	{
-		hits.resize(0);
+		hits.clear();
 		return;
 	}
 

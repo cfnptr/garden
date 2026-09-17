@@ -26,7 +26,7 @@ static bool loadLocaleStrings(LocaleSystem::StringMap& strings, string_view modu
 {
 	strings = {};
 
-	vector<uint8> localeData; auto localePath = fs::path("locales");
+	raw_vector<uint8> localeData; auto localePath = fs::path("locales");
 	if (!module.empty()) localePath /= module;
 	localePath /= toString(language); localePath.replace_extension(".txt");
 

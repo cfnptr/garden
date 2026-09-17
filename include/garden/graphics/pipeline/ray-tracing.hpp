@@ -79,9 +79,9 @@ public:
 	 */
 	struct HitGroupData final
 	{
-		vector<uint8> intersectionCode;
-		vector<uint8> anyHitCode;
-		vector<uint8> closestHitCode;
+		raw_vector<uint8> intersectionCode;
+		raw_vector<uint8> anyHitCode;
+		raw_vector<uint8> closestHitCode;
 	};
 	/**
 	 * @brief Ray tracing pipeline shader code overrides.
@@ -89,10 +89,10 @@ public:
 	 */
 	struct ShaderOverrides final
 	{
-		vector<uint8> headerData;
-		vector<vector<uint8>> rayGenGroups;
-		vector<vector<uint8>> missGroups;
-		vector<vector<uint8>> callGroups;
+		raw_vector<uint8> headerData;
+		vector<raw_vector<uint8>> rayGenGroups;
+		vector<raw_vector<uint8>> missGroups;
+		vector<raw_vector<uint8>> callGroups;
 		vector<HitGroupData> hitGroups;
 	};
 	/**
@@ -103,9 +103,9 @@ public:
 	{	
 		uint8 _alignment0 = 0;
 		uint16 _alignment1 = 0;
-		vector<vector<uint8>> rayGenGroups;
-		vector<vector<uint8>> missGroups;
-		vector<vector<uint8>> callGroups;
+		vector<raw_vector<uint8>> rayGenGroups;
+		vector<raw_vector<uint8>> missGroups;
+		vector<raw_vector<uint8>> callGroups;
 		vector<HitGroupData> hitGroups;
 		uint32 rayRecursionDepth = 1;
 	};

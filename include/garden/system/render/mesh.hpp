@@ -44,13 +44,13 @@ enum class MeshRenderType : uint8
  */
 enum class MeshAttribute : uint8
 {
-	None         = 0x00,
-	Position     = 0x01,
-	Normal       = 0x02,
-	Tangent      = 0x04,
-	Bitangent    = 0x08,
-	TextureCoord = 0x10,
-	VertexColor  = 0x20,
+	None         = 0x00, /**< No mesh attributes. */
+	Position     = 0x01, /**< Vertex 3D position. */
+	Normal       = 0x02, /**< Vertex normal vector. */
+	Tangent      = 0x04, /**< Vertex tangent vector. */
+	Bitangent    = 0x08, /**< Vertex bitangent vector. */
+	TextureCoord = 0x10, /**< Texture coordinates. (UV) */
+	VertexColor  = 0x20, /**< Vertex sRGB color.*/
 };
 
 static constexpr uint8 meshAttributeCount = 6; /**< Common mesh attribute count. */
@@ -68,6 +68,17 @@ struct MeshLOD
 	fs::path indexBufferPath = "";  /**< Mesh index buffer path. */
 	#endif
 	static constexpr uint8 maxCount = UINT8_MAX; /**< Maximal mesh LOD count. */
+};
+/**
+ * @brief Mesh vertex data container.
+ */
+struct MeshVertex
+{
+	half3 position = half3::zero;  /**< Vertex 3D position. */
+	uint16 flags = 0;              /*<< Vertex data flags. */
+	half2 normal = half2::zero;    /**< Vertex normal vector. */
+	half2 tangent = half2::zero;   /**< Vertex tangent vector. */
+	half2 texCoords = half2::zero; /**< Texture coordinates. (UV) */
 };
 
 /***********************************************************************************************************************

@@ -169,10 +169,10 @@ protected:
 	virtual void fileChange();
 	virtual void fileDrop();
 	
-	bool loadOrConvertCubemap(const fs::path& path, vector<uint8>& nx, vector<uint8>& px, 
-		vector<uint8>& ny, vector<uint8>& py, vector<uint8>& nz, vector<uint8>& pz, 
+	bool loadOrConvertCubemap(const fs::path& path, raw_vector<uint8>& nx, raw_vector<uint8>& px, 
+		raw_vector<uint8>& ny, raw_vector<uint8>& py, raw_vector<uint8>& nz, raw_vector<uint8>& pz, 
 		uint2& size, Image::Format& format, int32 threadIndex) const noexcept;
-	bool loadOrConvertImage(const fs::path& path, vector<uint8>& pixels, uint4& size, 
+	bool loadOrConvertImage(const fs::path& path, raw_vector<uint8>& pixels, uint4& size, 
 		Image::Type& type, Image::Format& format, int32 threadIndex) const noexcept;
 	friend class ecsm::Manager;
 public:
@@ -203,7 +203,7 @@ public:
 	 *
 	 * @return True on success, otherwise false and missing image data.
 	 */
-	bool loadImageData(const fs::path& path, vector<uint8>& pixels, uint4& size, 
+	bool loadImageData(const fs::path& path, raw_vector<uint8>& pixels, uint4& size, 
 		Image::Type& type, Image::Format& format, int32 threadIndex = -1) const noexcept;
 	/**
 	 * @brief Loads image pixels from the resource pack.
@@ -219,7 +219,7 @@ public:
 	 *
 	 * @return True on success, otherwise false and missing image data.
 	 */
-	bool loadImageData(const fs::path* paths, psize pathCount, vector<vector<uint8>>& pixelArrays, 
+	bool loadImageData(const fs::path* paths, psize pathCount, vector<raw_vector<uint8>>& pixelArrays, 
 		uint4& size, Image::Type& type, Image::Format& format, int32 threadIndex = -1) const noexcept;
 
 	/**
@@ -239,8 +239,8 @@ public:
 	 *
 	 * @return True on success, otherwise false and missing image data.
 	 */
-	bool loadCubemapData(const fs::path& path, vector<uint8>& nx, vector<uint8>& px, 
-		vector<uint8>& ny, vector<uint8>& py, vector<uint8>& nz, vector<uint8>& pz, 
+	bool loadCubemapData(const fs::path& path, raw_vector<uint8>& nx, raw_vector<uint8>& px, 
+		raw_vector<uint8>& ny, raw_vector<uint8>& py, raw_vector<uint8>& nz, raw_vector<uint8>& pz, 
 		uint2& size, Image::Format& format, int32 threadIndex = -1) const noexcept;
 
 	/*******************************************************************************************************************
@@ -539,7 +539,7 @@ public:
 	 * @param[in] path target file resource path
 	 * @param[out] data loaded data buffer
 	 */
-	bool loadData(const fs::path& path, vector<uint8>& data);
+	bool loadData(const fs::path& path, raw_vector<uint8>& data);
 
 	#if GARDEN_PACK_RESOURCES
 	/**

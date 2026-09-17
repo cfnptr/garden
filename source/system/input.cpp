@@ -158,9 +158,9 @@ void InputSystem::preInit()
 	if (clipboard)
 		newClipboard = lastClipboard = currClipboard = clipboard;
 
-	standardCursors.resize((uint8)CursorType::Count - 1);
-	for (uint8 i = 0; i < (uint8)standardCursors.size(); i++)
-		standardCursors[i] = glfwCreateStandardCursor(GLFW_ARROW_CURSOR + i);
+	standardCursors.reserve((uint8)CursorType::Count - 1);
+	for (uint8 i = 0; i < (uint8)CursorType::Count - 1; i++)
+		standardCursors.push_back(glfwCreateStandardCursor(GLFW_ARROW_CURSOR + i));
 
 	#if GARDEN_OS_LINUX
 	auto glfwPlatform = glfwGetPlatform();
@@ -411,7 +411,7 @@ void InputSystem::startRenderThread()
 		string newClipboard; auto hasNewClipboard = false;
 
 		string newWindowTitle = "";
-		vector<vector<uint8>> imagePixels; vector<GLFWimage> images;
+		vector<raw_vector<uint8>> imagePixels; vector<GLFWimage> images;
 
 		#if GARDEN_OS_WINDOWS
 		inputSystem->eventLocker.lock();
@@ -491,9 +491,8 @@ void InputSystem::startRenderThread()
 			{
 				auto resourceSystem = ResourceSystem::getInstance();
 				const auto& paths = inputSystem->currWindowIconPaths;
-				imagePixels.resize(paths.size()); images.resize(paths.size());
-				auto imagePixelData = imagePixels.data(); auto imageData = images.data();
-				vector<uint8> tmpData;
+				imagePixels.resize(paths.size()); images.reserve(paths.size());
+				auto imagePixelData = imagePixels.data(); raw_vector<uint8> tmpData;
 
 				for (psize i = 0; i < paths.size(); i++)
 				{
@@ -504,7 +503,7 @@ void InputSystem::startRenderThread()
 					image.width = size.x; image.height = size.y;
 					image.pixels = (unsigned char*)Image::convertFormat(imagePixelData[i].data(), 
 						uint3((uint2)size, 1), tmpData, format, Image::Format::SrgbB8G8R8A8);
-					imageData[i] = image;
+					images.push_back(image);
 				}
 			}
 			inputSystem->currWindowIconPaths.clear();

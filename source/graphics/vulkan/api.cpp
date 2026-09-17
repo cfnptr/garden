@@ -988,7 +988,7 @@ static vk::PipelineCache createPipelineCache(const string& appDataName, Version 
 	constexpr auto cacheHeaderSize = sizeof(PipelineCacheHeader) - sizeof(VkPipelineCacheHeaderVersionOne);
 	auto path = mpio::Directory::getAppDataPath(appDataName) / "cache/shaders";
 	ifstream inputStream(path, ios::in | ios::binary | ios::ate);
-	vector<uint8> fileData;
+	raw_vector<uint8> fileData;
 
 	vk::PipelineCacheCreateInfo cacheInfo;
 	if (inputStream.is_open())

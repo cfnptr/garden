@@ -142,7 +142,7 @@ void GraphicsPipeline::createVkInstance(GraphicsCreateData& createData)
 
 	constexpr uint8 maxStageCount = 2;
 	PipelineStage pipelineStages[maxStageCount]; 
-	vector<uint8> codeArray[maxStageCount];
+	raw_vector<uint8> codeArray[maxStageCount];
 	uint8 stageCount = 0;
 
 	if (!createData.vertexCode.empty())
@@ -179,26 +179,25 @@ void GraphicsPipeline::createVkInstance(GraphicsCreateData& createData)
 	vk::VertexInputBindingDescription bindingDescription(0, 
 		createData.vertexAttributesSize, vk::VertexInputRate::eVertex);
 	vk::PipelineVertexInputStateCreateInfo inputInfo;
-	vector<vk::VertexInputAttributeDescription> inputAttributes(createData.vertexAttributes.size());
+	vector<vk::VertexInputAttributeDescription> inputAttributes;
 
 	if (!createData.vertexAttributes.empty())
 	{
 		const auto& vertexAttributes = createData.vertexAttributes;
 		auto vertexAttributeCount = (uint32)vertexAttributes.size();
 		auto vertexAttributeData = vertexAttributes.data();
-		auto inputAttributeData = inputAttributes.data();
+		inputAttributes.reserve(vertexAttributeCount);
 
 		for (uint32 i = 0; i < vertexAttributeCount; i++)
 		{
 			auto attribute = vertexAttributeData[i];
-			inputAttributeData[i] = vk::VertexInputAttributeDescription(i, 0, 
-				toVkFormat(attribute.type, attribute.format), attribute.offset);
+			inputAttributes.emplace_back(i, 0, toVkFormat(attribute.type, attribute.format), attribute.offset);
 		}
 
 		inputInfo.vertexBindingDescriptionCount = 1;
 		inputInfo.pVertexBindingDescriptions = &bindingDescription;
 		inputInfo.vertexAttributeDescriptionCount = vertexAttributeCount;
-		inputInfo.pVertexAttributeDescriptions = inputAttributeData;
+		inputInfo.pVertexAttributeDescriptions = inputAttributes.data();
 		// TODO: allow to specify input rate for an each vertex attribute?
 	}
 

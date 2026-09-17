@@ -990,7 +990,7 @@ void Image::setDebugName(const string& name)
 
 //**********************************************************************************************************************
 template<typename S, typename D>
-static void convertPixels(const void* src, vector<uint8>& dst, psize count) noexcept
+static void convertPixels(const void* src, raw_vector<uint8>& dst, psize count) noexcept
 {
 	dst.resize(count * sizeof(D));
 	auto dstPixels = (D*)dst.data();
@@ -1000,7 +1000,7 @@ static void convertPixels(const void* src, vector<uint8>& dst, psize count) noex
 		dstPixels[i] = (D)srcPixels[i];
 }
 template<typename S, typename D, S MAX_VALUE>
-static void convertPixelsMin(const void* src, vector<uint8>& dst, psize count) noexcept
+static void convertPixelsMin(const void* src, raw_vector<uint8>& dst, psize count) noexcept
 {
 	dst.resize(count * sizeof(D));
 	auto dstPixels = (D*)dst.data();
@@ -1010,7 +1010,7 @@ static void convertPixelsMin(const void* src, vector<uint8>& dst, psize count) n
 		dstPixels[i] = (D)std::min(srcPixels[i], MAX_VALUE);
 }
 template<typename S, typename D>
-static void convertPixelsMin(const void* src, vector<uint8>& dst, psize count, S minValue) noexcept
+static void convertPixelsMin(const void* src, raw_vector<uint8>& dst, psize count, S minValue) noexcept
 {
 	dst.resize(count * sizeof(D));
 	auto dstPixels = (D*)dst.data();
@@ -1020,7 +1020,7 @@ static void convertPixelsMin(const void* src, vector<uint8>& dst, psize count, S
 		dstPixels[i] = (D)std::min(srcPixels[i], minValue);
 }
 template<typename S, typename D, S MIN_VALUE>
-static void convertPixelsMax(const void* src, vector<uint8>& dst, psize count) noexcept
+static void convertPixelsMax(const void* src, raw_vector<uint8>& dst, psize count) noexcept
 {
 	dst.resize(count * sizeof(D));
 	auto dstPixels = (D*)dst.data();
@@ -1030,7 +1030,7 @@ static void convertPixelsMax(const void* src, vector<uint8>& dst, psize count) n
 		dstPixels[i] = (D)std::max(srcPixels[i], MIN_VALUE);
 }
 template<typename S, typename D, S MIN_VALUE, S MAX_VALUE>
-static void convertPixelsClamp(const void* src, vector<uint8>& dst, psize count) noexcept
+static void convertPixelsClamp(const void* src, raw_vector<uint8>& dst, psize count) noexcept
 {
 	dst.resize(count * sizeof(D));
 	auto dstPixels = (D*)dst.data();
@@ -1040,7 +1040,7 @@ static void convertPixelsClamp(const void* src, vector<uint8>& dst, psize count)
 		dstPixels[i] = (D)std::clamp(srcPixels[i], MIN_VALUE, MAX_VALUE);
 }
 template<typename S, typename D, S SRC_MAX_VALUE, D DST_MAX_VALUE>
-static void convertPixelsUnorm(const void* src, vector<uint8>& dst, psize count) noexcept
+static void convertPixelsUnorm(const void* src, raw_vector<uint8>& dst, psize count) noexcept
 {
 	dst.resize(count * sizeof(D));
 	auto dstPixels = (D*)dst.data();
@@ -1051,7 +1051,7 @@ static void convertPixelsUnorm(const void* src, vector<uint8>& dst, psize count)
 		dstPixels[i] = (D)(srcPixels[i] * mul + 0.5f);
 }
 template<typename S, typename D, S MAX_VALUE>
-static void convertPixelsToFloat(const void* src, vector<uint8>& dst, psize count) noexcept
+static void convertPixelsToFloat(const void* src, raw_vector<uint8>& dst, psize count) noexcept
 {
 	dst.resize(count * sizeof(D));
 	auto dstPixels = (D*)dst.data();
@@ -1062,7 +1062,7 @@ static void convertPixelsToFloat(const void* src, vector<uint8>& dst, psize coun
 		dstPixels[i] = (D)(srcPixels[i] * mul);
 }
 template<typename S, typename D, D MAX_VALUE>
-static void convertPixelsFromFloat(const void* src, vector<uint8>& dst, psize count) noexcept
+static void convertPixelsFromFloat(const void* src, raw_vector<uint8>& dst, psize count) noexcept
 {
 	dst.resize(count * sizeof(D));
 	auto dstPixels = (D*)dst.data();
@@ -1073,7 +1073,7 @@ static void convertPixelsFromFloat(const void* src, vector<uint8>& dst, psize co
 		dstPixels[i] = (D)(std::clamp((float)srcPixels[i], 0.0f, 1.0f) * MAX_VALUE + 0.5f);
 }
 template<typename S>
-static void convertPixelsToSrgb(const void* src, vector<uint8>& dst, psize count) noexcept
+static void convertPixelsToSrgb(const void* src, raw_vector<uint8>& dst, psize count) noexcept
 {
 	dst.resize(count * sizeof(Color)); count /= 4;
 	auto dstPixels = (Color*)dst.data();
@@ -1083,7 +1083,7 @@ static void convertPixelsToSrgb(const void* src, vector<uint8>& dst, psize count
 		dstPixels[i] = (Color)rgbToSrgb((f32x4)srcPixels[i]);
 }
 template<typename S, typename D>
-static void convertPixelsFromSrgb(const void* src, vector<uint8>& dst, psize count) noexcept
+static void convertPixelsFromSrgb(const void* src, raw_vector<uint8>& dst, psize count) noexcept
 {
 	dst.resize(count * sizeof(D)); count /= 4;
 	auto dstPixels = (D*)dst.data();
@@ -1100,7 +1100,7 @@ static void throwFormatsConversion(Image::Format srcFormat, Image::Format dstFor
 		"src: " + string(toString(srcFormat)) + ", "
 		"dst: " + string(toString(dstFormat)) + ")");
 }
-const void* Image::convertFormat(const void* src, uint3 size, vector<uint8>& dst, Format srcFormat, Format dstFormat)
+const void* Image::convertFormat(const void* src, uint3 size, raw_vector<uint8>& dst, Format srcFormat, Format dstFormat)
 {
 	GARDEN_ASSERT(src);
 	GARDEN_ASSERT(areAllTrue(size > uint3::zero));
@@ -1112,7 +1112,7 @@ const void* Image::convertFormat(const void* src, uint3 size, vector<uint8>& dst
 	auto dstCompCount = toComponentCount(dstFormat);
 	GARDEN_ASSERT(srcCompCount > 0 && dstCompCount > 0);
 
-	vector<uint8> tmpBuffer;
+	raw_vector<uint8> tmpBuffer;
 	if (srcCompCount < dstCompCount)
 	{
 		auto pixelCount = (psize)size.x * size.y * size.z;
@@ -1486,7 +1486,7 @@ const void* Image::convertFormat(const void* src, uint3 size, vector<uint8>& dst
 }
 
 //**********************************************************************************************************************
-uint2 Image::pack3D(vector<uint8>& pixels, uint3 size, uint32 stride, vector<uint8>* tmpBuffer)
+uint2 Image::pack3D(raw_vector<uint8>& pixels, uint3 size, uint32 stride, raw_vector<uint8>* tmpBuffer)
 {
 	GARDEN_ASSERT(!pixels.empty());
 	GARDEN_ASSERT(areAllTrue(size > uint3::zero));
@@ -1497,7 +1497,7 @@ uint2 Image::pack3D(vector<uint8>& pixels, uint3 size, uint32 stride, vector<uin
 	if (size.z == 1)
 		return (uint2)size;	
 
-	vector<uint8> tmpLocal;
+	raw_vector<uint8> tmpLocal;
 	if (!tmpBuffer) tmpBuffer = &tmpLocal;
 
 	auto size2D = uint2(size.y * size.x, size.y);
@@ -1519,7 +1519,7 @@ uint2 Image::pack3D(vector<uint8>& pixels, uint3 size, uint32 stride, vector<uin
 	std::swap(pixels, *tmpBuffer);
 	return size2D;
 }
-uint3 Image::unpack3D(vector<uint8>& pixels, uint2 size, uint32 stride, vector<uint8>* tmpBuffer)
+uint3 Image::unpack3D(raw_vector<uint8>& pixels, uint2 size, uint32 stride, raw_vector<uint8>* tmpBuffer)
 {
 	GARDEN_ASSERT(!pixels.empty());
 	GARDEN_ASSERT(areAllTrue(size > uint2::zero));
@@ -1538,7 +1538,7 @@ uint3 Image::unpack3D(vector<uint8>& pixels, uint2 size, uint32 stride, vector<u
 	if (size.x % size.y != 0)
 		throw GardenError("Image 2D size X is not dividable by Y.");
 
-	vector<uint8> tmpLocal;
+	raw_vector<uint8> tmpLocal;
 	if (!tmpBuffer) tmpBuffer = &tmpLocal;
 
 	tmpBuffer->resize((psize)size.x * size.y * stride);
@@ -1716,7 +1716,7 @@ static basist::transcoder_texture_format toTranscoderFormat(Image::Format imageF
 #endif
 
 //**********************************************************************************************************************
-static void loadImageDataPNG(const void* data, psize dataSize, vector<uint8>& pixels, 
+static void loadImageDataPNG(const void* data, psize dataSize, raw_vector<uint8>& pixels, 
 	uint4& imageSize, Image::Format& imageFormat, Image::Type imageType, bool linearAsSrgb)
 {
 	png_image image; memset(&image, 0, sizeof(png_image));
@@ -1746,7 +1746,7 @@ static void loadImageDataPNG(const void* data, psize dataSize, vector<uint8>& pi
 	imageFormat = linearAsSrgb ? toUnormFormat(componentCount) : toSrgbFormat(componentCount);
 }
 static void loadImageDataWebP(const void* data, psize dataSize, 
-	vector<uint8>& pixels, uint4& imageSize, Image::Format& imageFormat)
+	raw_vector<uint8>& pixels, uint4& imageSize, Image::Format& imageFormat)
 {
 	int sizeX = 0, sizeY = 0;
 	if (!WebPGetInfo((const uint8_t*)data, dataSize, &sizeX, &sizeY))
@@ -1776,7 +1776,7 @@ static Imf::FrameBuffer createExrFramebuffer(char* pixels, psize pixelBinarySize
 		exrFrameBuffer.insert("A", Imf::Slice(pixelType, pixels + floatSize * 3, pixelBinarySize, strideY));
 	return exrFrameBuffer;
 }
-static void loadImageDataEXR(const void* data, psize dataSize, vector<uint8>& pixels, 
+static void loadImageDataEXR(const void* data, psize dataSize, raw_vector<uint8>& pixels, 
 	uint4& imageSize, Image::Format& imageFormat, Image::Type imageType)
 {
 	ExrMemoryStream exrStream((const uint8*)data, dataSize);
@@ -1827,7 +1827,7 @@ static void loadImageDataEXR(const void* data, psize dataSize, vector<uint8>& pi
 
 //**********************************************************************************************************************
 static void loadImageDataHDR(const void* data, psize dataSize, 
-	vector<uint8>& pixels, uint4& imageSize, Image::Format& imageFormat)
+	raw_vector<uint8>& pixels, uint4& imageSize, Image::Format& imageFormat)
 {
 	if (dataSize > INT32_MAX)
 		throw GardenError("HDR image data size is too big.");
@@ -1845,7 +1845,7 @@ static void loadImageDataHDR(const void* data, psize dataSize,
 	stbi_image_free(pixelData); // TODO: this is suboptimal to copy data over.
 }
 static void loadImageDataSTB(const void* data, psize dataSize, 
-	vector<uint8>& pixels, uint4& imageSize, Image::Format& imageFormat)
+	raw_vector<uint8>& pixels, uint4& imageSize, Image::Format& imageFormat)
 {
 	if (dataSize > INT32_MAX)
 		throw GardenError("STB image data size is too big.");
@@ -1863,7 +1863,7 @@ static void loadImageDataSTB(const void* data, psize dataSize,
 }
 
 //**********************************************************************************************************************
-static void loadImageDataGIC(const void* data, psize dataSize, vector<uint8>& pixels, 
+static void loadImageDataGIC(const void* data, psize dataSize, raw_vector<uint8>& pixels, 
 	uint4& imageSize, Image::Type& imageType, Image::Format& imageFormat)
 {
 	static constexpr auto gicHeaderSize = sizeof(gicMagic) + sizeof(GicHeader);
@@ -1956,7 +1956,7 @@ static void loadImageDataGIC(const void* data, psize dataSize, vector<uint8>& pi
 }
 
 void Image::loadFileData(const void* data, psize dataSize, FileType fileType, 
-	vector<uint8>& pixels, uint4& imageSize, Type& imageType, Format& imageFormat)
+	raw_vector<uint8>& pixels, uint4& imageSize, Type& imageType, Format& imageFormat)
 {
 	GARDEN_ASSERT(data);
 	GARDEN_ASSERT(dataSize > 0);
@@ -1977,7 +1977,7 @@ void Image::loadFileData(const void* data, psize dataSize, FileType fileType,
 }
 
 //**********************************************************************************************************************
-void Image::loadFileMetadata(const fs::path& path, vector<uint8>& pixels, uint4& size, 
+void Image::loadFileMetadata(const fs::path& path, raw_vector<uint8>& pixels, uint4& size, 
 	Type& imageType, Format& imageFormat, float& effort, StoreFlag& storeFlags)
 {
 	GARDEN_ASSERT(!path.empty());
@@ -2104,7 +2104,7 @@ static void storeImageDataPNG(const fs::path& filePath, const void* pixels, uint
 	GARDEN_ASSERT_MSG(quality == 1.0f, "PNG is a lossless format, can't specify quality");
 	GARDEN_ASSERT_MSG(!hasAnyFlag(flags, Image::StoreFlag::BlockSizeMask), "PNG does not support block compression");
 
-	vector<uint8> tmpPixels; int pngColorType;
+	raw_vector<uint8> tmpPixels; int pngColorType;
 	auto componentCount = toComponentCount(imageFormat);
 
 	switch (componentCount)
@@ -2165,7 +2165,7 @@ static void storeImageDataPNG(const fs::path& filePath, const void* pixels, uint
 		if (result != 0)
 			throw GardenError("Failed to compress PNG image using oxipng.");
 
-		vector<uint8> zipData; File::loadBinary(tmpPath, zipData);
+		raw_vector<uint8> zipData; File::loadBinary(tmpPath, zipData);
 		fs::remove(tmpPath);
 
 		if (!outputFile)
@@ -2191,7 +2191,7 @@ static void storeImageDataWebP(const fs::path& filePath, const void* pixels, uin
 	GARDEN_ASSERT_MSG(size.z == 1, "Unsupported 3D image packing for WebP"); // Do we have any use cases?
 	GARDEN_ASSERT_MSG(!hasAnyFlag(flags, Image::StoreFlag::BlockSizeMask), "WebP does not support block compression");
 
-	vector<uint8> tmpPixels;
+	raw_vector<uint8> tmpPixels;
 	auto targetFormat = hasAnyFlag(flags, Image::StoreFlag::LinearAsSrgb) ? imageFormat : Image::Format::SrgbR8G8B8A8;
 	auto dstPixels = Image::convertFormat(pixels, size, tmpPixels, imageFormat, targetFormat);
 
@@ -2245,7 +2245,7 @@ static void storeImageDataEXR(const fs::path& filePath, const void* pixels, uint
 	GARDEN_ASSERT_MSG(!hasAnyFlag(flags, Image::StoreFlag::LinearAsSrgb), "EXR does not support linear as sRGB");
 
 	auto dstPixels = pixels;
-	vector<uint8> tmpPixels; Imf::PixelType pixelType;
+	raw_vector<uint8> tmpPixels; Imf::PixelType pixelType;
 
 	if (isFormatFloat16(imageFormat))
 		pixelType = Imf::PixelType::HALF;
@@ -2301,7 +2301,7 @@ static void storeImageDataHDR(const fs::path& filePath, const void* pixels, uint
 	GARDEN_ASSERT_MSG(!hasAnyFlag(flags, Image::StoreFlag::GenerateMips), "HDR does not store mip map levels");
 	GARDEN_ASSERT_MSG(!hasAnyFlag(flags, Image::StoreFlag::BlockSizeMask), "HDR does not support block compression");
 
-	vector<uint8> tmpPixels;
+	raw_vector<uint8> tmpPixels;
 	auto componentCount = toComponentCount(imageFormat);
 	auto dstPixels = Image::convertFormat(pixels, size, tmpPixels, imageFormat, toFloatFormat32(componentCount));
 	
@@ -2316,7 +2316,7 @@ static void storeImageDataJPEG(const fs::path& filePath, const void* pixels, uin
 	GARDEN_ASSERT_MSG(size.z == 1, "Unsupported 3D image packing for JPEG");
 	GARDEN_ASSERT_MSG(!hasAnyFlag(flags, Image::StoreFlag::BlockSizeMask), "JPEG does not support custom block compression");
 
-	vector<uint8> tmpPixels;
+	raw_vector<uint8> tmpPixels;
 	auto componentCount = toComponentCount(imageFormat);
 	auto targetFormat = hasAnyFlag(flags, Image::StoreFlag::LinearAsSrgb) ? imageFormat : toSrgbFormat(componentCount);
 	auto dstPixels = Image::convertFormat(pixels, size, tmpPixels, imageFormat, targetFormat);
@@ -2332,7 +2332,7 @@ static void storeImageDataBMP(const fs::path& filePath, const void* pixels, uint
 	GARDEN_ASSERT_MSG(quality == 1.0f, "BMP is a lossless format, can't specify quality");
 	GARDEN_ASSERT_MSG(!hasAnyFlag(flags, Image::StoreFlag::BlockSizeMask), "BMP does not support block compression");
 
-	vector<uint8> tmpPixels;
+	raw_vector<uint8> tmpPixels;
 	auto componentCount = toComponentCount(imageFormat);
 	auto targetFormat = hasAnyFlag(flags, Image::StoreFlag::LinearAsSrgb) ? imageFormat : toSrgbFormat(componentCount);
 	auto dstPixels = Image::convertFormat(pixels, size, tmpPixels, imageFormat, targetFormat);
@@ -2348,7 +2348,7 @@ static void storeImageDataTGA(const fs::path& filePath, const void* pixels, uint
 	GARDEN_ASSERT_MSG(!hasAnyFlag(flags, Image::StoreFlag::GenerateMips), "TGA does not store mip map levels");
 	GARDEN_ASSERT_MSG(!hasAnyFlag(flags, Image::StoreFlag::BlockSizeMask), "TGA does not support block compression");
 
-	vector<uint8> tmpPixels;
+	raw_vector<uint8> tmpPixels;
 	auto componentCount = toComponentCount(imageFormat);
 	auto targetFormat = hasAnyFlag(flags, Image::StoreFlag::LinearAsSrgb) ? imageFormat : toSrgbFormat(componentCount);
 	auto dstPixels = Image::convertFormat(pixels, size, tmpPixels, imageFormat, targetFormat);
@@ -2421,13 +2421,13 @@ static void storeImageDataGIC(const fs::path& filePath, const void* pixels, uint
 	}
 
 	#if GARDEN_USE_BASIS_UNIVERSAL
-	uint32_t basisFlags = basisu::cFlagUseOpenCL | basisu::cFlagKTX2 | basisu::cFlagKTX2UASTCSuperCompression;
+	uint32_t basisFlags = basisu::cFlagUseOpenCL | basisu::cFlagKTX2;
 	if (imageType == Image::Type::Texture3D || imageType == Image::Type::Texture2DArray)
 		basisFlags |= basisu::cFlagTextureType2DArray;
 	if (hasAnyFlag(flags, Image::StoreFlag::GenerateMips))
 		basisFlags |= basisu::cFlagGenMipsClamp;
 
-	const void* dstPixels = pixels; vector<uint8> tmpPixels;
+	const void* dstPixels = pixels; raw_vector<uint8> tmpPixels;
 	basist::basis_tex_format basisFormat; bool isHDR;
 
 	switch (imageFormat)

@@ -684,7 +684,7 @@ void ResourceSystem::fileChange()
 }
 
 //**********************************************************************************************************************
-static void loadMissingImage(vector<uint8>& data, uint4& size, Image::Type& type, Image::Format& format) noexcept
+static void loadMissingImage(raw_vector<uint8>& data, uint4& size, Image::Type& type, Image::Format& format) noexcept
 {
 	if (format == Image::Format::Undefined)
 		format = Image::Format::SrgbR8G8B8A8;
@@ -801,8 +801,8 @@ static void loadMissingImage(vector<uint8>& data, uint4& size, Image::Type& type
 
 	size = uint4(4, 4, 1, 1);
 }
-static void loadMissingImage(vector<uint8>& nx, vector<uint8>& px, vector<uint8>& ny, vector<uint8>& py, 
-	vector<uint8>& nz, vector<uint8>& pz, uint2& size, Image::Format& format) noexcept
+static void loadMissingImage(raw_vector<uint8>& nx, raw_vector<uint8>& px, raw_vector<uint8>& ny, 
+	raw_vector<uint8>& py, raw_vector<uint8>& nz, raw_vector<uint8>& pz, uint2& size, Image::Format& format) noexcept
 {
 	uint4 missingSize; Image::Type missingType;
 	loadMissingImage(nx, missingSize, missingType, format);
@@ -851,12 +851,12 @@ static int32 getImageFilePath(const fs::path& appCachePath, const fs::path& appR
 #endif
 
 //**********************************************************************************************************************
-bool ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& pixels, 
+bool ResourceSystem::loadImageData(const fs::path& path, raw_vector<uint8>& pixels, 
 	uint4& size, Image::Type& type, Image::Format& format, int32 threadIndex) const noexcept
 {
 	GARDEN_ASSERT(!path.empty());
 	GARDEN_ASSERT(threadIndex < (int32)thread::hardware_concurrency());
-	vector<uint8> imageData; Image::FileType fileType;
+	raw_vector<uint8> imageData; Image::FileType fileType;
 
 	#if GARDEN_PACK_RESOURCES
 	if (threadIndex < 0)
@@ -945,9 +945,9 @@ bool ResourceSystem::loadImageData(const fs::path& path, vector<uint8>& pixels,
 }
 
 //**********************************************************************************************************************
-bool ResourceSystem::loadOrConvertCubemap(const fs::path& path, vector<uint8>& nx, 
-	vector<uint8>& px, vector<uint8>& ny, vector<uint8>& py, vector<uint8>& nz, 
-	vector<uint8>& pz, uint2& size, Image::Format& format, int32 threadIndex) const noexcept
+bool ResourceSystem::loadOrConvertCubemap(const fs::path& path, raw_vector<uint8>& nx, 
+	raw_vector<uint8>& px, raw_vector<uint8>& ny, raw_vector<uint8>& py, raw_vector<uint8>& nz, 
+	raw_vector<uint8>& pz, uint2& size, Image::Format& format, int32 threadIndex) const noexcept
 {
 	#if !GARDEN_PACK_RESOURCES
 	fs::path inputFilePath; Image::FileType inputFileType; 
@@ -1010,7 +1010,7 @@ bool ResourceSystem::loadOrConvertCubemap(const fs::path& path, vector<uint8>& n
 }
 
 //**********************************************************************************************************************
-bool ResourceSystem::loadOrConvertImage(const fs::path& path, vector<uint8>& pixels, 
+bool ResourceSystem::loadOrConvertImage(const fs::path& path, raw_vector<uint8>& pixels, 
 	uint4& size, Image::Type& type, Image::Format& format, int32 threadIndex) const noexcept
 {
 	#if !GARDEN_PACK_RESOURCES
@@ -1060,7 +1060,7 @@ bool ResourceSystem::loadOrConvertImage(const fs::path& path, vector<uint8>& pix
 }
 
 //**********************************************************************************************************************
-bool ResourceSystem::loadImageData(const fs::path* paths, psize pathCount, vector<vector<uint8>>& pixelArrays, 
+bool ResourceSystem::loadImageData(const fs::path* paths, psize pathCount, vector<raw_vector<uint8>>& pixelArrays, 
 	uint4& size, Image::Type& type, Image::Format& format, int32 threadIndex) const noexcept
 {
 	GARDEN_ASSERT(paths);
@@ -1112,9 +1112,9 @@ bool ResourceSystem::loadImageData(const fs::path* paths, psize pathCount, vecto
 }
 
 //**********************************************************************************************************************
-bool ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& nx, 
-	vector<uint8>& px, vector<uint8>& ny, vector<uint8>& py, vector<uint8>& nz, 
-	vector<uint8>& pz, uint2& size, Image::Format& format, int32 threadIndex) const noexcept
+bool ResourceSystem::loadCubemapData(const fs::path& path, raw_vector<uint8>& nx, 
+	raw_vector<uint8>& px, raw_vector<uint8>& ny, raw_vector<uint8>& py, raw_vector<uint8>& nz, 
+	raw_vector<uint8>& pz, uint2& size, Image::Format& format, int32 threadIndex) const noexcept
 {
 	GARDEN_ASSERT(!path.empty());
 	GARDEN_ASSERT(threadIndex < (int32)thread::hardware_concurrency());
@@ -1203,7 +1203,7 @@ bool ResourceSystem::loadCubemapData(const fs::path& path, vector<uint8>& nx,
 static constexpr Image::Usage loadedImageUsage = Image::Usage::Sampled | Image::Usage::TransferDst;
 static constexpr Image::Strategy loadedImageStrategy = Image::Strategy::Size;
 
-static void copyLoadedImageData(const vector<vector<uint8>>& pixelArrays, 
+static void copyLoadedImageData(const vector<raw_vector<uint8>>& pixelArrays, 
 	uint8* stagingMap, const uint8* stagingMapEnd, Image::Type imageType) noexcept
 {
 	auto pixelData = pixelArrays.data();
@@ -1247,7 +1247,7 @@ ID<Image> ResourceSystem::loadImage(const fs::path* paths, psize pathCount, bool
 			SET_CPU_ZONE_SCOPED("Image Load");
 
 			auto& filePaths = data->paths; Image::Type type; Image::Format format;
-			vector<vector<uint8>> pixelArrays(filePaths.size()); uint4 size;
+			vector<raw_vector<uint8>> pixelArrays(filePaths.size()); uint4 size;
 	
 			auto p = filePaths[0].generic_string();
 			if (p.find("cubemap") != string::npos)
@@ -1294,7 +1294,7 @@ ID<Image> ResourceSystem::loadImage(const fs::path* paths, psize pathCount, bool
 		SET_CPU_ZONE_SCOPED("Image Load");
 
 		LoadedImageItem item; Image::Type type; Image::Format format;
-		vector<vector<uint8>> pixelArrays(pathCount); uint4 size;
+		vector<raw_vector<uint8>> pixelArrays(pathCount); uint4 size;
 
 		auto p = paths[0].generic_string();
 		if (p.find("cubemap") != string::npos)
@@ -1429,7 +1429,7 @@ void ResourceSystem::combineImages(const vector<fs::path>& inputPaths, const fs:
 	GARDEN_ASSERT(!outputPath.empty());
 	GARDEN_ASSERT(threadIndex < (int32)thread::hardware_concurrency());
 
-	vector<uint8> inBuffer; uint4 inSize; Image::Type inType; Image::Format inFormat;
+	raw_vector<uint8> inBuffer; uint4 inSize; Image::Type inType; Image::Format inFormat;
 	loadImageData(inputPaths[0], inBuffer, inSize, inType, inFormat, threadIndex);
 
 	if (inSize.z != 1 || inType != Image::Type::Texture2D)
@@ -1446,7 +1446,7 @@ void ResourceSystem::combineImages(const vector<fs::path>& inputPaths, const fs:
 	auto pixelBinarySize = imageBinarySize / pixelCount;
 	auto inBinSizeX = pixelBinarySize * inSize.x, inBinSizeY = pixelBinarySize * inSize.y;
 	auto outBinSizeY = pixelBinarySize * inSize.y * pathCount;
-	vector<uint8> outBuffer(inSize.x * outBinSizeY), tmpBuffer;
+	raw_vector<uint8> outBuffer(inSize.x * outBinSizeY), tmpBuffer;
 
 	auto tmpData = (const uint8*)Image::convertFormat(inBuffer.data(), 
 		uint3((uint2)inSize, 1), tmpBuffer, inFormat, imageFormat);
@@ -1493,7 +1493,7 @@ void ResourceSystem::renormalizeImage(const fs::path& path,
 	GARDEN_ASSERT(!path.empty());
 	GARDEN_ASSERT(threadIndex < (int32)thread::hardware_concurrency());
 
-	vector<uint8> dataBuffer; uint4 size; Image::Type imageType; Image::Format imageFormat;
+	raw_vector<uint8> dataBuffer; uint4 size; Image::Type imageType; Image::Format imageFormat;
 	loadImageData(path, dataBuffer, size, imageType, imageFormat, threadIndex);
 
 	auto pixelCount = (psize)size.x * size.y * size.z;
@@ -2298,7 +2298,7 @@ ID<Entity> ResourceSystem::loadScene(const fs::path& path, bool addRootEntity)
 	fs::path filePath = "scenes" / path; filePath += ".scene";
 
 	#if GARDEN_PACK_RESOURCES
-	uint64 itemIndex = 0; vector<uint8> dataBuffer;
+	uint64 itemIndex = 0; raw_vector<uint8> dataBuffer;
 	if (!packReader.getItemIndex(filePath, itemIndex))
 	{
 		GARDEN_LOG_ERROR("Scene file does not exist. (path: " + path.generic_string() + ")");
@@ -2637,7 +2637,7 @@ ID<Animation> ResourceSystem::loadAnimation(const fs::path& path)
 	fs::path filePath = "animations" / path; filePath += ".anim";
 
 	#if GARDEN_PACK_RESOURCES
-	uint64 itemIndex = 0; vector<uint8> dataBuffer;
+	uint64 itemIndex = 0; raw_vector<uint8> dataBuffer;
 	if (!packReader.getItemIndex(filePath, itemIndex))
 	{
 		GARDEN_LOG_ERROR("Animation file does not exist. (path: " + path.generic_string() + ")");
@@ -2910,7 +2910,7 @@ Ref<Font> ResourceSystem::loadFont(const fs::path& path, int32 faceIndex, bool l
 
 	auto textSystem = TextSystem::getInstance();
 	fs::path filePath = "fonts" / path; filePath += ".ttf";
-	vector<uint8> fontData;
+	raw_vector<uint8> fontData;
 
 	#if GARDEN_PACK_RESOURCES
 	uint64 itemIndex = 0;
@@ -3046,7 +3046,7 @@ void ResourceSystem::destroyShared(FontArray& fonts)
 }
 
 //**********************************************************************************************************************
-bool ResourceSystem::loadData(const fs::path& path, vector<uint8>& data)
+bool ResourceSystem::loadData(const fs::path& path, raw_vector<uint8>& data)
 {
 	GARDEN_ASSERT(!path.empty());
 

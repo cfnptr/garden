@@ -165,10 +165,10 @@ static vk::SwapchainKHR createVkSwapchain(VulkanAPI* vulkanAPI, uint2& framebuff
 static void createVkCommandPools(vk::Device device, uint32 queueFamilyIndex, 
 	uint32 count, vector<vk::CommandPool>& commandPools)
 {
-	commandPools.resize(count);
+	commandPools.reserve(count);
 	vk::CommandPoolCreateInfo commandPoolInfo({}, queueFamilyIndex);
-	for (auto& commandPool : commandPools)
-		commandPool = device.createCommandPool(commandPoolInfo);
+	for (uint32 i = 0; i < count; i++)
+		commandPools.push_back(device.createCommandPool(commandPoolInfo));
 }
 
 //**********************************************************************************************************************
@@ -257,9 +257,9 @@ VulkanSwapchain::VulkanSwapchain(VulkanAPI* vulkanAPI, uint2 framebufferSize, bo
 	instance = createVkSwapchain(vulkanAPI, framebufferSize, useVsync, useTripleBuffering, nullptr, format);
 	images = createVkSwapchainImages(vulkanAPI, instance, framebufferSize, format);
 
-	renderFinishedSemaphores.resize(images.size());
-	for (auto& semaphore : renderFinishedSemaphores)
-		semaphore = vulkanAPI->device.createSemaphore(semaphoreInfo);
+	renderFinishedSemaphores.reserve(images.size());
+	for (uint32 i = 0; i < (uint32)images.size(); i++)
+		renderFinishedSemaphores.push_back(vulkanAPI->device.createSemaphore(semaphoreInfo));
 
 	this->framebufferSize = framebufferSize;
 }

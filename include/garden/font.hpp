@@ -19,6 +19,7 @@
 
 #pragma once
 #include "garden/defines.hpp"
+#include "garden/raw-vector.hpp"
 #include "ecsm.hpp"
 
 namespace garden
@@ -32,7 +33,7 @@ using namespace ecsm;
 struct Font final
 {
 	vector<void*> faces;
-	vector<uint8> data;
+	raw_vector<uint8> data;
 
 	bool destroy();
 };
