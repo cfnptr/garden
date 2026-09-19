@@ -343,7 +343,8 @@ namespace garden
 	struct MeshOptVertex
 	{
 		float3 position;
-		half2 normal;
+		uint32 flags;
+		short2 normal;
 		short2 texCoords;
 	};
 }
@@ -366,11 +367,55 @@ static int32 getModelFilePath(const fs::path& modelPath, fs::path& filePath, Mod
 
 	return fileCount;
 }
-static void optimizeVertexData(const aiMesh* mesh, raw_vector<uint8>& vertices)
+static void optimizeVertexData(const aiMesh* mesh, raw_vector<uint8>& indices, 
+	raw_vector<uint8>& positions, raw_vector<uint8>& attributes)
 {
 	auto vertexCount = mesh->mNumVertices;
-	vertices.resize(vertexCount * sizeof(MeshOptVertex));
-	auto vertexData = (MeshOptVertex*)vertices.data();
+	auto indexCount = mesh->mNumFaces * 3;
+	auto indexType = toIndexType(indexCount);
+	const auto meshFaces = mesh->mFaces;
+	auto faceCount = mesh->mNumFaces;
+	uint32 faceIndexCount = 0;
+
+	if (indexType == IndexType::Uint32)
+	{
+		indices.resize(indexCount * sizeof(uint32));
+		auto indexData = (uint32*)indices.data();
+
+		for (uint32 i = 0; i < faceCount; i++)
+		{
+			auto face = meshFaces[i];
+			GARDEN_ASSERT(face.mNumIndices == 3);
+			auto data = indexData + faceIndexCount;
+			data[0] = face.mIndices[0];
+			data[1] = face.mIndices[1];
+			data[2] = face.mIndices[2];
+			faceIndexCount += 3;
+		}
+		meshopt_optimizeVertexCache(indexData, indexData, indexCount, vertexCount);
+	}
+	else if (indexType == IndexType::Uint16)
+	{
+		indices.resize(indexCount * sizeof(uint16));
+		auto indexData = (uint16*)indices.data();
+
+		for (uint32 i = 0; i < faceCount; i++)
+		{
+			auto face = meshFaces[i];
+			GARDEN_ASSERT(face.mNumIndices == 3);
+			auto data = indexData + faceIndexCount;
+			data[0] = (uint16)face.mIndices[0];
+			data[1] = (uint16)face.mIndices[1];
+			data[2] = (uint16)face.mIndices[2];
+			faceIndexCount += 3;
+		}
+		meshopt_optimizeVertexCache(indexData, indexData, indexCount, vertexCount);
+	}
+	else abort();
+	GARDEN_ASSERT(indexCount == faceIndexCount);
+
+	positions.resize(vertexCount * sizeof(MeshOptVertex));
+	auto vertexData = (MeshOptVertex*)positions.data();
 	const auto meshVertices = mesh->mVertices, meshNormals = mesh->mNormals;
 	const auto meshTexCoords = mesh->mTextureCoords[0];
 
@@ -378,10 +423,33 @@ static void optimizeVertexData(const aiMesh* mesh, raw_vector<uint8>& vertices)
 	{
 		auto& vertex = vertexData[i];
 		auto position = meshVertices[i], normal = meshNormals[i], texCoords = meshTexCoords[i];
+		auto encNormal = encodeNormalOct3(float3(normal.x, normal.y, normal.z));
 		vertex.position = float3(position.x, position.y, position.z);
-		vertex.normal = (half2)encodeNormalOct2(float3(normal.x, normal.y, normal.z));
-		vertex.texCoords = (short2)fma(saturate(float2(texCoords.x, texCoords.y)), float2(UINT16_MAX), float2(0.5f));
+		vertex.flags = encNormal.z >= 0.0f ? 1 : 0;
+		vertex.normal = (short2)fma((float2)encNormal, float2(UINT16_MAX), float2(0.5f));
+		vertex.texCoords = (short2)fma(repeat(float2(texCoords.x, texCoords.y)), float2(UINT16_MAX), float2(0.5f));
 	}
+
+	if (indexType == IndexType::Uint32)
+	{
+		auto indexData = (uint32*)indices.data();
+		meshopt_optimizeOverdraw(indexData, indexData, indexCount, 
+			&vertexData[0].position.x, vertexCount, sizeof(MeshOptVertex), 1.05f);
+		vertexCount = meshopt_optimizeVertexFetch(vertexData, indexData, 
+			indexCount, vertexData, vertexCount, sizeof(MeshOptVertex));
+	}
+	else
+	{
+		auto indexData = (uint16*)indices.data();
+		meshopt_optimizeOverdraw(indexData, indexData, indexCount, 
+			&vertexData[0].position.x, vertexCount, sizeof(MeshOptVertex), 1.05f);
+		vertexCount = meshopt_optimizeVertexFetch(vertexData, indexData, 
+			indexCount, vertexData, vertexCount, sizeof(MeshOptVertex));
+	}
+	positions.resize(vertexCount * sizeof(MeshOptVertex));
+
+	// TODO: meshopt_generateTangents()
+	attributes.resize(vertexCount * sizeof(MeshVertexAttr));
 }
 
 //**********************************************************************************************************************
@@ -440,7 +508,9 @@ ID<Entity> ModelRenderSystem::loadModel(const fs::path& path, const ModelCompone
 	auto graphicsSystem = GraphicsSystem::getInstance();
 	auto meshes = scene->mMeshes; auto materials = scene->mMaterials;
 	stack<aiNode*> nodes; nodes.push(scene->mRootNode);
-	map<uint32, MeshLOD> sharedLods; raw_vector<uint8> vertices;
+
+	map<uint32, MeshLOD> sharedLods;
+	raw_vector<uint8> vertices, indices;
 	ID<Entity> rootEntity = {}, lastEntity = {};
 
 	while (!nodes.empty())

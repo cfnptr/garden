@@ -233,7 +233,7 @@ set(JSON_BuildTests OFF CACHE BOOL "" FORCE)
 add_subdirectory(libraries/json)
 
 set(XXHASH_BUILD_XXHSUM OFF CACHE BOOL "" FORCE)
-add_subdirectory(libraries/xxhash/cmake_unofficial)
+add_subdirectory(libraries/xxhash/build/cmake)
 
 set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
