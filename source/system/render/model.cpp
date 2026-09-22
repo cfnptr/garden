@@ -45,22 +45,68 @@ const vector<ModelFileType> ModelRenderSystem::modelFileTypes =
 	ModelFileType::FBX, ModelFileType::OBJ
 };
 
+// Garden Mesh Container
+#define GMC_VERSION_MAJOR 1
+#define GMC_VERSION_MINOR 0
+#define GMC_VERSION_PATCH 0
+
+static constexpr const char gmcMagic[4] = { 'G', 'M', 'C', '\0' };
+
+namespace garden::graphics
+{
+	struct GmcHeader final
+	{
+		uint8 versionMajor = GMC_VERSION_MAJOR;
+		uint8 versionMinor = GMC_VERSION_MINOR;
+		uint8 versionPatch = GMC_VERSION_PATCH;
+		uint8 isLittleEndian = GARDEN_LITTLE_ENDIAN;
+		uint32 indexCount = 0;
+		uint32 vertexCount = 0;
+		uint8 encodedIndices : 1;
+		uint8 encodedVertPF : 1;
+		uint8 encodedVertAttr : 1;
+		uint8 _reserver0 : 5;
+		uint8 _reserver1 = 0;
+		uint16 _reserver2 = 0;
+
+		GmcHeader() : encodedIndices(0), encodedVertPF(0), encodedVertAttr(0) { }
+	};
+};
+
+static void loadMeshDataGMC(const void* data, psize dataSize, raw_vector<uint8>& indices, raw_vector<uint8>& vertices)
+{
+	static constexpr auto gmcHeaderSize = sizeof(gmcMagic) + sizeof(GmcHeader);
+	if (dataSize <= gmcHeaderSize || memcmp(data, gmcMagic, sizeof(gmcMagic)) != 0)
+		throw GardenError("Invalid GMC file data.");
+
+	auto gmcHeader = *(const GmcHeader*)((const uint8*)data + sizeof(gmcMagic));
+	if (gmcHeader.versionMajor != GMC_VERSION_MAJOR || gmcHeader.versionMinor != GMC_VERSION_MINOR)
+		throw GardenError("Bad GMC file version.");
+	if (gmcHeader.isLittleEndian != GARDEN_LITTLE_ENDIAN)
+		throw GardenError("Bad GMC file endianness.");
+	if (gmcHeader.vertexCount == 0 || gmcHeader.indexCount == 0)
+		throw GardenError("Invalid GMC header data.");
+
+	// TODO:
+}
+
 void ModelRenderComponent::setLodCount(uint8 count)
 {
-	auto lodCount = getLodCount();
-	if (count == lodCount)
+	auto currCount = getLodCount();
+	if (count == currCount)
 		return;
 	
 	auto lodCapacity = getLodCapacity();
 	if (count > lodCapacity)
 	{
-		if (lods) lods = realloc(lods, count);
-		else lods = calloc<MeshLOD>(count);
+		auto newLods = new MeshLOD[count];
+		copy(lods, lods + count, newLods);
+		delete[] lods; lods = newLods;
 		_setLodCapacity(count);
 	}
 	
-	if (count > lodCount) // Note: assuming that MeshLOD can be zero initialized.
-		memset((uint8*)lods + lodCount * sizeof(MeshLOD), 0, (count - lodCount) * sizeof(MeshLOD));
+	if (count < currCount)
+		fill(lods + count, lods + currCount, MeshLOD());
 	_setLodCount(count);
 }
 
@@ -338,14 +384,13 @@ void ModelRenderSystem::animateAsync(View<Component> component,
 
 #if GARDEN_DEBUG || GARDEN_EDITOR || defined(GARDEN_MODEL_CONVERTER)
 //**********************************************************************************************************************
-namespace garden
+namespace garden::graphics
 {
 	struct MeshOptVertex
 	{
 		float3 position;
-		uint32 flags;
-		short2 normal;
-		short2 texCoords;
+		float3 normal;
+		float2 texCoords;
 	};
 }
 
@@ -367,89 +412,203 @@ static int32 getModelFilePath(const fs::path& modelPath, fs::path& filePath, Mod
 
 	return fileCount;
 }
-static void optimizeVertexData(const aiMesh* mesh, raw_vector<uint8>& indices, 
-	raw_vector<uint8>& positions, raw_vector<uint8>& attributes)
+
+template<typename I = uint32>
+static void optimizeMeshData(const aiMesh* mesh, raw_vector<uint8>& indices, raw_vector<uint8>& positions, 
+	raw_vector<uint8>& attributes, raw_vector<uint8>& tmp0, raw_vector<uint8>& tmp1)
 {
-	auto vertexCount = mesh->mNumVertices;
-	auto indexCount = mesh->mNumFaces * 3;
-	auto indexType = toIndexType(indexCount);
-	const auto meshFaces = mesh->mFaces;
 	auto faceCount = mesh->mNumFaces;
+	auto indexCount = faceCount * 3;
+	auto vertexCount = mesh->mNumVertices;
+	const auto meshFaces = mesh->mFaces;
+	indices.resize(indexCount * sizeof(I));
+	auto indexData = (I*)indices.data();
 	uint32 faceIndexCount = 0;
 
-	if (indexType == IndexType::Uint32)
+	for (uint32 i = 0; i < faceCount; i++)
 	{
-		indices.resize(indexCount * sizeof(uint32));
-		auto indexData = (uint32*)indices.data();
-
-		for (uint32 i = 0; i < faceCount; i++)
-		{
-			auto face = meshFaces[i];
-			GARDEN_ASSERT(face.mNumIndices == 3);
-			auto data = indexData + faceIndexCount;
-			data[0] = face.mIndices[0];
-			data[1] = face.mIndices[1];
-			data[2] = face.mIndices[2];
-			faceIndexCount += 3;
-		}
-		meshopt_optimizeVertexCache(indexData, indexData, indexCount, vertexCount);
+		auto face = meshFaces[i];
+		GARDEN_ASSERT(face.mNumIndices == 3);
+		auto data = indexData + faceIndexCount;
+		data[0] = (I)face.mIndices[0];
+		data[1] = (I)face.mIndices[1];
+		data[2] = (I)face.mIndices[2];
+		faceIndexCount += 3;
 	}
-	else if (indexType == IndexType::Uint16)
-	{
-		indices.resize(indexCount * sizeof(uint16));
-		auto indexData = (uint16*)indices.data();
-
-		for (uint32 i = 0; i < faceCount; i++)
-		{
-			auto face = meshFaces[i];
-			GARDEN_ASSERT(face.mNumIndices == 3);
-			auto data = indexData + faceIndexCount;
-			data[0] = (uint16)face.mIndices[0];
-			data[1] = (uint16)face.mIndices[1];
-			data[2] = (uint16)face.mIndices[2];
-			faceIndexCount += 3;
-		}
-		meshopt_optimizeVertexCache(indexData, indexData, indexCount, vertexCount);
-	}
-	else abort();
+	meshopt_optimizeVertexCache(indexData, indexData, indexCount, vertexCount);
 	GARDEN_ASSERT(indexCount == faceIndexCount);
 
 	positions.resize(vertexCount * sizeof(MeshOptVertex));
 	auto vertexData = (MeshOptVertex*)positions.data();
 	const auto meshVertices = mesh->mVertices, meshNormals = mesh->mNormals;
 	const auto meshTexCoords = mesh->mTextureCoords[0];
+	const auto meshColors = mesh->HasVertexColors(0) ? mesh->mColors[0] : nullptr;
 
 	for (uint32 i = 0; i < vertexCount; i++)
 	{
 		auto& vertex = vertexData[i];
-		auto position = meshVertices[i], normal = meshNormals[i], texCoords = meshTexCoords[i];
-		auto encNormal = encodeNormalOct3(float3(normal.x, normal.y, normal.z));
-		vertex.position = float3(position.x, position.y, position.z);
-		vertex.flags = encNormal.z >= 0.0f ? 1 : 0;
-		vertex.normal = (short2)fma((float2)encNormal, float2(UINT16_MAX), float2(0.5f));
-		vertex.texCoords = (short2)fma(repeat(float2(texCoords.x, texCoords.y)), float2(UINT16_MAX), float2(0.5f));
+		vertex.position = *(const float3*)(meshVertices + i);
+		vertex.normal = *(const float3*)(meshNormals + i);
+		vertex.texCoords = repeat(*(const float2*)(meshTexCoords));
 	}
+
+	meshopt_optimizeOverdraw(indexData, indexData, indexCount, 
+		&vertexData[0].position.x, vertexCount, sizeof(MeshOptVertex), 1.05f);
+	vertexCount = meshopt_optimizeVertexFetch(vertexData, indexData, 
+		indexCount, vertexData, vertexCount, sizeof(MeshOptVertex));
+	tmp0.resize(indexCount * sizeof(float4));
+	meshopt_generateTangents((float*)tmp0.data(), indexData, indexCount, 
+		&vertexData->position.x, vertexCount, sizeof(MeshOptVertex), &vertexData->normal.x, 
+		sizeof(MeshOptVertex), &vertexData->texCoords.x, sizeof(MeshOptVertex));
+
+	attributes.resize(vertexCount * sizeof(MeshVertexAttr));
+	auto posFlagData = (MeshVertexPF*)positions.data();
+	auto attributeData = (MeshVertexAttr*)attributes.data();
+	auto tangentData = (const float4*)tmp0.data();
+	auto encTangentData = (ushort3*)tmp0.data();
+	auto aabb = Aabb(f32x4(*(const float3*)&mesh->mAABB.mMin), 
+		f32x4(*(const float3*)&mesh->mAABB.mMax));
+	auto invAabbSize = 1.0f / aabb.getSize();
+
+	for (uint32 i = 0; i < vertexCount; i++)
+	{
+		auto vertex = vertexData[i]; auto encNormal = encodeNormalOct3(vertex.normal);
+		auto& posFlag = posFlagData[i]; auto& attribs = attributeData[i];
+		posFlag.position = (ushort3)fma(((f32x4)vertex.position - 
+			aabb.getMin()) * invAabbSize, f32x4(UINT16_MAX), f32x4(0.5f));
+		posFlag.flags = encNormal.z > 0.0f ? MeshVertexPF::Flags::NormalSign : MeshVertexPF::Flags::None;
+		attribs.normal = (ushort2)fma((float2)encNormal, float2(UINT16_MAX), float2(0.5f));
+		attribs.texCoords = (ushort2)fma(vertex.texCoords, float2(UINT16_MAX), float2(0.5f));
+		attribs.color = meshColors ? (Color)(*(const float4*)&meshColors[i]) : Color::transparent;
+	}
+	for (uint32 i = 0; i < indexCount; i++)
+	{
+		auto index = indexData[i]; auto tangent = tangentData[i];
+		auto encTangent3 = encodeNormalOct3((float3)tangent);
+		auto encTangent2 = (ushort2)fma((float2)encTangent3, float2(UINT16_MAX), float2(0.5f));
+		auto tangentSign = encTangent3.z > 0.0f ? MeshVertexPF::Flags::TangentSign : MeshVertexPF::Flags::None;
+		auto bitangentSign = tangent.w > 0.0f ? MeshVertexPF::Flags::BitangentSign : MeshVertexPF::Flags::None;
+		posFlagData[index].flags |= tangentSign | bitangentSign;
+		attributeData[index].tangent = encTangent2;
+		encTangentData[i] = ushort3(encTangent2, (uint16)bitangentSign);
+	}
+
+	positions.resize(vertexCount * sizeof(MeshVertexPF));
+	tmp1.resize(vertexCount * sizeof(I));
+	memset(tmp1.data(), 0xFF, tmp1.size());
+	auto splitData = (I*)tmp1.data();
+
+	for (uint32 i = 0; i < indexCount; i++) // TODO: check if splits logic works!
+	{
+		auto v = indexData[i]; auto encTangent = encTangentData[i];
+		while (v != (I)~0u && attributeData[v].tangent != (ushort2)encTangent &&
+			hasAnyFlag(posFlagData[v].flags, MeshVertexPF::Flags::BitangentSign) !=
+			hasAnyFlag((MeshVertexPF::Flags)encTangent.z, MeshVertexPF::Flags::BitangentSign))
+		{
+			v = splitData[v];
+		}
+
+		if (v == (I)~0u)
+		{
+			v = vertexCount++; auto index = indexData[i];
+			positions.resize(positions.size() + sizeof(MeshVertexPF));
+			posFlagData = (MeshVertexPF*)positions.data();
+			auto posFlag = posFlagData[v]; posFlag = posFlagData[index];
+			unsetFlags(posFlag.flags, MeshVertexPF::Flags::BitangentSign);
+			setFlags(posFlag.flags, (MeshVertexPF::Flags)encTangent.z);
+
+			attributes.resize(attributes.size() + sizeof(MeshVertexAttr));
+			attributeData = (MeshVertexAttr*)attributes.data();
+			auto& attribute = attributeData[v]; attribute = attributeData[index];
+			attribute.tangent = (ushort2)encTangent;
+			
+			tmp1.resize(tmp1.size() + sizeof(I));
+			splitData = (I*)tmp1.data();
+			splitData[v] = splitData[index];
+			splitData[index] = v;
+		}
+		indexData[i] = v;
+	}
+}
+static void processMeshData(const fs::path& filePath, const aiMesh* mesh, uint32 meshID, raw_vector<uint8>& indices, 
+	raw_vector<uint8>& positions, raw_vector<uint8>& attributes, raw_vector<uint8>& tmp0, raw_vector<uint8>& tmp1)
+{
+	auto indexType = toIndexType(mesh->mNumFaces * 3);
+	uint32 indexCount, vertexCount, encSize;
 
 	if (indexType == IndexType::Uint32)
 	{
-		auto indexData = (uint32*)indices.data();
-		meshopt_optimizeOverdraw(indexData, indexData, indexCount, 
-			&vertexData[0].position.x, vertexCount, sizeof(MeshOptVertex), 1.05f);
-		vertexCount = meshopt_optimizeVertexFetch(vertexData, indexData, 
-			indexCount, vertexData, vertexCount, sizeof(MeshOptVertex));
+		optimizeMeshData<uint32>(mesh, indices, positions, attributes, tmp0, tmp1);
+		indexCount = indices.size() / sizeof(uint32); vertexCount = positions.size() / sizeof(MeshVertexPF);
+		tmp1.resize(meshopt_encodeIndexBufferBound(indexCount, vertexCount));
+		encSize = meshopt_encodeIndexBuffer(tmp1.data(), tmp1.size(), (const uint32*)indices.data(), indexCount);
+	}
+	else if (indexType == IndexType::Uint16)
+	{
+		optimizeMeshData<uint16>(mesh, indices, positions, attributes, tmp0, tmp1);
+		indexCount = indices.size() / sizeof(uint16); vertexCount = positions.size() / sizeof(MeshVertexPF);
+		tmp1.resize(meshopt_encodeIndexBufferBound(indexCount, vertexCount));
+		encSize = meshopt_encodeIndexBuffer(tmp1.data(), tmp1.size(), (const uint16*)indices.data(), indexCount);
+	}
+	else abort();
+	GARDEN_ASSERT(vertexCount == attributes.size() / sizeof(MeshVertexAttr));
+
+	tmp0.resize(sizeof(GmcHeader));
+	auto gmcHeader = (GmcHeader*)tmp0.data();
+
+	*gmcHeader = GmcHeader();
+	gmcHeader->indexCount = indexCount;
+	gmcHeader->vertexCount = vertexCount;
+	gmcHeader->encodedIndices = encSize < indices.size() ? 1 : 0;
+
+	if (gmcHeader->encodedIndices)
+	{
+		tmp0.resize(tmp0.size() + encSize);
+		memcpy(tmp0.data() + sizeof(GmcHeader), tmp1.data(), encSize);
 	}
 	else
 	{
-		auto indexData = (uint16*)indices.data();
-		meshopt_optimizeOverdraw(indexData, indexData, indexCount, 
-			&vertexData[0].position.x, vertexCount, sizeof(MeshOptVertex), 1.05f);
-		vertexCount = meshopt_optimizeVertexFetch(vertexData, indexData, 
-			indexCount, vertexData, vertexCount, sizeof(MeshOptVertex));
+		tmp0.resize(tmp0.size() + indices.size());
+		memcpy(tmp0.data() + sizeof(GmcHeader), indices.data(), indices.size());
 	}
-	positions.resize(vertexCount * sizeof(MeshOptVertex));
+	gmcHeader = (GmcHeader*)tmp0.data();
 
-	// TODO: meshopt_generateTangents()
-	attributes.resize(vertexCount * sizeof(MeshVertexAttr));
+	tmp1.resize(meshopt_encodeVertexBufferBound(vertexCount, sizeof(MeshVertexPF)));
+	encSize = meshopt_encodeVertexBuffer(tmp1.data(), tmp1.size(), 
+		positions.data(), vertexCount, sizeof(MeshVertexPF));
+	gmcHeader->encodedVertPF = encSize < positions.size() ? 1 : 0;
+
+	auto dataOffset = tmp0.size();
+	if (gmcHeader->encodedVertPF)
+	{
+		tmp0.resize(tmp0.size() + encSize);
+		memcpy(tmp0.data() + dataOffset, tmp1.data(), encSize);
+	}
+	else
+	{
+		tmp0.resize(tmp0.size() + indices.size());
+		memcpy(tmp0.data() + dataOffset, positions.data(), indices.size());
+	}
+	gmcHeader = (GmcHeader*)tmp0.data();
+
+	tmp1.resize(meshopt_encodeVertexBufferBound(vertexCount, sizeof(MeshVertexAttr)));
+	encSize = meshopt_encodeVertexBuffer(tmp1.data(), tmp1.size(), 
+		attributes.data(), vertexCount, sizeof(MeshVertexAttr));
+	gmcHeader->encodedVertAttr = encSize < attributes.size() ? 1 : 0;
+
+	dataOffset = tmp0.size();
+	if (gmcHeader->encodedVertAttr)
+	{
+		tmp0.resize(tmp0.size() + encSize);
+		memcpy(tmp0.data() + dataOffset, tmp1.data(), encSize);
+	}
+	else
+	{
+		tmp0.resize(tmp0.size() + indices.size());
+		memcpy(tmp0.data() + dataOffset, attributes.data(), indices.size());
+	}
+
+	ResourceSystem::getInstance()->storeBuffer(filePath, tmp0, true);
 }
 
 //**********************************************************************************************************************
@@ -508,10 +667,8 @@ ID<Entity> ModelRenderSystem::loadModel(const fs::path& path, const ModelCompone
 	auto graphicsSystem = GraphicsSystem::getInstance();
 	auto meshes = scene->mMeshes; auto materials = scene->mMaterials;
 	stack<aiNode*> nodes; nodes.push(scene->mRootNode);
-
-	map<uint32, MeshLOD> sharedLods;
-	raw_vector<uint8> vertices, indices;
-	ID<Entity> rootEntity = {}, lastEntity = {};
+	map<uint32, MeshLOD> sharedLods; ID<Entity> rootEntity = {}, lastEntity = {};
+	raw_vector<uint8> indices, positions, attributes, tmp0, tmp1;
 
 	while (!nodes.empty())
 	{
@@ -555,7 +712,7 @@ ID<Entity> ModelRenderSystem::loadModel(const fs::path& path, const ModelCompone
 
 				for (uint32 j = 0; j < meshIdCount; j++)
 				{
-					auto meshId = meshIds[j]; auto mesh = meshes[meshId];
+					auto meshID = meshIds[j]; auto mesh = meshes[meshID];
 					if (mesh->mPrimitiveTypes != aiPrimitiveType_TRIANGLE)
 						continue; // Note: skipping non triangle primitives.
 
@@ -569,16 +726,16 @@ ID<Entity> ModelRenderSystem::loadModel(const fs::path& path, const ModelCompone
 						continue;
 					}
 
-					auto materialId = mesh->mMaterialIndex;
-					auto material = materials[materialId];
-					auto componentType = components->begin()->second;
+					auto materialID = mesh->mMaterialIndex;
+					auto material = materials[materialID];
+					type_index componentType = typeid(OpaqueModelComponent);
 					auto componentResult = components->find(material->GetName().C_Str());
 
 					if (componentResult != components->end())
 						componentType = componentResult->second;
 					else
 					{
-						GARDEN_LOG_ERROR("Unknown Assimp 3D model material type. ("
+						GARDEN_LOG_WARN("Unknown Assimp 3D model material type. ("
 							"material: " + string(material->GetName().C_Str()) + ", "
 							"node: " + string(child->mName.C_Str()) + ", "
 							"path: " + path.generic_string() + ")");
@@ -589,15 +746,21 @@ ID<Entity> ModelRenderSystem::loadModel(const fs::path& path, const ModelCompone
 						manager->getOrAdd(newEntity, componentType, isAdded));
 					if (isAdded)
 					{
+						modelRenderView->aabb = Aabb(f32x4(*(const float3*)&mesh->mAABB.mMin), 
+							f32x4(*(const float3*)&mesh->mAABB.mMax));
 						// TODO: get and set material params
 					}
 
-					auto lodResult = sharedLods.find(meshId);
+					auto lodResult = sharedLods.find(meshID);
 					if (lodResult != sharedLods.end())
 					{
 						modelRenderView->setLod(lodResult->second, lodIndex);
 						continue;
 					}
+
+					auto filePath = path; filePath.replace_extension();
+					filePath = "models" / filePath / to_string(meshID); filePath.replace_extension(".gmc");
+					processMeshData(filePath, mesh, meshID, indices, positions, attributes, tmp0, tmp1);
 
 					// TODO: combine vertex data
 

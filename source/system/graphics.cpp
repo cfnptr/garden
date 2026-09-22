@@ -161,7 +161,9 @@ void GraphicsSystem::preInit()
 }
 void GraphicsSystem::preDeinit()
 {
-	GraphicsAPI::get()->waitIdle();
+	auto graphicsAPI = GraphicsAPI::get();
+	graphicsAPI->waitIdle();
+	graphicsAPI->storeShaderCache();
 }
 
 //**********************************************************************************************************************

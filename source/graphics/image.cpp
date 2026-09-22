@@ -47,6 +47,7 @@ using namespace garden;
 using namespace garden::graphics;
 using json = nlohmann::json;
 
+// Garden Image Container
 #define GIC_VERSION_MAJOR 1
 #define GIC_VERSION_MINOR 0
 #define GIC_VERSION_PATCH 0
@@ -59,8 +60,12 @@ namespace garden::graphics
 	{
 		PNG, EXR, KTX2, Count
 	};
-	struct GicData final
+	struct GicHeader final
 	{
+		uint8 versionMajor = GIC_VERSION_MAJOR;
+		uint8 versionMinor = GIC_VERSION_MINOR;
+		uint8 versionPatch = GIC_VERSION_PATCH;
+		uint8 isLittleEndian = GARDEN_LITTLE_ENDIAN;
 		uint8 containerType = 0;
 		uint8 imageType = 0;
 		uint8 channelCount = 0;
@@ -68,17 +73,10 @@ namespace garden::graphics
 		uint8 generateMips : 1;
 		uint8 linearAsSrgb : 1;
 		uint8 _reserved0 : 6;
-		uint16 _reserved1 = 0;
+		uint8 _reserved1 = 0;
+		uint16 _reserved2 = 0;
 
-		GicData() noexcept : generateMips(0), linearAsSrgb(0), _reserved0(0) { }
-	};
-	struct GicHeader final
-	{
-		uint8 versionMajor = GIC_VERSION_MAJOR;
-		uint8 versionMinor = GIC_VERSION_MINOR;
-		uint8 versionPatch = GIC_VERSION_PATCH;
-		uint8 isLittleEndian = GARDEN_LITTLE_ENDIAN;
-		GicData data = {};
+		GicHeader() noexcept : generateMips(0), linearAsSrgb(0), _reserved0(0) { }
 	};
 };
 
@@ -1876,29 +1874,28 @@ static void loadImageDataGIC(const void* data, psize dataSize, raw_vector<uint8>
 	if (gicHeader.isLittleEndian != GARDEN_LITTLE_ENDIAN)
 		throw GardenError("Bad GIC file endianness.");
 
-	if (gicHeader.data.containerType >= (uint8)GicType::Count ||
-		gicHeader.data.imageType >= (uint8)Image::Type::Count ||
-		gicHeader.data.channelCount > 4 || gicHeader.data.encodeEffort > 100)
+	if (gicHeader.containerType >= (uint8)GicType::Count || gicHeader.imageType >= (uint8)Image::Type::Count ||
+		gicHeader.channelCount == 0 || gicHeader.channelCount > 4 || gicHeader.encodeEffort > 100)
 	{
 		throw GardenError("Invalid GIC header data.");
 	}
 
-	imageType = (Image::Type)gicHeader.data.imageType;
+	imageType = (Image::Type)gicHeader.imageType;
 	data = (const uint8*)data + gicHeaderSize;
 	dataSize -= gicHeaderSize;
 
-	if (gicHeader.data.containerType == (uint8)GicType::PNG)
+	if (gicHeader.containerType == (uint8)GicType::PNG)
 	{
-		loadImageDataPNG(data, dataSize, pixels, imageSize, imageFormat, imageType, gicHeader.data.linearAsSrgb);
+		loadImageDataPNG(data, dataSize, pixels, imageSize, imageFormat, imageType, gicHeader.linearAsSrgb);
 		return;
 	}
-	if (gicHeader.data.containerType == (uint8)GicType::EXR)
+	if (gicHeader.containerType == (uint8)GicType::EXR)
 	{
 		loadImageDataEXR(data, dataSize, pixels, imageSize, imageFormat, imageType);
 		return;
 	}
 
-	if (gicHeader.data.containerType == (uint8)GicType::KTX2)
+	if (gicHeader.containerType == (uint8)GicType::KTX2)
 	{
 		#if GARDEN_USE_BASIS_UNIVERSAL
 		if (dataSize > UINT32_MAX)
@@ -1911,8 +1908,8 @@ static void loadImageDataGIC(const void* data, psize dataSize, raw_vector<uint8>
 		imageSize = uint4(transcoder.get_width(), 
 			transcoder.get_height(), max(transcoder.get_layers(), 1u), 1);
 		imageFormat = ::toImageFormat(transcoder.get_basis_tex_format(), 
-			gicHeader.data.channelCount, transcoder.is_srgb());
-		imageType = (Image::Type)gicHeader.data.imageType;
+			gicHeader.channelCount, transcoder.is_srgb());
+		imageType = (Image::Type)gicHeader.imageType;
 
 		auto transcoderFormat = toTranscoderFormat(imageFormat);
 		auto blockSize = basist::basis_transcoder_format_is_uncompressed(transcoderFormat) ? 1 : 
@@ -2368,14 +2365,14 @@ static void storeImageDataGIC(const fs::path& filePath, const void* pixels, uint
 	GARDEN_ASSERT_MSG(formatBinarySize > 0, "Assert " + filePath.generic_string());
 
 	GicHeader gicHeader = {};
-	gicHeader.data.containerType = 
+	gicHeader.containerType = 
 		hasAnyFlag(flags, Image::StoreFlag::Lossless) || isLessThan64k || noBasisUniversal ? 
 		(uint8)(isFormatFloat(imageFormat) ? GicType::EXR : GicType::PNG) : (uint8)GicType::KTX2;
-	gicHeader.data.imageType = (uint8)imageType;
-	gicHeader.data.channelCount = toComponentCount(imageFormat);
-	gicHeader.data.encodeEffort = (uint8)std::fma(quality, 100.0f, 0.5f);
-	gicHeader.data.generateMips = hasAnyFlag(flags, Image::StoreFlag::GenerateMips) ? 1 : 0;
-	gicHeader.data.linearAsSrgb = hasAnyFlag(flags, Image::StoreFlag::LinearAsSrgb) ? 1 : 0;
+	gicHeader.imageType = (uint8)imageType;
+	gicHeader.channelCount = toComponentCount(imageFormat);
+	gicHeader.encodeEffort = (uint8)std::fma(quality, 100.0f, 0.5f);
+	gicHeader.generateMips = hasAnyFlag(flags, Image::StoreFlag::GenerateMips) ? 1 : 0;
+	gicHeader.linearAsSrgb = hasAnyFlag(flags, Image::StoreFlag::LinearAsSrgb) ? 1 : 0;
 
 	// Note: using here FILE* instead of ofstream() due to libpng API.
 	auto outputFile = fopen(filePath.generic_string().c_str(), "wb");
@@ -2389,7 +2386,7 @@ static void storeImageDataGIC(const fs::path& filePath, const void* pixels, uint
 		throw GardenError("Failed to write GIC image header.");
 	}
 
-	if (gicHeader.data.containerType == (uint8)GicType::PNG) 
+	if (gicHeader.containerType == (uint8)GicType::PNG) 
 	{
 		try
 		{
@@ -2404,7 +2401,7 @@ static void storeImageDataGIC(const fs::path& filePath, const void* pixels, uint
 		fclose(outputFile);
 		return;
 	}
-	if (gicHeader.data.containerType == (uint8)GicType::EXR)
+	if (gicHeader.containerType == (uint8)GicType::EXR)
 	{
 		try
 		{
@@ -2522,7 +2519,7 @@ static void storeImageDataGIC(const fs::path& filePath, const void* pixels, uint
 	else // LDR
 	{
 		auto pixelData = (const uint8*)dstPixels;
-		if (gicHeader.data.channelCount == 2) // Note: encoding RG channels as R and A channels.
+		if (gicHeader.channelCount == 2) // Note: encoding RG channels as R and A channels.
 		{
 			tmpPixels.resize(imagePixelCount * sizeof(basisu::color_rgba));
 			pixelData = tmpPixels.data(); auto inPixels = (const Color*)dstPixels;

@@ -298,7 +298,7 @@ public:
 	 * @param imageFormat required image data format
 	 * @param quality image visual quality (0.0 - 1.0)
 	 * @param effort image compression effort (0.0 - 1.0)
-	 * @param[in] directory scene resource directory
+	 * @param[in] directory custom images directory
 	 */
 	void storeImage(const fs::path& path, const void* pixels, uint3 size, 
 		Image::FileType fileType, Image::Type imageType, Image::Format imageFormat, 
@@ -314,7 +314,7 @@ public:
 	 * @param imageFormat required image data format
 	 * @param quality image visual quality (0.0 - 1.0)
 	 * @param effort image compression effort (0.0 - 1.0)
-	 * @param[in] directory scene resource directory
+	 * @param[in] directory custom images directory
 	 */
 	void storeImage(const fs::path& path, const vector<uint8>& pixels, uint3 size, 
 		Image::FileType fileType, Image::Type imageType, Image::Format imageFormat, 
@@ -370,6 +370,7 @@ public:
 	 * @param loadAsync load buffer asynchronously without blocking
 	 */
 	ID<Buffer> loadBuffer(const fs::path& path, float taskPriority = TaskPriority::normal, bool loadAsync = true);
+
 	/**
 	 * @brief Loads shared buffer from the resource pack.
 	 * @note Loads from the resources directory in debug build.
@@ -384,6 +385,34 @@ public:
 	 * @param[in] buffer target shared buffer reference
 	 */
 	void destroyShared(Ref<Buffer>& buffer);
+
+	/**
+	 * @brief Stores specified buffer data to the resources directory.
+	 * @note The specified path should contain target file extension.
+	 * 
+	 * @param[in] path target buffer resource path
+	 * @param[in] data buffer binary data
+	 * @param size buffer size in bytes
+	 * @param useCacheDir store to the cache directory
+	 * @param[in] directory custom resources directory
+	 */
+	void storeBuffer(const fs::path& path, const void* data, uint32 size, 
+		bool useCacheDir = false, const fs::path& directory = "");
+	/**
+	 * @brief Stores specified buffer data to the resources directory.
+	 * @note The specified path should contain target file extension.
+	 * 
+	 * @param[in] path target buffer resource path
+	 * @param[in] data buffer binary data
+	 * @param useCacheDir store to the cache directory
+	 * @param[in] directory custom resources directory
+	 */
+	template<class T, class A = allocator<T>>
+	void storeBuffer(const fs::path& path, const vector<T, A>& data, 
+		bool useCacheDir = false, const fs::path& directory = "")
+	{
+		storeBuffer(path, data.data(), data.size() * sizeof(T), useCacheDir, directory);
+	}
 
 	/**
 	 * @brief Returns current loaded buffer instance.
@@ -466,7 +495,7 @@ public:
 	 * 
 	 * @param[in] path target scene resource path
 	 * @param rootEntity custom scene root or null
-	 * @param[in] directory scene resource directory
+	 * @param[in] directory custom scenes directory
 	 */
 	void storeScene(const fs::path& path, ID<Entity> rootEntity = {}, const fs::path& directory = "");
 
@@ -498,7 +527,7 @@ public:
 	 * 
 	 * @param[in] path target animation resource path
 	 * @param animation target animation instance
-	 * @param[in] directory animation resource directory
+	 * @param[in] directory custom animations directory
 	 */
 	void storeAnimation(const fs::path& path, ID<Animation> animation, const fs::path& directory = "");
 

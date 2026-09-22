@@ -69,8 +69,7 @@ static void renderAnimationSelector(ID<Entity> entity)
 		if (!animationView || EditorRenderSystem::getInstance()->selectedEntity != entity)
 			return;
 
-		auto path = selectedFile;
-		path.replace_extension();
+		auto path = selectedFile; path.replace_extension();
 		auto animation = ResourceSystem::getInstance()->loadSharedAnimation(path);
 		if (animation)
 			animationView->emplaceAnimation(path.generic_string(), std::move(animation));

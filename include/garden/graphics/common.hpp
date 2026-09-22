@@ -151,6 +151,14 @@ static constexpr psize toBinarySize(IndexType indexType) noexcept
 		default: return 0;
 	}
 }
+/**
+ * @brief Returns best index type based on index count.
+ * @param indexCount target index count
+ */
+static constexpr IndexType toIndexType(uint32 indexCount)
+{
+	return indexCount > UINT16_MAX ? IndexType::Uint32 : IndexType::Uint16;
+}
 
 /**
  * @brief Pipeline type name strings.

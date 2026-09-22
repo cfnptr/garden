@@ -1407,9 +1407,10 @@ void ResourceSystem::storeImage(const fs::path& path, const void* pixels, uint3 
 	GARDEN_ASSERT_MSG(quality >= 0.0f && quality <= 1.0f, "Assert " + path.generic_string());
 	GARDEN_ASSERT_MSG(effort >= 0.0f && effort <= 1.0f, "Assert " + path.generic_string());
 
-	#if !GARDEN_PACK_RESOURCES || GARDEN_EDITOR
+	#if GARDEN_DEBUG || GARDEN_EDITOR || !GARDEN_PACK_RESOURCES
 	auto imagesPath = directory.empty() ? appResourcesPath / "images" : directory;
 	#else
+	GARDEN_ASSERT_MSG(!directory.empty(), "Assert " + path.generic_string());
 	const auto& imagesPath = directory;
 	#endif
 
@@ -1574,6 +1575,29 @@ void ResourceSystem::destroyShared(Ref<Buffer>& buffer)
 	}
 
 	GraphicsSystem::getInstance()->destroy(buffer);
+}
+
+void ResourceSystem::storeBuffer(const fs::path& path, const void* data, 
+	uint32 size, bool useCacheDir, const fs::path& directory)
+{
+	GARDEN_ASSERT(!path.empty());
+	GARDEN_ASSERT_MSG(data, "Assert " + path.generic_string());
+	GARDEN_ASSERT_MSG(size > 0, "Assert " + path.generic_string());
+
+	#if GARDEN_DEBUG || GARDEN_EDITOR || !GARDEN_PACK_RESOURCES
+	auto resourcesPath = directory.empty() ? 
+		(useCacheDir ? appCachePath : appResourcesPath) : directory;
+	#else
+	GARDEN_ASSERT_MSG(!directory.empty(), "Assert " + path.generic_string());
+	const auto& resourcesPath = directory;
+	#endif
+
+	auto filePath = resourcesPath / path;
+	auto outputDirectory = filePath.parent_path();
+	if (!fs::exists(outputDirectory))
+		fs::create_directories(outputDirectory);
+	File::storeBinary(filePath, data, size);
+	GARDEN_LOG_DEBUG("Stored buffer. (path: " + path.generic_string() + ")");
 }
 
 //**********************************************************************************************************************
@@ -2476,9 +2500,10 @@ void ResourceSystem::storeScene(const fs::path& path, ID<Entity> rootEntity, con
 		return;
 	}
 
-	#if !GARDEN_PACK_RESOURCES || GARDEN_EDITOR
+	#if GARDEN_DEBUG || GARDEN_EDITOR || !GARDEN_PACK_RESOURCES
 	auto scenesPath = directory.empty() ? appResourcesPath / "scenes" : directory;
 	#else
+	GARDEN_ASSERT_MSG(!directory.empty(), "Assert " + path.generic_string());
 	const auto& scenesPath = directory;
 	#endif
 
@@ -2824,9 +2849,10 @@ void ResourceSystem::storeAnimation(const fs::path& path, ID<Animation> animatio
 	GARDEN_ASSERT(!path.empty());
 	GARDEN_ASSERT_MSG(animation, "Assert " + path.generic_string());
 
-	#if !GARDEN_PACK_RESOURCES || GARDEN_EDITOR
+	#if GARDEN_DEBUG || GARDEN_EDITOR || !GARDEN_PACK_RESOURCES
 	auto animationsPath = directory.empty() ? appResourcesPath / "animations" : directory;
 	#else
+	GARDEN_ASSERT_MSG(!directory.empty(), "Assert " + path.generic_string());
 	const auto& animationsPath = directory;
 	#endif
 

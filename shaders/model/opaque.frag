@@ -34,5 +34,6 @@ buffer readonly Instance
 
 void main()
 {
-	fb.color = instance.data[pc.instanceIndex].color;
+	// fb.color = instance.data[pc.instanceIndex].color;
+	fb.color = float4(1.0f, 0.0f, 0.0f, 1.0f);
 }

@@ -14,7 +14,7 @@
 
 #include "model/instance-data.h"
 
-in float3 vs.position : f32;
+in float3 vs.position : f16;
 in float2 vs.texCoords : f16;
 
 uniform pushConstants
@@ -29,5 +29,6 @@ buffer readonly Instance
 
 void main()
 {
-	gl.position = instance.data[pc.instanceIndex].mvp * float4(vs.position, 1.0f);
+	// gl.position = instance.data[pc.instanceIndex].currModel * float4(vs.position, 1.0f);
+	gl.position = float4(vs.position, 1.0f);
 }
