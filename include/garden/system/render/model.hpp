@@ -117,6 +117,10 @@ public:
 	 * @param count target mesh level of detail count
 	 */
 	void setLodCount(uint8 count);
+	/**
+	 * @brief Reduces LOD array capacity to fit its size.
+	 */
+	void shrinkLods();
 
 	/*******************************************************************************************************************
 	 * @brief Adds a new 3D model mesh level of detail.
@@ -137,6 +141,7 @@ public:
 		GARDEN_ASSERT(lodCount > 0);
 		setLodCount(lodCount - 1);
 	}
+
 	/**
 	 * @brief Sets 3D model mesh level of detail.
 	 * @note Extends the LOD array if index is out of range. 
@@ -150,7 +155,19 @@ public:
 			setLodCount(index + 1);
 		getLod(index) = lod;
 	}
-
+	/**
+	 * @brief Sets 3D model mesh level of detail.
+	 * @note Extends the LOD array if index is out of range. 
+	 *
+	 * @param[in] lod target mesh level of detail to set
+	 * @param index level of detail index in the array
+	 */
+	void setLod(MeshLOD&& lod, uint8 index)
+	{
+		if (index >= getLodCount())
+			setLodCount(index + 1);
+		getLod(index) = std::move(lod);
+	}
 protected:
 	uint32& _colorMapID() noexcept { return unused0; }
 	uint32& _normalMapID() noexcept { return unused1; }

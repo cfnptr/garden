@@ -292,15 +292,18 @@ void TransformComponent::removeAllChilds() noexcept
 }
 void TransformComponent::shrinkChilds()
 {
-	if (!childs)
+	if (!childs || childCount() == childCapacity())
 		return;
 
 	if (childCount() == 0)
 	{
-		free(childs);
-		childs = nullptr;
+		free(childs); childs = nullptr;
+		childCapacity() = 0;
+		return;
 	}
-	else childs = realloc(childs, childCount());
+
+	childs = realloc(childs, childCount());
+	childCapacity() = childCount();
 }
 
 //**********************************************************************************************************************

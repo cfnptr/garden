@@ -66,7 +66,28 @@ struct MeshLOD
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	fs::path bufferPath = "";      /**< Mesh vertex and index buffer path. */
 	#endif
-	static constexpr uint8 maxCount = UINT8_MAX; /**< Maximal mesh LOD count. */	
+
+	/**
+	 * @brief Return mesh vertex count.
+	 */
+	uint32 getVertexCount() const noexcept { return vertexBuffer.unused; }
+	/**
+	 * @brief Sets mesh vertex count.
+	 * @param vertexCount target vertex count
+	 */
+	void setVertexCount(uint32 vertexCount) { vertexBuffer.unused = vertexCount; }
+
+	/**
+	 * @brief Return mesh index count.
+	 */
+	uint32 getIndexCount() const noexcept { return indexBuffer.unused; }
+	/**
+	 * @brief Sets mesh index count.
+	 * @param indexCount target index count
+	 */
+	void setIndexCount(uint32 indexCount) { indexBuffer.unused = indexCount; }
+
+	static constexpr uint8 maxCount = UINT8_MAX; /**< Maximal mesh LOD count. */
 };
 
 /***********************************************************************************************************************

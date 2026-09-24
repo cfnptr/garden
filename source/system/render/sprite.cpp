@@ -119,12 +119,13 @@ uint64 SpriteRenderSystem::getBaseInstanceDataSize()
 void SpriteRenderSystem::setInstanceData(SpriteRenderComponent* spriteRenderView, void* instanceData,
 	const f32x4x4& viewProj, const f32x4x4& model, uint32 instanceIndex, int32 taskIndex)
 {
-	auto spriteData = (BaseInstanceData*)instanceData;
-	spriteData->model = (float3x4)transpose4x4(model);
-	spriteData->uvSize = spriteRenderView->uvSize;
-	spriteData->uvOffset = spriteRenderView->uvOffset;
-	spriteData->colorAdd = spriteRenderView->colorAdd;
-	spriteData->colorMul = spriteRenderView->colorMul;
+	BaseInstanceData spriteData;
+	spriteData.model = (float3x4)transpose4x4(model);
+	spriteData.uvSize = spriteRenderView->uvSize;
+	spriteData.uvOffset = spriteRenderView->uvOffset;
+	spriteData.colorAdd = spriteRenderView->colorAdd;
+	spriteData.colorMul = spriteRenderView->colorMul;
+	*(BaseInstanceData*)instanceData = spriteData;
 }
 void SpriteRenderSystem::setPushConstants(SpriteRenderComponent* spriteRenderView, PushConstants* pushConstants,
 	const f32x4x4& viewProj, const f32x4x4& model, uint32 instanceIndex, int32 taskIndex)

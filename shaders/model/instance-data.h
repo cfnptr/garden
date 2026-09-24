@@ -20,24 +20,24 @@
 struct BaseInstanceData
 {
 	float3x4 currModel;
+	float aabbSize;
+	float aabbMin;
 	half2 uvSize;
 	half2 uvOffset;
+	float3x4 prevModel;
 	Color colorAdd;
 	Color colorMul;
-	float3x4 prevModel;
 	Color ormAdd;
 	Color ormMul;
-	uint32 _alignment0;
-	uint32 _alignment1;
 };
 
 struct ShadowInstanceData
 {
 	float3x4 model;
+	float aabbSize;
+	float aabbMin;
 	half2 uvSize;
 	half2 uvOffset;
-	uint32 _alignment0;
-	uint32 _alignment1;
 };
 
 #endif // MODEL_INSTANCE_DATA_H

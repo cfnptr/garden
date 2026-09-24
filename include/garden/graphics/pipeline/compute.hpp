@@ -53,14 +53,10 @@ public:
 	 */
 	struct ComputeCreateData : public CreateData
 	{
-		uint8 _alignment0 = 0;
-		uint16 _alignment1 = 0;
-		uint3 localSize = uint3::zero;
 		raw_vector<uint8> code;
+		uint3 localSize = uint3::zero;
 	};
 private:
-	uint8 _alignment0 = 0;
-	uint16 _alignment1 = 0;
 	uint3 localSize = uint3::zero;
 
 	ComputePipeline(const fs::path& path, uint32 maxBindlessCount, uint64 pipelineVersion) 

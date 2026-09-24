@@ -106,16 +106,22 @@ enum class GslDataType : uint8
  */
 enum class GslDataFormat : uint8
 {
-	F8,   /**< 8-bit normalized unsigned integer format. */
-	F16,  /**< 16-bit normalized unsigned integer format. */
-	F32,  /**< 32-bit floating point format. (IEEE-754) */
-	I8,   /**< 8-bit signed integer format. (1 byte) */
-	I16,  /**< 16-bit signed integer format. (2 bytes) */
-	I32,  /**< 32-bit signed integer format. (4 bytes) */
-	U8,   /**< 8-bit unsigned integer format. (1 byte) */
-	U16,  /**< 16-bit unsigned integer format. (2 bytes) */
-	U32,  /**< 32-bit unsigned integer format. (4 bytes) */
-	Count /**< GSL data format count. */
+	F16,     /**< 16-bit floating point format. (IEEE-754) */
+	F32,     /**< 32-bit floating point format. (IEEE-754) */
+	F64,     /**< 64-bit floating point format. (IEEE-754) */
+	I8,      /**< 8-bit signed integer format. (1 byte) */
+	I16,     /**< 16-bit signed integer format. (2 bytes) */
+	I32,     /**< 32-bit signed integer format. (4 bytes) */
+	I64,     /**< 64-bit signed integer format. (8 bytes) */
+	U8,      /**< 8-bit unsigned integer format. (1 byte) */
+	U16,     /**< 16-bit unsigned integer format. (2 bytes) */
+	U32,     /**< 32-bit unsigned integer format. (4 bytes) */
+	U64,     /**< 64-bit unsigned integer format. (8 bytes) */
+	Snorm8,  /**< 8-bit normalized signed integer as float. (1 byte) */
+	Snorm16, /**< 16-bit normalized signed integer as float. (2 byte) */
+	Unorm8,  /**< 8-bit normalized unsigned integer as float. (1 byte) */
+	Unorm16, /**< 16-bit normalized unsigned integer as float. (2 byte) */
+	Count    /**< GSL data format count. */
 };
 
 /***********************************************************************************************************************
@@ -174,6 +180,7 @@ enum class GslUniformType : uint8
 	UniformBuffer,         /**< Uniform buffer. (read only access) */
 	StorageBuffer,         /**< Storage buffer. (read and write access) */
 	PushConstants,         /**< Push constants buffer. (read only access) */
+	SubpassInput,          /**< Subpass input attachment. (read only access) */
 	AccelerationStructure, /**< Acceleration structure buffer. (read only access) */
 	
 	Count                  /**< GSL uniform type count. */
@@ -211,7 +218,7 @@ constexpr const char* gslUniformTypeNames[(psize)GslUniformType::Count] =
 	"image1D", "image2D", "image3D", "imageCube", "image1DArray", "image2DArray",
 	"iimage1D", "iimage2D", "iimage3D", "iimageCube", "iimage1DArray", "iimage2DArray",
 	"uimage1D", "uimage2D", "uimage3D", "uimageCube", "uimage1DArray", "uimage2DArray",
-	"uniformBuffer", "storageBuffer", "pushConstants", "accelerationStructure"
+	"uniformBuffer", "storageBuffer", "pushConstants", "subpassInput", "accelerationStructure"
 };
 
 /***********************************************************************************************************************
@@ -296,15 +303,21 @@ static GslDataType toGslDataType(string_view dataType)
  */
 static GslDataFormat toGslDataFormat(string_view dataFormat)
 {
-	if (dataFormat == "f8") return GslDataFormat::F8;
 	if (dataFormat == "f16") return GslDataFormat::F16;
 	if (dataFormat == "f32") return GslDataFormat::F32;
+	if (dataFormat == "f64") return GslDataFormat::F64;
 	if (dataFormat == "i8") return GslDataFormat::I8;
 	if (dataFormat == "i16") return GslDataFormat::I16;
 	if (dataFormat == "i32") return GslDataFormat::I32;
+	if (dataFormat == "i64") return GslDataFormat::I64;
 	if (dataFormat == "u8") return GslDataFormat::U8;
 	if (dataFormat == "u16") return GslDataFormat::U16;
 	if (dataFormat == "u32") return GslDataFormat::U32;
+	if (dataFormat == "u64") return GslDataFormat::U64;
+	if (dataFormat == "snorm8") return GslDataFormat::Snorm8;
+	if (dataFormat == "snorm16") return GslDataFormat::Snorm16;
+	if (dataFormat == "unorm8") return GslDataFormat::Unorm8;
+	if (dataFormat == "unorm16") return GslDataFormat::Unorm16;
 	throw GardenError("Unknown GSL data format type. (" + string(dataFormat) + ")");
 }
 
@@ -366,6 +379,7 @@ static GslUniformType toGslUniformType(string_view uniformType)
 	if (uniformType == "uniformBuffer") return GslUniformType::UniformBuffer;
 	if (uniformType == "storageBuffer") return GslUniformType::StorageBuffer;
 	if (uniformType == "pushConstants") return GslUniformType::PushConstants;
+	if (uniformType == "subpassInput") return GslUniformType::SubpassInput;
 	if (uniformType == "accelerationStructure") return GslUniformType::AccelerationStructure;
 	
 	throw GardenError("Unknown GSL uniform type. (" + string(uniformType) + ")");
@@ -560,15 +574,21 @@ static constexpr psize toBinarySize(GslDataFormat dataFormat) noexcept
 {
 	switch (dataFormat)
 	{
-		case GslDataFormat::F8: return sizeof(uint8);
-		case GslDataFormat::F16: return sizeof(uint16);
+		case GslDataFormat::F16: return sizeof(half);
 		case GslDataFormat::F32: return sizeof(float);
+		case GslDataFormat::F64: return sizeof(double);
 		case GslDataFormat::I8: return sizeof(int8);
 		case GslDataFormat::I16: return sizeof(int16);
 		case GslDataFormat::I32: return sizeof(int32);
+		case GslDataFormat::I64: return sizeof(int64);
 		case GslDataFormat::U8: return sizeof(uint8);
 		case GslDataFormat::U16: return sizeof(uint16);
 		case GslDataFormat::U32: return sizeof(uint32);
+		case GslDataFormat::U64: return sizeof(uint64);
+		case GslDataFormat::Snorm8: return sizeof(int8);
+		case GslDataFormat::Snorm16: return sizeof(int16);
+		case GslDataFormat::Unorm8: return sizeof(uint8);
+		case GslDataFormat::Unorm16: return sizeof(uint16);
 		default: return 0;
 	}
 }

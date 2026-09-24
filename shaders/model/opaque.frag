@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+spec const bool USE_ALPHA_CUTOFF = false;
+
 #include "model/instance-data.h"
 
 pipelineState

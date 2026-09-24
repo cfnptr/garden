@@ -62,17 +62,13 @@ namespace garden::graphics
 		uint8 isLittleEndian = GARDEN_LITTLE_ENDIAN;
 		uint32 indexCount = 0;
 		uint32 vertexCount = 0;
-		uint8 encodedIndices : 1;
-		uint8 encodedVertPF : 1;
-		uint8 encodedVertAttr : 1;
-		uint8 _reserver0 : 5;
-		uint8 _reserver1 = 0;
-		uint16 _reserver2 = 0;
-
-		GmcHeader() : encodedIndices(0), encodedVertPF(0), encodedVertAttr(0) { }
+		uint32 indexEncSize = 0;
+		uint32 pfEncSize = 0;
+		uint32 attrEncSize = 0;
 	};
 };
 
+//**********************************************************************************************************************
 static void loadMeshDataGMC(const void* data, psize dataSize, raw_vector<uint8>& indices, raw_vector<uint8>& vertices)
 {
 	static constexpr auto gmcHeaderSize = sizeof(gmcMagic) + sizeof(GmcHeader);
@@ -84,12 +80,75 @@ static void loadMeshDataGMC(const void* data, psize dataSize, raw_vector<uint8>&
 		throw GardenError("Bad GMC file version.");
 	if (gmcHeader.isLittleEndian != GARDEN_LITTLE_ENDIAN)
 		throw GardenError("Bad GMC file endianness.");
-	if (gmcHeader.vertexCount == 0 || gmcHeader.indexCount == 0)
+	if (gmcHeader.indexCount == 0 || gmcHeader.vertexCount == 0)
 		throw GardenError("Invalid GMC header data.");
+	if (gmcHeader.indexEncSize + gmcHeader.pfEncSize + gmcHeader.attrEncSize > dataSize - gmcHeaderSize)
+		throw GardenError("Invalid GMC encoded data size.");
 
-	// TODO:
+	auto indexType = toIndexType(gmcHeader.indexCount);
+	indices.resize(gmcHeader.indexCount * toBinarySize(indexType));
+	auto meshData = (const uint8*)data + gmcHeaderSize;
+
+	if (gmcHeader.indexEncSize > 0)
+	{
+		int result;
+		if (indexType == IndexType::Uint32)
+		{
+			result = meshopt_decodeIndexBuffer((uint32*)indices.data(), 
+				gmcHeader.indexCount, meshData, gmcHeader.indexEncSize);
+		}
+		else if (indexType == IndexType::Uint16)
+		{
+			result = meshopt_decodeIndexBuffer((uint16*)indices.data(), 
+				gmcHeader.indexCount, meshData, gmcHeader.indexEncSize);
+		}
+		else abort();
+
+		if (result != 0)
+			throw GardenError("Failed to decode meshopt indices. (result: " + to_string(result) + ")");
+		meshData += gmcHeader.indexEncSize;
+	}
+	else
+	{
+		memcpy(indices.data(), meshData, indices.size());
+		meshData += indices.size();
+	}
+
+	vertices.resize((gmcHeader.pfEncSize > 0 ? gmcHeader.pfEncSize : gmcHeader.vertexCount * sizeof(MeshVertexPF)) + 
+		(gmcHeader.attrEncSize > 0 ? gmcHeader.attrEncSize : gmcHeader.vertexCount * sizeof(MeshVertexPF)));
+
+	if (gmcHeader.pfEncSize > 0)
+	{
+		auto result = meshopt_decodeVertexBuffer(vertices.data(), gmcHeader.vertexCount, 
+			sizeof(MeshVertexPF), meshData, gmcHeader.pfEncSize);
+		if (result != 0)
+			throw GardenError("Failed to decode meshopt vertices PF. (result: " + to_string(result) + ")");
+		meshData += gmcHeader.pfEncSize;
+	}
+	else
+	{
+		auto binarySize = gmcHeader.vertexCount * sizeof(MeshVertexPF);
+		memcpy(vertices.data(), meshData, binarySize);
+		meshData += binarySize;
+	}
+	if (gmcHeader.attrEncSize > 0)
+	{
+		auto result = meshopt_decodeVertexBuffer(vertices.data() + gmcHeader.vertexCount * sizeof(MeshVertexPF), 
+			gmcHeader.vertexCount, sizeof(MeshVertexAttr), meshData, gmcHeader.pfEncSize);
+		if (result != 0)
+			throw GardenError("Failed to decode meshopt vertices ATTR. (result: " + to_string(result) + ")");
+		meshData += gmcHeader.attrEncSize;
+	}
+	else
+	{
+		auto binarySize = gmcHeader.vertexCount * sizeof(MeshVertexAttr);
+		memcpy(vertices.data() + gmcHeader.vertexCount * sizeof(MeshVertexPF), meshData, binarySize);
+		meshData += binarySize;
+	}
+	GARDEN_ASSERT(meshData == (const uint8*)data + dataSize);
 }
 
+//**********************************************************************************************************************
 void ModelRenderComponent::setLodCount(uint8 count)
 {
 	auto currCount = getLodCount();
@@ -100,14 +159,37 @@ void ModelRenderComponent::setLodCount(uint8 count)
 	if (count > lodCapacity)
 	{
 		auto newLods = new MeshLOD[count];
-		copy(lods, lods + count, newLods);
-		delete[] lods; lods = newLods;
+		if (lods)
+		{
+			copy(lods, lods + currCount, newLods);
+			delete[] lods;
+		}
+		lods = newLods;
 		_setLodCapacity(count);
 	}
 	
 	if (count < currCount)
 		fill(lods + count, lods + currCount, MeshLOD());
 	_setLodCount(count);
+}
+void ModelRenderComponent::shrinkLods()
+{
+	auto currCount = getLodCount();
+	auto lodCapacity = getLodCapacity();
+	if (!lods || currCount == lodCapacity)
+		return;
+
+	if (currCount == 0)
+	{
+		delete[] lods; lods = nullptr;
+		_setLodCapacity(0);
+		return;
+	}
+
+	auto newLods = new MeshLOD[currCount];
+	copy(lods, lods + currCount, newLods);
+	delete[] lods; lods = newLods;
+	_setLodCapacity(currCount);
 }
 
 void ModelRenderSystem::init()
@@ -203,7 +285,13 @@ void ModelRenderSystem::drawAsync(MeshRenderComponent* meshRenderView,
 
 	pipelineView->bindDescriptorSetAsync(descriptorSet, inFlightIndex, taskIndex);
 	pipelineView->pushConstantsAsync(&pc, taskIndex);
-	abort(); // TODO: pipelineView->drawIndexedAsync(taskIndex, {}, 6);
+
+	// TODO: select lod based on resolution and distance.
+	const auto& lod = modelRenderView->getLod(0); 
+	auto indexCount = lod.getIndexCount();
+
+	pipelineView->drawIndexedAsync(taskIndex, ID<Buffer>(lod.vertexBuffer), 
+		ID<Buffer>(lod.indexBuffer), toIndexType(indexCount), indexCount);
 }
 
 uint64 ModelRenderSystem::getBaseInstanceDataSize()
@@ -213,19 +301,19 @@ uint64 ModelRenderSystem::getBaseInstanceDataSize()
 void ModelRenderSystem::setInstanceData(ModelRenderComponent* modelRenderView, void* instanceData,
 	const f32x4x4& viewProj, const f32x4x4& model, uint32 instanceIndex, int32 taskIndex)
 {
-	auto currModel = (float3x4)transpose4x4(model);
-	auto modelData = (BaseInstanceData*)instanceData;
-	modelData->currModel = currModel;
-	modelData->uvSize = modelRenderView->getUvSize();
-	modelData->uvOffset = modelRenderView->getUvOffset();
-	modelData->colorAdd = modelRenderView->colorAdd;
-	modelData->colorMul = modelRenderView->colorMul;
-	modelData->prevModel = modelRenderView->lastModel;
-	modelData->ormAdd = modelRenderView->ormAdd;
-	modelData->ormMul = modelRenderView->ormMul;
-	modelData->_alignment0 = 0;
-	modelData->_alignment1 = 0;
-	modelRenderView->lastModel = currModel;
+	BaseInstanceData modelData;
+	modelData.currModel = (float3x4)transpose4x4(model);
+	modelData.aabbSize = max3(modelRenderView->aabb.getSize());
+	modelData.aabbMin = min3(modelRenderView->aabb.getMin());
+	modelData.uvSize = modelRenderView->getUvSize();
+	modelData.uvOffset = modelRenderView->getUvOffset();
+	modelData.colorAdd = modelRenderView->colorAdd;
+	modelData.colorMul = modelRenderView->colorMul;
+	modelData.prevModel = modelRenderView->lastModel;
+	modelData.ormAdd = modelRenderView->ormAdd;
+	modelData.ormMul = modelRenderView->ormMul;
+	*(BaseInstanceData*)instanceData = modelData;
+	modelRenderView->lastModel = modelData.currModel;
 }
 void ModelRenderSystem::setPushConstants(ModelRenderComponent* modelRenderView, PushConstants* pushConstants,
 	const f32x4x4& viewProj, const f32x4x4& model, uint32 instanceIndex, int32 taskIndex)
@@ -241,29 +329,12 @@ DescriptorSet::Uniforms ModelRenderSystem::getModelUniforms(ID<ImageView> colorM
 }
 ID<GraphicsPipeline> ModelRenderSystem::createBasePipeline()
 {
-	auto deferredSystem = DeferredRenderSystem::tryGetInstance();
-	ID<Framebuffer> framebuffer; GraphicsPipeline::State pipelineState;
-	if (deferredSystem)
-	{
-		if (getMeshRenderType() == MeshRenderType::UI)
-		{
-			framebuffer = deferredSystem->getUiFramebuffer();
-		}
-		else
-		{
-			framebuffer = deferredSystem->getDepthStencilHdrFB();
-			pipelineState.depthTesting = pipelineState.depthWriting = true;
-		}
-	}
-	else
-	{
-		framebuffer = ForwardRenderSystem::getInstance()->getColorFramebuffer();
-	}
-	GraphicsPipeline::PipelineStates pipelineStates = { { 0, pipelineState } };
+	auto framebuffer = DeferredRenderSystem::getInstance()->getGFramebuffer();
+	Pipeline::SpecConstValues specConsts = { { "USE_ALPHA_CUTOFF", Pipeline::SpecConstValue(false) } };
 
 	ResourceSystem::GraphicsLoadOptions options;
+	options.specConstValues = &specConsts;
 	options.loadAsync = false; // We can't load async due to imageLoaded() usage.
-	options.pipelineStateOverrides = &pipelineStates;
 	return ResourceSystem::getInstance()->loadGraphicsPipeline(pipelinePath, framebuffer, &options);
 }
 
@@ -468,24 +539,24 @@ static void optimizeMeshData(const aiMesh* mesh, raw_vector<uint8>& indices, raw
 	auto encTangentData = (ushort3*)tmp0.data();
 	auto aabb = Aabb(f32x4(*(const float3*)&mesh->mAABB.mMin), 
 		f32x4(*(const float3*)&mesh->mAABB.mMax));
-	auto invAabbSize = 1.0f / aabb.getSize();
+	auto invAabbSize = 1.0f / max3(aabb.getSize());
+	auto aabbMin = min3(aabb.getMin());
 
 	for (uint32 i = 0; i < vertexCount; i++)
 	{
 		auto vertex = vertexData[i]; auto encNormal = encodeNormalOct3(vertex.normal);
 		auto& posFlag = posFlagData[i]; auto& attribs = attributeData[i];
-		posFlag.position = (ushort3)fma(((f32x4)vertex.position - 
-			aabb.getMin()) * invAabbSize, f32x4(UINT16_MAX), f32x4(0.5f));
+		posFlag.position = (ushort3)quantizeUnorm16(((f32x4)vertex.position - aabbMin) * invAabbSize);
 		posFlag.flags = encNormal.z > 0.0f ? MeshVertexPF::Flags::NormalSign : MeshVertexPF::Flags::None;
-		attribs.normal = (ushort2)fma((float2)encNormal, float2(UINT16_MAX), float2(0.5f));
-		attribs.texCoords = (ushort2)fma(vertex.texCoords, float2(UINT16_MAX), float2(0.5f));
+		attribs.normal = quantizeUnorm16((float2)encNormal);
+		attribs.texCoords = quantizeUnorm16(vertex.texCoords);
 		attribs.color = meshColors ? (Color)(*(const float4*)&meshColors[i]) : Color::transparent;
 	}
 	for (uint32 i = 0; i < indexCount; i++)
 	{
 		auto index = indexData[i]; auto tangent = tangentData[i];
 		auto encTangent3 = encodeNormalOct3((float3)tangent);
-		auto encTangent2 = (ushort2)fma((float2)encTangent3, float2(UINT16_MAX), float2(0.5f));
+		auto encTangent2 = quantizeUnorm16((float2)encTangent3);
 		auto tangentSign = encTangent3.z > 0.0f ? MeshVertexPF::Flags::TangentSign : MeshVertexPF::Flags::None;
 		auto bitangentSign = tangent.w > 0.0f ? MeshVertexPF::Flags::BitangentSign : MeshVertexPF::Flags::None;
 		posFlagData[index].flags |= tangentSign | bitangentSign;
@@ -530,11 +601,14 @@ static void optimizeMeshData(const aiMesh* mesh, raw_vector<uint8>& indices, raw
 		indexData[i] = v;
 	}
 }
-static void processMeshData(const fs::path& filePath, const aiMesh* mesh, uint32 meshID, raw_vector<uint8>& indices, 
+
+//**********************************************************************************************************************
+static void processMeshData(
+	const fs::path& filePath, const aiMesh* mesh, uint32 meshID, uint32& indexCount, raw_vector<uint8>& indices, 
 	raw_vector<uint8>& positions, raw_vector<uint8>& attributes, raw_vector<uint8>& tmp0, raw_vector<uint8>& tmp1)
 {
 	auto indexType = toIndexType(mesh->mNumFaces * 3);
-	uint32 indexCount, vertexCount, encSize;
+	uint32 vertexCount, encSize;
 
 	if (indexType == IndexType::Uint32)
 	{
@@ -559,9 +633,9 @@ static void processMeshData(const fs::path& filePath, const aiMesh* mesh, uint32
 	*gmcHeader = GmcHeader();
 	gmcHeader->indexCount = indexCount;
 	gmcHeader->vertexCount = vertexCount;
-	gmcHeader->encodedIndices = encSize < indices.size() ? 1 : 0;
 
-	if (gmcHeader->encodedIndices)
+	gmcHeader->indexEncSize = encSize < indices.size() ? encSize : 0;
+	if (gmcHeader->indexEncSize > 0)
 	{
 		tmp0.resize(tmp0.size() + encSize);
 		memcpy(tmp0.data() + sizeof(GmcHeader), tmp1.data(), encSize);
@@ -576,36 +650,36 @@ static void processMeshData(const fs::path& filePath, const aiMesh* mesh, uint32
 	tmp1.resize(meshopt_encodeVertexBufferBound(vertexCount, sizeof(MeshVertexPF)));
 	encSize = meshopt_encodeVertexBuffer(tmp1.data(), tmp1.size(), 
 		positions.data(), vertexCount, sizeof(MeshVertexPF));
-	gmcHeader->encodedVertPF = encSize < positions.size() ? 1 : 0;
+	gmcHeader->pfEncSize = encSize < positions.size() ? encSize : 0;
 
 	auto dataOffset = tmp0.size();
-	if (gmcHeader->encodedVertPF)
+	if (gmcHeader->pfEncSize > 0)
 	{
 		tmp0.resize(tmp0.size() + encSize);
 		memcpy(tmp0.data() + dataOffset, tmp1.data(), encSize);
 	}
 	else
 	{
-		tmp0.resize(tmp0.size() + indices.size());
-		memcpy(tmp0.data() + dataOffset, positions.data(), indices.size());
+		tmp0.resize(tmp0.size() + positions.size());
+		memcpy(tmp0.data() + dataOffset, positions.data(), positions.size());
 	}
 	gmcHeader = (GmcHeader*)tmp0.data();
 
 	tmp1.resize(meshopt_encodeVertexBufferBound(vertexCount, sizeof(MeshVertexAttr)));
 	encSize = meshopt_encodeVertexBuffer(tmp1.data(), tmp1.size(), 
 		attributes.data(), vertexCount, sizeof(MeshVertexAttr));
-	gmcHeader->encodedVertAttr = encSize < attributes.size() ? 1 : 0;
+	gmcHeader->attrEncSize = encSize < attributes.size() ? encSize : 0;
 
 	dataOffset = tmp0.size();
-	if (gmcHeader->encodedVertAttr)
+	if (gmcHeader->attrEncSize > 0)
 	{
 		tmp0.resize(tmp0.size() + encSize);
 		memcpy(tmp0.data() + dataOffset, tmp1.data(), encSize);
 	}
 	else
 	{
-		tmp0.resize(tmp0.size() + indices.size());
-		memcpy(tmp0.data() + dataOffset, attributes.data(), indices.size());
+		tmp0.resize(tmp0.size() + attributes.size());
+		memcpy(tmp0.data() + dataOffset, attributes.data(), attributes.size());
 	}
 
 	ResourceSystem::getInstance()->storeBuffer(filePath, tmp0, true);
@@ -758,16 +832,36 @@ ID<Entity> ModelRenderSystem::loadModel(const fs::path& path, const ModelCompone
 						continue;
 					}
 
-					auto filePath = path; filePath.replace_extension();
+					auto filePath = path; filePath.replace_extension(); uint32 indexCount;
 					filePath = "models" / filePath / to_string(meshID); filePath.replace_extension(".gmc");
-					processMeshData(filePath, mesh, meshID, indices, positions, attributes, tmp0, tmp1);
+					processMeshData(filePath, mesh, meshID, indexCount, indices, positions, attributes, tmp0, tmp1);
 
-					// TODO: combine vertex data
+					auto pfBinarySize = positions.size();
+					positions.resize(pfBinarySize + attributes.size());
+					memcpy(positions.data() + pfBinarySize, attributes.data(), attributes.size());
 
-					//auto vertexBuffer = graphicsSystem->createBuffer(Buffer::Usage::Vertex | 
-					//	Buffer::Usage::TransferDst, 
-					//	Buffer::CpuAccess::None, );
-					//tmpLods[lodIndex].vertexBuffer = 
+					auto vertexBuffer = graphicsSystem->createBuffer(Buffer::Usage::Vertex | 
+						Buffer::Usage::TransferDst | Buffer::Usage::TransferQ, Buffer::CpuAccess::None, 
+						positions, 0, 0, Buffer::Location::PreferGPU, Buffer::Strategy::Size);
+					SET_RESOURCE_DEBUG_NAME(vertexBuffer, "buffer.vertex." + string(
+						mesh->mName.Empty() ? child->mName.C_Str() : mesh->mName.C_Str()));
+
+					auto indexBuffer = graphicsSystem->createBuffer(Buffer::Usage::Index | 
+						Buffer::Usage::TransferDst | Buffer::Usage::TransferQ, Buffer::CpuAccess::None, 
+						indices, 0, 0, Buffer::Location::PreferGPU, Buffer::Strategy::Size);
+					SET_RESOURCE_DEBUG_NAME(indexBuffer, "buffer.index." + string(
+						mesh->mName.Empty() ? child->mName.C_Str() : mesh->mName.C_Str()));
+
+					MeshLOD lod;
+					lod.vertexBuffer = Ref<Buffer>(vertexBuffer);
+					lod.indexBuffer = Ref<Buffer>(indexBuffer);
+					lod.bufferPath = std::move(filePath);
+					lod.setVertexCount(pfBinarySize / sizeof(MeshVertexPF));
+					lod.setIndexCount(indexCount);
+
+					auto emplaceResult = sharedLods.emplace(meshID, lod);
+					GARDEN_ASSERT_MSG(emplaceResult.second, "Detected memory corruption");
+					modelRenderView->setLod(std::move(lod), lodIndex);
 				}
 			}
 			else nodes.push(child);

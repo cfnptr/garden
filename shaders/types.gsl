@@ -107,9 +107,26 @@ uint16 packUnorm2x8(float2 x)
 	ushort2 u = ushort2(fma(saturate(x), float2(255.0f), float2(0.5f)));
 	return u.x | (u.y << 8u);
 }
-float2 unpackUnorm2x8(uint16 x)
-{
-	return float2(x & 255u, x >> 8u) * (1.0f / 255.0f);
-}
+float2 unpackUnorm2x8(uint16 x) { return float2(x & 255u, x >> 8u) * float(1.0 / 255.0); }
+
+uint8 quantizeUnorm8(float v) { return uint8(fma(saturate(v), 255.0f, 0.5f)); }
+byte2 quantizeUnorm8(float2 v) { return byte2(fma(saturate(v), float2(255.0f), float2(0.5f))); }
+byte3 quantizeUnorm8(float3 v) { return byte3(fma(saturate(v), float3(255.0f), float3(0.5f))); }
+byte4 quantizeUnorm8(float4 v) { return byte4(fma(saturate(v), float4(255.0f), float4(0.5f))); }
+
+uint16 quantizeUnorm16(float v) { return uint16(fma(saturate(v), 65535.0f, 0.5f)); }
+ushort2 quantizeUnorm16(float2 v) { return ushort2(fma(saturate(v), float2(65535.0f), float2(0.5f))); }
+ushort3 quantizeUnorm16(float3 v) { return ushort3(fma(saturate(v), float3(65535.0f), float3(0.5f))); }
+ushort4 quantizeUnorm16(float4 v) { return ushort4(fma(saturate(v), float4(65535.0f), float4(0.5f))); }
+
+float dequantizeUnorm8(uint8 v) { return float(v) * float(1.0 / 255.0); }
+float2 dequantizeUnorm8(byte2 v) { return float2(v) * float(1.0 / 255.0); }
+float3 dequantizeUnorm8(byte3 v) { return float3(v) * float(1.0 / 255.0); }
+float4 dequantizeUnorm8(byte4 v) { return float4(v) * float(1.0 / 255.0); }
+
+float dequantizeUnorm16(uint16 v) { return float(v) * float(1.0 / 65535.0); }
+float2 dequantizeUnorm16(ushort2 v) { return float2(v) * float(1.0 / 65535.0); }
+float3 dequantizeUnorm16(ushort3 v) { return float3(v) * float(1.0 / 65535.0); }
+float4 dequantizeUnorm16(ushort4 v) { return float4(v) * float(1.0 / 65535.0); }
 
 #endif // TYPES_GSL

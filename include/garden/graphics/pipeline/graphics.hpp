@@ -341,11 +341,12 @@ public:
 	 * These attributes are essential for rendering as they provide the necessary information to 
 	 * the graphics pipeline about how to process and display each vertex in 3D space.
 	 */
-	struct alignas(4) VertexAttribute final
+	struct VertexAttribute final
 	{
 		GslDataType type = {};     /**< Vertex attribute data type. */
 		GslDataFormat format = {}; /**< Vertex attribute data format. */
-		uint16 offset = 0;         /**< Byte offset of this attribute relative to the start of an element. */
+		uint8 offset = 0;          /**< Absolute byte offset of this attribute. */
+		uint8 binding = 0;         /**< Vertex buffer binding. (Stream) */
 
 		/**
 		 * @brief Returns true if vertex attribute is valid.
@@ -372,6 +373,7 @@ public:
 	 */
 	struct GraphicsCreateData : public CreateData
 	{
+		Image::Format depthStencilFormat = {};
 		raw_vector<uint8> vertexCode;
 		raw_vector<uint8> fragmentCode;
 		vector<VertexAttribute> vertexAttributes;
@@ -380,14 +382,10 @@ public:
 		PipelineStates pipelineStateOverrides;
 		BlendStates blendStateOverrides;
 		State pipelineState = {};
-		uint16 vertexAttributesSize = 0;
-		Image::Format depthStencilFormat = {};
-		uint8 _alignment = 0;
 	};
 private:
-	uint8 _alignment = 0;
-	uint8 attachmentCount = 0;
 	ID<Framebuffer> framebuffer = {};
+	uint8 attachmentCount = 0;
 
 	GraphicsPipeline(const fs::path& path, uint32 maxBindlessCount,
 		uint64 pipelineVersion, ID<Framebuffer> framebuffer) noexcept : 

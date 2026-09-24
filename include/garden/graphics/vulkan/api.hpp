@@ -404,60 +404,84 @@ static vk::Format toVkFormat(GslDataType type, GslDataFormat format) noexcept
 	case 1:
 		switch (format)
 		{
-			case GslDataFormat::F8: return vk::Format::eR8Unorm;
-			case GslDataFormat::F16: return vk::Format::eR16Unorm;
+			case GslDataFormat::F16: return vk::Format::eR16Sfloat;
 			case GslDataFormat::F32: return vk::Format::eR32Sfloat;
+			case GslDataFormat::F64: return vk::Format::eR64Sfloat;
 			case GslDataFormat::I8: return vk::Format::eR8Sint;
 			case GslDataFormat::I16: return vk::Format::eR16Sint;
 			case GslDataFormat::I32: return vk::Format::eR32Sint;
+			case GslDataFormat::I64: return vk::Format::eR64Sint;
 			case GslDataFormat::U8: return vk::Format::eR8Uint;
 			case GslDataFormat::U16: return vk::Format::eR16Uint;
 			case GslDataFormat::U32: return vk::Format::eR32Uint;
+			case GslDataFormat::U64: return vk::Format::eR64Uint;
+			case GslDataFormat::Snorm8: return vk::Format::eR8Snorm;
+			case GslDataFormat::Snorm16: return vk::Format::eR16Snorm;
+			case GslDataFormat::Unorm8: return vk::Format::eR8Unorm;
+			case GslDataFormat::Unorm16: return vk::Format::eR16Unorm;
 			default: abort();
 		}
 		break;
 	case 2:
 		switch (format)
 		{
-			case GslDataFormat::F8: return vk::Format::eR8G8Unorm;
-			case GslDataFormat::F16: return vk::Format::eR16G16Unorm;
+			case GslDataFormat::F16: return vk::Format::eR16G16Sfloat;
 			case GslDataFormat::F32: return vk::Format::eR32G32Sfloat;
+			case GslDataFormat::F64: return vk::Format::eR64G64Sfloat;
 			case GslDataFormat::I8: return vk::Format::eR8G8Sint;
 			case GslDataFormat::I16: return vk::Format::eR16G16Sint;
 			case GslDataFormat::I32: return vk::Format::eR32G32Sint;
+			case GslDataFormat::I64: return vk::Format::eR64G64Sint;
 			case GslDataFormat::U8: return vk::Format::eR8G8Uint;
 			case GslDataFormat::U16: return vk::Format::eR16G16Uint;
 			case GslDataFormat::U32: return vk::Format::eR32G32Uint;
+			case GslDataFormat::U64: return vk::Format::eR64G64Uint;
+			case GslDataFormat::Snorm8: return vk::Format::eR8G8Snorm;
+			case GslDataFormat::Snorm16: return vk::Format::eR16G16Snorm;
+			case GslDataFormat::Unorm8: return vk::Format::eR8G8Unorm;
+			case GslDataFormat::Unorm16: return vk::Format::eR16G16Unorm;
 			default: abort();
 		}
 		break;
 	case 3:
 		switch (format)
 		{
-			case GslDataFormat::F8: return vk::Format::eR8G8B8Unorm;
-			case GslDataFormat::F16: return vk::Format::eR16G16B16Unorm;
+			case GslDataFormat::F16: return vk::Format::eR16G16B16Sfloat;
 			case GslDataFormat::F32: return vk::Format::eR32G32B32Sfloat;
+			case GslDataFormat::F64: return vk::Format::eR64G64B64Sfloat;
 			case GslDataFormat::I8: return vk::Format::eR8G8B8Sint;
 			case GslDataFormat::I16: return vk::Format::eR16G16B16Sint;
 			case GslDataFormat::I32: return vk::Format::eR32G32B32Sint;
+			case GslDataFormat::I64: return vk::Format::eR64G64B64Sint;
 			case GslDataFormat::U8: return vk::Format::eR8G8B8Uint;
 			case GslDataFormat::U16: return vk::Format::eR16G16B16Uint;
 			case GslDataFormat::U32: return vk::Format::eR32G32B32Uint;
+			case GslDataFormat::U64: return vk::Format::eR64G64B64Uint;
+			case GslDataFormat::Snorm8: return vk::Format::eR8G8B8Snorm;
+			case GslDataFormat::Snorm16: return vk::Format::eR16G16B16Snorm;
+			case GslDataFormat::Unorm8: return vk::Format::eR8G8B8Unorm;
+			case GslDataFormat::Unorm16: return vk::Format::eR16G16B16Unorm;
 			default: abort();
 		}
 		break;
 	case 4:
 		switch (format)
 		{
-			case GslDataFormat::F8: return vk::Format::eR8G8B8A8Unorm;
-			case GslDataFormat::F16: return vk::Format::eR16G16B16A16Unorm;
+			case GslDataFormat::F16: return vk::Format::eR16G16B16A16Sfloat;
 			case GslDataFormat::F32: return vk::Format::eR32G32B32A32Sfloat;
+			case GslDataFormat::F64: return vk::Format::eR64G64B64A64Sfloat;
 			case GslDataFormat::I8: return vk::Format::eR8G8B8A8Sint;
 			case GslDataFormat::I16: return vk::Format::eR16G16B16A16Sint;
 			case GslDataFormat::I32: return vk::Format::eR32G32B32A32Sint;
+			case GslDataFormat::I64: return vk::Format::eR64G64B64A64Sint;
 			case GslDataFormat::U8: return vk::Format::eR8G8B8A8Uint;
 			case GslDataFormat::U16: return vk::Format::eR16G16B16A16Uint;
 			case GslDataFormat::U32: return vk::Format::eR32G32B32A32Uint;
+			case GslDataFormat::U64: return vk::Format::eR64G64B64A64Uint;
+			case GslDataFormat::Snorm8: return vk::Format::eR8G8B8A8Snorm;
+			case GslDataFormat::Snorm16: return vk::Format::eR16G16B16A16Snorm;
+			case GslDataFormat::Unorm8: return vk::Format::eR8G8B8A8Unorm;
+			case GslDataFormat::Unorm16: return vk::Format::eR16G16B16A16Unorm;
 			default: abort();
 		}
 		break;
@@ -732,6 +756,8 @@ static vk::DescriptorType toVkDescriptorType(GslUniformType uniformType) noexcep
 			return vk::DescriptorType::eUniformBuffer;
 		case GslUniformType::StorageBuffer:
 			return vk::DescriptorType::eStorageBuffer;
+		case GslUniformType::SubpassInput:
+			return vk::DescriptorType::eInputAttachment;
 		case GslUniformType::AccelerationStructure:
 			return vk::DescriptorType::eAccelerationStructureKHR;
 		default: abort();

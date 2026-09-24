@@ -101,8 +101,6 @@ public:
 	 */
 	struct RayTracingCreateData : public CreateData
 	{	
-		uint8 _alignment0 = 0;
-		uint16 _alignment1 = 0;
 		vector<raw_vector<uint8>> rayGenGroups;
 		vector<raw_vector<uint8>> missGroups;
 		vector<raw_vector<uint8>> callGroups;

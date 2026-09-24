@@ -14,8 +14,18 @@
 
 #include "model/instance-data.h"
 
-in float3 vs.position : f16;
-in float2 vs.texCoords : f16;
+vertexBuffer0
+{
+	float3 position : unorm16;
+	uint32 flags : u16;
+}
+vertexBuffer1
+{
+	float2 normal : unorm16;
+	float2 tangent : unorm16;
+	float2 texCoords : unorm16;
+	float4 color : unorm8;
+}
 
 uniform pushConstants
 {

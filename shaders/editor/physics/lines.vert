@@ -12,15 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-in float3 vs.position : f32;
-in float4 vs.color : f8;
-
-out float3 fs.color;
+vertexBuffer
+{
+	float3 position : f32;
+	float4 color : unorm8;
+}
 
 uniform pushConstants
 {
 	float4x4 mvp;
 } pc;
+
+out float3 fs.color;
 
 void main()
 {

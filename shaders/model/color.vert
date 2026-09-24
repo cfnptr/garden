@@ -14,7 +14,10 @@
 
 #include "model/instance-data.h"
 
-in float3 vs.position : f32;
+vertexBuffer
+{
+	float3 position : f32;
+}
 
 uniform pushConstants
 {

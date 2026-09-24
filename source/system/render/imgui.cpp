@@ -690,7 +690,7 @@ void ImGuiRenderSystem::uiRender()
 
 	if (drawData->TotalVtxCount > 0 && drawData->TotalIdxCount > 0)
 	{
-		auto vertexSize = drawData->TotalVtxCount * sizeof(ImDrawVert);
+		auto vertexSize = drawData->TotalVtxCount * sizeof(Vertex);
 		auto indexSize = drawData->TotalIdxCount * sizeof(ImDrawIdx);
 
 		if (vertexBuffers.size() == 0 || graphicsSystem->get(vertexBuffers[0])->getBinarySize() < vertexSize)
@@ -709,16 +709,27 @@ void ImGuiRenderSystem::uiRender()
 		indexBuffer = indexBuffers[inFlightIndex];
 		auto vertexBufferView = graphicsSystem->get(vertexBuffer);
 		auto indexBufferView = graphicsSystem->get(indexBuffer);
-		auto vtxDst = (ImDrawVert*)vertexBufferView->getMap();
+		auto vtxDst = (Vertex*)vertexBufferView->getMap();
 		auto idxDst = (ImDrawIdx*)indexBufferView->getMap();
 
 		for (int n = 0; n < cmdLists.Size; n++)
 		{
 			const auto drawList = cmdLists[n];
-			memcpy(vtxDst, drawList->VtxBuffer.Data, drawList->VtxBuffer.Size * sizeof(ImDrawVert));
+			const auto vtxSrc = drawList->VtxBuffer.Data;
+			auto vertexCount = drawList->VtxBuffer.Size;
+
+			for (uint32 i = 0; i < vertexCount; i++)
+			{
+				auto vtx = vtxSrc[i];
+				Vertex vertex;
+				vertex.position = *((const float2*)&vtx.pos);
+				vertex.texCoords = quantizeUnorm16(repeat(*((const float2*)&vtx.uv)));
+				vertex.color = *((const Color*)&vtx.col);
+				vtxDst[i] = vertex;
+			}
+
 			memcpy(idxDst, drawList->IdxBuffer.Data, drawList->IdxBuffer.Size * sizeof(ImDrawIdx));
-			vtxDst += drawList->VtxBuffer.Size;
-			idxDst += drawList->IdxBuffer.Size;
+			vtxDst += drawList->VtxBuffer.Size; idxDst += drawList->IdxBuffer.Size;
 		}
 		
 		vertexBufferView->flush(vertexSize);

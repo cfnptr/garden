@@ -54,20 +54,21 @@ public:
 		uint8 bindingIndex = 0;            /**< Binding index inside the descriptor set. */
 		uint8 descriptorSetIndex = 0;      /**< Index of the descriptor set. */
 		uint8 arraySize = 0;               /**< Number of descriptors contained in the binding. */
-		uint32 readAccess : 1;             /**< Is shader variable read access allowed. */
-		uint32 writeAccess : 1;            /**< Is shader variable write access allowed. */
-		uint32 isMutable : 1;              /**< Is uniform resource can be assigned dynamically. */
-		uint32 isNoncoherent : 1;          /**< Does shaders access different memory parts. */
-		uint32 isSamplerType : 1;          /**< Does shader variable have sampler type. */
-		uint32 isImageType : 1;            /**< Does shader variable have image type. */
-		uint32 isBufferType : 1;           /**< Does shader variable have buffer type. */
-		uint32 _reserved : 25;             /**< [reserved for future use] */
+		uint8 readAccess : 1;             /**< Is shader variable read access allowed. */
+		uint8 writeAccess : 1;            /**< Is shader variable write access allowed. */
+		uint8 isMutable : 1;              /**< Is uniform resource can be assigned dynamically. */
+		uint8 isNoncoherent : 1;          /**< Does shaders access different memory parts. */
+		uint8 isSamplerType : 1;          /**< Does shader variable have sampler type. */
+		uint8 isImageType : 1;            /**< Does shader variable have image type. */
+		uint8 isBufferType : 1;           /**< Does shader variable have buffer type. */
+		uint8 _reserved0 : 1;             /**< [reserved for future use] */
+		uint8 _reserved1 = 0;             /**< [reserved for future use] */
 		
 		/**
 		 * @brief Creates a new pipeline uniform.
 		 */
 		constexpr Uniform() noexcept : readAccess(true), writeAccess(true), isMutable(false), isNoncoherent(false), 
-			isSamplerType(false), isImageType(false), isBufferType(false), _reserved(0) { }
+			isSamplerType(false), isImageType(false), isBufferType(false), _reserved0(0) { }
 
 		/**
 		 * @brief Returns true if pipeline uniform is valid.
@@ -93,7 +94,6 @@ public:
 		PipelineStage pipelineStages = {}; /**< Pipeline stages where spec const is used. */
 		GslDataType type = {};             /**< Specialization constant variable type. */
 		uint8 index = 0;                   /**< Index of the specialization constant. */
-		uint16 _alignment = 0;             /**< [should be aligned] */
 	};
 
 	struct SpecConstBase { GslDataType type = {}; uint32 data = 0; };
@@ -141,9 +141,8 @@ public:
 		fs::path shaderPath;
 		uint64 pipelineVersion = 0;
 		uint32 maxBindlessCount = 0;
-		uint32 rayRecursionDepth = 0;
 		PipelineStage pushConstantsStages = {};
-		uint16 pushConstantsSize = 0;
+		uint8 pushConstantsSize = 0;
 		uint8 descriptorSetCount = 0;
 		uint8 variantCount = 0;
 	};
@@ -157,8 +156,8 @@ protected:
 	void* pipelineLayout = nullptr; 
 	uint64 pipelineVersion = 0;
 	uint32 pushConstantsMask = 0;
-	uint16 pushConstantsSize = 0;
 	PipelineType type = {};
+	uint8 pushConstantsSize = 0;
 	uint8 variantCount = 0;
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
@@ -216,7 +215,7 @@ public:
 	 * @brief Returns pipeline push constants buffer size in bytes.
 	 * @details Calculated from the shader push constants structure during compilation.
 	 */
-	uint16 getPushConstantsSize() const noexcept { return pushConstantsSize; }
+	uint8 getPushConstantsSize() const noexcept { return pushConstantsSize; }
 	/**
 	 * @brief Returns pipeline maximum bindless descriptor count in the array.
 	 * @details Used to preallocate required space in the descriptor set.
@@ -443,7 +442,7 @@ public:
 	 * @warning In most cases you should use @ref Pipeline functions.
 	 * @param[in] pipeline target pipeline instance
 	 */
-	static uint16& getPushConstantsSize(Pipeline& pipeline) noexcept { return pipeline.pushConstantsSize; }
+	static uint8& getPushConstantsSize(Pipeline& pipeline) noexcept { return pipeline.pushConstantsSize; }
 	/**
 	 * @brief Returns rendering pipeline type.
 	 * @warning In most cases you should use @ref Pipeline functions.

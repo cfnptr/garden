@@ -176,8 +176,9 @@ void GraphicsPipeline::createVkInstance(GraphicsCreateData& createData)
 	this->specConstValues = std::move(createData.specConstValues);
 	#endif
 
+	abort(); // TODO:
 	vk::VertexInputBindingDescription bindingDescription(0, 
-		createData.vertexAttributesSize, vk::VertexInputRate::eVertex);
+		/* createData.vertexAttributesSize */ 0, vk::VertexInputRate::eVertex);
 	vk::PipelineVertexInputStateCreateInfo inputInfo;
 	vector<vk::VertexInputAttributeDescription> inputAttributes;
 

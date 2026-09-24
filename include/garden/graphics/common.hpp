@@ -40,7 +40,7 @@ struct SvEqual
 /**
  * @brief Nvidia architecture maximum binary size.
  */
-constexpr psize maxPushConstantsSize = 128;
+constexpr uint8 maxPushConstantsSize = 128;
 
 /**
  * @brief Rendering pipeline type.
@@ -66,7 +66,7 @@ enum class PipelineType : uint8
  * The modern programmable graphics pipeline consists of multiple shader stages, each capable of 
  * running custom shader programs written in shading language.
  */
-enum class PipelineStage : uint32
+enum class PipelineStage : uint16
 {
 	None          = 0x0000, /**< No pipeline stage flags, zero mask. (0) */
 	Transfer      = 0x0001, /**< Performs data transfer operations. */

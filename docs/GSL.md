@@ -10,21 +10,30 @@ more pleasant looking variants **float2, int3, float4x4**. Also built in variabl
 
 You can use `#include` directive, it's backed by the shaderc compiler internally.
 
-## Vertex Attributes
+## Vertex Attributes (Data Streams)
 
-Shader parser automatically gets and calculates vertex attributes, so we do not need to explicitly specify layout. 
+Shader parser automatically gets and calculates vertex attributes and data streams, so we do not need to explicitly specify layout. 
 Vertex input attributes format can be specified using this syntax:
 
 ```
-in float3 vs.variableName : f32;
+vertexBuffer
+{
+    float3 position : f32;
+    float4 color : unorm8;
+}
+
+out float3 fs.color;
 ```
 
-**With one of these formats**: [ f8 | f16 | f32 | f64 | i8 | i16 | i32 | i64 | u8 | u16 | u32 | u64 ]
+**With one of these formats**: [ f16 | f32 | f64 | i8 | i16 | i32 | i64 | u8 | u16 | u32 | u64 | snorm8 | snorm16 | unorm8 | unorm16 ]
 
-You can add offset to the vertex attributes. (in bytes)
+You can specify vertex streams and absolute offset (in bytes) of the vertex attributes:
 
 ```
-#attributeOffset 16
+vertexBuffer1
+{
+    offset(8) float4 someData : f16;
+}
 ```
 
 ## Pipeline State
@@ -138,7 +147,7 @@ uniform sampler2D
     filter = linear;
 } samplerName;
 
-uniform samplerCube someSampler;
+uniform set1 samplerCube someSampler;
 ```
 
 * **filter** [ nearest | linear ] - Specify the texture minifying and magnification function. (nearest)
@@ -195,6 +204,7 @@ buffer readonly Instance
 ## Descriptor Set
 
 Use `setX` keyword to set which descriptor set to use inside shader, where **X** is the index of the DS.
+By default uniform images and buffers use `set0` if not explicitly specified. 
 
 ```
 uniform set1 sampler2D someSampler;
@@ -203,7 +213,7 @@ uniform set2 SomeBuffer
 {
     float someValue;
     int someInteger;
-} uniformBuffer;
+} someBuffer;
 ```
 
 ## Compute Shader (.comp)
@@ -271,6 +281,14 @@ into a halfway-compiled version of a shader right before pipeline creation to op
 ```
 spec const bool USE_FAST_FUNC = false;
 spec const float SOME_THRESHOLD = 0.5f;
+```
+
+## Subpass Input (Tiled Rendering)
+
+You can utilize tile-based rendering optimizations using subpass input on mobile GPUs.
+
+```
+uniform subpassInput g0;
 ```
 
 ## Ray Tracing

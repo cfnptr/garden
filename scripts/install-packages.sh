@@ -26,15 +26,15 @@ fi
 
 echo
 echo "Installing Vulkan SDK..."
-rm -rf ~/vulkan-sdk
+rm -rf ~/VulkanSDK
 
 if ! command -v brew &> /dev/null; then
     curl -O https://sdk.lunarg.com/sdk/download/latest/linux/vulkan_sdk.tar.xz
-    mkdir ~/vulkan-sdk && tar -xf vulkan_sdk.tar.xz --strip-components=1 -C ~/vulkan-sdk
+    mkdir ~/VulkanSDK && tar -xf vulkan_sdk.tar.xz --strip-components=1 -C ~/VulkanSDK
     rm -f vulkan_sdk.tar.xz
 
     CONF_FILES=("$HOME/.bashrc" "$HOME/.zshrc")
-    SOURCE_SETUP_ENV="source ~/vulkan-sdk/setup-env.sh > /dev/null"
+    SOURCE_SETUP_ENV="source ~/VulkanSDK/setup-env.sh > /dev/null"
 
     for CONF_FILE in "${CONF_FILES[@]}"; do
         if ! grep -Fq "$SOURCE_SETUP_ENV" "$CONF_FILE"; then
@@ -44,5 +44,5 @@ if ! command -v brew &> /dev/null; then
             echo "Added setup-env.sh source to the '${CONF_FILE}'"
         fi
     done
-    ~/vulkan-sdk/setup-env.sh
+    source ~/VulkanSDK/setup-env.sh
 fi

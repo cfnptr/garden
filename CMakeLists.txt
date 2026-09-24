@@ -262,6 +262,7 @@ add_subdirectory(libraries/png)
 
 set(MESHOPT_INSTALL OFF CACHE BOOL "" FORCE)
 add_subdirectory(libraries/meshopt)
+target_compile_definitions(meshoptimizer PUBLIC MESHOPTIMIZER_VERTEXCODEC_ZEROCOPY)
 
 set(FASTNOISE2_NOISETOOL OFF CACHE BOOL "" FORCE)
 add_subdirectory(libraries/fastnoise2)
