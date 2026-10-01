@@ -35,12 +35,6 @@ namespace garden
 class ImGuiRenderSystem final : public System, public Singleton<ImGuiRenderSystem>
 {
 public:
-	struct Vertex final
-	{
-		float2 position;
-		ushort2 texCoords;
-		Color color;
-	};
 	struct PushConstants final
 	{
 		float2 scale;

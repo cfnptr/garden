@@ -69,11 +69,14 @@ namespace garden::graphics
 	};
 	struct GraphicsGslValues final : public GslValues
 	{
-		uint8 vertexAttributeCount = 0;
-		uint8 blendStateCount = 0;
-		GraphicsPipeline::State pipelineState = {};
 		PipelineStage pushConstantsStages = {};
-		uint16 _alignment = 0;
+		GraphicsPipeline::State pipelineState = {};
+		uint16 perInstanceMask = 0;
+		uint8 vertexAttributeCount = 0;
+		uint8 vertexBindingCount = 0;
+		uint8 blendStateCount = 0;
+		uint8 _alignment0 = 0;
+		uint16 _alignment1 = 0;
 	};
 	struct ComputeGslValues final : public GslValues
 	{
@@ -82,9 +85,9 @@ namespace garden::graphics
 	};
 	struct RayTracingGslValues final : public GslValues
 	{
+		PipelineStage pushConstantsStages = {};
 		uint8 rayRecursionDepth = 0;
 		uint8 _alignment = 0;
-		PipelineStage pushConstantsStages = {};
 	};
 }
 
@@ -94,8 +97,8 @@ namespace garden::graphics
 {
 	struct FileData
 	{
-		ifstream inputFileStream; ofstream outputFileStream;
-		istringstream inputStream; ostringstream outputStream;
+		ifstream fileInputStream; ofstream fileOutputStream;
+		istringstream inputStream; ostringstream tmpOutputStream;
 		string line; uint32 lineIndex = 1;
 		int8 isUniform = 0, isBuffer = 0, isPushConstants = 0, isSamplerState = 0, isVertexBuffer = 0;
 		bool isSkipMode = false, isReadonly = false, isWriteonly = false, isMutable = false, isRestrict = false, 
@@ -107,7 +110,7 @@ namespace garden::graphics
 	struct GraphicsFileData final : public FileData
 	{
 		int8 isPipelineState = 0;
-		uint8 inIndex = 0, outIndex = 0, attachmentIndex = 0, blendStateIndex = 0;
+		uint8 inIndex = 0, outIndex = 0, vertexBindingIndex = 0, attachmentIndex = 0, blendStateIndex = 0;
 	};
 	struct ComputeFileData final : public FileData
 	{
@@ -168,8 +171,8 @@ namespace garden::graphics
 		CompileError(const string& errorMessage, int32 line = -1, const string& word = "") noexcept :
 			errorMessage(errorMessage), word(word), line(line)
 		{
-			message = line < 0 ? "error:" + (word.length() > 0 ? "'" + word + "' : " : " ") + errorMessage :
-				to_string(line) + ": error:" + (word.length() > 0 ? "'" + word + "' : " : " ") + errorMessage;
+			message = line < 0 ? "error: " + (word.length() > 0 ? "'" + word + "' : " : " ") + errorMessage :
+				to_string(line) + ": error: " + (word.length() > 0 ? "'" + word + "' : " : " ") + errorMessage;
 		}
 
 		const string& getErrorMessage() const noexcept { return errorMessage; }
@@ -368,8 +371,8 @@ static void onShaderUniform(FileData& fileData, LineData& lineData,
 		else if (lineData.word == "reference") lineData.isReference = true;
 		else if (lineData.word.length() > 3 && memcmp(lineData.word.data(), "set", 3) == 0) // Note: Do not move down.
 		{
-			if (from_chars(lineData.word.c_str(), lineData.word.c_str() + 
-				lineData.word.size(), fileData.descriptorSetIndex).ec != errc())
+			if (from_chars(lineData.word.c_str() + 3, lineData.word.c_str() + 
+				lineData.word.length(), fileData.descriptorSetIndex).ec != errc())
 			{
 				throw CompileError("invalid descriptor set index", fileData.lineIndex, lineData.word);
 			}
@@ -378,16 +381,16 @@ static void onShaderUniform(FileData& fileData, LineData& lineData,
 		{
 			if (lineData.isReference)
 			{
-				fileData.outputFileStream << "layout(buffer_reference";
-				if (fileData.isStd430) fileData.outputFileStream << ", std430";
-				else fileData.outputFileStream << ", scalar";
-				fileData.outputFileStream << ") ";
-				if (fileData.isReadonly) fileData.outputFileStream << "readonly ";
-				if (fileData.isWriteonly) fileData.outputFileStream << "writeonly ";
-				if (fileData.isRestrict) fileData.outputFileStream << "restrict ";
-				if (fileData.isVolatile) fileData.outputFileStream << "volatile ";
-				if (fileData.isCoherent) fileData.outputFileStream << "coherent ";
-				fileData.outputFileStream << "buffer " << lineData.word;
+				fileData.fileOutputStream << "layout(buffer_reference";
+				if (fileData.isStd430) fileData.fileOutputStream << ", std430";
+				else fileData.fileOutputStream << ", scalar";
+				fileData.fileOutputStream << ") ";
+				if (fileData.isReadonly) fileData.fileOutputStream << "readonly ";
+				if (fileData.isWriteonly) fileData.fileOutputStream << "writeonly ";
+				if (fileData.isRestrict) fileData.fileOutputStream << "restrict ";
+				if (fileData.isVolatile) fileData.fileOutputStream << "volatile ";
+				if (fileData.isCoherent) fileData.fileOutputStream << "coherent ";
+				fileData.fileOutputStream << "buffer " << lineData.word;
 				fileData.isBuffer = lineData.isReference = 0;
 				endShaderUniform(fileData);
 				return;
@@ -395,21 +398,21 @@ static void onShaderUniform(FileData& fileData, LineData& lineData,
 			else
 			{
 				fileData.uniformType = GslUniformType::StorageBuffer;
-				fileData.outputStream.str(""); fileData.outputStream.clear();
-				fileData.outputStream << lineData.word << " ";
+				fileData.tmpOutputStream.str(""); fileData.tmpOutputStream.clear();
+				fileData.tmpOutputStream << lineData.word << " ";
 				fileData.isBuffer = 0; fileData.isUniform = 4;
 			}
 		}
 		else if (lineData.word == toString(GslUniformType::PushConstants))
 		{
-			fileData.outputFileStream << "layout(push_constant";
+			fileData.fileOutputStream << "layout(push_constant";
 			if (fileData.isStd430)
 			{
-				fileData.outputFileStream << ", std430";
+				fileData.fileOutputStream << ", std430";
 				fileData.isStd430 = false;
 			}
-			else fileData.outputFileStream << ", scalar";
-			fileData.outputFileStream << ") uniform pushConstants ";
+			else fileData.fileOutputStream << ", scalar";
+			fileData.fileOutputStream << ") uniform pushConstants ";
 			fileData.isUniform = 0; fileData.isPushConstants = 1;
 		}
 		else
@@ -424,8 +427,8 @@ static void onShaderUniform(FileData& fileData, LineData& lineData,
 			catch (const exception&)
 			{
 				fileData.uniformType = GslUniformType::UniformBuffer;
-				fileData.outputStream.str(""); fileData.outputStream.clear();
-				fileData.outputStream << lineData.word << " ";
+				fileData.tmpOutputStream.str(""); fileData.tmpOutputStream.clear();
+				fileData.tmpOutputStream << lineData.word << " ";
 				fileData.isUniform = 4;
 			}
 		}
@@ -436,8 +439,8 @@ static void onShaderUniform(FileData& fileData, LineData& lineData,
 	{
 		if (lineData.word == "{")
 		{
-			fileData.outputStream.str(""); fileData.outputStream.clear();
-			fileData.outputStream << "\n// {\n";
+			fileData.tmpOutputStream.str(""); fileData.tmpOutputStream.clear();
+			fileData.tmpOutputStream << "\n// {\n";
 			fileData.isUniform = 0; fileData.isSamplerState = 1;
 			return;
 		}
@@ -447,11 +450,12 @@ static void onShaderUniform(FileData& fileData, LineData& lineData,
 		if (lineData.word == "}") fileData.isUniform = 8;
 		if (isBufferType(fileData.uniformType))
 		{
-			if (lineData.isNewLine) fileData.outputStream << "\n";
-			abort(); // TODO: looks like we should check if we have var offset here.
-			fileData.outputStream << lineData.word << " ";
+			if (lineData.isNewLine) fileData.tmpOutputStream << "\n    ";
+			if (processOffsetKeyword(fileData, lineData))
+				fileData.tmpOutputStream << "    layout(offset = " << lineData.offset << ") ";
+			else fileData.tmpOutputStream << lineData.word << " ";
 		}
-		else fileData.outputFileStream << lineData.word << " ";
+		else fileData.fileOutputStream << lineData.word << " ";
 		return;
 	}
 	else if (fileData.isUniform == 5)
@@ -590,59 +594,59 @@ static void onShaderUniform(FileData& fileData, LineData& lineData,
 	
 	if (fileData.uniformType == GslUniformType::UniformBuffer)
 	{
-		fileData.outputFileStream << "layout(binding = " << to_string(binding) <<
+		fileData.fileOutputStream << "layout(binding = " << to_string(binding) <<
 			", set = " << to_string(fileData.descriptorSetIndex);
-		if (fileData.isStd430) fileData.outputFileStream << ", std430";
-		else fileData.outputFileStream << ", scalar";
-		fileData.outputFileStream << ") uniform " << fileData.outputStream.str();
+		if (fileData.isStd430) fileData.fileOutputStream << ", std430";
+		else fileData.fileOutputStream << ", scalar";
+		fileData.fileOutputStream << ") uniform " << fileData.tmpOutputStream.str();
 	}
 	else if (fileData.uniformType == GslUniformType::StorageBuffer)
 	{
-		fileData.outputFileStream << "layout(binding = " << to_string(binding) <<
+		fileData.fileOutputStream << "layout(binding = " << to_string(binding) <<
 			", set = " << to_string(fileData.descriptorSetIndex);
-		if (fileData.isStd430) fileData.outputFileStream << ", std430";
-		else fileData.outputFileStream << ", scalar";
-		fileData.outputFileStream << ") ";
-		if (fileData.isReadonly) fileData.outputFileStream << "readonly ";
-		if (fileData.isWriteonly) fileData.outputFileStream << "writeonly ";
-		if (fileData.isRestrict) fileData.outputFileStream << "restrict ";
-		if (fileData.isVolatile) fileData.outputFileStream << "volatile ";
-		if (fileData.isCoherent) fileData.outputFileStream << "coherent ";
-		fileData.outputFileStream << "buffer " << fileData.outputStream.str();
+		if (fileData.isStd430) fileData.fileOutputStream << ", std430";
+		else fileData.fileOutputStream << ", scalar";
+		fileData.fileOutputStream << ") ";
+		if (fileData.isReadonly) fileData.fileOutputStream << "readonly ";
+		if (fileData.isWriteonly) fileData.fileOutputStream << "writeonly ";
+		if (fileData.isRestrict) fileData.fileOutputStream << "restrict ";
+		if (fileData.isVolatile) fileData.fileOutputStream << "volatile ";
+		if (fileData.isCoherent) fileData.fileOutputStream << "coherent ";
+		fileData.fileOutputStream << "buffer " << fileData.tmpOutputStream.str();
 	}
 	else if (fileData.uniformType == GslUniformType::SubpassInput)
 	{
 		if (pipelineStage != PipelineStage::Fragment)
 			throw CompileError("subpassInput is usable only in fragment shaders", fileData.lineIndex);
-		fileData.outputFileStream << "layout(input_attachment_index = " <<
+		fileData.fileOutputStream << "layout(input_attachment_index = " <<
 			to_string(attachmentIndex++) << ", binding = " << to_string(binding) <<
 			", set = " << to_string(fileData.descriptorSetIndex);
-		fileData.outputFileStream << ") uniform " << fileData.outputStream.str();
+		fileData.fileOutputStream << ") uniform " << fileData.tmpOutputStream.str();
 	}
 	else
 	{
-		fileData.outputFileStream << "layout(binding = " << to_string(binding) <<
+		fileData.fileOutputStream << "layout(binding = " << to_string(binding) <<
 			", set = " << to_string(fileData.descriptorSetIndex);
 		if (isImageType(fileData.uniformType))
-			fileData.outputFileStream << ", " << toGlslString(lineData.imageFormat);
-		fileData.outputFileStream << ") ";
-		if (fileData.isReadonly) fileData.outputFileStream << "readonly ";
-		if (fileData.isWriteonly) fileData.outputFileStream << "writeonly ";
-		if (fileData.isRestrict) fileData.outputFileStream << "restrict ";
-		if (fileData.isVolatile) fileData.outputFileStream << "volatile ";
-		if (fileData.isCoherent) fileData.outputFileStream << "coherent ";
-		fileData.outputFileStream << "uniform " << toString(fileData.uniformType) << " ";
+			fileData.fileOutputStream << ", " << toGlslString(lineData.imageFormat);
+		fileData.fileOutputStream << ") ";
+		if (fileData.isReadonly) fileData.fileOutputStream << "readonly ";
+		if (fileData.isWriteonly) fileData.fileOutputStream << "writeonly ";
+		if (fileData.isRestrict) fileData.fileOutputStream << "restrict ";
+		if (fileData.isVolatile) fileData.fileOutputStream << "volatile ";
+		if (fileData.isCoherent) fileData.fileOutputStream << "coherent ";
+		fileData.fileOutputStream << "uniform " << toString(fileData.uniformType) << " ";
 	}
 
-	fileData.outputFileStream << lineData.uniformName;
+	fileData.fileOutputStream << lineData.uniformName;
 
 	if (lineData.arraySize != 1)
 	{
-		if (lineData.arraySize > 0) fileData.outputFileStream << "[" << (int)lineData.arraySize << "]";
-		else fileData.outputFileStream << "[]";
+		if (lineData.arraySize > 0) fileData.fileOutputStream << "[" << (int)lineData.arraySize << "]";
+		else fileData.fileOutputStream << "[]";
 	}
 
-	fileData.outputFileStream << "; ";
+	fileData.fileOutputStream << "; ";
 
 	if (isSamplerType(fileData.uniformType))
 	{
@@ -660,7 +664,7 @@ static void onShaderUniform(FileData& fileData, LineData& lineData,
 
 		if (fileData.isUniform == 3)
 		{
-			fileData.outputFileStream << fileData.outputStream.str(); fileData.samplerState = {};
+			fileData.fileOutputStream << fileData.tmpOutputStream.str(); fileData.samplerState = {};
 		}
 	}
 
@@ -688,7 +692,7 @@ static void onShaderPushConstants(FileData& fileData, LineData& lineData,
 		else if (processOffsetKeyword(fileData, lineData))
 		{
 			if (lineData.offset > 0)
-				fileData.outputStream << "layout(offset = " << lineData.offset << ") ";
+				fileData.tmpOutputStream << "layout(offset = " << lineData.offset << ") ";
 			overrideOutput = true;
 			return;
 		}
@@ -711,9 +715,10 @@ static void onShaderPushConstants(FileData& fileData, LineData& lineData,
 	}
 	else
 	{
-		pushConstantsSize += (uint8)toBinarySize(lineData.dataType);
-		if (pushConstantsSize > maxPushConstantsSize)
+		auto binarySize = (uint8)toBinarySize(lineData.dataType);
+		if ((uint16)pushConstantsSize + binarySize > maxPushConstantsSize)
 			throw CompileError("out of max push constants size", fileData.lineIndex);
+		pushConstantsSize += binarySize;
 		fileData.isPushConstants = 2;
 	}
 }
@@ -750,7 +755,7 @@ static void onShaderSamplerState(FileData& fileData, LineData& lineData)
 	{
 		if (lineData.word == "}")
 		{
-			fileData.outputStream << "// }";
+			fileData.tmpOutputStream << "// }";
 			fileData.isSamplerState = 0; fileData.isUniform = 3;
 		}
 		else
@@ -773,15 +778,15 @@ static void onShaderSamplerState(FileData& fileData, LineData& lineData)
 			else if (lineData.word == "minLod") lineData.isMinLod = true;
 			else if (lineData.word == "maxLod") lineData.isMaxLod = true;
 			else throw CompileError("unrecognized sampler property", fileData.lineIndex, lineData.word);
-			fileData.outputStream << "//     " << lineData.word << " ";
-			fileData.isSamplerState = 2; 
+			fileData.tmpOutputStream << "//     " << lineData.word << " ";
+			fileData.isSamplerState = 2;
 		}
 	}
 	else if (fileData.isSamplerState == 2)
 	{
 		if (lineData.word != "=")
 			throw CompileError("no '=' after sampler property name", fileData.lineIndex);
-		fileData.outputStream << "= "; fileData.isSamplerState = 3;
+		fileData.tmpOutputStream << "= "; fileData.isSamplerState = 3;
 	}
 	else
 	{
@@ -877,63 +882,89 @@ static void onShaderSamplerState(FileData& fileData, LineData& lineData)
 		}
 		else abort();
 
-		fileData.outputStream << lineData.word << "\n"; fileData.isSamplerState = 1;
+		fileData.tmpOutputStream << lineData.word << "\n"; fileData.isSamplerState = 1;
 	}
 }
 
 //******************************************************************************************************************
-static void onShaderVertexBuffer(GraphicsFileData& fileData, GraphicsLineData& lineData)
+static void onShaderVertexBuffer(GraphicsFileData& fileData, GraphicsLineData& lineData, 
+	vector<GraphicsPipeline::VertexAttribute>& vertexAttributes, uint16& perInstanceMask)
 {
 	if (fileData.isVertexBuffer == 1)
 	{
-
-	}
-
-	/*{
-		try { lineData.dataType = toGslDataType(lineData.word); }
-		catch (const exception&)
+		if (lineData.word == "perInstance")
 		{
-			throw CompileError("unrecognized vertex attribute "
-				"GSL data type", fileData.lineIndex, lineData.word);
+			perInstanceMask |= 1u << fileData.vertexBindingIndex;
+			return;
 		}
 
-		fileData.outputFileStream << "layout(location = " << to_string(fileData.inIndex) << ") in ";
-		fileData.inIndex += toLocationOffset(lineData.dataType); lineData.isIn = 2;
+		if (lineData.word != "{")
+			throw CompileError("undeclared vertex input attributes", fileData.lineIndex);
+		fileData.fileOutputStream << "// {";
+		fileData.isVertexBuffer = 2;
 	}
-	else if (lineData.isIn == 2)
+	else if (fileData.isVertexBuffer == 2)
 	{
-		onShaderGlobalVariable(lineData.word);
-		fileData.outputFileStream << lineData.word;
-		overrideOutput = true; lineData.isIn = 3;
+		if (lineData.word == "}")
+		{
+			fileData.fileOutputStream << "// }";
+			fileData.isVertexBuffer = 0;
+		}
+		else if (processOffsetKeyword(fileData, lineData))
+		{
+			fileData.fileOutputStream << " /*" << lineData.word << "*/ ";
+			return;
+		}
+		else
+		{
+			try { lineData.dataType = toGslDataType(lineData.word); }
+			catch (const exception&)
+			{
+				throw CompileError("unrecognized vertex input attribute "
+					"GSL data type", fileData.lineIndex, lineData.word);
+			}
+
+			fileData.fileOutputStream << "layout(location = " << 
+				to_string(fileData.inIndex) << ") in " << toString(lineData.dataType) << " vs_";
+			fileData.inIndex += toLocationOffset(lineData.dataType); fileData.isVertexBuffer = 3;
+		}
 	}
-	else if (lineData.isIn == 3)
+	else if (fileData.isVertexBuffer == 3)
 	{
-		if (lineData.word == ":") { overrideOutput = true; lineData.isIn = 4; }
-		else throw CompileError("no ':' after vertex attribute name", fileData.lineIndex);
+		fileData.fileOutputStream << lineData.word;
+		fileData.isVertexBuffer = 4;
+	}
+	else if (fileData.isVertexBuffer == 4)
+	{
+		if (lineData.word != ":")
+			throw CompileError("no ':' after vertex input attribute name", fileData.lineIndex);
+		fileData.isVertexBuffer = 5;
 	}
 	else
 	{
-		auto name = string(lineData.word, 0, lineData.word.find_first_of(';'));
+		auto charPos = lineData.word.find_first_of(';');
+		if (charPos == string::npos)
+			throw CompileError("no ';' after vertex input attribute name", fileData.lineIndex, lineData.word);
+		auto name = string_view(lineData.word.c_str(), charPos);
+
 		GslDataFormat format;
 		try { format = toGslDataFormat(name); }
 		catch (const exception&)
 		{
-			throw CompileError("unrecognized vertex attribute "
-					"GSL data format", fileData.lineIndex, lineData.word);
+			throw CompileError("unrecognized vertex input attribute "
+				"GSL data format", fileData.lineIndex, lineData.word);
 		}
-
-		auto attributeSize = (uint8)(toComponentCount(lineData.dataType) * toBinarySize(format));
-		GARDEN_ASSERT(attributeSize > 0);
 
 		GraphicsPipeline::VertexAttribute vertexAttribute;
 		vertexAttribute.type = lineData.dataType;
 		vertexAttribute.format = format;
-		vertexAttribute.offset = data.vertexAttributesSize;
-		data.vertexAttributes.push_back(vertexAttribute);
-		data.vertexAttributesSize += attributeSize;
-		fileData.outputFileStream << "; // " << toString(format);
-		overrideOutput = true; lineData.isIn = 0;
-	}*/
+		vertexAttribute.offset = lineData.offset;
+		vertexAttribute.binding = fileData.vertexBindingIndex;
+		vertexAttributes.push_back(vertexAttribute);
+
+		fileData.fileOutputStream  << "; // " << toString(format);
+		fileData.isVertexBuffer = 2;
+	}
 }
 
 //******************************************************************************************************************
@@ -985,8 +1016,8 @@ static void parseBlendStateIndex(GraphicsFileData& fileData, GraphicsLineData& l
 {
 	if (lineData.word.length() > offset)
 	{
-		if (from_chars(lineData.word.c_str() + offset, lineData.uniformName.c_str() + 
-			lineData.uniformName.length(), fileData.blendStateIndex).ec == errc())
+		if (from_chars(lineData.word.c_str() + offset, lineData.word.c_str() + 
+			lineData.word.length(), fileData.blendStateIndex).ec != errc())
 		{
 			throw CompileError("invalid blend state index", fileData.lineIndex, lineData.word);
 		}
@@ -1000,14 +1031,14 @@ static void onShaderPipelineState(GraphicsFileData& fileData, GraphicsLineData& 
 	{
 		if (lineData.word != "{")
 			throw CompileError("undeclared pipeline state properties", fileData.lineIndex);
-		fileData.outputFileStream << "// pipelineState\n// {";
+		fileData.fileOutputStream << "// pipelineState\n// {";
 		fileData.isPipelineState = 2;
 	}
 	else if (fileData.isPipelineState == 2)
 	{
 		if (lineData.word == "}")
 		{
-			fileData.outputFileStream << "// }"; fileData.isPipelineState = 0;
+			fileData.fileOutputStream << "// }"; fileData.isPipelineState = 0;
 		}
 		else
 		{
@@ -1111,7 +1142,7 @@ static void onShaderPipelineState(GraphicsFileData& fileData, GraphicsLineData& 
 			}
 			else throw CompileError("unrecognized pipeline state property", fileData.lineIndex, lineData.word);
 
-			fileData.outputFileStream << "//     " << lineData.word << " ";
+			fileData.fileOutputStream << "//     " << lineData.word << " ";
 			fileData.isPipelineState = 3;
 		}
 	}
@@ -1119,7 +1150,7 @@ static void onShaderPipelineState(GraphicsFileData& fileData, GraphicsLineData& 
 	{
 		if (lineData.word != "=")
 			throw CompileError("no '=' after pipeline state property name", fileData.lineIndex);
-		fileData.outputFileStream << "= "; fileData.isPipelineState = 4;
+		fileData.fileOutputStream << "= "; fileData.isPipelineState = 4;
 	}
 	else
 	{
@@ -1361,7 +1392,7 @@ static void onShaderPipelineState(GraphicsFileData& fileData, GraphicsLineData& 
 		}
 		else abort();
 
-		fileData.outputFileStream << lineData.word; fileData.isPipelineState = 2;
+		fileData.fileOutputStream << lineData.word; fileData.isPipelineState = 2;
 	}
 }
 
@@ -1382,7 +1413,7 @@ static void onSpecConst(FileData& fileData, LineData& lineData,
 		catch (const exception&)
 		{ throw CompileError("unrecognized spec const GSL data type", fileData.lineIndex, lineData.word); }
 
-		fileData.outputFileStream << "layout(constant_id = " <<
+		fileData.fileOutputStream << "layout(constant_id = " <<
 			to_string(fileData.specConstIndex) << ") const " << lineData.word;
 		lineData.isSpecConst = 3;
 		return;
@@ -1410,7 +1441,7 @@ static void onSpecConst(FileData& fileData, LineData& lineData,
 			result.value().pipelineStages |= pipelineStage;
 		}
 
-		fileData.outputFileStream << " " << lineData.word;
+		fileData.fileOutputStream << " " << lineData.word;
 		lineData.isSpecConst = 4;
 		return;
 	}
@@ -1419,13 +1450,13 @@ static void onSpecConst(FileData& fileData, LineData& lineData,
 		if (lineData.word != "=")
 			throw CompileError("no '=' after spec const declaration", fileData.lineIndex);
 		lineData.isSpecConst = 5;
-		fileData.outputFileStream << " = ";
+		fileData.fileOutputStream << " = ";
 		return;
 	}
 
 	if (lineData.word.find_first_of(';') == string::npos)
 		throw CompileError("no ';' after spec const value", fileData.lineIndex, lineData.word);
-	fileData.outputFileStream << lineData.word;
+	fileData.fileOutputStream << lineData.word;
 	lineData.isSpecConst = 0;
 }
 
@@ -1436,7 +1467,7 @@ static void onShaderVariantCount(FileData& fileData, LineData& lineData, uint8& 
 	{
 		throw CompileError("invalid variant count", fileData.lineIndex, lineData.word);
 	}
-	fileData.outputFileStream << "layout(constant_id = 0) const uint gsl_variant = 0; ";
+	fileData.fileOutputStream << "layout(constant_id = 0) const uint gsl_variant = 0; ";
 	lineData.isVariantCount = false;
 }
 
@@ -1474,21 +1505,21 @@ static void onShaderGlobalVariable(string& word) noexcept
 
 //******************************************************************************************************************
 static bool openShaderFileStream(const fs::path& inputFilePath,
-	const fs::path& outputFilePath, ifstream& inputFileStream, ofstream& outputFileStream)
+	const fs::path& outputFilePath, ifstream& fileInputStream, ofstream& fileOutputStream)
 {
-	inputFileStream = ifstream(inputFilePath);
-	if (!inputFileStream.is_open())
+	fileInputStream = ifstream(inputFilePath);
+	if (!fileInputStream.is_open())
 		return false;
 
 	auto directory = outputFilePath.parent_path();
 	if (!fs::exists(directory))
 		fs::create_directories(directory);
-	outputFileStream.open(outputFilePath);
-	if (!outputFileStream.is_open())
+	fileOutputStream.open(outputFilePath);
+	if (!fileOutputStream.is_open())
 		throw CompileError("failed to open output shader file");
-	outputFileStream.exceptions(ios::failbit | ios::badbit);
+	fileOutputStream.exceptions(ios::failbit | ios::badbit);
 
-	outputFileStream << "#version 460\n" COMMON_GLSL_EXTENSIONS "#include \"types.gsl\"\n";
+	fileOutputStream << "#version 460\n" COMMON_GLSL_EXTENSIONS "#include \"types.gsl\"\n";
 	return true;
 }
 static void compileShaderFile(const fs::path& filePath, const vector<fs::path>& includePaths)
@@ -1598,7 +1629,11 @@ static bool processCommonKeywords(Pipeline::CreateData& data, FileData& fileData
 		onShaderVariantCount(fileData, lineData, variantCount);
 		return true;
 	}
-	if (processOffsetKeyword(fileData, lineData)) { return true; }
+	if (processOffsetKeyword(fileData, lineData))
+	{
+		fileData.fileOutputStream << " /*" << lineData.word << "*/ ";
+		return true;
+	}
 	overrideOutput = false;
 	return false;
 }
@@ -1610,12 +1645,6 @@ static bool setCommonKeywords(FileData& fileData, LineData& lineData, bool& over
 	if (lineData.word == "spec") { lineData.isSpecConst = 1; return true; }
 	if (lineData.word == "#variantCount") { lineData.isVariantCount = true; return true; }
 	if (lineData.word == "pushConstants") throw CompileError("missing 'uniform' keyword", fileData.lineIndex);
-	if (lineData.word.length() >= 12 && memcmp(lineData.word.c_str(), "vertexBuffer", 12) == 0)
-	{
-		
-		fileData.isVertexBuffer = 1;
-		return true;
-	}
 	overrideOutput = false;
 	return false;
 }
@@ -1633,18 +1662,18 @@ static bool compileGraphicsShader(const fs::path& inputPath, const fs::path& out
 
 	auto inputFilePath = inputPath / filePath, outputFilePath = outputPath / filePath;
 	auto fileResult = openShaderFileStream(inputFilePath, outputFilePath,
-		fileData.inputFileStream, fileData.outputFileStream);
+		fileData.fileInputStream, fileData.fileOutputStream);
 	if (!fileResult) return false;
 
-	fileData.outputFileStream << "#define GRAPHICS_GSL\n"
+	fileData.fileOutputStream << "#define GRAPHICS_GSL\n"
 		"#line 0 // Note: Compiler error is at the source shader file line!\n\n";
 	
-	while (getline(fileData.inputFileStream, fileData.line))
+	while (getline(fileData.fileInputStream, fileData.line))
 	{
 		fileData.lineIndex++;
 		if (fileData.line.empty())
 		{
-			fileData.outputFileStream << "\n";
+			fileData.fileOutputStream << "\n";
 			continue;
 		}
 
@@ -1652,7 +1681,7 @@ static bool compileGraphicsShader(const fs::path& inputPath, const fs::path& out
 		fileData.inputStream.clear();
 
 		GraphicsLineData lineData;
-		auto outPosition = fileData.outputFileStream.tellp();
+		auto outPosition = fileData.fileOutputStream.tellp();
 		uint32 wordIndex = 0;
 
 		while (fileData.inputStream >> lineData.word)
@@ -1664,7 +1693,7 @@ static bool compileGraphicsShader(const fs::path& inputPath, const fs::path& out
 			{
 				if (lineData.word[0] == '/' && lineData.word[1] == '/')
 				{
-					do fileData.outputFileStream << lineData.word << " ";
+					do fileData.fileOutputStream << lineData.word << " ";
 					while (fileData.inputStream >> lineData.word);
 					break;
 				}
@@ -1673,7 +1702,7 @@ static bool compileGraphicsShader(const fs::path& inputPath, const fs::path& out
 
 			if (fileData.isSkipMode)
 			{
-				fileData.outputFileStream << lineData.word << " ";
+				fileData.fileOutputStream << lineData.word << " ";
 				if (lineData.word.find("*/") != string::npos) fileData.isSkipMode = false;
 				continue;
 				// TODO: offset word and process it.
@@ -1693,9 +1722,9 @@ static bool compileGraphicsShader(const fs::path& inputPath, const fs::path& out
 					catch (const exception&)
 					{ throw CompileError("unrecognized in GSL data type", fileData.lineIndex, lineData.word); }
 
-					fileData.outputFileStream << "layout(location = " << to_string(inIndex) << ") in ";
-					if (lineData.isFlat) fileData.outputFileStream << "flat ";
-					if (lineData.isNoperspective) fileData.outputFileStream << "noperspective ";
+					fileData.fileOutputStream << "layout(location = " << to_string(inIndex) << ") in ";
+					if (lineData.isFlat) fileData.fileOutputStream << "flat ";
+					if (lineData.isNoperspective) fileData.fileOutputStream << "noperspective ";
 					inIndex += toLocationOffset(lineData.dataType); lineData.isIn = 0;
 				}
 			}
@@ -1711,9 +1740,9 @@ static bool compileGraphicsShader(const fs::path& inputPath, const fs::path& out
 						catch (const exception&)
 						{ throw CompileError("unrecognized out GSL data type", fileData.lineIndex, lineData.word); }
 
-						fileData.outputFileStream << "layout(location = " << to_string(outIndex) << ") out ";
-						if (lineData.isFlat) fileData.outputFileStream << "flat ";
-						if (lineData.isNoperspective) fileData.outputFileStream << "noperspective ";
+						fileData.fileOutputStream << "layout(location = " << to_string(outIndex) << ") out ";
+						if (lineData.isFlat) fileData.fileOutputStream << "flat ";
+						if (lineData.isNoperspective) fileData.fileOutputStream << "noperspective ";
 						outIndex += toLocationOffset(lineData.dataType); lineData.isOut = 0;
 					}
 				}
@@ -1725,7 +1754,7 @@ static bool compileGraphicsShader(const fs::path& inputPath, const fs::path& out
 						catch (const exception&)
 						{ throw CompileError("unrecognized out GSL data type", fileData.lineIndex, lineData.word); }
 
-						fileData.outputFileStream << "layout(location = " << to_string(fileData.outIndex) << ") out ";
+						fileData.fileOutputStream << "layout(location = " << to_string(fileData.outIndex) << ") out ";
 						fileData.outIndex += toLocationOffset(lineData.dataType); lineData.isOut = 2; 
 					}
 					else if (lineData.isOut == 2) { onShaderGlobalVariable(lineData.word); lineData.isOut = 0; }
@@ -1733,7 +1762,7 @@ static bool compileGraphicsShader(const fs::path& inputPath, const fs::path& out
 			}
 			else if (fileData.isVertexBuffer)
 			{
-				onShaderVertexBuffer(fileData, lineData);
+				onShaderVertexBuffer(fileData, lineData, data.vertexAttributes, data.perInstanceMask);
 				overrideOutput = true;
 			}
 			else if (fileData.isPipelineState)
@@ -1753,33 +1782,50 @@ static bool compileGraphicsShader(const fs::path& inputPath, const fs::path& out
 				{
 					if (pipelineStage != PipelineStage::Fragment)
 						throw CompileError("depthLess is usable only in fragment shaders", fileData.lineIndex);
-					fileData.outputFileStream << "layout(depth_less) ";
+					fileData.fileOutputStream << "layout(depth_less) ";
 					lineData.isDepthOverride = 1; overrideOutput = true;
 				}
 				else if (lineData.word == "depthGreater")
 				{
 					if (pipelineStage != PipelineStage::Fragment)
 						throw CompileError("depthGreater is usable only in fragment shaders", fileData.lineIndex);
-					fileData.outputFileStream << "layout(depth_greater) ";
+					fileData.fileOutputStream << "layout(depth_greater) ";
 					lineData.isDepthOverride = 1; overrideOutput = true;
 				}
 				else if (lineData.word == "earlyFragmentTests")
 				{
 					if (pipelineStage != PipelineStage::Fragment)
 						throw CompileError("earlyFragmentTests is usable only in fragment shaders", fileData.lineIndex);
-					fileData.outputFileStream << "layout(early_fragment_tests) ";
+					fileData.fileOutputStream << "layout(early_fragment_tests) ";
 					overrideOutput = true;
+				}
+				else if (lineData.word.length() >= 12 && memcmp(lineData.word.c_str(), "vertexBuffer", 12) == 0)
+				{
+					if (lineData.word.length() == 12)
+						fileData.vertexBindingIndex = 0;
+					else 
+					{
+						if (from_chars(lineData.word.c_str() + 12, lineData.word.c_str() + 
+							lineData.word.length(), fileData.vertexBindingIndex).ec == errc() || 
+							fileData.vertexBindingIndex >= maxVertexBindingCount)
+						{
+							throw CompileError("invalid vertex buffer index", fileData.lineIndex, lineData.word);
+						}
+					}
+					
+					fileData.fileOutputStream << "// " << lineData.word;
+					fileData.isVertexBuffer = 1; overrideOutput = true;
 				}
 				else if (setCommonKeywords(fileData, lineData, overrideOutput)) { }
 				else onShaderGlobalVariable(lineData.word);
 			}
 
-			if (!overrideOutput) fileData.outputFileStream << lineData.word << " ";
+			if (!overrideOutput) fileData.fileOutputStream << lineData.word << " ";
 			lineData.isNewLine = false;
 		}
 
-		if (outPosition != fileData.outputFileStream.tellp())
-			fileData.outputFileStream << "\n";
+		if (outPosition != fileData.fileOutputStream.tellp())
+			fileData.fileOutputStream << "\n";
 	}
 
 	if (pipelineStage == PipelineStage::Fragment)
@@ -1788,8 +1834,11 @@ static bool compileGraphicsShader(const fs::path& inputPath, const fs::path& out
 			data.blendStates.resize(fileData.outIndex);
 	}
 
-	fileData.outputFileStream.close();
+	fileData.fileOutputStream.close();
 	compileShaderFile(outputFilePath, includePaths);
+
+	if (!data.vertexAttributes.empty())
+		data.vertexBindingCount = fileData.vertexBindingIndex + 1;
 
 	raw_vector<uint8>* shaderCode;
 	if (pipelineStage == PipelineStage::Vertex) shaderCode = &data.vertexCode;
@@ -1867,9 +1916,11 @@ bool GslCompiler::compileGraphicsShaders(const fs::path& inputPath,
 	values.variantCount = data.variantCount;
 	values.specConstCount = (uint8)data.specConsts.size();
 	values.pushConstantsSize = data.pushConstantsSize;
-	values.pipelineState = data.pipelineState;
 	values.pushConstantsStages = data.pushConstantsStages;
+	values.pipelineState = data.pipelineState;
+	values.perInstanceMask = data.perInstanceMask;
 	values.vertexAttributeCount = (uint8)data.vertexAttributes.size();
+	values.vertexBindingCount = data.vertexBindingCount;
 	values.blendStateCount = (uint8)data.blendStates.size();
 
 	ofstream headerStream;
@@ -1904,18 +1955,18 @@ bool GslCompiler::compileComputeShader(const fs::path& inputPath,
 	auto filePath = data.shaderPath; filePath += ".comp";
 	auto inputFilePath = inputPath / filePath, outputFilePath = outputPath / filePath;
 	auto fileResult = openShaderFileStream(inputFilePath, outputFilePath,
-		fileData.inputFileStream, fileData.outputFileStream);
+		fileData.fileInputStream, fileData.fileOutputStream);
 	if (!fileResult) return false;
 
-	fileData.outputFileStream << "#define COMPUTE_GSL\n"
+	fileData.fileOutputStream << "#define COMPUTE_GSL\n"
 		"#line 0 // Note: Compiler error is at the source shader file line!\n\n";
 	
-	while (getline(fileData.inputFileStream, fileData.line))
+	while (getline(fileData.fileInputStream, fileData.line))
 	{
 		fileData.lineIndex++;
 		if (fileData.line.empty())
 		{
-			fileData.outputFileStream << "\n";
+			fileData.fileOutputStream << "\n";
 			continue;
 		}
 		
@@ -1923,7 +1974,7 @@ bool GslCompiler::compileComputeShader(const fs::path& inputPath,
 		fileData.inputStream.clear();
 		
 		ComputeLineData lineData;
-		auto outPosition = fileData.outputFileStream.tellp();
+		auto outPosition = fileData.fileOutputStream.tellp();
 		
 		while (fileData.inputStream >> lineData.word)
 		{
@@ -1933,7 +1984,7 @@ bool GslCompiler::compileComputeShader(const fs::path& inputPath,
 			{
 				if (lineData.word[0] == '/' && lineData.word[1] == '/')
 				{
-					do fileData.outputFileStream << lineData.word << " ";
+					do fileData.fileOutputStream << lineData.word << " ";
 					while (fileData.inputStream >> lineData.word);
 					break;
 				}
@@ -1942,7 +1993,7 @@ bool GslCompiler::compileComputeShader(const fs::path& inputPath,
 
 			if (fileData.isSkipMode)
 			{
-				fileData.outputFileStream << lineData.word << " ";
+				fileData.fileOutputStream << lineData.word << " ";
 				if (lineData.word.find("*/") != string::npos) fileData.isSkipMode = false;
 				continue;
 			}
@@ -1965,7 +2016,7 @@ bool GslCompiler::compileComputeShader(const fs::path& inputPath,
 						throw CompileError("invalid local size 'z' value", fileData.lineIndex, lineData.word);
 					if (data.localSize.z == 0)
 						throw CompileError("local size 'z' can not be less than one", fileData.lineIndex, lineData.word);
-					fileData.outputFileStream << "layout(local_size_x = " <<
+					fileData.fileOutputStream << "layout(local_size_x = " <<
 						data.localSize.x << ", local_size_y = " << data.localSize.y <<
 						", local_size_z = " << data.localSize.z << ") in; ";
 					lineData.isLocalSize = 0;
@@ -2008,12 +2059,12 @@ bool GslCompiler::compileComputeShader(const fs::path& inputPath,
 				else onShaderGlobalVariable(lineData.word);
 			}
 
-			if (!overrideOutput) fileData.outputFileStream << lineData.word << " ";
+			if (!overrideOutput) fileData.fileOutputStream << lineData.word << " ";
 			lineData.isNewLine = false;
 		}
 
-		if (outPosition != fileData.outputFileStream.tellp())
-			fileData.outputFileStream << "\n";
+		if (outPosition != fileData.fileOutputStream.tellp())
+			fileData.fileOutputStream << "\n";
 	}
 
 	if (data.localSize == uint3::zero)
@@ -2022,7 +2073,7 @@ bool GslCompiler::compileComputeShader(const fs::path& inputPath,
 	GARDEN_ASSERT(data.uniforms.size() <= UINT8_MAX);
 	GARDEN_ASSERT(data.samplerStates.size() <= UINT8_MAX);
 	
-	fileData.outputFileStream.close();
+	fileData.fileOutputStream.close();
 	compileShaderFile(outputFilePath, includePaths);
 
 	if (data.pushConstantsSize > 0) data.pushConstantsStages = pipelineStage;
@@ -2071,20 +2122,20 @@ static bool compileRayTracingShader(const fs::path& inputPath, const fs::path& o
 	auto filePath = data.shaderPath; filePath += toPipelineStageExt(pipelineStage);
 	auto inputFilePath = inputPath / filePath, outputFilePath = outputPath / filePath;
 	auto fileResult = openShaderFileStream(inputFilePath, outputFilePath,
-		fileData.inputFileStream, fileData.outputFileStream);
+		fileData.fileInputStream, fileData.fileOutputStream);
 	if (!fileResult) return false;
 
-	fileData.outputFileStream << "#extension GL_EXT_ray_tracing : require\n#include \"ray-tracing.gsl\"\n"
+	fileData.fileOutputStream << "#extension GL_EXT_ray_tracing : require\n#include \"ray-tracing.gsl\"\n"
 		"#line 0 // Note: Compiler error is at the source shader file line!\n\n";
 
 	// TODO: shaderRecordEXT support
 	
-	while (getline(fileData.inputFileStream, fileData.line))
+	while (getline(fileData.fileInputStream, fileData.line))
 	{
 		fileData.lineIndex++;
 		if (fileData.line.empty())
 		{
-			fileData.outputFileStream << "\n";
+			fileData.fileOutputStream << "\n";
 			continue;
 		}
 		
@@ -2092,7 +2143,7 @@ static bool compileRayTracingShader(const fs::path& inputPath, const fs::path& o
 		fileData.inputStream.clear();
 		
 		RayTracingLineData lineData;
-		auto outPosition = fileData.outputFileStream.tellp();
+		auto outPosition = fileData.fileOutputStream.tellp();
 		
 		while (fileData.inputStream >> lineData.word)
 		{
@@ -2102,7 +2153,7 @@ static bool compileRayTracingShader(const fs::path& inputPath, const fs::path& o
 			{
 				if (lineData.word[0] == '/' && lineData.word[1] == '/')
 				{
-					do fileData.outputFileStream << lineData.word << " ";
+					do fileData.fileOutputStream << lineData.word << " ";
 					while (fileData.inputStream >> lineData.word);
 					break;
 				}
@@ -2111,7 +2162,7 @@ static bool compileRayTracingShader(const fs::path& inputPath, const fs::path& o
 
 			if (fileData.isSkipMode)
 			{
-				fileData.outputFileStream << lineData.word << " ";
+				fileData.fileOutputStream << lineData.word << " ";
 				if (lineData.word.find("*/") != string::npos) fileData.isSkipMode = false;
 				continue;
 			}
@@ -2121,7 +2172,7 @@ static bool compileRayTracingShader(const fs::path& inputPath, const fs::path& o
 			{
 				if (lineData.offset != 0)
 					fileData.rayPayloadIndex = lineData.offset;
-				fileData.outputFileStream << "layout(location = " << 
+				fileData.fileOutputStream << "layout(location = " << 
 					to_string(fileData.rayPayloadIndex++) << ") rayPayloadEXT ";
 				lineData.isRayPayload = 0;
 			}
@@ -2129,7 +2180,7 @@ static bool compileRayTracingShader(const fs::path& inputPath, const fs::path& o
 			{
 				if (lineData.offset != 0)
 					fileData.rayPayloadIndex = lineData.offset;
-				fileData.outputFileStream << "layout(location = " << 
+				fileData.fileOutputStream << "layout(location = " << 
 					to_string(fileData.rayPayloadIndex++) << ") rayPayloadInEXT ";
 				lineData.isRayPayloadIn = 0;
 			}
@@ -2137,7 +2188,7 @@ static bool compileRayTracingShader(const fs::path& inputPath, const fs::path& o
 			{
 				if (lineData.offset != 0)
 					fileData.callableDataIndex = lineData.offset;
-				fileData.outputFileStream << "layout(location = " << 
+				fileData.fileOutputStream << "layout(location = " << 
 					to_string(fileData.callableDataIndex++) << ") callableDataEXT ";
 				lineData.isCallableData = 0;
 			}
@@ -2145,7 +2196,7 @@ static bool compileRayTracingShader(const fs::path& inputPath, const fs::path& o
 			{
 				if (lineData.offset != 0)
 					fileData.callableDataIndex = lineData.offset;
-				fileData.outputFileStream << "layout(location = " << 
+				fileData.fileOutputStream << "layout(location = " << 
 					to_string(fileData.callableDataIndex++) << ") callableDataInEXT ";
 				lineData.isCallableDataIn = 0;
 			}
@@ -2156,7 +2207,7 @@ static bool compileRayTracingShader(const fs::path& inputPath, const fs::path& o
 				{
 					throw CompileError("invalid max ray recursion depth", fileData.lineIndex, lineData.word);
 				}
-				fileData.outputFileStream << "#define gsl_rayRecursionDepth ";
+				fileData.fileOutputStream << "#define gsl_rayRecursionDepth ";
 				lineData.isRayRecursionDepth = 0;
 			}
 			else if (processCommonKeywords(data, fileData, lineData, overrideOutput, 
@@ -2188,18 +2239,18 @@ static bool compileRayTracingShader(const fs::path& inputPath, const fs::path& o
 				else onShaderGlobalVariable(lineData.word);
 			}
 
-			if (!overrideOutput) fileData.outputFileStream << lineData.word << " ";
+			if (!overrideOutput) fileData.fileOutputStream << lineData.word << " ";
 			lineData.isNewLine = false;
 		}
 
-		if (outPosition != fileData.outputFileStream.tellp())
-			fileData.outputFileStream << "\n";
+		if (outPosition != fileData.fileOutputStream.tellp())
+			fileData.fileOutputStream << "\n";
 	}
 
 	GARDEN_ASSERT(data.uniforms.size() <= UINT8_MAX);
 	GARDEN_ASSERT(data.samplerStates.size() <= UINT8_MAX);
 	
-	fileData.outputFileStream.close();
+	fileData.fileOutputStream.close();
 	compileShaderFile(outputFilePath, includePaths);
 
 	raw_vector<uint8>* shaderCode;
@@ -2397,8 +2448,8 @@ bool GslCompiler::compileRayTracingShaders(const fs::path& inputPath,
 	values.variantCount = data.variantCount;
 	values.specConstCount = (uint8)data.specConsts.size();
 	values.pushConstantsSize = data.pushConstantsSize;
-	values.rayRecursionDepth = data.rayRecursionDepth;
 	values.pushConstantsStages = data.pushConstantsStages;
+	values.rayRecursionDepth = data.rayRecursionDepth;
 	
 	ofstream headerStream;
 	auto headerFilePath = outputPath / data.shaderPath; headerFilePath += ".gslh";
@@ -2490,12 +2541,14 @@ void GslCompiler::loadGraphicsShaders(GraphicsData& data)
 	readGslHeaderValues(headerData, dataSize, dataOffset, graphicsGslMagic, values);
 
 	if (dataOffset + values.vertexAttributeCount * sizeof(GraphicsPipeline::VertexAttribute) +
-		values.blendStateCount * sizeof(GraphicsPipeline::BlendState) > dataSize)
+		values.blendStateCount * sizeof(GraphicsPipeline::BlendState) > dataSize ||
+		values.pushConstantsSize > maxPushConstantsSize || values.vertexBindingCount > maxVertexBindingCount || 
+		values.vertexBindingCount > values.vertexAttributeCount)
 	{
 		throw GardenError("Invalid GSL header data size.");
 	}
 
-	if (!values.pipelineState.isValid() || values.pushConstantsSize > maxPushConstantsSize)
+	if (!values.pipelineState.isValid())
 		throw GardenError("Invalid GSL header pipeline state.");
 
 	if (values.vertexAttributeCount > 0)
@@ -2553,6 +2606,8 @@ void GslCompiler::loadGraphicsShaders(GraphicsData& data)
 	data.pushConstantsSize = values.pushConstantsSize;
 	data.descriptorSetCount = values.descriptorSetCount;
 	data.variantCount = values.variantCount;
+	data.perInstanceMask = values.perInstanceMask;
+	data.vertexBindingCount = values.vertexBindingCount;
 	data.pipelineState = values.pipelineState;
 }
 

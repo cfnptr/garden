@@ -17,7 +17,7 @@
 vertexBuffer
 {
 	float2 position : f32;
-	float2 texCoords : unorm16;
+	float2 texCoords : f32;
 	float4 color : unorm8;
 }
 

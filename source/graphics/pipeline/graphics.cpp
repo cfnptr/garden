@@ -176,30 +176,39 @@ void GraphicsPipeline::createVkInstance(GraphicsCreateData& createData)
 	this->specConstValues = std::move(createData.specConstValues);
 	#endif
 
-	abort(); // TODO:
-	vk::VertexInputBindingDescription bindingDescription(0, 
-		/* createData.vertexAttributesSize */ 0, vk::VertexInputRate::eVertex);
 	vk::PipelineVertexInputStateCreateInfo inputInfo;
+	vector<vk::VertexInputBindingDescription> bindingDescriptions;
 	vector<vk::VertexInputAttributeDescription> inputAttributes;
 
 	if (!createData.vertexAttributes.empty())
 	{
+		const auto& vertexAttrOverrides = createData.vertexAttrOverrides;
 		const auto& vertexAttributes = createData.vertexAttributes;
-		auto vertexAttributeCount = (uint32)vertexAttributes.size();
+		auto vertexAttributeCount = (uint8)vertexAttributes.size();
 		auto vertexAttributeData = vertexAttributes.data();
+		bindingDescriptions.resize(createData.vertexBindingCount);
 		inputAttributes.reserve(vertexAttributeCount);
 
-		for (uint32 i = 0; i < vertexAttributeCount; i++)
+		uint32 vertexBindingCount = 0;
+		for (auto& description : bindingDescriptions)
+		{
+			description.inputRate = createData.perInstanceMask & (1u << vertexBindingCount) ? 
+				vk::VertexInputRate::eInstance : vk::VertexInputRate::eVertex;
+			description.binding = vertexBindingCount++;
+		}
+		for (uint8 i = 0; i < vertexAttributeCount; i++)
 		{
 			auto attribute = vertexAttributeData[i];
-			inputAttributes.emplace_back(i, 0, toVkFormat(attribute.type, attribute.format), attribute.offset);
-		}
+			auto& binding = bindingDescriptions.at(attribute.binding);
+			auto offset = attribute.offset > 0 ? attribute.offset : binding.stride;
+			inputAttributes.emplace_back(i, attribute.binding, toVkFormat(attribute.type, attribute.format), offset);
+			binding.stride += (uint32)(toComponentCount(attribute.type) * toBinarySize(attribute.format));
+		}	
 
-		inputInfo.vertexBindingDescriptionCount = 1;
-		inputInfo.pVertexBindingDescriptions = &bindingDescription;
+		inputInfo.vertexBindingDescriptionCount = vertexBindingCount;
+		inputInfo.pVertexBindingDescriptions = bindingDescriptions.data();
 		inputInfo.vertexAttributeDescriptionCount = vertexAttributeCount;
 		inputInfo.pVertexAttributeDescriptions = inputAttributes.data();
-		// TODO: allow to specify input rate for an each vertex attribute?
 	}
 
 	vk::PipelineViewportStateCreateInfo viewportInfo({}, 1, nullptr, 1, nullptr); // TODO: pass it as argument.

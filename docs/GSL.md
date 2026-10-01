@@ -201,6 +201,8 @@ buffer readonly Instance
 } instance;
 ```
 
+You can also use `offset()` keyword to specify the buffer attribute offset in bytes.
+
 ## Descriptor Set
 
 Use `setX` keyword to set which descriptor set to use inside shader, where **X** is the index of the DS.
@@ -299,6 +301,8 @@ All ray tracing built-ins and functions are written without the **EXT** postfix.
 uniform accelerationStructure tlas;
 rayPayload float4 payload;
 ```
+
+You can also use `offset()` keyword to specify the ray payload and callable data index offset.
 
 ### Ray Tracing Shaders
 

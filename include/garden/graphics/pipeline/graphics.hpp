@@ -20,6 +20,7 @@
 #pragma once
 #include "garden/graphics/pipeline.hpp"
 #include "garden/graphics/framebuffer.hpp"
+#include <map>
 
 namespace garden::graphics
 {
@@ -305,7 +306,6 @@ public:
 		CullFace cullFace = CullFace::Back;                /**< Triangle culling mode. */
 		FrontFace frontFace = FrontFace::CounterClockwise; /**< Polygon front-facing orientation. */
 		uint16 _reserved1 = 0;                             /**< [reserved for future use] */
-		uint32 _reserved2 = 0;                             /**< [reserved for future use] */
 
 		/**
 		 * @brief Creates a new graphics pipeline state.
@@ -329,9 +329,6 @@ public:
 				cullFace < CullFace::Count && frontFace < FrontFace::Count; // TODO: other possible checks.
 		}
 	};
-
-	using PipelineStates = tsl::robin_map<uint8, State>;
-	using BlendStates = tsl::robin_map<uint8, vector<BlendState>>;
 
 	/*******************************************************************************************************************
 	 * @brief Vertex input attribute description.
@@ -357,6 +354,11 @@ public:
 		}
 	};
 
+	using PipelineStates = map<uint8, State>;
+	using VertexAttributes = map<uint8, vector<VertexAttribute>>;
+	using BlendStates = map<uint8, vector<BlendState>>;
+	// Note: better to use std maps here instead of robin.
+
 	/**
 	 * @brief Graphics pipeline shader code overrides.
 	 * @details It allows to override pipeline shader code.
@@ -374,12 +376,15 @@ public:
 	struct GraphicsCreateData : public CreateData
 	{
 		Image::Format depthStencilFormat = {};
+		uint16 perInstanceMask = 0;
+		uint8 vertexBindingCount = 0;
 		raw_vector<uint8> vertexCode;
 		raw_vector<uint8> fragmentCode;
 		vector<VertexAttribute> vertexAttributes;
 		vector<BlendState> blendStates;
 		vector<Image::Format> colorFormats;
 		PipelineStates pipelineStateOverrides;
+		VertexAttributes vertexAttrOverrides;
 		BlendStates blendStateOverrides;
 		State pipelineState = {};
 	};

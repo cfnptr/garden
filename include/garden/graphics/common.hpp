@@ -38,9 +38,13 @@ struct SvEqual
 };
 
 /**
- * @brief Nvidia architecture maximum binary size.
+ * @brief Nvidia architecture maximum push constants binary size.
  */
 constexpr uint8 maxPushConstantsSize = 128;
+/**
+ * @brief Common maximum input vertex binding count.
+ */
+constexpr uint8 maxVertexBindingCount = 16;
 
 /**
  * @brief Rendering pipeline type.
