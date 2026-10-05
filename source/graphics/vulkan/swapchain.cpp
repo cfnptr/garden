@@ -390,6 +390,7 @@ void VulkanSwapchain::beginSecondaryCommandBuffers(const vector<Framebuffer::Att
 
 	if (vulkanAPI->secondaryCommandBuffers.size() != threadCount)
 	{
+		GARDEN_ASSERT(threadCount < UINT8_MAX);
 		vulkanAPI->secondaryCommandBuffers.resize(threadCount);
 		auto& secondaryCommandStates = vulkanAPI->secondaryCommandStates;
 		for (auto secondaryCommandState : secondaryCommandStates)
@@ -543,8 +544,8 @@ void VulkanSwapchain::endSecondaryCommandBuffers()
 	if (!secondaryCommandBuffers.empty())
 	{
 		ExecuteCommand command;
-		command.bufferCount = (uint16)secondaryCommandBuffers.size();
-		command.buffers = secondaryCommandBuffers.data();
+		command.bufferCount = (uint8)secondaryCommandBuffers.size();
+		command.commandBuffers = secondaryCommandBuffers.data();
 		vulkanAPI->currentCommandBuffer->addCommand(command);
 		secondaryCommandBuffers.clear();
 	}

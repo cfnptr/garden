@@ -787,9 +787,9 @@ void Pipeline::bindDescriptorSetsAsync(const DescriptorSet::Range* ranges, uint8
 	}
 	#endif
 
-	BindDescriptorSetsAsyncCommand command;
+	BindDescriptorSetsCommand command;
 	command.rangeCount = rangeCount;
-	memcpy(command.ranges, ranges, sizeof(DescriptorSet::Range) * rangeCount);
+	command.ranges = ranges;
 
 	auto graphicsBackend = graphicsAPI->getBackendType();
 	auto autoThreadCount = graphicsAPI->calcAutoThreadCount(threadIndex);
@@ -826,7 +826,7 @@ void Pipeline::bindDescriptorSetsAsync(const DescriptorSet::Range* ranges, uint8
 		{
 			secondaryCommandBuffers[threadIndex].bindDescriptorSets(bindPoint, 
 				vkPipelineLayout, 0, vkDescriptorSetCount, vkDescriptorSetData, 0, nullptr);
-			currentCommandBuffer->addCommand(AsyncRenderCommand(command), threadIndex);
+			currentCommandBuffer->addCommand(command, threadIndex);
 			updateDescriptorsLock(ranges, rangeCount, threadIndex);
 			threadIndex++;
 		}

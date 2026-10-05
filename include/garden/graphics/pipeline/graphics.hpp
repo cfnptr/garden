@@ -486,27 +486,29 @@ public:
 	 * Fundamental operation that instructs the GPU to render primitives (basic shapes like points, lines and 
 	 * triangles) based on the provided vertex data and the current graphics pipeline state.
 	 * 
-	 * @param vertexBuffer target vertex buffer or null
+	 * @param[in] vertexBuffers target vertex buffers or null
+	 * @param bufferCount vertex buffer count or 0
 	 * @param vertexCount vertex count to draw
 	 * @param instanceCount draw instance count
 	 * @param vertexOffset vertex offset in the buffer or 0
 	 * @param instanceOffset draw instance offset or 0
 	 */
-	void draw(ID<Buffer> vertexBuffer, uint32 vertexCount, uint32 instanceCount = 1,
-		uint32 vertexOffset = 0, uint32 instanceOffset = 0);
+	void draw(const ID<Buffer>* vertexBuffers, uint8 bufferCount, uint32 vertexCount, 
+		uint32 instanceCount = 1, uint32 vertexOffset = 0, uint32 instanceOffset = 0);
 	/**
 	 * @brief Renders primitives to the framebuffer. (MT-Safe)
 	 * @details See the @ref GraphicsPipeline::draw()
 	 * 
 	 * @param threadIndex thread index in the pool
-	 * @param vertexBuffer target vertex buffer or null
+	 * @param[in] vertexBuffers target vertex buffers or null
+	 * @param bufferCount vertex buffer count or 0
 	 * @param vertexCount vertex count to draw
 	 * @param instanceCount draw instance count
 	 * @param vertexOffset vertex offset in the buffer or 0
 	 * @param instanceOffset draw instance offset or 0
 	 */
-	void drawAsync(int32 threadIndex, ID<Buffer> vertexBuffer, uint32 vertexCount,
-		uint32 instanceCount = 1, uint32 vertexOffset = 0, uint32 instanceOffset = 0);
+	void drawAsync(int32 threadIndex, const ID<Buffer>* vertexBuffer, uint8 bufferCount, 
+		uint32 vertexCount, uint32 instanceCount = 1, uint32 vertexOffset = 0, uint32 instanceOffset = 0);
 
 	/**
 	 * @brief Renders primitives based on indices to the framebuffer.
@@ -516,36 +518,37 @@ public:
 	 * set of vertices. This command is particularly efficient for rendering complex geometries where 
 	 * vertices are shared among multiple primitives.
 	 * 
-	 * @param vertexBuffer target vertex buffer
-	 * @param indexBuffer target index buffer
+	 * @param[in] vertexBuffers target vertex buffers
+	 * @param vertexBufferCount vertex buffer count
 	 * @param indexType type of the index data
+	 * @param indexBuffer target index buffer
 	 * @param indexCount index count to draw
 	 * @param instanceCount draw instance count
 	 * @param indexOffset index offset in the buffer or 0
 	 * @param vertexOffset vertex offset in the buffer or 0
 	 * @param instanceOffset draw instance offset or 0
 	 */
-	void drawIndexed(ID<Buffer> vertexBuffer, ID<Buffer> indexBuffer,
-		IndexType indexType, uint32 indexCount, uint32 instanceCount = 1,
+	void drawIndexed(const ID<Buffer>* vertexBuffers, uint8 vertexBufferCount, 
+		IndexType indexType, ID<Buffer> indexBuffer, uint32 indexCount, uint32 instanceCount = 1,
 		uint32 indexOffset = 0, uint32 vertexOffset = 0, uint32 instanceOffset = 0);
 	/**
 	 * @brief Renders primitives based on indices to the framebuffer.
 	 * @details See the @ref GraphicsPipeline::drawIndexed()
 	 * 
 	 * @param threadIndex thread index in the pool
-	 * @param vertexBuffer target vertex buffer
-	 * @param indexBuffer target index buffer
+	 * @param[in] vertexBuffers target vertex buffers
+	 * @param vertexBufferCount vertex buffer count
 	 * @param indexType type of the index data
+	 * @param indexBuffer target index buffer
 	 * @param indexCount index count to draw
 	 * @param instanceCount draw instance count
 	 * @param indexOffset index offset in the buffer or 0
 	 * @param vertexOffset vertex offset in the buffer or 0
 	 * @param instanceOffset draw instance offset or 0
 	 */
-	void drawIndexedAsync(int32 threadIndex, ID<Buffer> vertexBuffer,
-		ID<Buffer> indexBuffer, IndexType indexType, uint32 indexCount,
-		uint32 instanceCount = 1, uint32 indexOffset = 0,
-		uint32 vertexOffset = 0, uint32 instanceOffset = 0);
+	void drawIndexedAsync(int32 threadIndex, const ID<Buffer>* vertexBuffers, uint8 vertexBufferCount, 
+		IndexType indexType, ID<Buffer> indexBuffer, uint32 indexCount, uint32 instanceCount = 1, 
+		uint32 indexOffset = 0, uint32 vertexOffset = 0, uint32 instanceOffset = 0);
 
 	/**
 	 * @brief Renders fullscreen triangle to the framebuffer.

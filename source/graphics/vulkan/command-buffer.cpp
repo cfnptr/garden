@@ -557,6 +557,8 @@ bool VulkanCommandBuffer::isBusy()
 void VulkanCommandBuffer::addRenderPassBarriers(const Command* command)
 {
 	auto commandType = command->type;
+	GARDEN_ASSERT(commandType < Command::Type::Count);
+
 	if (commandType == Command::Type::BindDescriptorSets)
 	{
 		auto bindDescriptorSetsCommand = (const BindDescriptorSetsCommand*)command;
@@ -601,12 +603,13 @@ void VulkanCommandBuffer::addRenderPassBarriers(uint32 thisSize)
 	{
 		auto command = (const Command*)dataIter;
 		GARDEN_ASSERT(command->type < Command::Type::Count);
+		dataIter += command->thisSize;
 
 		if (command->type == Command::Type::EndRenderPass)
 			break;
 		addRenderPassBarriers(command);
-		dataIter += command->thisSize;
 	}
+	GARDEN_ASSERT(dataIter <= this->dataEnd);
 }
 
 //**********************************************************************************************************************
@@ -617,29 +620,33 @@ void VulkanCommandBuffer::addRenderPassBarriersAsync(uint32 thisSize)
 	auto dataIter = this->dataIter + thisSize;
 	while (dataIter < this->dataEnd)
 	{
-		auto command = (const ExecuteCommand*)dataIter;
+		auto command = (const Command*)dataIter;
 		auto commandType = command->type;
 		GARDEN_ASSERT(commandType < Command::Type::Count);
 
-		if (commandType == Command::Type::EndRenderPass)
-			break;
+		if (commandType == Command::Type::Execute)
+		{
+			auto executeCommand = (const ExecuteCommand*)command;
+			auto asyncDataIter = dataIter + (sizeof(ExecuteCommandBase) + 
+				executeCommand->bufferCount * sizeof(void*));
+			auto asyncDataEnd = dataIter + command->thisSize;
+
+			// TODO: We can multithread this, but somehow synchronize image/buffer state accesses.
+			//       We can store offsets of separate async buffers in to the ExecuteCommand.
+			while (asyncDataIter < asyncDataEnd)
+			{
+				auto asyncCommand = (const Command*)asyncDataIter;
+				addRenderPassBarriers(asyncCommand);
+				asyncDataIter += asyncCommand->thisSize;
+			}
+			GARDEN_ASSERT(asyncDataIter == asyncDataEnd);
+		}
 		dataIter += command->thisSize;
 
-		if (commandType != Command::Type::Execute)
-			continue;
-
-		auto asyncCommands = (const uint8*)command + 
-			sizeof(ExecuteCommandBase) + command->bufferCount * sizeof(void*);
-		auto asyncCommandCount = command->asyncCommandCount;
-
-		// TODO: we can multithread this, but somehow synchronize image/buffer state accesses.
-		for (uint32 i = 0; i < asyncCommandCount; i++)
-		{
-			auto asyncCommand = (const AsyncRenderCommand*)((asyncCommands + 
-				i * asyncCommandSize) - asyncCommandOffset);
-			addRenderPassBarriers(&asyncCommand->base);
-		}
+		if (commandType == Command::Type::EndRenderPass)
+			break;
 	}
+	GARDEN_ASSERT(dataIter <= this->dataEnd);
 }
 
 static constexpr bool isMajorCommand(Command::Type commandType) noexcept
@@ -1087,24 +1094,26 @@ void VulkanCommandBuffer::processCommand(const DispatchCommand& command)
 	SET_CPU_ZONE_SCOPED("Dispatch Command Process");
 
 	auto dataIter = this->dataIter - command.lastSize;
-	while (dataIter != this->data)
+	while (dataIter > this->data)
 	{
 		auto subCommand = (const Command*)dataIter;
 		auto commandType = subCommand->type;
 		GARDEN_ASSERT(commandType < Command::Type::Count);
+		dataIter -= subCommand->lastSize;
 
 		if (isMajorCommand(commandType))
 			break;
-		dataIter -= subCommand->lastSize;
 
-		if (commandType != Command::Type::BindDescriptorSets)
-			continue;
-
-		auto bindDescriptorSetsCommand = (const BindDescriptorSetsCommand*)subCommand;
-		auto descriptorSetRange = (const DescriptorSet::Range*)(
-			(const uint8*)subCommand + sizeof(BindDescriptorSetsCommandBase));
-		addDescriptorSetBarriers(vulkanAPI, descriptorSetRange, bindDescriptorSetsCommand->rangeCount);
+		if (commandType == Command::Type::BindDescriptorSets)
+		{
+			auto bindDescriptorSetsCommand = (const BindDescriptorSetsCommand*)subCommand;
+			auto descriptorSetRange = (const DescriptorSet::Range*)(
+				(const uint8*)subCommand + sizeof(BindDescriptorSetsCommandBase));
+			addDescriptorSetBarriers(vulkanAPI, descriptorSetRange, bindDescriptorSetsCommand->rangeCount);
+		}
 	}
+
+	GARDEN_ASSERT(dataIter >= this->data);
 	processPipelineBarriers();
 
 	instance.dispatch(command.groupCount.x, command.groupCount.y, command.groupCount.z);
@@ -1638,24 +1647,26 @@ void VulkanCommandBuffer::processCommand(const TraceRaysCommand& command)
 	addBufferBarrier(vulkanAPI, newSrcBufferState, command.sbtBuffer);
 
 	auto dataIter = this->dataIter - command.lastSize;
-	while (dataIter != this->data)
+	while (dataIter > this->data)
 	{
 		auto subCommand = (const Command*)dataIter;
 		auto commandType = subCommand->type;
 		GARDEN_ASSERT(commandType < Command::Type::Count);
+		dataIter -= subCommand->lastSize;
 
 		if (isMajorCommand(commandType))
 			break;
-		dataIter -= subCommand->lastSize;
 
-		if (commandType != Command::Type::BindDescriptorSets)
-			continue;
-
-		auto bindDescriptorSetsCommand = (const BindDescriptorSetsCommand*)subCommand;
-		auto descriptorSetRange = (const DescriptorSet::Range*)(
-			(const uint8*)subCommand + sizeof(BindDescriptorSetsCommandBase));
-		addDescriptorSetBarriers(vulkanAPI, descriptorSetRange, bindDescriptorSetsCommand->rangeCount);
+		if (commandType == Command::Type::BindDescriptorSets)
+		{
+			auto bindDescriptorSetsCommand = (const BindDescriptorSetsCommand*)subCommand;
+			auto descriptorSetRange = (const DescriptorSet::Range*)(
+				(const uint8*)subCommand + sizeof(BindDescriptorSetsCommandBase));
+			addDescriptorSetBarriers(vulkanAPI, descriptorSetRange, bindDescriptorSetsCommand->rangeCount);
+		}
 	}
+
+	GARDEN_ASSERT(dataIter >= this->data);
 	processPipelineBarriers();
 
 	vk::StridedDeviceAddressRegionKHR rayGenRegion(command.sbtRegions.rayGenRegion.deviceAddress,

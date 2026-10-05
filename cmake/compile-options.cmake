@@ -38,7 +38,7 @@ else() # Clang or GCC compiler
 		add_compile_options(-flto) # Use link time optimizations.
 	endif()
 	if(CMAKE_CXX_COMPILER_ID MATCHES "Clang") # Note: Do not remove MATCHES!
-		if(APPLE)
+		if(LINUX OR APPLE)
 			add_link_options(-fuse-ld=lld) # There is no lld in AppleClang.
 		endif()
 		if(WIN32)

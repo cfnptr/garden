@@ -115,9 +115,7 @@ void CommandBuffer::processCommands()
 			processCommand(*(const InsertLabelCommand*)command); break;
 		#endif
 
-		default:
-			GARDEN_ASSERT_MSG(false, "Not implemented Vulkan command");
-			abort();
+		default: throw GardenError("Not implemented Vulkan command");
 		}
 		dataIter += command->thisSize;
 	}

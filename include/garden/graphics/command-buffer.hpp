@@ -82,14 +82,13 @@ struct BeginRenderPassCommand final : public BeginRenderPassCommandBase
 };
 struct ExecuteCommandBase : public Command
 {
-	uint8 _alignment = 0;
-	uint16 bufferCount = 0;
-	uint32 asyncCommandCount = 0;
+	uint8 bufferCount = 0;
+	uint16 _alignment = 0;
 	ExecuteCommandBase() noexcept : Command(Type::Execute) { }
 };
 struct ExecuteCommand final : public ExecuteCommandBase
 {
-	void* buffers = nullptr;
+	const void* commandBuffers = nullptr;
 };
 struct EndRenderPassCommand final : public Command
 {
@@ -129,10 +128,6 @@ struct BindDescriptorSetsCommandBase : public Command
 struct BindDescriptorSetsCommand final : public BindDescriptorSetsCommandBase
 {
 	const DescriptorSet::Range* ranges = nullptr;
-};
-struct BindDescriptorSetsAsyncCommand final : public BindDescriptorSetsCommandBase
-{
-	DescriptorSet::Range ranges[3]; // TODO: Looks like there is no more than 3 for an async bind. Rethink later?
 };
 
 //**********************************************************************************************************************
@@ -183,30 +178,39 @@ struct SetDepthBiasCommand final : public Command
 };
 
 //**********************************************************************************************************************
-struct DrawCommand final : public Command
+struct DrawCommandBase : public Command
 {
-	uint8 _alignment0 = 0;
-	uint16 _alignment1 = 0;
+	uint8 bufferCount = 0;
+	uint16 _alignment = 0;
 	uint32 vertexCount = 0;
 	uint32 instanceCount = 0;
 	uint32 vertexOffset = 0;
 	uint32 instanceOffset = 0;
-	ID<Buffer> vertexBuffer = {};
-	DrawCommand() noexcept : Command(Type::Draw) { }
+	DrawCommandBase() noexcept : Command(Type::Draw) { }
 };
-struct DrawIndexedCommand final : public Command
+struct DrawCommand final : public DrawCommandBase
+{
+	const ID<Buffer>* vertexBuffers = nullptr;
+};
+
+struct DrawIndexedCommandBase : public Command
 {
 	IndexType indexType = {};
-	uint16 _alignment = 0;
+	uint8 vertexBufferCount = 0;
+	uint8 _alignment = 0;
 	uint32 indexCount = 0;
 	uint32 instanceCount = 0;
 	uint32 indexOffset = 0;
 	uint32 vertexOffset = 0;
 	uint32 instanceOffset = 0;
-	ID<Buffer> vertexBuffer = {};
 	ID<Buffer> indexBuffer = {};
-	DrawIndexedCommand() noexcept : Command(Type::DrawIndexed) { }
+	DrawIndexedCommandBase() noexcept : Command(Type::DrawIndexed) { }
 };
+struct DrawIndexedCommand final : public DrawIndexedCommandBase
+{
+	const ID<Buffer>* vertexBuffers = nullptr;
+};
+
 struct DrawIndirectCommand final : public Command
 {
 	uint8 _alignment0 = 0;
@@ -353,19 +357,6 @@ struct CustomRenderCommand final : public Command
 	void* argument = nullptr;
 	CustomRenderCommand() noexcept : Command(Type::Custom) { }
 };
-union AsyncRenderCommand final
-{
-	Command base;
-	BindPipelineCommand bindPipeline;
-	BindDescriptorSetsAsyncCommand bindDescriptorSets;
-	DrawCommand draw;
-	DrawIndexedCommand drawIndexed;
-
-	AsyncRenderCommand(const BindPipelineCommand& command) noexcept : bindPipeline(command) { }
-	AsyncRenderCommand(const BindDescriptorSetsAsyncCommand& command) noexcept : bindDescriptorSets(command) { }
-	AsyncRenderCommand(const DrawCommand& command) noexcept : draw(command) { }
-	AsyncRenderCommand(const DrawIndexedCommand& command) noexcept : drawIndexed(command) { }
-};
 
 #if GARDEN_DEBUG
 //**********************************************************************************************************************
@@ -414,10 +405,6 @@ public:
 	typedef tsl::robin_map<uint64, uint32> LockResources;
 	static constexpr psize dataAlignment = 4; /**< Command buffer data alignment. */
 
-	static constexpr auto asyncCommandOffset = sizeof(uint32) * 2;
-	static constexpr auto asyncCommandSize = sizeof(AsyncRenderCommand) - asyncCommandOffset;
-	// Note: skipping command size part, because size is fixed for async.
-
 	// Note: optimal for little endian arch.
 	struct ResourceKey { ID<Resource> resource; ResourceType type; }; 
 
@@ -425,7 +412,7 @@ public:
 	{
 	 	LockResources lockingResources;
 		uint8* data = nullptr;
-		psize size = 0, capacity = 16;
+		uint32 capacity = 16, size = 0, lastSize = 0;
 	};
 protected:
 	LockResources lockedResources;
@@ -468,14 +455,18 @@ protected:
 			}
 
 			allocation = (T*)(async.data + async.size);
-			*allocation = command; async.size += size;
+			*allocation = command; allocation->lastSize = async.lastSize;
+			async.size += size; async.lastSize = size;
 		}
 
 		allocation->thisSize = size;
 		return allocation;
 	}
 	template<class T = Command>
-	T* allocateCommand(const T& command) { return allocateCommand(command, sizeof(T)); }
+	T* allocateCommand(const T& command, int32 threadIndex = -1)
+	{
+		return allocateCommand(command, sizeof(T), threadIndex);
+	}
 
 	void processCommands();
 
@@ -547,26 +538,29 @@ public:
 	}
 	void addCommand(const ExecuteCommand& command)
 	{
-		psize asyncSize = 0;
+		uint32 asyncDataSize = 0;
 		for (const auto& async : asyncData)
-			asyncSize += async.size;
-		if (asyncSize == 0) return;
+			asyncDataSize += async.size;
+		if (asyncDataSize == 0) return;
 
-		GARDEN_ASSERT(asyncSize % asyncCommandSize == 0);
-		auto bufferBinarySize = command.bufferCount * sizeof(void*);
-		auto commandSize = sizeof(ExecuteCommandBase) + bufferBinarySize + asyncSize;
+		auto buffersBinarySize = command.bufferCount * sizeof(void*);
+		auto commandSize = sizeof(ExecuteCommandBase) + buffersBinarySize + asyncDataSize;
 		auto allocation = allocateCommand<ExecuteCommandBase>(command, (uint32)commandSize);
-		allocation->asyncCommandCount = (uint32)(asyncSize / asyncCommandSize);
 
-		auto data = (uint8*)allocation + sizeof(ExecuteCommandBase);
-		memcpy(data, command.buffers, bufferBinarySize);
-		data += bufferBinarySize;
+		auto commandData = (uint8*)allocation + sizeof(ExecuteCommandBase);
+		memcpy(commandData, command.commandBuffers, buffersBinarySize);
+		commandData += buffersBinarySize;
 
+		auto lastSize = (uint32)(sizeof(ExecuteCommandBase) + buffersBinarySize);
 		for (auto& async : asyncData)
 		{
 			if (async.size == 0)
 				continue;
-			memcpy(data, async.data, async.size); data += async.size;
+
+			auto firstCommand = (Command*)async.data;
+			firstCommand->lastSize = lastSize;
+			memcpy(commandData, async.data, async.size);
+			commandData += async.size;
 
 			for (auto pair : async.lockingResources)
 			{
@@ -575,9 +569,11 @@ public:
 					lockingResources.emplace(pair.first, pair.second);
 				else result.value() += pair.second;
 			}
-			async.lockingResources.clear(); async.size = 0;
+
+			async.lockingResources.clear();
+			async.size = async.lastSize = 0;
 		}
-		GARDEN_ASSERT(data == (uint8*)allocation + commandSize);
+		GARDEN_ASSERT(commandData == (uint8*)allocation + commandSize);
 	}
 	void addCommand(const EndRenderPassCommand& command)
 	{
@@ -604,19 +600,13 @@ public:
 			type == CommandBufferType::Graphics || type == CommandBufferType::Compute);
 		allocateCommand(command); hasAnyCommand = true;
 	}
-	void addCommand(const BindDescriptorSetsCommand& command)
+	void addCommand(const BindDescriptorSetsCommand& command, int32 threadIndex = -1)
 	{
 		GARDEN_ASSERT(type == CommandBufferType::Frame ||
 			type == CommandBufferType::Graphics || type == CommandBufferType::Compute);
 		auto commandSize = sizeof(BindDescriptorSetsCommandBase) + command.rangeCount * sizeof(DescriptorSet::Range);
-		auto allocation = allocateCommand<BindDescriptorSetsCommandBase>(command, (uint32)commandSize);
+		auto allocation = allocateCommand<BindDescriptorSetsCommandBase>(command, (uint32)commandSize, threadIndex);
 		memcpy(allocation + 1, command.ranges, command.rangeCount * sizeof(DescriptorSet::Range));
-	}
-	void addCommand(const BindDescriptorSetsAsyncCommand& command, int32 threadIndex = -1)
-	{
-		GARDEN_ASSERT(type == CommandBufferType::Frame ||
-			type == CommandBufferType::Graphics || type == CommandBufferType::Compute);
-		allocateCommand(command, sizeof(BindDescriptorSetsAsyncCommand), threadIndex);
 	}
 	void addCommand(const PushConstantsCommand& command)
 	{
@@ -648,15 +638,21 @@ public:
 		GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Graphics);
 		allocateCommand(command);
 	}
-	void addCommand(const DrawCommand& command)
+	void addCommand(const DrawCommand& command, int32 threadIndex = -1)
 	{
 		GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Graphics);
-		allocateCommand(command);
+		auto commandSize = sizeof(DrawCommandBase) + command.bufferCount * sizeof(ID<Buffer>);
+		auto allocation = allocateCommand<DrawCommandBase>(command, (uint32)commandSize);
+		if (command.bufferCount > 0)
+			memcpy(allocation + 1, command.vertexBuffers, command.bufferCount * sizeof(ID<Buffer>));
 	}
-	void addCommand(const DrawIndexedCommand& command)
+	void addCommand(const DrawIndexedCommand& command, int32 threadIndex = -1)
 	{
 		GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Graphics);
-		allocateCommand(command);
+		auto commandSize = sizeof(DrawIndexedCommandBase) + command.vertexBufferCount * sizeof(ID<Buffer>);
+		auto allocation = allocateCommand<DrawIndexedCommandBase>(command, (uint32)commandSize);
+		if (command.vertexBufferCount > 0)
+			memcpy(allocation + 1, command.vertexBuffers, command.vertexBufferCount * sizeof(ID<Buffer>));
 	}
 	void addCommand(const DispatchCommand& command)
 	{
@@ -728,22 +724,6 @@ public:
 	void addCommand(const CustomRenderCommand& command)
 	{
 		allocateCommand(command); hasAnyCommand = true;
-	}
-	void addCommand(const AsyncRenderCommand& command, int32 threadIndex)
-	{
-		GARDEN_ASSERT(threadPool);
-		GARDEN_ASSERT(threadIndex < threadPool->getThreadCount());
-		GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Graphics);
-
-		auto& async = asyncData[threadIndex];		
-		if (async.size + asyncCommandSize > async.capacity)
-		{
-			async.capacity = async.size + sizeof(AsyncRenderCommand);
-			async.data = realloc(async.data, capacity);
-		}
-
-		memcpy(async.data + async.size, (const uint8*)&command + asyncCommandOffset, asyncCommandSize);
-		async.size += asyncCommandSize;
 	}
 
 	#if GARDEN_DEBUG

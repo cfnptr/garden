@@ -450,9 +450,9 @@ static void onShaderUniform(FileData& fileData, LineData& lineData,
 		if (lineData.word == "}") fileData.isUniform = 8;
 		if (isBufferType(fileData.uniformType))
 		{
-			if (lineData.isNewLine) fileData.tmpOutputStream << "\n    ";
+			if (lineData.isNewLine) fileData.tmpOutputStream << "\n";
 			if (processOffsetKeyword(fileData, lineData))
-				fileData.tmpOutputStream << "    layout(offset = " << lineData.offset << ") ";
+				fileData.tmpOutputStream << "layout(offset = " << lineData.offset << ") ";
 			else fileData.tmpOutputStream << lineData.word << " ";
 		}
 		else fileData.fileOutputStream << lineData.word << " ";
@@ -894,6 +894,7 @@ static void onShaderVertexBuffer(GraphicsFileData& fileData, GraphicsLineData& l
 	{
 		if (lineData.word == "perInstance")
 		{
+			fileData.fileOutputStream << " perInstance";
 			perInstanceMask |= 1u << fileData.vertexBindingIndex;
 			return;
 		}
