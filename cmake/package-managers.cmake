@@ -12,16 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# All these variables should be set before project() call.
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 set(SKIP_INSTALL_ALL TRUE CACHE BOOL "" FORCE)
-set(ZLIB_USE_STATIC_LIBS ON CACHE BOOL "" FORCE)
-set(OPENSSL_USE_STATIC_LIBS ON CACHE BOOL "" FORCE)
-set(CURL_USE_STATIC_LIBS ON CACHE BOOL "" FORCE)
-
-# All these variables should be set before project() call.
 
 if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Windows")
+	set(ZLIB_USE_STATIC_LIBS ON CACHE BOOL "" FORCE)
+	set(OPENSSL_USE_STATIC_LIBS ON CACHE BOOL "" FORCE)
 	set(OPENSSL_MSVC_STATIC_RT ON CACHE BOOL "" FORCE)
+	set(CURL_USE_STATIC_LIBS ON CACHE BOOL "" FORCE)
 
 	if(NOT DEFINED CMAKE_MSVC_RUNTIME_LIBRARY)
 		set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
@@ -52,19 +51,6 @@ if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Windows")
 	if(NOT DEFINED VCPKG_TARGET_TRIPLET)
 		set(VCPKG_TARGET_TRIPLET "${VCPKG_ARCH}-windows-static")
 		message(STATUS "VCPKG_TARGET_TRIPLET: " ${VCPKG_TARGET_TRIPLET})
-	endif()
-elseif(CMAKE_HOST_SYSTEM_NAME STREQUAL "Darwin")
-	if(NOT DEFINED HOMEBREW_PREFIX)
-		execute_process(COMMAND brew --prefix OUTPUT_VARIABLE 
-			HOMEBREW_PREFIX OUTPUT_STRIP_TRAILING_WHITESPACE)
-		if (NOT EXISTS ${HOMEBREW_PREFIX})
-			message(FATAL_ERROR "Homebrew is not installed or added to the System Environment Variables.")
-		endif()
-	endif()
-
-	if(NOT DEFINED CMAKE_PREFIX_PATH)
-		set(CMAKE_PREFIX_PATH ${HOMEBREW_PREFIX}/opt/zlib 
-			${HOMEBREW_PREFIX}/opt/openssl@3 ${HOMEBREW_PREFIX}/opt/curl)
 	endif()
 elseif(CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux")
 	if(DEFINED GARDEN_USE_CLANG)

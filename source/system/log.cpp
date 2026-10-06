@@ -64,6 +64,16 @@ static void logKernelInfo(LogSystem* logSystem)
 		to_string(HIWORD(fileInfo->dwFileVersionLS)) + "." + to_string(LOWORD(fileInfo->dwFileVersionLS)));
 	#endif
 }
+static void logCompiler(LogSystem* logSystem)
+{
+	#if defined(__clang__)
+	logSystem->info("Compiler: Clang/LLVM");
+	#elif defined(__GNUC__) || defined(__GNUG__)
+	logSystem->info("Compiler: GCC");
+	#elif defined(_MSC_VER)
+	logSystem->info("Compiler: MSVC");
+	#endif
+}
 
 static string getCurrentDate()
 {
@@ -102,6 +112,7 @@ LogSystem::LogSystem(LogLevel level, double rotationTime, bool setSingleton) : S
 	info("Git commit: " GARDEN_GIT_COMMIT);
 	info("Git SHA1: " GARDEN_GIT_SHA1);
 	info("Git date: " GARDEN_GIT_DATE);
+	logCompiler(this);
 	#endif
 
 	#ifdef NDEBUG

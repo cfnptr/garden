@@ -78,7 +78,9 @@ Use building [instructions](BUILDING.md) to install all required tools and libra
 | GARDEN_USE_ASAN             | Use Clang address sanitizer                      | `OFF`         |
 | GARDEN_USE_MESA_RGP         | Use Mesa Radeon GPU Profiler (RGP)               | `OFF`         |
 | GARDEN_USE_BASIS_UNIVERSAL  | Use Binomial Basis Universal GPU texture codec   | `ON`          |
-| GARDEN_USE_OPENCL           | Use OpenCL framework. (CUDA analogue)            | `OFF`          |
+| GARDEN_USE_OPENEXR          | Use OpenEXR image format loader                  | `ON`          |
+| GARDEN_USE_ASSIMP           | Use Open Asset Importer Library model loader     | `ON`          |
+| GARDEN_USE_OPENCL           | Use OpenCL framework. (CUDA analogue)            | `OFF`         |
 | GARDEN_USE_NVIDIA_DLSS      | Use Nvidia DLSS SDK (Auto-downloads repo)        | `OFF`         |
 | GARDEN_USE_STEAMWORKS_SDK   | Use Valve Steamworks SDK (Download it manually!) | `OFF`         |
 

@@ -15,7 +15,10 @@
 #include "garden/system/network/client.hpp"
 #include "garden/system/log.hpp"
 #include "garden/profiler.hpp"
+
+#if NETS_SUPPORT_OPENSSL
 #include "openssl/rand.h"
+#endif
 
 using namespace garden;
 
@@ -26,7 +29,9 @@ static NetsResult sendEncMessage(nets::IStreamClient* streamClient, uint8* encKe
 	StreamOutputBuffer<bufferSize> message("enc", ClientSession::keySize, messageLengthSize);
 	message.write(encKey, ClientSession::keySize);
 	auto result = streamClient->send(message);
+	#if NETS_SUPPORT_OPENSSL
 	OPENSSL_cleanse(message.buffer, bufferSize * sizeof(uint8));
+	#endif
 	return result;
 }
 
@@ -34,6 +39,7 @@ void ClientNetworkSystem::onConnectionResult(NetsResult result)
 {
 	if (result == SUCCESS_NETS_RESULT && isSecure())
 	{
+		#if NETS_SUPPORT_OPENSSL
 		datagramLocker.lock();
 		if (encContext)
 		{
@@ -50,6 +56,9 @@ void ClientNetworkSystem::onConnectionResult(NetsResult result)
 				result = FAILED_TO_CREATE_SSL_NETS_RESULT;
 		}
 		datagramLocker.unlock();
+		#else
+		result = FAILED_TO_CREATE_SSL_NETS_RESULT;
+		#endif
 
 		if (result == SUCCESS_NETS_RESULT)
 			result = sendEncMessage(this, encKey, clientLengthSize);
@@ -66,6 +75,7 @@ void ClientNetworkSystem::onDisconnect(int reason)
 {
 	GARDEN_LOG_INFO("Disconnected from the server. (reason: " + reasonToString(reason) + ")");
 
+	#if NETS_SUPPORT_OPENSSL
 	datagramLocker.lock();
 	if (isSecure())
 	{
@@ -75,6 +85,7 @@ void ClientNetworkSystem::onDisconnect(int reason)
 	}
 	clientDatagramIdx = 1; serverDatagramIdx = 0; datagramUID = 0;
 	datagramLocker.unlock();
+	#endif
 
 	auto manager = Manager::getInstance();
 	manager->lock();
@@ -331,6 +342,7 @@ NetsResult ClientNetworkSystem::sendDatagram(const void* data, size_t byteCount)
 	psize totalSize;
 	if (isSecure())
 	{
+		#if NETS_SUPPORT_OPENSSL
 		if (clientDatagramIdx % (uint64)UINT32_MAX == 0 && isSecure()) // Note: rekeying
 		{
 			if (!RAND_bytes(encKey, ClientSession::keySize) || !ClientSession::updateEncDecKey(encContext, encKey))
@@ -339,6 +351,7 @@ NetsResult ClientNetworkSystem::sendDatagram(const void* data, size_t byteCount)
 			if (result != SUCCESS_NETS_RESULT)
 				return result;
 		}
+		#endif
 
 		totalSize = ClientSession::encryptDatagram(data, byteCount, 
 			encContext, datagramBuffer, datagramUID, clientDatagramIdx);

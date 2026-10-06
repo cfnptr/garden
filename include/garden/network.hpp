@@ -387,8 +387,8 @@ struct ClientSession
 	static void* createEncContext(uint8*& encKey, void*& cipher) noexcept;
 	static void* createDecContext(const uint8* decKey, void*& cipher) noexcept;
 	static bool updateEncDecKey(void* context, uint8* key) noexcept;
-	static void destroyEncDecContext(void* context, uint8* key) noexcept;
-	static void destroyCipher(void* cipher) noexcept;
+	static void destroyEncDecContext(void* context, uint8* key);
+	static void destroyCipher(void* cipher);
 
 	static psize packDatagram(const void* data, psize size, 
 		vector<uint8>& datagramBuffer, uint32 datagramUID, uint64& datagramIdx) noexcept;

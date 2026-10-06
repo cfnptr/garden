@@ -27,11 +27,13 @@
 
 #include "math/normal-mapping.hpp"
 #include "model/instance-data.h"
+#include "meshoptimizer.h"
 
+#if GARDEN_USE_ASSIMP
 #include "assimp/Importer.hpp"
 #include "assimp/scene.h"
 #include "assimp/postprocess.h"
-#include "meshoptimizer.h"
+#endif
 
 using namespace garden;
 
@@ -290,8 +292,8 @@ void ModelRenderSystem::drawAsync(MeshRenderComponent* meshRenderView,
 	const auto& lod = modelRenderView->getLod(0); 
 	auto indexCount = lod.getIndexCount();
 
-	pipelineView->drawIndexedAsync(taskIndex, ID<Buffer>(lod.vertexBuffer), 
-		ID<Buffer>(lod.indexBuffer), toIndexType(indexCount), indexCount);
+	/*pipelineView->drawIndexedAsync(taskIndex, ID<Buffer>(lod.vertexBuffer), 
+		ID<Buffer>(lod.indexBuffer), toIndexType(indexCount), indexCount);*/
 }
 
 uint64 ModelRenderSystem::getBaseInstanceDataSize()
@@ -484,6 +486,7 @@ static int32 getModelFilePath(const fs::path& modelPath, fs::path& filePath, Mod
 	return fileCount;
 }
 
+#if GARDEN_USE_ASSIMP
 template<typename I = uint32>
 static void optimizeMeshData(const aiMesh* mesh, raw_vector<uint8>& indices, raw_vector<uint8>& positions, 
 	raw_vector<uint8>& attributes, raw_vector<uint8>& tmp0, raw_vector<uint8>& tmp1)
@@ -684,6 +687,7 @@ static void processMeshData(
 
 	ResourceSystem::getInstance()->storeBuffer(filePath, tmp0, true);
 }
+#endif
 
 //**********************************************************************************************************************
 ID<Entity> ModelRenderSystem::loadModel(const fs::path& path, const ModelComponents* components)
@@ -725,6 +729,9 @@ ID<Entity> ModelRenderSystem::loadModel(const fs::path& path, const ModelCompone
 		return {};
 	}
 
+	ID<Entity> rootEntity = {};
+
+	#if GARDEN_USE_ASSIMP
 	constexpr uint32 processFlags = aiProcess_JoinIdenticalVertices | aiProcess_Triangulate | 
 		aiProcess_GenNormals | aiProcess_PopulateArmatureData | aiProcess_SortByPType | aiProcess_GenBoundingBoxes;
 
@@ -741,7 +748,7 @@ ID<Entity> ModelRenderSystem::loadModel(const fs::path& path, const ModelCompone
 	auto graphicsSystem = GraphicsSystem::getInstance();
 	auto meshes = scene->mMeshes; auto materials = scene->mMaterials;
 	stack<aiNode*> nodes; nodes.push(scene->mRootNode);
-	map<uint32, MeshLOD> sharedLods; ID<Entity> rootEntity = {}, lastEntity = {};
+	map<uint32, MeshLOD> sharedLods; ID<Entity> lastEntity = {};
 	raw_vector<uint8> indices, positions, attributes, tmp0, tmp1;
 
 	while (!nodes.empty())
@@ -867,6 +874,10 @@ ID<Entity> ModelRenderSystem::loadModel(const fs::path& path, const ModelCompone
 			else nodes.push(child);
 		}
 	}
+	#else
+	// TODO: maybe integrate separate small obj, glTF or USD model importers?
+	GARDEN_LOG_ERROR("No supported model loader. (path: " + path.generic_string() + ")");
+	#endif
 
 	return rootEntity;
 }

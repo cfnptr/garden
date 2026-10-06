@@ -14,8 +14,11 @@
 
 #include "garden/network.hpp"
 #include "nets/stream-server.hpp"
+
+#if NETS_SUPPORT_OPENSSL
 #include "openssl/rand.h"
 #include "openssl/evp.h"
+#endif
 
 using namespace garden;
 
@@ -62,6 +65,7 @@ NetsResult ClientSession::shutdownSend() noexcept
 //******************************************************************************************************************
 void* ClientSession::createEncContext(uint8*& encKey, void*& cipher) noexcept
 {
+	#if NETS_SUPPORT_OPENSSL
 	if (!cipher)
 	{
 		cipher = EVP_CIPHER_fetch(nullptr, "AES-256-GCM", nullptr);
@@ -91,9 +95,13 @@ void* ClientSession::createEncContext(uint8*& encKey, void*& cipher) noexcept
 		return nullptr;
 	}
 	return encContext;
+	#else
+	return nullptr;
+	#endif
 }
 void* ClientSession::createDecContext(const uint8* decKey, void*& cipher) noexcept
 {
+	#if NETS_SUPPORT_OPENSSL
 	if (!cipher)
 	{
 		cipher = EVP_CIPHER_fetch(nullptr, "AES-256-GCM", nullptr);
@@ -116,6 +124,9 @@ void* ClientSession::createDecContext(const uint8* decKey, void*& cipher) noexce
 		return nullptr;
 	}
 	return encContext;
+	#else
+	return nullptr;
+	#endif
 }
 
 //******************************************************************************************************************
@@ -123,10 +134,16 @@ bool ClientSession::updateEncDecKey(void* context, uint8* key) noexcept
 {
 	GARDEN_ASSERT(context);
 	GARDEN_ASSERT(key);
+
+	#if NETS_SUPPORT_OPENSSL
 	return EVP_DecryptInit_ex((EVP_CIPHER_CTX*)context, nullptr, nullptr, key, nullptr);
+	#else
+	return false;
+	#endif
 }
-void ClientSession::destroyEncDecContext(void* context, uint8* key) noexcept
+void ClientSession::destroyEncDecContext(void* context, uint8* key)
 {
+	#if NETS_SUPPORT_OPENSSL
 	EVP_CIPHER_CTX_free((EVP_CIPHER_CTX*)context);
 
 	if (key)
@@ -134,10 +151,17 @@ void ClientSession::destroyEncDecContext(void* context, uint8* key) noexcept
 		OPENSSL_cleanse(key, keySize * sizeof(uint8));
 		delete[] key;
 	}
+	#else
+	throw GardenError("No OpenSSL support.");
+	#endif
 }
-void ClientSession::destroyCipher(void* cipher) noexcept
+void ClientSession::destroyCipher(void* cipher)
 {
+	#if NETS_SUPPORT_OPENSSL
 	EVP_CIPHER_free((EVP_CIPHER*)cipher);
+	#else
+	throw GardenError("No OpenSSL support.");
+	#endif
 }
 
 psize ClientSession::packDatagram(const void* data, psize size, 
@@ -163,6 +187,7 @@ psize ClientSession::encryptDatagram(const void* plainData, psize size, void* en
 	GARDEN_ASSERT(size > 0);
 	GARDEN_ASSERT(encContext);
 
+	#if NETS_SUPPORT_OPENSSL
 	if (datagramIdx == UINT64_MAX)
 		return 0; // Overflow will spoil IV.
 
@@ -200,6 +225,9 @@ psize ClientSession::encryptDatagram(const void* plainData, psize size, void* en
 	if (!EVP_CIPHER_CTX_ctrl(context, EVP_CTRL_GCM_GET_TAG, tagSize, outBuffer + totalSize))
 		return 0;
 	return totalSize + tagSize;
+	#else
+	return 0;
+	#endif
 }
 psize ClientSession::encryptDatagram(const void* data, psize size) noexcept
 {
@@ -213,6 +241,7 @@ psize ClientSession::decryptDatagram(const uint8* encData,
 	GARDEN_ASSERT(encData);
 	GARDEN_ASSERT(decContext);
 
+	#if NETS_SUPPORT_OPENSSL
 	if (size <= ivSize + tagSize)
 		return 0;
 
@@ -246,6 +275,9 @@ psize ClientSession::decryptDatagram(const uint8* encData,
 	if (!EVP_DecryptFinal_ex(context, outBuffer + dataSize, &tmpSize) || tmpSize != 0)
 		return 0;
 	return dataSize;
+	#else
+	return 0;
+	#endif
 }
 psize ClientSession::decryptDatagram(const uint8* data, psize size) noexcept
 {

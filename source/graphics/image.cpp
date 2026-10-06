@@ -21,12 +21,14 @@
 #include "webp/decode.h"
 #include "webp/encode.h"
 
+#if GARDEN_USE_OPENEXR
 #include "ImfIO.h"
 #include "ImfHeader.h"
 #include "ImfInputFile.h"
 #include "ImfOutputFile.h"
 #include "ImfChannelList.h"
 #include "ImfFrameBuffer.h"
+#endif
 
 #if GARDEN_USE_BASIS_UNIVERSAL
 #include "basisu_comp.h"
@@ -1559,53 +1561,51 @@ uint3 Image::unpack3D(raw_vector<uint8>& pixels, uint2 size, uint32 stride, raw_
 }
 
 //**********************************************************************************************************************
+#if GARDEN_USE_OPENEXR
 namespace garden::graphics
 {
 	class ExrMemoryStream final : public Imf::IStream
 	{
 		const uint8* data = nullptr;
-		psize size = 0, pos = 0;
+		psize dataSize = 0, currPos = 0;
 	public:
-		ExrMemoryStream(const uint8* data, psize size) : 
-			Imf::IStream("memory"), data(data), size(size) { }
+		ExrMemoryStream(const uint8* data, psize dataSize) : 
+			Imf::IStream("memory"), data(data), dataSize(dataSize) { }
 		~ExrMemoryStream() override { }
 
 		bool isMemoryMapped() const override { return true; }
 
 		bool read(char c[/*n*/], int n) override
 		{
-			if (pos + n > size)
+			if (currPos + n > dataSize)
 				throw GardenError("Out of EXR file bounds.");
-			memcpy(c, data + pos, n); pos += n;
-			return pos != size;
+			memcpy(c, data + currPos, n); currPos += n;
+			return currPos != dataSize;
 		}
 		char* readMemoryMapped(int n) override
 		{
-			if (pos + n > size)
+			if (currPos + n > dataSize)
 				throw GardenError("Out of EXR file bounds.");
-			auto memory = (char*)data + pos; pos += n;
+			auto memory = (char*)data + currPos; currPos += n;
 			return memory;
 		}
 
-		uint64_t tellg() override { return pos; }
-		void seekg(uint64_t pos) override { this->pos = pos; }
+		uint64_t tellg() override { return currPos; }
+		void seekg(uint64_t pos) override { currPos = pos; }
 		void clear() override { }
 
-		/* TODO: uncomment when will be widely supported.
-
-		int64_t size() override { return (int64_t)size; }
+		int64_t size() override { return (int64_t)dataSize; }
 		bool isStatelessRead() const override { return true; }
 
 		int64_t read(void* buf, uint64_t sz, uint64_t offset) override
 		{
-			if (offset > size)
+			if (offset > dataSize)
 				return 0;
-			auto remaining = (uint64_t)size - offset;
+			auto remaining = (uint64_t)dataSize - offset;
     		auto bytesToRead = (sz < remaining) ? sz : remaining;
 			memcpy(buf, data + offset, bytesToRead);
 			return bytesToRead;
 		}
-		*/
 	};
 	class ExrFileStream final : public Imf::OStream
 	{
@@ -1644,6 +1644,7 @@ namespace garden::graphics
 		}
 	};
 }
+#endif
 
 //**********************************************************************************************************************
 #if GARDEN_USE_BASIS_UNIVERSAL
@@ -1761,6 +1762,7 @@ static void loadImageDataWebP(const void* data, psize dataSize,
 }
 
 //**********************************************************************************************************************
+#if GARDEN_USE_OPENEXR
 static Imf::FrameBuffer createExrFramebuffer(char* pixels, psize pixelBinarySize, 
 	psize floatSize, psize strideY, int componentCount, Imf::PixelType pixelType)
 {
@@ -1774,9 +1776,12 @@ static Imf::FrameBuffer createExrFramebuffer(char* pixels, psize pixelBinarySize
 		exrFrameBuffer.insert("A", Imf::Slice(pixelType, pixels + floatSize * 3, pixelBinarySize, strideY));
 	return exrFrameBuffer;
 }
+#endif
+
 static void loadImageDataEXR(const void* data, psize dataSize, raw_vector<uint8>& pixels, 
 	uint4& imageSize, Image::Format& imageFormat, Image::Type imageType)
 {
+	#if GARDEN_USE_OPENEXR
 	ExrMemoryStream exrStream((const uint8*)data, dataSize);
 	Imf::InputFile exrFile(exrStream);
 	auto& header = exrFile.header(); auto dw = header.dataWindow();
@@ -1821,7 +1826,11 @@ static void loadImageDataEXR(const void* data, psize dataSize, raw_vector<uint8>
 		auto size3D = Image::unpack3D(pixels, (uint2)imageSize, pixelBinarySize);
 		imageSize = uint4(size3D, 1);
 	}
+	#else
+	throw GardenError("No OpenEXR image support.");
+	#endif
 }
+
 
 //**********************************************************************************************************************
 static void loadImageDataHDR(const void* data, psize dataSize, 
@@ -2241,6 +2250,7 @@ static void storeImageDataEXR(const fs::path& filePath, const void* pixels, uint
 	GARDEN_ASSERT_MSG(!hasAnyFlag(flags, Image::StoreFlag::BlockSizeMask), "EXR does not support block compression");
 	GARDEN_ASSERT_MSG(!hasAnyFlag(flags, Image::StoreFlag::LinearAsSrgb), "EXR does not support linear as sRGB");
 
+	#if GARDEN_USE_OPENEXR
 	auto dstPixels = pixels;
 	raw_vector<uint8> tmpPixels; Imf::PixelType pixelType;
 
@@ -2290,6 +2300,9 @@ static void storeImageDataEXR(const fs::path& filePath, const void* pixels, uint
 		pixelBinarySize, floatSize, strideY, componentCount, pixelType);
 	exrOutputFile.setFrameBuffer(exrFramebuffer);
 	exrOutputFile.writePixels(size.y);
+	#else
+	throw GardenError("No OpenEXR image support.");
+	#endif
 }
 static void storeImageDataHDR(const fs::path& filePath, const void* pixels, uint3 size, 
 	Image::Format imageFormat, float quality, float effort, Image::StoreFlag flags)

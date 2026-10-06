@@ -54,6 +54,8 @@ option(GARDEN_USE_TRACY_PROFILER "Use Tracy frame profiler." OFF)
 option(GARDEN_USE_ASAN "Use Clang address sanitizer. (Memory debugger)" OFF)
 option(GARDEN_USE_MESA_RGP "Use Mesa Radeon GPU Profiler." OFF)
 option(GARDEN_USE_BASIS_UNIVERSAL "Use Basis Universal GPU texture codec." ON)
+option(GARDEN_USE_OPENEXR "Use OpenEXR image format loader." ON)
+option(GARDEN_USE_ASSIMP "Use Open Asset Importer Library model loader." ON)
 option(GARDEN_USE_OPENCL "Use OpenCL framework. (CUDA analogue)" OFF)
 
 # By enabling this option you agree to the NVIDIA RTX SDKs license.
@@ -168,9 +170,8 @@ include(cmake/gather-git-info.cmake)
 #***********************************************************************************************************************
 set(GARDEN_INCLUDE_DIRS ${PROJECT_BINARY_DIR}/include ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/shaders 
 	libraries/ecsm/include libraries/vma/include libraries/stb libraries/png ${PROJECT_BINARY_DIR}/libraries/png)
-set(GARDEN_LINK_LIBS Vulkan::Vulkan volk nlohmann_json::nlohmann_json xxHash::xxhash 
-	assimp::assimp OpenEXR::OpenEXR ecsm-static math-static pack-static logy-static 
-	nets-static glfw webp png_static freetype meshoptimizer FastNoise Jolt)
+set(GARDEN_LINK_LIBS Vulkan::Vulkan volk nlohmann_json::nlohmann_json xxHash::xxhash ecsm-static math-static 
+	pack-static logy-static nets-static glfw webp png_static freetype meshoptimizer FastNoise Jolt)
 set(GARDEN_LINK_DIRS)
 
 if(APPLE)
@@ -182,14 +183,7 @@ endif()
 
 include(FetchContent)
 find_package(Vulkan REQUIRED) # libvulkan-dev
-find_package(assimp REQUIRED) # libassimp-dev
-find_package(OpenEXR REQUIRED) # libopenexr-dev
-
-find_package(ZLIB) # zlib1g-dev
-if(NOT ZLIB_FOUND AND LINUX)
-	set(ZLIB_LIBRARY /usr/lib64/libz.so)
-	find_package(ZLIB REQUIRED)
-endif()
+find_package(ZLIB REQUIRED) # zlib1g-dev
 
 if(GARDEN_USE_OPENCL)
 	find_package(OpenCL) # opencl-headers ocl-icd-opencl-dev
@@ -226,6 +220,7 @@ set(LOGY_BUILD_SHARED OFF CACHE BOOL "" FORCE)
 set(LOGY_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 add_subdirectory(libraries/logy)
 
+set(NETS_BUILD_SHARED OFF CACHE BOOL "" FORCE)
 set(NETS_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 add_subdirectory(libraries/nets)
 
@@ -275,6 +270,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 	set(TRACK_NARROWPHASE_STATS ON CACHE BOOL "" FORCE)
 	set(JPH_SHADER_DEBUG_SYMBOLS ON CACHE BOOL "" FORCE)
 	set(JPH_SHADER_OPTIMIZATION OFF CACHE BOOL "" FORCE)
+	set(JPH_USE_VK OFF CACHE BOOL "" FORCE) # TODO: fix missing dxc compiler or wait for a proper VK support.
 endif()
 if(CMAKE_BUILD_TYPE MATCHES "Release|RelWithDebInfo" AND GARDEN_RELEASE_EDITOR)
 	set(DEBUG_RENDERER_IN_DISTRIBUTION ON CACHE BOOL "" FORCE)
@@ -297,6 +293,8 @@ if(GARDEN_USE_TRACY_PROFILER)
 endif()
 
 include(cmake/basis-universal.cmake)
+include(cmake/openexr.cmake)
+include(cmake/assimp.cmake)
 include(cmake/nvidia-dlss.cmake)
 include(cmake/steamworks-sdk.cmake)
 

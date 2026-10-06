@@ -16,7 +16,10 @@
 #include "garden/system/thread.hpp"
 #include "garden/system/log.hpp"
 #include "garden/profiler.hpp"
+
+#if NETS_SUPPORT_OPENSSL
 #include "openssl/rand.h"
+#endif
 
 using namespace garden;
 
@@ -46,7 +49,9 @@ static NetsResult sendEncMessage(ClientSession* clientSession, uint8 messageLeng
 	message.write((const void*)&clientSession->datagramUID, sizeof(uint32)); // Note: No endianness swap for random data.
 	message.write(clientSession->encKey, ClientSession::keySize);
 	auto result = clientSession->send(message);
+	#if NETS_SUPPORT_OPENSSL
 	OPENSSL_cleanse(message.buffer, bufferSize * sizeof(uint8));
+	#endif
 	return result;
 }
 NetsResult StreamServerHandle::sendDatagram(ClientSession* clientSession, const void* data, size_t byteCount)
@@ -56,6 +61,7 @@ NetsResult StreamServerHandle::sendDatagram(ClientSession* clientSession, const 
 	psize totalSize;
 	if (isSecure())
 	{
+		#if NETS_SUPPORT_OPENSSL
 		if (clientSession->serverDatagramIdx % (uint64)UINT32_MAX == 0) // Note: rekeying
 		{
 			if (!RAND_bytes(clientSession->encKey, ClientSession::keySize) ||
@@ -67,6 +73,7 @@ NetsResult StreamServerHandle::sendDatagram(ClientSession* clientSession, const 
 			if (result != SUCCESS_NETS_RESULT)
 				return result;
 		}
+		#endif
 
 		totalSize = clientSession->encryptDatagram(data, byteCount);
 		if (totalSize == 0)
@@ -129,8 +136,12 @@ void* StreamServerHandle::onSessionCreate(nets::StreamSessionView streamSession)
 	while (isRunning()) // TODO: maybe add time out?
 	{
 		uint32 datagramUID = 0;
+		#if NETS_SUPPORT_OPENSSL
 		if (!RAND_bytes((uint8*)&datagramUID, sizeof(uint32)))
 			continue;
+		#else
+		datagramUID = (uint32)rand();
+		#endif
 		auto result = datagramMap.emplace(datagramUID, clientSession);
 		if (!result.second)
 			continue;
