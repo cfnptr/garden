@@ -669,7 +669,7 @@ class PhysicsSystem final : public ComponentSystem<RigidbodyComponent, false>,
 {
 public:
 	using ShapePool = LinearPool<Shape>;
-	using SharedShapes = tsl::robin_map<Hash128, ID<Shape>>;
+	using SharedShapes = absl::flat_hash_map<Hash128, ID<Shape>>;
 
 	/**
 	 * @brief Physics simulation system properties.
@@ -725,10 +725,10 @@ private:
 	SharedShapes sharedCustomShapes;
 	vector<Event> bodyEvents;
 	stack<ID<Entity>, vector<ID<Entity>>> entityStack;
-	set<ID<Entity>> serializedConstraints;
-	tsl::robin_map<uint64, ID<Entity>> deserializedEntities;
+	absl::flat_hash_set<ID<Entity>> serializedConstraints;
+	absl::flat_hash_map<uint64, ID<Entity>> deserializedEntities;
 	vector<EntityConstraint> deserializedConstraints;
-	tsl::robin_map<uint32, NetRigidbody> netRigidbodies;
+	absl::flat_hash_map<uint32, NetRigidbody> netRigidbodies;
 	mutex bodyEventLocker, netRigidbodyLocker;
 	string valueStringCache;
 	void* tempAllocator = nullptr;
@@ -748,7 +748,7 @@ private:
 	uint32 cascadeLagCount = 0;
 
 	#if GARDEN_DEBUG
-	set<uint64> serializedEntities;
+	absl::flat_hash_set<uint64> serializedEntities;
 	#endif
 
 	/**

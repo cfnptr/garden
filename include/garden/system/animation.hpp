@@ -32,7 +32,7 @@ class AnimationSystem;
  */
 struct AnimationComponent final : public Component
 {
-	using Animations = tsl::robin_map<string, Ref<Animation>, SvHash, SvEqual>;
+	using Animations = absl::flat_hash_map<string, Ref<Animation>>;
 
 	string active;               /**< Active animation path */
 	float frame = 0.0f;          /**< Current animation frame */
@@ -76,13 +76,14 @@ public:
 	/**
 	 * @brief Removes animation from the map.
 	 * @param path target animation path
+	 * @return Number of removed animations.
 	 */
 	psize eraseAnimation(string_view path) noexcept { return animations.erase(path); }
 	/**
 	 * @brief Removes animation from the map.
 	 * @param i target animation iterator
 	 */
-	auto eraseAnimation(Animations::const_iterator i) noexcept { return animations.erase(i); }
+	void eraseAnimation(Animations::const_iterator i) noexcept { animations.erase(i); }
 
 	/**
 	 * @brief Clears animations map.

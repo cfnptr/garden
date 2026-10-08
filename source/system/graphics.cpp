@@ -867,8 +867,7 @@ ID<ImageView> GraphicsSystem::createImageView(ID<Image> image, Image::Type type,
 
 	auto graphicsAPI = GraphicsAPI::get();
 	auto _image = graphicsAPI->imagePool.get(image);
-	GARDEN_ASSERT_MSG(ResourceExt::getInstance(**_image), 
-		"Image [" + _image->getDebugName() + "] is not ready");
+	GARDEN_ASSERT_MSG(_image->isLoaded(), "Image [" + _image->getDebugName() + "] is not loaded");
 	GARDEN_ASSERT(layerCount + baseLayer <= _image->getLayerCount());
 	GARDEN_ASSERT(mipCount + baseMip <= _image->getMipCount());
 
@@ -987,8 +986,7 @@ ID<DescriptorSet> GraphicsSystem::createDescriptorSet(ID<GraphicsPipeline> graph
 
 	#if GARDEN_DEBUG
 	auto pipelineView = GraphicsAPI::get()->graphicsPipelinePool.get(graphicsPipeline);
-	GARDEN_ASSERT_MSG(ResourceExt::getInstance(**pipelineView), 
-		"Pipeline [" + pipelineView->getDebugName() + "] is not ready");
+	GARDEN_ASSERT_MSG(pipelineView->isLoaded(), "Pipeline [" + pipelineView->getDebugName() + "] is not loaded");
 	auto layoutCount = PipelineExt::getDescriptorSetLayouts(**pipelineView).size();
 	GARDEN_ASSERT_MSG(index < layoutCount, "Out of pipeline [" + 
 		pipelineView->getDebugName() + "] descriptor set count bounds");
@@ -1012,8 +1010,7 @@ ID<DescriptorSet> GraphicsSystem::createDescriptorSet(ID<ComputePipeline> comput
 
 	#if GARDEN_DEBUG
 	auto pipelineView = GraphicsAPI::get()->computePipelinePool.get(computePipeline);
-	GARDEN_ASSERT_MSG(ResourceExt::getInstance(**pipelineView), 
-		"Pipeline [" + pipelineView->getDebugName() + "] is not ready");
+	GARDEN_ASSERT_MSG(pipelineView->isLoaded(), "Pipeline [" + pipelineView->getDebugName() + "] is not loaded");
 	GARDEN_ASSERT_MSG(index < PipelineExt::getDescriptorSetLayouts(**pipelineView).size(),
 		"Out of pipeline [" + pipelineView->getDebugName() + "] descriptor set count bounds");
 	// TODO: check if all items initialized if not using bindless.
@@ -1036,8 +1033,7 @@ ID<DescriptorSet> GraphicsSystem::createDescriptorSet(ID<RayTracingPipeline> ray
 
 	#if GARDEN_DEBUG
 	auto pipelineView = GraphicsAPI::get()->rayTracingPipelinePool.get(rayTracingPipeline);
-	GARDEN_ASSERT_MSG(ResourceExt::getInstance(**pipelineView), 
-		"Pipeline [" + pipelineView->getDebugName() + "] is not ready");
+	GARDEN_ASSERT_MSG(pipelineView->isLoaded(), "Pipeline [" + pipelineView->getDebugName() + "] is not loaded");
 	GARDEN_ASSERT_MSG(index < PipelineExt::getDescriptorSetLayouts(**pipelineView).size(),
 		"Out of pipeline [" + pipelineView->getDebugName() + "] descriptor set count bounds");
 	// TODO: check if all items initialized if not using bindless.

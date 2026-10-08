@@ -170,13 +170,8 @@ void AnimationEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 				{
 					auto animation = i->second;
 					resourceSystem->destroyShared(animation);
-					i = animationView->eraseAnimation(i);
-
-					if (i == animations.end())
-					{
-						ImGui::EndPopup();
-						break;
-					}
+					animationView->eraseAnimation(i);
+					break;
 				}
 				ImGui::EndPopup();
 			}

@@ -163,7 +163,7 @@ RayTracingPipeline::SBT RayTracingPipeline::createSBT(Buffer::Usage flags)
 	GARDEN_ASSERT_MSG(currentCommandBuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(currentCommandBuffer->getType() != CommandBufferType::Frame, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(!graphicsAPI->renderPassFramebuffer, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(instance, "Ray tracing pipeline [" + debugName + "] is not ready");
+	GARDEN_ASSERT_MSG(isLoaded(), "Ray tracing pipeline [" + debugName + "] is not loaded");
 
 	SBT sbt; sbt.groupRegions.reserve(variantCount);
 	auto groupCount = rayGenGroupCount + missGroupCount + callGroupCount + hitGroupCount;	
@@ -296,7 +296,7 @@ void RayTracingPipeline::traceRays(const SBT& sbt, uint3 count)
 	GARDEN_ASSERT_MSG(areAllTrue(count > uint3::zero), "Assert " + debugName);
 	GARDEN_ASSERT_MSG(currentCommandBuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(!graphicsAPI->renderPassFramebuffer, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(instance, "Ray tracing pipeline [" + debugName + "] is not ready");
+	GARDEN_ASSERT_MSG(isLoaded(), "Ray tracing pipeline [" + debugName + "] is not loaded");
 	
 	#if GARDEN_DEBUG
 	auto commandBufferType = currentCommandBuffer->getType();

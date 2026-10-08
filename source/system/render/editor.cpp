@@ -445,7 +445,7 @@ namespace garden
 {
 	struct ComponentEntry final
 	{
-		using Nodes = unordered_map<string, ComponentEntry>;
+		using Nodes = absl::flat_hash_map<string, ComponentEntry>;
 		
 		Nodes nodes;
 		type_index componentType;

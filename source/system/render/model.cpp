@@ -748,7 +748,7 @@ ID<Entity> ModelRenderSystem::loadModel(const fs::path& path, const ModelCompone
 	auto graphicsSystem = GraphicsSystem::getInstance();
 	auto meshes = scene->mMeshes; auto materials = scene->mMaterials;
 	stack<aiNode*> nodes; nodes.push(scene->mRootNode);
-	map<uint32, MeshLOD> sharedLods; ID<Entity> lastEntity = {};
+	absl::flat_hash_map<uint32, MeshLOD> sharedLods; ID<Entity> lastEntity = {};
 	raw_vector<uint8> indices, positions, attributes, tmp0, tmp1;
 
 	while (!nodes.empty())

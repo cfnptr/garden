@@ -1752,7 +1752,7 @@ int PhysicsSystem::onMsgFromServer(StreamInput message, bool isDatagram)
 		auto result = netRigidbodies.find(entityUID);
 		if (result == netRigidbodies.end())
 			netRigidbodies.emplace(entityUID, netRigidbody);
-		else result.value() = netRigidbody;
+		else result->second = netRigidbody;
 	}
 	netRigidbodyLocker.unlock();
 

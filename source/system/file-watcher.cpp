@@ -32,8 +32,8 @@ using namespace garden;
 
 #if GARDEN_OS_LINUX
 //**********************************************************************************************************************
-static void flushChanges(void* instance, tsl::robin_map<int, fs::path>& watchers,
-	set<fs::path>& changedFiles, set<fs::path>& createdFiles)
+static void flushChanges(void* instance, absl::flat_hash_map<int, fs::path>& watchers,
+	absl::flat_hash_set<fs::path>& changedFiles, absl::flat_hash_set<fs::path>& createdFiles)
 {
 	if (!instance)
 		return;
@@ -208,7 +208,7 @@ FileWatcherSystem::FileWatcherSystem(bool setSingleton) : Singleton(setSingleton
 }
 
 #if GARDEN_OS_LINUX
-static bool addDirWatchers(int fd, const fs::path& resourcesPath, tsl::robin_map<int, fs::path>& watchers)
+static bool addDirWatchers(int fd, const fs::path& resourcesPath, absl::flat_hash_map<int, fs::path>& watchers)
 {
 	constexpr auto watchMask = IN_CREATE | IN_DELETE_SELF | IN_MODIFY | IN_MOVED_TO;
 	auto wd = inotify_add_watch(fd, resourcesPath.c_str(), watchMask);

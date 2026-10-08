@@ -41,7 +41,7 @@ Sampler::Sampler(const State& state) : state(state)
 
 bool Sampler::destroy()
 {
-	if (!instance || busyLock > 0)
+	if (!instance || isLocked())
 		return false;
 
 	auto graphicsBackend = GraphicsAPI::get()->getBackendType();

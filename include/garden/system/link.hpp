@@ -75,7 +75,7 @@ class LinkSystem final : public ComponentSystem<LinkComponent, false>,
 	public Singleton<LinkSystem>, public ISerializable
 {
 public:
-	using UuidMap = tsl::robin_map<Hash128, ID<Entity>>;
+	using UuidMap = absl::flat_hash_map<Hash128, ID<Entity>>;
 	using TagMap = multimap<string, ID<Entity>, less<>>;
 private:
 	UuidMap uuidMap;

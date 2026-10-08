@@ -127,11 +127,11 @@ protected:
 		ID<Image> instance = {};
 	};
 	
-	tsl::robin_map<Hash128, Ref<Image>> sharedImages;
-	tsl::robin_map<Hash128, Ref<Buffer>> sharedBuffers;
-	tsl::robin_map<Hash128, Ref<DescriptorSet>> sharedDescriptorSets;
-	tsl::robin_map<Hash128, Ref<Animation>> sharedAnimations;
-	tsl::robin_map<Hash128, Ref<Font>> sharedFonts;
+	absl::flat_hash_map<Hash128, Ref<Image>> sharedImages;
+	absl::flat_hash_map<Hash128, Ref<Buffer>> sharedBuffers;
+	absl::flat_hash_map<Hash128, Ref<DescriptorSet>> sharedDescriptorSets;
+	absl::flat_hash_map<Hash128, Ref<Animation>> sharedAnimations;
+	absl::flat_hash_map<Hash128, Ref<Font>> sharedFonts;
 	queue<GraphicsQueueItem> loadedGraphicsQueue; // TODO: We can use here lock free concurrent queue.
 	queue<ComputeQueueItem> loadedComputeQueue;
 	queue<RayTracingQueueItem> loadedRayTracingQueue;

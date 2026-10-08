@@ -123,46 +123,79 @@ void CommandBuffer::processCommands()
 }
 
 //**********************************************************************************************************************
-void CommandBuffer::flushLockedResources(LockResources& lockedResources)
+void CommandBuffer::lockResource(ResourceType type, ID<Resource> resource, int32 threadIndex)
+{
+	LockedResources* lockResources;
+	if (threadIndex >= 0)
+	{
+		GARDEN_ASSERT(threadPool);
+		GARDEN_ASSERT(threadIndex < threadPool->getThreadCount());
+		lockResources = &asyncData[threadIndex].lockingResources;
+	}
+	else lockResources = &lockingResources;
+
+	ResourceKey key(resource, type);
+	if (lockResources->find(key) != lockResources->end())
+		return;
+	lockResources->emplace(key);
+
+	auto graphicsAPI = GraphicsAPI::get();
+	switch (key.type)
+	{
+	case ResourceType::Buffer:
+		graphicsAPI->bufferPool.get(ID<Buffer>(key.resource))->lock(); break;
+	case ResourceType::Image:
+		graphicsAPI->imagePool.get(ID<Image>(key.resource))->lock(); break;
+	case ResourceType::ImageView:
+		graphicsAPI->imageViewPool.get(ID<ImageView>(key.resource))->lock(); break;
+	case ResourceType::Sampler:
+		graphicsAPI->samplerPool.get(ID<Sampler>(key.resource))->lock(); break;
+	case ResourceType::Blas:
+		graphicsAPI->blasPool.get(ID<Blas>(key.resource))->lock(); break;
+	case ResourceType::Tlas:
+		graphicsAPI->tlasPool.get(ID<Tlas>(key.resource))->lock(); break;
+	case ResourceType::GraphicsPipeline:
+		graphicsAPI->graphicsPipelinePool.get(ID<GraphicsPipeline>(key.resource))->lock(); break;
+	case ResourceType::ComputePipeline:
+		graphicsAPI->computePipelinePool.get(ID<ComputePipeline>(key.resource))->lock(); break;
+	case ResourceType::RayTracingPipeline:
+		graphicsAPI->rayTracingPipelinePool.get(ID<RayTracingPipeline>(key.resource))->lock(); break;
+	case ResourceType::DescriptorSet:
+		graphicsAPI->descriptorSetPool.get(ID<DescriptorSet>(key.resource))->lock(); break;
+	default: abort();
+	}
+}
+
+//**********************************************************************************************************************
+void CommandBuffer::flushLockedResources(LockedResources& lockedResources)
 {
 	SET_CPU_ZONE_SCOPED("Locked Resources Flush");
 
 	auto graphicsAPI = GraphicsAPI::get();
-	for (const auto& pair : lockedResources)
+	for (auto key : lockedResources)
 	{
-		auto key = *((const ResourceKey*)&pair.first);
 		switch (key.type)
 		{
 		case ResourceType::Buffer:
-			ResourceExt::getBusyLock(**graphicsAPI->bufferPool.get(ID<Buffer>(key.resource))) -= pair.second;
-			break;
+			graphicsAPI->bufferPool.get(ID<Buffer>(key.resource))->unlock(); break;
 		case ResourceType::Image:
-			ResourceExt::getBusyLock(**graphicsAPI->imagePool.get(ID<Image>(key.resource))) -= pair.second;
-			break;
+			graphicsAPI->imagePool.get(ID<Image>(key.resource))->unlock(); break;
 		case ResourceType::ImageView:
-			ResourceExt::getBusyLock(**graphicsAPI->imageViewPool.get(ID<ImageView>(key.resource))) -= pair.second;
-			break;
+			graphicsAPI->imageViewPool.get(ID<ImageView>(key.resource))->unlock(); break;
 		case ResourceType::Sampler:
-			ResourceExt::getBusyLock(**graphicsAPI->samplerPool.get(ID<Sampler>(key.resource))) -= pair.second;
-			break;
+			graphicsAPI->samplerPool.get(ID<Sampler>(key.resource))->unlock(); break;
 		case ResourceType::Blas:
-			ResourceExt::getBusyLock(**graphicsAPI->blasPool.get(ID<Blas>(key.resource))) -= pair.second;
-			break;
+			graphicsAPI->blasPool.get(ID<Blas>(key.resource))->unlock(); break;
 		case ResourceType::Tlas:
-			ResourceExt::getBusyLock(**graphicsAPI->tlasPool.get(ID<Tlas>(key.resource))) -= pair.second;
-			break;
+			graphicsAPI->tlasPool.get(ID<Tlas>(key.resource))->unlock(); break;
 		case ResourceType::GraphicsPipeline:
-			ResourceExt::getBusyLock(**graphicsAPI->graphicsPipelinePool.get(ID<GraphicsPipeline>(key.resource))) -= pair.second;
-			break;
+			graphicsAPI->graphicsPipelinePool.get(ID<GraphicsPipeline>(key.resource))->unlock(); break;
 		case ResourceType::ComputePipeline:
-			ResourceExt::getBusyLock(**graphicsAPI->computePipelinePool.get(ID<ComputePipeline>(key.resource))) -= pair.second;
-			break;
+			graphicsAPI->computePipelinePool.get(ID<ComputePipeline>(key.resource))->unlock(); break;
 		case ResourceType::RayTracingPipeline:
-			ResourceExt::getBusyLock(**graphicsAPI->rayTracingPipelinePool.get(ID<RayTracingPipeline>(key.resource))) -= pair.second;
-			break;
+			graphicsAPI->rayTracingPipelinePool.get(ID<RayTracingPipeline>(key.resource))->unlock(); break;
 		case ResourceType::DescriptorSet:
-			ResourceExt::getBusyLock(**graphicsAPI->descriptorSetPool.get(ID<DescriptorSet>(key.resource))) -= pair.second;
-			break;
+			graphicsAPI->descriptorSetPool.get(ID<DescriptorSet>(key.resource))->unlock(); break;
 		default: abort();
 		}
 	}

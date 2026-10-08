@@ -164,7 +164,7 @@ static void renderBuffers(uint32& selectedItem, string& searchString,
 	auto& buffer = buffers[selectedItem];
 	ImGui::SeparatorText(bufferName.c_str());
 	ImGui::TextWrapped("Runtime ID: %lu", (unsigned long)(selectedItem + 1));
-	ImGui::TextWrapped("Busy lock: %lu", (unsigned long)ResourceExt::getBusyLock(buffer));
+	ImGui::TextWrapped("Ready: %s", buffer.isReady() ? "true" : "false");
 	ImGui::TextWrapped("Usage: { %s }", toStringList(buffer.getUsage()).c_str());
 
 	auto graphicsBackend = graphicsAPI->getBackendType();
@@ -306,7 +306,7 @@ static void renderImages(uint32& selectedItem, string& searchString, bool& searc
 
 	ImGui::SeparatorText(imageName.c_str());
 	ImGui::TextWrapped("Runtime ID: %lu", (unsigned long)(selectedItem + 1));
-	ImGui::TextWrapped("Busy lock: %lu", (unsigned long)ResourceExt::getBusyLock(image));
+	ImGui::TextWrapped("Ready: %s", image.isReady() ? "true" : "false");
 	ImGui::TextWrapped("Image type: %s", toString(image.getType()).data());
 	ImGui::TextWrapped("Format type: %s", toString(image.getFormat()).data());
 	ImGui::TextWrapped("Usage: { %s }", toStringList(image.getUsage()).c_str());
@@ -422,7 +422,7 @@ static void renderImageViews(uint32& selectedItem, string& searchString,
 
 	ImGui::SeparatorText(imageViewName.c_str());
 	ImGui::TextWrapped("Runtime ID: %lu", (unsigned long)(selectedItem + 1));
-	ImGui::TextWrapped("Busy lock: %lu", (unsigned long)ResourceExt::getBusyLock(imageView));
+	ImGui::TextWrapped("Ready: %s", imageView.isReady() ? "true" : "false");
 	ImGui::TextWrapped("Image: %s", imageName.c_str());
 	ImGui::TextWrapped("Image type: %s", toString(imageView.getType()).data());
 	ImGui::TextWrapped("Format type: %s", toString(imageView.getFormat()).data());
@@ -787,7 +787,7 @@ static void renderSamplers(uint32& selectedItem, string& searchString,
 	auto state = sampler.getState();
 	ImGui::SeparatorText(descriptorSetName.c_str());
 	ImGui::TextWrapped("Runtime ID: %lu", (unsigned long)(selectedItem + 1));
-	ImGui::TextWrapped("Busy lock: %lu", (unsigned long)ResourceExt::getBusyLock(sampler));
+	ImGui::TextWrapped("Ready: %s", sampler.isReady() ? "true" : "false");
 	ImGui::TextWrapped("Minification Filter: %s", toString(state.minFilter).data());
 	ImGui::TextWrapped("Magnification Filter: %s", toString(state.magFilter).data());
 	ImGui::TextWrapped("Mipmap Filter: %s", toString(state.mipmapFilter).data());
@@ -847,7 +847,7 @@ static void renderDescriptorSets(uint32& selectedItem, string& searchString,
 
 	ImGui::SeparatorText(descriptorSetName.c_str());
 	ImGui::TextWrapped("Runtime ID: %lu", (unsigned long)(selectedItem + 1));
-	ImGui::TextWrapped("Busy lock: %lu", (unsigned long)ResourceExt::getBusyLock(descriptorSet));
+	ImGui::TextWrapped("Ready: %s", descriptorSet.isReady() ? "true" : "false");
 	ImGui::TextWrapped("Pipeline: %s", pipelineName.c_str());
 	ImGui::TextWrapped("Pipeline type: %s", toString(descriptorSet.getPipelineType()).data());
 	ImGui::TextWrapped("Index: %lu", (unsigned long)descriptorSet.getIndex());
@@ -1147,7 +1147,7 @@ static void renderGraphicsPipelines(uint32& selectedItem, string& searchString,
 
 	ImGui::SeparatorText(graphicsPipelineName.c_str());
 	ImGui::TextWrapped("Runtime ID: %lu", (unsigned long)(selectedItem + 1));
-	ImGui::TextWrapped("Busy lock: %lu", (unsigned long)ResourceExt::getBusyLock(graphicsPipeline));
+	ImGui::TextWrapped("Ready: %s", graphicsPipeline.isReady() ? "true" : "false");
 	ImGui::TextWrapped("Framebuffer: %s", framebufferName.c_str());
 	auto instance = ID<Pipeline>(graphicsAPI->graphicsPipelinePool.getID(&graphicsPipeline));
 	renderPipelineDetails(graphicsPipeline, instance, openNextTab, selectedItem);
@@ -1184,7 +1184,7 @@ static void renderComputePipelines(uint32& selectedItem, string& searchString,
 
 	ImGui::SeparatorText(computePipelineName.c_str());
 	ImGui::TextWrapped("Runtime ID: %lu", (unsigned long)(selectedItem + 1));
-	ImGui::TextWrapped("Busy lock: %lu", (unsigned long)ResourceExt::getBusyLock(computePipeline));
+	ImGui::TextWrapped("Ready: %s", computePipeline.isReady() ? "true" : "false");
 	ImGui::TextWrapped("Local size: %lux%lux%lu", (unsigned long)localSize.x, 
 		(unsigned long)localSize.y, (unsigned long)localSize.z);
 	auto instance = ID<Pipeline>(graphicsAPI->computePipelinePool.getID(&computePipeline));
@@ -1221,7 +1221,7 @@ static void renderRayTracingPipelines(uint32& selectedItem, string& searchString
 
 	ImGui::SeparatorText(rayTracingPipelineName.c_str());
 	ImGui::TextWrapped("Runtime ID: %lu", (unsigned long)(selectedItem + 1));
-	ImGui::TextWrapped("Busy lock: %lu", (unsigned long)ResourceExt::getBusyLock(rayTracingPipeline));
+	ImGui::TextWrapped("Ready: %s", rayTracingPipeline.isReady() ? "true" : "false");
 	auto instance = ID<Pipeline>(graphicsAPI->rayTracingPipelinePool.getID(&rayTracingPipeline));
 	renderPipelineDetails(rayTracingPipeline, instance, openNextTab, selectedItem);
 	ImGui::Spacing();
@@ -1355,7 +1355,7 @@ static void renderBlases(uint32& selectedItem, string& searchString,
 	auto& blas = blases[selectedItem];
 	ImGui::SeparatorText(blasName.c_str());
 	ImGui::TextWrapped("Runtime ID: %lu", (unsigned long)(selectedItem + 1));
-	ImGui::TextWrapped("Busy lock: %lu", (unsigned long)ResourceExt::getBusyLock(blas));
+	ImGui::TextWrapped("Ready: %s", blas.isReady() ? "true" : "false");
 	auto instance = ID<AccelerationStructure>(graphicsAPI->blasPool.getID(&blas));
 	renderDetailsAS(blas, instance, openNextTab, selectedItem);
 	ImGui::Spacing();
@@ -1385,7 +1385,7 @@ static void renderTlases(uint32& selectedItem, string& searchString,
 	auto& tlas = tlases[selectedItem];
 	ImGui::SeparatorText(tlasName.c_str());
 	ImGui::TextWrapped("Runtime ID: %lu", (unsigned long)(selectedItem + 1));
-	ImGui::TextWrapped("Busy lock: %lu", (unsigned long)ResourceExt::getBusyLock(tlas));
+	ImGui::TextWrapped("Ready: %s", tlas.isReady() ? "true" : "false");
 	auto instance = ID<AccelerationStructure>(graphicsAPI->tlasPool.getID(&tlas));
 	renderDetailsAS(tlas, instance, openNextTab, selectedItem);
 	ImGui::Spacing();

@@ -1439,7 +1439,7 @@ static void onSpecConst(FileData& fileData, LineData& lineData,
 		{
 			if (lineData.dataType != result->second.type)
 				throw CompileError("different spec consts with the same name", fileData.lineIndex, lineData.word);
-			result.value().pipelineStages |= pipelineStage;
+			result->second.pipelineStages |= pipelineStage;
 		}
 
 		fileData.fileOutputStream << " " << lineData.word;

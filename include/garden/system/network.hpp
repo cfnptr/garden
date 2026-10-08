@@ -75,7 +75,7 @@ public:
 class NetworkSystem final : public ComponentSystem<NetworkComponent, false>, 
 	public Singleton<NetworkSystem>, public ISerializable
 {
-	tsl::robin_map<uint32, ID<Entity>> entityMap;
+	absl::flat_hash_map<uint32, ID<Entity>> entityMap;
 	string valueStringCache;
 
 	/**
@@ -104,7 +104,7 @@ public:
 		auto result = entityMap.find(uid);
 		if (result == entityMap.end())
 			return {};
-		return result.value();
+		return result->second;
 	}
 };
 

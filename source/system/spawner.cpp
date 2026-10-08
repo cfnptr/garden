@@ -300,7 +300,7 @@ bool SpawnerSystem::tryAddSharedPrefab(string_view path, const Hash128& uuid)
 	{
 		if (linkSystem->tryGet(searchResult->second))
 			return false;
-		searchResult.value() = uuid;
+		searchResult->second = uuid;
 		return true;
 	}
 
@@ -332,7 +332,7 @@ bool SpawnerSystem::tryAddSharedPrefab(string_view path, ID<Entity> prefab)
 	}
 	else
 	{
-		searchResult.value() = linkView->getUUID();
+		searchResult->second = linkView->getUUID();
 	}
 	return true;
 }

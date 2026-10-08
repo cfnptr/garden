@@ -49,7 +49,7 @@ class SettingsSystem final : public System, public Singleton<SettingsSystem>
 	};
 
 	void* settings = nullptr;
-	map<string, Item> items;
+	absl::flat_hash_map<string, Item> items;
 	Version oldVersion;
 
 	/**

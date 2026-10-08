@@ -72,7 +72,7 @@ void ComputePipeline::dispatch(uint3 count, bool isGlobalCount)
 	GARDEN_ASSERT_MSG(areAllTrue(count > uint3::zero), "Assert " + debugName);
 	GARDEN_ASSERT_MSG(currentCommandBuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(!graphicsAPI->renderPassFramebuffer, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(instance, "Compute pipeline [" + debugName + "] is not ready");
+	GARDEN_ASSERT_MSG(isLoaded(), "Compute pipeline [" + debugName + "] is not loaded");
 
 	DispatchCommand command;
 	command.groupCount = isGlobalCount ?  (uint3)ceil((float3)count / localSize) : count;

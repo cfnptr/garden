@@ -156,4 +156,5 @@ Use building [instructions](BUILDING.md) to install all required tools and libra
 
 * Basis Universal is a registered trademark of Binomial LLC.
 * DLSS (Deep Learning Super Sampling) is a registered trademark of NVIDIA Corporation.
+* Steam and Steam logo are registered trademarks of Valve Corporation.
 * Vulkan and the Vulkan logo are registered trademarks of the Khronos Group Inc.

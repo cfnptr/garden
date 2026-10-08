@@ -56,7 +56,7 @@ public:
 	};
 
 	using OnComponents = unordered_multimap<float, pair<System*, OnComponent>>;
-	using EntityInspectors = tsl::robin_map<type_index, Inspector>;
+	using EntityInspectors = absl::flat_hash_map<type_index, Inspector>;
 private:
 	OnComponents onComponents;
 	EntityInspectors entityInspectors;

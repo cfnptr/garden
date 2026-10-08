@@ -38,7 +38,7 @@ class BindlessPool final
 		uint32 occupancy = 0;
 	};
 	
-	tsl::robin_map<string, UniformData, SvHash, SvEqual> uniformData;
+	absl::flat_hash_map<string, UniformData> uniformData;
 	ID<DescriptorSet> descriptorSet = {};
 
 	uint32 allocate(string_view name, ID<Resource> resource, uint64 frameIndex);

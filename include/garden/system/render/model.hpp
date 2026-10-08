@@ -278,7 +278,7 @@ public:
 	virtual psize getModelFrameSize() const = 0;
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR || defined(GARDEN_MODEL_CONVERTER)
-	using ModelComponents = map<string, type_index, less<>>;
+	using ModelComponents = absl::flat_hash_map<string, type_index>;
 	/**
 	 * @brief Loads 3D model from the specified file.
 	 * @return Null entity on model loading error.

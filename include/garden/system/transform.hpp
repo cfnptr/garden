@@ -471,12 +471,12 @@ class TransformSystem final : public CompAnimSystem<TransformComponent, Transfor
 
 	stack<ID<Entity>, vector<ID<Entity>>> entityStack;
 	vector<EntityDuplicatePair> entityDuplicateStack;
-	tsl::robin_map<uint64, ID<Entity>> deserializedEntities;
+	absl::flat_hash_map<uint64, ID<Entity>> deserializedEntities;
 	vector<EntityParentPair> deserializedParents;
 	string uidStringCache;
 
 	#if GARDEN_DEBUG
-	set<uint64> serializedEntities;
+	absl::flat_hash_set<uint64> serializedEntities;
 	#endif
 
 	/**

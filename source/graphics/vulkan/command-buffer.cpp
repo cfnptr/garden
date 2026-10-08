@@ -570,13 +570,13 @@ void VulkanCommandBuffer::addRenderPassBarriers(const Command* command)
 	if (commandType == Command::Type::Draw)
 	{
 		auto drawCommand = (const DrawCommand*)command;
-		if (!drawCommand->vertexBuffer)
+		if (!drawCommand->vertexBuffers[0]) // TODO:
 			return;
 
 		Buffer::BarrierState newBufferState;
 		newBufferState.access = (uint64)vk::AccessFlagBits2::eVertexAttributeRead;
 		newBufferState.stage = (uint64)vk::PipelineStageFlagBits2::eVertexAttributeInput;
-		addBufferBarrier(vulkanAPI, newBufferState, drawCommand->vertexBuffer);
+		addBufferBarrier(vulkanAPI, newBufferState, drawCommand->vertexBuffers[0]);
 		return;
 	}
 	if (commandType == Command::Type::DrawIndexed)
@@ -586,7 +586,7 @@ void VulkanCommandBuffer::addRenderPassBarriers(const Command* command)
 		Buffer::BarrierState newBufferState;
 		newBufferState.access = (uint64)vk::AccessFlagBits2::eVertexAttributeRead;
 		newBufferState.stage = (uint64)vk::PipelineStageFlagBits2::eVertexAttributeInput;
-		addBufferBarrier(vulkanAPI, newBufferState, drawIndexedCommand->vertexBuffer);
+		addBufferBarrier(vulkanAPI, newBufferState, drawIndexedCommand->vertexBuffers[0]);
 
 		newBufferState.access = (uint64)vk::AccessFlagBits2::eIndexRead;
 		newBufferState.stage = (uint64)vk::PipelineStageFlagBits2::eIndexInput;
@@ -1045,7 +1045,7 @@ void VulkanCommandBuffer::processCommand(const DrawCommand& command)
 	// TODO: support multiple buffer binding.
 	// TODO: add vertex buffer offset support if required.
 
-	auto vertexBuffer = command.vertexBuffer;
+	auto vertexBuffer = command.vertexBuffers[0];
 	if (vertexBuffer && vertexBuffer != vulkanAPI->currentVertexBuffers[0])
 	{
 		constexpr vk::DeviceSize size = 0;
@@ -1066,10 +1066,10 @@ void VulkanCommandBuffer::processCommand(const DrawIndexedCommand& command)
 	// TODO: support multiple buffer binding.
 	// TODO: add vertex buffer offset support if required.
 
-	if (command.vertexBuffer != vulkanAPI->currentVertexBuffers[0])
+	if (command.vertexBuffers[0] != vulkanAPI->currentVertexBuffers[0])
 	{
 		static constexpr vk::DeviceSize size = 0;
-		auto vertexBuffer = command.vertexBuffer;
+		auto vertexBuffer = command.vertexBuffers[0];
 		auto buffer = vulkanAPI->bufferPool.get(vertexBuffer);
 		vk::Buffer vkBuffer = (VkBuffer)ResourceExt::getInstance(**buffer);
 		instance.bindVertexBuffers(0, 1, &vkBuffer, &size);

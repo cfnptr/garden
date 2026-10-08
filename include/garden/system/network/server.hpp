@@ -33,7 +33,7 @@ class ServerNetworkSystem;
  */
 class StreamServerHandle final : public nets::IStreamServer
 {
-	tsl::robin_map<uint32, ClientSession*> datagramMap;
+	absl::flat_hash_map<uint32, ClientSession*> datagramMap;
 	ServerNetworkSystem* serverSystem = nullptr;
 	void* cipher = nullptr;
 	psize messageBufferSize = 0;
@@ -92,8 +92,8 @@ public:
 	 */
 	using OnReceive = std::function<int(ClientSession*, StreamInput)>;
 private:
-	tsl::robin_map<string, INetworkable*, SvHash, SvEqual> networkables;
-	tsl::robin_map<string, OnReceive, SvHash, SvEqual> listeners;
+	absl::flat_hash_map<string, INetworkable*> networkables;
+	absl::flat_hash_map<string, OnReceive> listeners;
 	StreamServerHandle* streamServer = nullptr;
 
 	/**

@@ -174,7 +174,7 @@ Buffer::Buffer(Usage usage, CpuAccess cpuAccess, Location location, Strategy str
 //**********************************************************************************************************************
 bool Buffer::destroy()
 {
-	if (!instance || busyLock > 0)
+	if (!instance || isLocked())
 		return false;
 
 	auto graphicsAPI = GraphicsAPI::get();
@@ -237,7 +237,7 @@ void Buffer::invalidate(uint64 size, uint64 offset)
 {
 	GARDEN_ASSERT_MSG((size == 0 && offset == 0) || size + offset <= binarySize, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(map, "Buffer [" + debugName + "] is not mappable");
-	GARDEN_ASSERT_MSG(instance, "Buffer [" + debugName + "] is not ready");
+	GARDEN_ASSERT_MSG(isLoaded(), "Buffer [" + debugName + "] is not loaded");
 
 	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
@@ -253,7 +253,7 @@ void Buffer::flush(uint64 size, uint64 offset)
 {
 	GARDEN_ASSERT_MSG((size == 0 && offset == 0) || size + offset <= binarySize, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(map, "Buffer [" + debugName + "] is not mappable");
-	GARDEN_ASSERT_MSG(instance, "Buffer [" + debugName + "] is not ready");
+	GARDEN_ASSERT_MSG(isLoaded(), "Buffer [" + debugName + "] is not loaded");
 
 	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
@@ -270,7 +270,7 @@ void Buffer::writeData(const void* data, uint64 size, uint64 offset)
 	GARDEN_ASSERT_MSG(data, "Assert " + debugName);
 	GARDEN_ASSERT_MSG((size == 0 && offset == 0) || size + offset <= binarySize, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(map, "Buffer [" + debugName + "] is not mappable");
-	GARDEN_ASSERT_MSG(instance, "Buffer [" + debugName + "] is not ready");
+	GARDEN_ASSERT_MSG(isLoaded(), "Buffer [" + debugName + "] is not loaded");
 
 	if (map)
 	{
@@ -320,18 +320,16 @@ void Buffer::fill(uint32 data, uint64 size, uint64 offset)
 	}
 	#endif
 
+	auto thisBuffer = graphicsAPI->bufferPool.getID(this);
+	if (commandBufferType != CommandBufferType::Frame)
+		currentCommandBuffer->lockResource(thisBuffer);
+
 	FillBufferCommand command;
-	command.buffer = graphicsAPI->bufferPool.getID(this);
+	command.buffer = thisBuffer;
 	command.data = data;
 	command.size = size;
 	command.offset = offset;
 	currentCommandBuffer->addCommand(command);
-
-	if (commandBufferType != CommandBufferType::Frame)
-	{
-		busyLock++;
-		currentCommandBuffer->addLockedResource(command.buffer);
-	}
 }
 
 //**********************************************************************************************************************
@@ -349,12 +347,12 @@ void Buffer::copy(ID<Buffer> source, ID<Buffer> destination, const CopyRegion* r
 	auto srcView = graphicsAPI->bufferPool.get(source);
 	GARDEN_ASSERT_MSG(hasAnyFlag(srcView->usage, Usage::TransferSrc), 
 		"Missing source buffer [" + srcView->getDebugName() + "] flag");
-	GARDEN_ASSERT_MSG(srcView->instance, "Source buffer [" + srcView->getDebugName() + "] is not ready");
+	GARDEN_ASSERT_MSG(srcView->isLoaded(), "Source buffer [" + srcView->getDebugName() + "] is not loaded");
 
 	auto dstView = graphicsAPI->bufferPool.get(destination);
 	GARDEN_ASSERT_MSG(hasAnyFlag(dstView->usage, Usage::TransferDst), 
 		"Missing destination buffer [" + dstView->getDebugName() + "] flag");
-	GARDEN_ASSERT_MSG(dstView->instance, "Destination buffer [" + dstView->getDebugName() + "] is not ready");
+	GARDEN_ASSERT_MSG(dstView->isLoaded(), "Destination buffer [" + dstView->getDebugName() + "] is not loaded");
 	
 	auto commandBufferType = currentCommandBuffer->getType();
 	#if GARDEN_DEBUG
@@ -392,20 +390,18 @@ void Buffer::copy(ID<Buffer> source, ID<Buffer> destination, const CopyRegion* r
 	}
 	#endif
 
+	if (commandBufferType != CommandBufferType::Frame)
+	{
+		currentCommandBuffer->lockResource(source);
+		currentCommandBuffer->lockResource(destination);
+	}
+
 	CopyBufferCommand command;
 	command.regionCount = count;
 	command.source = source;
 	command.destination = destination;
 	command.regions = regions;
 	currentCommandBuffer->addCommand(command);
-
-	if (commandBufferType != CommandBufferType::Frame)
-	{
-		srcView->busyLock++;
-		dstView->busyLock++;
-		currentCommandBuffer->addLockedResource(source);
-		currentCommandBuffer->addLockedResource(destination);
-	}
 }
 
 #if GARDEN_DEBUG || GARDEN_EDITOR

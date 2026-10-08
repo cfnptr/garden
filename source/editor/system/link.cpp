@@ -88,7 +88,7 @@ static void renderTagList(const string& searchString, bool searchCaseSensitive)
 	auto linkSystem = LinkSystem::getInstance();
 	auto editorSystem = EditorRenderSystem::getInstance();
 	const auto& tagMap = linkSystem->getTagMap();
-	map<string, uint32> uniqueTags;
+	absl::flat_hash_map<string, uint32> uniqueTags;
 
 	for (const auto& pair : tagMap)
 	{

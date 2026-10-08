@@ -23,6 +23,7 @@
 #include "garden/graphics/pipeline/ray-tracing.hpp"
 #include "garden/graphics/acceleration-structure/tlas.hpp"
 #include "garden/thread-pool.hpp"
+#include "absl/container/flat_hash_set.h"
 
 namespace garden::graphics
 {
@@ -402,21 +403,40 @@ struct InsertLabelCommand final : public InsertLabelCommandBase
 class CommandBuffer
 {
 public:
-	typedef tsl::robin_map<uint64, uint32> LockResources;
 	static constexpr psize dataAlignment = 4; /**< Command buffer data alignment. */
 
-	// Note: optimal for little endian arch.
-	struct ResourceKey { ID<Resource> resource; ResourceType type; }; 
+	struct ResourceKey final
+	{
+		// Note: optimal for little endian arch.
+		ID<Resource> resource;
+		ResourceType type;
+		uint8 _alignment0 = 0;
+		uint16 _alignment1 = 0;
+
+		ResourceKey(ID<Resource> resource, ResourceType type) :
+			resource(resource), type(type) { }
+
+		bool operator==(const ResourceKey& other) const
+		{
+			return *(const uint64*)this == *(const uint64*)&other;
+		}
+		template <typename H>
+		friend H AbslHashValue(H h, const ResourceKey& u)
+		{
+			return H::combine(std::move(h), *(const uint64*)&u);
+		}
+	}; 
+	typedef absl::flat_hash_set<ResourceKey> LockedResources;
 
 	struct AsyncData
 	{
-	 	LockResources lockingResources;
+	 	LockedResources lockingResources;
 		uint8* data = nullptr;
 		uint32 capacity = 16, size = 0, lastSize = 0;
 	};
 protected:
-	LockResources lockedResources;
-	LockResources lockingResources;
+	LockedResources lockedResources;
+	LockedResources lockingResources;
 	vector<AsyncData> asyncData;
 	ThreadPool* threadPool = nullptr;
 	uint8* data = nullptr;
@@ -502,7 +522,8 @@ protected:
 	virtual void processCommand(const InsertLabelCommand& command) = 0;
 	#endif
 
-	void flushLockedResources(LockResources& lockedResources);
+	void lockResource(ResourceType type, ID<Resource> resource, int32 threadIndex = -1);
+	void flushLockedResources(LockedResources& lockedResources);
 public:
 	/*******************************************************************************************************************
 	 * @brief Creates a new command buffer instance.
@@ -562,13 +583,8 @@ public:
 			memcpy(commandData, async.data, async.size);
 			commandData += async.size;
 
-			for (auto pair : async.lockingResources)
-			{
-				auto result = lockingResources.find(pair.first);
-				if (result == lockingResources.end())
-					lockingResources.emplace(pair.first, pair.second);
-				else result.value() += pair.second;
-			}
+			for (auto key : async.lockingResources)
+				lockResource(key.type, key.resource);
 
 			async.lockingResources.clear();
 			async.size = async.lastSize = 0;
@@ -756,45 +772,26 @@ public:
 	 */
 	virtual bool isBusy() = 0;
 
-	void addLockedResource(ResourceType type, ID<Resource> resource, int32 threadIndex)
-	{
-		LockResources* lockResources;
-		if (threadIndex >= 0)
-		{
-			GARDEN_ASSERT(threadPool);
-			GARDEN_ASSERT(threadIndex < threadPool->getThreadCount());
-			lockResources = &asyncData[threadIndex].lockingResources;
-		}
-		else lockResources = &lockingResources;
-
-		ResourceKey key = { resource, type };
-		auto hash = *((const uint64*)&key);
-		auto result = lockResources->find(hash);
-		if (result == lockResources->end())
-			lockResources->emplace(hash, 1);
-		else result.value()++;
-	}
-
-	void addLockedResource(ID<Buffer> resource, int32 threadIndex = -1)
-	{ addLockedResource(ResourceType::Buffer, ID<Resource>(resource), threadIndex); }
-	void addLockedResource(ID<Image> resource, int32 threadIndex = -1)
-	{ addLockedResource(ResourceType::Image, ID<Resource>(resource), threadIndex); }
-	void addLockedResource(ID<ImageView> resource, int32 threadIndex = -1)
-	{ addLockedResource(ResourceType::ImageView, ID<Resource>(resource), threadIndex); }
-	void addLockedResource(ID<Sampler> resource, int32 threadIndex = -1)
-	{ addLockedResource(ResourceType::Sampler, ID<Resource>(resource), threadIndex); }
-	void addLockedResource(ID<Blas> resource, int32 threadIndex = -1)
-	{ addLockedResource(ResourceType::Blas, ID<Resource>(resource), threadIndex); }
-	void addLockedResource(ID<Tlas> resource, int32 threadIndex = -1)
-	{ addLockedResource(ResourceType::Tlas, ID<Resource>(resource), threadIndex); }
-	void addLockedResource(ID<GraphicsPipeline> resource, int32 threadIndex = -1)
-	{ addLockedResource(ResourceType::GraphicsPipeline, ID<Resource>(resource), threadIndex); }
-	void addLockedResource(ID<ComputePipeline> resource, int32 threadIndex = -1)
-	{ addLockedResource(ResourceType::ComputePipeline, ID<Resource>(resource), threadIndex); }
-	void addLockedResource(ID<RayTracingPipeline> resource, int32 threadIndex = -1)
-	{ addLockedResource(ResourceType::RayTracingPipeline, ID<Resource>(resource), threadIndex); }
-	void addLockedResource(ID<DescriptorSet> resource, int32 threadIndex = -1)
-	{ addLockedResource(ResourceType::DescriptorSet, ID<Resource>(resource), threadIndex); }
+	void lockResource(ID<Buffer> resource, int32 threadIndex = -1)
+	{ lockResource(ResourceType::Buffer, ID<Resource>(resource), threadIndex); }
+	void lockResource(ID<Image> resource, int32 threadIndex = -1)
+	{ lockResource(ResourceType::Image, ID<Resource>(resource), threadIndex); }
+	void lockResource(ID<ImageView> resource, int32 threadIndex = -1)
+	{ lockResource(ResourceType::ImageView, ID<Resource>(resource), threadIndex); }
+	void lockResource(ID<Sampler> resource, int32 threadIndex = -1)
+	{ lockResource(ResourceType::Sampler, ID<Resource>(resource), threadIndex); }
+	void lockResource(ID<Blas> resource, int32 threadIndex = -1)
+	{ lockResource(ResourceType::Blas, ID<Resource>(resource), threadIndex); }
+	void lockResource(ID<Tlas> resource, int32 threadIndex = -1)
+	{ lockResource(ResourceType::Tlas, ID<Resource>(resource), threadIndex); }
+	void lockResource(ID<GraphicsPipeline> resource, int32 threadIndex = -1)
+	{ lockResource(ResourceType::GraphicsPipeline, ID<Resource>(resource), threadIndex); }
+	void lockResource(ID<ComputePipeline> resource, int32 threadIndex = -1)
+	{ lockResource(ResourceType::ComputePipeline, ID<Resource>(resource), threadIndex); }
+	void lockResource(ID<RayTracingPipeline> resource, int32 threadIndex = -1)
+	{ lockResource(ResourceType::RayTracingPipeline, ID<Resource>(resource), threadIndex); }
+	void lockResource(ID<DescriptorSet> resource, int32 threadIndex = -1)
+	{ lockResource(ResourceType::DescriptorSet, ID<Resource>(resource), threadIndex); }
 };
 
 } // namespace garden::graphics

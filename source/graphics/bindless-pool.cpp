@@ -35,7 +35,7 @@ BindlessPool::BindlessPool(ID<Pipeline> pipeline, PipelineType pipelineType,
 	{
 		GARDEN_ASSERT_MSG(i->second.resourceSets.empty(), 
 			"No resource set for uniform [" + i->first + "]");
-		auto& resourceSets = i.value().resourceSets;
+		auto& resourceSets = i->second.resourceSets;
 		resourceSets.resize(1); resourceSets[0].resize(maxBindlessCount);
 
 		UniformData allocData;
@@ -87,12 +87,12 @@ uint32 BindlessPool::allocate(string_view name, ID<Resource> resource, uint64 fr
 	}
 	if (allocation == UINT32_MAX)
 	{
-		GARDEN_ASSERT_MSG(allocData.occupancy < uniform.value().resourceSets[0].size(),
+		GARDEN_ASSERT_MSG(allocData.occupancy < uniform->second.resourceSets[0].size(),
 			"Out of maximum bindless descriptor set count");
 		allocation = allocData.occupancy++;
 	}
 
-	auto& resourceSet = uniform.value().resourceSets[0];
+	auto& resourceSet = uniform->second.resourceSets[0];
 	resourceSet[allocation] = resource;
 	return allocation;
 }
@@ -108,7 +108,7 @@ void BindlessPool::update(string_view name, uint32 allocation, ID<Resource> reso
 	if (uniform == dsUniforms.end())
 		throw GardenError("Missing required descriptor set uniform. (" + string(name) + ")");
 
-	auto& resourceSet = uniform.value().resourceSets[0];
+	auto& resourceSet = uniform->second.resourceSets[0];
 	GARDEN_ASSERT(allocation < resourceSet.size());
 	resourceSet[allocation] = resource;
 }
@@ -133,7 +133,7 @@ void BindlessPool::free(string_view name, uint32 allocation, uint64 frameIndex)
 		GARDEN_ASSERT_MSG(allocation != freeAlloc.first, "Already freed allocation");
 	#endif
 
-	auto& resourceSet = uniform.value().resourceSets[0];
+	auto& resourceSet = uniform->second.resourceSets[0];
 	resourceSet[allocation] = {};
 	allocData.freeAllocs.emplace_back(allocation, frameIndex + (inFlightCount + 1));
 }

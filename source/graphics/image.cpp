@@ -293,7 +293,7 @@ Image::Image(void* instance, Format format, Usage usage, Strategy strategy, uint
 }
 bool Image::destroy()
 {
-	if (!instance || busyLock > 0)
+	if (!instance || isLocked())
 		return false;
 
 	auto graphicsAPI = GraphicsAPI::get();
@@ -445,7 +445,7 @@ void Image::generateMips(Sampler::Filter filter)
 {
 	auto graphicsAPI = GraphicsAPI::get();
 	GARDEN_ASSERT_MSG(!graphicsAPI->renderPassFramebuffer, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(instance, "Image [" + debugName + "] is not ready");
+	GARDEN_ASSERT_MSG(isLoaded(), "Image [" + debugName + "] is not loaded");
 
 	#if GARDEN_DEBUG
 	auto commandBufferType = graphicsAPI->currentCommandBuffer->getType();
@@ -512,19 +512,17 @@ void Image::clear(float4 color, const ClearRegion* regions, uint32 count)
 	}
 	#endif
 
+	auto thisImage = graphicsAPI->imagePool.getID(this);
+	if (commandBufferType != CommandBufferType::Frame)
+		currentCommandBuffer->lockResource(thisImage);
+
 	ClearImageCommand command;
 	command.clearType = 1;
 	command.regionCount = count;
-	command.image = graphicsAPI->imagePool.getID(this);
+	command.image = thisImage;
 	command.color = color;
 	command.regions = regions;
 	currentCommandBuffer->addCommand(command);
-
-	if (commandBufferType != CommandBufferType::Frame)
-	{
-		busyLock++;
-		currentCommandBuffer->addLockedResource(command.image);
-	}
 }
 void Image::clear(int4 color, const ClearRegion* regions, uint32 count)
 {
@@ -546,19 +544,17 @@ void Image::clear(int4 color, const ClearRegion* regions, uint32 count)
 	}
 	#endif
 
+	auto thisImage = graphicsAPI->imagePool.getID(this);
+	if (commandBufferType != CommandBufferType::Frame)
+		currentCommandBuffer->lockResource(thisImage);
+
 	ClearImageCommand command;
 	command.clearType = 2;
 	command.regionCount = count;
-	command.image = graphicsAPI->imagePool.getID(this);
+	command.image = thisImage;
 	*(int4*)&command.color = color;
 	command.regions = regions;
 	currentCommandBuffer->addCommand(command);
-
-	if (commandBufferType != CommandBufferType::Frame)
-	{
-		busyLock++;
-		currentCommandBuffer->addLockedResource(command.image);
-	}
 }
 void Image::clear(uint4 color, const ClearRegion* regions, uint32 count)
 {
@@ -580,19 +576,17 @@ void Image::clear(uint4 color, const ClearRegion* regions, uint32 count)
 	}
 	#endif
 
+	auto thisImage = graphicsAPI->imagePool.getID(this);
+	if (commandBufferType != CommandBufferType::Frame)
+		currentCommandBuffer->lockResource(thisImage);
+
 	ClearImageCommand command;
 	command.clearType = 3;
 	command.regionCount = count;
-	command.image = graphicsAPI->imagePool.getID(this);
+	command.image = thisImage;
 	*(uint4*)&command.color = color;
 	command.regions = regions;
 	currentCommandBuffer->addCommand(command);
-
-	if (commandBufferType != CommandBufferType::Frame)
-	{
-		busyLock++;
-		currentCommandBuffer->addLockedResource(command.image);
-	}
 }
 void Image::clear(float depth, uint32 stencil, const ClearRegion* regions, uint32 count)
 {
@@ -614,19 +608,17 @@ void Image::clear(float depth, uint32 stencil, const ClearRegion* regions, uint3
 	}
 	#endif
 
+	auto thisImage = graphicsAPI->imagePool.getID(this);
+	if (commandBufferType != CommandBufferType::Frame)
+		currentCommandBuffer->lockResource(thisImage);
+
 	ClearImageCommand command;
 	command.regionCount = count;
-	command.image = graphicsAPI->imagePool.getID(this);
+	command.image = thisImage;
 	command.color.x = depth;
 	*(uint32*)&command.color.y = stencil;
 	command.regions = regions;
 	currentCommandBuffer->addCommand(command);
-
-	if (commandBufferType != CommandBufferType::Frame)
-	{
-		busyLock++;
-		currentCommandBuffer->addLockedResource(command.image);
-	}
 }
 
 //**********************************************************************************************************************
@@ -644,14 +636,14 @@ void Image::copy(ID<Image> source, ID<Image> destination, const CopyImageRegion*
 	auto srcView = graphicsAPI->imagePool.get(source);
 	GARDEN_ASSERT_MSG(hasAnyFlag(srcView->usage, Usage::TransferSrc), 
 		"Missing source image [" + srcView->getDebugName() + "] flag");
-	GARDEN_ASSERT_MSG(srcView->instance, "Source image [" + srcView->getDebugName() + "] is not ready");
+	GARDEN_ASSERT_MSG(srcView->isLoaded(), "Source image [" + srcView->getDebugName() + "] is not loaded");
 
 	auto dstView = graphicsAPI->imagePool.get(destination);
 	GARDEN_ASSERT_MSG(hasAnyFlag(dstView->usage, Usage::TransferDst),
 		"Missing destination image [" + dstView->getDebugName() + "] flag");
 	GARDEN_ASSERT_MSG(toBinarySize(256, srcView->format) == toBinarySize(256, dstView->format), "Different source [" +
 		srcView->getDebugName() + "] and destination [" + dstView->getDebugName() + "] image format binary sizes");
-	GARDEN_ASSERT_MSG(dstView->instance, "Destination image [" + dstView->getDebugName() + "] is not ready");
+	GARDEN_ASSERT_MSG(dstView->isLoaded(), "Destination image [" + dstView->getDebugName() + "] is not loaded");
 
 	auto commandBufferType = currentCommandBuffer->getType();
 	#if GARDEN_DEBUG
@@ -697,20 +689,18 @@ void Image::copy(ID<Image> source, ID<Image> destination, const CopyImageRegion*
 	}
 	#endif
 
+	if (commandBufferType != CommandBufferType::Frame)
+	{
+		currentCommandBuffer->lockResource(source);
+		currentCommandBuffer->lockResource(destination);
+	}
+
 	CopyImageCommand command;
 	command.regionCount = count;
 	command.source = source;
 	command.destination = destination;
 	command.regions = regions;
 	currentCommandBuffer->addCommand(command);
-
-	if (commandBufferType != CommandBufferType::Frame)
-	{
-		srcView->busyLock++;
-		dstView->busyLock++;
-		currentCommandBuffer->addLockedResource(source);
-		currentCommandBuffer->addLockedResource(destination);
-	}
 }
 
 //**********************************************************************************************************************
@@ -728,13 +718,12 @@ void Image::copy(ID<Buffer> source, ID<Image> destination, const CopyBufferRegio
 	auto bufferView = graphicsAPI->bufferPool.get(source);
 	GARDEN_ASSERT_MSG(hasAnyFlag(bufferView->getUsage(), Buffer::Usage::TransferSrc),
 		"Missing source buffer [" + bufferView->getDebugName() + "] flag");
-	GARDEN_ASSERT_MSG(ResourceExt::getInstance(**bufferView), "Buffer [" + 
-		bufferView->getDebugName() + "] is not ready");
+	GARDEN_ASSERT_MSG(bufferView->isLoaded(), "Buffer [" + bufferView->getDebugName() + "] is not loaded");
 	
 	auto imageView = graphicsAPI->imagePool.get(destination);
 	GARDEN_ASSERT_MSG(hasAnyFlag(imageView->getUsage(), Usage::TransferDst),
 		"Missing destination image [" + imageView->getDebugName() + "] flag");
-	GARDEN_ASSERT_MSG(imageView->instance, "Image [" + imageView->getDebugName() + "] is not ready");
+	GARDEN_ASSERT_MSG(imageView->isLoaded(), "Image [" + imageView->getDebugName() + "] is not loaded");
 	
 	auto commandBufferType = currentCommandBuffer->getType();
 	#if GARDEN_DEBUG
@@ -785,6 +774,12 @@ void Image::copy(ID<Buffer> source, ID<Image> destination, const CopyBufferRegio
 	}
 	#endif
 
+	if (commandBufferType != CommandBufferType::Frame)
+	{
+		currentCommandBuffer->lockResource(source);
+		currentCommandBuffer->lockResource(destination);
+	}
+
 	CopyBufferImageCommand command;
 	command.toBuffer = false;
 	command.regionCount = count;
@@ -792,14 +787,6 @@ void Image::copy(ID<Buffer> source, ID<Image> destination, const CopyBufferRegio
 	command.image = destination;
 	command.regions = regions;
 	currentCommandBuffer->addCommand(command);
-
-	if (commandBufferType != CommandBufferType::Frame)
-	{
-		ResourceExt::getBusyLock(**bufferView)++;
-		ResourceExt::getBusyLock(**imageView)++;
-		currentCommandBuffer->addLockedResource(source);
-		currentCommandBuffer->addLockedResource(destination);
-	}
 }
 
 //**********************************************************************************************************************
@@ -817,13 +804,12 @@ void Image::copy(ID<Image> source, ID<Buffer> destination, const CopyBufferRegio
 	auto imageView = graphicsAPI->imagePool.get(source);
 	GARDEN_ASSERT_MSG(hasAnyFlag(imageView->getUsage(), Usage::TransferSrc),
 		"Missing source image [" + imageView->getDebugName() + "] flag");
-	GARDEN_ASSERT_MSG(imageView->instance, "Image [" + imageView->getDebugName() + "] is not ready");
+	GARDEN_ASSERT_MSG(imageView->isLoaded(), "Image [" + imageView->getDebugName() + "] is not loaded");
 
 	auto bufferView = graphicsAPI->bufferPool.get(destination);
 	GARDEN_ASSERT_MSG(hasAnyFlag(bufferView->getUsage(), Buffer::Usage::TransferSrc),
 		"Missing destination buffer [" + bufferView->getDebugName() + "] flag");
-	GARDEN_ASSERT_MSG(ResourceExt::getInstance(**bufferView), "Buffer [" + 
-		bufferView->getDebugName() + "] is not ready");
+	GARDEN_ASSERT_MSG(bufferView->isLoaded(), "Buffer [" + bufferView->getDebugName() + "] is not loaded");
 
 	auto commandBufferType = currentCommandBuffer->getType();
 	#if GARDEN_DEBUG
@@ -874,6 +860,12 @@ void Image::copy(ID<Image> source, ID<Buffer> destination, const CopyBufferRegio
 	}
 	#endif
 
+	if (commandBufferType != CommandBufferType::Frame)
+	{
+		currentCommandBuffer->lockResource(source);
+		currentCommandBuffer->lockResource(destination);
+	}
+
 	CopyBufferImageCommand command;
 	command.toBuffer = true;
 	command.regionCount = count;
@@ -881,14 +873,6 @@ void Image::copy(ID<Image> source, ID<Buffer> destination, const CopyBufferRegio
 	command.image = source;
 	command.regions = regions;
 	currentCommandBuffer->addCommand(command);
-
-	if (commandBufferType != CommandBufferType::Frame)
-	{
-		ResourceExt::getBusyLock(**imageView)++;
-		ResourceExt::getBusyLock(**bufferView)++;
-		currentCommandBuffer->addLockedResource(source);
-		currentCommandBuffer->addLockedResource(destination);
-	}
 }
 
 //**********************************************************************************************************************
@@ -907,12 +891,12 @@ void Image::blit(ID<Image> source, ID<Image> destination,
 	auto srcView = graphicsAPI->imagePool.get(source);
 	GARDEN_ASSERT_MSG(hasAnyFlag(srcView->usage, Usage::TransferSrc),
 		"Missing source image [" + srcView->getDebugName() + "] flag");
-	GARDEN_ASSERT_MSG(srcView->instance, "Source image [" + srcView->getDebugName() + "] is not ready");
+	GARDEN_ASSERT_MSG(srcView->isLoaded(), "Source image [" + srcView->getDebugName() + "] is not loaded");
 
 	auto dstView = graphicsAPI->imagePool.get(destination);
 	GARDEN_ASSERT_MSG(hasAnyFlag(dstView->usage, Usage::TransferDst),
 		"Missing destination image [" + srcView->getDebugName() + "] flag");
-	GARDEN_ASSERT_MSG(dstView->instance, "Destination image [" + dstView->getDebugName() + "] is not ready");
+	GARDEN_ASSERT_MSG(dstView->isLoaded(), "Destination image [" + dstView->getDebugName() + "] is not loaded");
 
 	#if GARDEN_DEBUG
 	for (uint32 i = 0; i < count; i++)
@@ -950,6 +934,12 @@ void Image::blit(ID<Image> source, ID<Image> destination,
 	}
 	#endif
 
+	if (currentCommandBuffer->getType() != CommandBufferType::Frame)
+	{
+		currentCommandBuffer->lockResource(source);
+		currentCommandBuffer->lockResource(destination);
+	}
+
 	BlitImageCommand command;
 	command.filter = filter;
 	command.regionCount = count;
@@ -957,14 +947,6 @@ void Image::blit(ID<Image> source, ID<Image> destination,
 	command.destination = destination;
 	command.regions = regions;
 	currentCommandBuffer->addCommand(command);
-
-	if (currentCommandBuffer->getType() != CommandBufferType::Frame)
-	{
-		ResourceExt::getBusyLock(**srcView)++;
-		ResourceExt::getBusyLock(**dstView)++;
-		currentCommandBuffer->addLockedResource(source);
-		currentCommandBuffer->addLockedResource(destination);
-	}
 }
 
 #if GARDEN_DEBUG || GARDEN_EDITOR
@@ -2685,7 +2667,7 @@ ImageView::ImageView(bool isDefault, ID<Image> image, Image::Type type,
 }
 bool ImageView::destroy()
 {
-	if (!instance || busyLock > 0)
+	if (!instance || isLocked())
 		return false;
 
 	auto graphicsAPI = GraphicsAPI::get();

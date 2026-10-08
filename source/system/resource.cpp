@@ -386,9 +386,9 @@ void ResourceSystem::input()
 #if GARDEN_DEBUG || GARDEN_EDITOR
 //**********************************************************************************************************************
 static void collectChangedPipelines(const string& shaderPath, const fs::path& fileExt,
-	map<fs::path, ID<GraphicsPipeline>>& graphicsPipelines,
-	map<fs::path, ID<ComputePipeline>>& computePipelines,
-	map<fs::path, ID<RayTracingPipeline>>& rayTracingPipelines)
+	absl::flat_hash_map<fs::path, ID<GraphicsPipeline>>& graphicsPipelines,
+	absl::flat_hash_map<fs::path, ID<ComputePipeline>>& computePipelines,
+	absl::flat_hash_map<fs::path, ID<RayTracingPipeline>>& rayTracingPipelines)
 {
 	auto isGraphicsShader = fileExt == ".vert" || fileExt == ".frag";
 	auto isComputeShader = fileExt == ".comp";
@@ -447,10 +447,10 @@ static void collectChangedPipelines(const string& shaderPath, const fs::path& fi
 
 //**********************************************************************************************************************
 static void collectGslHeaderUsers(const fs::path& resourcesPath, const fs::path& appCachePath, 
-	string_view resourcePath, vector<string>& gslHeaders, set<string>& checkedPaths,
-	map<fs::path, ID<GraphicsPipeline>>& graphicsPipelines,
-	map<fs::path, ID<ComputePipeline>>& computePipelines,
-	map<fs::path, ID<RayTracingPipeline>>& rayTracingPipelines)
+	string_view resourcePath, vector<string>& gslHeaders, absl::flat_hash_set<string>& checkedPaths,
+	absl::flat_hash_map<fs::path, ID<GraphicsPipeline>>& graphicsPipelines,
+	absl::flat_hash_map<fs::path, ID<ComputePipeline>>& computePipelines,
+	absl::flat_hash_map<fs::path, ID<RayTracingPipeline>>& rayTracingPipelines)
 {
 	for (const auto& entry : fs::recursive_directory_iterator(resourcesPath))
 	{
@@ -514,14 +514,14 @@ static void collectGslHeaderUsers(const fs::path& resourcesPath, const fs::path&
 }
 static void collectGslHeaderUsers(const fs::path& appResourcesPath, 
 	const fs::path& appCachePath, string_view resourcePath, 
-	map<fs::path, ID<GraphicsPipeline>>& graphicsPipelines, 
-	map<fs::path, ID<ComputePipeline>>& computePipelines, 
-	map<fs::path, ID<RayTracingPipeline>>& rayTracingPipelines)
+	absl::flat_hash_map<fs::path, ID<GraphicsPipeline>>& graphicsPipelines, 
+	absl::flat_hash_map<fs::path, ID<ComputePipeline>>& computePipelines, 
+	absl::flat_hash_map<fs::path, ID<RayTracingPipeline>>& rayTracingPipelines)
 {
 	try
 	{
 		vector<string> gslHeaders = { string(resourcePath) };
-		set<string> checkedPaths; uint32 checkCount = 0;
+		absl::flat_hash_set<string> checkedPaths; uint32 checkCount = 0;
 
 		while (!gslHeaders.empty() && checkCount < 1000)
 		{
@@ -545,9 +545,9 @@ static void collectGslHeaderUsers(const fs::path& appResourcesPath,
 
 //**********************************************************************************************************************
 static void recompilePipelines(ResourceSystem* resourceSystem,
-	const map<fs::path, ID<GraphicsPipeline>>& graphicsPipelines,
-	const map<fs::path, ID<ComputePipeline>>& computePipelines,
-	const map<fs::path, ID<RayTracingPipeline>>& rayTracingPipelines)
+	const absl::flat_hash_map<fs::path, ID<GraphicsPipeline>>& graphicsPipelines,
+	const absl::flat_hash_map<fs::path, ID<ComputePipeline>>& computePipelines,
+	const absl::flat_hash_map<fs::path, ID<RayTracingPipeline>>& rayTracingPipelines)
 {
 	auto graphicsAPI = GraphicsAPI::get();
 	if (!graphicsPipelines.empty())
@@ -661,9 +661,9 @@ void ResourceSystem::fileChange()
 	shaderFilePath.replace_extension();
 	auto shaderPath = shaderFilePath.generic_string();
 	
-	map<fs::path, ID<GraphicsPipeline>> graphicsPipelines;
-	map<fs::path, ID<ComputePipeline>> computePipelines;
-	map<fs::path, ID<RayTracingPipeline>> rayTracingPipelines;
+	absl::flat_hash_map<fs::path, ID<GraphicsPipeline>> graphicsPipelines;
+	absl::flat_hash_map<fs::path, ID<ComputePipeline>> computePipelines;
+	absl::flat_hash_map<fs::path, ID<RayTracingPipeline>> rayTracingPipelines;
 	collectChangedPipelines(shaderPath, fileExt, graphicsPipelines, computePipelines, rayTracingPipelines);
 
 	if (fileExt == ".gsl" || fileExt == ".h")

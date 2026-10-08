@@ -66,12 +66,26 @@ public:
 	 * @brief Is resource fully ready for graphics rendering.
 	 * @details Graphics resource is loaded and transferred.
 	 */
-	bool isReady() const noexcept { return instance && busyLock < 1; }
+	bool isReady() const noexcept { return instance && atomicLoad32(&busyLock) < 1; }
 	/**
 	 * @brief Is resource loaded. (Does not include ongoing transfers!)
 	 * @warning This doesn't takes into account if resource is fully transferred!
 	 */
 	bool isLoaded() const noexcept { return instance; }
+
+	/**
+	 * @brief Locks resource for asynchronous processing.
+	 * @note For each call use following unlock()!
+	 */
+	void lock() noexcept { atomicFetchAdd32(&busyLock, 1); }
+	/**
+	 * @brief Unlocks resource used in asynchronous processing.
+	 */
+	void unlock() noexcept { atomicFetchAdd32(&busyLock, -1); }
+	/**
+	 * @brief Returns true if resource is locked for asynchronous processing.
+	 */
+	bool isLocked() const noexcept { return atomicLoad32(&busyLock) > 0; }
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	/**

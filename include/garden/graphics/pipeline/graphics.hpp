@@ -354,10 +354,9 @@ public:
 		}
 	};
 
-	using PipelineStates = map<uint8, State>;
-	using VertexAttributes = map<uint8, vector<VertexAttribute>>;
-	using BlendStates = map<uint8, vector<BlendState>>;
-	// Note: better to use std maps here instead of robin.
+	using PipelineStates = absl::flat_hash_map<uint8, State>;
+	using VertexAttributes = absl::flat_hash_map<uint8, vector<VertexAttribute>>;
+	using BlendStates = absl::flat_hash_map<uint8, vector<BlendState>>;
 
 	/**
 	 * @brief Graphics pipeline shader code overrides.
@@ -496,6 +495,25 @@ public:
 	void draw(const ID<Buffer>* vertexBuffers, uint8 bufferCount, uint32 vertexCount, 
 		uint32 instanceCount = 1, uint32 vertexOffset = 0, uint32 instanceOffset = 0);
 	/**
+	 * @brief Renders primitives to the framebuffer.
+	 * 
+	 * @details 
+	 * Fundamental operation that instructs the GPU to render primitives (basic shapes like points, lines and 
+	 * triangles) based on the provided vertex data and the current graphics pipeline state.
+	 * 
+	 * @param vertexBuffer target vertex buffer or null
+	 * @param vertexCount vertex count to draw
+	 * @param instanceCount draw instance count
+	 * @param vertexOffset vertex offset in the buffer or 0
+	 * @param instanceOffset draw instance offset or 0
+	 */
+	void draw(ID<Buffer> vertexBuffer, uint32 vertexCount, uint32 instanceCount = 1, 
+		uint32 vertexOffset = 0, uint32 instanceOffset = 0)
+	{
+		draw(&vertexBuffer, 1, vertexCount, instanceCount, vertexOffset, instanceOffset);
+	}
+
+	/**
 	 * @brief Renders primitives to the framebuffer. (MT-Safe)
 	 * @details See the @ref GraphicsPipeline::draw()
 	 * 
@@ -507,10 +525,26 @@ public:
 	 * @param vertexOffset vertex offset in the buffer or 0
 	 * @param instanceOffset draw instance offset or 0
 	 */
-	void drawAsync(int32 threadIndex, const ID<Buffer>* vertexBuffer, uint8 bufferCount, 
+	void drawAsync(int32 threadIndex, const ID<Buffer>* vertexBuffers, uint8 bufferCount, 
 		uint32 vertexCount, uint32 instanceCount = 1, uint32 vertexOffset = 0, uint32 instanceOffset = 0);
-
 	/**
+	 * @brief Renders primitives to the framebuffer. (MT-Safe)
+	 * @details See the @ref GraphicsPipeline::draw()
+	 * 
+	 * @param threadIndex thread index in the pool
+	 * @param vertexBuffer target vertex buffer or null
+	 * @param vertexCount vertex count to draw
+	 * @param instanceCount draw instance count
+	 * @param vertexOffset vertex offset in the buffer or 0
+	 * @param instanceOffset draw instance offset or 0
+	 */
+	void drawAsync(int32 threadIndex, ID<Buffer> vertexBuffer, uint32 vertexCount, 
+		uint32 instanceCount = 1, uint32 vertexOffset = 0, uint32 instanceOffset = 0)
+	{
+		drawAsync(threadIndex, &vertexBuffer, 1, vertexCount, instanceCount, vertexOffset, instanceOffset);
+	}
+
+	/*******************************************************************************************************************
 	 * @brief Renders primitives based on indices to the framebuffer.
 	 * 
 	 * @details 
@@ -533,6 +567,30 @@ public:
 		uint32 indexOffset = 0, uint32 vertexOffset = 0, uint32 instanceOffset = 0);
 	/**
 	 * @brief Renders primitives based on indices to the framebuffer.
+	 * 
+	 * @details 
+	 * Tells the GPU to render primitives (such as triangles, lines or points) based on indices into a 
+	 * set of vertices. This command is particularly efficient for rendering complex geometries where 
+	 * vertices are shared among multiple primitives.
+	 * 
+	 * @param vertexBuffer target vertex buffer
+	 * @param indexType type of the index data
+	 * @param indexBuffer target index buffer
+	 * @param indexCount index count to draw
+	 * @param instanceCount draw instance count
+	 * @param indexOffset index offset in the buffer or 0
+	 * @param vertexOffset vertex offset in the buffer or 0
+	 * @param instanceOffset draw instance offset or 0
+	 */
+	void drawIndexed(ID<Buffer> vertexBuffer, IndexType indexType, ID<Buffer> indexBuffer, uint32 indexCount, 
+		uint32 instanceCount = 1, uint32 indexOffset = 0, uint32 vertexOffset = 0, uint32 instanceOffset = 0)
+	{
+		drawIndexed(&vertexBuffer, 1, indexType, indexBuffer, indexCount, 
+			instanceCount, indexOffset, vertexOffset, instanceOffset);
+	}
+
+	/**
+	 * @brief Renders primitives based on indices to the framebuffer.
 	 * @details See the @ref GraphicsPipeline::drawIndexed()
 	 * 
 	 * @param threadIndex thread index in the pool
@@ -549,6 +607,27 @@ public:
 	void drawIndexedAsync(int32 threadIndex, const ID<Buffer>* vertexBuffers, uint8 vertexBufferCount, 
 		IndexType indexType, ID<Buffer> indexBuffer, uint32 indexCount, uint32 instanceCount = 1, 
 		uint32 indexOffset = 0, uint32 vertexOffset = 0, uint32 instanceOffset = 0);
+	/**
+	 * @brief Renders primitives based on indices to the framebuffer.
+	 * @details See the @ref GraphicsPipeline::drawIndexed()
+	 * 
+	 * @param threadIndex thread index in the pool
+	 * @param vertexBuffer target vertex buffer
+	 * @param indexType type of the index data
+	 * @param indexBuffer target index buffer
+	 * @param indexCount index count to draw
+	 * @param instanceCount draw instance count
+	 * @param indexOffset index offset in the buffer or 0
+	 * @param vertexOffset vertex offset in the buffer or 0
+	 * @param instanceOffset draw instance offset or 0
+	 */
+	void drawIndexedAsync(int32 threadIndex, ID<Buffer> vertexBuffer, IndexType indexType, 
+		ID<Buffer> indexBuffer, uint32 indexCount, uint32 instanceCount = 1, 
+		uint32 indexOffset = 0, uint32 vertexOffset = 0, uint32 instanceOffset = 0)
+	{
+		drawIndexedAsync(threadIndex, &vertexBuffer, 1, indexType, indexBuffer, 
+			indexCount, instanceCount, indexOffset, vertexOffset, instanceOffset);
+	}
 
 	/**
 	 * @brief Renders fullscreen triangle to the framebuffer.
@@ -562,7 +641,7 @@ public:
 	 */
 	void drawFullscreenAsync(int32 threadIndex);
 
-	/**
+	/*******************************************************************************************************************
 	 * @brief Set depth bias factors and clamp dynamically.
 	 * @details Useful for shadow mapping.
 	 * 

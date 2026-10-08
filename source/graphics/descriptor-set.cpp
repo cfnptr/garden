@@ -606,7 +606,7 @@ DescriptorSet::DescriptorSet(ID<Pipeline> pipeline, PipelineType pipelineType, U
 
 bool DescriptorSet::destroy()
 {
-	if (!instance || busyLock > 0)
+	if (!instance || isLocked())
 		return false;
 
 	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
@@ -796,7 +796,7 @@ void DescriptorSet::updateUniform(string_view name,
 	else abort();
 	#endif
 
-	dsUniform.value().resourceSets[setIndex][elementIndex] = uniform.resource;
+	dsUniform->second.resourceSets[setIndex][elementIndex] = uniform.resource;
 }
 
 void DescriptorSet::updateResources(string_view name, uint32 elementCount, uint32 elementOffset, uint8 setIndex)

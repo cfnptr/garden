@@ -123,7 +123,7 @@ class SpawnerSystem final : public ComponentSystem<SpawnerComponent, false>,
 	public Singleton<SpawnerSystem>, public ISerializable
 {
 public:
-	using SharedPrefabs = tsl::robin_map<string, Hash128, SvHash, SvEqual>;
+	using SharedPrefabs = absl::flat_hash_map<string, Hash128>;
 private:
 	SharedPrefabs sharedPrefabs;
 	string valueStringCache;

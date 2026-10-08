@@ -573,7 +573,7 @@ void ImGuiRenderSystem::update()
 
 //**********************************************************************************************************************
 static void updateImGuiTextures(ImVector<ImTextureData*>& textures, 
-	tsl::robin_map<ID<ImageView>, ID<DescriptorSet>>& dsCache)
+	absl::flat_hash_map<ID<ImageView>, ID<DescriptorSet>>& dsCache)
 {
 	auto graphicsSystem = GraphicsSystem::getInstance();
 	graphicsSystem->startRecording(CommandBufferType::Frame);
@@ -793,9 +793,7 @@ void ImGuiRenderSystem::uiRender()
 				SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.imgui.tmpImageView" + to_string(*imageView));
 
 				if (searchResult != dsCache.end())
-				{
-					searchResult.value() = descriptorSet;
-				}
+					searchResult->second = descriptorSet;
 				else
 				{
 					// TODO: use here Vulkan extensions which allows to bind resources directly without DS
@@ -807,13 +805,13 @@ void ImGuiRenderSystem::uiRender()
 			if (isRenderPassAsync)
 			{
 				pipelineView->bindDescriptorSetAsync(descriptorSet, 0, INT32_MAX);
-				pipelineView->drawIndexedAsync(INT32_MAX, vertexBuffer, indexBuffer, indexType, 
+				pipelineView->drawIndexedAsync(INT32_MAX, vertexBuffer, indexType, indexBuffer,  
 					cmd.ElemCount, 1, cmd.IdxOffset + globalIdxOffset, cmd.VtxOffset + globalVtxOffset);
 			}
 			else
 			{
 				pipelineView->bindDescriptorSet(descriptorSet);
-				pipelineView->drawIndexed(vertexBuffer, indexBuffer, indexType, cmd.ElemCount, 
+				pipelineView->drawIndexed(vertexBuffer, indexType, indexBuffer, cmd.ElemCount, 
 					1, cmd.IdxOffset + globalIdxOffset, cmd.VtxOffset + globalVtxOffset);
 			}
 		}

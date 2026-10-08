@@ -146,12 +146,7 @@ void Tlas::build(ID<Buffer> scratchBuffer)
 {
 	AccelerationStructure::build(scratchBuffer);
 
-	auto graphicsAPI = GraphicsAPI::get();
-	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
+	auto currentCommandBuffer = GraphicsAPI::get()->currentCommandBuffer;
 	for (const auto& instance : instances)
-	{
-		auto blasView = graphicsAPI->blasPool.get(instance.blas);
-		ResourceExt::getBusyLock(**blasView)++;
-		currentCommandBuffer->addLockedResource(instance.blas);
-	}
+		currentCommandBuffer->lockResource(instance.blas);
 }

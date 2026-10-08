@@ -43,8 +43,8 @@ public:
 	 */
 	using OnReceive = std::function<int(StreamInput message, bool isDatagram)>;
 private:
-	tsl::robin_map<string, INetworkable*, SvHash, SvEqual> networkables;
-	tsl::robin_map<string, OnReceive, SvHash, SvEqual> listeners;
+	absl::flat_hash_map<string, INetworkable*> networkables;
+	absl::flat_hash_map<string, OnReceive> listeners;
 	vector<uint8> datagramBuffer;
 	mutex datagramLocker;
 	void* cipher = nullptr;

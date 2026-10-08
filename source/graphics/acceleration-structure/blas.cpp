@@ -254,16 +254,17 @@ ID<Blas> Blas::compact()
 	free(buildData);
 	buildData = nullptr;
 
-	auto thisBlas = graphicsAPI->blasPool.getID((const Blas*)this); // Note: Do not move!
-	#if GARDEN_DEBUG || GARDEN_EDITOR
-	auto thisDebugName = debugName;
-	#endif
+	auto thisBlas = graphicsAPI->blasPool.getID((const Blas*)this);
+	currentCommandBuffer->lockResource(thisBlas);
+	currentCommandBuffer->lockResource(getStorageBuffer());
 
 	auto compactBlas = graphicsAPI->blasPool.create(compactSize, flags);
 	auto compactBlasView = graphicsAPI->blasPool.get(compactBlas);
 	#if GARDEN_DEBUG || GARDEN_EDITOR
-	compactBlasView->setDebugName(thisDebugName);
+	compactBlasView->setDebugName(debugName);
 	#endif
+	currentCommandBuffer->lockResource(compactBlas);
+	currentCommandBuffer->lockResource(compactBlasView->getStorageBuffer());
 
 	CopyAccelerationStructureCommand command;
 	command.isCompact = true;
@@ -271,19 +272,5 @@ ID<Blas> Blas::compact()
 	command.srcAS = ID<AccelerationStructure>(thisBlas);
 	command.dstAS = ID<AccelerationStructure>(compactBlas);
 	currentCommandBuffer->addCommand(command);
-
-	// Note: blasPool.create() call invalidates this instance.
-	auto thisBlasView = graphicsAPI->blasPool.get(thisBlas);
-	ResourceExt::getBusyLock(**thisBlasView)++;
-	ResourceExt::getBusyLock(**compactBlasView)++;
-	auto storageView = graphicsAPI->bufferPool.get(thisBlasView->getStorageBuffer());
-	ResourceExt::getBusyLock(**storageView)++;
-	storageView = graphicsAPI->bufferPool.get(compactBlasView->getStorageBuffer());
-	ResourceExt::getBusyLock(**storageView)++;
-
-	currentCommandBuffer->addLockedResource(thisBlas);
-	currentCommandBuffer->addLockedResource(compactBlas);
-	currentCommandBuffer->addLockedResource(thisBlasView->getStorageBuffer());
-	currentCommandBuffer->addLockedResource(compactBlasView->getStorageBuffer());
 	return compactBlas;
 }

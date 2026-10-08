@@ -20,7 +20,7 @@
 #pragma once
 #include "garden/graphics/image.hpp"
 #include "garden/graphics/acceleration-structure/tlas.hpp"
-#include "tsl/robin_map.h"
+#include "absl/container/flat_hash_map.h"
 
 namespace garden::graphics
 {
@@ -169,8 +169,8 @@ public:
 		constexpr Range() noexcept = default;
 	};
 
-	using Uniforms = tsl::robin_map<string, Uniform, SvHash, SvEqual>;
-	using Samplers = tsl::robin_map<string, ID<Sampler>>;
+	using Uniforms = absl::flat_hash_map<string, Uniform>;
+	using Samplers = absl::flat_hash_map<string, ID<Sampler>>;
 	using Barriers = vector<vector<Image::LayoutState>>;
 private:
 	ID<Pipeline> pipeline = {};

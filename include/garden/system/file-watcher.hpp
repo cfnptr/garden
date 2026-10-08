@@ -34,11 +34,11 @@ using namespace ecsm;
 class FileWatcherSystem final : public System, public Singleton<FileWatcherSystem>
 {
 	void* instance = nullptr;
-	set<fs::path> changedFiles;
-	set<fs::path> createdFiles;
+	absl::flat_hash_set<fs::path> changedFiles;
+	absl::flat_hash_set<fs::path> createdFiles;
 	fs::path currentFilePath = {};
 	#if GARDEN_OS_LINUX
-	tsl::robin_map<int, fs::path> watchers;
+	absl::flat_hash_map<int, fs::path> watchers;
 	#elif GARDEN_OS_APPLE | GARDEN_OS_WINDOWS
 	mutex locker = {};
 	#endif
@@ -63,11 +63,11 @@ public:
 	/**
 	 * @brief Returns current changed file paths.
 	 */
-	set<fs::path>& getChangedFiles() noexcept { return changedFiles; }
+	absl::flat_hash_set<fs::path>& getChangedFiles() noexcept { return changedFiles; }
 	/**
 	 * @brief Returns current changed file paths.
 	 */
-	set<fs::path>& getCreatedFiles() noexcept { return createdFiles; }
+	absl::flat_hash_set<fs::path>& getCreatedFiles() noexcept { return createdFiles; }
 
 	#if GARDEN_OS_APPLE | GARDEN_OS_WINDOWS
 	mutex& getLocker_() { return locker; }

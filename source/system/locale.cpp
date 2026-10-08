@@ -132,8 +132,8 @@ void LocaleSystem::setLanguage(Language language)
 
 	for (auto i = modules.begin(); i != modules.end(); i++)
 	{
-		if (!loadLocaleStrings(i.value(), i->first, language))
-			loadLocaleStrings(i.value(), i->first, Language::English);
+		if (!loadLocaleStrings(i->second, i->first, language))
+			loadLocaleStrings(i->second, i->first, Language::English);
 	}
 
 	loadedLanguage = language;

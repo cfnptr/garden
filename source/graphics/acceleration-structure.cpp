@@ -23,7 +23,7 @@ using namespace garden::graphics;
 //**********************************************************************************************************************
 bool AccelerationStructure::destroy()
 {
-	if (!instance || busyLock > 0)
+	if (!instance || isLocked())
 		return false;
 
 	auto graphicsAPI = GraphicsAPI::get();
@@ -166,37 +166,31 @@ void AccelerationStructure::build(ID<Buffer> scratchBuffer)
 		destroyScratch = true;
 	}
 
-	BuildAccelerationStructureCommand command;
-	command.isUpdate = false;
-	command.typeAS = type;
-	command.srcAS = {};
+	currentCommandBuffer->lockResource(storageBuffer);
+	currentCommandBuffer->lockResource(scratchBuffer);
+
+	ID<AccelerationStructure> dstAS; 
 	if (type == AccelerationStructure::Type::Blas)
-		command.dstAS = ID<AccelerationStructure>(graphicsAPI->blasPool.getID((const Blas*)this));
-	else command.dstAS = ID<AccelerationStructure>(graphicsAPI->tlasPool.getID((const Tlas*)this));
-	command.scratchBuffer = scratchBuffer;
-	currentCommandBuffer->addCommand(command);
-
-	auto bufferView = graphicsAPI->bufferPool.get(storageBuffer);
-	ResourceExt::getBusyLock(**bufferView)++;
-	bufferView = graphicsAPI->bufferPool.get(scratchBuffer);
-	ResourceExt::getBusyLock(**bufferView)++;
-	busyLock++;
-
-	currentCommandBuffer->addLockedResource(storageBuffer);
-	currentCommandBuffer->addLockedResource(scratchBuffer);
-
-	if (type == AccelerationStructure::Type::Blas)
-		currentCommandBuffer->addLockedResource(ID<Blas>(command.dstAS));
-	else currentCommandBuffer->addLockedResource(ID<Tlas>(command.dstAS));
+	{
+		dstAS = ID<AccelerationStructure>(graphicsAPI->blasPool.getID((const Blas*)this));
+		currentCommandBuffer->lockResource(ID<Blas>(dstAS));
+	}
+	else
+	{
+		dstAS = ID<AccelerationStructure>(graphicsAPI->tlasPool.getID((const Tlas*)this));
+		currentCommandBuffer->lockResource(ID<Tlas>(dstAS));
+	}
 
 	auto syncBuffers = (ID<Buffer>*)((uint8*)buildData + sizeof(AccelerationStructure::BuildDataHeader));
 	for (uint32 i = 0; i < buildDataHeader->bufferCount; i++)
-	{
-		auto buffer = syncBuffers[i];
-		bufferView = graphicsAPI->bufferPool.get(buffer);
-		ResourceExt::getBusyLock(**bufferView)++;
-		currentCommandBuffer->addLockedResource(buffer);
-	}
+		currentCommandBuffer->lockResource(syncBuffers[i]);
+
+	BuildAccelerationStructureCommand command;
+	command.isUpdate = false;
+	command.typeAS = type;
+	command.dstAS = dstAS;
+	command.scratchBuffer = scratchBuffer;
+	currentCommandBuffer->addCommand(command);
 
 	if (destroyScratch)
 		graphicsAPI->bufferPool.destroy(scratchBuffer);

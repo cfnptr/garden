@@ -171,7 +171,7 @@ static bool fillFontAtlas(const LinearPool<Font>& fontPool, FT_Library ftLibrary
 			}
 		}
 
-		i.value() = glyph;
+		i->second = glyph;
 	}
 
 	return true;

@@ -14,7 +14,6 @@
 
 #pragma once
 #include "garden/utf.hpp"
-#include "tsl/robin_map.h"
 #include "ecsm.hpp"
 
 /***********************************************************************************************************************
@@ -101,8 +100,8 @@ static bool isBigFontSize(Language language) noexcept
 class LocaleSystem final : public System, public Singleton<LocaleSystem>
 {
 public:
-	using StringMap = tsl::robin_map<string, string, SvHash, SvEqual>;
-	using ModuleMap = tsl::robin_map<string, StringMap, SvHash, SvEqual>;
+	using StringMap = absl::flat_hash_map<string, string>;
+	using ModuleMap = absl::flat_hash_map<string, StringMap>;
 private:
 	StringMap generalStrings;
 	ModuleMap modules;

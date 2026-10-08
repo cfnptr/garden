@@ -53,7 +53,7 @@ struct AnimationFrame
 /**
  * @brief Animatable system properties container. 
  */
-using Animatables = tsl::robin_map<System*, ID<AnimationFrame>>;
+using Animatables = absl::flat_hash_map<System*, ID<AnimationFrame>>;
 
 /***********************************************************************************************************************
  * @brief Base animatable system interface.

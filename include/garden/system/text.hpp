@@ -51,7 +51,7 @@ struct Glyph final
  */
 struct FontAtlas final
 {
-	using GlyphMap = tsl::robin_map<uint32, Glyph>; /**< Font atlas glyph map. */
+	using GlyphMap = absl::flat_hash_map<uint32, Glyph>; /**< Font atlas glyph map. */
 
 	/**
 	 * @brief Default font atlas texture usage flags.

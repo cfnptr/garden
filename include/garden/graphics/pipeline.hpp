@@ -121,10 +121,10 @@ public:
 		SpecConstValue(float value) { constFloat.value = value; constBool.type = GslDataType::Float; }
 	};
 
-	using SamplerStates = tsl::robin_map<string, Sampler::State>;
-	using Uniforms = tsl::robin_map<string, Uniform, SvHash, SvEqual>;
-	using SpecConsts = tsl::robin_map<string, SpecConst>;
-	using SpecConstValues = tsl::robin_map<string, SpecConstValue>;
+	using SamplerStates = absl::flat_hash_map<string, Sampler::State>;
+	using Uniforms = absl::flat_hash_map<string, Uniform>;
+	using SpecConsts = absl::flat_hash_map<string, SpecConst>;
+	using SpecConstValues = absl::flat_hash_map<string, SpecConstValue>;
 
 	/*******************************************************************************************************************
 	 * @brief Rendering pipeline create data container.
