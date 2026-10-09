@@ -60,6 +60,7 @@ public:
 	void processCommand(const SetDepthBiasCommand& command) override;
 	void processCommand(const DrawCommand& command) override;
 	void processCommand(const DrawIndexedCommand& command) override;
+	void processCommand(const DrawBarrierCommand& command) override;
 	void processCommand(const DispatchCommand& command) override;
 	void processCommand(const FillBufferCommand& command) override;
 	void processCommand(const CopyBufferCommand& command) override;

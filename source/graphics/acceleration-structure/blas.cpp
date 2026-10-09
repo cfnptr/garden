@@ -232,7 +232,7 @@ ID<Blas> Blas::compact()
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
 		auto vulkanAPI = VulkanAPI::get();
-		if (!data->queryResults[0])
+		if (!data->queryResults.front())
 		{
 			auto vkResult = vulkanAPI->device.getQueryPoolResults((VkQueryPool)data->queryPool, 
 				0, (uint32)data->queryResults.size(), sizeof(uint64), data->queryResults.data(),

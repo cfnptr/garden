@@ -215,7 +215,7 @@ void ForwardRenderSystem::render()
 		{
 			auto _uiBuffer = getUiBuffer();
 			auto framebufferView = graphicsSystem->get(graphicsSystem->getSwapchainFB());
-			const auto& colorAttachment = framebufferView->getColorAttachments()[0];
+			const auto& colorAttachment = framebufferView->getColorAttachments().front();
 			auto swapchainImageView = graphicsSystem->get(colorAttachment.imageView);
 
 			if (uiBufferFormat == swapchainImageView->getFormat())

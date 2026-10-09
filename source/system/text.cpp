@@ -109,7 +109,7 @@ static bool fillFontAtlas(const LinearPool<Font>& fontPool, FT_Library ftLibrary
 	}
 
 	auto invFontSize = 1.0f / fontSize; auto invPixelSize = float2::one / pixelSize;
-	auto mainFace = (FT_Face)fontPool.get(fonts[0])->faces.at(threadIndex);
+	auto mainFace = (FT_Face)fontPool.get(fonts.front())->faces.at(threadIndex);
 	auto i = glyphs.begin(); pixels += fontIndex;
 
 	for (uint32 j = 0; j < itemOffset; j++)
@@ -201,10 +201,10 @@ static bool fillFontAtlas(const LinearPool<Font>& fontPool, FT_Library ftLibrary
 		}
 
 		threadPool.wait();
-		return result == glyphs[0].size() * 4;
+		return result == glyphs.front().size() * 4;
 	}
 
-	auto glyphCount = (uint32)glyphs[0].size();
+	auto glyphCount = (uint32)glyphs.front().size();
 	for (uint8 i = 0; i < 4; i++)
 	{
 		if (!fillFontAtlas(fontPool, ftLibrary, fonts[i], glyphs[i], pixels, 
@@ -225,7 +225,7 @@ bool FontAtlas::update(u32string_view chars, uint32 fontSize, Image::Usage image
 	SET_CPU_ZONE_SCOPED("Font Atlas Update");
 
 	auto textSystem = TextSystem::getInstance();
-	auto defaultFace = (FT_Face)textSystem->fonts.get(fonts[0][0])->faces[0];
+	auto defaultFace = (FT_Face)textSystem->fonts.get(fonts.front().front())->faces.front();
 
 	auto result = FT_Set_Pixel_Sizes(defaultFace, 0, (FT_UInt)fontSize);
 	if (result != 0)
@@ -236,8 +236,8 @@ bool FontAtlas::update(u32string_view chars, uint32 fontSize, Image::Usage image
 	}
 	auto newLineAdvance = ((float)defaultFace->size->metrics.height * (1.0f / 64.0f)) / fontSize;
 
-	vector<GlyphMap> glyphs(4); prepareGlyphs(chars, glyphs[0]);
-	if (glyphs[0].empty())
+	vector<GlyphMap> glyphs(4); prepareGlyphs(chars, glyphs.front());
+	if (glyphs.front().empty())
 	{
 		GARDEN_LOG_DEBUG("Failed to create font atlas, no visible glyphs.");
 		return false;
@@ -245,9 +245,9 @@ bool FontAtlas::update(u32string_view chars, uint32 fontSize, Image::Usage image
 	
 	constexpr auto imageFormat = Image::Format::UnormR8G8B8A8;
 	auto graphicsSystem = GraphicsSystem::getInstance();
-	auto glyphLength = calcGlyphLength(glyphs[0].size());
+	auto glyphLength = calcGlyphLength(glyphs.front().size());
 	auto newPixelSize = uint2(glyphLength * fontSize, (uint32)
-		ceil((double)glyphs[0].size() / glyphLength) * fontSize); 
+		ceil((double)glyphs.front().size() / glyphLength) * fontSize); 
 	auto currPixelSize = uint2::zero;
 
 	if (image && !shrink)

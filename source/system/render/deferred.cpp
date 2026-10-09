@@ -728,7 +728,7 @@ void DeferredRenderSystem::render()
 	{
 		SET_GPU_DEBUG_LABEL("Copy LDR to UI");
 		auto _uiBuffer = getUiBuffer();
-		if (!gBuffers.empty() && _uiBuffer == gBuffers[0])
+		if (!gBuffers.empty() && _uiBuffer == gBuffers[G_BUFFER_BASE_COLOR])
 			Image::copy(ldrBuffer, _uiBuffer);
 		else Image::blit(ldrBuffer, _uiBuffer, Sampler::Filter::Linear);
 	}
@@ -758,7 +758,7 @@ void DeferredRenderSystem::render()
 	}
 
 	auto framebufferView = graphicsSystem->get(graphicsSystem->getSwapchainFB());
-	const auto& colorAttachment = framebufferView->getColorAttachments()[0];
+	const auto& colorAttachment = framebufferView->getColorAttachments().front();
 	auto swapchainImageView = graphicsSystem->get(colorAttachment.imageView);
 
 	graphicsSystem->startRecording(CommandBufferType::Frame);
@@ -781,7 +781,7 @@ void DeferredRenderSystem::swapchainRecreate()
 
 	if (swapchainChanges.framebufferSize)
 	{
-		if (!gBuffers.empty() && uiBuffer != gBuffers[0])
+		if (!gBuffers.empty() && uiBuffer != gBuffers[G_BUFFER_BASE_COLOR])
 			graphicsSystem->destroy(uiBuffer);
 		if (upscaleHdrBuffer != hdrBuffer)
 			graphicsSystem->destroy(upscaleHdrBuffer);
@@ -927,7 +927,7 @@ ID<Image> DeferredRenderSystem::getUiBuffer()
 	{
 		auto graphicsSystem = GraphicsSystem::getInstance();
 		uiBuffer = graphicsSystem->getScaledFrameSize() != graphicsSystem->getFramebufferSize() ? 
-			createUiBuffer(graphicsSystem) : getGBuffers()[0];
+			createUiBuffer(graphicsSystem) : getGBuffers()[G_BUFFER_BASE_COLOR];
 	}
 	return uiBuffer;
 }

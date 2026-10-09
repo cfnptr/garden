@@ -35,7 +35,7 @@ void ComputePipeline::createVkInstance(ComputeCreateData& createData)
 	#endif
 
 	vk::PipelineShaderStageCreateInfo stageInfo({}, vk::ShaderStageFlagBits::eCompute, 
-		(VkShaderModule)shaders[0], "main", specializationInfo.mapEntryCount > 0 ? &specializationInfo : nullptr);
+		(VkShaderModule)shaders.front(), "main", specializationInfo.mapEntryCount > 0 ? &specializationInfo : nullptr);
 	vk::ComputePipelineCreateInfo pipelineInfo({}, stageInfo, (VkPipelineLayout)pipelineLayout, nullptr, -1);
 
 	for (uint8 i = 0; i < variantCount; i++)

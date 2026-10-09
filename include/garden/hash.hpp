@@ -192,6 +192,15 @@ public:
 	 * @warning This is not a thread safe function!
 	 */
 	static State getState();
+
+	/**
+	 * @brief Hash function for Abseil containers.
+	 */
+	template <typename H>
+    friend H AbslHashValue(H h, const Hash128& hash)
+	{
+        return H::combine(std::move(h), hash.low64, hash.high64);
+    }
 };
 
 } // namespace garden

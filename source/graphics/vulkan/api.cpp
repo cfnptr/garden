@@ -1052,6 +1052,8 @@ VulkanAPI::VulkanAPI(const string& appName, const string& appID, const string& a
 		this->currentVertexBuffers.resize(threadCount);
 		this->currentIndexBuffers.resize(threadCount);
 		this->bindDescriptorSets.resize(threadCount);
+		this->bindBuffers.resize(threadCount);
+		this->bindBufferOffsets.resize(threadCount);
 	}
 
 	#if GARDEN_OS_LINUX && GARDEN_USE_MESA_RGP

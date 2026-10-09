@@ -313,7 +313,7 @@ void RayTracingPipeline::traceRays(const SBT& sbt, uint3 count)
 	}
 	#endif
 
-	auto currentVariant = graphicsAPI->currentPipelineVariants[0];
+	auto currentVariant = graphicsAPI->currentPipelineVariants.front();
 
 	TraceRaysCommand command;
 	command.groupCount = count;

@@ -38,7 +38,7 @@ static void createDataBuffers(GraphicsSystem* graphicsSystem, DescriptorSet::Buf
 		auto buffer = graphicsSystem->createBuffer(Buffer::Usage::Uniform, Buffer::CpuAccess::RandomReadWrite, 
 			sizeof(CsmRenderSystem::ShadowData), Buffer::Location::Auto, Buffer::Strategy::Size);
 		SET_RESOURCE_DEBUG_NAME(buffer, "buffer.uniform.csm.data" + to_string(i));
-		dataBuffers[i].resize(1); dataBuffers[i][0] = buffer;
+		dataBuffers[i].push_back(buffer);
 	}
 }
 
@@ -230,7 +230,7 @@ void CsmRenderSystem::shadowRender()
 	}
 
 	auto inFlightIndex = graphicsSystem->getInFlightIndex();
-	auto dataBufferView = graphicsSystem->get(dataBuffers[inFlightIndex][0]);
+	auto dataBufferView = graphicsSystem->get(dataBuffers[inFlightIndex].front());
 	dataBufferView->flush();
 
 	SET_GPU_DEBUG_LABEL("Cascade Shadow Mapping");
@@ -324,7 +324,7 @@ bool CsmRenderSystem::prepareShadowRender(uint32 passIndex, f32x4x4& viewProj, f
 		cameraView->p.perspective.aspectRatio, nearPlane, farPlane, zCoeff, shadowMapSize);
 
 	auto inFlightIndex = graphicsSystem->getInFlightIndex();
-	auto dataBufferView = graphicsSystem->get(dataBuffers[inFlightIndex][0]);
+	auto dataBufferView = graphicsSystem->get(dataBuffers[inFlightIndex].front());
 	auto data = (ShadowData*)dataBufferView->getMap();
 	data->viewProj[passIndex] = (float4x4)viewProj;
 	data->uvToLight[passIndex] = (float4x4)(f32x4x4::ndcToUV * viewProj * cc.invViewProj * f32x4x4::uvToNDC);

@@ -286,7 +286,7 @@ Image::Image(void* instance, Format format, Usage usage, Strategy strategy, uint
 
 	if ((GraphicsBackend)backend == GraphicsBackend::VulkanAPI)
 	{
-		barrierStates[0].stage = (uint64)vk::PipelineStageFlagBits2::eColorAttachmentOutput;
+		barrierStates.front().stage = (uint64)vk::PipelineStageFlagBits2::eColorAttachmentOutput;
 		aspectFlags = (uint32)toVkImageAspectFlags(format);
 	}
 	else abort();

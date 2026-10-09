@@ -73,7 +73,7 @@ void SkyboxRenderSystem::imageLoaded()
 {
 	auto resourceSystem = ResourceSystem::getInstance();
 	auto image = resourceSystem->getLoadedImage();
-	auto& imagePath = resourceSystem->getLoadedImagePaths()[0];
+	auto& imagePath = resourceSystem->getLoadedImagePaths().front();
 	Ref<DescriptorSet> descriptorSet = {};
 
 	for (auto& skybox : components)

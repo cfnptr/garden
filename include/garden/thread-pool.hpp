@@ -19,8 +19,8 @@
 
 #pragma once
 #include "garden/defines.hpp"
+#include "absl/container/btree_map.h"
 
-#include <map>
 #include <mutex>
 #include <thread>
 #include <vector>
@@ -106,7 +106,7 @@ public:
 		uint32 getItemCount() const noexcept { return itemCount; }
 	};
 private:
-	using TaskQueue = multimap<float, Task, std::greater<float>>;
+	using TaskQueue = absl::btree_multimap<float, Task, std::greater<float>>;
 
 	string name;
 	std::mutex mutex = {};

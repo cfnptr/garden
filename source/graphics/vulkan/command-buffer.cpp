@@ -567,30 +567,9 @@ void VulkanCommandBuffer::addRenderPassBarriers(const Command* command)
 		addDescriptorSetBarriers(vulkanAPI, descriptorSetRange, bindDescriptorSetsCommand->rangeCount);
 		return;
 	}
-	if (commandType == Command::Type::Draw)
+	if (commandType == Command::Type::DrawBarrier)
 	{
-		auto drawCommand = (const DrawCommand*)command;
-		if (!drawCommand->vertexBuffers[0]) // TODO:
-			return;
-
-		Buffer::BarrierState newBufferState;
-		newBufferState.access = (uint64)vk::AccessFlagBits2::eVertexAttributeRead;
-		newBufferState.stage = (uint64)vk::PipelineStageFlagBits2::eVertexAttributeInput;
-		addBufferBarrier(vulkanAPI, newBufferState, drawCommand->vertexBuffers[0]);
-		return;
-	}
-	if (commandType == Command::Type::DrawIndexed)
-	{
-		auto drawIndexedCommand = (const DrawIndexedCommand*)command;
-			
-		Buffer::BarrierState newBufferState;
-		newBufferState.access = (uint64)vk::AccessFlagBits2::eVertexAttributeRead;
-		newBufferState.stage = (uint64)vk::PipelineStageFlagBits2::eVertexAttributeInput;
-		addBufferBarrier(vulkanAPI, newBufferState, drawIndexedCommand->vertexBuffers[0]);
-
-		newBufferState.access = (uint64)vk::AccessFlagBits2::eIndexRead;
-		newBufferState.stage = (uint64)vk::PipelineStageFlagBits2::eIndexInput;
-		addBufferBarrier(vulkanAPI, newBufferState, drawIndexedCommand->indexBuffer);
+		processCommand(*(const DrawBarrierCommand*)command);
 		return;
 	}
 }
@@ -659,12 +638,25 @@ void VulkanCommandBuffer::processCommand(const BufferBarrierCommand& command)
 {
 	SET_CPU_ZONE_SCOPED("BufferBarrier Command Process");
 
-	auto commandBufferData = (const uint8*)&command;
-	auto bufferCount = command.bufferCount; auto newState = command.newState;
-	auto buffers = (const ID<Buffer>*)(commandBufferData + sizeof(BufferBarrierCommandBase));
+	auto commandData = (const uint8*)&command + sizeof(BufferBarrierCommandBase);
+	auto buffers = (const ID<Buffer>*)commandData;
+	auto bufferCount = command.bufferCount; 
+	auto newStates = (const Buffer::BarrierState*)(commandData + bufferCount * sizeof(ID<Buffer>));
 
-	for (uint32 i = 0; i < bufferCount; i++) 
-		addBufferBarrier(vulkanAPI, newState, buffers[i]);
+	if (command.sameNewState)
+	{
+		auto newState = newStates[0];
+		for (uint32 i = 0; i < bufferCount; i++) 
+			addBufferBarrier(vulkanAPI, newState, buffers[i]);
+	}
+	else
+	{
+		for (uint32 i = 0; i < bufferCount; i++) 
+		{
+			auto newState = newStates[i];
+			addBufferBarrier(vulkanAPI, newState, buffers[i]);
+		}
+	}
 }
 
 //**********************************************************************************************************************
@@ -964,8 +956,7 @@ void VulkanCommandBuffer::processCommand(const BindDescriptorSetsCommand& comman
 
 	auto rangeCount = command.rangeCount;
 	auto ranges = (const DescriptorSet::Range*)((const uint8*)&command + sizeof(BindDescriptorSetsCommandBase));
-	auto& descriptorSets = vulkanAPI->bindDescriptorSets[0];
-	// TODO: maybe detect already bound descriptor sets?
+	auto& descriptorSets = vulkanAPI->bindDescriptorSets.front();
 
 	for (uint8 i = 0; i < rangeCount; i++)
 	{
@@ -996,7 +987,7 @@ void VulkanCommandBuffer::processCommand(const PushConstantsCommand& command)
 {
 	SET_CPU_ZONE_SCOPED("PushConstants Command Process");
 
-	instance.pushConstants((VkPipelineLayout)command.pipelineLayout, (vk::ShaderStageFlags)command.pipelineStages,
+	instance.pushConstants((VkPipelineLayout)command.pipelineLayout, toVkShaderStages(command.pipelineStages),
 		0, command.dataSize, (const uint8*)&command + sizeof(PushConstantsCommandBase));
 }
 
@@ -1042,17 +1033,44 @@ void VulkanCommandBuffer::processCommand(const DrawCommand& command)
 {
 	SET_CPU_ZONE_SCOPED("Draw Command Process");
 
-	// TODO: support multiple buffer binding.
-	// TODO: add vertex buffer offset support if required.
-
-	auto vertexBuffer = command.vertexBuffers[0];
-	if (vertexBuffer && vertexBuffer != vulkanAPI->currentVertexBuffers[0])
+	auto bufferCount = command.bufferCount;
+	if (bufferCount > 0)
 	{
-		constexpr vk::DeviceSize size = 0;
-		auto buffer = vulkanAPI->bufferPool.get(vertexBuffer);
-		vk::Buffer vkBuffer = (VkBuffer)ResourceExt::getInstance(**buffer);
-		instance.bindVertexBuffers(0, 1, &vkBuffer, &size);
-		vulkanAPI->currentVertexBuffers[0] = vertexBuffer;
+		auto vertexBuffers = (const ID<Buffer>*)((const uint8*)&command + sizeof(DrawCommandBase));
+		auto bufferOffsets = (const uint64*)((const uint8*)vertexBuffers + bufferCount * sizeof(uint64));
+		auto& currentVertexBuffers = vulkanAPI->currentVertexBuffers.front();
+		if (currentVertexBuffers.size() < bufferCount)
+			currentVertexBuffers.resize(bufferCount);
+		auto bindBuffers = vulkanAPI->bindBuffers.front();
+		auto bindBufferOffsets = vulkanAPI->bindBufferOffsets.front();
+		auto currVertexBuffers = currentVertexBuffers.data();
+
+		uint32 firstBinding = 0;
+		for (uint8 i = 0; i < bufferCount; i++)
+		{
+			auto vertexBuffer = vertexBuffers[i];
+			if (vertexBuffer != currVertexBuffers[i])
+			{
+				auto bufferView = vulkanAPI->bufferPool.get(vertexBuffer);
+				bindBuffers.push_back((VkBuffer)ResourceExt::getInstance(**bufferView));
+				bindBufferOffsets.push_back(command.hasBufferOffsets ? bufferOffsets[i] : 0);
+				currVertexBuffers[i] = vertexBuffer;
+			}
+			else
+			{
+				if (!bindBuffers.empty())
+				{
+					instance.bindVertexBuffers(firstBinding, bindBuffers.size(), 
+						bindBuffers.data(), bindBufferOffsets.data());
+					bindBuffers.clear(); bindBufferOffsets.clear();
+				}
+				firstBinding = i + 1;
+			}
+		}
+
+		instance.bindVertexBuffers(firstBinding, bindBuffers.size(), 
+			bindBuffers.data(), bindBufferOffsets.data());
+		bindBuffers.clear(); bindBufferOffsets.clear();
 	}
 
 	instance.draw(command.vertexCount, command.instanceCount, command.vertexOffset, command.instanceOffset);
@@ -1080,12 +1098,43 @@ void VulkanCommandBuffer::processCommand(const DrawIndexedCommand& command)
 		auto indexBuffer = command.indexBuffer; auto indexType = command.indexType;
 		auto buffer = vulkanAPI->bufferPool.get(indexBuffer);
 		instance.bindIndexBuffer((VkBuffer)ResourceExt::getInstance(**buffer),
-			(vk::DeviceSize)(command.indexOffset * toBinarySize(indexType)), toVkIndexType(indexType));
+			(vk::DeviceSize)command.indexOffset * toBinarySize(indexType), toVkIndexType(indexType));
 		vulkanAPI->currentIndexBuffers[0] = indexBuffer;
 	}
 
 	instance.drawIndexed(command.indexCount, command.instanceCount,
 		command.indexOffset, command.vertexOffset, command.instanceOffset);
+}
+
+//**********************************************************************************************************************
+void VulkanCommandBuffer::processCommand(const DrawBarrierCommand& command)
+{
+	SET_CPU_ZONE_SCOPED("DrawBarrier Command Process");
+
+	auto buffers = (const ID<Buffer>*)((const uint8*)&command + sizeof(DrawBarrierCommandBase));
+	auto bufferCount = command.bufferCount;
+
+	for (uint32 i = 0; i < bufferCount; i++)
+	{
+		auto buffer = buffers[i];
+		auto bufferView = vulkanAPI->bufferPool.get(buffer);
+		auto bufferUsage = bufferView->getUsage();
+
+		Buffer::BarrierState newBufferState;
+		if (hasAnyFlag(bufferUsage, Buffer::Usage::Vertex))
+		{
+			newBufferState.access = (uint64)vk::AccessFlagBits2::eVertexAttributeRead;
+			newBufferState.stage = (uint64)vk::PipelineStageFlagBits2::eVertexAttributeInput;
+		}
+		else if (hasAnyFlag(bufferUsage, Buffer::Usage::Index))
+		{
+			newBufferState.access = (uint64)vk::AccessFlagBits2::eIndexRead;
+			newBufferState.stage = (uint64)vk::PipelineStageFlagBits2::eIndexInput;
+		}
+		else throw GardenError("Not implemented draw barrier.");
+
+		addBufferBarrier(vulkanAPI, newBufferState, buffer);
+	}
 }
 
 //**********************************************************************************************************************

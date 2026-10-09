@@ -69,7 +69,7 @@ static vk::SurfaceFormatKHR getBestVkSurfaceFormat(
 		}
 	}
 
-	return formats[0];
+	return formats.front();
 }
 
 //**********************************************************************************************************************

@@ -15,9 +15,8 @@
 #pragma once
 #include "garden/serialize.hpp"
 #include "garden/hash.hpp"
+#include "absl/container/btree_map.h"
 #include "ecsm.hpp"
-
-#include <map>
 
 /***********************************************************************************************************************
  * @file
@@ -76,7 +75,7 @@ class LinkSystem final : public ComponentSystem<LinkComponent, false>,
 {
 public:
 	using UuidMap = absl::flat_hash_map<Hash128, ID<Entity>>;
-	using TagMap = multimap<string, ID<Entity>, less<>>;
+	using TagMap = absl::btree_multimap<string, ID<Entity>, less<>>;
 private:
 	UuidMap uuidMap;
 	TagMap tagMap;

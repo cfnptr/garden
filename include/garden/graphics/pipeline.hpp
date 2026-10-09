@@ -141,7 +141,7 @@ public:
 		fs::path shaderPath;
 		uint64 pipelineVersion = 0;
 		uint32 maxBindlessCount = 0;
-		PipelineStage pushConstantsStages = {};
+		PipelineStage pushConstantStages = {};
 		uint8 pushConstantsSize = 0;
 		uint8 descriptorSetCount = 0;
 		uint8 variantCount = 0;
@@ -155,7 +155,7 @@ protected:
 	fs::path pipelinePath;
 	void* pipelineLayout = nullptr; 
 	uint64 pipelineVersion = 0;
-	uint32 pushConstantsMask = 0;
+	PipelineStage pushConstantStages = {};
 	PipelineType type = {};
 	uint8 pushConstantsSize = 0;
 	uint8 variantCount = 0;
@@ -211,6 +211,11 @@ public:
 	 * @details Uniforms are loaded from the compiled shader files.
 	 */
 	const Uniforms& getUniforms() const noexcept { return uniforms; }
+	/**
+	 * @brief Returns pipeline push constants pipeline stages.
+	 * @details Stages are loaded from the compiled shader files.
+	 */
+	PipelineStage getPushConstantStages() const noexcept { return pushConstantStages; }
 	/**
 	 * @brief Returns pipeline push constants buffer size in bytes.
 	 * @details Calculated from the shader push constants structure during compilation.
@@ -436,7 +441,7 @@ public:
 	 * @warning In most cases you should use @ref Pipeline functions.
 	 * @param[in] pipeline target pipeline instance
 	 */
-	static uint32& getPushConstantsMask(Pipeline& pipeline) noexcept { return pipeline.pushConstantsMask; }
+	static PipelineStage& getPushConstantStages(Pipeline& pipeline) noexcept { return pipeline.pushConstantStages; }
 	/**
 	 * @brief Returns pipeline push constants buffer size in bytes.
 	 * @warning In most cases you should use @ref Pipeline functions.
@@ -479,7 +484,7 @@ public:
 		PipelineExt::getDescriptorSetLayouts(destination) = std::move(PipelineExt::getDescriptorSetLayouts(source));
 		PipelineExt::getDescriptorPools(destination) = std::move(PipelineExt::getDescriptorPools(source));
 		PipelineExt::getLayout(destination) = PipelineExt::getLayout(source);
-		PipelineExt::getPushConstantsMask(destination) = PipelineExt::getPushConstantsMask(source);
+		PipelineExt::getPushConstantStages(destination) = PipelineExt::getPushConstantStages(source);
 		PipelineExt::getPushConstantsSize(destination) = PipelineExt::getPushConstantsSize(source);
 		PipelineExt::getVariantCount(destination) = PipelineExt::getVariantCount(source);
 		#if GARDEN_DEBUG || GARDEN_EDITOR

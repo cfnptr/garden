@@ -120,7 +120,7 @@ void HizRenderSystem::downsampleHiz(uint8 mipCount)
 		if (framebuffers.empty())
 			createHizFramebuffers(graphicsSystem, hizBuffer, framebuffers);
 		if (!pipeline)
-			pipeline = createPipeline(framebuffers[0]);
+			pipeline = createPipeline(framebuffers.front());
 		isInitialized = true;
 	}
 
@@ -147,7 +147,7 @@ void HizRenderSystem::downsampleHiz(uint8 mipCount)
 			RenderPass renderPass(framebufferData[0], float4::zero);
 			pipelineView->bind(HIZ_VARIANT_FIRST);
 			pipelineView->setViewportScissor();
-			pipelineView->bindDescriptorSet(descriptorSets[0]);
+			pipelineView->bindDescriptorSet(descriptorSetData[0]);
 			pipelineView->drawFullscreen();
 		}
 		
@@ -191,7 +191,7 @@ void HizRenderSystem::gBufferRecreate()
 		{
 			auto pipelineView = graphicsSystem->get(pipeline);
 			if (pipelineView->isReady())
-				pipelineView->updateFramebuffer(framebuffers[0]);
+				pipelineView->updateFramebuffer(framebuffers.front());
 		}
 	}
 }
@@ -199,7 +199,7 @@ void HizRenderSystem::gBufferRecreate()
 ID<GraphicsPipeline> HizRenderSystem::getPipeline()
 {
 	if (!pipeline)
-		pipeline = createPipeline(getFramebuffers()[0]);
+		pipeline = createPipeline(getFramebuffers().front());
 	return pipeline;
 }
 ID<Image> HizRenderSystem::getHizBuffer()

@@ -115,7 +115,7 @@ void GpuProcessSystem::generateMips(ID<Image> image, ID<ComputePipeline> pipelin
 	for (uint8 i = 1; i < mipCount; i++)
 	{
 		imageView = graphicsSystem->createImageView(image, imageType, Image::Format::Undefined, 0, 0, i, 1);
-		SET_RESOURCE_DEBUG_NAME(imageViewData[0], "imageView.normalMap.mip" + to_string(i));
+		SET_RESOURCE_DEBUG_NAME(imageView, "imageView.normalMap.mip" + to_string(i));
 		imageViewData[i] = imageView;
 
 		DescriptorSet::Uniforms uniforms
@@ -207,7 +207,7 @@ void GpuProcessSystem::gaussianBlur(ID<ImageView> srcBuffer, ID<Framebuffer> dst
 	if (!descriptorSet)
 	{
 		auto tmpFramebufferView = graphicsSystem->get(tmpFramebuffer);
-		auto tmpBufferView = tmpFramebufferView->getColorAttachments()[0].imageView;
+		auto tmpBufferView = tmpFramebufferView->getColorAttachments().front().imageView;
 		DescriptorSet::Uniforms uniforms 
 		{
 			{ "srcBuffer", DescriptorSet::Uniform({ { srcBuffer }, { tmpBufferView } })},
@@ -268,7 +268,7 @@ void GpuProcessSystem::depthBilateralBlur(ID<ImageView> srcBuffer, ID<ImageView>
 	if (!descriptorSet)
 	{
 		auto tmpFramebufferView = graphicsSystem->get(tmpFramebuffer);
-		auto tmpBufferView = tmpFramebufferView->getColorAttachments()[0].imageView;
+		auto tmpBufferView = tmpFramebufferView->getColorAttachments().front().imageView;
 		DescriptorSet::Uniforms uniforms
 		{
 			{ "srcBuffer", DescriptorSet::Uniform({ { srcBuffer }, { tmpBufferView } }) },

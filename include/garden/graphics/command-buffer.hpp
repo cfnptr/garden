@@ -33,8 +33,8 @@ struct Command
 	enum class Type : uint8
 	{
 		Unknown, BufferBarrier, BeginRenderPass, Execute, EndRenderPass, ClearAttachments,
-		BindPipeline, BindDescriptorSets, PushConstants, SetViewport, SetScissor,
-		SetViewportScissor, SetDepthBias, Draw, DrawIndexed, DrawIndirect, DrawIndexedIndirect, 
+		BindPipeline, BindDescriptorSets, PushConstants, SetViewport, SetScissor, SetViewportScissor, 
+		SetDepthBias, Draw, DrawIndexed, DrawIndirect, DrawIndexedIndirect, DrawBarrier,
 		Dispatch, FillBuffer, CopyBuffer, ClearImage, CopyImage, CopyBufferImage, BlitImage,
 		BuildAccelerationStructure, CopyAccelerationStructure, TraceRays, Custom,
 
@@ -54,23 +54,23 @@ struct Command
 
 struct BufferBarrierCommandBase : public Command
 {
-	uint8 _alignment0 = 0;
-	uint16 _alignment1 = 0;
+	bool sameNewState = false;
+	uint16 _alignment = 0;
 	uint32 bufferCount = 0;
-	Buffer::BarrierState newState = {}; // TODO: state for each buffer?
 	BufferBarrierCommandBase() noexcept : Command(Type::BufferBarrier) { }
 };
 struct BufferBarrierCommand final : public BufferBarrierCommandBase
 {
 	const ID<Buffer>* buffers = nullptr;
+	const Buffer::BarrierState* newStates = nullptr;
 };
 
 //**********************************************************************************************************************
 struct BeginRenderPassCommandBase : public Command
 {
+	uint8 _alignment = 0;
 	uint8 asyncRecording = false;
 	uint8 clearColorCount = 0;
-	uint8 _alignment = 0;
 	ID<Framebuffer> framebuffer = {};
 	float clearDepth = 0.0f;
 	uint32 clearStencil = 0x00;
@@ -102,7 +102,7 @@ struct EndRenderPassCommand final : public Command
 struct ClearAttachmentsCommandBase : public Command
 {
 	uint8 attachmentCount = 0;
-	uint16 _alignment = 0;
+	uint16 _alignment = 0;	
 	uint32 regionCount = 0;
 	ID<Framebuffer> framebuffer = {};
 	ClearAttachmentsCommandBase() noexcept : Command(Type::ClearAttachments) { }
@@ -114,9 +114,9 @@ struct ClearAttachmentsCommand final : public ClearAttachmentsCommandBase
 };
 struct BindPipelineCommand final : public Command
 {
+	uint8 _alignment = 0;
 	PipelineType pipelineType = {};
 	uint8 variant = 0;
-	uint8 _alignment = 0;
 	ID<Pipeline> pipeline = {};
 	BindPipelineCommand() noexcept : Command(Type::BindPipeline) { }
 };
@@ -135,8 +135,7 @@ struct BindDescriptorSetsCommand final : public BindDescriptorSetsCommandBase
 struct PushConstantsCommandBase : public Command
 {
 	uint8 dataSize = 0;
-	uint16 _alignment = 0;
-	uint32 pipelineStages = 0;
+	PipelineStage pipelineStages = {};
 	void* pipelineLayout = nullptr;
 	PushConstantsCommandBase() noexcept : Command(Type::PushConstants) { }
 };
@@ -181,8 +180,9 @@ struct SetDepthBiasCommand final : public Command
 //**********************************************************************************************************************
 struct DrawCommandBase : public Command
 {
+	bool hasBufferOffsets = false;
 	uint8 bufferCount = 0;
-	uint16 _alignment = 0;
+	uint8 _alignment = 0;
 	uint32 vertexCount = 0;
 	uint32 instanceCount = 0;
 	uint32 vertexOffset = 0;
@@ -192,13 +192,14 @@ struct DrawCommandBase : public Command
 struct DrawCommand final : public DrawCommandBase
 {
 	const ID<Buffer>* vertexBuffers = nullptr;
+	const uint64* bufferOffsets = nullptr;
 };
 
 struct DrawIndexedCommandBase : public Command
 {
 	IndexType indexType = {};
+	bool hasBufferOffsets = false;
 	uint8 vertexBufferCount = 0;
-	uint8 _alignment = 0;
 	uint32 indexCount = 0;
 	uint32 instanceCount = 0;
 	uint32 indexOffset = 0;
@@ -210,6 +211,7 @@ struct DrawIndexedCommandBase : public Command
 struct DrawIndexedCommand final : public DrawIndexedCommandBase
 {
 	const ID<Buffer>* vertexBuffers = nullptr;
+	const uint64* bufferOffsets = nullptr;
 };
 
 struct DrawIndirectCommand final : public Command
@@ -231,6 +233,17 @@ struct DrawIndexedIndirectCommand final : public Command
 	uint32 stride = 0;
 	ID<Buffer> buffer = {};
 	DrawIndexedIndirectCommand() noexcept : Command(Type::DrawIndexedIndirect) { }
+};
+
+struct DrawBarrierCommandBase : public Command
+{
+	uint8 _alignment = 0;
+	uint16 bufferCount = 0;
+	DrawBarrierCommandBase() noexcept : Command(Type::DrawBarrier) { }
+};
+struct DrawBarrierCommand : public DrawBarrierCommandBase
+{
+	const ID<Buffer>* buffers = nullptr;
 };
 
 struct DispatchCommand final : public Command
@@ -421,9 +434,9 @@ public:
 			return *(const uint64*)this == *(const uint64*)&other;
 		}
 		template <typename H>
-		friend H AbslHashValue(H h, const ResourceKey& u)
+		friend H AbslHashValue(H h, const ResourceKey& key)
 		{
-			return H::combine(std::move(h), *(const uint64*)&u);
+			return H::combine(std::move(h), *(const uint64*)&key);
 		}
 	}; 
 	typedef absl::flat_hash_set<ResourceKey> LockedResources;
@@ -504,6 +517,7 @@ protected:
 	virtual void processCommand(const SetDepthBiasCommand& command) = 0;
 	virtual void processCommand(const DrawCommand& command) = 0;
 	virtual void processCommand(const DrawIndexedCommand& command) = 0;
+	virtual void processCommand(const DrawBarrierCommand& command) = 0;
 	virtual void processCommand(const DispatchCommand& command) = 0;
 	virtual void processCommand(const FillBufferCommand& command) = 0;
 	virtual void processCommand(const CopyBufferCommand& command) = 0;
@@ -522,7 +536,7 @@ protected:
 	virtual void processCommand(const InsertLabelCommand& command) = 0;
 	#endif
 
-	void lockResource(ResourceType type, ID<Resource> resource, int32 threadIndex = -1);
+	void lockResource(ResourceType type, ID<Resource> resource, int32 threadIndex);
 	void flushLockedResources(LockedResources& lockedResources);
 public:
 	/*******************************************************************************************************************
@@ -544,17 +558,22 @@ public:
 
 	void addCommand(const BufferBarrierCommand& command)
 	{
-		auto commandSize = sizeof(BufferBarrierCommandBase) + command.bufferCount * sizeof(ID<Buffer>);
+		auto buffersBinarySize = command.bufferCount * sizeof(ID<Buffer>);
+		auto statesBinarySize = (command.sameNewState ? 1 : command.bufferCount) * sizeof(Buffer::BarrierState);
+		auto commandSize = sizeof(BufferBarrierCommandBase) + buffersBinarySize + statesBinarySize;
 		auto allocation = allocateCommand<BufferBarrierCommandBase>(command, (uint32)commandSize);
-		memcpy(allocation + 1, command.buffers, command.bufferCount * sizeof(ID<Buffer>));
+		memcpy(allocation + 1, command.buffers, buffersBinarySize);
+		memcpy((uint8*)(allocation + 1) + buffersBinarySize, command.newStates, statesBinarySize);
 	}
+
 	void addCommand(const BeginRenderPassCommand& command)
 	{
 		GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Graphics);
-		auto commandSize = sizeof(BeginRenderPassCommandBase) + command.clearColorCount * sizeof(float4);
+		auto colorsBinarySize = command.clearColorCount * sizeof(float4);
+		auto commandSize = sizeof(BeginRenderPassCommandBase) + colorsBinarySize;
 		auto allocation = allocateCommand<BeginRenderPassCommandBase>(command, (uint32)commandSize);
 		if (command.clearColorCount > 0)
-			memcpy(allocation + 1, command.clearColors, command.clearColorCount * sizeof(float4));
+			memcpy(allocation + 1, command.clearColors, colorsBinarySize);
 		hasAnyCommand = true;
 	}
 	void addCommand(const ExecuteCommand& command)
@@ -568,7 +587,7 @@ public:
 		auto commandSize = sizeof(ExecuteCommandBase) + buffersBinarySize + asyncDataSize;
 		auto allocation = allocateCommand<ExecuteCommandBase>(command, (uint32)commandSize);
 
-		auto commandData = (uint8*)allocation + sizeof(ExecuteCommandBase);
+		auto commandData = (uint8*)(allocation + 1);
 		memcpy(commandData, command.commandBuffers, buffersBinarySize);
 		commandData += buffersBinarySize;
 
@@ -584,7 +603,10 @@ public:
 			commandData += async.size;
 
 			for (auto key : async.lockingResources)
-				lockResource(key.type, key.resource);
+			{
+				auto emplaceResult = lockingResources.emplace(key);
+				GARDEN_ASSERT_MSG(emplaceResult.second, "Detected memory corruption");
+			}
 
 			async.lockingResources.clear();
 			async.size = async.lastSize = 0;
@@ -601,14 +623,12 @@ public:
 	void addCommand(const ClearAttachmentsCommand& command)
 	{
 		GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Graphics);
-		auto attachmentsSize = command.attachmentCount * sizeof(Framebuffer::ClearAttachment);
-		auto commandSize = sizeof(ClearAttachmentsCommandBase) +
-			attachmentsSize + command.regionCount * sizeof(Framebuffer::ClearRegion);
+		auto attachmentsBinarySize = command.attachmentCount * sizeof(Framebuffer::ClearAttachment);
+		auto regionsBinarySize = command.regionCount * sizeof(Framebuffer::ClearRegion);
+		auto commandSize = sizeof(ClearAttachmentsCommandBase) + attachmentsBinarySize + regionsBinarySize;
 		auto allocation = allocateCommand<ClearAttachmentsCommandBase>(command, (uint32)commandSize);
-		memcpy((uint8*)allocation + sizeof(ClearAttachmentsCommandBase),
-			command.attachments, command.attachmentCount * sizeof(Framebuffer::ClearAttachment));
-		memcpy((uint8*)allocation + sizeof(ClearAttachmentsCommandBase) + attachmentsSize,
-			command.regions, command.regionCount * sizeof(Framebuffer::ClearRegion));
+		memcpy(allocation + 1, command.attachments, attachmentsBinarySize);
+		memcpy((uint8*)(allocation + 1) + attachmentsBinarySize, command.regions, regionsBinarySize);
 	}
 	void addCommand(const BindPipelineCommand& command)
 	{
@@ -620,9 +640,10 @@ public:
 	{
 		GARDEN_ASSERT(type == CommandBufferType::Frame ||
 			type == CommandBufferType::Graphics || type == CommandBufferType::Compute);
-		auto commandSize = sizeof(BindDescriptorSetsCommandBase) + command.rangeCount * sizeof(DescriptorSet::Range);
+		auto rangesBinarySize = command.rangeCount * sizeof(DescriptorSet::Range);
+		auto commandSize = sizeof(BindDescriptorSetsCommandBase) + rangesBinarySize;
 		auto allocation = allocateCommand<BindDescriptorSetsCommandBase>(command, (uint32)commandSize, threadIndex);
-		memcpy(allocation + 1, command.ranges, command.rangeCount * sizeof(DescriptorSet::Range));
+		memcpy(allocation + 1, command.ranges, rangesBinarySize);
 	}
 	void addCommand(const PushConstantsCommand& command)
 	{
@@ -654,21 +675,40 @@ public:
 		GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Graphics);
 		allocateCommand(command);
 	}
-	void addCommand(const DrawCommand& command, int32 threadIndex = -1)
+	void addCommand(const DrawCommand& command)
 	{
 		GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Graphics);
-		auto commandSize = sizeof(DrawCommandBase) + command.bufferCount * sizeof(ID<Buffer>);
+		auto buffersBinarySize = command.bufferCount * sizeof(ID<Buffer>);
+		auto offsetsBinarySize = (command.hasBufferOffsets ? command.bufferCount : 0) * sizeof(uint64);
+		auto commandSize = sizeof(DrawCommandBase) + buffersBinarySize + offsetsBinarySize;
 		auto allocation = allocateCommand<DrawCommandBase>(command, (uint32)commandSize);
 		if (command.bufferCount > 0)
-			memcpy(allocation + 1, command.vertexBuffers, command.bufferCount * sizeof(ID<Buffer>));
+		{
+			memcpy(allocation + 1, command.vertexBuffers, buffersBinarySize);
+			if (command.hasBufferOffsets)
+				memcpy((uint8*)(allocation + 1) + buffersBinarySize, command.bufferOffsets, offsetsBinarySize);
+		}
 	}
-	void addCommand(const DrawIndexedCommand& command, int32 threadIndex = -1)
+	void addCommand(const DrawIndexedCommand& command)
 	{
 		GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Graphics);
-		auto commandSize = sizeof(DrawIndexedCommandBase) + command.vertexBufferCount * sizeof(ID<Buffer>);
+		auto buffersBinarySize = command.vertexBufferCount * sizeof(ID<Buffer>);
+		auto offsetsBinarySize = (command.hasBufferOffsets ? command.hasBufferOffsets : 0) * sizeof(uint64);
+		auto commandSize = sizeof(DrawIndexedCommandBase) + buffersBinarySize + offsetsBinarySize;
 		auto allocation = allocateCommand<DrawIndexedCommandBase>(command, (uint32)commandSize);
 		if (command.vertexBufferCount > 0)
-			memcpy(allocation + 1, command.vertexBuffers, command.vertexBufferCount * sizeof(ID<Buffer>));
+		{
+			memcpy(allocation + 1, command.vertexBuffers, buffersBinarySize);
+			if (command.hasBufferOffsets)
+				memcpy((uint8*)(allocation + 1) + buffersBinarySize, command.bufferOffsets, offsetsBinarySize);
+		}
+	}
+	void addCommand(const DrawBarrierCommand& command, int32 threadIndex)
+	{
+		auto buffersBinarySize = command.bufferCount * sizeof(ID<Buffer>);
+		auto commandSize = sizeof(DrawBarrierCommandBase) + buffersBinarySize;
+		auto allocation = allocateCommand<DrawBarrierCommandBase>(command, (uint32)commandSize, threadIndex);
+		memcpy(allocation + 1, command.buffers, buffersBinarySize);
 	}
 	void addCommand(const DispatchCommand& command)
 	{
@@ -684,40 +724,45 @@ public:
 	}
 	void addCommand(const CopyBufferCommand& command)
 	{
-		auto commandSize = sizeof(CopyBufferCommandBase) + command.regionCount * sizeof(Buffer::CopyRegion);
+		auto regionsBinarySize = command.regionCount * sizeof(Buffer::CopyRegion);
+		auto commandSize = sizeof(CopyBufferCommandBase) + regionsBinarySize;
 		auto allocation = allocateCommand<CopyBufferCommandBase>(command, (uint32)commandSize);
-		memcpy(allocation + 1, command.regions, command.regionCount * sizeof(Buffer::CopyRegion));
+		memcpy(allocation + 1, command.regions, regionsBinarySize);
 		hasAnyCommand = true;
 	}
 	void addCommand(const ClearImageCommand& command)
 	{
 		GARDEN_ASSERT(type == CommandBufferType::Frame ||
 			type == CommandBufferType::Graphics || type == CommandBufferType::Compute);
-		auto commandSize = sizeof(ClearImageCommandBase) + command.regionCount * sizeof(Image::ClearRegion);
+		auto regionsBinarySize = command.regionCount * sizeof(Image::ClearRegion);
+		auto commandSize = sizeof(ClearImageCommandBase) + regionsBinarySize;
 		auto allocation = allocateCommand<ClearImageCommandBase>(command, (uint32)commandSize);
-		memcpy(allocation + 1, command.regions, command.regionCount * sizeof(Image::ClearRegion));
+		memcpy(allocation + 1, command.regions, regionsBinarySize);
 		hasAnyCommand = true;
 	}
 	void addCommand(const CopyImageCommand& command)
 	{
-		auto commandSize = sizeof(CopyImageCommandBase) + command.regionCount * sizeof(Image::CopyImageRegion);
+		auto regionsBinarySize = command.regionCount * sizeof(Image::CopyImageRegion);
+		auto commandSize = sizeof(CopyImageCommandBase) + regionsBinarySize;
 		auto allocation = allocateCommand<CopyImageCommandBase>(command, (uint32)commandSize);
-		memcpy(allocation + 1, command.regions, command.regionCount * sizeof(Image::CopyImageRegion));
+		memcpy(allocation + 1, command.regions, regionsBinarySize);
 		hasAnyCommand = true;
 	}
 	void addCommand(const CopyBufferImageCommand& command)
 	{
-		auto commandSize = sizeof(CopyBufferImageCommandBase) + command.regionCount * sizeof(Image::CopyBufferRegion);
+		auto regionsBinarySize = command.regionCount * sizeof(Image::CopyBufferRegion);
+		auto commandSize = sizeof(CopyBufferImageCommandBase) + regionsBinarySize;
 		auto allocation = allocateCommand<CopyBufferImageCommandBase>(command, (uint32)commandSize);
-		memcpy(allocation + 1, command.regions, command.regionCount * sizeof(Image::CopyBufferRegion));
+		memcpy(allocation + 1, command.regions, regionsBinarySize);
 		hasAnyCommand = true;
 	}
 	void addCommand(const BlitImageCommand& command)
 	{
 		GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Graphics);
-		auto commandSize = sizeof(BlitImageCommandBase) + command.regionCount * sizeof(Image::BlitRegion);
+		auto regionsBinarySize = command.regionCount * sizeof(Image::BlitRegion);
+		auto commandSize = sizeof(BlitImageCommandBase) + regionsBinarySize;
 		auto allocation = allocateCommand<BlitImageCommandBase>(command, (uint32)commandSize);
-		memcpy(allocation + 1, command.regions, command.regionCount * sizeof(Image::BlitRegion));
+		memcpy(allocation + 1, command.regions, regionsBinarySize);
 		hasAnyCommand = true;
 	}
 

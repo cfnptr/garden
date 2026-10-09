@@ -196,9 +196,9 @@ void BloomRenderSystem::preLdrRender()
 		if (framebuffers.empty())
 			createBloomFramebuffers(graphicsSystem, bloomBuffer, framebuffers);
 		if (!downsamplePipeline)
-			downsamplePipeline = createDownsamplePipeline(framebuffers[0], useThreshold);
+			downsamplePipeline = createDownsamplePipeline(framebuffers.front(), useThreshold);
 		if (!upsamplePipeline)
-			upsamplePipeline = createUpsamplePipeline(framebuffers[0]);
+			upsamplePipeline = createUpsamplePipeline(framebuffers.front());
 		isInitialized = true;
 	}
 	
@@ -291,13 +291,13 @@ void BloomRenderSystem::gBufferRecreate()
 		{
 			auto pipelineView = graphicsSystem->get(downsamplePipeline);
 			if (pipelineView->isReady())
-				pipelineView->updateFramebuffer(framebuffers[0]);
+				pipelineView->updateFramebuffer(framebuffers.front());
 		}
 		if (upsamplePipeline)
 		{
 			auto pipelineView = graphicsSystem->get(upsamplePipeline);
 			if (pipelineView->isReady())
-				pipelineView->updateFramebuffer(framebuffers[0]);
+				pipelineView->updateFramebuffer(framebuffers.front());
 		}
 	}
 }
@@ -317,7 +317,7 @@ void BloomRenderSystem::setConsts(bool useThreshold)
 	if (downsamplePipeline)
 	{
 		graphicsSystem->destroy(downsamplePipeline);
-		downsamplePipeline = createDownsamplePipeline(getFramebuffers()[0], useThreshold);
+		downsamplePipeline = createDownsamplePipeline(getFramebuffers().front(), useThreshold);
 	}
 
 	this->useThreshold = useThreshold;
@@ -338,13 +338,13 @@ void BloomRenderSystem::setQuality(GraphicsQuality quality)
 ID<GraphicsPipeline> BloomRenderSystem::getDownsamplePipeline()
 {
 	if (!downsamplePipeline)
-		downsamplePipeline = createDownsamplePipeline(getFramebuffers()[0], useThreshold);
+		downsamplePipeline = createDownsamplePipeline(getFramebuffers().front(), useThreshold);
 	return downsamplePipeline;
 }
 ID<GraphicsPipeline> BloomRenderSystem::getUpsamplePipeline()
 {
 	if (!upsamplePipeline)
-		upsamplePipeline = createUpsamplePipeline(getFramebuffers()[0]);
+		upsamplePipeline = createUpsamplePipeline(getFramebuffers().front());
 	return upsamplePipeline;
 }
 

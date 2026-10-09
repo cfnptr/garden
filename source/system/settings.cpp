@@ -111,7 +111,8 @@ void SettingsSystem::getInt(const string& name, int64& value)
 			if (data.is_number_integer())
 				value = (int64)data;
 		}
-		items.emplace(name, Item(Type::Int, *((uint64*)&value)));
+		auto emplaceResult = items.emplace(name, Item(Type::Int, *((uint64*)&value)));
+		GARDEN_ASSERT_MSG(emplaceResult.second, "Detected memory corruption");
 		return;
 	}
 	GARDEN_ASSERT_MSG(searchResult->second.type == Type::Int, 
@@ -131,7 +132,8 @@ void SettingsSystem::getFloat(const string& name, double& value)
 			if (data.is_number_float())
 				value = (double)data;
 		}
-		items.emplace(name, Item(Type::Float, *((uint64*)&value)));
+		auto emplaceResult = items.emplace(name, Item(Type::Float, *((uint64*)&value)));
+		GARDEN_ASSERT_MSG(emplaceResult.second, "Detected memory corruption");
 		return;
 	}
 	GARDEN_ASSERT_MSG(searchResult->second.type == Type::Float, 
@@ -151,7 +153,8 @@ void SettingsSystem::getBool(const string& name, bool& value)
 			if (data.is_boolean())
 				value = (bool)data;
 		}
-		items.emplace(name, Item(Type::Bool, value));
+		auto emplaceResult = items.emplace(name, Item(Type::Bool, value));
+		GARDEN_ASSERT_MSG(emplaceResult.second, "Detected memory corruption");
 		return;
 	}
 	GARDEN_ASSERT_MSG(searchResult->second.type == Type::Bool, 
@@ -175,7 +178,8 @@ void SettingsSystem::getString(const string& name, string& value)
 		auto instance = new char[value.length() + 1];
 		memcpy(instance, value.c_str(), value.length());
 		instance[value.length()] = '\0';
-		items.emplace(name, Item(Type::String, *((uint64*)&instance)));
+		auto emplaceResult = items.emplace(name, Item(Type::String, *((uint64*)&instance)));
+		GARDEN_ASSERT_MSG(emplaceResult.second, "Detected memory corruption");
 		return;
 	}
 	GARDEN_ASSERT_MSG(searchResult->second.type == Type::String, 
@@ -195,7 +199,8 @@ void SettingsSystem::getColor(const string& name, Color& value)
 			if (data.is_string())
 				value = Color((const string&)data);
 		}
-		items.emplace(name, Item(Type::Color, (uint32)value));
+		auto emplaceResult = items.emplace(name, Item(Type::Color, (uint32)value));
+		GARDEN_ASSERT_MSG(emplaceResult.second, "Detected memory corruption");
 		return;
 	}
 	GARDEN_ASSERT_MSG(searchResult->second.type == Type::Color, 
@@ -210,7 +215,8 @@ void SettingsSystem::setInt(const string& name, int64 value)
 	auto searchResult = items.find(name);
 	if (searchResult == items.end())
 	{
-		items.emplace(name, Item(Type::Int, *((uint64*)&value)));
+		auto emplaceResult = items.emplace(name, Item(Type::Int, *((uint64*)&value)));
+		GARDEN_ASSERT_MSG(emplaceResult.second, "Detected memory corruption");
 		return;
 	}
 	GARDEN_ASSERT_MSG(searchResult->second.type == Type::Int, 
@@ -224,7 +230,8 @@ void SettingsSystem::setFloat(const string& name, double value)
 	auto searchResult = items.find(name);
 	if (searchResult == items.end())
 	{
-		items.emplace(name, Item(Type::Float, *((uint64*)&value)));
+		auto emplaceResult = items.emplace(name, Item(Type::Float, *((uint64*)&value)));
+		GARDEN_ASSERT_MSG(emplaceResult.second, "Detected memory corruption");
 		return;
 	}
 	GARDEN_ASSERT_MSG(searchResult->second.type == Type::Float, 
@@ -238,7 +245,8 @@ void SettingsSystem::setBool(const string& name, bool value)
 	auto searchResult = items.find(name);
 	if (searchResult == items.end())
 	{
-		items.emplace(name, Item(Type::Bool, value));
+		auto emplaceResult = items.emplace(name, Item(Type::Bool, value));
+		GARDEN_ASSERT_MSG(emplaceResult.second, "Detected memory corruption");
 		return;
 	}
 	GARDEN_ASSERT_MSG(searchResult->second.type == Type::Bool, 
@@ -258,7 +266,8 @@ void SettingsSystem::setString(const string& name, string_view value)
 	auto searchResult = items.find(name);
 	if (searchResult == items.end())
 	{
-		items.emplace(name, Item(Type::String, *((uint64*)&instance)));
+		auto emplaceResult = items.emplace(name, Item(Type::String, *((uint64*)&instance)));
+		GARDEN_ASSERT_MSG(emplaceResult.second, "Detected memory corruption");
 		return;
 	}
 
@@ -274,7 +283,8 @@ void SettingsSystem::setColor(const string& name, Color value)
 	auto searchResult = items.find(name);
 	if (searchResult == items.end())
 	{
-		items.emplace(name, Item(Type::Color, (uint32)value));
+		auto emplaceResult = items.emplace(name, Item(Type::Color, (uint32)value));
+		GARDEN_ASSERT_MSG(emplaceResult.second, "Detected memory corruption");
 		return;
 	}
 	GARDEN_ASSERT_MSG(searchResult->second.type == Type::Color, 

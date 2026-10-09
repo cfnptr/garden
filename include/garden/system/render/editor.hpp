@@ -24,8 +24,6 @@
 #include "garden/graphics/imgui.hpp"
 #include "ecsm.hpp"
 
-#include <unordered_map>
-
 namespace garden
 {
 
@@ -55,7 +53,7 @@ public:
 			onComponent(onComponent), priority(priority) { }
 	};
 
-	using OnComponents = unordered_multimap<float, pair<System*, OnComponent>>;
+	using OnComponents = absl::btree_multimap<float, pair<System*, OnComponent>>;
 	using EntityInspectors = absl::flat_hash_map<type_index, Inspector>;
 private:
 	OnComponents onComponents;

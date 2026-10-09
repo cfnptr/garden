@@ -40,7 +40,7 @@ static void createInstanceBuffers(uint64 bufferSize, DescriptorSet::Buffers& ins
 				system->debugResourceName + ".instances" + to_string(i));
 		}
 		#endif
-		instanceBuffers[i].resize(1); instanceBuffers[i][0] = buffer;
+		instanceBuffers[i].push_back(buffer);
 	}
 }
 
@@ -129,7 +129,7 @@ void InstanceRenderSystem::prepareDraw(const f32x4x4& viewProj, uint32 drawCount
 		{
 			auto dataBinarySize = instanceCount * baseInstanceSize;
 			if (baseInstanceBuffers.empty() || graphicsSystem->get(
-				baseInstanceBuffers[0][0])->getBinarySize() < dataBinarySize)
+				baseInstanceBuffers.front().front())->getBinarySize() < dataBinarySize)
 			{
 				graphicsSystem->destroy(baseInstanceBuffers);
 				createInstanceBuffers(dataBinarySize, baseInstanceBuffers, false, this);
@@ -149,7 +149,7 @@ void InstanceRenderSystem::prepareDraw(const f32x4x4& viewProj, uint32 drawCount
 				}
 			}
 
-			auto bufferView = graphicsSystem->get(baseInstanceBuffers[inFlightIndex][0]);
+			auto bufferView = graphicsSystem->get(baseInstanceBuffers[inFlightIndex].front());
 			instanceMap = bufferView->getMap();
 		}
 		
@@ -163,7 +163,7 @@ void InstanceRenderSystem::prepareDraw(const f32x4x4& viewProj, uint32 drawCount
 		{
 			auto dataBinarySize = (shadowInstanceIndex + instanceCount) * shadowInstanceSize;
 			if (shadowInstanceBuffers.empty() || graphicsSystem->get(
-				shadowInstanceBuffers[0][0])->getBinarySize() < dataBinarySize)
+				shadowInstanceBuffers.front().front())->getBinarySize() < dataBinarySize)
 			{
 				graphicsSystem->destroy(shadowInstanceBuffers);
 				createInstanceBuffers(dataBinarySize, shadowInstanceBuffers, true, this);
@@ -183,7 +183,7 @@ void InstanceRenderSystem::prepareDraw(const f32x4x4& viewProj, uint32 drawCount
 				}
 			}
 
-			auto bufferView = graphicsSystem->get(shadowInstanceBuffers[inFlightIndex][0]);
+			auto bufferView = graphicsSystem->get(shadowInstanceBuffers[inFlightIndex].front());
 			instanceMap = bufferView->getMap();
 		}
 		
@@ -205,7 +205,7 @@ void InstanceRenderSystem::finalizeDraw(uint32 instanceCount)
 	{
 		if (!baseInstanceBuffers.empty())
 		{
-			auto instanceBuffer = baseInstanceBuffers[inFlightIndex][0];
+			auto instanceBuffer = baseInstanceBuffers[inFlightIndex].front();
 			auto bufferView = GraphicsSystem::getInstance()->get(instanceBuffer);
 			bufferView->flush(instanceCount * getBaseInstanceDataSize());
 		}
@@ -221,7 +221,7 @@ void InstanceRenderSystem::renderCleanup()
 	{
 		if (!shadowInstanceBuffers.empty())
 		{
-			auto instanceBuffer = shadowInstanceBuffers[inFlightIndex][0];
+			auto instanceBuffer = shadowInstanceBuffers[inFlightIndex].front();
 			auto bufferView = GraphicsSystem::getInstance()->get(instanceBuffer);
 			bufferView->flush(shadowInstanceIndex * getShadowInstanceDataSize());
 		}

@@ -44,7 +44,8 @@ static vector<void*> createVkPipelineSamplers(const Pipeline::Uniforms& uniforms
 		auto samplerInfo = getVkSamplerCreateInfo(state);
 		auto sampler = vulkanAPI->device.createSampler(samplerInfo);
 		samplerData[i] = (VkSampler)sampler;
-		immutableSamplers.emplace(it->first, sampler);
+		auto emplaceResult = immutableSamplers.emplace(it->first, sampler);
+		GARDEN_ASSERT_MSG(emplaceResult.second, "Detected memory corruption");
 
 		#if GARDEN_DEBUG // Note: No GARDEN_EDITOR
 		if (vulkanAPI->features.debugUtils)
@@ -212,32 +213,32 @@ static void createVkDescriptorSetLayouts(vector<void*>& descriptorSetLayouts, ve
 }
 
 //**********************************************************************************************************************
-static vk::PipelineLayout createVkPipelineLayout(uint16 pushConstantsSize, PipelineStage pushConstantsStages,
+static vk::PipelineLayout createVkPipelineLayout(uint16 pushConstantsSize, PipelineStage pushConstantStages,
 	const vector<void*>& descriptorSetLayouts, const fs::path& pipelinePath)
 {
 	vector<vk::PushConstantRange> pushConstantRanges;
 
-	if (hasAnyFlag(pushConstantsStages, PipelineStage::Vertex))
+	if (hasAnyFlag(pushConstantStages, PipelineStage::Vertex))
 		pushConstantRanges.emplace_back(vk::ShaderStageFlagBits::eVertex, 0, pushConstantsSize);
-	if (hasAnyFlag(pushConstantsStages, PipelineStage::Fragment))
+	if (hasAnyFlag(pushConstantStages, PipelineStage::Fragment))
 		pushConstantRanges.emplace_back(vk::ShaderStageFlagBits::eFragment, 0, pushConstantsSize);
-	if (hasAnyFlag(pushConstantsStages, PipelineStage::Compute))
+	if (hasAnyFlag(pushConstantStages, PipelineStage::Compute))
 		pushConstantRanges.emplace_back(vk::ShaderStageFlagBits::eCompute, 0, pushConstantsSize);
-	if (hasAnyFlag(pushConstantsStages, PipelineStage::RayGeneration))
+	if (hasAnyFlag(pushConstantStages, PipelineStage::RayGeneration))
 		pushConstantRanges.emplace_back(vk::ShaderStageFlagBits::eRaygenKHR, 0, pushConstantsSize);
-	if (hasAnyFlag(pushConstantsStages, PipelineStage::Intersection))
+	if (hasAnyFlag(pushConstantStages, PipelineStage::Intersection))
 		pushConstantRanges.emplace_back(vk::ShaderStageFlagBits::eIntersectionKHR, 0, pushConstantsSize);
-	if (hasAnyFlag(pushConstantsStages, PipelineStage::AnyHit))
+	if (hasAnyFlag(pushConstantStages, PipelineStage::AnyHit))
 		pushConstantRanges.emplace_back(vk::ShaderStageFlagBits::eAnyHitKHR, 0, pushConstantsSize);
-	if (hasAnyFlag(pushConstantsStages, PipelineStage::ClosestHit))
+	if (hasAnyFlag(pushConstantStages, PipelineStage::ClosestHit))
 		pushConstantRanges.emplace_back(vk::ShaderStageFlagBits::eClosestHitKHR, 0, pushConstantsSize);
-	if (hasAnyFlag(pushConstantsStages, PipelineStage::Miss))
+	if (hasAnyFlag(pushConstantStages, PipelineStage::Miss))
 		pushConstantRanges.emplace_back(vk::ShaderStageFlagBits::eMissKHR, 0, pushConstantsSize);
-	if (hasAnyFlag(pushConstantsStages, PipelineStage::Callable))
+	if (hasAnyFlag(pushConstantStages, PipelineStage::Callable))
 		pushConstantRanges.emplace_back(vk::ShaderStageFlagBits::eCallableKHR, 0, pushConstantsSize);
-	if (hasAnyFlag(pushConstantsStages, PipelineStage::Mesh))
+	if (hasAnyFlag(pushConstantStages, PipelineStage::Mesh))
 		pushConstantRanges.emplace_back(vk::ShaderStageFlagBits::eMeshEXT, 0, pushConstantsSize);
-	if (hasAnyFlag(pushConstantsStages, PipelineStage::Task))
+	if (hasAnyFlag(pushConstantStages, PipelineStage::Task))
 		pushConstantRanges.emplace_back(vk::ShaderStageFlagBits::eTaskEXT, 0, pushConstantsSize);
 
 	vk::PipelineLayoutCreateInfo pipelineLayoutInfo({}, 0, nullptr,
@@ -353,6 +354,7 @@ Pipeline::Pipeline(CreateData& createData)
 {
 	this->uniforms = std::move(createData.uniforms);
 	this->pipelineVersion = createData.pipelineVersion;
+	this->pushConstantStages = createData.pushConstantStages;
 	this->pushConstantsSize = createData.pushConstantsSize;
 	this->variantCount = createData.variantCount;
 
@@ -361,8 +363,6 @@ Pipeline::Pipeline(CreateData& createData)
 
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
-		this->pushConstantsMask = (uint32)toVkShaderStages(createData.pushConstantsStages);
-
 		absl::flat_hash_map<string, vk::Sampler> immutableSamplers;
 		this->samplers = createVkPipelineSamplers(uniforms, createData.samplerStates,
 			immutableSamplers, createData.shaderPath, createData.samplerStateOverrides);
@@ -374,7 +374,7 @@ Pipeline::Pipeline(CreateData& createData)
 		}
 		
 		this->pipelineLayout = createVkPipelineLayout(pushConstantsSize,
-			createData.pushConstantsStages, descriptorSetLayouts, createData.shaderPath);
+			createData.pushConstantStages, descriptorSetLayouts, createData.shaderPath);
 	}
 	else abort();
 }
@@ -631,8 +631,8 @@ void Pipeline::bind(uint8 variant)
 	GARDEN_ASSERT_MSG(isLoaded(), "Pipeline [" + debugName + "] is not loaded");
 
 	auto pipeline = graphicsAPI->getPipeline(type, this);
-	if (pipeline == graphicsAPI->currentPipelines[0] && type == graphicsAPI->currentPipelineTypes[0] &&
-		variant == graphicsAPI->currentPipelineVariants[0])
+	if (pipeline == graphicsAPI->currentPipelines.front() && type == graphicsAPI->currentPipelineTypes.front() &&
+		variant == graphicsAPI->currentPipelineVariants.front())
 	{
 		return;
 	}
@@ -663,9 +663,9 @@ void Pipeline::bind(uint8 variant)
 	command.pipeline = pipeline;
 	currentCommandBuffer->addCommand(command);
 
-	graphicsAPI->currentPipelines[0] = pipeline;
-	graphicsAPI->currentPipelineTypes[0] = type;
-	graphicsAPI->currentPipelineVariants[0] = variant;
+	graphicsAPI->currentPipelines.front() = pipeline;
+	graphicsAPI->currentPipelineTypes.front() = type;
+	graphicsAPI->currentPipelineVariants.front() = variant;
 }
 
 //**********************************************************************************************************************
@@ -729,7 +729,7 @@ void Pipeline::bindDescriptorSets(const DescriptorSet::Range* ranges, uint8 rang
 	GARDEN_ASSERT_MSG(!graphicsAPI->isRenderPassAsync, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(currentCommandBuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(ID<Pipeline>(graphicsAPI->getPipeline(type, this)) == 
-		graphicsAPI->currentPipelines[0], "Assert " + debugName);
+		graphicsAPI->currentPipelines.front(), "Assert " + debugName);
 	GARDEN_ASSERT_MSG(isLoaded(), "Pipeline [" + debugName + "] is not loaded");
 
 	#if GARDEN_DEBUG
@@ -792,7 +792,7 @@ void Pipeline::bindDescriptorSetsAsync(const DescriptorSet::Range* ranges, uint8
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
 		auto vulkanAPI = VulkanAPI::get();
-		auto& vkDescriptorSets = vulkanAPI->bindDescriptorSets[threadIndex];
+		auto& bindDescriptorSets = vulkanAPI->bindDescriptorSets[threadIndex];
 
 		for (uint8 i = 0; i < rangeCount; i++)
 		{
@@ -804,26 +804,26 @@ void Pipeline::bindDescriptorSetsAsync(const DescriptorSet::Range* ranges, uint8
 			{
 				auto setCount = descriptorSetRange.offset + descriptorSetRange.count;
 				for (uint32 j = descriptorSetRange.offset; j < setCount; j++)
-					vkDescriptorSets.push_back(instance[j]);
+					bindDescriptorSets.push_back(instance[j]);
 			}
-			else vkDescriptorSets.push_back((VkDescriptorSet)instance);
+			else bindDescriptorSets.push_back((VkDescriptorSet)instance);
 		}
 
 		auto bindPoint = toVkPipelineBindPoint(type);
 		auto& secondaryCommandBuffers = vulkanAPI->secondaryCommandBuffers;
 		auto vkPipelineLayout = vk::PipelineLayout((VkPipelineLayout)pipelineLayout);
-		auto vkDescriptorSetData = vkDescriptorSets.data();
-		auto vkDescriptorSetCount = (uint32)vkDescriptorSets.size();
+		auto bindDescriptorSetData = bindDescriptorSets.data();
+		auto bindDescriptorSetCount = (uint32)bindDescriptorSets.size();
 
 		while (threadIndex < autoThreadCount)
 		{
 			secondaryCommandBuffers[threadIndex].bindDescriptorSets(bindPoint, 
-				vkPipelineLayout, 0, vkDescriptorSetCount, vkDescriptorSetData, 0, nullptr);
+				vkPipelineLayout, 0, bindDescriptorSetCount, bindDescriptorSetData, 0, nullptr);
 			currentCommandBuffer->addCommand(command, threadIndex);
 			updateDescriptorsLock(ranges, rangeCount, threadIndex);
 			threadIndex++;
 		}
-		vkDescriptorSets.clear();
+		bindDescriptorSets.clear();
 	}
 	else abort();
 }
@@ -841,7 +841,7 @@ void Pipeline::pushConstants(const void* data)
 
 	PushConstantsCommand command;
 	command.dataSize = pushConstantsSize;
-	command.pipelineStages = pushConstantsMask;
+	command.pipelineStages = pushConstantStages;
 	command.pipelineLayout = pipelineLayout;
 	command.data = data;
 	currentCommandBuffer->addCommand(command);
@@ -863,7 +863,7 @@ void Pipeline::pushConstantsAsync(const void* data, int32 threadIndex)
 	{
 		VulkanAPI::get()->secondaryCommandBuffers[threadIndex].pushConstants(
 			vk::PipelineLayout((VkPipelineLayout)pipelineLayout), 
-			(vk::ShaderStageFlags)pushConstantsMask, 0, pushConstantsSize, data);
+			toVkShaderStages(pushConstantStages), 0, pushConstantsSize, data);
 	}
 	else abort();
 }

@@ -63,6 +63,7 @@ namespace garden::graphics
 	struct GraphicsPipelineLoadData final : public PipelineLoadData
 	{
 		vector<Image::Format> colorFormats;
+		GraphicsPipeline::VertexAttributes vertexAttribOverrides;
 		GraphicsPipeline::PipelineStates pipelineStateOverrides;
 		GraphicsPipeline::BlendStates blendStateOverrides;
 		ID<GraphicsPipeline> instance = {};
@@ -1426,17 +1427,17 @@ void ResourceSystem::combineImages(const vector<fs::path>& inputPaths, const fs:
 	Image::FileType fileType, Image::Format imageFormat, float quality, float effort, int32 threadIndex)
 {
 	GARDEN_ASSERT(!inputPaths.empty());
-	GARDEN_ASSERT(!inputPaths[0].empty());
+	GARDEN_ASSERT(!inputPaths.front().empty());
 	GARDEN_ASSERT(!outputPath.empty());
 	GARDEN_ASSERT(threadIndex < (int32)thread::hardware_concurrency());
 
 	raw_vector<uint8> inBuffer; uint4 inSize; Image::Type inType; Image::Format inFormat;
-	loadImageData(inputPaths[0], inBuffer, inSize, inType, inFormat, threadIndex);
+	loadImageData(inputPaths.front(), inBuffer, inSize, inType, inFormat, threadIndex);
 
 	if (inSize.z != 1 || inType != Image::Type::Texture2D)
 	{
 		throw GardenError("Failed to combine images, image is not 2D. ("
-			"path: " + inputPaths[0].generic_string() + ")");
+			"path: " + inputPaths.front().generic_string() + ")");
 	}
 
 	auto pathCount = (uint32)inputPaths.size();
@@ -1468,7 +1469,7 @@ void ResourceSystem::combineImages(const vector<fs::path>& inputPaths, const fs:
 		if (inSize != otherSize || inType != otherType)
 		{
 			throw GardenError("Failed to combine images, different sizes or types. ("
-				"path: " + inputPaths[0].generic_string() + ")");
+				"path: " + inputPaths.front().generic_string() + ")");
 		}
 
 		tmpData = (const uint8*)Image::convertFormat(inBuffer.data(), 
@@ -1812,6 +1813,8 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 			data->specConstValues = std::move(*loadOptions.specConstValues);
 		if (loadOptions.samplerStateOverrides)
 			data->samplerStateOverrides = std::move(*loadOptions.samplerStateOverrides);
+		if (loadOptions.vertexAttribOverrides)
+			data->vertexAttribOverrides = std::move(*loadOptions.vertexAttribOverrides);
 		if (loadOptions.pipelineStateOverrides)
 			data->pipelineStateOverrides = std::move(*loadOptions.pipelineStateOverrides);
 		if (loadOptions.blendStateOverrides)
@@ -1835,6 +1838,7 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 			pipelineData.pipelineVersion = data->pipelineVersion;
 			pipelineData.maxBindlessCount = data->maxBindlessCount;
 			pipelineData.colorFormats = std::move(data->colorFormats);
+			pipelineData.vertexAttribOverrides = std::move(data->vertexAttribOverrides);
 			pipelineData.pipelineStateOverrides = std::move(data->pipelineStateOverrides);
 			pipelineData.blendStateOverrides = std::move(data->blendStateOverrides);
 			pipelineData.depthStencilFormat = data->depthStencilFormat;
@@ -1875,6 +1879,8 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 			pipelineData.specConstValues = std::move(*loadOptions.specConstValues);
 		if (loadOptions.samplerStateOverrides)
 			pipelineData.samplerStateOverrides = std::move(*loadOptions.samplerStateOverrides);
+		if (loadOptions.vertexAttribOverrides)
+			pipelineData.vertexAttribOverrides = std::move(*loadOptions.vertexAttribOverrides);
 		if (loadOptions.pipelineStateOverrides)
 			pipelineData.pipelineStateOverrides = std::move(*loadOptions.pipelineStateOverrides);
 		if (loadOptions.blendStateOverrides)
@@ -2730,18 +2736,18 @@ ID<Animation> ResourceSystem::loadAnimation(const fs::path& path)
 					string type;
 					if (!deserializer.read(".type", type))
 					{
-						deserializer.endArrayElement();
 						GARDEN_LOG_ERROR("Missing animation component type. (path: " + path.generic_string() + 
-							", keyframe: " + to_string(i) + ", component: " + to_string(j) + ")");
+							", frame: " + to_string(frame) + ", component: " + to_string(j) + ")");
+						deserializer.endArrayElement();
 						continue;
 					}
 
 					auto result = componentNames.find(type);
 					if (result == componentNames.end())
 					{
-						deserializer.endArrayElement();
 						GARDEN_LOG_ERROR("Unknown animation component type. (path: " + path.generic_string() + 
-							", keyframe: " + to_string(i) + ", component: " + to_string(j) + ")");
+							", frame: " + to_string(frame) + ", component: " + to_string(j) + ")");
+						deserializer.endArrayElement();
 						continue;
 					}
 
@@ -2749,9 +2755,9 @@ ID<Animation> ResourceSystem::loadAnimation(const fs::path& path)
 					auto animatableSystem = dynamic_cast<IAnimatable*>(system);
 					if (!animatableSystem)
 					{
-						deserializer.endArrayElement();
 						GARDEN_LOG_ERROR("Not animatable system. (path: " + path.generic_string() + 
-							", keyframe: " + to_string(i) + ", component: " + to_string(j) + ")");
+							", frame: " + to_string(frame) + ", component: " + to_string(j) + ")");
+						deserializer.endArrayElement();
 						continue;
 					}
 
@@ -2761,10 +2767,10 @@ ID<Animation> ResourceSystem::loadAnimation(const fs::path& path)
 
 					if (!animationFrameView->hasAnimation())
 					{
+						GARDEN_LOG_ERROR("Missing keyframe animation. (path: " + path.generic_string() + 
+							", frame: " + to_string(frame) + ", component: " + to_string(j) + ")");
 						animatableSystem->destroyAnimation(animationFrame);
 						deserializer.endArrayElement();
-						GARDEN_LOG_ERROR("Missing keyframe animation. (path: " + path.generic_string() + 
-							", keyframe: " + to_string(i) + ", component: " + to_string(j) + ")");
 						continue;
 					}
 
@@ -2779,7 +2785,13 @@ ID<Animation> ResourceSystem::loadAnimation(const fs::path& path)
 							animationFrameView->funcType = AnimationFunc::Gain;
 					}
 
-					animatables.emplace(result->second, animationFrame);
+					auto emplaceResult = animatables.emplace(animatableSystem, animationFrame);
+					if (!emplaceResult.second)
+					{
+						GARDEN_LOG_ERROR("Multiple animations for one component. (path: " + path.generic_string() + 
+							", frame: " + to_string(frame) + ", component: " + to_string(j) + ")");
+						animatableSystem->destroyAnimation(animationFrame);
+					}
 					deserializer.endArrayElement();
 				}
 
@@ -2790,7 +2802,14 @@ ID<Animation> ResourceSystem::loadAnimation(const fs::path& path)
 				}
 				else
 				{
-					animationView->emplaceKeyframe(frame, std::move(animatables));
+					auto emplaceResult = animationView->emplaceKeyframe(frame, std::move(animatables));
+					if (!emplaceResult.second)
+					{
+						GARDEN_LOG_ERROR("Multiple keyframes for one index. (path: " + 
+							path.generic_string() + ", frame: " + to_string(frame) + ")");
+						for (auto pair : animatables)
+							pair.first->destroyAnimation(pair.second);
+					}
 				}
 				deserializer.endChild();
 			}
@@ -2889,15 +2908,13 @@ void ResourceSystem::storeAnimation(const fs::path& path, ID<Animation> animatio
 		serializer.beginChild("components");
 		for (const auto& animatable : animatables)
 		{
-			auto system = animatable.first;
-			auto componentName = system->getComponentName();
-			if (componentName.empty())
+			auto animatableSystem = animatable.first;
+			if (animatableSystem->getSystemCompName().empty())
 				continue;
 
 			serializer.beginArrayElement();
-			serializer.write(".type", componentName);
+			serializer.write(".type", animatableSystem->getSystemCompName());
 
-			auto animatableSystem = dynamic_cast<IAnimatable*>(system);
 			auto frameView = animatableSystem->getAnimation(animatable.second);
 			if (frameView->funcType == AnimationFunc::Pow)
 				serializer.write(".funcType", string_view("Pow"));

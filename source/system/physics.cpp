@@ -1751,7 +1751,10 @@ int PhysicsSystem::onMsgFromServer(StreamInput message, bool isDatagram)
 
 		auto result = netRigidbodies.find(entityUID);
 		if (result == netRigidbodies.end())
-			netRigidbodies.emplace(entityUID, netRigidbody);
+		{
+			auto emplaceResult = netRigidbodies.emplace(entityUID, netRigidbody);
+			GARDEN_ASSERT_MSG(emplaceResult.second, "Detected memory corruption");
+		}
 		else result->second = netRigidbody;
 	}
 	netRigidbodyLocker.unlock();

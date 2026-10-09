@@ -101,7 +101,8 @@ static void renderTagList(const string& searchString, bool searchCaseSensitive)
 		auto searchResult = uniqueTags.find(pair.first);
 		if (searchResult == uniqueTags.end())
 		{
-			uniqueTags.emplace(pair.first, 1);
+			auto emplaceResult = uniqueTags.emplace(pair.first, 1);
+			GARDEN_ASSERT_MSG(emplaceResult.second, "Detected memory corruption");
 			continue;
 		}
 		searchResult->second++;

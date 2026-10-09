@@ -42,7 +42,7 @@ void SpriteRenderSystem::imageLoaded()
 {
 	auto resourceSystem = ResourceSystem::getInstance();
 	auto image = resourceSystem->getLoadedImage();
-	auto& imagePath = resourceSystem->getLoadedImagePaths()[0];
+	auto& imagePath = resourceSystem->getLoadedImagePaths().front();
 	auto& spriteRenderPool = getMeshComponentPool();
 	auto componentSize = getMeshComponentSize();
 	auto componentData = (uint8*)spriteRenderPool.getData();

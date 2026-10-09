@@ -594,7 +594,8 @@ static void updateImGuiTextures(ImVector<ImTextureData*>& textures,
 			
 			auto imageView = graphicsSystem->get(image)->getView();
 			auto emplaceResult = dsCache.emplace(imageView, ID<DescriptorSet>());
-			GARDEN_ASSERT(emplaceResult.second);
+			GARDEN_ASSERT_MSG(emplaceResult.second, "Detected memory corruption");
+
 			texture->SetTexID(*imageView);
 			texture->SetStatus(ImTextureStatus_OK);
 		}
@@ -693,12 +694,12 @@ void ImGuiRenderSystem::uiRender()
 		auto vertexSize = drawData->TotalVtxCount * sizeof(ImDrawVert);
 		auto indexSize = drawData->TotalIdxCount * sizeof(ImDrawIdx);
 
-		if (vertexBuffers.size() == 0 || graphicsSystem->get(vertexBuffers[0])->getBinarySize() < vertexSize)
+		if (vertexBuffers.size() == 0 || graphicsSystem->get(vertexBuffers.front())->getBinarySize() < vertexSize)
 		{
 			graphicsSystem->destroy(vertexBuffers);
 			createBuffers(graphicsSystem, vertexBuffers, vertexSize, Buffer::Usage::Vertex);
 		}
-		if (indexBuffers.size() == 0 || graphicsSystem->get(indexBuffers[0])->getBinarySize() < indexSize)
+		if (indexBuffers.size() == 0 || graphicsSystem->get(indexBuffers.front())->getBinarySize() < indexSize)
 		{
 			graphicsSystem->destroy(indexBuffers);
 			createBuffers(graphicsSystem, indexBuffers, indexSize, Buffer::Usage::Index);

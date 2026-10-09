@@ -83,6 +83,8 @@ void CommandBuffer::processCommands()
 			processCommand(*(const DrawCommand*)command); break;
 		case Command::Type::DrawIndexed:
 			processCommand(*(const DrawIndexedCommand*)command); break;
+		case Command::Type::DrawBarrier:
+			processCommand(*(const DrawBarrierCommand*)command); break;
 		case Command::Type::Dispatch:
 			processCommand(*(const DispatchCommand*)command); break;
 		case Command::Type::FillBuffer:
@@ -137,7 +139,9 @@ void CommandBuffer::lockResource(ResourceType type, ID<Resource> resource, int32
 	ResourceKey key(resource, type);
 	if (lockResources->find(key) != lockResources->end())
 		return;
-	lockResources->emplace(key);
+
+	auto emplaceResult = lockResources->emplace(key);
+	GARDEN_ASSERT_MSG(emplaceResult.second, "Detected memory corruption");
 
 	auto graphicsAPI = GraphicsAPI::get();
 	switch (key.type)

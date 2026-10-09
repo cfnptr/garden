@@ -66,6 +66,7 @@ public:
 	 */
 	struct GraphicsLoadOptions final : public PipelineLoadOptions
 	{
+		GraphicsPipeline::VertexAttributes* vertexAttribOverrides = nullptr; /**< Vertex attribute overrides or null. */
 		GraphicsPipeline::PipelineStates* pipelineStateOverrides = nullptr; /**< Pipeline state overrides or null. */
 		GraphicsPipeline::BlendStates* blendStateOverrides = nullptr; /**< Pipeline blend state overrides or null. */
 		GraphicsPipeline::ShaderOverrides* shaderOverrides = nullptr; /**< Pipeline shader code overrides or null. */

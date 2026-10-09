@@ -32,9 +32,6 @@ void Animation::destroyKeyframes(const Keyframes& keyframes)
 	{
 		const auto& animatables = keyframe.second;
 		for (const auto& pair : animatables)
-		{
-			auto animatableSystem = dynamic_cast<IAnimatable*>(pair.first);
-			animatableSystem->destroyAnimation(pair.second);
-		}
+			pair.first->destroyAnimation(pair.second);
 	}
 }

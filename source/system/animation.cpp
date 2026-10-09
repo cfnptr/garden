@@ -17,6 +17,7 @@
 #include "garden/system/resource.hpp"
 #include "garden/system/thread.hpp"
 #include "garden/system/input.hpp"
+#include "garden/system/log.hpp"
 #include "garden/profiler.hpp"
 
 using namespace garden;
@@ -80,9 +81,9 @@ static void animateComponent(Manager* manager, const AnimationSystem::AnimationP
 			keyframeB--; const auto& animatables = keyframeB->second;
 			for (const auto& pair : animatables)
 			{
-				auto animatableSystem = dynamic_cast<IAnimatable*>(pair.first);
+				auto animatableSystem = pair.first;
 				auto frameView = animatableSystem->getAnimation(pair.second);
-				auto componentView = manager->tryGet(entity, pair.first->getComponentType());
+				auto componentView = manager->tryGet(entity, animatableSystem->getSystemCompType());
 				if (componentView)
 					animatableSystem->animateAsync(View<Component>(componentView), frameView, frameView, 1.0f);
 			}
@@ -109,9 +110,9 @@ static void animateComponent(Manager* manager, const AnimationSystem::AnimationP
 	{
 		for (const auto& pair : animatablesA)
 		{
-			auto animatableSystem = dynamic_cast<IAnimatable*>(pair.first);
+			auto animatableSystem = pair.first;
 			auto frameView = animatableSystem->getAnimation(pair.second);
-			auto componentView = manager->tryGet(entity, pair.first->getComponentType());
+			auto componentView = manager->tryGet(entity, animatableSystem->getSystemCompType());
 			if (componentView)
 				animatableSystem->animateAsync(View<Component>(componentView), frameView, frameView, 1.0f);
 		}
@@ -126,7 +127,7 @@ static void animateComponent(Manager* manager, const AnimationSystem::AnimationP
 		for (const auto& pairA : animatablesA)
 		{
 			auto animationFrameB = animatablesB.at(pairA.first);
-			auto animatableSystem = dynamic_cast<IAnimatable*>(pairA.first);
+			auto animatableSystem = pairA.first;
 			auto frameViewA = animatableSystem->getAnimation(pairA.second);
 			auto frameViewB = animatableSystem->getAnimation(animationFrameB);
 
@@ -135,7 +136,7 @@ static void animateComponent(Manager* manager, const AnimationSystem::AnimationP
 			else if (frameViewA->funcType == AnimationFunc::Gain)
 				t = gain(t, frameViewA->funcCoeff);
 
-			auto componentView = manager->tryGet(entity, pairA.first->getComponentType());
+			auto componentView = manager->tryGet(entity, animatableSystem->getSystemCompType());
 			if (componentView)
 				animatableSystem->animateAsync(View<Component>(componentView), frameViewA, frameViewB, t);
 		}
@@ -293,7 +294,11 @@ void AnimationSystem::deserialize(IDeserializer& deserializer, View<Component> c
 			{
 				auto animation = resourceSystem->loadSharedAnimation(path);
 				if (animation)
-					animations.emplace(std::move(path), std::move(animation));
+				{
+					auto emplaceResult = animations.emplace(std::move(path), std::move(animation));
+					if (!emplaceResult.second)
+						GARDEN_LOG_ERROR("Multiple component animations with the same path. (path: " + path + ")");
+				}
 			}
 
 			deserializer.endArrayElement();

@@ -142,8 +142,8 @@ void* StreamServerHandle::onSessionCreate(nets::StreamSessionView streamSession)
 		#else
 		datagramUID = (uint32)rand();
 		#endif
-		auto result = datagramMap.emplace(datagramUID, clientSession);
-		if (!result.second)
+		auto emplaceResult = datagramMap.emplace(datagramUID, clientSession);
+		if (!emplaceResult.second)
 			continue;
 		clientSession->datagramUID = datagramUID;
 		break;
@@ -378,8 +378,8 @@ void ServerNetworkSystem::preInit()
 			auto messageType = networkableSystem->getMessageType();
 			GARDEN_ASSERT(messageType.length() <= UINT8_MAX);
 			GARDEN_ASSERT(listeners.find(messageType) == listeners.end());
-			auto result = networkables.emplace(messageType, networkableSystem);
-			GARDEN_ASSERT_MSG(result.second, "Already registered network message type");
+			auto emplaceResult = networkables.emplace(messageType, networkableSystem);
+			GARDEN_ASSERT_MSG(emplaceResult.second, "Already registered network message type");
 		}
 	}
 

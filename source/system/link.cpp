@@ -42,8 +42,8 @@ void LinkComponent::regenerateUUID()
 	auto& randomDevice = linkSystem->randomDevice;
 	uint32 seed[2] { randomDevice(), randomDevice() };
 	uuid = Hash128::generateRandom(*(uint64*)(seed));
+
 	auto result = linkSystem->uuidMap.emplace(uuid, entity);
-	
 	if (!result.second)
 		throw GardenError("Link UUID collision occurred.");
 }

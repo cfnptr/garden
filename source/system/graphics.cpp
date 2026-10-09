@@ -108,7 +108,7 @@ GraphicsSystem::GraphicsSystem(uint2 windowSize, bool isFullscreen, bool isDecor
 		auto constantsBuffer = createBuffer(Buffer::Usage::Uniform, Buffer::CpuAccess::SequentialWrite, 
 			sizeof(CommonConstants), Buffer::Location::Auto, Buffer::Strategy::Size);
 		SET_RESOURCE_DEBUG_NAME(constantsBuffer, "buffer.uniform.commonConstants" + to_string(i));
-		commonConstantsBuffers[i].resize(1); commonConstantsBuffers[i][0] = constantsBuffer;
+		commonConstantsBuffers[i].push_back(constantsBuffer);
 	}
 }
 
@@ -368,7 +368,7 @@ void GraphicsSystem::update()
 
 		auto framebufferView = graphicsAPI->framebufferPool.get(swapchainFramebuffer);
 		auto swapchainView = graphicsAPI->imagePool.get(graphicsAPI->getSwapchain()->getCurrentImage());
-		FramebufferExt::getColorAttachments(**framebufferView)[0].imageView = swapchainView->getView();
+		FramebufferExt::getColorAttachments(**framebufferView).front().imageView = swapchainView->getView();
 		FramebufferExt::getSize(**framebufferView) = swapchain->getFramebufferSize();
 	}
 	
@@ -405,7 +405,7 @@ void GraphicsSystem::update()
 		{
 			prepareCommonConstants();
 			auto cameraBuffer = graphicsAPI->bufferPool.get(
-				commonConstantsBuffers[swapchain->getInFlightIndex()][0]);
+				commonConstantsBuffers[swapchain->getInFlightIndex()].front());
 			cameraBuffer->writeData(&commonConstants);
 		}
 		manager->runEvent("Render");
@@ -660,7 +660,7 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 	GARDEN_ASSERT(areAllTrue(size > uint3::zero));
 
 	auto mipCount = (uint8)data.size();
-	auto layerCount = (uint32)data[0].size();
+	auto layerCount = (uint32)data.front().size();
 
 	#if GARDEN_DEBUG
 	if (type == Image::Type::Texture1D)
@@ -1180,14 +1180,9 @@ Image::Usage GraphicsSystem::getImageQ() const noexcept
 	return Image::Usage::None;
 }
 
-void GraphicsSystem::addBarriers(Buffer::BarrierState newState, const ID<Buffer>* buffers, uint32 bufferCount)
+static void validateAddBarriers(GraphicsAPI* graphicsAPI, 
+	CommandBuffer* currentCommandBuffer, const ID<Buffer>* buffers, uint32 bufferCount)
 {
-	auto graphicsAPI = GraphicsAPI::get();
-	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
-	GARDEN_ASSERT(buffers);
-	GARDEN_ASSERT(bufferCount);
-	GARDEN_ASSERT(currentCommandBuffer);
-
 	#if GARDEN_DEBUG
 	auto commandBufferType = currentCommandBuffer->getType();
 	if (commandBufferType == CommandBufferType::TransferOnly)
@@ -1209,6 +1204,45 @@ void GraphicsSystem::addBarriers(Buffer::BarrierState newState, const ID<Buffer>
 		}
 	}
 	#endif
+}
+void GraphicsSystem::addBarriers(const Buffer::BarrierState* newStates, const ID<Buffer>* buffers, uint32 bufferCount)
+{
+	auto graphicsAPI = GraphicsAPI::get();
+	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
+	GARDEN_ASSERT(newStates);
+	GARDEN_ASSERT(buffers);
+	GARDEN_ASSERT(bufferCount > 0);
+	GARDEN_ASSERT(currentCommandBuffer);
+	validateAddBarriers(graphicsAPI, currentCommandBuffer, buffers, bufferCount);
+
+	auto graphicsBackend = graphicsAPI->getBackendType();
+	if (graphicsBackend == GraphicsBackend::VulkanAPI)
+	{
+		for (uint32 i = 0; i < bufferCount; i++)
+		{
+			auto bufferView = graphicsAPI->bufferPool.get(buffers[i]);
+			if (VulkanCommandBuffer::isDifferentState(BufferExt::getBarrierState(**bufferView), newStates[i]))
+				barrierBuffers.push_back(buffers[i]);
+		}
+	}
+	else abort();
+
+	BufferBarrierCommand command;
+	command.sameNewState = false;
+	command.bufferCount = (uint32)barrierBuffers.size();
+	command.buffers = barrierBuffers.data();
+	command.newStates = newStates;
+	currentCommandBuffer->addCommand(command);
+	barrierBuffers.clear();
+}
+void GraphicsSystem::addBarriers(Buffer::BarrierState newState, const ID<Buffer>* buffers, uint32 bufferCount)
+{
+	auto graphicsAPI = GraphicsAPI::get();
+	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
+	GARDEN_ASSERT(buffers);
+	GARDEN_ASSERT(bufferCount > 0);
+	GARDEN_ASSERT(currentCommandBuffer);
+	validateAddBarriers(graphicsAPI, currentCommandBuffer, buffers, bufferCount);
 
 	auto graphicsBackend = graphicsAPI->getBackendType();
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
@@ -1223,9 +1257,10 @@ void GraphicsSystem::addBarriers(Buffer::BarrierState newState, const ID<Buffer>
 	else abort();
 
 	BufferBarrierCommand command;
-	command.newState = newState;
+	command.sameNewState = true;
 	command.bufferCount = (uint32)barrierBuffers.size();
 	command.buffers = barrierBuffers.data();
+	command.newStates = &newState;
 	currentCommandBuffer->addCommand(command);
 	barrierBuffers.clear();
 }

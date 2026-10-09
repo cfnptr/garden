@@ -354,11 +354,37 @@ public:
 		}
 	};
 
-	using PipelineStates = absl::flat_hash_map<uint8, State>;
-	using VertexAttributes = absl::flat_hash_map<uint8, vector<VertexAttribute>>;
-	using BlendStates = absl::flat_hash_map<uint8, vector<BlendState>>;
-
 	/**
+	 * @brief Draw primitives rendering command description.
+	 */
+	struct DrawData final
+	{
+		const ID<Buffer>* vertexBuffers = nullptr; /**< Vertex buffer array or null. */
+		const uint64* bufferOffsets = nullptr;     /**< Vertex buffer offset array or null. */
+		uint32 vertexCount = 0;                    /**< Draw call vertex count. */
+		uint32 instanceCount = 1;                  /**< Draw call instance count. */
+		uint32 vertexOffset = 0;                   /**< Vertex offset in the buffer or 0. */
+		uint32 instanceOffset = 0;                 /**< Draw instance offset or 0. */
+		uint8 bufferCount = 0;                     /**< Vertex buffer array size or 0. */
+	};
+	/**
+	 * @brief Draw indexed primitives rendering command description.
+	 */
+	struct DrawIndexedData final
+	{
+		const ID<Buffer>* vertexBuffers = nullptr; /**< Vertex buffer array. */
+		const uint64* bufferOffsets = nullptr;     /**< Vertex buffer offset array or null. */
+		ID<Buffer> indexBuffer = {};               /**< Index buffer instance. */
+		uint32 indexCount = 0;                     /**< Draw call index count. */
+		uint32 instanceCount = 1;                  /**< Draw call instance count. */
+		uint32 indexOffset = 0;                    /**< Index offset in the buffer or 0. */
+		uint32 vertexOffset = 0;                   /**< Vertex offset in the buffer or 0. */
+		uint32 instanceOffset = 0;                 /**< Draw instance offset or 0. */
+		uint8 vertexBufferCount = 0;               /**< Vertex buffer array size. */
+		IndexType indexType = {};                  /**< Type of the index data. */
+	};
+
+	/*******************************************************************************************************************
 	 * @brief Graphics pipeline shader code overrides.
 	 * @details It allows to override pipeline shader code.
 	 */
@@ -368,6 +394,11 @@ public:
 		raw_vector<uint8> vertexCode;
 		raw_vector<uint8> fragmentCode;
 	};
+
+	using PipelineStates = absl::flat_hash_map<uint8, State>;
+	using VertexAttributes = absl::flat_hash_map<uint8, vector<VertexAttribute>>;
+	using BlendStates = absl::flat_hash_map<uint8, vector<BlendState>>;
+
 	/**
 	 * @brief Graphics pipeline create data container.
 	 * @warning In most cases you should use @ref GraphicsSystem functions.
@@ -382,8 +413,8 @@ public:
 		vector<VertexAttribute> vertexAttributes;
 		vector<BlendState> blendStates;
 		vector<Image::Format> colorFormats;
+		VertexAttributes vertexAttribOverrides;
 		PipelineStates pipelineStateOverrides;
-		VertexAttributes vertexAttrOverrides;
 		BlendStates blendStateOverrides;
 		State pipelineState = {};
 	};
@@ -485,86 +516,18 @@ public:
 	 * Fundamental operation that instructs the GPU to render primitives (basic shapes like points, lines and 
 	 * triangles) based on the provided vertex data and the current graphics pipeline state.
 	 * 
-	 * @param[in] vertexBuffers target vertex buffers or null
-	 * @param bufferCount vertex buffer count or 0
-	 * @param vertexCount vertex count to draw
-	 * @param instanceCount draw instance count
-	 * @param vertexOffset vertex offset in the buffer or 0
-	 * @param instanceOffset draw instance offset or 0
+	 * @param[in] data target primitives draw data
 	 */
-	void draw(const ID<Buffer>* vertexBuffers, uint8 bufferCount, uint32 vertexCount, 
-		uint32 instanceCount = 1, uint32 vertexOffset = 0, uint32 instanceOffset = 0);
-	/**
-	 * @brief Renders primitives to the framebuffer.
-	 * 
-	 * @details 
-	 * Fundamental operation that instructs the GPU to render primitives (basic shapes like points, lines and 
-	 * triangles) based on the provided vertex data and the current graphics pipeline state.
-	 * 
-	 * @param vertexBuffer target vertex buffer or null
-	 * @param vertexCount vertex count to draw
-	 * @param instanceCount draw instance count
-	 * @param vertexOffset vertex offset in the buffer or 0
-	 * @param instanceOffset draw instance offset or 0
-	 */
-	void draw(ID<Buffer> vertexBuffer, uint32 vertexCount, uint32 instanceCount = 1, 
-		uint32 vertexOffset = 0, uint32 instanceOffset = 0)
-	{
-		draw(&vertexBuffer, 1, vertexCount, instanceCount, vertexOffset, instanceOffset);
-	}
-
+	void draw(const DrawData& data);
 	/**
 	 * @brief Renders primitives to the framebuffer. (MT-Safe)
 	 * @details See the @ref GraphicsPipeline::draw()
 	 * 
+	 * @param[in] data target primitives draw data
 	 * @param threadIndex thread index in the pool
-	 * @param[in] vertexBuffers target vertex buffers or null
-	 * @param bufferCount vertex buffer count or 0
-	 * @param vertexCount vertex count to draw
-	 * @param instanceCount draw instance count
-	 * @param vertexOffset vertex offset in the buffer or 0
-	 * @param instanceOffset draw instance offset or 0
 	 */
-	void drawAsync(int32 threadIndex, const ID<Buffer>* vertexBuffers, uint8 bufferCount, 
-		uint32 vertexCount, uint32 instanceCount = 1, uint32 vertexOffset = 0, uint32 instanceOffset = 0);
-	/**
-	 * @brief Renders primitives to the framebuffer. (MT-Safe)
-	 * @details See the @ref GraphicsPipeline::draw()
-	 * 
-	 * @param threadIndex thread index in the pool
-	 * @param vertexBuffer target vertex buffer or null
-	 * @param vertexCount vertex count to draw
-	 * @param instanceCount draw instance count
-	 * @param vertexOffset vertex offset in the buffer or 0
-	 * @param instanceOffset draw instance offset or 0
-	 */
-	void drawAsync(int32 threadIndex, ID<Buffer> vertexBuffer, uint32 vertexCount, 
-		uint32 instanceCount = 1, uint32 vertexOffset = 0, uint32 instanceOffset = 0)
-	{
-		drawAsync(threadIndex, &vertexBuffer, 1, vertexCount, instanceCount, vertexOffset, instanceOffset);
-	}
+	void drawAsync(const DrawData& data, int32 threadIndex);
 
-	/*******************************************************************************************************************
-	 * @brief Renders primitives based on indices to the framebuffer.
-	 * 
-	 * @details 
-	 * Tells the GPU to render primitives (such as triangles, lines or points) based on indices into a 
-	 * set of vertices. This command is particularly efficient for rendering complex geometries where 
-	 * vertices are shared among multiple primitives.
-	 * 
-	 * @param[in] vertexBuffers target vertex buffers
-	 * @param vertexBufferCount vertex buffer count
-	 * @param indexType type of the index data
-	 * @param indexBuffer target index buffer
-	 * @param indexCount index count to draw
-	 * @param instanceCount draw instance count
-	 * @param indexOffset index offset in the buffer or 0
-	 * @param vertexOffset vertex offset in the buffer or 0
-	 * @param instanceOffset draw instance offset or 0
-	 */
-	void drawIndexed(const ID<Buffer>* vertexBuffers, uint8 vertexBufferCount, 
-		IndexType indexType, ID<Buffer> indexBuffer, uint32 indexCount, uint32 instanceCount = 1,
-		uint32 indexOffset = 0, uint32 vertexOffset = 0, uint32 instanceOffset = 0);
 	/**
 	 * @brief Renders primitives based on indices to the framebuffer.
 	 * 
@@ -573,61 +536,17 @@ public:
 	 * set of vertices. This command is particularly efficient for rendering complex geometries where 
 	 * vertices are shared among multiple primitives.
 	 * 
-	 * @param vertexBuffer target vertex buffer
-	 * @param indexType type of the index data
-	 * @param indexBuffer target index buffer
-	 * @param indexCount index count to draw
-	 * @param instanceCount draw instance count
-	 * @param indexOffset index offset in the buffer or 0
-	 * @param vertexOffset vertex offset in the buffer or 0
-	 * @param instanceOffset draw instance offset or 0
+	 * @param[in] data target indexed primitives draw data
 	 */
-	void drawIndexed(ID<Buffer> vertexBuffer, IndexType indexType, ID<Buffer> indexBuffer, uint32 indexCount, 
-		uint32 instanceCount = 1, uint32 indexOffset = 0, uint32 vertexOffset = 0, uint32 instanceOffset = 0)
-	{
-		drawIndexed(&vertexBuffer, 1, indexType, indexBuffer, indexCount, 
-			instanceCount, indexOffset, vertexOffset, instanceOffset);
-	}
-
+	void drawIndexed(const DrawIndexedData& data);
 	/**
 	 * @brief Renders primitives based on indices to the framebuffer.
 	 * @details See the @ref GraphicsPipeline::drawIndexed()
 	 * 
+	 * @param[in] data target indexed primitives draw data
 	 * @param threadIndex thread index in the pool
-	 * @param[in] vertexBuffers target vertex buffers
-	 * @param vertexBufferCount vertex buffer count
-	 * @param indexType type of the index data
-	 * @param indexBuffer target index buffer
-	 * @param indexCount index count to draw
-	 * @param instanceCount draw instance count
-	 * @param indexOffset index offset in the buffer or 0
-	 * @param vertexOffset vertex offset in the buffer or 0
-	 * @param instanceOffset draw instance offset or 0
 	 */
-	void drawIndexedAsync(int32 threadIndex, const ID<Buffer>* vertexBuffers, uint8 vertexBufferCount, 
-		IndexType indexType, ID<Buffer> indexBuffer, uint32 indexCount, uint32 instanceCount = 1, 
-		uint32 indexOffset = 0, uint32 vertexOffset = 0, uint32 instanceOffset = 0);
-	/**
-	 * @brief Renders primitives based on indices to the framebuffer.
-	 * @details See the @ref GraphicsPipeline::drawIndexed()
-	 * 
-	 * @param threadIndex thread index in the pool
-	 * @param vertexBuffer target vertex buffer
-	 * @param indexType type of the index data
-	 * @param indexBuffer target index buffer
-	 * @param indexCount index count to draw
-	 * @param instanceCount draw instance count
-	 * @param indexOffset index offset in the buffer or 0
-	 * @param vertexOffset vertex offset in the buffer or 0
-	 * @param instanceOffset draw instance offset or 0
-	 */
-	void drawIndexedAsync(int32 threadIndex, ID<Buffer> vertexBuffer, IndexType indexType, 
-		ID<Buffer> indexBuffer, uint32 indexCount, uint32 instanceCount = 1, 
-		uint32 indexOffset = 0, uint32 vertexOffset = 0, uint32 instanceOffset = 0)
-	{
-		drawIndexedAsync(threadIndex, &vertexBuffer, 1, indexType, indexBuffer, 
-			indexCount, instanceCount, indexOffset, vertexOffset, instanceOffset);
-	}
+	void drawIndexedAsync(const DrawIndexedData& data, int32 threadIndex);
 
 	/**
 	 * @brief Renders fullscreen triangle to the framebuffer.

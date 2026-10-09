@@ -140,8 +140,8 @@ public:
 	vector<ID<Pipeline>> currentPipelines;
 	vector<PipelineType> currentPipelineTypes;
 	vector<uint8> currentPipelineVariants;
-	vector<ID<Buffer>> currentVertexBuffers;
 	vector<ID<Buffer>> currentIndexBuffers;
+	vector<vector<ID<Buffer>>> currentVertexBuffers;
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	bool recordGpuTime = false;

@@ -585,7 +585,7 @@ public:
 		Image::Strategy strategy = Image::Strategy::Default, Image::Format dataFormat = Image::Format::Undefined)
 	{
 		GARDEN_ASSERT(!data.empty());
-		auto imageType = data[0].size() > 1 ? Image::Type::Texture2DArray : Image::Type::Texture2D;
+		auto imageType = data.front().size() > 1 ? Image::Type::Texture2DArray : Image::Type::Texture2D;
 		return createImage(imageType, format, usage, data, uint3(size.x, size.y, 1), strategy, dataFormat);
 	}
 	/**
@@ -606,7 +606,7 @@ public:
 		Image::Strategy strategy = Image::Strategy::Default, Image::Format dataFormat = Image::Format::Undefined)
 	{
 		GARDEN_ASSERT(!data.empty());
-		auto imageType = data[0].size() > 1 ? Image::Type::Texture1DArray : Image::Type::Texture1D;
+		auto imageType = data.front().size() > 1 ? Image::Type::Texture1DArray : Image::Type::Texture1D;
 		return createImage(imageType, format, usage, data, uint3(size, 1, 1), strategy, dataFormat);
 	}
 	/**
@@ -1299,6 +1299,15 @@ public:
 	 * @brief Adds buffer memory barriers command.
 	 * @note You should manually synchronize memory access when use buffer device addresses!
 	 * 
+	 * @param[in] newStates new buffers barrier states
+	 * @param[in] buffers buffer array to synchronize
+	 * @param bufferCount buffer and state array size
+	 */
+	void addBarriers(const Buffer::BarrierState* newStates, const ID<Buffer>* buffers, uint32 bufferCount);
+	/**
+	 * @brief Adds buffer memory barriers command.
+	 * @note You should manually synchronize memory access when use buffer device addresses!
+	 * 
 	 * @param newState new buffers barrier state
 	 * @param[in] buffers buffer array to synchronize
 	 * @param bufferCount buffer array size
@@ -1314,7 +1323,7 @@ public:
 	 * @param bufferCount buffer array size
 	 */
 	void addBarriers(Memory::AccessFlags accessFlags, PipelineStage pipelineStages,
-		 const ID<Buffer>* buffers, uint32 bufferCount)
+		const ID<Buffer>* buffers, uint32 bufferCount)
 	{
 		addBarriers(Memory::toBarrierState(accessFlags, pipelineStages), buffers, bufferCount);
 	}

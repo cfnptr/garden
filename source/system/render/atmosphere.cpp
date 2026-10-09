@@ -804,7 +804,7 @@ void AtmosphereRenderSystem::generateSkyShDiffuse(ID<Buffer> shDiffuse, f32x4x4*
 	}
 
 	SET_GPU_DEBUG_LABEL("Generate SH");
-	auto shCacheView = graphicsSystem->get(shCaches[shInFlightIndex][0]);
+	auto shCacheView = graphicsSystem->get(shCaches[shInFlightIndex].front());
 	shCacheView->fill(0, sizeof(uint32));
 
 	shGenPipelineView->bind();
@@ -836,7 +836,7 @@ void AtmosphereRenderSystem::generateSkyShDiffuse(ID<Buffer> shDiffuse, f32x4x4*
 
 	if (!isFirstSH)
 	{
-		shCacheView = graphicsSystem->get(shCaches[shInFlightIndex][0]);
+		shCacheView = graphicsSystem->get(shCaches[shInFlightIndex].front());
 		auto shCacheOffset = shCacheView->getBinarySize() - shCacheBinarySize;
 		shCacheView->invalidate(shCacheBinarySize, shCacheOffset);
 		
@@ -858,7 +858,7 @@ void AtmosphereRenderSystem::generateSkyShDiffuse(ID<Buffer> shDiffuse, f32x4x4*
 			(half4)shCache[6], (half4)shCache[7], (half4)shCache[8], half4(f32x4::zero)
 		};
 
-		auto shStaging = shStagings[shInFlightIndex][0];
+		auto shStaging = shStagings[shInFlightIndex].front();
 		auto shStagingView = graphicsSystem->get(shStaging);
 		memcpy(shStagingView->getMap(), shCoeffs16, shBinarySize);
 		shStagingView->flush();

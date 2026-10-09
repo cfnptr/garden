@@ -30,7 +30,7 @@ static DescriptorSet::Buffers createAddressBuffers(uint32 capacity,
 		auto buffer = graphicsAPI->bufferPool.create(Buffer::Usage::Storage | 
 			addressBufferUsage, Buffer::CpuAccess::SequentialWrite, 
 			Buffer::Location::Auto, Buffer::Strategy::Default, sizeof(uint64) * capacity, 0);
-		addressBuffer.resize(1); addressBuffer[0] = buffer;
+		addressBuffer.push_back(buffer);
 	}
 
 	return addressBuffers;
@@ -162,7 +162,7 @@ void AddressPool::flush(uint32 inFlightIndex, bool& newAddressBuffer)
 
 	if (!addressBuffers.empty())
 	{
-		auto bufferView = graphicsAPI->bufferPool.get(addressBuffers[0][0]);
+		auto bufferView = graphicsAPI->bufferPool.get(addressBuffers.front().front());
 		if (bufferView->getBinarySize() < capacity * sizeof(uint64))
 		{
 			destroyAddressBuffers(graphicsAPI, addressBuffers);
@@ -190,7 +190,7 @@ void AddressPool::flush(uint32 inFlightIndex, bool& newAddressBuffer)
 	}
 	#endif
 	
-	auto buffer = addressBuffers[inFlightIndex][0];
+	auto buffer = addressBuffers[inFlightIndex].front();
 	auto bufferView = graphicsAPI->bufferPool.get(buffer);
 	memcpy(bufferView->getMap(), deviceAddresses.data(), deviceAddresses.size() * sizeof(uint64));
 	bufferView->flush();
@@ -251,17 +251,16 @@ void AddressPool::addBufferBarriers(Buffer::BarrierState newState)
 				continue;
 
 			auto bufferView = graphicsAPI->bufferPool.get(buffers[i]);
-			GARDEN_ASSERT(bufferView->getBinarySize() > 0); // Note: not deallocated.
-
-			if (VulkanCommandBuffer::isDifferentState(BufferExt::getBarrierState(**bufferView), newState))
-				barriers[barrierCount++] = buffers[i];
+			GARDEN_ASSERT(bufferView->getBinarySize() > 0); // Note: checking if not deallocated.
+			barriers[barrierCount++] = buffers[i];
 		}
 	}
 	else abort();
 
 	BufferBarrierCommand command;
-	command.newState = newState;
+	command.sameNewState = true;
 	command.bufferCount = barrierCount;
 	command.buffers = barriers;
+	command.newStates = &newState;
 	currentCommandBuffer->addCommand(command);
 }

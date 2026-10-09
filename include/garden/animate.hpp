@@ -19,7 +19,7 @@
 
 #pragma once
 #include "garden/serialize.hpp"
-#include <map>
+#include "absl/container/btree_map.h"
 
 namespace garden
 {
@@ -50,17 +50,21 @@ struct AnimationFrame
 	virtual bool hasAnimation() { return false; }
 };
 
-/**
- * @brief Animatable system properties container. 
- */
-using Animatables = absl::flat_hash_map<System*, ID<AnimationFrame>>;
-
 /***********************************************************************************************************************
  * @brief Base animatable system interface.
  */
 class IAnimatable
 {
 public:
+	/**
+	 * @brief Returns component name of the animatable system.
+	 */
+	virtual std::string_view getSystemCompName() const;
+	/**
+	 * @brief Returns component typeid() of the animatable system.
+	 */
+	virtual std::type_index getSystemCompType() const;
+
 	/**
 	 * @brief Creates a new system animation frame instance.
 	 */
@@ -109,13 +113,18 @@ public:
 	virtual void animateAsync(View<Component> component, View<AnimationFrame> a, View<AnimationFrame> b, float t) = 0;
 };
 
+/**
+ * @brief Animatable system properties container. 
+ */
+using Animatables = absl::flat_hash_map<IAnimatable*, ID<AnimationFrame>>;
+
 /***********************************************************************************************************************
  * @brief Animation keyframes container.
  */
 struct Animation final
 {
 public:
-	using Keyframes = map<int32, Animatables>;
+	using Keyframes = absl::btree_map<int32, Animatables>;
 private:
 	Keyframes keyframes;
 
@@ -147,8 +156,9 @@ public:
 		GARDEN_ASSERT(!animatables.empty());
 		for (const auto& pair : animatables)
 		{
-			GARDEN_ASSERT_MSG(dynamic_cast<IAnimatable*>(pair.first), "Not an IAnimatable system");
+			GARDEN_ASSERT_MSG(pair.first, "Animation system is null");
 			GARDEN_ASSERT_MSG(pair.second, "Animation frame is null");
+			GARDEN_ASSERT_MSG(dynamic_cast<System*>(pair.first), "IAnimatable is not a System");
 		}
 		auto firstKeyframe = keyframes.begin();
 		if (firstKeyframe != keyframes.end())
@@ -205,6 +215,21 @@ public:
 	using AnimFramePool = LinearPool<F, DestroyAnimationFrames>; /**< System animation frame pool type. */
 protected:
 	AnimFramePool animationFrames; /**< System animation frame pool. */
+
+	/**
+	 * @brief Returns component name of the animatable system.
+	 */
+	std::string_view getSystemCompName() const override
+	{
+		return this->getComponentName();
+	}
+	/**
+	 * @brief Returns component typeid() of the animatable system.
+	 */
+	std::type_index getSystemCompType() const override
+	{
+		return this->getComponentType();
+	}
 
 	/**
 	 * @brief Creates a new system animation frame instance.

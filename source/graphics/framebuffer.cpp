@@ -311,22 +311,21 @@ void Framebuffer::beginRenderPass(const float4* clearColors, uint8 clearColorCou
 		else abort();
 
 		auto threadCount = graphicsAPI->getThreadPool()->getThreadCount();
-		for (uint32 i = 0; i < threadCount; i++)
-		{
-			graphicsAPI->currentPipelines[i] = {};
-			graphicsAPI->currentPipelineTypes[i] = {};
-			graphicsAPI->currentPipelineVariants[i] = 0;
-			graphicsAPI->currentVertexBuffers[i] = {};
-			graphicsAPI->currentIndexBuffers[i] = {};
-		}
+		graphicsAPI->currentPipelines.assign(threadCount, {});
+		graphicsAPI->currentPipelineTypes.assign(threadCount, {});
+		graphicsAPI->currentPipelineVariants.assign(threadCount, {});
+		graphicsAPI->currentIndexBuffers.assign(threadCount, {});
+
+		for (auto vertexBuffers : graphicsAPI->currentVertexBuffers)
+			vertexBuffers.clear();
 	}
 	else
 	{
-		graphicsAPI->currentPipelines[0] = {};
-		graphicsAPI->currentPipelineTypes[0] = {}; 
-		graphicsAPI->currentPipelineVariants[0] = 0;
-		graphicsAPI->currentVertexBuffers[0] = {};
-		graphicsAPI->currentIndexBuffers[0] = {};
+		graphicsAPI->currentPipelines.front() = {};
+		graphicsAPI->currentPipelineTypes.front() = {}; 
+		graphicsAPI->currentPipelineVariants.front() = 0;
+		graphicsAPI->currentIndexBuffers.front() = {};
+		graphicsAPI->currentVertexBuffers.front().clear();
 	}
 
 	BeginRenderPassCommand command;

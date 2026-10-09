@@ -277,8 +277,8 @@ void ClientNetworkSystem::preInit()
 			auto messageType = networkableSystem->getMessageType();
 			GARDEN_ASSERT(messageType.length() <= UINT8_MAX);
 			GARDEN_ASSERT(listeners.find(messageType) == listeners.end());
-			auto result = networkables.emplace(messageType, networkableSystem);
-			GARDEN_ASSERT_MSG(result.second, "Already registered network message type");
+			auto emplaceResult = networkables.emplace(messageType, networkableSystem);
+			GARDEN_ASSERT_MSG(emplaceResult.second, "Already registered network message type");
 		}
 	}
 

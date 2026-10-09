@@ -98,6 +98,8 @@ public:
 	vector<vk::CommandBuffer> secondaryCommandBuffers;
 	vector<atomic_bool_aligned*> secondaryCommandStates; // We need atomic here!
 	vector<vector<vk::DescriptorSet>> bindDescriptorSets;
+	vector<vector<vk::Buffer>> bindBuffers;
+	vector<vector<vk::DeviceSize>> bindBufferOffsets;
 	vector<vk::DescriptorSetLayout> descriptorSetLayouts;
 	vector<vk::WriteDescriptorSet> writeDescriptorSets;
 	vector<vk::WriteDescriptorSetAccelerationStructureKHR> asWriteDescriptorSets;

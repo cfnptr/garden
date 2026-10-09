@@ -69,7 +69,7 @@ namespace garden::graphics
 	};
 	struct GraphicsGslValues final : public GslValues
 	{
-		PipelineStage pushConstantsStages = {};
+		PipelineStage pushConstantStages = {};
 		GraphicsPipeline::State pipelineState = {};
 		uint16 perInstanceMask = 0;
 		uint8 vertexAttributeCount = 0;
@@ -85,7 +85,7 @@ namespace garden::graphics
 	};
 	struct RayTracingGslValues final : public GslValues
 	{
-		PipelineStage pushConstantsStages = {};
+		PipelineStage pushConstantStages = {};
 		uint8 rayRecursionDepth = 0;
 		uint8 _alignment = 0;
 	};
@@ -652,7 +652,10 @@ static void onShaderUniform(FileData& fileData, LineData& lineData,
 	{
 		auto result = samplerStates.find(lineData.uniformName);
 		if (result == samplerStates.end())
-			samplerStates.emplace(lineData.uniformName, fileData.samplerState);
+		{
+			auto emplaceResult = samplerStates.emplace(lineData.uniformName, fileData.samplerState);
+			GARDEN_ASSERT_MSG(emplaceResult.second, "Detected memory corruption");
+		}
 		else
 		{
 			if (memcmp(&fileData.samplerState, &result->second, sizeof(Sampler::State)) != 0)
@@ -1692,19 +1695,23 @@ static bool compileGraphicsShader(const fs::path& inputPath, const fs::path& out
 
 			if (lineData.word.length() >= 2)
 			{
-				if (lineData.word[0] == '/' && lineData.word[1] == '/')
+				if (memcmp(lineData.word.c_str(), "//", 2) == 0)
 				{
 					do fileData.fileOutputStream << lineData.word << " ";
 					while (fileData.inputStream >> lineData.word);
 					break;
 				}
-				else if (lineData.word[0] == '/' && lineData.word[1] == '*') fileData.isSkipMode = true;
+				else if (memcmp(lineData.word.c_str(), "/*", 2) == 0) fileData.isSkipMode = true;
 			}
 
 			if (fileData.isSkipMode)
 			{
 				fileData.fileOutputStream << lineData.word << " ";
-				if (lineData.word.find("*/") != string::npos) fileData.isSkipMode = false;
+				if (lineData.word.length() >= 2 && memcmp(lineData.word.c_str() + 
+					lineData.word.length() - 2, "*/", 2) == 0)
+				{
+					fileData.isSkipMode = false;
+				}
 				continue;
 				// TODO: offset word and process it.
 				// Also incorrect line count if uniform sampler2D sampler; // Has some comment
@@ -1891,9 +1898,9 @@ bool GslCompiler::compileGraphicsShaders(const fs::path& inputPath,
 	GARDEN_ASSERT(data.uniforms.size() <= UINT8_MAX);
 	GARDEN_ASSERT(data.samplerStates.size() <= UINT8_MAX);
 
-	data.pushConstantsStages = PipelineStage::None;
-	if (vertexPushConstantsSize > 0) data.pushConstantsStages |= PipelineStage::Vertex;
-	if (fragmentPushConstantsSize > 0) data.pushConstantsStages |= PipelineStage::Fragment;
+	data.pushConstantStages = PipelineStage::None;
+	if (vertexPushConstantsSize > 0) data.pushConstantStages |= PipelineStage::Vertex;
+	if (fragmentPushConstantsSize > 0) data.pushConstantStages |= PipelineStage::Fragment;
 
 	if (vertexPushConstantsSize > 0) data.pushConstantsSize = vertexPushConstantsSize;
 	else if (fragmentPushConstantsSize > 0) data.pushConstantsSize = fragmentPushConstantsSize;
@@ -1917,7 +1924,7 @@ bool GslCompiler::compileGraphicsShaders(const fs::path& inputPath,
 	values.variantCount = data.variantCount;
 	values.specConstCount = (uint8)data.specConsts.size();
 	values.pushConstantsSize = data.pushConstantsSize;
-	values.pushConstantsStages = data.pushConstantsStages;
+	values.pushConstantStages = data.pushConstantStages;
 	values.pipelineState = data.pipelineState;
 	values.perInstanceMask = data.perInstanceMask;
 	values.vertexAttributeCount = (uint8)data.vertexAttributes.size();
@@ -1983,19 +1990,23 @@ bool GslCompiler::compileComputeShader(const fs::path& inputPath,
 
 			if (lineData.word.length() >= 2)
 			{
-				if (lineData.word[0] == '/' && lineData.word[1] == '/')
+				if (memcmp(lineData.word.c_str(), "//", 2) == 0)
 				{
 					do fileData.fileOutputStream << lineData.word << " ";
 					while (fileData.inputStream >> lineData.word);
 					break;
 				}
-				else if (lineData.word[0] == '/' && lineData.word[1] == '*') fileData.isSkipMode = true;
+				else if (memcmp(lineData.word.c_str(), "/*", 2) == 0) fileData.isSkipMode = true;
 			}
 
 			if (fileData.isSkipMode)
 			{
 				fileData.fileOutputStream << lineData.word << " ";
-				if (lineData.word.find("*/") != string::npos) fileData.isSkipMode = false;
+				if (lineData.word.length() >= 2 && memcmp(lineData.word.c_str() + 
+					lineData.word.length() - 2, "*/", 2) == 0)
+				{
+					fileData.isSkipMode = false;
+				}
 				continue;
 			}
 
@@ -2077,7 +2088,7 @@ bool GslCompiler::compileComputeShader(const fs::path& inputPath,
 	fileData.fileOutputStream.close();
 	compileShaderFile(outputFilePath, includePaths);
 
-	if (data.pushConstantsSize > 0) data.pushConstantsStages = pipelineStage;
+	if (data.pushConstantsSize > 0) data.pushConstantStages = pipelineStage;
 	if (data.variantCount == 0) data.variantCount = 1;
 
 	data.descriptorSetCount = 0;
@@ -2152,19 +2163,23 @@ static bool compileRayTracingShader(const fs::path& inputPath, const fs::path& o
 
 			if (lineData.word.length() >= 2)
 			{
-				if (lineData.word[0] == '/' && lineData.word[1] == '/')
+				if (memcmp(lineData.word.c_str(), "//", 2) == 0)
 				{
 					do fileData.fileOutputStream << lineData.word << " ";
 					while (fileData.inputStream >> lineData.word);
 					break;
 				}
-				else if (lineData.word[0] == '/' && lineData.word[1] == '*') fileData.isSkipMode = true;
+				else if (memcmp(lineData.word.c_str(), "/*", 2) == 0) fileData.isSkipMode = true;
 			}
 
 			if (fileData.isSkipMode)
 			{
 				fileData.fileOutputStream << lineData.word << " ";
-				if (lineData.word.find("*/") != string::npos) fileData.isSkipMode = false;
+				if (lineData.word.length() >= 2 && memcmp(lineData.word.c_str() + 
+					lineData.word.length() - 2, "*/", 2) == 0)
+				{
+					fileData.isSkipMode = false;
+				}
 				continue;
 			}
 
@@ -2369,7 +2384,7 @@ bool GslCompiler::compileRayTracingShaders(const fs::path& inputPath,
 
 	checkRtShaderValues(bValues, bValues);
 	rayGenGroupIndex++; missGroupIndex++; hitGroupIndex++;
-	data.pushConstantsStages = PipelineStage::None;
+	data.pushConstantStages = PipelineStage::None;
 
 	uint8 groupIndex = 1;
 	while (true)
@@ -2409,24 +2424,24 @@ bool GslCompiler::compileRayTracingShaders(const fs::path& inputPath,
 			break;
 
 		checkRtShaderValues(bValues, hgValues);
-		if (hgValues.rayGenPushConstantsSize > 0) data.pushConstantsStages |= PipelineStage::RayGeneration;
-		if (hgValues.missPushConstantsSize > 0) data.pushConstantsStages |= PipelineStage::Miss;
-		if (hgValues.callPushConstantsSize > 0) data.pushConstantsStages |= PipelineStage::Callable;
-		if (hgValues.intersectPushConstantsSize > 0) data.pushConstantsStages |= PipelineStage::Intersection;
-		if (hgValues.anyHitPushConstantsSize > 0) data.pushConstantsStages |= PipelineStage::AnyHit;
-		if (hgValues.closHitPushConstantsSize > 0) data.pushConstantsStages |= PipelineStage::ClosestHit;
+		if (hgValues.rayGenPushConstantsSize > 0) data.pushConstantStages |= PipelineStage::RayGeneration;
+		if (hgValues.missPushConstantsSize > 0) data.pushConstantStages |= PipelineStage::Miss;
+		if (hgValues.callPushConstantsSize > 0) data.pushConstantStages |= PipelineStage::Callable;
+		if (hgValues.intersectPushConstantsSize > 0) data.pushConstantStages |= PipelineStage::Intersection;
+		if (hgValues.anyHitPushConstantsSize > 0) data.pushConstantStages |= PipelineStage::AnyHit;
+		if (hgValues.closHitPushConstantsSize > 0) data.pushConstantStages |= PipelineStage::ClosestHit;
 	}
 	data.shaderPath.replace_extension();
 
 	GARDEN_ASSERT(data.uniforms.size() <= UINT8_MAX);
 	GARDEN_ASSERT(data.samplerStates.size() <= UINT8_MAX);
 
-	if (bValues.rayGenPushConstantsSize > 0) data.pushConstantsStages |= PipelineStage::RayGeneration;
-	if (bValues.missPushConstantsSize > 0) data.pushConstantsStages |= PipelineStage::Miss;
-	if (bValues.callPushConstantsSize > 0) data.pushConstantsStages |= PipelineStage::Callable;
-	if (bValues.intersectPushConstantsSize > 0) data.pushConstantsStages |= PipelineStage::Intersection;
-	if (bValues.anyHitPushConstantsSize > 0) data.pushConstantsStages |= PipelineStage::AnyHit;
-	if (bValues.closHitPushConstantsSize > 0) data.pushConstantsStages |= PipelineStage::ClosestHit;
+	if (bValues.rayGenPushConstantsSize > 0) data.pushConstantStages |= PipelineStage::RayGeneration;
+	if (bValues.missPushConstantsSize > 0) data.pushConstantStages |= PipelineStage::Miss;
+	if (bValues.callPushConstantsSize > 0) data.pushConstantStages |= PipelineStage::Callable;
+	if (bValues.intersectPushConstantsSize > 0) data.pushConstantStages |= PipelineStage::Intersection;
+	if (bValues.anyHitPushConstantsSize > 0) data.pushConstantStages |= PipelineStage::AnyHit;
+	if (bValues.closHitPushConstantsSize > 0) data.pushConstantStages |= PipelineStage::ClosestHit;
 	
 	data.pushConstantsSize = bValues.rayGenPushConstantsSize;
 	data.variantCount = max(max(max(max(max(bValues.rayGenVariantCount, bValues.missVariantCount), 
@@ -2449,7 +2464,7 @@ bool GslCompiler::compileRayTracingShaders(const fs::path& inputPath,
 	values.variantCount = data.variantCount;
 	values.specConstCount = (uint8)data.specConsts.size();
 	values.pushConstantsSize = data.pushConstantsSize;
-	values.pushConstantsStages = data.pushConstantsStages;
+	values.pushConstantStages = data.pushConstantStages;
 	values.rayRecursionDepth = data.rayRecursionDepth;
 	
 	ofstream headerStream;
@@ -2603,7 +2618,7 @@ void GslCompiler::loadGraphicsShaders(GraphicsData& data)
 			throw GardenError("Invalid GSL spec const data.");
 	}
 
-	data.pushConstantsStages = values.pushConstantsStages;
+	data.pushConstantStages = values.pushConstantStages;
 	data.pushConstantsSize = values.pushConstantsSize;
 	data.descriptorSetCount = values.descriptorSetCount;
 	data.variantCount = values.variantCount;
@@ -2648,7 +2663,7 @@ void GslCompiler::loadComputeShader(ComputeData& data)
 		dataOffset, values.specConstCount, data.specConsts);
 
 	if (values.pushConstantsSize > 0)
-		data.pushConstantsStages = PipelineStage::Compute;
+		data.pushConstantStages = PipelineStage::Compute;
 
 	data.pushConstantsSize = values.pushConstantsSize;
 	data.descriptorSetCount = values.descriptorSetCount;
@@ -2816,7 +2831,7 @@ void GslCompiler::loadRayTracingShaders(RayTracingData& data)
 	readGslHeaderArray<Pipeline::SpecConst>(headerData, dataSize, 
 		dataOffset, values.specConstCount, data.specConsts);
 
-	data.pushConstantsStages = values.pushConstantsStages;
+	data.pushConstantStages = values.pushConstantStages;
 	data.pushConstantsSize = values.pushConstantsSize;
 	data.descriptorSetCount = values.descriptorSetCount;
 	data.variantCount = values.variantCount;
