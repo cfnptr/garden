@@ -15,8 +15,6 @@
 #include "garden/graphics/framebuffer.hpp"
 #include "garden/graphics/vulkan/api.hpp"
 
-#include <set>
-
 using namespace math;
 using namespace garden;
 using namespace garden::graphics;
@@ -78,12 +76,14 @@ static uint32 getDepthStencilLayout(Framebuffer::Attachment depthStencilAttachme
 	if (!depthStencilAttachment.imageView)
 		return 0;
 
-	auto graphicsAPI = GraphicsAPI::get();
-	auto graphicsBackend = graphicsAPI->getBackendType();
-
+	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
-		auto imageFormat = graphicsAPI->imageViewPool.get(depthStencilAttachment.imageView)->getFormat();
+		auto vulkanAPI = VulkanAPI::get();
+		if (vulkanAPI->features.unifiedLayouts)
+			return (uint32)vk::ImageLayout::eGeneral;
+
+		auto imageFormat = vulkanAPI->imageViewPool.get(depthStencilAttachment.imageView)->getFormat();
 		if (isFormatDepthOnly(imageFormat))
 		{
 			return (uint32)(depthStencilAttachment.storeOperation == Framebuffer::StoreOp::Store ? 
@@ -132,7 +132,8 @@ void Framebuffer::update(uint2 size, const Attachment* colorAttachments,
 	uint32 colorAttachmentCount, Attachment depthStencilAttachment)
 {
 	GARDEN_ASSERT_MSG(areAllTrue(size > uint2::zero), "Assert " + debugName);
-	GARDEN_ASSERT_MSG(colorAttachmentCount > 0 || depthStencilAttachment.imageView, "Assert " + debugName);
+	GARDEN_ASSERT_MSG((colorAttachments && colorAttachmentCount > 0) || 
+		(!colorAttachments && colorAttachmentCount == 0), "Assert " + debugName);
 	GARDEN_ASSERT_MSG(!GraphicsAPI::get()->renderPassFramebuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(!swapchain, "Can't update swapchain framebuffer");
 
@@ -176,7 +177,8 @@ void Framebuffer::update(uint2 size, const ID<ImageView>* colorImageViews,
 {
 	auto graphicsAPI = GraphicsAPI::get();
 	GARDEN_ASSERT_MSG(areAllTrue(size > uint2::zero), "Assert " + debugName);
-	GARDEN_ASSERT_MSG(colorImageViewCount > 0 || depthStencilIV, "Assert " + debugName);
+	GARDEN_ASSERT_MSG((colorImageViews && colorImageViewCount > 0) || 
+		(!colorImageViews && colorImageViewCount == 0), "Assert " + debugName);
 	GARDEN_ASSERT_MSG(colorImageViewCount == colorAttachments.size(), "Assert " + debugName);
 	GARDEN_ASSERT_MSG(!graphicsAPI->renderPassFramebuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(!swapchain, "Can't update swapchain framebuffer");
@@ -217,7 +219,7 @@ void Framebuffer::updateColor(uint32 index, ID<ImageView> colorImageView)
 {
 	GARDEN_ASSERT_MSG(index < colorAttachments.size(), "Assert " + debugName);
 	GARDEN_ASSERT_MSG(!swapchain, "Can't update swapchain framebuffer");
-	auto& colorAttachment = colorAttachments.data()[index];
+	auto& colorAttachment = colorAttachments[index];
 
 	#if GARDEN_DEBUG
 	if (colorAttachment.imageView)
@@ -233,8 +235,9 @@ void Framebuffer::updateColor(uint32 index, ID<ImageView> colorImageView)
 }
 void Framebuffer::updateColor(uint32 index, LoadOp loadOperation, StoreOp storeOperation)
 {
+	GARDEN_ASSERT_MSG(index < colorAttachments.size(), "Assert " + debugName);
 	GARDEN_ASSERT_MSG(!swapchain, "Can't update swapchain framebuffer");
-	auto& colorAttachment = colorAttachments.data()[index];
+	auto& colorAttachment = colorAttachments[index];
 	colorAttachment.loadOperation = loadOperation;
 	colorAttachment.storeOperation = storeOperation;
 }
@@ -286,7 +289,8 @@ void Framebuffer::beginRenderPass(const float4* clearColors, uint8 clearColorCou
 	auto graphicsAPI = GraphicsAPI::get();
 	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
 	GARDEN_ASSERT_MSG(clearColorCount == colorAttachments.size(), "Assert " + debugName);
-	GARDEN_ASSERT_MSG(!clearColors || (clearColors && clearColorCount > 0), "Assert " + debugName);
+	GARDEN_ASSERT_MSG((clearColors && clearColorCount > 0) || 
+		(!clearColors && clearColorCount == 0), "Assert " + debugName);
 	GARDEN_ASSERT_MSG(region.x + region.z <= size.x, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(region.y + region.w <= size.y, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(currentCommandBuffer, "Assert " + debugName);
@@ -366,6 +370,10 @@ void Framebuffer::clearAttachments(const ClearAttachment* attachments,
 {
 	auto graphicsAPI = GraphicsAPI::get();
 	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
+	GARDEN_ASSERT_MSG(attachments, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(attachmentCount > 0, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(regions, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(regionCount > 0, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(graphicsAPI->renderPassFramebuffer == 
 		graphicsAPI->framebufferPool.getID(this), "Assert " + debugName);
 	GARDEN_ASSERT_MSG(currentCommandBuffer, "Assert " + debugName);
@@ -382,14 +390,12 @@ void Framebuffer::clearAttachments(const ClearAttachment* attachments,
 RenderPass::RenderPass(ID<Framebuffer> framebuffer, const float4* clearColors, 
 	uint8 clearColorCount, float clearDepth, uint32 clearStencil, int4 region, bool asyncRecording)
 {
-	GARDEN_ASSERT(framebuffer);
 	auto framebufferView = GraphicsAPI::get()->framebufferPool.get(framebuffer);
 	framebufferView->beginRenderPass(clearColors, clearColorCount, clearDepth, clearStencil, region, asyncRecording);
 	this->framebuffer = framebuffer;
 }
 RenderPass::~RenderPass()
 {
-	GARDEN_ASSERT(framebuffer);
 	auto framebufferView = GraphicsAPI::get()->framebufferPool.get(framebuffer);
 	framebufferView->endRenderPass();
 }

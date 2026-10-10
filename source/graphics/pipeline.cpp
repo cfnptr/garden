@@ -47,7 +47,7 @@ static vector<void*> createVkPipelineSamplers(const Pipeline::Uniforms& uniforms
 		auto emplaceResult = immutableSamplers.emplace(it->first, sampler);
 		GARDEN_ASSERT_MSG(emplaceResult.second, "Detected memory corruption");
 
-		#if GARDEN_DEBUG // Note: No GARDEN_EDITOR
+		#if GARDEN_USE_GAPI_VALIDATIONS
 		if (vulkanAPI->features.debugUtils)
 		{
 			auto name = "sampler." + pipelinePath.generic_string() + "." + it->first;
@@ -185,7 +185,7 @@ static void createVkDescriptorSetLayouts(vector<void*>& descriptorSetLayouts, ve
 			descriptorPools.push_back(vulkanAPI->device.createDescriptorPool(descriptorPoolInfo));
 			descriptorPoolSizes.clear();
 
-			#if GARDEN_DEBUG // Note: No GARDEN_EDITOR
+			#if GARDEN_USE_GAPI_VALIDATIONS
 			if (vulkanAPI->features.debugUtils)
 			{
 				auto name = "descriptorPool." + pipelinePath.generic_string() + to_string(dsIndex);
@@ -200,7 +200,7 @@ static void createVkDescriptorSetLayouts(vector<void*>& descriptorSetLayouts, ve
 		descriptorSetLayouts.push_back(vulkanAPI->device.createDescriptorSetLayout(descriptorSetLayoutInfo));
 		samplerArrays.clear();
 
-		#if GARDEN_DEBUG // Note: No GARDEN_EDITOR
+		#if GARDEN_USE_GAPI_VALIDATIONS
 		if (vulkanAPI->features.debugUtils)
 		{
 			auto name = "descriptorSetLayout." + pipelinePath.generic_string() + to_string(dsIndex);
@@ -253,7 +253,7 @@ static vk::PipelineLayout createVkPipelineLayout(uint16 pushConstantsSize, Pipel
 	auto vulkanAPI = VulkanAPI::get();
 	auto layout = vulkanAPI->device.createPipelineLayout(pipelineLayoutInfo);
 
-	#if GARDEN_DEBUG // Note: No GARDEN_EDITOR
+	#if GARDEN_USE_GAPI_VALIDATIONS
 	if (vulkanAPI->features.debugUtils)
 	{
 		auto name = "pipelineLayout." + pipelinePath.generic_string();
@@ -336,7 +336,7 @@ static vector<void*> createVkShaders(const raw_vector<uint8>* codeArray, uint8 s
 		auto shader = (VkShaderModule)vulkanAPI->device.createShaderModule(shaderInfo);
 		shaderData[i] = shader;
 
-		#if GARDEN_DEBUG // Note: No GARDEN_EDITOR
+		#if GARDEN_USE_GAPI_VALIDATIONS
 		if (vulkanAPI->features.debugUtils)
 		{
 			auto _name = "shaderModule." + pipelinePath.generic_string() + to_string(i);
@@ -678,9 +678,9 @@ void Pipeline::bindAsync(uint8 variant, int32 threadIndex)
 	GARDEN_ASSERT_MSG(currentCommandBuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(isLoaded(), "Pipeline [" + debugName + "] is not loaded");
 
-	auto graphicsBackend = graphicsAPI->getBackendType();
 	auto pipeline = graphicsAPI->getPipeline(type, this);
 	auto autoThreadCount = graphicsAPI->calcAutoThreadCount(threadIndex);
+	auto graphicsBackend = graphicsAPI->getBackendType();
 
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
@@ -784,10 +784,10 @@ void Pipeline::bindDescriptorSetsAsync(const DescriptorSet::Range* ranges, uint8
 	command.rangeCount = rangeCount;
 	command.ranges = ranges;
 
-	auto graphicsBackend = graphicsAPI->getBackendType();
 	auto autoThreadCount = graphicsAPI->calcAutoThreadCount(threadIndex);
 	GARDEN_ASSERT_MSG(ID<Pipeline>(graphicsAPI->getPipeline(type, this)) == 
 		graphicsAPI->currentPipelines[threadIndex], "Assert " + debugName);
+	auto graphicsBackend = graphicsAPI->getBackendType();
 
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
@@ -857,8 +857,8 @@ void Pipeline::pushConstantsAsync(const void* data, int32 threadIndex)
 	GARDEN_ASSERT_MSG(isLoaded(), "Pipeline [" + debugName + "] is not loaded");
 
 	graphicsAPI->calcAutoThreadIndex(threadIndex);
-
 	auto graphicsBackend = graphicsAPI->getBackendType();
+
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
 		VulkanAPI::get()->secondaryCommandBuffers[threadIndex].pushConstants(

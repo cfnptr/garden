@@ -42,16 +42,16 @@ static ID<Image> createEdgesBuffer(GraphicsSystem* graphicsSystem)
 static ID<ImageView> getLdrCopyView(GraphicsSystem* graphicsSystem)
 {
 	auto gBuffer = DeferredRenderSystem::getInstance()->getGBuffers()[G_BUFFER_BASE_COLOR]; 
-	auto imageView = graphicsSystem->get(gBuffer)->getView(); // Note: Reusing G-Buffer memory.
-	GARDEN_ASSERT(graphicsSystem->get(gBuffer)->getFormat() == DeferredRenderSystem::ldrBufferFormat);
-	return imageView;
+	auto image = graphicsSystem->get(gBuffer); // Note: Reusing G-Buffer memory.
+	GARDEN_ASSERT(image->getFormat() == DeferredRenderSystem::ldrBufferFormat);
+	return image->getView();
 }
 static ID<ImageView> getWeightsView(GraphicsSystem* graphicsSystem)
 {
 	auto gBuffer = DeferredRenderSystem::getInstance()->getGBuffers()[G_BUFFER_METALLIC]; 
-	auto imageView = graphicsSystem->get(gBuffer)->getView(); // Note: Reusing G-Buffer memory.
-	GARDEN_ASSERT(graphicsSystem->get(gBuffer)->getFormat() == Image::Format::UnormR8G8B8A8);
-	return imageView;
+	auto image = graphicsSystem->get(gBuffer); // Note: Reusing G-Buffer memory.
+	GARDEN_ASSERT(image->getFormat() == Image::Format::UnormR8G8B8A8);
+	return image->getView();
 }
 
 static ID<Framebuffer> createEdgesFramebuffer(GraphicsSystem* graphicsSystem, ID<Image> edgesBuffer)

@@ -1129,7 +1129,7 @@ void EditorRenderSystem::drawFileSelector(const char* name, fs::path& path, ID<E
 	type_index componentType, const fs::path& directory, const vector<string_view>& extensions)
 {
 	GARDEN_ASSERT(name);
-	GARDEN_ASSERT(entity);
+	GARDEN_ASSERT_MSG(entity, "Assert " + string(name));
 
 	auto pathString = path.generic_string();
 	if (ImGui::InputText(name, &pathString, ImGuiInputTextFlags_ReadOnly))
@@ -1164,7 +1164,7 @@ void EditorRenderSystem::drawImageSelector(const char* name, fs::path& path, Ref
 	Ref<DescriptorSet>& descriptorSet, ID<Entity> entity, type_index componentType)
 {
 	GARDEN_ASSERT(name);
-	GARDEN_ASSERT(entity);
+	GARDEN_ASSERT_MSG(entity, "Assert " + string(name));
 
 	auto pathString = path.generic_string();
 	if (ImGui::InputText(name, &pathString, ImGuiInputTextFlags_ReadOnly))
@@ -1217,7 +1217,7 @@ void EditorRenderSystem::drawModelSelector(const char* name, fs::path& path, Ref
 	Ref<Buffer>& indexBuffer, ID<Entity> entity, type_index componentType)
 {
 	GARDEN_ASSERT(name);
-	GARDEN_ASSERT(entity);
+	GARDEN_ASSERT_MSG(entity, "Assert " + string(name));
 
 	auto pathString = path.generic_string();
 	if (ImGui::InputText(name, &pathString, ImGuiInputTextFlags_ReadOnly))

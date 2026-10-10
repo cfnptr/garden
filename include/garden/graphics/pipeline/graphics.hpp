@@ -359,29 +359,29 @@ public:
 	 */
 	struct DrawData final
 	{
-		const ID<Buffer>* vertexBuffers = nullptr; /**< Vertex buffer array or null. */
-		const uint64* bufferOffsets = nullptr;     /**< Vertex buffer offset array or null. */
-		uint32 vertexCount = 0;                    /**< Draw call vertex count. */
-		uint32 instanceCount = 1;                  /**< Draw call instance count. */
-		uint32 vertexOffset = 0;                   /**< Vertex offset in the buffer or 0. */
-		uint32 instanceOffset = 0;                 /**< Draw instance offset or 0. */
-		uint8 bufferCount = 0;                     /**< Vertex buffer array size or 0. */
+		const ID<Buffer>* vertexBuffers = nullptr;   /**< Vertex buffer array or null. */
+		const uint64* vertexBufferOffsets = nullptr; /**< Vertex buffer offset array or null. */
+		uint32 vertexCount = 0;                      /**< Draw call vertex count. */
+		uint32 instanceCount = 1;                    /**< Draw call instance count. */
+		uint32 vertexOffset = 0;                     /**< Vertex offset in the buffer or 0. */
+		uint32 instanceOffset = 0;                   /**< Draw instance offset or 0. */
+		uint8 vertexBufferCount = 0;                 /**< Vertex buffer array size or 0. */
 	};
 	/**
 	 * @brief Draw indexed primitives rendering command description.
 	 */
 	struct DrawIndexedData final
 	{
-		const ID<Buffer>* vertexBuffers = nullptr; /**< Vertex buffer array. */
-		const uint64* bufferOffsets = nullptr;     /**< Vertex buffer offset array or null. */
-		ID<Buffer> indexBuffer = {};               /**< Index buffer instance. */
-		uint32 indexCount = 0;                     /**< Draw call index count. */
-		uint32 instanceCount = 1;                  /**< Draw call instance count. */
-		uint32 indexOffset = 0;                    /**< Index offset in the buffer or 0. */
-		uint32 vertexOffset = 0;                   /**< Vertex offset in the buffer or 0. */
-		uint32 instanceOffset = 0;                 /**< Draw instance offset or 0. */
-		uint8 vertexBufferCount = 0;               /**< Vertex buffer array size. */
-		IndexType indexType = {};                  /**< Type of the index data. */
+		const ID<Buffer>* vertexBuffers = nullptr;   /**< Vertex buffer array. */
+		const uint64* vertexBufferOffsets = nullptr; /**< Vertex buffer offset array or null. */
+		ID<Buffer> indexBuffer = {};                 /**< Index buffer instance. */
+		uint32 indexCount = 0;                       /**< Draw call index count. */
+		uint32 instanceCount = 1;                    /**< Draw call instance count. */
+		uint32 indexOffset = 0;                      /**< Index offset in the buffer or 0. */
+		uint32 vertexOffset = 0;                     /**< Vertex offset in the buffer or 0. */
+		uint32 instanceOffset = 0;                   /**< Draw instance offset or 0. */
+		uint8 vertexBufferCount = 0;                 /**< Vertex buffer array size. */
+		IndexType indexType = {};                    /**< Type of the index data. */
 	};
 
 	/*******************************************************************************************************************

@@ -374,18 +374,18 @@ void Buffer::copy(ID<Buffer> source, ID<Buffer> destination, const CopyRegion* r
 	for (uint32 i = 0; i < count; i++)
 	{
 		auto region = regions[i];
-
 		GARDEN_ASSERT(region.size != 0 || (region.size == 0 &&
 			region.srcOffset == 0 && region.dstOffset == 0));
-		
 		if (region.size == 0)
 		{
-			GARDEN_ASSERT(srcView->binarySize <= dstView->binarySize);
+			GARDEN_ASSERT_MSG(srcView->binarySize <= dstView->binarySize, "Assert " + srcView->getDebugName());
 		}
 		else
 		{
-			GARDEN_ASSERT(region.size + region.srcOffset <= srcView->binarySize);
-			GARDEN_ASSERT(region.size + region.dstOffset <= dstView->binarySize);
+			GARDEN_ASSERT_MSG(region.size + region.srcOffset <= 
+				srcView->binarySize, "Assert " + srcView->getDebugName());
+			GARDEN_ASSERT_MSG(region.size + region.dstOffset <= 
+				dstView->binarySize, "Assert " + dstView->getDebugName());
 		}
 	}
 	#endif
@@ -413,7 +413,7 @@ void Buffer::setDebugName(const string& name)
 	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
-		#if GARDEN_DEBUG // Note: No GARDEN_EDITOR
+		#if GARDEN_USE_GAPI_VALIDATIONS
 		auto vulkanAPI = VulkanAPI::get();
 		if (!vulkanAPI->features.debugUtils || !instance)
 			return;

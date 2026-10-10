@@ -257,7 +257,7 @@ void SettingsSystem::setBool(const string& name, bool value)
 void SettingsSystem::setString(const string& name, string_view value)
 {
 	GARDEN_ASSERT(!name.empty());
-	GARDEN_ASSERT(!value.empty());
+	GARDEN_ASSERT_MSG(!value.empty(), "Assert " + name);
 
 	auto instance = new char[value.length() + 1];
 	memcpy(instance, value.data(), value.length());

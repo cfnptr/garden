@@ -224,9 +224,9 @@ ID<Blas> Blas::compact()
 	GARDEN_ASSERT_MSG(buildData, "BLAS [" + debugName + "] is already compacted");
 	GARDEN_ASSERT_MSG(isStorageReady(), "BLAS [" + debugName + "] storage is not ready");
 
-	auto graphicsBackend = graphicsAPI->getBackendType();
 	auto buildDataHeader = (const BuildDataHeader*)buildData;
 	auto data = (CompactData*)buildDataHeader->compactData;
+	auto graphicsBackend = graphicsAPI->getBackendType();
 
 	uint64 compactSize;
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)

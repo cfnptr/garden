@@ -109,7 +109,10 @@ void SpriteRenderSystem::drawAsync(MeshRenderComponent* meshRenderView,
 
 	pipelineView->bindDescriptorSetsAsync(dsRanges, 2, taskIndex);
 	pipelineView->pushConstantsAsync(&pc, taskIndex);
-	pipelineView->drawAsync(taskIndex, {}, 6);
+
+	GraphicsPipeline::DrawData drawData;
+	drawData.vertexCount = 6;
+	pipelineView->drawAsync(drawData, taskIndex);
 }
 
 uint64 SpriteRenderSystem::getBaseInstanceDataSize()
@@ -319,7 +322,7 @@ void SpriteRenderSystem::resetAnimation(View<AnimationFrame> frame)
 Ref<DescriptorSet> SpriteRenderSystem::createSharedDS(string_view path, ID<Image> colorMap)
 {
 	GARDEN_ASSERT(!path.empty());
-	GARDEN_ASSERT(colorMap);
+	GARDEN_ASSERT_MSG(colorMap, "Assert " + string(path));
 
 	auto colorMapView = GraphicsSystem::getInstance()->get(colorMap);
 	auto imageSize = (uint2)colorMapView->getSize();

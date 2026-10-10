@@ -725,7 +725,6 @@ void ImGuiRenderSystem::uiRender()
 		indexBufferView->flush(indexSize);
 	}
 
-	const auto indexType = sizeof(ImDrawIdx) == 2 ? IndexType::Uint16 : IndexType::Uint32;
 	auto framebufferView = graphicsSystem->get(pipelineView->getFramebuffer());
 	auto frameSize = (float2)framebufferView->getSize();
 	auto isRenderPassAsync = graphicsSystem->isRenderPassAsync();
@@ -803,17 +802,24 @@ void ImGuiRenderSystem::uiRender()
 				}
 			}
 
+			GraphicsPipeline::DrawIndexedData drawIndexedData;
+			drawIndexedData.vertexBuffers = &vertexBuffer;
+			drawIndexedData.indexBuffer = indexBuffer;
+			drawIndexedData.indexCount = cmd.ElemCount;
+			drawIndexedData.indexOffset = cmd.IdxOffset + globalIdxOffset;
+			drawIndexedData.vertexOffset = cmd.VtxOffset + globalVtxOffset;
+			drawIndexedData.vertexBufferCount = 1;
+			drawIndexedData.indexType = sizeof(ImDrawIdx) == 2 ? IndexType::Uint16 : IndexType::Uint32;
+
 			if (isRenderPassAsync)
 			{
 				pipelineView->bindDescriptorSetAsync(descriptorSet, 0, INT32_MAX);
-				pipelineView->drawIndexedAsync(INT32_MAX, vertexBuffer, indexType, indexBuffer,  
-					cmd.ElemCount, 1, cmd.IdxOffset + globalIdxOffset, cmd.VtxOffset + globalVtxOffset);
+				pipelineView->drawIndexedAsync(drawIndexedData, INT32_MAX);
 			}
 			else
 			{
 				pipelineView->bindDescriptorSet(descriptorSet);
-				pipelineView->drawIndexed(vertexBuffer, indexType, indexBuffer, cmd.ElemCount, 
-					1, cmd.IdxOffset + globalIdxOffset, cmd.VtxOffset + globalVtxOffset);
+				pipelineView->drawIndexed(drawIndexedData);
 			}
 		}
 		globalIdxOffset += cmdList->IdxBuffer.Size;

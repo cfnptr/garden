@@ -209,7 +209,7 @@ void AccelerationStructure::setDebugName(const string& name)
 	auto graphicsBackend = graphicsAPI->getBackendType();
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
-		#if GARDEN_DEBUG // Note: No GARDEN_EDITOR
+		#if GARDEN_USE_GAPI_VALIDATIONS
 		auto vulkanAPI = VulkanAPI::get();
 		if (!vulkanAPI->features.debugUtils || !instance)
 			return;

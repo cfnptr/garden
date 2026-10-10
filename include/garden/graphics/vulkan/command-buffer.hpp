@@ -31,8 +31,8 @@ class VulkanCommandBuffer final : public CommandBuffer
 {
 public:
 	VulkanAPI* vulkanAPI = nullptr;
-	vk::CommandBuffer instance;
-	vk::Fence fence;
+	vk::CommandBuffer instance = {};
+	vk::Fence fence = {};
 
 	static void addBufferBarrier(VulkanAPI* vulkanAPI, Buffer::BarrierState& newBufferState, 
 		ID<Buffer> buffer, uint64 size = VK_WHOLE_SIZE, uint64 offset = 0);
@@ -45,6 +45,14 @@ public:
 	void addRenderPassBarriers(uint32 thisSize);
 	void addRenderPassBarriersAsync(uint32 thisSize);
 	void processPipelineBarriers();
+
+	static void bindVertexBuffers(VulkanAPI* vulkanAPI, vk::CommandBuffer instance, 
+		const ID<Buffer>* vertexBuffers, const uint64* bufferOffsets, uint8 bufferCount, int32 threadIndex);
+	void bindVertexBuffers(const ID<Buffer>* vertexBuffers, 
+		const uint64* bufferOffsets, uint8 bufferCount, int32 threadIndex)
+	{
+		bindVertexBuffers(vulkanAPI, instance, vertexBuffers, bufferOffsets, bufferCount, threadIndex);
+	}
 
 	void processCommand(const BufferBarrierCommand& command) override;
 	void processCommand(const BeginRenderPassCommand& command) override;
@@ -60,6 +68,7 @@ public:
 	void processCommand(const SetDepthBiasCommand& command) override;
 	void processCommand(const DrawCommand& command) override;
 	void processCommand(const DrawIndexedCommand& command) override;
+	void processCommand(const DrawFullscreenCommand& command) override;
 	void processCommand(const DrawBarrierCommand& command) override;
 	void processCommand(const DispatchCommand& command) override;
 	void processCommand(const FillBufferCommand& command) override;
@@ -74,7 +83,7 @@ public:
 	void processCommand(const TraceRaysCommand& command) override;
 	void processCommand(const CustomRenderCommand& command) override;
 
-	#if GARDEN_DEBUG
+	#if GARDEN_USE_GAPI_VALIDATIONS
 	void processCommand(const BeginLabelCommand& command) override;
 	void processCommand(const EndLabelCommand& command) override;
 	void processCommand(const InsertLabelCommand& command) override;

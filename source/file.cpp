@@ -94,8 +94,8 @@ bool File::tryLoadBinary(const fs::path& filePath, uint8* data, psize size)
 void File::storeBinary(const fs::path& filePath, const void* data, psize size)
 {
 	GARDEN_ASSERT(!filePath.empty());
-	GARDEN_ASSERT(data);
-	GARDEN_ASSERT(size > 0);
+	GARDEN_ASSERT_MSG(data, "Assert " + filePath.generic_string());
+	GARDEN_ASSERT_MSG(size > 0, "Assert " + filePath.generic_string());
 
 	ofstream outputStream(filePath, ios::out | ios::binary);
 	// Note: No need to set stream exception bits.

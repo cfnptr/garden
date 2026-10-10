@@ -302,15 +302,19 @@ void UiLabelSystem::drawAsync(MeshRenderComponent* meshRenderView,
 	setTranslation(localModel, (f32x4)u32x4(getTranslation(localModel) / lastUiScale) * lastUiScale);
 	// TODO: take into account macOS different window and framebuffer scale!
 
-	PushConstants pc;
-	pc.mvp = (float4x4)(viewProj * localModel);
-	pc.color = (float4)srgbToRgb(uiLabelView->color);
-
 	if (uiScissorSystem)
 		pipelineView->setScissorAsync(uiScissorSystem->calcScissor(entity), taskIndex);
 	pipelineView->bindDescriptorSetAsync(uiLabelView->descriptorSet, 0, taskIndex);
+
+	PushConstants pc;
+	pc.mvp = (float4x4)(viewProj * localModel);
+	pc.color = (float4)srgbToRgb(uiLabelView->color);
 	pipelineView->pushConstantsAsync(&pc, taskIndex);
-	pipelineView->drawAsync(taskIndex, {}, 6, textView->getInstanceCount());
+
+	GraphicsPipeline::DrawData drawData;
+	drawData.vertexCount = 6;
+	drawData.instanceCount = textView->getInstanceCount();
+	pipelineView->drawAsync(drawData, taskIndex);
 }
 
 //**********************************************************************************************************************

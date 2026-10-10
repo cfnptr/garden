@@ -368,8 +368,8 @@ void Image::freeView()
 
 ID<ImageView> Image::getView(uint32 layer, uint8 mip)
 {
-	GARDEN_ASSERT(layer < getLayerCount());
-	GARDEN_ASSERT(mip < getMipCount());
+	GARDEN_ASSERT_MSG(layer < getLayerCount(), "Assert " + debugName);
+	GARDEN_ASSERT_MSG(mip < getMipCount(), "Assert " + debugName);
 
 	auto index = getLayerCount() * mip + layer;
 	auto view = barrierStates[index].view;
@@ -398,8 +398,8 @@ ID<ImageView> Image::getView(uint32 layer, uint8 mip)
 }
 void Image::freeView(uint32 layer, uint8 mip)
 {
-	GARDEN_ASSERT(layer < getLayerCount());
-	GARDEN_ASSERT(mip < getMipCount());
+	GARDEN_ASSERT_MSG(layer < getLayerCount(), "Assert " + debugName);
+	GARDEN_ASSERT_MSG(mip < getMipCount(), "Assert " + debugName);
 	auto index = getLayerCount() * mip + layer;
 	GraphicsAPI::get()->imageViewPool.destroy(barrierStates[index].view);
 }
@@ -745,8 +745,10 @@ void Image::copy(ID<Buffer> source, ID<Image> destination, const CopyBufferRegio
 	for (uint32 i = 0; i < count; i++)
 	{
 		auto region = regions[i];
-		GARDEN_ASSERT(region.imageBaseLayer + region.imageLayerCount <= imageView->getLayerCount());
-		GARDEN_ASSERT(region.imageMipLevel < imageView->getMipCount());
+		GARDEN_ASSERT_MSG(region.imageBaseLayer + region.imageLayerCount <= 
+			imageView->getLayerCount(), "Assert " + imageView->getDebugName());
+		GARDEN_ASSERT_MSG(region.imageMipLevel < imageView->getMipCount(), 
+			"Assert " + imageView->getDebugName());
 
 		if (region.imageExtent == uint3::zero)
 		{
@@ -755,17 +757,23 @@ void Image::copy(ID<Buffer> source, ID<Image> destination, const CopyBufferRegio
 		else
 		{
 			auto mipImageSize = (uint3)calcSizeAtMip3(imageView->size, region.imageMipLevel);
-			GARDEN_ASSERT(areAllTrue(region.imageOffset < mipImageSize));
-			GARDEN_ASSERT(areAllTrue(region.imageExtent <= mipImageSize));
-			GARDEN_ASSERT(areAllTrue(region.imageExtent + region.imageOffset <= mipImageSize));
+			GARDEN_ASSERT_MSG(areAllTrue(region.imageOffset < 
+				mipImageSize), "Assert " + imageView->getDebugName());
+			GARDEN_ASSERT_MSG(areAllTrue(region.imageExtent <= 
+				mipImageSize), "Assert " + imageView->getDebugName());
+			GARDEN_ASSERT_MSG(areAllTrue(region.imageExtent + region.imageOffset <= 
+				mipImageSize), "Assert " + imageView->getDebugName());
 		}
 		if (region.bufferRowLength == 0 && region.bufferImageHeight == 0)
 		{
 			auto regionBinarySize = toBinarySize((psize)region.imageExtent.x * 
 				region.imageExtent.y * region.imageExtent.z, imageView->format);
-			GARDEN_ASSERT(region.bufferOffset < bufferView->getBinarySize());
-			GARDEN_ASSERT(regionBinarySize <= bufferView->getBinarySize());
-			GARDEN_ASSERT(regionBinarySize + region.bufferOffset <= bufferView->getBinarySize());
+			GARDEN_ASSERT_MSG(region.bufferOffset < bufferView->getBinarySize(), 
+				"Assert " + imageView->getDebugName());
+			GARDEN_ASSERT_MSG(regionBinarySize <= bufferView->getBinarySize(), 
+				"Assert " + imageView->getDebugName());
+			GARDEN_ASSERT_MSG(regionBinarySize + region.bufferOffset <= 
+				bufferView->getBinarySize(), "Assert " + imageView->getDebugName());
 		}
 		else
 		{
@@ -841,17 +849,23 @@ void Image::copy(ID<Image> source, ID<Buffer> destination, const CopyBufferRegio
 		else
 		{
 			auto mipImageSize = (uint3)calcSizeAtMip3(imageView->size, region.imageMipLevel);
-			GARDEN_ASSERT(areAllTrue(region.imageOffset < mipImageSize));
-			GARDEN_ASSERT(areAllTrue(region.imageExtent <= mipImageSize));
-			GARDEN_ASSERT(areAllTrue(region.imageExtent + region.imageOffset <= mipImageSize));
+			GARDEN_ASSERT_MSG(areAllTrue(region.imageOffset < 
+				mipImageSize), "Assert " + imageView->getDebugName());
+			GARDEN_ASSERT_MSG(areAllTrue(region.imageExtent <= 
+				mipImageSize), "Assert " + imageView->getDebugName());
+			GARDEN_ASSERT_MSG(areAllTrue(region.imageExtent + region.imageOffset <= 
+				mipImageSize), "Assert " + imageView->getDebugName());
 		}
 		if (region.bufferRowLength == 0 && region.bufferImageHeight == 0)
 		{
 			auto regionBinarySize = toBinarySize((psize)region.imageExtent.x * 
 				region.imageExtent.y * region.imageExtent.z, imageView->format);
-			GARDEN_ASSERT(region.bufferOffset < bufferView->getBinarySize());
-			GARDEN_ASSERT(regionBinarySize <= bufferView->getBinarySize());
-			GARDEN_ASSERT(regionBinarySize + region.bufferOffset <= bufferView->getBinarySize());
+			GARDEN_ASSERT_MSG(region.bufferOffset < bufferView->getBinarySize(), 
+				"Assert " + bufferView->getDebugName());
+			GARDEN_ASSERT_MSG(regionBinarySize <= bufferView->getBinarySize(), 
+				"Assert " + bufferView->getDebugName());
+			GARDEN_ASSERT_MSG(regionBinarySize + region.bufferOffset <= 
+				bufferView->getBinarySize(), "Assert " + bufferView->getDebugName());
 		}
 		else
 		{
@@ -904,8 +918,8 @@ void Image::blit(ID<Image> source, ID<Image> destination,
 		auto region = regions[i];
 		GARDEN_ASSERT(region.srcBaseLayer + region.layerCount <= srcView->getLayerCount());
 		GARDEN_ASSERT(region.dstBaseLayer + region.layerCount <= dstView->getLayerCount());
-		GARDEN_ASSERT(region.srcMipLevel < srcView->getMipCount());
-		GARDEN_ASSERT(region.dstMipLevel < dstView->getMipCount());
+		GARDEN_ASSERT_MSG(region.srcMipLevel < srcView->getMipCount(), "Assert " + srcView->getDebugName());
+		GARDEN_ASSERT_MSG(region.dstMipLevel < dstView->getMipCount(), "Assert " + dstView->getDebugName());
 
 		if (region.srcExtent == uint3::zero)
 		{
@@ -914,9 +928,12 @@ void Image::blit(ID<Image> source, ID<Image> destination,
 		else
 		{
 			auto mipImageSize = calcSizeAtMip3(srcView->size, region.srcMipLevel);
-			GARDEN_ASSERT(areAllTrue(region.srcOffset < (uint3)mipImageSize));
-			GARDEN_ASSERT(areAllTrue(region.srcExtent <= (uint3)mipImageSize));
-			GARDEN_ASSERT(areAllTrue(region.srcExtent + region.srcOffset <= (uint3)mipImageSize));
+			GARDEN_ASSERT_MSG(areAllTrue(region.srcOffset < 
+				(uint3)mipImageSize), "Assert " + srcView->getDebugName());
+			GARDEN_ASSERT_MSG(areAllTrue(region.srcExtent <= 
+				(uint3)mipImageSize), "Assert " + srcView->getDebugName());
+			GARDEN_ASSERT_MSG(areAllTrue(region.srcExtent + region.srcOffset <= 
+				(uint3)mipImageSize), "Assert " + srcView->getDebugName());
 		}
 		if (region.dstExtent == uint3::zero)
 		{
@@ -925,9 +942,12 @@ void Image::blit(ID<Image> source, ID<Image> destination,
 		else
 		{
 			auto mipImageSize = calcSizeAtMip3(dstView->size, region.dstMipLevel);
-			GARDEN_ASSERT(areAllTrue(region.dstOffset < (uint3)mipImageSize));
-			GARDEN_ASSERT(areAllTrue(region.dstExtent <= (uint3)mipImageSize));
-			GARDEN_ASSERT(areAllTrue(region.dstExtent + region.dstOffset <= (uint3)mipImageSize));
+			GARDEN_ASSERT_MSG(areAllTrue(region.dstOffset < 
+				(uint3)mipImageSize), "Assert " + dstView->getDebugName());
+			GARDEN_ASSERT_MSG(areAllTrue(region.dstExtent <= 
+				(uint3)mipImageSize), "Assert " + dstView->getDebugName());
+			GARDEN_ASSERT_MSG(areAllTrue(region.dstExtent + region.dstOffset <= 
+				(uint3)mipImageSize), "Assert " + dstView->getDebugName());
 		}
 
 		// TODO: take into account format texel size.
@@ -957,7 +977,7 @@ void Image::setDebugName(const string& name)
 	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
-		#if GARDEN_DEBUG // Note: No GARDEN_EDITOR
+		#if GARDEN_USE_GAPI_VALIDATIONS
 		auto vulkanAPI = VulkanAPI::get();
 		if (!vulkanAPI->features.debugUtils || !instance)
 			return;
@@ -2745,13 +2765,13 @@ bool ImageView::destroy()
 
 uint2 ImageView::calcSize(uint8 mipOffset) const noexcept
 {
-	GARDEN_ASSERT(mipOffset < mipCount);
+	GARDEN_ASSERT_MSG(mipOffset < mipCount, "Assert " + debugName);
 	auto imageView = GraphicsAPI::get()->imagePool.get(image);
 	return calcSizeAtMip((uint2)imageView->getSize(), baseMip + mipOffset);
 }
 u32x4 ImageView::calcSize3(uint8 mipOffset) const noexcept
 {
-	GARDEN_ASSERT(mipOffset < mipCount);
+	GARDEN_ASSERT_MSG(mipOffset < mipCount, "Assert " + debugName);
 	auto imageView = GraphicsAPI::get()->imagePool.get(image);
 	return calcSizeAtMip3(imageView->getSize(), baseMip + mipOffset);
 }
@@ -2764,7 +2784,7 @@ void ImageView::setDebugName(const string& name)
 	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
-		#if GARDEN_DEBUG // Note: No GARDEN_EDITOR
+		#if GARDEN_USE_GAPI_VALIDATIONS
 		auto vulkanAPI = VulkanAPI::get();
 		if (!vulkanAPI->features.debugUtils)
 			return;

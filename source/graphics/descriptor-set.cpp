@@ -164,7 +164,7 @@ static void destroyVkDescriptorSet(void* instance, ID<Pipeline> pipeline, Pipeli
 static vk::ImageLayout getVkDsImageLayout(VulkanAPI* vulkanAPI, View<ImageView> imageView, 
 	OptView<Framebuffer> framebufferView, bool isImageType)
 {
-	if (isImageType)
+	if (isImageType || vulkanAPI->features.unifiedLayouts)
 		return vk::ImageLayout::eGeneral;
 	if (!framebufferView || !framebufferView->getDepthStencilAttachment().imageView)
 		return vk::ImageLayout::eShaderReadOnlyOptimal;
@@ -758,7 +758,7 @@ void DescriptorSet::updateUniform(string_view name,
 	if (pipelineUniform.isSamplerType | pipelineUniform.isImageType)
 	{
 		auto imageView = graphicsAPI->imageViewPool.get(ID<ImageView>(uniform.resource));
-		GARDEN_ASSERT(toImageType(pipelineUniform.type) == imageView->getType());
+		GARDEN_ASSERT_MSG(toImageType(pipelineUniform.type) == imageView->getType(), "Assert " + debugName);
 
 		auto image = graphicsAPI->imagePool.get(imageView->getImage());
 		if (pipelineUniform.isSamplerType)
@@ -841,7 +841,7 @@ void DescriptorSet::setDebugName(const string& name)
 	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
-		#if GARDEN_DEBUG // Note: No GARDEN_EDITOR
+		#if GARDEN_USE_GAPI_VALIDATIONS
 		auto vulkanAPI = VulkanAPI::get();
 		if (!vulkanAPI->features.debugUtils)
 			return;

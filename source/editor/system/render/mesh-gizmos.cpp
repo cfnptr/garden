@@ -171,7 +171,12 @@ static void renderGizmosMeshes(vector<MeshGizmosEditorSystem::GizmosMesh>& gizmo
 		pc.color = (float3)mesh.color;
 		pc.patternScale = patternScale;
 		pipelineView->pushConstants(&pc);
-		pipelineView->draw(mesh.vertexBuffer, mesh.vertexCount);
+		
+		GraphicsPipeline::DrawData drawData;
+		drawData.vertexBuffers = &mesh.vertexBuffer;
+		drawData.vertexBufferCount = 1;
+		drawData.vertexCount = mesh.vertexCount;
+		pipelineView->draw(drawData);
 	}
 }
 

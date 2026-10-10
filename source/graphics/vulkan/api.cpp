@@ -34,7 +34,7 @@ using namespace garden;
 static constexpr string_view shaderCacheMagic = "GDNS";
 
 //**********************************************************************************************************************
-#if GARDEN_DEBUG
+#if GARDEN_USE_GAPI_VALIDATIONS
 constexpr vk::DebugUtilsMessageSeverityFlagsEXT debugMessageSeverity =
 	// vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo |
 	vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning |
@@ -43,9 +43,7 @@ constexpr vk::DebugUtilsMessageTypeFlagsEXT debugMessageType =
 	vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral |
 	vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation |
 	vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance;
-#endif
 
-#if GARDEN_DEBUG
 static vk::Bool32 VKAPI_PTR vkDebugMessengerCallback(
 	vk::DebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
 	vk::DebugUtilsMessageTypeFlagsEXT messageTypes,
@@ -159,32 +157,37 @@ static vk::Instance createVkInstance(const string& appName, Version appVersion,
 
 	auto extensionProperties = vk::enumerateInstanceExtensionProperties();
 	auto layerProperties = vk::enumerateInstanceLayerProperties();
-	auto isNvidiaGPU = false; // Skipping Nvidia related calls for other vendors.
+	auto isNvidiaGPU = false; // Note: Skipping Nvidia related calls for other vendors.
 	
 	for	(const auto& properties : layerProperties)
 	{
 		auto layerName = string_view(properties.layerName);
-		if (layerName == "VK_LAYER_MESA_anti_lag")
-			layers.push_back("VK_LAYER_MESA_anti_lag");
+		if (layerName.find("VK_LAYER_NV_") != string::npos)
+			isNvidiaGPU = true;
 		#if GARDEN_USE_GAPI_VALIDATIONS
 		else if (layerName == "VK_LAYER_KHRONOS_validation")
 			layers.push_back("VK_LAYER_KHRONOS_validation");
 		#endif
-		else if (layerName.find("VK_LAYER_NV_") != string::npos)
-			isNvidiaGPU = true;
+		else if (layerName == "VK_LAYER_MESA_anti_lag")
+			layers.push_back("VK_LAYER_MESA_anti_lag");
 	}
 
-	const void* instanceInfoNext = nullptr;
-	#if GARDEN_DEBUG
 	for	(const auto& properties : extensionProperties)
 	{
 		auto extensionName = string_view(properties.extensionName);
-		if (extensionName == VK_EXT_DEBUG_UTILS_EXTENSION_NAME)
-			features.debugUtils = true;
-		else if (extensionName.find("VK_NV_") != string::npos)
+		if (extensionName.find("VK_NV_") != string::npos)
 			isNvidiaGPU = true;
+		#if GARDEN_USE_GAPI_VALIDATIONS
+		else if (extensionName == VK_EXT_DEBUG_UTILS_EXTENSION_NAME)
+			features.debugUtils = true;
+		else if (extensionName == VK_EXT_LAYER_SETTINGS_EXTENSION_NAME)
+			features.layerSettings = true;
+		#endif
 	}
 
+	const void* instanceInfoNext = nullptr;
+
+	#if GARDEN_USE_GAPI_VALIDATIONS
 	vk::DebugUtilsMessengerCreateInfoEXT debugUtilsInfo;
 	if (features.debugUtils)
 	{
@@ -193,8 +196,36 @@ static vk::Instance createVkInstance(const string& appName, Version appVersion,
 		debugUtilsInfo.messageSeverity = debugMessageSeverity;
 		debugUtilsInfo.messageType = debugMessageType;
 		debugUtilsInfo.pfnUserCallback = vkDebugMessengerCallback;
+		debugUtilsInfo.pNext = instanceInfoNext;
 		instanceInfoNext = &debugUtilsInfo;
 	}
+
+	#if 0
+	vk::LayerSettingsCreateInfoEXT layerSettingsInfo;
+	vector<vk::LayerSettingEXT> layerSettings;
+	if (features.layerSettings)
+	{
+		if (!hasExtension(extensions, VK_EXT_LAYER_SETTINGS_EXTENSION_NAME))
+			extensions.push_back(VK_EXT_LAYER_SETTINGS_EXTENSION_NAME);
+
+		VkBool32 validateCore = VK_TRUE;
+		VkBool32 validateSync = VK_TRUE;
+
+		layerSettings = 
+		{
+			vk::LayerSettingEXT("VK_LAYER_KHRONOS_validation", "validate_core", 
+				vk::LayerSettingTypeEXT::eBool32, 1, &validateCore),
+			vk::LayerSettingEXT("VK_LAYER_KHRONOS_validation", "validate_sync", 
+				vk::LayerSettingTypeEXT::eBool32, 1, &validateSync),
+		};
+
+		layerSettingsInfo.settingCount = (uint32)layerSettings.size();
+		layerSettingsInfo.pSettings = layerSettings.data();
+		layerSettingsInfo.pNext = instanceInfoNext;
+		instanceInfoNext = &layerSettingsInfo;
+	}
+	#endif
+
 	#endif
 
 	#if GARDEN_USE_NVIDIA_DLSS
@@ -250,7 +281,7 @@ static vk::Instance createVkInstance(const string& appName, Version appVersion,
 	return instance;
 }
 
-#if GARDEN_DEBUG
+#if GARDEN_USE_GAPI_VALIDATIONS
 static vk::DebugUtilsMessengerEXT createVkDebugMessenger(vk::Instance instance)
 {
 	vk::DebugUtilsMessengerCreateInfoEXT debugUtilsInfo;
@@ -490,6 +521,8 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 			hasAccelerationStructure = true;
 		else if (extensionName == VK_EXT_SHADER_DEMOTE_TO_HELPER_INVOCATION_EXTENSION_NAME)
 			hasDemoteToHelperInv = true;
+		else if (extensionName == VK_KHR_UNIFIED_IMAGE_LAYOUTS_EXTENSION_NAME)
+			features.unifiedLayouts = true;
 		else if (extensionName == VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME)
 			features.rayTracing = true;
 		else if (extensionName == VK_KHR_RAY_QUERY_EXTENSION_NAME)
@@ -509,6 +542,8 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 		{
 			if (extensionName == VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME)
 				features.synchronization2 = true;
+			else if (extensionName == VK_KHR_COPY_COMMANDS_2_EXTENSION_NAME)
+				features.copyCommands2 = true;
 			else if (extensionName == VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME)
 				features.dynamicRendering = true;
 			else if (extensionName == VK_EXT_TEXTURE_COMPRESSION_ASTC_HDR_EXTENSION_NAME)
@@ -540,6 +575,7 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 		vk::PhysicalDeviceTimelineSemaphoreFeatures timelineSemaphore;
 		vk::PhysicalDeviceVulkanMemoryModelFeatures vulkanMemoryModel;
 		vk::PhysicalDeviceSynchronization2Features synchronization2;
+		vk::PhysicalDeviceUnifiedImageLayoutsFeaturesKHR unifiedLayouts;
 		vk::PhysicalDeviceDynamicRenderingFeatures dynamicRendering;
 		vk::PhysicalDeviceTextureCompressionASTCHDRFeaturesEXT astcHDR;
 		vk::PhysicalDevicePageableDeviceLocalMemoryFeaturesEXT pageableMemory;
@@ -576,17 +612,11 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 		extensions.push_back(VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME);
 	#endif
 
-	if (features.pageableMemory)
-	{
-		vkFeatures->device.pNext = &vkFeatures->pageableMemory;
-		physicalDevice.getFeatures2(&vkFeatures->device);
-		if (vkFeatures->pageableMemory.pageableDeviceLocalMemory)
-			extensions.push_back(VK_EXT_PAGEABLE_DEVICE_LOCAL_MEMORY_EXTENSION_NAME);
-		else features.pageableMemory = false;
-	}
-
 	if (versionMinor < 3)
 	{
+		if (features.copyCommands2)
+			extensions.push_back(VK_KHR_COPY_COMMANDS_2_EXTENSION_NAME);
+
 		if (features.synchronization2)
 		{
 			vkFeatures->device.pNext = &vkFeatures->synchronization2;
@@ -614,7 +644,7 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 	}
 	else
 	{
-		features.synchronization2 = features.dynamicRendering = 
+		features.synchronization2 = features.copyCommands2 = features.dynamicRendering = 
 			features.astcHDR = features.maintenance4 = true;
 	}
 
@@ -670,6 +700,22 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 	}
 	else features.rayTracing = features.rayQuery = false;
 
+	if (features.pageableMemory)
+	{
+		vkFeatures->device.pNext = &vkFeatures->pageableMemory;
+		physicalDevice.getFeatures2(&vkFeatures->device);
+		if (vkFeatures->pageableMemory.pageableDeviceLocalMemory)
+			extensions.push_back(VK_EXT_PAGEABLE_DEVICE_LOCAL_MEMORY_EXTENSION_NAME);
+		else features.pageableMemory = false;
+	}
+	if (features.unifiedLayouts)
+	{
+		vkFeatures->device.pNext = &vkFeatures->unifiedLayouts;
+		physicalDevice.getFeatures2(&vkFeatures->device);
+		if (vkFeatures->unifiedLayouts.unifiedImageLayouts)
+			extensions.push_back(VK_KHR_UNIFIED_IMAGE_LAYOUTS_EXTENSION_NAME);
+		else features.unifiedLayouts = false;
+	}
 	if (features.meshShader)
 	{
 		vkFeatures->device.pNext = &vkFeatures->meshShader;
@@ -685,6 +731,14 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 		if (vkFeatures->astcHDR.textureCompressionASTC_HDR)
 			extensions.push_back(VK_EXT_TEXTURE_COMPRESSION_ASTC_HDR_EXTENSION_NAME);
 		else features.astcHDR = false;
+	}
+	if (features.amdAntiLag)
+	{
+		vkFeatures->device.pNext = &vkFeatures->amdAntiLag;
+		physicalDevice.getFeatures2(&vkFeatures->device);
+		if (vkFeatures->amdAntiLag.antiLag)
+			extensions.push_back(VK_AMD_ANTI_LAG_EXTENSION_NAME);
+		else features.amdAntiLag = false;
 	}
 	if (hasDemoteToHelperInv)
 	{
@@ -736,15 +790,6 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 		}
 	}
 	#endif
-
-	if (features.amdAntiLag)
-	{
-		vkFeatures->device.pNext = &vkFeatures->amdAntiLag;
-		physicalDevice.getFeatures2(&vkFeatures->device);
-		if (vkFeatures->amdAntiLag.antiLag)
-			extensions.push_back(VK_AMD_ANTI_LAG_EXTENSION_NAME);
-		else features.amdAntiLag = false;
-	}
 
 	void** lastPNext = &vkFeatures->device.pNext;
 	*lastPNext = &vkFeatures->_16BitStorage;
@@ -800,6 +845,13 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 		*lastPNext = &vkFeatures->synchronization2;
 		lastPNext = &vkFeatures->synchronization2.pNext;
 	}
+	if (features.unifiedLayouts)
+	{
+		vkFeatures->unifiedLayouts = vk::PhysicalDeviceUnifiedImageLayoutsFeaturesKHR();
+		vkFeatures->unifiedLayouts.unifiedImageLayouts = VK_TRUE;
+		*lastPNext = &vkFeatures->unifiedLayouts;
+		lastPNext = &vkFeatures->unifiedLayouts.pNext;
+	}
 	if (features.dynamicRendering)
 	{
 		vkFeatures->dynamicRendering = vk::PhysicalDeviceDynamicRenderingFeatures();
@@ -843,19 +895,19 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 		*lastPNext = &vkFeatures->meshShader;
 		lastPNext = &vkFeatures->meshShader.pNext;
 	}
-	if (hasDemoteToHelperInv)
-	{
-		vkFeatures->demoteToHelper = vk::PhysicalDeviceShaderDemoteToHelperInvocationFeaturesEXT();
-		vkFeatures->demoteToHelper.shaderDemoteToHelperInvocation = VK_TRUE;
-		*lastPNext = &vkFeatures->demoteToHelper;
-		lastPNext = &vkFeatures->demoteToHelper.pNext;
-	}
 	if (features.amdAntiLag)
 	{
 		vkFeatures->amdAntiLag = vk::PhysicalDeviceAntiLagFeaturesAMD();
 		vkFeatures->amdAntiLag.antiLag = VK_TRUE;
 		*lastPNext = &vkFeatures->amdAntiLag;
 		lastPNext = &vkFeatures->amdAntiLag.pNext;
+	}
+	if (hasDemoteToHelperInv)
+	{
+		vkFeatures->demoteToHelper = vk::PhysicalDeviceShaderDemoteToHelperInvocationFeaturesEXT();
+		vkFeatures->demoteToHelper.shaderDemoteToHelperInvocation = VK_TRUE;
+		*lastPNext = &vkFeatures->demoteToHelper;
+		lastPNext = &vkFeatures->demoteToHelper.pNext;
 	}
 
 	#if GARDEN_OS_APPLE
@@ -1067,7 +1119,7 @@ VulkanAPI::VulkanAPI(const string& appName, const string& appID, const string& a
 		throw GardenError("Failed to initialize Vulkan API loader.");
 	instance = createVkInstance(appName, appVersion, versionMajor, versionMinor, features);
 
-	#if GARDEN_DEBUG
+	#if GARDEN_USE_GAPI_VALIDATIONS
 	if (features.debugUtils)
 		debugMessenger = createVkDebugMessenger(instance);
 	#endif
@@ -1182,7 +1234,7 @@ VulkanAPI::~VulkanAPI()
 	
 	instance.destroySurfaceKHR(surface);
 
-	#if GARDEN_DEBUG
+	#if GARDEN_USE_GAPI_VALIDATIONS
 	if (features.debugUtils)
 		instance.destroy(debugMessenger, nullptr);
 	#endif

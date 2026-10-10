@@ -199,7 +199,8 @@ void GpuProcessSystem::gaussianBlur(ID<ImageView> srcBuffer, ID<Framebuffer> dst
 	if (!pipeline)
 	{
 		auto kernelBufferView = graphicsSystem->get(kernelBuffer);
-		GARDEN_ASSERT(kernelBufferView->getBinarySize() % sizeof(float2) == 0);
+		GARDEN_ASSERT_MSG(kernelBufferView->getBinarySize() % sizeof(float2) == 0,
+			"Assert " + kernelBufferView->getDebugName());
 		auto coeffCount = kernelBufferView->getBinarySize() / sizeof(float2);
 		pipeline = createGaussianBlur(dstFramebuffer, (uint32)coeffCount);
 	}
@@ -320,8 +321,8 @@ void GpuProcessSystem::prepareGgxBlur(ID<Image> buffer, vector<ID<Framebuffer>>&
 	auto bufferView = graphicsSystem->get(buffer);
 	auto roughnessLodCount = bufferView->getMipCount();
 	auto frameSize = (uint2)bufferView->getSize();
-	GARDEN_ASSERT(bufferView->getLayerCount() >= 2);
-	GARDEN_ASSERT(bufferView->getMipCount() > 1);
+	GARDEN_ASSERT_MSG(bufferView->getLayerCount() >= 2, "Assert " + bufferView->getDebugName());
+	GARDEN_ASSERT_MSG(bufferView->getMipCount() > 1, "Assert " + bufferView->getDebugName());
 
 	if (framebuffers.size() < roughnessLodCount * 2)
 		framebuffers.resize(roughnessLodCount * 2);
@@ -363,8 +364,8 @@ bool GpuProcessSystem::ggxBlur(ID<Image> buffer, const vector<ID<Framebuffer>>& 
 	auto graphicsSystem = GraphicsSystem::getInstance();
 	auto bufferView = graphicsSystem->get(buffer);
 	auto roughnessLodCount = bufferView->getMipCount();
-	GARDEN_ASSERT(bufferView->getLayerCount() >= 2);
-	GARDEN_ASSERT(bufferView->getMipCount() > 1);
+	GARDEN_ASSERT_MSG(bufferView->getLayerCount() >= 2, "Assert " + bufferView->getDebugName());
+	GARDEN_ASSERT_MSG(bufferView->getMipCount() > 1, "Assert " + bufferView->getDebugName());
 
 	auto blurKernel = getGgxBlurKernel();
 	if (!graphicsSystem->get(blurKernel)->isReady())

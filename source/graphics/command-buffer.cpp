@@ -83,6 +83,8 @@ void CommandBuffer::processCommands()
 			processCommand(*(const DrawCommand*)command); break;
 		case Command::Type::DrawIndexed:
 			processCommand(*(const DrawIndexedCommand*)command); break;
+		case Command::Type::DrawFullscreen:
+			processCommand(*(const DrawFullscreenCommand*)command); break;
 		case Command::Type::DrawBarrier:
 			processCommand(*(const DrawBarrierCommand*)command); break;
 		case Command::Type::Dispatch:
@@ -117,7 +119,7 @@ void CommandBuffer::processCommands()
 			processCommand(*(const InsertLabelCommand*)command); break;
 		#endif
 
-		default: throw GardenError("Not implemented Vulkan command");
+		default: throw GardenError("Not implemented GPU command");
 		}
 		dataIter += command->thisSize;
 	}

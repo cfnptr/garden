@@ -46,11 +46,16 @@ public:
 	};
 	struct Features final
 	{
+		#if GARDEN_USE_GAPI_VALIDATIONS
 		bool debugUtils = false;
+		bool layerSettings = false;
+		#endif
 		bool memoryBudget = false;
 		bool memoryPriority = false;
 		bool pageableMemory = false;
 		bool synchronization2 = false;
+		bool copyCommands2 = false;
+		bool unifiedLayouts = false;
 		bool dynamicRendering = false;
 		bool rayTracing = false;
 		bool rayQuery = false;
@@ -72,29 +77,29 @@ private:
 	friend class GraphicsAPI;
 public:
 	VulkanSwapchain* vulkanSwapchain = nullptr;
-	string appDataName;
-	Version appVersion;
+	string appDataName = "";
+	Version appVersion = {};
 	uint32 versionMajor = 0;
 	uint32 versionMinor = 0;
 	uint32 graphicsQueueFamilyIndex = 0;
 	uint32 transferQueueFamilyIndex = 0;
 	uint32 computeQueueFamilyIndex = 0;
-	vk::Instance instance;
-	vk::PhysicalDevice physicalDevice;
-	vk::SurfaceKHR surface;
-	vk::Device device;
+	vk::Instance instance = {};
+	vk::PhysicalDevice physicalDevice = {};
+	vk::SurfaceKHR surface = {};
+	vk::Device device = {};
 	VmaAllocator memoryAllocator = nullptr;
-	vk::Queue frameQueue;
-	vk::Queue graphicsQueue;
-	vk::Queue transferQueue;
-	vk::Queue computeQueue;
-	vk::CommandPool frameCommandPool;
-	vk::CommandPool graphicsCommandPool;
-	vk::CommandPool transferCommandPool;
-	vk::CommandPool computeCommandPool;
-	vk::DescriptorPool descriptorPool;
-	vk::PipelineCache pipelineCache;
-	vk::Semaphore pacingSemaphore;
+	vk::Queue frameQueue = {};
+	vk::Queue graphicsQueue = {};
+	vk::Queue transferQueue = {};
+	vk::Queue computeQueue = {};
+	vk::CommandPool frameCommandPool = {};
+	vk::CommandPool graphicsCommandPool = {};
+	vk::CommandPool transferCommandPool = {};
+	vk::CommandPool computeCommandPool = {};
+	vk::DescriptorPool descriptorPool = {};
+	vk::PipelineCache pipelineCache = {};
+	vk::Semaphore pacingSemaphore = {};
 	vector<vk::CommandBuffer> secondaryCommandBuffers;
 	vector<atomic_bool_aligned*> secondaryCommandStates; // We need atomic here!
 	vector<vector<vk::DescriptorSet>> bindDescriptorSets;
@@ -115,28 +120,32 @@ public:
 	vector<vk::RenderingAttachmentInfoKHR> colorAttachmentInfos;
 	vector<vk::ClearAttachment> clearAttachments;
 	vector<vk::ClearRect> clearAttachmentsRects;
-	vector<vk::BufferCopy> bufferCopies;
 	vector<vk::ImageSubresourceRange> imageClears;
+	vector<vk::BufferCopy> bufferCopies;
+	vector<vk::BufferCopy2> bufferCopies2;
 	vector<vk::ImageCopy> imageCopies;
+	vector<vk::ImageCopy2> imageCopies2;
 	vector<vk::BufferImageCopy> bufferImageCopies;
+	vector<vk::BufferImageCopy2> bufferImageCopies2;
 	vector<vk::ImageBlit> imageBlits;
+	vector<vk::ImageBlit2> imageBlits2;
 	vector<void*> asBuildData;
 	vector<vk::AccelerationStructureBuildGeometryInfoKHR> asGeometryInfos;
 	vector<const vk::AccelerationStructureBuildRangeInfoKHR*> asRangeInfos;
 	vector<vk::AccelerationStructureKHR> asWriteProperties;
-	vk::PhysicalDeviceDriverProperties driverProperties;
-	vk::PhysicalDeviceSubgroupProperties subgroupProperties;
-	vk::PhysicalDeviceRayTracingPipelinePropertiesKHR rtProperties;
-	vk::PhysicalDeviceAccelerationStructurePropertiesKHR asProperties;
-	vk::PhysicalDeviceProperties2 deviceProperties;
-	vk::PhysicalDeviceFeatures2 deviceFeatures;
+	vk::PhysicalDeviceDriverProperties driverProperties = {};
+	vk::PhysicalDeviceSubgroupProperties subgroupProperties = {};
+	vk::PhysicalDeviceRayTracingPipelinePropertiesKHR rtProperties = {};
+	vk::PhysicalDeviceAccelerationStructurePropertiesKHR asProperties = {};
+	vk::PhysicalDeviceProperties2 deviceProperties = {};
+	vk::PhysicalDeviceFeatures2 deviceFeatures = {};
 	Features features = {};
 	uint64 pacingFrame = 1;
 	uint32 oldPipelineStage = 0, newPipelineStage = 0;
 	bool isCacheLoaded = false;
 	
-	#if GARDEN_DEBUG || GARDEN_EDITOR
-	vk::DebugUtilsMessengerEXT debugMessenger;
+	#if GARDEN_USE_GAPI_VALIDATIONS
+	vk::DebugUtilsMessengerEXT debugMessenger = {};
 	#endif
 
 	inline static VulkanAPI* vulkanInstance = nullptr;

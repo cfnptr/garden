@@ -59,11 +59,11 @@ public:
 	/**
 	 * @brief Returns component name of the animatable system.
 	 */
-	virtual std::string_view getSystemCompName() const;
+	virtual std::string_view getSystemCompName() const = 0;
 	/**
 	 * @brief Returns component typeid() of the animatable system.
 	 */
-	virtual std::type_index getSystemCompType() const;
+	virtual std::type_index getSystemCompType() const = 0;
 
 	/**
 	 * @brief Creates a new system animation frame instance.

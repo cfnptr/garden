@@ -129,7 +129,7 @@ void TransformComponent::setActive(bool isActive) noexcept
 //**********************************************************************************************************************
 void TransformComponent::setParent(ID<Entity> parent)
 {
-	GARDEN_ASSERT(parent != entity);
+	GARDEN_ASSERT_MSG(parent != entity, "Assert " + debugName);
 	if (this->parent == parent)
 		return;
 
@@ -138,7 +138,7 @@ void TransformComponent::setParent(ID<Entity> parent)
 	if (parent)
 	{
 		auto parentTransformView = manager->get<TransformComponent>(parent);
-		GARDEN_ASSERT(!parentTransformView->hasAncestor(entity));
+		GARDEN_ASSERT_MSG(!parentTransformView->hasAncestor(entity), "Assert " + debugName);
 	}
 	#endif
 
@@ -195,14 +195,14 @@ REMOVED_FROM_PARENT:
 //**********************************************************************************************************************
 bool TransformComponent::tryAddChild(ID<Entity> child)
 {
-	GARDEN_ASSERT(child);
-	GARDEN_ASSERT(child != entity);
+	GARDEN_ASSERT_MSG(child, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(child != entity, "Assert " + debugName);
 
 	auto childTransformView = Manager::getInstance()->get<TransformComponent>(child);
 	if (childTransformView->parent)
 		return false;
 
-	GARDEN_ASSERT(!hasAncestor(child));
+	GARDEN_ASSERT_MSG(!hasAncestor(child), "Assert " + debugName);
 	if (childCount() == childCapacity())
 	{
 		if (childs)
@@ -226,8 +226,8 @@ bool TransformComponent::tryAddChild(ID<Entity> child)
 
 bool TransformComponent::hasChild(ID<Entity> child) const noexcept
 {
-	GARDEN_ASSERT(child);
-	GARDEN_ASSERT(child != entity);
+	GARDEN_ASSERT_MSG(child, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(child != entity, "Assert " + debugName);
 
 	auto thisChildCount = getChildCount();
 	for (uint32 i = 0; i < thisChildCount; i++)
@@ -260,8 +260,8 @@ bool TransformComponent::tryRemoveChild(uint32 index) noexcept
 }
 bool TransformComponent::tryRemoveChild(ID<Entity> child) noexcept
 {
-	GARDEN_ASSERT(child);
-	GARDEN_ASSERT(child != entity);
+	GARDEN_ASSERT_MSG(child, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(child != entity, "Assert " + debugName);
 
 	auto thisChildCount = childCount();
 	for (uint32 i = 0; i < thisChildCount; i++)
@@ -309,8 +309,8 @@ void TransformComponent::shrinkChilds()
 //**********************************************************************************************************************
 bool TransformComponent::hasAncestor(ID<Entity> ancestor) const noexcept
 {
-	GARDEN_ASSERT(ancestor);
-	GARDEN_ASSERT(ancestor != entity);
+	GARDEN_ASSERT_MSG(ancestor, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(ancestor != entity, "Assert " + debugName);
 
 	auto manager = Manager::getInstance();
 	auto nextParent = parent;
@@ -326,8 +326,8 @@ bool TransformComponent::hasAncestor(ID<Entity> ancestor) const noexcept
 }
 bool TransformComponent::hasDescendant(ID<Entity> descendant) const noexcept
 {
-	GARDEN_ASSERT(descendant);
-	GARDEN_ASSERT(descendant != entity);
+	GARDEN_ASSERT_MSG(descendant, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(descendant != entity, "Assert " + debugName);
 
 	if (!childs)
 		return false;
@@ -666,9 +666,8 @@ void TransformSystem::destroyRecursive(ID<Entity>& entity)
 }
 ID<Entity> TransformSystem::duplicateRecursive(ID<Entity> entity)
 {
-	GARDEN_ASSERT(entity);
-
 	auto manager = Manager::getInstance();
+	GARDEN_ASSERT(entity);
 	GARDEN_ASSERT(!manager->has<DoNotDuplicateComponent>(entity));
 
 	auto entityDuplicate = manager->duplicate(entity);

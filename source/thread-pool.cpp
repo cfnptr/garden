@@ -156,6 +156,7 @@ void ThreadPool::addTasks(const Task::Function& function, uint32 count, float pr
 	GARDEN_ASSERT(function);
 	GARDEN_ASSERT(count != 0);
 	GARDEN_ASSERT(isRunning);
+
 	auto task = Task(function, priority);
 
 	mutex.lock();

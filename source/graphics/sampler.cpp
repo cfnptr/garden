@@ -61,7 +61,7 @@ void Sampler::setDebugName(const string& name)
 	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
-		#if GARDEN_DEBUG // Note: No GARDEN_EDITOR
+		#if GARDEN_USE_GAPI_VALIDATIONS
 		auto vulkanAPI = VulkanAPI::get();
 		if (!vulkanAPI->features.debugUtils)
 			return;

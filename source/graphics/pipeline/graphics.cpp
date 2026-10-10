@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "garden/graphics/pipeline/graphics.hpp"
-#include "garden/graphics/vulkan/api.hpp"
+#include "garden/graphics/vulkan/command-buffer.hpp"
 
 using namespace garden;
 using namespace garden::graphics;
@@ -439,11 +439,11 @@ void GraphicsPipeline::setViewportAsync(float4 viewport, int32 threadIndex)
 	GARDEN_ASSERT_MSG(graphicsAPI->isRenderPassAsync, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(isLoaded(), "Graphics pipeline [" + debugName + "] is not loaded");
 
-	auto graphicsBackend = graphicsAPI->getBackendType();
 	auto autoThreadCount = graphicsAPI->calcAutoThreadCount(threadIndex);
 	GARDEN_ASSERT_MSG(ID<Pipeline>(graphicsAPI->graphicsPipelinePool.getID(this)) == 
 		graphicsAPI->currentPipelines[threadIndex], "Assert " + debugName);
-		
+	auto graphicsBackend = graphicsAPI->getBackendType();
+
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
 		auto vulkanAPI = VulkanAPI::get();
@@ -494,10 +494,10 @@ void GraphicsPipeline::setScissorAsync(int4 scissor, int32 threadIndex)
 	GARDEN_ASSERT_MSG(graphicsAPI->isRenderPassAsync, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(isLoaded(), "Graphics pipeline [" + debugName + "] is not loaded");
 
-	auto graphicsBackend = graphicsAPI->getBackendType();
 	auto autoThreadCount = graphicsAPI->calcAutoThreadCount(threadIndex);
 	GARDEN_ASSERT_MSG(ID<Pipeline>(graphicsAPI->graphicsPipelinePool.getID(this)) == 
 		graphicsAPI->currentPipelines[threadIndex], "Assert " + debugName);
+	auto graphicsBackend = graphicsAPI->getBackendType();
 
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
@@ -550,10 +550,10 @@ void GraphicsPipeline::setViewportScissorAsync(float4 viewportScissor, int32 thr
 	GARDEN_ASSERT_MSG(graphicsAPI->isRenderPassAsync, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(isLoaded(), "Graphics pipeline [" + debugName + "] is not loaded");
 
-	auto graphicsBackend = graphicsAPI->getBackendType();
 	auto autoThreadCount = graphicsAPI->calcAutoThreadCount(threadIndex);
 	GARDEN_ASSERT_MSG(ID<Pipeline>(graphicsAPI->graphicsPipelinePool.getID(this)) == 
 		graphicsAPI->currentPipelines[threadIndex], "Assert " + debugName);
+	auto graphicsBackend = graphicsAPI->getBackendType();
 
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
@@ -590,13 +590,41 @@ void GraphicsPipeline::setViewportScissorAsync(float4 viewportScissor, int32 thr
 }
 
 //**********************************************************************************************************************
+static void validateVertexBuffers(const LinearPool<Buffer>& bufferPool,
+	const ID<Buffer>* vertexBuffers, const uint64* vertexBufferOffsets, uint8 bufferCount)
+{
+	#if GARDEN_DEBUG
+	for (uint8 i = 0; i < bufferCount; i++)
+	{
+		auto vertexBufferView = bufferPool.get(vertexBuffers[i]);
+		GARDEN_ASSERT_MSG(vertexBufferView->isLoaded(), "Vertex buffer [" + 
+			vertexBufferView->getDebugName() + "] is not loaded");
+		if (vertexBufferOffsets)
+		{
+			GARDEN_ASSERT_MSG(vertexBufferOffsets[i] < vertexBufferView->getBinarySize(), 
+				"Assert " + vertexBufferView->getDebugName());
+		}
+	}
+	#endif
+}
+static void validateIndexBuffer(const LinearPool<Buffer>& bufferPool,
+	ID<Buffer> indexBuffer, uint32 indexCount, uint32 indexOffset, IndexType indexType)
+{
+	#if GARDEN_DEBUG
+	auto indexBufferView = bufferPool.get(indexBuffer);
+	GARDEN_ASSERT_MSG(indexBufferView->isLoaded(), "Index buffer [" + 
+		indexBufferView->getDebugName() + "] is not loaded");
+	GARDEN_ASSERT_MSG(indexCount + indexOffset <= indexBufferView->getBinarySize() / 
+		toBinarySize(indexType), "Assert " + indexBufferView->getDebugName());
+	#endif
+}
 void GraphicsPipeline::draw(const DrawData& data)
 {
 	auto graphicsAPI = GraphicsAPI::get();
 	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
-	GARDEN_ASSERT_MSG((!data.vertexBuffers && data.bufferCount == 0) || 
-		(data.vertexBuffers && data.bufferCount > 0), "Assert " + debugName);
-	GARDEN_ASSERT_MSG(data.bufferCount < maxVertexBindingCount, "Assert " + debugName);
+	GARDEN_ASSERT_MSG((data.vertexBuffers && data.vertexBufferCount > 0) || 
+		(!data.vertexBuffers && data.vertexBufferCount == 0), "Assert " + debugName);
+	GARDEN_ASSERT_MSG(data.vertexBufferCount < maxVertexBindingCount, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(data.vertexCount > 0, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(data.instanceCount > 0, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(currentCommandBuffer, "Assert " + debugName);
@@ -605,38 +633,28 @@ void GraphicsPipeline::draw(const DrawData& data)
 	GARDEN_ASSERT_MSG(ID<Pipeline>(graphicsAPI->graphicsPipelinePool.getID(this)) == 
 		graphicsAPI->currentPipelines.front(), "Assert " + debugName);
 	GARDEN_ASSERT_MSG(isLoaded(), "Graphics pipeline [" + debugName + "] is not loaded");
-	GARDEN_ASSERT(framebuffer == graphicsAPI->renderPassFramebuffer);
+	GARDEN_ASSERT_MSG(framebuffer == graphicsAPI->renderPassFramebuffer, "Assert " + debugName);
 
-	auto vertexBuffers = data.vertexBuffers;
-	auto bufferOffsets = data.bufferOffsets;
-	auto bufferCount = data.bufferCount;
+	validateVertexBuffers(graphicsAPI->bufferPool, data.vertexBuffers, 
+		data.vertexBufferOffsets, data.vertexBufferCount);
 
 	if (currentCommandBuffer->getType() != CommandBufferType::Frame)
 	{
-		for (uint8 i = 0; i < bufferCount; i++)
-		{
-			auto vertexBuffer = vertexBuffers[i];
-			#if GARDEN_DEBUG
-			GARDEN_ASSERT_MSG(vertexBuffer, "Assert " + debugName);
-			auto vertexBufferView = graphicsAPI->bufferPool.get(vertexBuffer);
-			GARDEN_ASSERT_MSG(vertexBufferView->isLoaded(), "Vertex buffer [" + 
-				vertexBufferView->getDebugName() + "] is not loaded");
-			if (bufferOffsets)
-				GARDEN_ASSERT_MSG(bufferOffsets[i] < vertexBufferView->getBinarySize(), "Assert " + debugName);
-			#endif
-			currentCommandBuffer->lockResource(vertexBuffer);
-		}
+		auto vertexBuffers = data.vertexBuffers;
+		auto vertexBufferCount = data.vertexBufferCount;
+		for (uint8 i = 0; i < vertexBufferCount; i++)
+			currentCommandBuffer->lockResource(vertexBuffers[i]);
 	}
 
 	DrawCommand command;
-	command.hasBufferOffsets = bufferOffsets ? true : false;
-	command.bufferCount = bufferCount;
+	command.hasBufferOffsets = data.vertexBufferOffsets ? true : false;
+	command.vertexBufferCount = data.vertexBufferCount;
 	command.vertexCount = data.vertexCount;
 	command.instanceCount = data.instanceCount;
 	command.vertexOffset = data.vertexOffset;
 	command.instanceOffset = data.instanceOffset;
-	command.vertexBuffers = vertexBuffers;
-	command.bufferOffsets = bufferOffsets;
+	command.vertexBuffers = data.vertexBuffers;
+	command.vertexBufferOffsets = data.vertexBufferOffsets;
 	currentCommandBuffer->addCommand(command);
 }
 
@@ -645,9 +663,9 @@ void GraphicsPipeline::drawAsync(const DrawData& data, int32 threadIndex)
 {
 	auto graphicsAPI = GraphicsAPI::get();
 	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
-	GARDEN_ASSERT_MSG((!data.vertexBuffers && data.bufferCount == 0) || 
-		(data.vertexBuffers && data.bufferCount > 0), "Assert " + debugName);
-	GARDEN_ASSERT_MSG(data.bufferCount < maxVertexBindingCount, "Assert " + debugName);
+	GARDEN_ASSERT_MSG((data.vertexBuffers && data.vertexBufferCount > 0) || 
+		(!data.vertexBuffers && data.vertexBufferCount == 0), "Assert " + debugName);
+	GARDEN_ASSERT_MSG(data.vertexBufferCount < maxVertexBindingCount, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(data.vertexCount > 0, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(data.instanceCount > 0, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(threadIndex >= 0, "Assert " + debugName);
@@ -655,75 +673,38 @@ void GraphicsPipeline::drawAsync(const DrawData& data, int32 threadIndex)
 	GARDEN_ASSERT_MSG(graphicsAPI->renderPassFramebuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(graphicsAPI->isRenderPassAsync, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(isLoaded(), "Graphics pipeline [" + debugName + "] is not loaded");
-	GARDEN_ASSERT(framebuffer == graphicsAPI->renderPassFramebuffer);
+	GARDEN_ASSERT_MSG(framebuffer == graphicsAPI->renderPassFramebuffer, "Assert " + debugName);
 
-	auto graphicsBackend = graphicsAPI->getBackendType();
+	validateVertexBuffers(graphicsAPI->bufferPool, data.vertexBuffers, 
+		data.vertexBufferOffsets, data.vertexBufferCount);
+
 	graphicsAPI->calcAutoThreadIndex(threadIndex);
 	GARDEN_ASSERT_MSG(ID<Pipeline>(graphicsAPI->graphicsPipelinePool.getID(this)) == 
 		graphicsAPI->currentPipelines[threadIndex], "Assert " + debugName);
-	auto vertexBuffers = data.vertexBuffers;
-	auto bufferOffsets = data.bufferOffsets;
-	auto bufferCount = data.bufferCount;
+	auto vertexBufferCount = data.vertexBufferCount;
+	auto graphicsBackend = graphicsAPI->getBackendType();
 
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
 		auto vulkanAPI = VulkanAPI::get();
 		auto secondaryCommandBuffer = vulkanAPI->secondaryCommandBuffers[threadIndex];
 
-		if (bufferCount > 0)
+		if (vertexBufferCount > 0)
 		{
-			auto& currentVertexBuffers = vulkanAPI->currentVertexBuffers[threadIndex];
-			if (currentVertexBuffers.size() < bufferCount)
-				currentVertexBuffers.resize(bufferCount);
-			auto bindBuffers = vulkanAPI->bindBuffers[threadIndex];
-			auto bindBufferOffsets = vulkanAPI->bindBufferOffsets[threadIndex];
-			auto currVertexBuffers = currentVertexBuffers.data();
-
-			uint32 firstBinding = 0;
-			for (uint8 i = 0; i < bufferCount; i++)
-			{
-				auto vertexBuffer = vertexBuffers[i];
-				if (vertexBuffer != currVertexBuffers[i])
-				{
-					auto bufferView = vulkanAPI->bufferPool.get(vertexBuffer);
-					GARDEN_ASSERT_MSG(bufferView->isLoaded(), "Vertex buffer [" + 
-						bufferView->getDebugName() + "] is not loaded");
-					if (bufferOffsets)
-						GARDEN_ASSERT_MSG(bufferOffsets[i] < bufferView->getBinarySize(), "Assert " + debugName);
-					if (currentCommandBuffer->getType() != CommandBufferType::Frame)
-						currentCommandBuffer->lockResource(vertexBuffer, threadIndex);
-					bindBuffers.push_back((VkBuffer)ResourceExt::getInstance(**bufferView));
-					bindBufferOffsets.push_back(bufferOffsets ? bufferOffsets[i] : 0);
-					currVertexBuffers[i] = vertexBuffer;
-				}
-				else
-				{
-					if (!bindBuffers.empty())
-					{
-						secondaryCommandBuffer.bindVertexBuffers(firstBinding, 
-							bindBuffers.size(), bindBuffers.data(), bindBufferOffsets.data());
-						bindBuffers.clear(); bindBufferOffsets.clear();
-					}
-					firstBinding = i + 1;
-				}
-			}
-
-			secondaryCommandBuffer.bindVertexBuffers(firstBinding, 
-				bindBuffers.size(), bindBuffers.data(), bindBufferOffsets.data());
-			bindBuffers.clear(); bindBufferOffsets.clear();
+			VulkanCommandBuffer::bindVertexBuffers(vulkanAPI, secondaryCommandBuffer, 
+				data.vertexBuffers, data.vertexBufferOffsets, vertexBufferCount, threadIndex);
 		}
 
-		secondaryCommandBuffer.draw(data.vertexCount, 
-			data.instanceCount, data.vertexOffset, data.instanceOffset);
+		secondaryCommandBuffer.draw(data.vertexCount, data.instanceCount, data.vertexOffset, data.instanceOffset);
 		vulkanAPI->secondaryCommandStates[threadIndex]->store(true);
 	}
 	else abort();
 
-	if (bufferCount > 0)
+	if (vertexBufferCount > 0)
 	{
 		DrawBarrierCommand command;
-		command.bufferCount = bufferCount;
-		command.buffers = vertexBuffers;
+		command.bufferCount = vertexBufferCount;
+		command.buffers = data.vertexBuffers;
 		currentCommandBuffer->addCommand(command, threadIndex);
 	}
 }
@@ -745,103 +726,92 @@ void GraphicsPipeline::drawIndexed(const DrawIndexedData& data)
 	GARDEN_ASSERT_MSG(ID<Pipeline>(graphicsAPI->graphicsPipelinePool.getID(this)) == 
 		graphicsAPI->currentPipelines.front(), "Assert " + debugName);
 	GARDEN_ASSERT_MSG(isLoaded(), "Graphics pipeline [" + debugName + "] is not loaded");
+	GARDEN_ASSERT_MSG(framebuffer == graphicsAPI->renderPassFramebuffer, "Assert " + debugName);
 
-	auto vertexBufferView = graphicsAPI->bufferPool.get(vertexBuffers[0]);
-	auto indexBufferView = graphicsAPI->bufferPool.get(indexBuffer);
-	GARDEN_ASSERT_MSG(vertexBufferView->isLoaded(), "Vertex buffer [" + 
-		vertexBufferView->getDebugName() + "] is not loaded");
-	GARDEN_ASSERT_MSG(indexBufferView->isLoaded(), "Index buffer [" + 
-		indexBufferView->getDebugName() + "] is not loaded");
-	GARDEN_ASSERT(indexCount + indexOffset <= indexBufferView->getBinarySize() / toBinarySize(indexType));
-	GARDEN_ASSERT(framebuffer == graphicsAPI->renderPassFramebuffer);
+	validateVertexBuffers(graphicsAPI->bufferPool, data.vertexBuffers, 
+		data.vertexBufferOffsets, data.vertexBufferCount);
+	validateIndexBuffer(graphicsAPI->bufferPool, data.indexBuffer, 
+		data.indexCount, data.indexOffset, data.indexType);
 
 	if (currentCommandBuffer->getType() != CommandBufferType::Frame)
 	{
-		currentCommandBuffer->lockResource(vertexBuffers[0]);
-		currentCommandBuffer->lockResource(indexBuffer);
+		auto vertexBuffers = data.vertexBuffers;
+		auto vertexBufferCount = data.vertexBufferCount;
+		for (uint8 i = 0; i < vertexBufferCount; i++)
+			currentCommandBuffer->lockResource(vertexBuffers[i]);
+		currentCommandBuffer->lockResource(data.indexBuffer);
 	}
 
 	DrawIndexedCommand command;
-	command.indexType = indexType;
-	command.vertexBufferCount = vertexBufferCount;
-	command.indexCount = indexCount;
-	command.instanceCount = instanceCount;
-	command.indexOffset = indexOffset;
-	command.vertexOffset = vertexOffset;
-	command.instanceOffset = instanceOffset;
-	command.indexBuffer = indexBuffer;
-	command.vertexBuffers = vertexBuffers;
+	command.indexType = data.indexType;
+	command.hasBufferOffsets = data.vertexBufferOffsets ? true : false;
+	command.vertexBufferCount = data.vertexBufferCount;
+	command.indexCount = data.indexCount;
+	command.instanceCount = data.instanceCount;
+	command.indexOffset = data.indexOffset;
+	command.vertexOffset = data.vertexOffset;
+	command.instanceOffset = data.instanceOffset;
+	command.indexBuffer = data.indexBuffer;
+	command.vertexBuffers = data.vertexBuffers;
+	command.vertexBufferOffsets = data.vertexBufferOffsets;
 	currentCommandBuffer->addCommand(command);
 }
 
 //**********************************************************************************************************************
-void GraphicsPipeline::drawIndexedAsync(int32 threadIndex, const ID<Buffer>* vertexBuffers, 
-	uint8 vertexBufferCount, IndexType indexType, ID<Buffer> indexBuffer, uint32 indexCount, 
-	uint32 instanceCount, uint32 indexOffset, uint32 vertexOffset, uint32 instanceOffset)
+void GraphicsPipeline::drawIndexedAsync(const DrawIndexedData& data, int32 threadIndex)
 {
 	auto graphicsAPI = GraphicsAPI::get();
 	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
-	GARDEN_ASSERT_MSG(vertexBuffers, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(vertexBufferCount > 0, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(vertexBufferCount < maxVertexBindingCount, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(indexBuffer, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(indexCount > 0, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(instanceCount > 0, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(data.vertexBuffers, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(data.vertexBufferCount > 0, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(data.vertexBufferCount < maxVertexBindingCount, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(data.indexBuffer, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(data.indexCount > 0, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(data.instanceCount > 0, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(threadIndex >= 0, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(currentCommandBuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(graphicsAPI->renderPassFramebuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(graphicsAPI->isRenderPassAsync, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(isLoaded(), "Graphics pipeline [" + debugName + "] is not loaded");
+	GARDEN_ASSERT_MSG(framebuffer == graphicsAPI->renderPassFramebuffer, "Assert " + debugName);
 
-	auto vertexBufferView = graphicsAPI->bufferPool.get(vertexBuffers[0]);
-	auto indexBufferView = graphicsAPI->bufferPool.get(indexBuffer);
-	GARDEN_ASSERT_MSG(vertexBufferView->isLoaded(), "Vertex buffer [" + 
-		vertexBufferView->getDebugName() + "] is not loaded");
-	GARDEN_ASSERT_MSG(indexBufferView->isLoaded(), "Index buffer [" + 
-		indexBufferView->getDebugName() + "] is not loaded");
-	GARDEN_ASSERT(indexCount + indexOffset <= indexBufferView->getBinarySize() / toBinarySize(indexType));
-	GARDEN_ASSERT(framebuffer == graphicsAPI->renderPassFramebuffer);
+	validateVertexBuffers(graphicsAPI->bufferPool, data.vertexBuffers, 
+		data.vertexBufferOffsets, data.vertexBufferCount);
+	validateIndexBuffer(graphicsAPI->bufferPool, data.indexBuffer, 
+		data.indexCount, data.indexOffset, data.indexType);
 
-	auto graphicsBackend = graphicsAPI->getBackendType();
 	graphicsAPI->calcAutoThreadIndex(threadIndex);
 	GARDEN_ASSERT_MSG(ID<Pipeline>(graphicsAPI->graphicsPipelinePool.getID(this)) == 
 		graphicsAPI->currentPipelines[threadIndex], "Assert " + debugName);
+	auto graphicsBackend = graphicsAPI->getBackendType();
 
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
 		auto vulkanAPI = VulkanAPI::get();
 		auto secondaryCommandBuffer = vulkanAPI->secondaryCommandBuffers[threadIndex];
-		const vk::DeviceSize size = 0;
 
-		if (vertexBuffers[0] != vulkanAPI->currentVertexBuffers[threadIndex])
+		VulkanCommandBuffer::bindVertexBuffers(vulkanAPI, secondaryCommandBuffer, 
+			data.vertexBuffers, data.vertexBufferOffsets, data.vertexBufferCount, threadIndex);
+
+		if (data.indexBuffer != vulkanAPI->currentIndexBuffers[threadIndex])
 		{
-			vk::Buffer vkBuffer = (VkBuffer)ResourceExt::getInstance(**vertexBufferView);
-			secondaryCommandBuffer.bindVertexBuffers(0, 1, &vkBuffer, &size);
-			vulkanAPI->currentVertexBuffers[threadIndex] = vertexBuffers[0];
-		}
-		if (indexBuffer != vulkanAPI->currentIndexBuffers[threadIndex])
-		{
+			auto indexBuffer = data.indexBuffer; auto indexType = data.indexType;
+			auto indexBufferView = vulkanAPI->bufferPool.get(indexBuffer);
 			secondaryCommandBuffer.bindIndexBuffer((VkBuffer)ResourceExt::getInstance(**indexBufferView),
-				(vk::DeviceSize)indexOffset * toBinarySize(indexType), toVkIndexType(indexType));
+				(vk::DeviceSize)data.indexOffset * toBinarySize(indexType), toVkIndexType(indexType));
 			vulkanAPI->currentIndexBuffers[threadIndex] = indexBuffer;
 		}
 
-		secondaryCommandBuffer.drawIndexed(indexCount, instanceCount, indexOffset, vertexOffset, instanceOffset);
+		secondaryCommandBuffer.drawIndexed(data.indexCount, data.instanceCount, 
+			data.indexOffset, data.vertexOffset, data.instanceOffset);
 		vulkanAPI->secondaryCommandStates[threadIndex]->store(true);
 	}
 	else abort();
 
-	// TODO: record instead special small struct without any additional data.
-	DrawIndexedCommand command;
-	command.vertexBuffers = vertexBuffers;
-	command.indexBuffer = indexBuffer;
-	currentCommandBuffer->addCommand(command, threadIndex);
-
-	if (currentCommandBuffer->getType() != CommandBufferType::Frame)
-	{
-		currentCommandBuffer->lockResource(vertexBuffers[0]);
-		currentCommandBuffer->lockResource(indexBuffer);
-	}
+	DrawBarrierCommand command;
+	command.bufferCount = data.vertexBufferCount;
+	command.buffers = data.vertexBuffers;
+	currentCommandBuffer->addCommand(command, threadIndex, data.indexBuffer);
 }
 
 //**********************************************************************************************************************
@@ -855,11 +825,9 @@ void GraphicsPipeline::drawFullscreen()
 	GARDEN_ASSERT_MSG(ID<Pipeline>(graphicsAPI->graphicsPipelinePool.getID(this)) == 
 		graphicsAPI->currentPipelines.front(), "Assert " + debugName);
 	GARDEN_ASSERT_MSG(isLoaded(), "Graphics pipeline [" + debugName + "] is not loaded");
-	GARDEN_ASSERT(framebuffer == graphicsAPI->renderPassFramebuffer);
+	GARDEN_ASSERT_MSG(framebuffer == graphicsAPI->renderPassFramebuffer, "Assert " + debugName);
 	
-	DrawCommand command;
-	command.vertexCount = 3;
-	command.instanceCount = 1;
+	DrawFullscreenCommand command;
 	currentCommandBuffer->addCommand(command);
 }
 void GraphicsPipeline::drawFullscreenAsync(int32 threadIndex)
@@ -870,12 +838,12 @@ void GraphicsPipeline::drawFullscreenAsync(int32 threadIndex)
 	GARDEN_ASSERT_MSG(graphicsAPI->renderPassFramebuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(graphicsAPI->isRenderPassAsync, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(isLoaded(), "Graphics pipeline [" + debugName + "] is not loaded");
-	GARDEN_ASSERT(framebuffer == graphicsAPI->renderPassFramebuffer);
+	GARDEN_ASSERT_MSG(framebuffer == graphicsAPI->renderPassFramebuffer, "Assert " + debugName);
 
-	auto graphicsBackend = graphicsAPI->getBackendType();
 	graphicsAPI->calcAutoThreadIndex(threadIndex);
 	GARDEN_ASSERT_MSG(ID<Pipeline>(graphicsAPI->graphicsPipelinePool.getID(this)) == 
 		graphicsAPI->currentPipelines[threadIndex], "Assert " + debugName);
+	auto graphicsBackend = graphicsAPI->getBackendType();
 
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
@@ -908,8 +876,8 @@ void GraphicsPipeline::setDepthBiasAsync(float constantFactor, float slopeFactor
 	GARDEN_ASSERT(graphicsAPI->renderPassFramebuffer);
 	GARDEN_ASSERT(graphicsAPI->isRenderPassAsync);
 
-	auto graphicsBackend = graphicsAPI->getBackendType();
 	auto autoThreadCount = graphicsAPI->calcAutoThreadCount(threadIndex);
+	auto graphicsBackend = graphicsAPI->getBackendType();
 
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{

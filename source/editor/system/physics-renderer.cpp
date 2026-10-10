@@ -67,15 +67,20 @@ void PhysicsDebugRenderer::drawLines(const f32x4x4& viewProj)
 	if (!pipelineView->isReady())
 		return;
 
-	PushConstants pc;
-	pc.mvp = (float4x4)viewProj;
-
 	pipelineView->bind();
 	pipelineView->setViewportScissor();
+
+	PushConstants pc;
+	pc.mvp = (float4x4)viewProj;
 	pipelineView->pushConstants(&pc);
-	pipelineView->draw(linesBuffer, (uint32)lines.size() * 2);
-	graphicsSystem->destroy(linesBuffer);
-	lines.clear();
+
+	GraphicsPipeline::DrawData drawData;
+	drawData.vertexBuffers = &linesBuffer;
+	drawData.vertexBufferCount = 1;
+	drawData.vertexCount = (uint32)lines.size() * 2;
+	pipelineView->draw(drawData);
+
+	graphicsSystem->destroy(linesBuffer); lines.clear();
 }
 
 //**********************************************************************************************************************
@@ -96,15 +101,20 @@ void PhysicsDebugRenderer::drawTriangles(const f32x4x4& viewProj)
 	if (!pipelineView->isReady())
 		return;
 
-	PushConstants pc;
-	pc.mvp = (float4x4)viewProj;
-
 	pipelineView->bind();
 	pipelineView->setViewportScissor();
+
+	PushConstants pc;
+	pc.mvp = (float4x4)viewProj;
 	pipelineView->pushConstants(&pc);
-	pipelineView->draw(trianglesBuffer, (uint32)triangles.size());
-	graphicsSystem->destroy(trianglesBuffer);
-	triangles.clear();
+
+	GraphicsPipeline::DrawData drawData;
+	drawData.vertexBuffers = &trianglesBuffer;
+	drawData.vertexBufferCount = 1;
+	drawData.vertexCount = (uint32)triangles.size();
+	pipelineView->draw(drawData);
+
+	graphicsSystem->destroy(trianglesBuffer); triangles.clear();
 }
 
 void PhysicsDebugRenderer::preDraw()

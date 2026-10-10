@@ -34,7 +34,7 @@ struct Command
 	{
 		Unknown, BufferBarrier, BeginRenderPass, Execute, EndRenderPass, ClearAttachments,
 		BindPipeline, BindDescriptorSets, PushConstants, SetViewport, SetScissor, SetViewportScissor, 
-		SetDepthBias, Draw, DrawIndexed, DrawIndirect, DrawIndexedIndirect, DrawBarrier,
+		SetDepthBias, Draw, DrawIndexed, DrawIndirect, DrawIndexedIndirect, DrawFullscreen, DrawBarrier,
 		Dispatch, FillBuffer, CopyBuffer, ClearImage, CopyImage, CopyBufferImage, BlitImage,
 		BuildAccelerationStructure, CopyAccelerationStructure, TraceRays, Custom,
 
@@ -181,7 +181,7 @@ struct SetDepthBiasCommand final : public Command
 struct DrawCommandBase : public Command
 {
 	bool hasBufferOffsets = false;
-	uint8 bufferCount = 0;
+	uint8 vertexBufferCount = 0;
 	uint8 _alignment = 0;
 	uint32 vertexCount = 0;
 	uint32 instanceCount = 0;
@@ -192,7 +192,7 @@ struct DrawCommandBase : public Command
 struct DrawCommand final : public DrawCommandBase
 {
 	const ID<Buffer>* vertexBuffers = nullptr;
-	const uint64* bufferOffsets = nullptr;
+	const uint64* vertexBufferOffsets = nullptr;
 };
 
 struct DrawIndexedCommandBase : public Command
@@ -211,7 +211,7 @@ struct DrawIndexedCommandBase : public Command
 struct DrawIndexedCommand final : public DrawIndexedCommandBase
 {
 	const ID<Buffer>* vertexBuffers = nullptr;
-	const uint64* bufferOffsets = nullptr;
+	const uint64* vertexBufferOffsets = nullptr;
 };
 
 struct DrawIndirectCommand final : public Command
@@ -233,6 +233,13 @@ struct DrawIndexedIndirectCommand final : public Command
 	uint32 stride = 0;
 	ID<Buffer> buffer = {};
 	DrawIndexedIndirectCommand() noexcept : Command(Type::DrawIndexedIndirect) { }
+};
+
+struct DrawFullscreenCommand final : public Command
+{
+	uint8 _alignment0 = 0;
+	uint16 _alignment1 = 0;
+	DrawFullscreenCommand() noexcept : Command(Type::DrawFullscreen) { }
 };
 
 struct DrawBarrierCommandBase : public Command
@@ -517,6 +524,7 @@ protected:
 	virtual void processCommand(const SetDepthBiasCommand& command) = 0;
 	virtual void processCommand(const DrawCommand& command) = 0;
 	virtual void processCommand(const DrawIndexedCommand& command) = 0;
+	virtual void processCommand(const DrawFullscreenCommand& command) = 0;
 	virtual void processCommand(const DrawBarrierCommand& command) = 0;
 	virtual void processCommand(const DispatchCommand& command) = 0;
 	virtual void processCommand(const FillBufferCommand& command) = 0;
@@ -678,15 +686,15 @@ public:
 	void addCommand(const DrawCommand& command)
 	{
 		GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Graphics);
-		auto buffersBinarySize = command.bufferCount * sizeof(ID<Buffer>);
-		auto offsetsBinarySize = (command.hasBufferOffsets ? command.bufferCount : 0) * sizeof(uint64);
+		auto buffersBinarySize = command.vertexBufferCount * sizeof(ID<Buffer>);
+		auto offsetsBinarySize = (command.hasBufferOffsets ? command.vertexBufferCount : 0) * sizeof(uint64);
 		auto commandSize = sizeof(DrawCommandBase) + buffersBinarySize + offsetsBinarySize;
 		auto allocation = allocateCommand<DrawCommandBase>(command, (uint32)commandSize);
-		if (command.bufferCount > 0)
+		if (command.vertexBufferCount > 0)
 		{
 			memcpy(allocation + 1, command.vertexBuffers, buffersBinarySize);
 			if (command.hasBufferOffsets)
-				memcpy((uint8*)(allocation + 1) + buffersBinarySize, command.bufferOffsets, offsetsBinarySize);
+				memcpy((uint8*)(allocation + 1) + buffersBinarySize, command.vertexBufferOffsets, offsetsBinarySize);
 		}
 	}
 	void addCommand(const DrawIndexedCommand& command)
@@ -700,15 +708,22 @@ public:
 		{
 			memcpy(allocation + 1, command.vertexBuffers, buffersBinarySize);
 			if (command.hasBufferOffsets)
-				memcpy((uint8*)(allocation + 1) + buffersBinarySize, command.bufferOffsets, offsetsBinarySize);
+				memcpy((uint8*)(allocation + 1) + buffersBinarySize, command.vertexBufferOffsets, offsetsBinarySize);
 		}
 	}
-	void addCommand(const DrawBarrierCommand& command, int32 threadIndex)
+	void addCommand(const DrawFullscreenCommand& command)
 	{
-		auto buffersBinarySize = command.bufferCount * sizeof(ID<Buffer>);
+		GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Graphics);
+		allocateCommand(command);
+	}
+	void addCommand(const DrawBarrierCommand& command, int32 threadIndex, ID<Buffer> addBuffer = {})
+	{
+		auto buffersBinarySize = (command.bufferCount + (addBuffer ? 1 : 0)) * sizeof(ID<Buffer>);
 		auto commandSize = sizeof(DrawBarrierCommandBase) + buffersBinarySize;
 		auto allocation = allocateCommand<DrawBarrierCommandBase>(command, (uint32)commandSize, threadIndex);
 		memcpy(allocation + 1, command.buffers, buffersBinarySize);
+		if (addBuffer)
+			*(ID<Buffer>*)((uint8*)allocation + (buffersBinarySize - sizeof(ID<Buffer>))) = addBuffer;
 	}
 	void addCommand(const DispatchCommand& command)
 	{

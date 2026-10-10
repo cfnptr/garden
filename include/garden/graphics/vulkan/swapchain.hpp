@@ -44,13 +44,13 @@ public:
 	{
 		vector<vk::CommandPool> secondaryCommandPools;
 		vector<vk::CommandBuffer> secondaryCommandBuffers;
-		vk::Fence fence;
-		vk::Semaphore imageAvailableSemaphore;
-		vk::CommandBuffer primaryCommandBuffer;
+		vk::Fence fence = {};
+		vk::Semaphore imageAvailableSemaphore = {};
+		vk::CommandBuffer primaryCommandBuffer = {};
 		uint32 secondaryCommandBufferIndex = 0;
 
 		#if GARDEN_DEBUG || GARDEN_EDITOR
-		vk::QueryPool queryPool;
+		vk::QueryPool queryPool = {};
 		bool isPoolClean = false;
 		#endif
 	};

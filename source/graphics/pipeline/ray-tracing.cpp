@@ -167,8 +167,8 @@ RayTracingPipeline::SBT RayTracingPipeline::createSBT(Buffer::Usage flags)
 
 	SBT sbt; sbt.groupRegions.reserve(variantCount);
 	auto groupCount = rayGenGroupCount + missGroupCount + callGroupCount + hitGroupCount;	
-
 	auto graphicsBackend = graphicsAPI->getBackendType();
+
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
 		auto vulkanAPI = VulkanAPI::get();

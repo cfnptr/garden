@@ -19,7 +19,7 @@ using namespace std;
 using namespace math;
 using namespace garden::graphics;
 
-#if GARDEN_DEBUG
+#if GARDEN_USE_GAPI_VALIDATIONS
 //**********************************************************************************************************************
 void DebugLabel::begin(const string& name, Color color, int32 threadIndex)
 {
@@ -78,7 +78,7 @@ void DebugLabel::insert(const string& name, Color color, int32 threadIndex)
 	auto graphicsAPI = GraphicsAPI::get();
 	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
 	GARDEN_ASSERT(!name.empty());
-	GARDEN_ASSERT(currentCommandBuffer);
+	GARDEN_ASSERT_MSG(currentCommandBuffer, "Assert " + name);
 
 	if (threadIndex < 0)
 	{

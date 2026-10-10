@@ -708,11 +708,9 @@ ID<Entity> ModelRenderSystem::loadModel(const fs::path& path, const ModelCompone
 	else 
 	{
 		#if GARDEN_DEBUG
-		GARDEN_ASSERT(!components->empty());
+		GARDEN_ASSERT_MSG(!components->empty(), "Assert " + path.generic_string());
 		for (const auto& pair : *components)
-		{
-			GARDEN_ASSERT(!pair.first.empty());
-		}
+			GARDEN_ASSERT_MSG(!pair.first.empty(), "Assert " + path.generic_string());
 		#endif
 	}
 

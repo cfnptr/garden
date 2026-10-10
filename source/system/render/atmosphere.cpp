@@ -80,7 +80,8 @@ static ID<ImageView> createSkyboxShView(GraphicsSystem* graphicsSystem, ID<Image
 static void createShCaches(GraphicsSystem* graphicsSystem, uint32 skyboxSize,
 	View<ComputePipeline> shGenPipelineView, DescriptorSet::Buffers& shCaches)
 {
-	GARDEN_ASSERT(shGenPipelineView->getLocalSize().x == shGenPipelineView->getLocalSize().y);
+	GARDEN_ASSERT_MSG(shGenPipelineView->getLocalSize().x == 
+		shGenPipelineView->getLocalSize().y, "Assert" + shGenPipelineView->getDebugName());
 	auto localSize = shGenPipelineView->getLocalSize().x;
 	auto inFlightCount = graphicsSystem->getInFlightCount();
 	uint64 reducedSize = skyboxSize / localSize;
@@ -812,7 +813,8 @@ void AtmosphereRenderSystem::generateSkyShDiffuse(ID<Buffer> shDiffuse, f32x4x4*
 	shGenPipelineView->dispatch(uint3(skyboxSize, skyboxSize, Image::cubemapFaceCount));
 
 	auto localSize = shGenPipelineView->getLocalSize().x;
-	GARDEN_ASSERT(shRedPipelineView->getLocalSize().x == localSize * localSize);
+	GARDEN_ASSERT_MSG(shRedPipelineView->getLocalSize().x == 
+		localSize * localSize, "Assert " + shRedPipelineView->getDebugName());
 	auto reducedSize = skyboxSize / localSize;
 	reducedSize = reducedSize * reducedSize * Image::cubemapFaceCount;
 	localSize = localSize * localSize;

@@ -282,7 +282,7 @@ static string_view toString(CompareOp compareOperator) noexcept
 	return compareOperatorNames[(psize)compareOperator];
 }
 
-#if GARDEN_DEBUG
+#if GARDEN_USE_GAPI_VALIDATIONS
 /***********************************************************************************************************************
  * @brief Command buffer debug marker.
  * 

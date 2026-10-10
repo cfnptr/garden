@@ -856,7 +856,7 @@ bool ResourceSystem::loadImageData(const fs::path& path, raw_vector<uint8>& pixe
 	uint4& size, Image::Type& type, Image::Format& format, int32 threadIndex) const noexcept
 {
 	GARDEN_ASSERT(!path.empty());
-	GARDEN_ASSERT(threadIndex < (int32)thread::hardware_concurrency());
+	GARDEN_ASSERT_MSG(threadIndex < (int32)thread::hardware_concurrency(), "Assert " + path.generic_string());
 	raw_vector<uint8> imageData; Image::FileType fileType;
 
 	#if GARDEN_PACK_RESOURCES
@@ -1066,7 +1066,7 @@ bool ResourceSystem::loadImageData(const fs::path* paths, psize pathCount, vecto
 {
 	GARDEN_ASSERT(paths);
 	GARDEN_ASSERT(pathCount > 0);
-	GARDEN_ASSERT(threadIndex < (int32)thread::hardware_concurrency());
+	GARDEN_ASSERT_MSG(threadIndex < (int32)thread::hardware_concurrency(), "Assert " + paths[0].generic_string());
 
 	auto pixelArrayData = pixelArrays.data();
 	auto result = loadOrConvertImage(paths[0], pixelArrayData[0], size, type, format, threadIndex);
@@ -1118,7 +1118,7 @@ bool ResourceSystem::loadCubemapData(const fs::path& path, raw_vector<uint8>& nx
 	raw_vector<uint8>& pz, uint2& size, Image::Format& format, int32 threadIndex) const noexcept
 {
 	GARDEN_ASSERT(!path.empty());
-	GARDEN_ASSERT(threadIndex < (int32)thread::hardware_concurrency());
+	GARDEN_ASSERT_MSG(threadIndex < (int32)thread::hardware_concurrency(), "Assert " + path.generic_string());
 
 	auto threadSystem = ThreadSystem::tryGetInstance();
 	uint4 nxSize, pxSize, nySize, pySize, nzSize, pzSize;
@@ -1493,7 +1493,7 @@ void ResourceSystem::renormalizeImage(const fs::path& path,
 	Image::FileType fileType, float quality, float effort, int32 threadIndex)
 {
 	GARDEN_ASSERT(!path.empty());
-	GARDEN_ASSERT(threadIndex < (int32)thread::hardware_concurrency());
+	GARDEN_ASSERT_MSG(threadIndex < (int32)thread::hardware_concurrency(), "Assert " + path.generic_string());
 
 	raw_vector<uint8> dataBuffer; uint4 size; Image::Type imageType; Image::Format imageFormat;
 	loadImageData(path, dataBuffer, size, imageType, imageFormat, threadIndex);

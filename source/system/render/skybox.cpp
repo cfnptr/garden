@@ -119,6 +119,9 @@ void SkyboxRenderSystem::dsHdrRender()
 	PushConstants pc;
 	pc.viewProj = (float4x4)cc.viewProj;
 
+	GraphicsPipeline::DrawData drawData;
+	drawData.vertexCount = primitive::cubeVertices.size();
+
 	if (graphicsSystem->isRenderPassAsync())
 	{
 		SET_GPU_DEBUG_LABEL_ASYNC("Skybox", 0);
@@ -126,7 +129,7 @@ void SkyboxRenderSystem::dsHdrRender()
 		pipelineView->setViewportScissorAsync(float4::zero, 0);
 		pipelineView->bindDescriptorSetAsync(ID<DescriptorSet>(skyboxView->descriptorSet), 0, 0);
 		pipelineView->pushConstantsAsync(&pc, 0);
-		pipelineView->drawAsync(0, {}, primitive::cubeVertices.size());
+		pipelineView->drawAsync(drawData, 0);
 	}
 	else
 	{
@@ -135,7 +138,7 @@ void SkyboxRenderSystem::dsHdrRender()
 		pipelineView->setViewportScissor();
 		pipelineView->bindDescriptorSet(ID<DescriptorSet>(skyboxView->descriptorSet));
 		pipelineView->pushConstants(&pc);
-		pipelineView->draw({}, primitive::cubeVertices.size());
+		pipelineView->draw(drawData);
 	}
 }
 
@@ -150,7 +153,7 @@ ID<GraphicsPipeline> SkyboxRenderSystem::getPipeline()
 Ref<DescriptorSet> SkyboxRenderSystem::createSharedDS(string_view path, ID<Image> cubemap)
 {
 	GARDEN_ASSERT(!path.empty());
-	GARDEN_ASSERT(cubemap);
+	GARDEN_ASSERT_MSG(cubemap, "Assert " + string(path));
 
 	auto graphicsSystem = GraphicsSystem::getInstance();
 	auto cubemapView = graphicsSystem->get(cubemap);

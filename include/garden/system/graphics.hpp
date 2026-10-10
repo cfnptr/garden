@@ -494,7 +494,7 @@ public:
 	 */
 	void destroy(ID<Buffer>* buffers, uint32 count)
 	{
-		GARDEN_ASSERT(buffers);
+		GARDEN_ASSERT(buffers && count > 0);
 		for (uint32 i = 0; i < count; i++)
 			destroy(buffers[i]);
 	}
@@ -661,7 +661,7 @@ public:
 	 */
 	void destroy(ID<Image>* images, uint32 count)
 	{
-		GARDEN_ASSERT(images);
+		GARDEN_ASSERT(images && count > 0);
 		for (uint32 i = 0; i < count; i++)
 			destroy(images[i]);
 	}
@@ -727,7 +727,7 @@ public:
 	 */
 	void destroy(ID<ImageView>* imageViews, uint32 count)
 	{
-		GARDEN_ASSERT(imageViews);
+		GARDEN_ASSERT(imageViews && count > 0);
 		for (uint32 i = 0; i < count; i++)
 			destroy(imageViews[i]);
 	}
@@ -788,7 +788,7 @@ public:
 	 */
 	void destroy(ID<Framebuffer>* framebuffers, uint32 count)
 	{
-		GARDEN_ASSERT(framebuffers);
+		GARDEN_ASSERT(framebuffers && count > 0);
 		for (uint32 i = 0; i < count; i++)
 			destroy(framebuffers[i]);
 	}
@@ -848,7 +848,7 @@ public:
 	 */
 	void destroy(ID<Sampler>* samplers, uint32 count)
 	{
-		GARDEN_ASSERT(samplers);
+		GARDEN_ASSERT(samplers && count > 0);
 		for (uint32 i = 0; i < count; i++)
 			destroy(samplers[i]);
 	}
@@ -900,7 +900,7 @@ public:
 	 */
 	void destroy(ID<GraphicsPipeline>* graphicsPipelines, uint32 count)
 	{
-		GARDEN_ASSERT(graphicsPipelines);
+		GARDEN_ASSERT(graphicsPipelines && count > 0);
 		for (uint32 i = 0; i < count; i++)
 			destroy(graphicsPipelines[i]);
 	}
@@ -955,7 +955,7 @@ public:
 	 */
 	void destroy(ID<ComputePipeline>* computePipelines, uint32 count)
 	{
-		GARDEN_ASSERT(computePipelines);
+		GARDEN_ASSERT(computePipelines && count > 0);
 		for (uint32 i = 0; i < count; i++)
 			destroy(computePipelines[i]);
 	}
@@ -1010,7 +1010,7 @@ public:
 	 */
 	void destroy(ID<RayTracingPipeline>* rayTracingPipelines, uint32 count)
 	{
-		GARDEN_ASSERT(rayTracingPipelines);
+		GARDEN_ASSERT(rayTracingPipelines && count > 0);
 		for (uint32 i = 0; i < count; i++)
 			destroy(rayTracingPipelines[i]);
 	}
@@ -1096,7 +1096,7 @@ public:
 	 */
 	void destroy(ID<DescriptorSet>* descriptorSets, uint32 count)
 	{
-		GARDEN_ASSERT(descriptorSets);
+		GARDEN_ASSERT(descriptorSets && count > 0);
 		for (uint32 i = 0; i < count; i++)
 			destroy(descriptorSets[i]);
 	}
@@ -1168,7 +1168,7 @@ public:
 	 */
 	void destroy(ID<Blas>* blases, uint32 count)
 	{
-		GARDEN_ASSERT(blases);
+		GARDEN_ASSERT(blases && count > 0);
 		for (uint32 i = 0; i < count; i++)
 			destroy(blases[i]);
 	}
@@ -1229,7 +1229,7 @@ public:
 	 */
 	void destroy(ID<Tlas>* tlases, uint32 count)
 	{
-		GARDEN_ASSERT(tlases);
+		GARDEN_ASSERT(tlases && count > 0);
 		for (uint32 i = 0; i < count; i++)
 			destroy(tlases[i]);
 	}

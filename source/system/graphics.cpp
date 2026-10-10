@@ -1267,8 +1267,8 @@ void GraphicsSystem::addBarriers(Buffer::BarrierState newState, const ID<Buffer>
 
 void GraphicsSystem::customCommand(void(*onCommand)(void*, void*), void* argument)
 {
-	GARDEN_ASSERT(onCommand);
 	auto currentCommandBuffer = GraphicsAPI::get()->currentCommandBuffer;
+	GARDEN_ASSERT(onCommand);
 	GARDEN_ASSERT(currentCommandBuffer);
 	
 	CustomRenderCommand command;
@@ -1292,17 +1292,19 @@ void GraphicsSystem::drawLine(const f32x4x4& mvp, f32x4 startPoint, f32x4 endPoi
 
 	auto pipelineView = GraphicsAPI::get()->graphicsPipelinePool.get(linePipeline);
 	pipelineView->updateFramebuffer(GraphicsAPI::get()->renderPassFramebuffer);
+	pipelineView->bind();
+	pipelineView->setViewportScissor();
 
 	LinePC pc;
 	pc.mvp = (float4x4)mvp;
 	pc.color = (float4)color;
 	pc.startPoint = float4((float3)startPoint, 1.0f);
 	pc.endPoint = float4((float3)endPoint, 1.0f);
-
-	pipelineView->bind();
-	pipelineView->setViewportScissor();
 	pipelineView->pushConstants(&pc);
-	pipelineView->draw({}, 2);
+
+	GraphicsPipeline::DrawData drawData;
+	drawData.vertexCount = 2;
+	pipelineView->draw(drawData);
 }
 void GraphicsSystem::drawAabb(const f32x4x4& mvp, f32x4 color)
 {
@@ -1317,15 +1319,17 @@ void GraphicsSystem::drawAabb(const f32x4x4& mvp, f32x4 color)
 
 	auto pipelineView = GraphicsAPI::get()->graphicsPipelinePool.get(aabbPipeline);
 	pipelineView->updateFramebuffer(GraphicsAPI::get()->renderPassFramebuffer);
+	pipelineView->bind();
+	pipelineView->setViewportScissor();
 
 	AabbPC pc;
 	pc.mvp = (float4x4)mvp;
 	pc.color = (float4)color;
-
-	pipelineView->bind();
-	pipelineView->setViewportScissor();
 	pipelineView->pushConstants(&pc);
-	pipelineView->draw({}, 24);
+
+	GraphicsPipeline::DrawData drawData;
+	drawData.vertexCount = 24;
+	pipelineView->draw(drawData);
 }
 
 //**********************************************************************************************************************

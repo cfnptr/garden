@@ -25,9 +25,9 @@ using namespace garden;
 static ID<ImageView> getLdrCopyView(GraphicsSystem* graphicsSystem, DeferredRenderSystem* deferredSystem)
 {
 	auto gBuffer = deferredSystem->getGBuffers()[G_BUFFER_BASE_COLOR];
-	auto imageView = graphicsSystem->get(gBuffer)->getView(); // Note: Reusing G-Buffer memory.
-	GARDEN_ASSERT(graphicsSystem->get(gBuffer)->getFormat() == DeferredRenderSystem::ldrBufferFormat);
-	return imageView;
+	auto image = graphicsSystem->get(gBuffer); // Note: Reusing G-Buffer memory.
+	GARDEN_ASSERT(image->getFormat() == DeferredRenderSystem::ldrBufferFormat);
+	return image->getView();
 }
 static ID<Framebuffer> createFramebuffer(GraphicsSystem* graphicsSystem, DeferredRenderSystem* deferredSystem)
 {
