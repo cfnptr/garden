@@ -14,6 +14,7 @@
 
 spec const bool USE_ALPHA_CUTOFF = false;
 
+#include "common/gbuffer.gsl"
 #include "model/instance-data.h"
 
 pipelineState
@@ -22,7 +23,10 @@ pipelineState
 	depthWriting = on;
 }
 
-out float4 fb.color;
+out float4 fb.g0;
+out float4 fb.g1;
+out float4 fb.g2;
+out float4 fb.g3;
 
 uniform pushConstants
 {
@@ -36,6 +40,7 @@ buffer readonly Instance
 
 void main()
 {
-	// fb.color = instance.data[pc.instanceIndex].color;
-	fb.color = float4(1.0f, 0.0f, 0.0f, 1.0f);
+	GBufferValues gBuffer = gBufferValuesDefault();
+	gBuffer.baseColor = float4(float3(1.0f), 1.0f);
+	ENCODE_G_BUFFER_VALUES(gBuffer);
 }

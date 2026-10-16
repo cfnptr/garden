@@ -146,7 +146,7 @@ public:
 };
 
 /**
- * @brief Converts binary size to the string representation. (KB, MB, GB, TB)
+ * @brief Converts binary size to the string representation. (KiB, MiB, GiB, TiB)
  * @param size target binary size
  */
 static string toBinarySizeString(uint64 size)
@@ -155,25 +155,25 @@ static string toBinarySizeString(uint64 size)
 	{
 		auto floatSize = (double)size / (double)((uint64)1024 * 1024 * 1024 * 1024);
 		return to_string((uint64)floatSize) + "." + to_string((uint64)(
-			(double)(floatSize - (uint64)floatSize) * 10.0)) + " TB";
+			(double)(floatSize - (uint64)floatSize) * 10.0)) + " TiB";
 	}
 	if (size > (uint64)1024 * 1024 * 1024)
 	{
 		auto floatSize = (double)size / (double)(1024 * 1024 * 1024);
 		return to_string((uint64)floatSize) + "." + to_string((uint64)(
-			(double)(floatSize - (uint64)floatSize) * 10.0)) + " GB";
+			(double)(floatSize - (uint64)floatSize) * 10.0)) + " GiB";
 	}
 	if (size > (uint64)1024 * 1024)
 	{
 		auto floatSize = (double)size / (double)(1024 * 1024);
 		return to_string((uint64)floatSize) + "." + to_string((uint64)(
-			(double)(floatSize - (uint64)floatSize) * 10.0)) + " MB";
+			(double)(floatSize - (uint64)floatSize) * 10.0)) + " MiB";
 	}
 	if (size > (uint64)1024)
 	{
 		auto floatSize = (double)size / (double)(1024);
 		return to_string((uint64)floatSize) + "." + to_string((uint64)(
-			(double)(floatSize - (uint64)floatSize) * 10.0)) + " KB";
+			(double)(floatSize - (uint64)floatSize) * 10.0)) + " KiB";
 	}
 	return to_string(size) + " B";
 }

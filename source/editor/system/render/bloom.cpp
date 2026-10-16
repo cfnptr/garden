@@ -25,8 +25,7 @@ using namespace garden;
 //**********************************************************************************************************************
 static DescriptorSet::Uniforms getThresholdUniforms(GraphicsSystem* graphicsSystem)
 {
-	auto hdrBufferView = DeferredRenderSystem::getInstance()->getHdrImageView();
-	return { { "hdrBuffer", DescriptorSet::Uniform(hdrBufferView) } };
+	return { { "hdrBuffer", DeferredRenderSystem::getInstance()->getHdrImageView() } };
 }
 
 BloomRenderEditorSystem::BloomRenderEditorSystem()

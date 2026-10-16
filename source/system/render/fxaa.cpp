@@ -68,8 +68,7 @@ static ID<GraphicsPipeline> createPipeline(ID<Framebuffer> framebuffer, Graphics
 static DescriptorSet::Uniforms getUniforms(GraphicsSystem* graphicsSystem)
 {
 	// TODO: Support forward rendering too.
-	auto ldrBufferView = getLdrCopyView(graphicsSystem, DeferredRenderSystem::getInstance()); 
-	return { { "ldrBuffer", DescriptorSet::Uniform(ldrBufferView) } };
+	return { { "ldrBuffer", getLdrCopyView(graphicsSystem, DeferredRenderSystem::getInstance()) } };
 }
 
 //**********************************************************************************************************************

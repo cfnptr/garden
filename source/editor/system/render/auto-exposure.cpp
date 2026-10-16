@@ -34,16 +34,12 @@ static ID<Buffer> createReadbackBuffer(GraphicsSystem* graphicsSystem)
 }
 
 static DescriptorSet::Uniforms getLimitsUniforms(GraphicsSystem* graphicsSystem)
-{
-	auto hdrBufferView = DeferredRenderSystem::getInstance()->getHdrImageView();
-	auto luminanceBuffer = ToneMappingSystem::getInstance()->getLuminanceBuffer();
-				
-	DescriptorSet::Uniforms uniforms =
+{	
+	return
 	{ 
-		{ "hdrBuffer", DescriptorSet::Uniform(hdrBufferView) },
-		{ "luminance", DescriptorSet::Uniform(luminanceBuffer) }
+		{ "hdrBuffer", DeferredRenderSystem::getInstance()->getHdrImageView() },
+		{ "luminance", ToneMappingSystem::getInstance()->getLuminanceBuffer() }
 	};
-	return uniforms;
 }
 
 //**********************************************************************************************************************

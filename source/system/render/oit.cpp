@@ -39,15 +39,11 @@ static ID<GraphicsPipeline> createPipeline(ID<Framebuffer> framebuffer)
 }
 static DescriptorSet::Uniforms getUniforms(GraphicsSystem* graphicsSystem, DeferredRenderSystem* deferredSystem)
 {
-	auto accumBufferView = deferredSystem->getOitAccumIV();
-	auto revealBufferView = deferredSystem->getOitRevealIV();
-
-	DescriptorSet::Uniforms uniforms =
+	return
 	{ 
-		{ "accumBuffer", DescriptorSet::Uniform(accumBufferView) },
-		{ "revealBuffer", DescriptorSet::Uniform(revealBufferView) },
+		{ "accumBuffer", deferredSystem->getOitAccumIV() },
+		{ "revealBuffer", deferredSystem->getOitRevealIV() },
 	};
-	return uniforms;
 }
 
 OitRenderSystem::OitRenderSystem(bool setSingleton) : Singleton(setSingleton)

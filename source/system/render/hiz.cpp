@@ -58,7 +58,7 @@ static void createHizFramebuffers(GraphicsSystem* graphicsSystem,
 
 static DescriptorSet::Uniforms getUniforms(ID<ImageView> srcBuffer)
 {
-	return { { "srcBuffer", DescriptorSet::Uniform(srcBuffer) } };
+	return { { "srcBuffer", srcBuffer } };
 }
 static void createHizDescriptorSets(GraphicsSystem* graphicsSystem, ID<GraphicsPipeline> pipeline,  
 	ID<Image> hizBuffer, vector<ID<DescriptorSet>>& descriptorSets)

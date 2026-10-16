@@ -26,7 +26,7 @@ using namespace garden;
 //**********************************************************************************************************************
 static DescriptorSet::Uniforms getUniforms(GraphicsSystem* graphicsSystem)
 {
-	return { { "cc", DescriptorSet::Uniform(graphicsSystem->getCommonConstantsBuffers()) } };
+	return { { "cc", graphicsSystem->getCommonConstantsBuffers() } };
 }
 
 InfiniteGridEditorSystem::InfiniteGridEditorSystem()

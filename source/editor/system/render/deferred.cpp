@@ -24,18 +24,12 @@ using namespace garden;
 //**********************************************************************************************************************
 static DescriptorSet::Uniforms getBufferUniforms(GraphicsSystem* graphicsSystem, DeferredRenderSystem* deferredSystem)
 {
-	auto hdrBufferView = deferredSystem->getHdrImageView();
-	auto oitAccumBufferView = deferredSystem->getOitAccumIV();
-	auto oitRevealBufferView = deferredSystem->getOitRevealIV();
-	auto disocclMapView = deferredSystem->getDisocclView(0);
-	auto depthBufferView = deferredSystem->getDepthOnlyIV();
 	auto gFramebufferView = graphicsSystem->get(deferredSystem->getGFramebuffer());
 	auto gColorAttachments = gFramebufferView->getColorAttachments().data();
 	auto emptyTexture = graphicsSystem->getEmptyTexture();
-	
 	auto pbrLightingSystem = PbrLightingSystem::tryGetInstance();
-	ID<ImageView> shadBuffer, shadBlurBuffer, aoBuffer, aoBlurBuffer, giBuffer, reflBuffer;
 
+	ID<ImageView> shadBuffer, shadBlurBuffer, aoBuffer, aoBlurBuffer, giBuffer, reflBuffer;
 	if (pbrLightingSystem)
 	{
 		shadBuffer = pbrLightingSystem->getShadBaseView();
@@ -60,23 +54,23 @@ static DescriptorSet::Uniforms getBufferUniforms(GraphicsSystem* graphicsSystem,
 
 	DescriptorSet::Uniforms uniforms =
 	{ 
-		{ "hdrBuffer", DescriptorSet::Uniform(hdrBufferView) },
-		{ "depthBuffer", DescriptorSet::Uniform(depthBufferView) },
+		{ "hdrBuffer", deferredSystem->getHdrImageView() },
+		{ "depthBuffer", deferredSystem->getDepthOnlyIV() },
 		{ "reflBuffer", DescriptorSet::Uniform(reflBuffer) },
 		{ "shadBuffer", DescriptorSet::Uniform(shadBuffer) },
 		{ "shadBlurBuffer", DescriptorSet::Uniform(shadBlurBuffer) },
 		{ "aoBuffer", DescriptorSet::Uniform(aoBuffer) },
 		{ "aoBlurBuffer", DescriptorSet::Uniform(aoBlurBuffer) },
 		{ "giBuffer", DescriptorSet::Uniform(giBuffer) },
-		{ "oitAccumBuffer", DescriptorSet::Uniform(oitAccumBufferView) },
-		{ "oitRevealBuffer", DescriptorSet::Uniform(oitRevealBufferView) },
-		{ "disocclMap", DescriptorSet::Uniform(disocclMapView) }
+		{ "oitAccumBuffer", deferredSystem->getOitAccumIV() },
+		{ "oitRevealBuffer", deferredSystem->getOitRevealIV() },
+		{ "disocclMap", deferredSystem->getDisocclView(0) }
 	};
 
 	for (uint8 i = 0; i < G_BUFFER_COUNT; i++)
 	{
 		auto imageView = gColorAttachments[i].imageView;
-		uniforms.emplace("g" + to_string(i), DescriptorSet::Uniform(imageView ? imageView : emptyTexture));
+		uniforms.emplace("g" + to_string(i), imageView ? imageView : emptyTexture);
 	}
 	return uniforms;
 }

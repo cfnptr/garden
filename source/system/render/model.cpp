@@ -18,7 +18,6 @@
 #include "garden/system/render/model/cutout.hpp"
 #include "garden/system/render/model/color.hpp"
 #include "garden/system/render/deferred.hpp"
-#include "garden/system/render/forward.hpp"
 #include "garden/system/transform.hpp"
 #include "garden/system/resource.hpp"
 #include "garden/system/app-info.hpp"
@@ -290,10 +289,17 @@ void ModelRenderSystem::drawAsync(MeshRenderComponent* meshRenderView,
 
 	// TODO: select lod based on resolution and distance.
 	const auto& lod = modelRenderView->getLod(0); 
-	auto indexCount = lod.getIndexCount();
+	ID<Buffer> vertexBuffers[2] = { ID<Buffer>(lod.vertexBuffer), ID<Buffer>(lod.vertexBuffer) };
+	uint64 vertexBufferOffsets[2] = { 0, lod.getVertexCount() * sizeof(MeshVertexPF) };
 
-	/*pipelineView->drawIndexedAsync(taskIndex, ID<Buffer>(lod.vertexBuffer), 
-		ID<Buffer>(lod.indexBuffer), toIndexType(indexCount), indexCount);*/
+	GraphicsPipeline::DrawIndexedData drawIndexedData;
+	drawIndexedData.vertexBuffers = vertexBuffers;
+	drawIndexedData.vertexBufferOffsets = vertexBufferOffsets;
+	drawIndexedData.indexBuffer = ID<Buffer>(lod.indexBuffer);
+	drawIndexedData.indexCount = lod.getIndexCount();
+	drawIndexedData.vertexBufferCount = 2;
+	drawIndexedData.indexType = toIndexType(drawIndexedData.indexCount);
+	pipelineView->drawIndexedAsync(drawIndexedData, taskIndex);
 }
 
 uint64 ModelRenderSystem::getBaseInstanceDataSize()
@@ -304,9 +310,8 @@ void ModelRenderSystem::setInstanceData(ModelRenderComponent* modelRenderView, v
 	const f32x4x4& viewProj, const f32x4x4& model, uint32 instanceIndex, int32 taskIndex)
 {
 	BaseInstanceData modelData;
-	modelData.currModel = (float3x4)transpose4x4(model);
-	modelData.aabbSize = max3(modelRenderView->aabb.getSize());
-	modelData.aabbMin = min3(modelRenderView->aabb.getMin());
+	modelData.currModel = (float3x4)transpose4x4(model * scaleAndTranslate(
+		modelRenderView->aabb.getSize(), modelRenderView->aabb.getMin()));
 	modelData.uvSize = modelRenderView->getUvSize();
 	modelData.uvOffset = modelRenderView->getUvOffset();
 	modelData.colorAdd = modelRenderView->colorAdd;
@@ -324,10 +329,14 @@ void ModelRenderSystem::setPushConstants(ModelRenderComponent* modelRenderView, 
 }
 
 //**********************************************************************************************************************
-DescriptorSet::Uniforms ModelRenderSystem::getModelUniforms(ID<ImageView> colorMap)
+DescriptorSet::Uniforms ModelRenderSystem::getBaseUniforms()
 {
-	DescriptorSet::Uniforms spriteUniforms = { { "colorMap", DescriptorSet::Uniform(colorMap) } };
-	return spriteUniforms;
+	auto graphicsSystem = GraphicsSystem::getInstance();
+	return
+	{
+		{ "instance", baseInstanceBuffers },
+		{ "cc", graphicsSystem->getCommonConstantsBuffers() },
+	};
 }
 ID<GraphicsPipeline> ModelRenderSystem::createBasePipeline()
 {
@@ -542,8 +551,7 @@ static void optimizeMeshData(const aiMesh* mesh, raw_vector<uint8>& indices, raw
 	auto encTangentData = (ushort3*)tmp0.data();
 	auto aabb = Aabb(f32x4(*(const float3*)&mesh->mAABB.mMin), 
 		f32x4(*(const float3*)&mesh->mAABB.mMax));
-	auto invAabbSize = 1.0f / max3(aabb.getSize());
-	auto aabbMin = min3(aabb.getMin());
+	auto invAabbSize = 1.0f / aabb.getSize(), aabbMin = aabb.getMin();
 
 	for (uint32 i = 0; i < vertexCount; i++)
 	{
@@ -687,6 +695,114 @@ static void processMeshData(
 
 	ResourceSystem::getInstance()->storeBuffer(filePath, tmp0, true);
 }
+
+//**********************************************************************************************************************
+static bool loadNodeMeshes(const fs::path& path, const ModelRenderSystem::ModelComponents* components, 
+	const aiScene* scene, absl::flat_hash_map<uint32, MeshLOD>& sharedLods, 
+	raw_vector<uint8>& indices, raw_vector<uint8>& positions, raw_vector<uint8>& attributes, 
+	raw_vector<uint8>& tmp0, raw_vector<uint8>& tmp1, const aiNode* node, ID<Entity> newEntity)
+{
+	auto lodStr = strstr(node->mName.C_Str(), "_LOD");
+	auto lodStrLength = lodStr ? strlen(lodStr) : 0;
+
+	if (lodStrLength < 5)
+		return false;
+
+	uint8 lodIndex = 0; lodStr += 4;
+	if (from_chars(lodStr, lodStr + lodStrLength, lodIndex).ec != errc())
+	{
+		GARDEN_LOG_ERROR("Invalid Assimp 3D model LOD format. ("
+			"node: " + string(node->mName.C_Str()) + ", "
+			"path: " + path.generic_string() + ")");
+		return true;
+	}
+
+	auto manager = Manager::getInstance();
+	auto graphicsSystem = GraphicsSystem::getInstance();
+	auto meshes = scene->mMeshes; auto materials = scene->mMaterials;
+	auto meshIds = node->mMeshes; auto meshIdCount = node->mNumMeshes;
+
+	for (uint32 j = 0; j < meshIdCount; j++)
+	{
+		auto meshID = meshIds[j]; auto mesh = meshes[meshID];
+		if (mesh->mPrimitiveTypes != aiPrimitiveType_TRIANGLE)
+			continue; // Note: skipping non triangle primitives.
+
+		if (!mesh->HasPositions() || !mesh->HasFaces() || 
+			!mesh->HasNormals() || !mesh->HasTextureCoords(0))
+		{
+			GARDEN_LOG_ERROR("Missing Assimp 3D model attributes. ("
+				"mesh: " + string(mesh->mName.C_Str()) + ", "
+				"node: " + string(node->mName.C_Str()) + ", "
+				"path: " + path.generic_string() + ")");
+			continue;
+		}
+
+		auto materialID = mesh->mMaterialIndex;
+		auto material = materials[materialID];
+		type_index componentType = typeid(OpaqueModelComponent);
+		auto componentResult = components->find(material->GetName().C_Str());
+
+		if (componentResult != components->end())
+			componentType = componentResult->second;
+		else
+		{
+			GARDEN_LOG_WARN("Unknown Assimp 3D model material type. ("
+				"material: " + string(material->GetName().C_Str()) + ", "
+				"node: " + string(node->mName.C_Str()) + ", "
+				"path: " + path.generic_string() + ")");
+		}
+					
+		bool isAdded;
+		auto modelRenderView = View<ModelRenderComponent>(
+			manager->getOrAdd(newEntity, componentType, isAdded));
+		if (isAdded)
+		{
+			modelRenderView->aabb = Aabb(f32x4(*(const float3*)&mesh->mAABB.mMin), 
+				f32x4(*(const float3*)&mesh->mAABB.mMax));
+			// TODO: get and set material params
+		}
+
+		auto lodResult = sharedLods.find(meshID);
+		if (lodResult != sharedLods.end())
+		{
+			modelRenderView->setLod(lodResult->second, lodIndex);
+			continue;
+		}
+
+		auto filePath = path; filePath.replace_extension(); uint32 indexCount;
+		filePath = "models" / filePath / to_string(meshID); filePath.replace_extension(".gmc");
+		processMeshData(filePath, mesh, meshID, indexCount, indices, positions, attributes, tmp0, tmp1);
+
+		auto pfBinarySize = positions.size();
+		positions.resize(pfBinarySize + attributes.size());
+		memcpy(positions.data() + pfBinarySize, attributes.data(), attributes.size());
+
+		auto vertexBuffer = graphicsSystem->createBuffer(Buffer::Usage::Vertex | 
+			Buffer::Usage::TransferDst | Buffer::Usage::TransferQ, Buffer::CpuAccess::None, 
+			positions, 0, 0, Buffer::Location::PreferGPU, Buffer::Strategy::Size);
+		SET_RESOURCE_DEBUG_NAME(vertexBuffer, "buffer.vertex." + string(
+			mesh->mName.Empty() ? node->mName.C_Str() : mesh->mName.C_Str()));
+
+		auto indexBuffer = graphicsSystem->createBuffer(Buffer::Usage::Index | 
+			Buffer::Usage::TransferDst | Buffer::Usage::TransferQ, Buffer::CpuAccess::None, 
+			indices, 0, 0, Buffer::Location::PreferGPU, Buffer::Strategy::Size);
+		SET_RESOURCE_DEBUG_NAME(indexBuffer, "buffer.index." + string(
+			mesh->mName.Empty() ? node->mName.C_Str() : mesh->mName.C_Str()));
+
+		MeshLOD lod;
+		lod.vertexBuffer = Ref<Buffer>(vertexBuffer);
+		lod.indexBuffer = Ref<Buffer>(indexBuffer);
+		lod.bufferPath = std::move(filePath);
+		lod.setVertexCount(pfBinarySize / sizeof(MeshVertexPF));
+		lod.setIndexCount(indexCount);
+
+		auto emplaceResult = sharedLods.emplace(meshID, lod);
+		GARDEN_ASSERT_MSG(emplaceResult.second, "Detected memory corruption");
+		modelRenderView->setLod(std::move(lod), lodIndex);
+	}
+	return true;
+}
 #endif
 
 //**********************************************************************************************************************
@@ -743,9 +859,7 @@ ID<Entity> ModelRenderSystem::loadModel(const fs::path& path, const ModelCompone
 	}
 
 	auto manager = Manager::getInstance();
-	auto graphicsSystem = GraphicsSystem::getInstance();
-	auto meshes = scene->mMeshes; auto materials = scene->mMaterials;
-	stack<aiNode*> nodes; nodes.push(scene->mRootNode);
+	stack<const aiNode*> nodes; nodes.push(scene->mRootNode);
 	absl::flat_hash_map<uint32, MeshLOD> sharedLods; ID<Entity> lastEntity = {};
 	raw_vector<uint8> indices, positions, attributes, tmp0, tmp1;
 
@@ -767,109 +881,23 @@ ID<Entity> ModelRenderSystem::loadModel(const fs::path& path, const ModelCompone
 		#endif
 
 		auto childrenCount = node->mNumChildren;
-		auto children = node->mChildren;
-
-		for (uint32 i = 0; i < childrenCount; i++)
+		if (childrenCount > 0)
 		{
-			auto child = children[i];
-			auto lodStr = strstr(child->mName.C_Str(), "_LOD");
-			auto lodStrLength = lodStr ? strlen(lodStr) : 0;
-
-			if (lodStrLength > 4)
+			auto children = node->mChildren;
+			for (uint32 i = 0; i < childrenCount; i++)
 			{
-				uint8 lodIndex = 0; lodStr += 4;
-				if (from_chars(lodStr, lodStr + lodStrLength, lodIndex).ec != errc())
+				auto child = children[i];
+				if (!loadNodeMeshes(path, components, scene, sharedLods, indices, 
+					positions, attributes, tmp0, tmp1, child, newEntity))
 				{
-					GARDEN_LOG_ERROR("Invalid Assimp 3D model LOD format. ("
-						"node: " + string(child->mName.C_Str()) + ", "
-						"path: " + path.generic_string() + ")");
-					continue;
-				}
-
-				auto meshIds = child->mMeshes;
-				auto meshIdCount = child->mNumMeshes;
-
-				for (uint32 j = 0; j < meshIdCount; j++)
-				{
-					auto meshID = meshIds[j]; auto mesh = meshes[meshID];
-					if (mesh->mPrimitiveTypes != aiPrimitiveType_TRIANGLE)
-						continue; // Note: skipping non triangle primitives.
-
-					if (!mesh->HasPositions() || !mesh->HasFaces() || 
-						!mesh->HasNormals() || !mesh->HasTextureCoords(0))
-					{
-						GARDEN_LOG_ERROR("Missing Assimp 3D model attributes. ("
-							"mesh: " + string(mesh->mName.C_Str()) + ", "
-							"node: " + string(child->mName.C_Str()) + ", "
-							"path: " + path.generic_string() + ")");
-						continue;
-					}
-
-					auto materialID = mesh->mMaterialIndex;
-					auto material = materials[materialID];
-					type_index componentType = typeid(OpaqueModelComponent);
-					auto componentResult = components->find(material->GetName().C_Str());
-
-					if (componentResult != components->end())
-						componentType = componentResult->second;
-					else
-					{
-						GARDEN_LOG_WARN("Unknown Assimp 3D model material type. ("
-							"material: " + string(material->GetName().C_Str()) + ", "
-							"node: " + string(child->mName.C_Str()) + ", "
-							"path: " + path.generic_string() + ")");
-					}
-					
-					bool isAdded;
-					auto modelRenderView = View<ModelRenderComponent>(
-						manager->getOrAdd(newEntity, componentType, isAdded));
-					if (isAdded)
-					{
-						modelRenderView->aabb = Aabb(f32x4(*(const float3*)&mesh->mAABB.mMin), 
-							f32x4(*(const float3*)&mesh->mAABB.mMax));
-						// TODO: get and set material params
-					}
-
-					auto lodResult = sharedLods.find(meshID);
-					if (lodResult != sharedLods.end())
-					{
-						modelRenderView->setLod(lodResult->second, lodIndex);
-						continue;
-					}
-
-					auto filePath = path; filePath.replace_extension(); uint32 indexCount;
-					filePath = "models" / filePath / to_string(meshID); filePath.replace_extension(".gmc");
-					processMeshData(filePath, mesh, meshID, indexCount, indices, positions, attributes, tmp0, tmp1);
-
-					auto pfBinarySize = positions.size();
-					positions.resize(pfBinarySize + attributes.size());
-					memcpy(positions.data() + pfBinarySize, attributes.data(), attributes.size());
-
-					auto vertexBuffer = graphicsSystem->createBuffer(Buffer::Usage::Vertex | 
-						Buffer::Usage::TransferDst | Buffer::Usage::TransferQ, Buffer::CpuAccess::None, 
-						positions, 0, 0, Buffer::Location::PreferGPU, Buffer::Strategy::Size);
-					SET_RESOURCE_DEBUG_NAME(vertexBuffer, "buffer.vertex." + string(
-						mesh->mName.Empty() ? child->mName.C_Str() : mesh->mName.C_Str()));
-
-					auto indexBuffer = graphicsSystem->createBuffer(Buffer::Usage::Index | 
-						Buffer::Usage::TransferDst | Buffer::Usage::TransferQ, Buffer::CpuAccess::None, 
-						indices, 0, 0, Buffer::Location::PreferGPU, Buffer::Strategy::Size);
-					SET_RESOURCE_DEBUG_NAME(indexBuffer, "buffer.index." + string(
-						mesh->mName.Empty() ? child->mName.C_Str() : mesh->mName.C_Str()));
-
-					MeshLOD lod;
-					lod.vertexBuffer = Ref<Buffer>(vertexBuffer);
-					lod.indexBuffer = Ref<Buffer>(indexBuffer);
-					lod.bufferPath = std::move(filePath);
-					lod.setVertexCount(pfBinarySize / sizeof(MeshVertexPF));
-					lod.setIndexCount(indexCount);
-
-					auto emplaceResult = sharedLods.emplace(meshID, lod);
-					GARDEN_ASSERT_MSG(emplaceResult.second, "Detected memory corruption");
-					modelRenderView->setLod(std::move(lod), lodIndex);
+					nodes.push(child);
 				}
 			}
-			else nodes.push(child);
+		}
+		else
+		{
+			loadNodeMeshes(path, components, scene, sharedLods, indices, 
+				positions, attributes, tmp0, tmp1, node, newEntity);
 		}
 	}
 	#else

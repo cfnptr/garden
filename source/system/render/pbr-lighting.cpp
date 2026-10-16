@@ -319,12 +319,10 @@ static ID<Framebuffer> createReflFramebuffer(GraphicsSystem* graphicsSystem, ID<
 static DescriptorSet::Uniforms getLightingUniforms(GraphicsSystem* graphicsSystem, DeferredRenderSystem* deferredSystem,
 	ID<Image> dfgLUT, ID<Image> shadBlurBuffer, ID<Image> aoBlurBuffer, ID<Image> giBuffer, ID<Image> reflBuffer)
 {
-	auto depthBufferView = deferredSystem->getDepthOnlyIV();
 	auto shadBlurView = shadBlurBuffer ? graphicsSystem->get(shadBlurBuffer)->getView() : ID<ImageView>();
 	auto aoBlurView = aoBlurBuffer ? graphicsSystem->get(aoBlurBuffer)->getView() : ID<ImageView>();
 	auto giBufferView = giBuffer ? graphicsSystem->get(giBuffer)->getView() : ID<ImageView>();
 	auto reflBufferView = reflBuffer ? graphicsSystem->get(reflBuffer)->getView(0, 0) : ID<ImageView>();
-	auto dfgLutView = graphicsSystem->get(dfgLUT)->getView();
 	auto gFramebufferView = graphicsSystem->get(deferredSystem->getGFramebuffer());
 	const auto& gColorAttachments = gFramebufferView->getColorAttachments();
 	
@@ -335,12 +333,12 @@ static DescriptorSet::Uniforms getLightingUniforms(GraphicsSystem* graphicsSyste
 
 	DescriptorSet::Uniforms uniforms =
 	{ 
-		{ "depthBuffer", DescriptorSet::Uniform(depthBufferView) },
+		{ "depthBuffer", deferredSystem->getDepthOnlyIV() },
 		{ "shadBuffer", DescriptorSet::Uniform(shadBlurView ? shadBlurView : whiteView) },
 		{ "aoBuffer", DescriptorSet::Uniform(aoBlurView ? aoBlurView : whiteView) },
 		{ "giBuffer", DescriptorSet::Uniform(giBufferView ? giBufferView : emptyView) },
 		{ "reflBuffer", DescriptorSet::Uniform(reflBufferView ? reflBufferView : emptyView) },
-		{ "dfgLUT", DescriptorSet::Uniform(dfgLutView) }
+		{ "dfgLUT", graphicsSystem->get(dfgLUT)->getView() }
 	};
 
 	for (uint8 i = 0; i < G_BUFFER_COUNT; i++)
@@ -1388,14 +1386,14 @@ void PbrLightingSystem::createIblDescriptorSets(ID<Image> skybox, ID<Buffer> spe
 
 	for (uint8 i = 0; i < specularViewCount; i++)
 	{
-		DescriptorSet::Uniforms iblSpecularUniforms =
+		DescriptorSet::Uniforms uniforms =
 		{
-			{ "skybox", DescriptorSet::Uniform(skyboxView) },
-			{ "specular", DescriptorSet::Uniform(specularViewData[i]) },
-			{ "cache", DescriptorSet::Uniform(specularCache) }
+			{ "skybox", skyboxView },
+			{ "specular", specularViewData[i] },
+			{ "cache", specularCache }
 		};
 
-		auto descriptorSet = graphicsSystem->createDescriptorSet(iblSpecularPipeline, std::move(iblSpecularUniforms));
+		auto descriptorSet = graphicsSystem->createDescriptorSet(iblSpecularPipeline, std::move(uniforms));
 		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.pbrLighting.iblSpecular" + to_string(*descriptorSet));
 		iblDescriptorSets.push_back(descriptorSet);
 	}
@@ -1606,34 +1604,34 @@ Ref<DescriptorSet> PbrLightingSystem::createDescriptorSet(ID<Entity> entity,
 	if (!shDiffuseView->isReady() || !specularView->isReady())
 		return {};
 
-	DescriptorSet::Uniforms iblUniforms =
+	DescriptorSet::Uniforms uniforms =
 	{ 
-		{ "sh", DescriptorSet::Uniform(ID<Buffer>(pbrLightingView->shDiffuse)) },
-		{ "specular", DescriptorSet::Uniform(specularView->getView()) }
+		{ "sh", ID<Buffer>(pbrLightingView->shDiffuse) },
+		{ "specular", specularView->getView() }
 	};
 
 	ID<DescriptorSet> descriptorSet;
 	if (!pipeline)
 	{
 		descriptorSet = graphicsSystem->createDescriptorSet(
-			pbrLightingPipeline, std::move(iblUniforms), {}, index);
+			pbrLightingPipeline, std::move(uniforms), {}, index);
 	}
 	else
 	{
 		if (type == PipelineType::Graphics)
 		{
 			descriptorSet = graphicsSystem->createDescriptorSet(
-				ID<GraphicsPipeline>(pipeline), std::move(iblUniforms), {}, index);
+				ID<GraphicsPipeline>(pipeline), std::move(uniforms), {}, index);
 		}
 		else if (type == PipelineType::Compute)
 		{
 			descriptorSet = graphicsSystem->createDescriptorSet(
-				ID<ComputePipeline>(pipeline), std::move(iblUniforms), {}, index);
+				ID<ComputePipeline>(pipeline), std::move(uniforms), {}, index);
 		}
 		else if (type == PipelineType::RayTracing)
 		{
 			descriptorSet = graphicsSystem->createDescriptorSet(
-				ID<RayTracingPipeline>(pipeline), std::move(iblUniforms), {}, index);
+				ID<RayTracingPipeline>(pipeline), std::move(uniforms), {}, index);
 		}
 		else abort();
 	}

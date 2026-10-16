@@ -1102,9 +1102,12 @@ void VulkanCommandBuffer::bindVertexBuffers(VulkanAPI* vulkanAPI, vk::CommandBuf
 		}
 	}
 
-	instance.bindVertexBuffers(firstBinding, bindBuffers.size(), 
-		bindBuffers.data(), bindBufferOffsets.data());
-	bindBuffers.clear(); bindBufferOffsets.clear();
+	if (!bindBuffers.empty())
+	{
+		instance.bindVertexBuffers(firstBinding, bindBuffers.size(), 
+			bindBuffers.data(), bindBufferOffsets.data());
+		bindBuffers.clear(); bindBufferOffsets.clear();
+	}
 }
 void VulkanCommandBuffer::processCommand(const DrawCommand& command)
 {

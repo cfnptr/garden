@@ -86,7 +86,7 @@ static void createBloomFramebuffers(GraphicsSystem* graphicsSystem,
 //**********************************************************************************************************************
 static DescriptorSet::Uniforms getUniforms(ID<ImageView> srcBuffer)
 {
-	return { { "srcBuffer", DescriptorSet::Uniform(srcBuffer) } };
+	return { { "srcBuffer", srcBuffer } };
 }
 
 static void createBloomDescriptorSets(GraphicsSystem* graphicsSystem, 

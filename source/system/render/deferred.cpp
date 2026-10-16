@@ -341,16 +341,13 @@ static DescriptorSet::Uniforms getVelocityUniforms(GraphicsSystem* graphicsSyste
 static DescriptorSet::Uniforms getDisocclUniforms(GraphicsSystem* graphicsSystem, 
 	ID<ImageView> depthBuffer, ID<ImageView> depthCopyIV, ID<Framebuffer> gFramebuffer)
 {
-	auto gFramebufferView = graphicsSystem->get(gFramebuffer);
-	auto gVelocityView = gFramebufferView->getColorAttachments()[G_BUFFER_VELOCITY].imageView;	
-
-	DescriptorSet::Uniforms uniforms =
+	auto& gColorAttachments = graphicsSystem->get(gFramebuffer)->getColorAttachments();
+	return
 	{ 
 		{ "prevDepthBuffer", DescriptorSet::Uniform(depthCopyIV) },
 		{ "currDepthBuffer", DescriptorSet::Uniform(depthBuffer) },
-		{ "gVelocity", DescriptorSet::Uniform(gVelocityView) }
+		{ "gVelocity", gColorAttachments[G_BUFFER_VELOCITY].imageView }
 	};
-	return uniforms;
 }
 
 //**********************************************************************************************************************

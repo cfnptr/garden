@@ -49,15 +49,14 @@ static DescriptorSet::Uniforms getUniforms(GraphicsSystem* graphicsSystem,
 		deferredSystem->getDepthOnlyIV() : graphicsSystem->getEmptyTexture();
 	auto inFlightCount = graphicsSystem->getInFlightCount();
 
-	DescriptorSet::Uniforms uniforms =
+	return
 	{ 
 		{ "hdrBuffer", DescriptorSet::Uniform(hdrBufferView, 1, inFlightCount) },
 		{ "depthBuffer", DescriptorSet::Uniform(depthBufferView, 1, inFlightCount) },
 		{ "bloomBuffer", DescriptorSet::Uniform(bloomBufferView, 1, inFlightCount) },
 		{ "luminance", DescriptorSet::Uniform(luminanceBuffer, 1, inFlightCount) },
-		{ "cc", DescriptorSet::Uniform(graphicsSystem->getCommonConstantsBuffers()) },
+		{ "cc", graphicsSystem->getCommonConstantsBuffers() },
 	};
-	return uniforms;
 }
 
 static ID<GraphicsPipeline> createPipeline(ToneMappingSystem::Options tmOptions)

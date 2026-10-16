@@ -41,12 +41,11 @@ static DescriptorSet::Uniforms getUniforms(ID<Text> text)
 	auto fontAtlasView = textSystem->get(textView->getFontAtlas());
 	auto fontAtlas = graphicsSystem->get(fontAtlasView->getImage());
 
-	DescriptorSet::Uniforms uniforms =
+	return
 	{ 
-		{ "fontAtlas", DescriptorSet::Uniform(fontAtlas->getView()) },
-		{ "instance", DescriptorSet::Uniform(textView->getInstanceBuffer()) }
+		{ "fontAtlas", fontAtlas->getView() },
+		{ "instance", textView->getInstanceBuffer() }
 	};
-	return uniforms;
 }
 
 static uint32 calcTotalFontSize(uint32 fontSize, bool adjustCJK) noexcept

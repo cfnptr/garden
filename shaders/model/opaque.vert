@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "common/constants.gsl"
 #include "model/instance-data.h"
 
 vertexBuffer0
@@ -32,6 +33,10 @@ uniform pushConstants
 	uint32 instanceIndex;
 } pc;
 
+uniform CommonConstants
+{
+	COMMON_CONSTANTS
+} cc;
 buffer readonly Instance
 {
 	BaseInstanceData data[];
@@ -39,6 +44,6 @@ buffer readonly Instance
 
 void main()
 {
-	// gl.position = instance.data[pc.instanceIndex].currModel * float4(vs.position, 1.0f);
-	gl.position = float4(vs.position, 1.0f);
+	float4x4 model = float4x4(transpose(instance.data[pc.instanceIndex].currModel));
+	gl.position = cc.viewProj * model * float4(vs.position, 1.0f);
 }

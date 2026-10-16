@@ -33,8 +33,7 @@ static ID<GraphicsPipeline> createPipeline()
 }
 static DescriptorSet::Uniforms getUniforms(GraphicsSystem* graphicsSystem, ID<Image> cubemap)
 {
-	auto cubemapView = graphicsSystem->get(cubemap)->getView();
-	return { { "cubemap", DescriptorSet::Uniform(cubemapView) } };
+	return { { "cubemap", graphicsSystem->get(cubemap)->getView() } };
 }
 
 SkyboxRenderSystem::SkyboxRenderSystem(bool setSingleton) : Singleton(setSingleton)

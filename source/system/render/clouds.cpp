@@ -226,7 +226,7 @@ static DescriptorSet::Uniforms getCamViewUniforms(GraphicsSystem* graphicsSystem
 	DescriptorSet::ImageViews camViews = { { camViewView->getView(1, 0) }, { camViewView->getView(0, 0) } };
 	DescriptorSet::ImageViews camDepths = { { camViewDepthView->getView(1, 0) }, { camViewDepthView->getView(0, 0) } };
 
-	DescriptorSet::Uniforms uniforms =
+	return
 	{ 
 		{ "camView", DescriptorSet::Uniform(camViews) },
 		{ "camViewDepth", DescriptorSet::Uniform(camDepths) },
@@ -238,9 +238,8 @@ static DescriptorSet::Uniforms getCamViewUniforms(GraphicsSystem* graphicsSystem
 		{ "vertProfile", DescriptorSet::Uniform(vertProfileViewView, 1, inFlightCount) },
 		{ "noiseShape", DescriptorSet::Uniform(noiseShapeViewView, 1, inFlightCount) },
 		{ "cirrusShape", DescriptorSet::Uniform(cirrusShapeViewView, 1, inFlightCount) },
-		{ "cc", DescriptorSet::Uniform(graphicsSystem->getCommonConstantsBuffers()) }
+		{ "cc", graphicsSystem->getCommonConstantsBuffers() }
 	};
-	return uniforms;
 }
 static DescriptorSet::Uniforms getSkyboxUniforms(GraphicsSystem* graphicsSystem, 
 	ID<Image> dataFields, ID<Image> vertProfile, ID<Image> noiseShape, ID<Image> cirrusShape)
@@ -254,7 +253,7 @@ static DescriptorSet::Uniforms getSkyboxUniforms(GraphicsSystem* graphicsSystem,
 	auto cirrusShapeView = graphicsSystem->get(cirrusShape)->getView();
 	auto inFlightCount = graphicsSystem->getInFlightCount();
 
-	DescriptorSet::Uniforms uniforms =
+	return
 	{ 
 		{ "transLUT", DescriptorSet::Uniform(transLutView, 1, inFlightCount) },
 		{ "cameraVolume", DescriptorSet::Uniform(cameraVolumeView, 1, inFlightCount) },
@@ -262,9 +261,8 @@ static DescriptorSet::Uniforms getSkyboxUniforms(GraphicsSystem* graphicsSystem,
 		{ "vertProfile", DescriptorSet::Uniform(vertProfileView, 1, inFlightCount) },
 		{ "noiseShape", DescriptorSet::Uniform(noiseShapeView, 1, inFlightCount) },
 		{ "cirrusShape", DescriptorSet::Uniform(cirrusShapeView, 1, inFlightCount) },
-		{ "cc", DescriptorSet::Uniform(graphicsSystem->getCommonConstantsBuffers()) }
+		{ "cc", graphicsSystem->getCommonConstantsBuffers() }
 	};
-	return uniforms;
 }
 
 //**********************************************************************************************************************
@@ -278,30 +276,24 @@ static DescriptorSet::Uniforms getViewBlendUniforms(GraphicsSystem* graphicsSyst
 	DescriptorSet::ImageViews camViews = { { camViewView->getView(0, 0) }, { camViewView->getView(1, 0) } };
 	DescriptorSet::ImageViews camDepths = { { camViewDepthView->getView(1, 0) }, { camViewDepthView->getView(0, 0) } };
 
-	DescriptorSet::Uniforms uniforms =
+	return
 	{
 		{ "depthBuffer", DescriptorSet::Uniform(depthBufferView, 1, 2) },
 		{ "cloudsBuffer", DescriptorSet::Uniform(camViews) },
 		{ "cloudsDepth", DescriptorSet::Uniform(camDepths) }
 	};
-	return uniforms;
 }
 static DescriptorSet::Uniforms getSkyBlendUniforms(GraphicsSystem* graphicsSystem, ID<Image> cloudsSkybox)
 {
-	auto cloudsSkyboxView = graphicsSystem->get(cloudsSkybox)->getView();
-	return { { "srcBuffer", DescriptorSet::Uniform(cloudsSkyboxView) } };
+	return { { "srcBuffer", graphicsSystem->get(cloudsSkybox)->getView() } };
 }
 static DescriptorSet::Uniforms getShadowUniforms(GraphicsSystem* graphicsSystem, ID<Image> dataFields)
 {
-	auto hizBufferView = HizRenderSystem::getInstance()->getView(1);
-	auto dataFieldsView = graphicsSystem->get(dataFields)->getView();
-
-	DescriptorSet::Uniforms uniforms =
+	return
 	{ 
-		{ "hizBuffer", DescriptorSet::Uniform(hizBufferView) },
-		{ "dataFields", DescriptorSet::Uniform(dataFieldsView) }
+		{ "hizBuffer", HizRenderSystem::getInstance()->getView(1) },
+		{ "dataFields", graphicsSystem->get(dataFields)->getView() }
 	};
-	return uniforms;
 }
 
 //**********************************************************************************************************************

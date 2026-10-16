@@ -149,7 +149,7 @@ static DescriptorSet::Uniforms getUniforms(GraphicsSystem* graphicsSystem, ID<Im
 	auto gNormalsView = gFramebufferView->getColorAttachments()[G_BUFFER_NORMALS].imageView;
 	auto inFlightCount = graphicsSystem->getInFlightCount();
 	
-	DescriptorSet::Uniforms uniforms =
+	return
 	{ 
 		{ "gNormals", DescriptorSet::Uniform(gNormalsView, 1, inFlightCount) },
 		{ "hizBuffer", DescriptorSet::Uniform(hizBufferView, 1, inFlightCount) },
@@ -157,7 +157,6 @@ static DescriptorSet::Uniforms getUniforms(GraphicsSystem* graphicsSystem, ID<Im
 		{ "depthMap", DescriptorSet::Uniform(depthMapView, 1, inFlightCount) },
 		{ "transMap", DescriptorSet::Uniform(transMapView, 1, inFlightCount) }
 	};
-	return uniforms;
 }
 
 //**********************************************************************************************************************

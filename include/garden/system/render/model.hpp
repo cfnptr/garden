@@ -256,7 +256,7 @@ protected:
 		const f32x4x4& viewProj, const f32x4x4& model, uint32 instanceIndex, int32 taskIndex);
 	virtual void setPushConstants(ModelRenderComponent* modelRenderView, PushConstants* pushConstants,
 		const f32x4x4& viewProj, const f32x4x4& model, uint32 instanceIndex, int32 taskIndex);
-	virtual DescriptorSet::Uniforms getModelUniforms(ID<ImageView> colorMap);
+	DescriptorSet::Uniforms getBaseUniforms() override;
 	ID<GraphicsPipeline> createBasePipeline() override;
 
 	void serialize(ISerializer& serializer, const View<Component> component) override;

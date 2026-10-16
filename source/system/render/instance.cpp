@@ -241,15 +241,13 @@ DescriptorSet::Uniforms InstanceRenderSystem::getBaseUniforms()
 {
 	if (baseInstanceBuffers.empty())
 		return {};
-	DescriptorSet::Uniforms baseUniforms = { { "instance", DescriptorSet::Uniform(baseInstanceBuffers) } };
-	return baseUniforms;
+	return { { "instance", baseInstanceBuffers } };
 }
 DescriptorSet::Uniforms InstanceRenderSystem::getShadowUniforms()
 {
 	if (shadowInstanceBuffers.empty())
 		return {};
-	DescriptorSet::Uniforms baseUniforms = { { "instance", DescriptorSet::Uniform(shadowInstanceBuffers) } };
-	return baseUniforms;
+	return { { "instance", shadowInstanceBuffers } };
 }
 
 ID<GraphicsPipeline> InstanceRenderSystem::getBasePipeline()

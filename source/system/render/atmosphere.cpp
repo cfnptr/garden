@@ -291,15 +291,11 @@ static ID<ComputePipeline> createShReducePipeline(GraphicsSystem* graphicsSystem
 static DescriptorSet::Uniforms getScattLutUniforms(
 	GraphicsSystem* graphicsSystem, ID<Image> transLUT, ID<Image> multiScattLUT)
 {
-	auto transLutView = graphicsSystem->get(transLUT)->getView();
-	auto multiScattLutView = graphicsSystem->get(multiScattLUT)->getView();
-
-	DescriptorSet::Uniforms uniforms =
+	return
 	{
-		{ "transLUT", DescriptorSet::Uniform(transLutView) },
-		{ "multiScattLUT", DescriptorSet::Uniform(multiScattLutView) }
+		{ "transLUT", graphicsSystem->get(transLUT)->getView() },
+		{ "multiScattLUT", graphicsSystem->get(multiScattLUT)->getView() }
 	};
-	return uniforms;
 }
 static DescriptorSet::Uniforms getCameraVolumeUniforms(GraphicsSystem* graphicsSystem, 
 	ID<Image> transLUT, ID<Image> multiScattLUT, ID<Image> cameraVolume)
@@ -309,49 +305,39 @@ static DescriptorSet::Uniforms getCameraVolumeUniforms(GraphicsSystem* graphicsS
 	auto cameraVolumeView = graphicsSystem->get(cameraVolume)->getView();
 	auto inFlightCount = graphicsSystem->getInFlightCount();
 
-	DescriptorSet::Uniforms uniforms =
+	return
 	{
 		{ "transLUT", DescriptorSet::Uniform(transLutView, 1, inFlightCount) },
 		{ "multiScattLUT", DescriptorSet::Uniform(multiScattLutView, 1, inFlightCount) },
 		{ "cameraVolume", DescriptorSet::Uniform(cameraVolumeView, 1, inFlightCount) },
-		{ "cc", DescriptorSet::Uniform(graphicsSystem->getCommonConstantsBuffers()) }
+		{ "cc", graphicsSystem->getCommonConstantsBuffers() }
 	};
-	return uniforms;
 }
 static DescriptorSet::Uniforms getSkyUniforms(GraphicsSystem* graphicsSystem, 
 	ID<Image> transLUT, ID<Image> skyViewLUT, ID<Image> cameraVolume)
 {
-	auto deferredSystem = DeferredRenderSystem::getInstance();
-	auto depthBufferView = deferredSystem->getDepthOnlyIV();
-	auto transLutView = graphicsSystem->get(transLUT)->getView();
-	auto skyViewLutView = graphicsSystem->get(skyViewLUT)->getView();
-	auto cameraVolumeView = graphicsSystem->get(cameraVolume)->getView();
-
-	DescriptorSet::Uniforms uniforms =
+	return
 	{
-		{ "depthBuffer", DescriptorSet::Uniform(depthBufferView) },
-		{ "transLUT", DescriptorSet::Uniform(transLutView) },
-		{ "skyViewLUT", DescriptorSet::Uniform(skyViewLutView) },
-		{ "cameraVolume", DescriptorSet::Uniform(cameraVolumeView) }
+		{ "depthBuffer", DeferredRenderSystem::getInstance()->getDepthOnlyIV() },
+		{ "transLUT", graphicsSystem->get(transLUT)->getView() },
+		{ "skyViewLUT", graphicsSystem->get(skyViewLUT)->getView() },
+		{ "cameraVolume", graphicsSystem->get(cameraVolume)->getView() }
 	};
-	return uniforms;
 }
 
 static DescriptorSet::Uniforms getShGenerateUniforms(GraphicsSystem* graphicsSystem, 
 	ID<ImageView> skyboxShView, const DescriptorSet::Buffers& shCaches)
 {
-	auto inFlightCount = graphicsSystem->getInFlightCount();
-	DescriptorSet::Uniforms uniforms =
+	return
 	{
-		{ "skybox", DescriptorSet::Uniform(skyboxShView, 1, inFlightCount) },
+		{ "skybox", DescriptorSet::Uniform(skyboxShView, 1, graphicsSystem->getInFlightCount()) },
 		{ "sh", DescriptorSet::Uniform(shCaches) }
 	};
-	return uniforms;
 }
 static DescriptorSet::Uniforms getShReduceUniforms(
 	GraphicsSystem* graphicsSystem, const DescriptorSet::Buffers& shCaches)
 {
-	return { { "sh", DescriptorSet::Uniform(shCaches) } };
+	return { { "sh", shCaches } };
 }
 
 //**********************************************************************************************************************

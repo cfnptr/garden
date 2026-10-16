@@ -320,7 +320,7 @@ void Framebuffer::beginRenderPass(const float4* clearColors, uint8 clearColorCou
 		graphicsAPI->currentPipelineVariants.assign(threadCount, {});
 		graphicsAPI->currentIndexBuffers.assign(threadCount, {});
 
-		for (auto vertexBuffers : graphicsAPI->currentVertexBuffers)
+		for (auto& vertexBuffers : graphicsAPI->currentVertexBuffers)
 			vertexBuffers.clear();
 	}
 	else

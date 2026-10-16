@@ -37,23 +37,19 @@ static ID<Buffer> createHistogramBuffer(GraphicsSystem* graphicsSystem)
 
 static DescriptorSet::Uniforms getHistogramUniforms(GraphicsSystem* graphicsSystem, ID<Buffer> histogramBuffer)
 {
-	auto hdrBufferView = DeferredRenderSystem::getInstance()->getHdrImageView();
-	DescriptorSet::Uniforms uniforms =
+	return
 	{ 
-		{ "hdrBuffer", DescriptorSet::Uniform(hdrBufferView) },
+		{ "hdrBuffer", DeferredRenderSystem::getInstance()->getHdrImageView() },
 		{ "histogram", DescriptorSet::Uniform(histogramBuffer) }
 	};
-	return uniforms;
 }
 static DescriptorSet::Uniforms getAverageUniforms(ID<Buffer> histogramBuffer)
 {
-	auto toneMappingSystem = ToneMappingSystem::getInstance();
-	DescriptorSet::Uniforms uniforms =
+	return
 	{ 
 		{ "histogram", DescriptorSet::Uniform(histogramBuffer) },
-		{ "luminance", DescriptorSet::Uniform(toneMappingSystem->getLuminanceBuffer()) }
+		{ "luminance", ToneMappingSystem::getInstance()->getLuminanceBuffer() }
 	};
-	return uniforms;
 }
 
 static ID<ComputePipeline> createHistogramPipeline()

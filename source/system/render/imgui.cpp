@@ -143,7 +143,7 @@ static ID<Sampler> createNearestSampler(GraphicsSystem* graphicsSystem)
 
 static DescriptorSet::Uniforms getUniforms(ID<ImageView> texture)
 {
-	return { { "tex", DescriptorSet::Uniform(texture) } };
+	return { { "tex", texture } };
 }
 static DescriptorSet::Samplers getSamplers(ID<Sampler> sampler)
 {

@@ -1814,7 +1814,7 @@ static bool compileGraphicsShader(const fs::path& inputPath, const fs::path& out
 					else 
 					{
 						if (from_chars(lineData.word.c_str() + 12, lineData.word.c_str() + 
-							lineData.word.length(), fileData.vertexBindingIndex).ec == errc() || 
+							lineData.word.length(), fileData.vertexBindingIndex).ec != errc() || 
 							fileData.vertexBindingIndex >= maxVertexBindingCount)
 						{
 							throw CompileError("invalid vertex buffer index", fileData.lineIndex, lineData.word);
@@ -1846,7 +1846,12 @@ static bool compileGraphicsShader(const fs::path& inputPath, const fs::path& out
 	compileShaderFile(outputFilePath, includePaths);
 
 	if (!data.vertexAttributes.empty())
-		data.vertexBindingCount = fileData.vertexBindingIndex + 1;
+	{
+		uint8 vertexBindingCount = 0;
+		for (const auto& attribute : data.vertexAttributes)
+			vertexBindingCount = max(vertexBindingCount, attribute.binding);
+		data.vertexBindingCount = vertexBindingCount + 1;
+	}
 
 	raw_vector<uint8>* shaderCode;
 	if (pipelineStage == PipelineStage::Vertex) shaderCode = &data.vertexCode;

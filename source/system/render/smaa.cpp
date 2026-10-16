@@ -147,8 +147,7 @@ static ID<GraphicsPipeline> createBlendPipeline(ID<Framebuffer> blendFramebuffer
 static DescriptorSet::Uniforms getEdgesUniforms(GraphicsSystem* graphicsSystem)
 {
 	// TODO: support forward rendering too
-	auto ldrBufferView = DeferredRenderSystem::getInstance()->getLdrImageView();
-	return { { "ldrBuffer", DescriptorSet::Uniform(ldrBufferView) } };
+	return { { "ldrBuffer", DeferredRenderSystem::getInstance()->getLdrImageView() } };
 }
 static DescriptorSet::Uniforms getWeightsUniforms(GraphicsSystem* graphicsSystem, 
 	ID<Image> areaLUT, ID<Image> searchLUT, ID<Image> edgesBuffer)
@@ -158,29 +157,20 @@ static DescriptorSet::Uniforms getWeightsUniforms(GraphicsSystem* graphicsSystem
 	if (!areaLutView->isReady() || !searchLutView->isReady())
 		return {};
 
-	auto areaLutViewView = areaLutView->getView();
-	auto searchLutViewView = searchLutView->getView();
-	auto edgesView = graphicsSystem->get(edgesBuffer)->getView();
-
-	DescriptorSet::Uniforms uniforms =
+	return
 	{ 
-		{ "areaLUT", DescriptorSet::Uniform(areaLutViewView) },
-		{ "searchLUT", DescriptorSet::Uniform(searchLutViewView) },
-		{ "edgesBuffer", DescriptorSet::Uniform(edgesView) }
+		{ "areaLUT", areaLutView->getView() },
+		{ "searchLUT", searchLutView->getView() },
+		{ "edgesBuffer", graphicsSystem->get(edgesBuffer)->getView() }
 	};
-	return uniforms;
 }
 static DescriptorSet::Uniforms getBlendUniforms(GraphicsSystem* graphicsSystem)
 {
-	auto weightsView = getWeightsView(graphicsSystem);
-	auto ldrCopyView = getLdrCopyView(graphicsSystem); 
-
-	DescriptorSet::Uniforms uniforms =
+	return
 	{ 
-		{ "weightsBuffer", DescriptorSet::Uniform(weightsView) },
-		{ "ldrBuffer", DescriptorSet::Uniform(ldrCopyView) }
+		{ "weightsBuffer", getWeightsView(graphicsSystem) },
+		{ "ldrBuffer", getLdrCopyView(graphicsSystem) }
 	};
-	return uniforms;
 }
 
 //**********************************************************************************************************************

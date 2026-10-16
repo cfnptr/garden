@@ -26,8 +26,7 @@ using namespace garden;
 //**********************************************************************************************************************
 static DescriptorSet::Uniforms getCascadesUniforms()
 {
-	auto hizBufferView = HizRenderSystem::getInstance()->getView(1);
-	return { { "hizBuffer", DescriptorSet::Uniform(hizBufferView) } };
+	return { { "hizBuffer", HizRenderSystem::getInstance()->getView(1) } };
 }
 
 CsmRenderEditorSystem::CsmRenderEditorSystem()

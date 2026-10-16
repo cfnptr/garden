@@ -120,8 +120,8 @@ void GpuProcessSystem::generateMips(ID<Image> image, ID<ComputePipeline> pipelin
 
 		DescriptorSet::Uniforms uniforms
 		{
-			{ "srcBuffer", DescriptorSet::Uniform(imageViewData[i - 1]) },
-			{ "dstBuffer", DescriptorSet::Uniform(imageView) }
+			{ "srcBuffer", imageViewData[i - 1] },
+			{ "dstBuffer", imageView }
 		};
 		auto descriptorSet = graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms));
 		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.normalMapMips" + to_string(i));
