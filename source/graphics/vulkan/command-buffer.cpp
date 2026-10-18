@@ -397,6 +397,13 @@ void VulkanCommandBuffer::submit()
 			auto status = vulkanAPI->device.getFenceStatus(fence);
 			if (status == vk::Result::eNotReady)
 				return;
+
+			if (status != vk::Result::eSuccess)
+			{
+				if (status == vk::Result::eErrorDeviceLost)
+					vulkanAPI->throwDeviceFault("vkGetFenceStatus");
+				else throw GardenError("Failed to get fence status. (error: " + to_string(status) + ")");
+			}
 			
 			vulkanAPI->device.resetFences(fence);
 			flushLockedResources(lockedResources);
@@ -550,8 +557,19 @@ bool VulkanCommandBuffer::isBusy()
 
 	if (type == CommandBufferType::Frame)
 		return false;
+
 	vk::Fence fence((VkFence)this->fence);
-	return vulkanAPI->device.getFenceStatus(fence) == vk::Result::eNotReady;
+	auto status = vulkanAPI->device.getFenceStatus(fence);
+	if (status == vk::Result::eNotReady)
+		return true;
+
+	if (status != vk::Result::eSuccess)
+	{
+		if (status == vk::Result::eErrorDeviceLost)
+			vulkanAPI->throwDeviceFault("vkGetFenceStatus");
+		else throw GardenError("Failed to get fence status. (error: " + to_string(status) + ")");
+	}
+	return false;
 }
 
 //**********************************************************************************************************************
@@ -1117,7 +1135,8 @@ void VulkanCommandBuffer::processCommand(const DrawCommand& command)
 	if (vertexBufferCount > 0)
 	{
 		auto vertexBuffers = (const ID<Buffer>*)((const uint8*)&command + sizeof(DrawCommandBase));
-		auto bufferOffsets = (const uint64*)((const uint8*)vertexBuffers + vertexBufferCount * sizeof(ID<Buffer>));
+		auto bufferOffsets = command.hasBufferOffsets ? (const uint64*)((const uint8*)
+			vertexBuffers + vertexBufferCount * sizeof(ID<Buffer>)) : nullptr;
 		bindVertexBuffers(vertexBuffers, bufferOffsets, vertexBufferCount, 0);
 	}
 
@@ -1131,7 +1150,8 @@ void VulkanCommandBuffer::processCommand(const DrawIndexedCommand& command)
 
 	auto vertexBufferCount = command.vertexBufferCount;
 	auto vertexBuffers = (const ID<Buffer>*)((const uint8*)&command + sizeof(DrawIndexedCommandBase));
-	auto bufferOffsets = (const uint64*)((const uint8*)vertexBuffers + vertexBufferCount * sizeof(ID<Buffer>));
+	auto bufferOffsets = command.hasBufferOffsets ? (const uint64*)((const uint8*)
+		vertexBuffers + vertexBufferCount * sizeof(ID<Buffer>)) : nullptr;
 	bindVertexBuffers(vertexBuffers, bufferOffsets, vertexBufferCount, 0);
 
 	if (command.indexBuffer != vulkanAPI->currentIndexBuffers.front())

@@ -171,8 +171,8 @@ namespace garden::graphics
 		CompileError(const string& errorMessage, int32 line = -1, const string& word = "") noexcept :
 			errorMessage(errorMessage), word(word), line(line)
 		{
-			message = line < 0 ? "error: " + (word.length() > 0 ? "'" + word + "' : " : " ") + errorMessage :
-				to_string(line) + ": error: " + (word.length() > 0 ? "'" + word + "' : " : " ") + errorMessage;
+			message = line < 0 ? "error: " + (!word.empty() ? "'" + word + "' : " : " ") + errorMessage :
+				to_string(line) + ": error: " + (!word.empty() ? "'" + word + "' : " : " ") + errorMessage;
 		}
 
 		const string& getErrorMessage() const noexcept { return errorMessage; }

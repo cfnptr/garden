@@ -73,7 +73,7 @@ public:
 	 */
 	static bool tryLoadBinary(const fs::path& filePath, uint8* data, psize size);
 
-	/**
+	/******************************************************************************************************************
 	 * @brief Stores binary data to the file.
 	 * 
 	 * @param[in] filePath target file path
@@ -98,6 +98,30 @@ public:
 	}
 
 	/**
+	 * @brief Stores binary data to the file.
+	 * 
+	 * @param[in] filePath target file path
+	 * @param[in] data binary data to write
+	 * @param size write data size in bytes
+	 * 
+	 * @return True on success, otherwise false.
+	 */
+	static bool tryStoreBinary(const fs::path& filePath, const void* data, psize size);
+	/**
+	 * @brief Stores binary data to the file.
+	 * 
+	 * @param[in] filePath target file path
+	 * @param[in] data binary data buffer
+	 * 
+	 * @return True on success, otherwise false.
+	 */
+	template<typename T = uint8, class A = allocator<T>>
+	static bool tryStoreBinary(const fs::path& filePath, const vector<T, A>& data)
+	{
+		return tryStoreBinary(filePath, data.data(), data.size() * sizeof(T));
+	}
+
+	/******************************************************************************************************************
 	 * @brief Creates a new temporary file name.
 	 */
 	static fs::path createTmpName();
@@ -124,14 +148,16 @@ public:
 	}
 	/**
 	 * @brief Creates and writes a new temporary file.
-	 * @return Temporary file path on success, otherwise empty.
 	 * @param[in] data target binary data buffer
+	 *
+	 * @return Temporary file path on success, otherwise empty.
 	 * @throw GardenError if failed to store file data.
 	 */
-	static fs::path writeTMP(const vector<uint8>& data) { return writeTMP(data.data(), data.size()); }
+	template<typename T = uint8, class A = allocator<T>>
+	static fs::path writeTMP(const vector<T, A>& data) { return writeTMP(data.data(), data.size() * sizeof(T)); }
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR || !GARDEN_PACK_RESOURCES
-	/******************************************************************************************************************
+	/**
 	 * @brief Returns resource file path in the system. (Debug Only)
 	 * @details The resource is searched inside the engine resources folder and the application resources folder.
 	 * 

@@ -18,8 +18,11 @@
 #include "garden/graphics/vulkan/api.hpp"
 #include "garden/graphics/vulkan/command-buffer.hpp"
 #include "garden/graphics/glfw.hpp" // Note: Do not move it.
+#include "garden/file.hpp"
 #include "garden/hash.hpp"
+
 #include "mpio/directory.hpp"
+#include "nlohmann/json.hpp"
 
 #if GARDEN_USE_NVIDIA_DLSS
 #include "nvsdk_ngx_vk.h"
@@ -30,6 +33,7 @@
 #include <iostream>
 
 using namespace garden;
+using json = nlohmann::json;
 
 static constexpr string_view shaderCacheMagic = "GDNS";
 
@@ -330,9 +334,10 @@ static vk::PhysicalDevice getBestPhysicalDevice(vk::Instance instance)
 static vk::SurfaceKHR createVkSurface(vk::Instance instance, GLFWwindow* window)
 {
 	VkSurfaceKHR surface = nullptr;
-	if (glfwCreateWindowSurface(instance, window, nullptr, &surface) != VK_SUCCESS)
-		throw GardenError("Failed to create Vulkan window surface.");
-	return vk::SurfaceKHR(surface);
+	auto result = glfwCreateWindowSurface(instance, window, nullptr, &surface);
+	if (result != VK_SUCCESS)
+		throw GardenError("Failed to create Vulkan window surface. (error: " + to_string(result) + ")");
+	return surface;
 }
 
 //**********************************************************************************************************************
@@ -509,7 +514,9 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 	for (const auto& properties : extensionProperties)
 	{
 		auto extensionName = string_view(properties.extensionName);
-		if (extensionName == VK_EXT_MEMORY_BUDGET_EXTENSION_NAME)
+		if (extensionName == VK_EXT_DEVICE_FAULT_EXTENSION_NAME) // TODO: rename to the KHR after widespread.
+			features.deviceFault = true;
+		else if (extensionName == VK_EXT_MEMORY_BUDGET_EXTENSION_NAME)
 			features.memoryBudget = true;
 		else if (extensionName == VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME)
 			features.memoryPriority = true;
@@ -578,6 +585,7 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 		vk::PhysicalDeviceUnifiedImageLayoutsFeaturesKHR unifiedLayouts;
 		vk::PhysicalDeviceDynamicRenderingFeatures dynamicRendering;
 		vk::PhysicalDeviceTextureCompressionASTCHDRFeaturesEXT astcHDR;
+		vk::PhysicalDeviceFaultFeaturesEXT deviceFault;
 		vk::PhysicalDevicePageableDeviceLocalMemoryFeaturesEXT pageableMemory;
 		vk::PhysicalDeviceAccelerationStructureFeaturesKHR accelerationStructure;
 		vk::PhysicalDeviceRayTracingPipelineFeaturesKHR rayTracingPipeline;
@@ -646,6 +654,9 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 	{
 		features.synchronization2 = features.copyCommands2 = features.dynamicRendering = 
 			features.astcHDR = features.maintenance4 = true;
+		vkFeatures->synchronization2.synchronization2 = VK_TRUE;
+		vkFeatures->dynamicRendering.dynamicRendering = VK_TRUE;
+		vkFeatures->maintenance4.maintenance4 = VK_TRUE;
 	}
 
 	if (versionMinor < 4)
@@ -667,7 +678,12 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 			else features.maintenance6 = false;
 		}
 	}
-	else features.maintenance5 = features.maintenance6 = true;
+	else
+	{
+		features.maintenance5 = features.maintenance6 = true;
+		vkFeatures->maintenance5.maintenance5 = VK_TRUE;
+		vkFeatures->maintenance6.maintenance6 = VK_TRUE;
+	}
 
 	if (hasDeferredHostOperations && hasAccelerationStructure)
 	{
@@ -700,6 +716,14 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 	}
 	else features.rayTracing = features.rayQuery = false;
 
+	if (features.deviceFault)
+	{
+		vkFeatures->device.pNext = &vkFeatures->deviceFault;
+		physicalDevice.getFeatures2(&vkFeatures->device);
+		if (vkFeatures->deviceFault.deviceFault)
+			extensions.push_back(VK_EXT_DEVICE_FAULT_EXTENSION_NAME);
+		else features.deviceFault = false;
+	}
 	if (features.pageableMemory)
 	{
 		vkFeatures->device.pNext = &vkFeatures->pageableMemory;
@@ -812,36 +836,31 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 
 	if (features.maintenance4)
 	{
-		vkFeatures->maintenance4 = vk::PhysicalDeviceMaintenance4FeaturesKHR();
-		vkFeatures->maintenance4.maintenance4 = VK_TRUE;
 		*lastPNext = &vkFeatures->maintenance4;
 		lastPNext = &vkFeatures->maintenance4.pNext;
 	}
 	if (features.maintenance5 && features.dynamicRendering) // Note: dynamicRendering required.
 	{
-		vkFeatures->maintenance5 = vk::PhysicalDeviceMaintenance5FeaturesKHR();
-		vkFeatures->maintenance5.maintenance5 = VK_TRUE;
 		*lastPNext = &vkFeatures->maintenance5;
 		lastPNext = &vkFeatures->maintenance5.pNext;
 	}
 	if (features.maintenance6)
 	{
-		vkFeatures->maintenance6 = vk::PhysicalDeviceMaintenance6FeaturesKHR();
-		vkFeatures->maintenance6.maintenance6 = VK_TRUE;
 		*lastPNext = &vkFeatures->maintenance6;
 		lastPNext = &vkFeatures->maintenance6.pNext;
 	}
+	if (features.deviceFault)
+	{
+		*lastPNext = &vkFeatures->deviceFault;
+		lastPNext = &vkFeatures->deviceFault.pNext;
+	}
 	if (features.pageableMemory)
 	{
-		vkFeatures->pageableMemory = vk::PhysicalDevicePageableDeviceLocalMemoryFeaturesEXT();
-		vkFeatures->pageableMemory.pageableDeviceLocalMemory = VK_TRUE;
 		*lastPNext = &vkFeatures->pageableMemory;
 		lastPNext = &vkFeatures->pageableMemory.pNext;
 	}
 	if (features.synchronization2)
 	{
-		vkFeatures->synchronization2 = vk::PhysicalDeviceSynchronization2Features();
-		vkFeatures->synchronization2.synchronization2 = VK_TRUE;
 		*lastPNext = &vkFeatures->synchronization2;
 		lastPNext = &vkFeatures->synchronization2.pNext;
 	}
@@ -854,15 +873,11 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 	}
 	if (features.dynamicRendering)
 	{
-		vkFeatures->dynamicRendering = vk::PhysicalDeviceDynamicRenderingFeatures();
-		vkFeatures->dynamicRendering.dynamicRendering = VK_TRUE;
 		*lastPNext = &vkFeatures->dynamicRendering;
 		lastPNext = &vkFeatures->dynamicRendering.pNext;
 	}
 	if (features.astcHDR)
 	{
-		vkFeatures->astcHDR = vk::PhysicalDeviceTextureCompressionASTCHDRFeaturesEXT();
-		vkFeatures->astcHDR.textureCompressionASTC_HDR = VK_TRUE;
 		*lastPNext = &vkFeatures->astcHDR;
 		lastPNext = &vkFeatures->astcHDR.pNext;
 	}
@@ -882,8 +897,6 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 	}
 	if (features.rayQuery)
 	{
-		vkFeatures->rayQuery = vk::PhysicalDeviceRayQueryFeaturesKHR();
-		vkFeatures->rayQuery.rayQuery = VK_TRUE;
 		*lastPNext = &vkFeatures->rayQuery;
 		lastPNext = &vkFeatures->rayQuery.pNext;
 	}
@@ -897,15 +910,11 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 	}
 	if (features.amdAntiLag)
 	{
-		vkFeatures->amdAntiLag = vk::PhysicalDeviceAntiLagFeaturesAMD();
-		vkFeatures->amdAntiLag.antiLag = VK_TRUE;
 		*lastPNext = &vkFeatures->amdAntiLag;
 		lastPNext = &vkFeatures->amdAntiLag.pNext;
 	}
 	if (hasDemoteToHelperInv)
 	{
-		vkFeatures->demoteToHelper = vk::PhysicalDeviceShaderDemoteToHelperInvocationFeaturesEXT();
-		vkFeatures->demoteToHelper.shaderDemoteToHelperInvocation = VK_TRUE;
 		*lastPNext = &vkFeatures->demoteToHelper;
 		lastPNext = &vkFeatures->demoteToHelper.pNext;
 	}
@@ -958,13 +967,13 @@ static VmaAllocator createVmaMemoryAllocator(uint32 majorVersion, uint32 minorVe
 	VmaVulkanFunctions vulkanFunctions;
 	auto result = vmaImportVulkanFunctionsFromVolk(&allocatorInfo, &vulkanFunctions);
 	if (result != VK_SUCCESS)
-		throw GardenError("Failed to import Vulkan function from Volk.");
+		throw GardenError("Failed to import Vulkan function from Volk. (error: " + to_string(result) + ")");
 	allocatorInfo.pVulkanFunctions = &vulkanFunctions;
 
 	VmaAllocator allocator = nullptr;
 	result = vmaCreateAllocator(&allocatorInfo, &allocator);
 	if (result != VK_SUCCESS)
-		throw GardenError("Failed to create Vulkan memory allocator.");
+		throw GardenError("Failed to create Vulkan memory allocator. (error: " + to_string(result) + ")");
 	return allocator;
 }
 
@@ -1115,8 +1124,9 @@ VulkanAPI::VulkanAPI(const string& appName, const string& appID, const string& a
 	uint32 graphicsQueueMaxCount = 0, transferQueueMaxCount = 0, computeQueueMaxCount = 0;
 	uint32 frameQueueIndex = 0, graphicsQueueIndex = 0, transferQueueIndex = 0, computeQueueIndex = 0;
 
-	if (volkInitialize() != VK_SUCCESS)
-		throw GardenError("Failed to initialize Vulkan API loader.");
+	auto result = volkInitialize();
+	if (result != VK_SUCCESS)
+		throw GardenError("Failed to initialize Vulkan API loader. (error: " + to_string(result) + ")");
 	instance = createVkInstance(appName, appVersion, versionMajor, versionMinor, features);
 
 	#if GARDEN_USE_GAPI_VALIDATIONS
@@ -1173,6 +1183,7 @@ VulkanAPI::VulkanAPI(const string& appName, const string& appID, const string& a
 		case 0x13B5: gpuVendor = GpuVendor::ARM; break;
 		case 0x5143: gpuVendor = GpuVendor::Qualcomm; break;
 		case 0x1010: gpuVendor = GpuVendor::ImgTec; break;
+		default: gpuVendor = GpuVendor::Unknown; break;
 	}
 
 	int sizeX = 0, sizeY = 0;
@@ -1320,6 +1331,7 @@ void VulkanAPI::flushDestroyBuffer()
 	destroyBuffer.clear();
 }
 
+//**********************************************************************************************************************
 void VulkanAPI::storeShaderCache()
 {
 	auto cacheData = device.getPipelineCacheData((VkPipelineCache)pipelineCache);
@@ -1354,5 +1366,83 @@ void VulkanAPI::storeShaderCache()
 
 void VulkanAPI::waitIdle()
 {
-	device.waitIdle();
+	auto result = vkDeviceWaitIdle(device); // TODO: dispatcher if needed.
+	if (result == VK_ERROR_DEVICE_LOST)
+		throwDeviceFault("vkDeviceWaitIdle");
+}
+
+void VulkanAPI::throwDeviceFault(string_view atFunc)
+{
+	if (features.deviceFault)
+	{
+		vk::DeviceFaultCountsEXT faultCounts;
+		auto result = device.getFaultInfoEXT(&faultCounts, nullptr);
+
+		if (result == vk::Result::eSuccess)
+		{
+			auto addressInfos = faultCounts.addressInfoCount > 0 ? 
+				malloc<vk::DeviceFaultAddressInfoEXT>(faultCounts.addressInfoCount) : nullptr;
+			auto vendorInfos = faultCounts.vendorInfoCount > 0 ? 
+				malloc<vk::DeviceFaultVendorInfoEXT>(faultCounts.vendorInfoCount) : nullptr;
+			auto vendorDump = faultCounts.vendorBinarySize > 0 ? malloc<uint8>(faultCounts.vendorBinarySize) : nullptr;
+			vk::DeviceFaultInfoEXT faultInfo({}, addressInfos, vendorInfos, vendorDump);
+
+			result = device.getFaultInfoEXT(&faultCounts, nullptr);
+			if (result == vk::Result::eSuccess)
+			{
+				if (faultCounts.vendorBinarySize > 0)
+				{
+					auto crashDumpPath = mpio::Directory::getAppDataPath(appDataName) / "gpu-crash-dump";
+					File::tryStoreBinary(crashDumpPath, vendorDump, faultCounts.vendorBinarySize);
+				}
+
+				json crashInfo;
+				auto description = string(faultInfo.description.data());
+				if (!description.empty())
+					crashInfo["description"] = description;
+
+				if (faultCounts.addressInfoCount > 0)
+				{
+					auto& addressInfosJson = crashInfo["addressInfos"];
+					for (uint32 i = 0; i < faultCounts.addressInfoCount; i++)
+					{
+						const auto& addressInfo = addressInfos[i];
+						addressInfosJson.push_back(
+						{
+							{ "addressType", to_string(addressInfo.addressType) },
+							{ "reportedAddress", addressInfo.reportedAddress },
+							{ "addressPrecision", addressInfo.addressPrecision },
+							{ "lowerAddress", (addressInfo.reportedAddress & ~(addressInfo.addressPrecision - 1)) },
+							{ "upperAddress", (addressInfo.reportedAddress | (addressInfo.addressPrecision - 1)) }
+						});
+					}
+				}
+				if (faultCounts.vendorInfoCount > 0)
+				{
+					auto& vendorInfosJson = crashInfo["vendorInfos"]; 
+					for (uint32 i = 0; i < faultCounts.vendorInfoCount; i++)
+					{
+						const auto& vendorInfo = vendorInfos[i];
+						vendorInfosJson.push_back(
+						{
+							{ "description", to_string(vendorInfo.vendorFaultCode) },
+							{ "faultCode", to_string(vendorInfo.vendorFaultCode) },
+							{ "faultData", vendorInfo.vendorFaultData }
+						});
+					}
+				}
+
+				if (!crashInfo.empty())
+				{
+					std::ofstream fileStream(mpio::Directory::getAppDataPath(appDataName) / "gpu-crash.json");
+					fileStream << std::setw(1) << std::setfill('\t') << crashInfo;
+					fileStream.close();
+				}
+
+				if (!description.empty())
+					throw GardenError("Vulkan device fault: " + description);
+			}
+		}
+	}
+	throw GardenError("Vulkan device lost at " + string(atFunc));
 }

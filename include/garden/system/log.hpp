@@ -19,8 +19,8 @@
 
 #pragma once
 #include "garden/defines.hpp"
-#include "ecsm.hpp"
 #include "logy/logger.hpp"
+#include "ecsm.hpp"
 
 namespace garden
 {

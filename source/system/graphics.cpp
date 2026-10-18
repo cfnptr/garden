@@ -116,6 +116,8 @@ GraphicsSystem::GraphicsSystem(uint2 windowSize, bool isFullscreen, bool isDecor
 static void logVkGpuInfo()
 {
 	auto vulkanAPI = VulkanAPI::get();
+	if (vulkanAPI->getGpuVendor() == GpuVendor::Unknown)
+		GARDEN_LOG_WARN("Unknown GPU vendor ID: " + to_string(vulkanAPI->deviceProperties.properties.vendorID));
 	GARDEN_LOG_INFO("GPU: " + string(vulkanAPI->deviceProperties.properties.deviceName.data()));
 	auto apiVersion = vulkanAPI->deviceProperties.properties.apiVersion;
 	GARDEN_LOG_INFO("GPU driver: " + string(vulkanAPI->driverProperties.driverName.data()) + " (" + 

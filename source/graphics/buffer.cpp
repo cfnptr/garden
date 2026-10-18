@@ -132,7 +132,7 @@ static void createVkBuffer(Buffer::Usage usage, Buffer::CpuAccess cpuAccess, Buf
 	auto result = vmaCreateBuffer(vulkanAPI->memoryAllocator,
 		&bufferInfo, &allocationCreateInfo, &vmaInstance, &vmaAllocation, nullptr);
 	if (result != VK_SUCCESS)
-		throw GardenError("Failed to allocate GPU buffer.");
+		throw GardenError("Failed to allocate GPU buffer. (error: " + to_string(result) + ")");
 
 	instance = vmaInstance;
 	allocation = vmaAllocation;
@@ -245,7 +245,7 @@ void Buffer::invalidate(uint64 size, uint64 offset)
 		auto result = vmaInvalidateAllocation(VulkanAPI::get()->memoryAllocator,
 			(VmaAllocation)allocation, offset, size == 0 ? VK_WHOLE_SIZE : size);
 		if (result != VK_SUCCESS)
-			throw GardenError("Failed to invalidate buffer memory.");
+			throw GardenError("Failed to invalidate buffer memory. (error: " + to_string(result) + ")");
 	}
 	else abort();
 }
@@ -261,7 +261,7 @@ void Buffer::flush(uint64 size, uint64 offset)
 		auto result = vmaFlushAllocation(VulkanAPI::get()->memoryAllocator,
 			(VmaAllocation)allocation, offset, size == 0 ? VK_WHOLE_SIZE : size);
 		if (result != VK_SUCCESS)
-			throw GardenError("Failed to flush buffer memory.");
+			throw GardenError("Failed to flush buffer memory. (error: " + to_string(result) + ")");
 	}
 	else abort();
 }
@@ -287,7 +287,7 @@ void Buffer::writeData(const void* data, uint64 size, uint64 offset)
 		auto result = vmaMapMemory(vulkanAPI->memoryAllocator,
 			(VmaAllocation)allocation, (void**)&map);
 		if (result != VK_SUCCESS)
-			throw GardenError("Failed to map GPU memory.");
+			throw GardenError("Failed to map GPU memory. (error: " + to_string(result) + ")");
 		memcpy(map + offset, data, size == 0 ? this->binarySize : size);
 		flush(size, offset);
 		vmaUnmapMemory(vulkanAPI->memoryAllocator, (VmaAllocation)allocation);

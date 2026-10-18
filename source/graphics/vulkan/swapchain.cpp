@@ -289,7 +289,7 @@ VulkanSwapchain::~VulkanSwapchain()
 //**********************************************************************************************************************
 void VulkanSwapchain::recreate(uint2 framebufferSize, bool useVsync, bool useTripleBuffering)
 {
-	vulkanAPI->device.waitIdle();
+	vulkanAPI->waitIdle();
 	destroyVkSwapchainImages(vulkanAPI, images);
 
 	vk::Format format;
@@ -320,16 +320,26 @@ bool VulkanSwapchain::acquireNextImage()
 
 	static constexpr uint64 timeout = 10000000000; // 10s
 	auto& inFlightFrame = inFlightFrames[inFlightIndex];
-	auto waitResult = vulkanAPI->device.waitForFences(1, &inFlightFrame.fence, VK_TRUE, timeout);
-	vk::detail::resultCheck(waitResult, "vk::Device::waitForFences");
+	auto result = vulkanAPI->device.waitForFences(1, &inFlightFrame.fence, VK_TRUE, timeout);
+	if (result != vk::Result::eSuccess)
+	{
+		if (result == vk::Result::eErrorDeviceLost)
+			vulkanAPI->throwDeviceFault("vkWaitForFences");
+		else throw GardenError("Vulkan device hang. (error: " + to_string(result) + ")");
+	}
 
-	auto result = vulkanAPI->device.acquireNextImageKHR(instance, UINT64_MAX, 
-		inFlightFrame.imageAvailableSemaphore, nullptr, &imageIndex);
+	vk::AcquireNextImageInfoKHR nextImageInfo(instance, UINT64_MAX, inFlightFrame.imageAvailableSemaphore, {}, 0x1);
+	auto acquireResult = vulkanAPI->device.acquireNextImage2KHR(nextImageInfo);
+	if (acquireResult.result == vk::Result::eErrorOutOfDateKHR)
+		return false; // Note: swapchain needs recreate.
 
-	if (result == vk::Result::eErrorOutOfDateKHR)
-		return false;
-	else if (result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR)
-		throw GardenError("Failed to acquire next image. (error: " + vk::to_string(result) + ")");
+	if (acquireResult.result != vk::Result::eSuccess && acquireResult.result != vk::Result::eSuboptimalKHR)
+	{
+		if (acquireResult.result == vk::Result::eErrorDeviceLost)
+			vulkanAPI->throwDeviceFault("vkAcquireNextImage");
+		else throw GardenError("Failed to acquire next image. (error: " + to_string(acquireResult.result) + ")");
+	}
+	imageIndex = acquireResult.value;
 
 	// Note: Should be called after image acquire, to prevent fences wait freeze.
 	vulkanAPI->device.resetFences(inFlightFrame.fence);
@@ -345,6 +355,8 @@ void VulkanSwapchain::submit()
 	SET_CPU_ZONE_SCOPED("Command Buffer Submit");
 
 	auto& inFlightFrame = inFlightFrames[inFlightIndex];
+	vk::Result submitResult;
+
 	if (vulkanAPI->features.synchronization2)
 	{
 		vk::SemaphoreSubmitInfo waitSemaphoreInfo(inFlightFrame.imageAvailableSemaphore, 
@@ -353,14 +365,21 @@ void VulkanSwapchain::submit()
 			0, vk::PipelineStageFlagBits2::eAllCommands, 0);
 		vk::CommandBufferSubmitInfo commandBufferInfo(inFlightFrame.primaryCommandBuffer, 0);
 		vk::SubmitInfo2 submitInfo({}, 1, &waitSemaphoreInfo, 1, &commandBufferInfo, 1, &signalSemaphoreInfo);
-		vulkanAPI->frameQueue.submit2(submitInfo, inFlightFrame.fence);
+		submitResult = vulkanAPI->frameQueue.submit2(1, &submitInfo, inFlightFrame.fence);
 	}
 	else
 	{
 		vk::PipelineStageFlags pipelineStage = vk::PipelineStageFlagBits::eColorAttachmentOutput;
 		vk::SubmitInfo submitInfo(1, &inFlightFrame.imageAvailableSemaphore, &pipelineStage,
 			1, &inFlightFrame.primaryCommandBuffer, 1, &renderFinishedSemaphores[imageIndex]);
-		vulkanAPI->frameQueue.submit(submitInfo, inFlightFrame.fence);
+		submitResult = vulkanAPI->frameQueue.submit(1, &submitInfo, inFlightFrame.fence);
+	}
+
+	if (submitResult != vk::Result::eSuccess)
+	{
+		if (submitResult == vk::Result::eErrorDeviceLost)
+			vulkanAPI->throwDeviceFault("vkQueueSubmit");
+		else throw GardenError("Failed to submit frame. (error: " + to_string(submitResult) + ")");
 	}
 }
 bool VulkanSwapchain::present()
@@ -372,9 +391,14 @@ bool VulkanSwapchain::present()
 	inFlightIndex = (inFlightIndex + 1u) % inFlightCount;
 
 	if (result == vk::Result::eErrorOutOfDateKHR)
-		return false;
-	else if (result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR)
-		throw GardenError("Failed to present image. (error: " + vk::to_string(result) + ")");
+		return false; // Note: swapchain needs recreate.
+
+	if (result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR)
+	{
+		if (result == vk::Result::eErrorDeviceLost)
+			vulkanAPI->throwDeviceFault("vkQueuePresent");
+		throw GardenError("Failed to present image. (error: " + to_string(result) + ")");
+	}
 	return true;
 }
 

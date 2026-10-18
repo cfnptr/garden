@@ -162,7 +162,6 @@ static void createVkBlas(const void* geometryArray, uint32 geometryCount, uint8 
 	for (uint32 i = 0; i < geometryCount; i++)
 		maxPrimitiveCountData[i] = rangeInfos[i].primitiveCount;
 
-	// TODO: also support building on the host (CPU). Currently only relevant for AMD and mobile GPUs.
 	auto sizesInfo = vulkanAPI->device.getAccelerationStructureBuildSizesKHR(
 		vk::AccelerationStructureBuildTypeKHR::eDevice, geometryInfo, maxPrimitiveCounts);
 	AccelerationStructure::_createVkInstance(sizesInfo.accelerationStructureSize, 

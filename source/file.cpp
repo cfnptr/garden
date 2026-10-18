@@ -105,6 +105,19 @@ void File::storeBinary(const fs::path& filePath, const void* data, psize size)
 	if (!outputStream.write((char*)data, size))
 		throw GardenError("Failed to write binary file. (path: " + filePath.generic_string() + ")");
 }
+bool File::tryStoreBinary(const fs::path& filePath, const void* data, psize size)
+{
+	GARDEN_ASSERT(!filePath.empty());
+	GARDEN_ASSERT_MSG(data, "Assert " + filePath.generic_string());
+	GARDEN_ASSERT_MSG(size > 0, "Assert " + filePath.generic_string());
+
+	ofstream outputStream(filePath, ios::out | ios::binary);
+	if (!outputStream.is_open())
+		return false;
+	if (!outputStream.write((char*)data, size))
+		return false;
+	return !outputStream.fail();
+}
 
 fs::path File::createTmpName()
 {

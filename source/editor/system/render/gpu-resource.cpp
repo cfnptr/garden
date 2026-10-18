@@ -135,8 +135,8 @@ static void renderVkMemoryDetails(const VmaAllocationInfo& allocationInfo,
 	ImGui::TextWrapped("Allocation offset: %s", toBinarySizeString(allocationInfo.offset).c_str());
 	ImGui::TextWrapped("Memory type index: %lu", (long unsigned)allocationInfo.memoryType);
 	ImGui::TextWrapped("Memory heap index: %lu", (long unsigned)memoryType.heapIndex);
-	ImGui::TextWrapped("Memory type: %s", vk::to_string(memoryType.propertyFlags).c_str());
-	ImGui::TextWrapped("Memory heap: %s", vk::to_string(memoryHeap.flags).c_str());
+	ImGui::TextWrapped("Memory type: %s", to_string(memoryType.propertyFlags).c_str());
+	ImGui::TextWrapped("Memory heap: %s", to_string(memoryHeap.flags).c_str());
 	ImGui::TextWrapped("Memory heap size: %s", toBinarySizeString(memoryHeap.size).c_str());
 }
 

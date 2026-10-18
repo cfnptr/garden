@@ -232,7 +232,7 @@ static void createVkImage(Image::Type type, Image::Format format, Image::Usage u
 	auto result = vmaCreateImage(vulkanAPI->memoryAllocator, &imageInfo,
 		&allocationCreateInfo, &vmaInstance, &vmaAllocation, nullptr);
 	if (result != VK_SUCCESS)
-		throw GardenError("Failed to allocate image.");
+		throw GardenError("Failed to allocate image. (error: " + to_string(result) + ")");
 
 	// TODO: https://gpuopen-librariesandsdks.github.io/VulkanMemoryAllocator/html/resource_aliasing.html
 

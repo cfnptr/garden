@@ -19,7 +19,6 @@
 
 #pragma once
 #include "garden/defines.hpp"
-#include "mpio/os.hpp"
 
 #if GARDEN_OS_WINDOWS && !GARDEN_DEBUG && !defined(GARDEN_NO_GRAPHICS)
 /**
@@ -45,6 +44,9 @@ GARDEN_MAIN                             \
 	return EXIT_SUCCESS;                \
 }
 #else
+#include "garden/system/log.hpp"
+#include "mpio/os.hpp"
+
 /**
  * @brief Declares application main function. (Entry point)
  * @param[in] entryPoint program entry point callback.
@@ -58,6 +60,7 @@ GARDEN_MAIN                                             \
 	}                                                   \
 	catch (const std::exception& e)                     \
 	{                                                   \
+		GARDEN_LOG_FATAL(e.what());                     \
 		mpio::OS::showError("Runtime Error", e.what()); \
 		return EXIT_FAILURE;                            \
 	}                                                   \

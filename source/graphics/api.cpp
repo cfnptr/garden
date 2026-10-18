@@ -15,7 +15,6 @@
 #include "garden/graphics/api.hpp"
 #include "garden/graphics/vulkan/api.hpp"
 #include "garden/graphics/glfw.hpp" // Note: Do not move it.
-#include "garden/system/log.hpp" // TODO: we should not include system here
 
 #if GARDEN_DEBUG
 #include "garden/graphics/renderdoc-app.h"
@@ -165,7 +164,7 @@ void GraphicsAPI::initialize(GraphicsBackend backendType, const string& appName,
 
 	glfwSetErrorCallback([](int error_code, const char* description)
 	{
-		GARDEN_LOG_ERROR("GLFW::ERROR: " + string(description) + " (code: " + to_string(error_code) + ")");
+		std::cerr << "GLFW::ERROR: " + string(description) + " (code: " + to_string(error_code) + ")";
 	});
 
 	GARDEN_ASSERT_MSG(!apiInstance, "Graphics API is already initialized");

@@ -50,6 +50,7 @@ public:
 		bool debugUtils = false;
 		bool layerSettings = false;
 		#endif
+		bool deviceFault = false;
 		bool memoryBudget = false;
 		bool memoryPriority = false;
 		bool pageableMemory = false;
@@ -162,6 +163,10 @@ public:
 	 * @brief Wait for a GPU to become idle.
 	 */
 	void waitIdle() override;
+	/**
+	 * @brief Throws device fault info if device is lost.
+	 */
+	void throwDeviceFault(string_view atFunc);
 
 	/**
 	 * @brief Returns shader subgroup size. (Warp or wavefront size)
