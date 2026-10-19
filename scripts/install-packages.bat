@@ -9,7 +9,7 @@ IF NOT %ERRORLEVEL% == 0 (
     EXIT /B %ERRORLEVEL%
 )
 
-vcpkg install zlib openssl curl assimp openexr --triplet x64-windows-static
+vcpkg install zlib openssl curl --triplet x64-windows-static
 
 IF NOT %ERRORLEVEL% == 0 (
     ECHO vcpkg failed to install required packages.

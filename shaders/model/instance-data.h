@@ -17,6 +17,12 @@
 
 #include "garden/math.h"
 
+#define MODEL_VERT_FLAG_NONE 0x0000
+#define MODEL_VERT_FLAG_NORM_SIGN 0x0001
+#define MODEL_VERT_FLAG_TAN_SIGN 0x0002
+#define MODEL_VERT_FLAG_BITAN_SIGN 0x0004
+#define MODEL_VERT_FLAG_COUNT 3
+
 struct BaseInstanceData
 {
 	float3x4 currModel;
@@ -30,7 +36,6 @@ struct BaseInstanceData
 	uint32 _alignment0;
 	uint32 _alignment1;
 };
-
 struct ShadowInstanceData
 {
 	float3x4 model;
@@ -39,5 +44,12 @@ struct ShadowInstanceData
 	uint32 _alignment0;
 	uint32 _alignment1;
 };
+
+#if defined(GRAPHICS_GSL)
+void decodeNormalTangent()
+{
+
+}
+#endif
 
 #endif // MODEL_INSTANCE_DATA_H

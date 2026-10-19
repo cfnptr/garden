@@ -1425,7 +1425,7 @@ void VulkanAPI::throwDeviceFault(string_view atFunc)
 						const auto& vendorInfo = vendorInfos[i];
 						vendorInfosJson.push_back(
 						{
-							{ "description", to_string(vendorInfo.vendorFaultCode) },
+							{ "description", string(vendorInfo.description) },
 							{ "faultCode", to_string(vendorInfo.vendorFaultCode) },
 							{ "faultData", vendorInfo.vendorFaultData }
 						});

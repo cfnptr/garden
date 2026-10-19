@@ -558,7 +558,7 @@ static void optimizeMeshData(const aiMesh* mesh, raw_vector<uint8>& indices, raw
 		auto vertex = vertexData[i]; auto encNormal = encodeNormalOct3(vertex.normal);
 		auto& posFlag = posFlagData[i]; auto& attribs = attributeData[i];
 		posFlag.position = (ushort3)quantizeUnorm16(((f32x4)vertex.position - aabbMin) * invAabbSize);
-		posFlag.flags = encNormal.z > 0.0f ? MeshVertexPF::Flags::NormalSign : MeshVertexPF::Flags::None;
+		posFlag.flags = encNormal.z > 0.0f ? MODEL_VERT_FLAG_NORM_SIGN : MODEL_VERT_FLAG_NONE;
 		attribs.normal = quantizeUnorm16((float2)encNormal);
 		attribs.texCoords = quantizeUnorm16(vertex.texCoords);
 		attribs.color = meshColors ? (Color)(*(const float4*)&meshColors[i]) : Color::transparent;
@@ -568,8 +568,8 @@ static void optimizeMeshData(const aiMesh* mesh, raw_vector<uint8>& indices, raw
 		auto index = indexData[i]; auto tangent = tangentData[i];
 		auto encTangent3 = encodeNormalOct3((float3)tangent);
 		auto encTangent2 = quantizeUnorm16((float2)encTangent3);
-		auto tangentSign = encTangent3.z > 0.0f ? MeshVertexPF::Flags::TangentSign : MeshVertexPF::Flags::None;
-		auto bitangentSign = tangent.w > 0.0f ? MeshVertexPF::Flags::BitangentSign : MeshVertexPF::Flags::None;
+		auto tangentSign = encTangent3.z > 0.0f ? MODEL_VERT_FLAG_TAN_SIGN : MODEL_VERT_FLAG_NONE;
+		auto bitangentSign = tangent.w > 0.0f ? MODEL_VERT_FLAG_BITAN_SIGN : MODEL_VERT_FLAG_NONE;
 		posFlagData[index].flags |= tangentSign | bitangentSign;
 		attributeData[index].tangent = encTangent2;
 		encTangentData[i] = ushort3(encTangent2, (uint16)bitangentSign);
@@ -584,8 +584,7 @@ static void optimizeMeshData(const aiMesh* mesh, raw_vector<uint8>& indices, raw
 	{
 		auto v = indexData[i]; auto encTangent = encTangentData[i];
 		while (v != (I)~0u && attributeData[v].tangent != (ushort2)encTangent &&
-			hasAnyFlag(posFlagData[v].flags, MeshVertexPF::Flags::BitangentSign) !=
-			hasAnyFlag((MeshVertexPF::Flags)encTangent.z, MeshVertexPF::Flags::BitangentSign))
+			(posFlagData[v].flags | MODEL_VERT_FLAG_BITAN_SIGN) != (encTangent.z | MODEL_VERT_FLAG_BITAN_SIGN))
 		{
 			v = splitData[v];
 		}
@@ -595,9 +594,8 @@ static void optimizeMeshData(const aiMesh* mesh, raw_vector<uint8>& indices, raw
 			v = vertexCount++; auto index = indexData[i];
 			positions.resize(positions.size() + sizeof(MeshVertexPF));
 			posFlagData = (MeshVertexPF*)positions.data();
-			auto posFlag = posFlagData[v]; posFlag = posFlagData[index];
-			unsetFlags(posFlag.flags, MeshVertexPF::Flags::BitangentSign);
-			setFlags(posFlag.flags, (MeshVertexPF::Flags)encTangent.z);
+			auto& posFlag = posFlagData[v]; posFlag = posFlagData[index];
+			setFlags(posFlag.flags, (uint16)MODEL_VERT_FLAG_BITAN_SIGN, encTangent.z);
 
 			attributes.resize(attributes.size() + sizeof(MeshVertexAttr));
 			attributeData = (MeshVertexAttr*)attributes.data();

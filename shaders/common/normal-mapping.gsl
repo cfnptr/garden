@@ -72,6 +72,10 @@ float3 decodeNormalOct3(float3 encoded)
 }
 
 //**********************************************************************************************************************
+float3x3 createTBN(float3 normal, float3 tangent, float3 bitangent)
+{
+	return float3x3(tangent, bitangent, normal);
+}
 float3x3 computeTBN(float4x3 model, float3 normal, float3 tangent)
 {
 	float3 t = normalize(model * float4(tangent, 0.0));

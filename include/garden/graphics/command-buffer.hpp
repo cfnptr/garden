@@ -538,7 +538,7 @@ protected:
 	virtual void processCommand(const TraceRaysCommand& command) = 0;
 	virtual void processCommand(const CustomRenderCommand& command) = 0;
 
-	#if GARDEN_DEBUG
+	#if GARDEN_USE_GAPI_VALIDATIONS
 	virtual void processCommand(const BeginLabelCommand& command) = 0;
 	virtual void processCommand(const EndLabelCommand& command) = 0;
 	virtual void processCommand(const InsertLabelCommand& command) = 0;
@@ -802,7 +802,7 @@ public:
 		allocateCommand(command); hasAnyCommand = true;
 	}
 
-	#if GARDEN_DEBUG
+	#if GARDEN_USE_GAPI_VALIDATIONS
 	void addCommand(const BeginLabelCommand& command, int32 threadIndex)
 	{
 		auto nameLength = strlen(command.name) + 1;

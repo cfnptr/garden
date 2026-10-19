@@ -5,20 +5,20 @@ echo "Installing packages required for the Garden engine compilation..."
 
 if command -v apt-get &> /dev/null; then
     sudo apt-get update
-    sudo apt-get install -y git cmake build-essential ninja-build clang lld lldb zlib1g-dev libssl-dev libcurl4-openssl-dev libwayland-dev libxkbcommon-dev xorg-dev libassimp-dev libopenexr-dev
+    sudo apt-get install -y git cmake build-essential ninja-build clang lld lldb zlib1g-dev libssl-dev libcurl4-openssl-dev libwayland-dev libxkbcommon-dev xorg-dev
 elif command -v dnf &> /dev/null; then
     sudo dnf check-update
-    sudo dnf install -y git cmake @c-development ninja-build clang clang-tools-extra lld lldb oxipng zlib-devel openssl-devel libcurl-devel wayland-devel libxkbcommon-devel libXcursor-devel libXi-devel libXinerama-devel libXrandr-devel assimp-devel openexr-devel
+    sudo dnf install -y git cmake @c-development ninja-build clang clang-tools-extra lld lldb oxipng zlib-devel openssl-devel libcurl-devel wayland-devel libxkbcommon-devel libXcursor-devel libXi-devel libXinerama-devel libXrandr-devel
 elif command -v pacman &> /dev/null; then
-    sudo pacman -Syu --noconfirm git cmake base-devel ninja clang lld lldb oxipng openssl curl wayland libxkbcommon libxcursor libxi libxinerama libxrandr assimp openexr
+    sudo pacman -Syu --noconfirm git cmake base-devel ninja clang lld lldb oxipng openssl curl wayland libxkbcommon libxcursor libxi libxinerama libxrandr
 elif command -v zypper &> /dev/null; then
     sudo zypper install -y -t pattern devel_basis
-    sudo zypper install -y git cmake ninja clang lld lldb oxipng libopenssl-devel libcurl-devel wayland-devel libxkbcommon-devel libXcursor-devel libXi-devel libXinerama-devel libXrandr-devel assimp-devel openexr-devel
+    sudo zypper install -y git cmake ninja clang lld lldb oxipng libopenssl-devel libcurl-devel wayland-devel libxkbcommon-devel libXcursor-devel libXi-devel libXinerama-devel libXrandr-devel
 elif command -v apk &> /dev/null; then
-    apk add --no-cache git cmake build-base ninja clang lld zlib-static openssl-dev curl-dev wayland-dev libxkbcommon-dev libxcursor-dev libxi-dev libxinerama-dev libxrandr-dev assimp-dev openexr-dev
+    apk add --no-cache git cmake build-base ninja clang lld zlib-static openssl-dev curl-dev wayland-dev libxkbcommon-dev libxcursor-dev libxi-dev libxinerama-dev libxrandr-dev
 elif command -v brew &> /dev/null; then
     brew update
-    brew install git cmake ninja zlib openssl curl oxipng assimp openexr
+    brew install git cmake ninja zlib openssl curl oxipng
 else
     echo "Error: No supported package manager found!"
     exit 1

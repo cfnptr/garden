@@ -95,16 +95,9 @@ struct MeshLOD
  */
 struct MeshVertexPF
 {
-	enum class Flags : uint16
-	{
-		None = 0x0000, NormalSign = 0x0001, TangentSign = 0x0002, BitangentSign = 0x0004
-	};
-
 	ushort3 position = ushort3::zero; /**< Vertex 3D position. */
-	Flags flags = Flags::None;        /*<< Vertex data flags. */
+	uint16 flags = 0x0000u;           /*<< Vertex data flags. */
 };
-
-DECLARE_ENUM_CLASS_FLAG_OPERATORS(MeshVertexPF::Flags)
 
 /**
  * @brief Mesh vertex attributes data container. (Normals, UVs, etc.)

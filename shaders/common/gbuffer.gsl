@@ -77,7 +77,7 @@ GBufferValues gBufferValuesDefault()
 	gBuffer.irradiance = float3(1.0f);
 	gBuffer.viewDirection = float3(0.0f, 0.0f, -1.0f);
 	gBuffer.normal = float3(0.0f, 1.0f, 0.0f);
-	gBuffer.materialID = 0;
+	gBuffer.materialID = G_MATERIAL_BASE;
 	gBuffer.baseColor = float4(1.0f);
 	gBuffer.metallic = 0.0f;
 	gBuffer.roughness = 1.0f;

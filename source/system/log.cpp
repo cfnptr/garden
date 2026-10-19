@@ -42,7 +42,7 @@ static void logKernelInfo(LogSystem* logSystem)
 	auto result = uname(&info);
 	if (result != 0)
 		throw GardenError("Failed to get kernel information.");
-	logSystem->info("OS name: " + string(info.sysname));
+	logSystem->info("Operating system: " + string(info.sysname));
 	logSystem->info("OS release: " + string(info.release));
 	logSystem->info("OS version: " + string(info.version));
 	logSystem->info("OS machine: " + string(info.machine));
@@ -58,7 +58,7 @@ static void logKernelInfo(LogSystem* logSystem)
 	auto fileInfo = (const VS_FIXEDFILEINFO*)info;
 	auto osName = HIWORD(fileInfo->dwFileVersionMS) == 10 && HIWORD(fileInfo->dwFileVersionLS) >= 22000 ?
 		string("Windows 11") : "Windows " + to_string(HIWORD(fileInfo->dwFileVersionMS));
-	logSystem->info("OS name: " + osName);
+	logSystem->info("Operating system: " + osName);
 	logSystem->info("OS version: " + 
 		to_string(HIWORD(fileInfo->dwFileVersionMS)) + "." + to_string(LOWORD(fileInfo->dwFileVersionMS)) + "." + 
 		to_string(HIWORD(fileInfo->dwFileVersionLS)) + "." + to_string(LOWORD(fileInfo->dwFileVersionLS)));
@@ -117,12 +117,12 @@ LogSystem::LogSystem(LogLevel level, double rotationTime, bool setSingleton) : S
 
 	#ifdef NDEBUG
 		#if GARDEN_DEBUG
-		info("Build: Release (Debugging)");
+		info("Build type: Release (Debugging)");
 		#else
-		info("Build: Release");
+		info("Build type: Release");
 		#endif
 	#else
-	info("Build: Debug");
+	info("Build type: Debug");
 	#endif
 	
 	info("Target OS: " GARDEN_OS_NAME " (" GARDEN_CPU_ARCH ")");

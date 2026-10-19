@@ -23,6 +23,8 @@ pipelineState
 	depthWriting = on;
 }
 
+in flat float3x3 fs.tbn;
+
 out float4 fb.g0;
 out float4 fb.g1;
 out float4 fb.g2;
@@ -41,6 +43,5 @@ buffer readonly Instance
 void main()
 {
 	GBufferValues gBuffer = gBufferValuesDefault();
-	gBuffer.baseColor = float4(float3(1.0f), 1.0f);
 	ENCODE_G_BUFFER_VALUES(gBuffer);
 }
