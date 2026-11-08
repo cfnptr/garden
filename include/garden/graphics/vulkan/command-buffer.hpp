@@ -66,6 +66,7 @@ public:
 	void processCommand(const SetScissorCommand& command) override;
 	void processCommand(const SetViewportScissorCommand& command) override;
 	void processCommand(const SetDepthBiasCommand& command) override;
+	void processCommand(const SetBlendConstantsCommand& command) override;
 	void processCommand(const DrawCommand& command) override;
 	void processCommand(const DrawIndexedCommand& command) override;
 	void processCommand(const DrawFullscreenCommand& command) override;

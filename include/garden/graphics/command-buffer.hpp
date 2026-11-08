@@ -34,8 +34,8 @@ struct Command
 	{
 		Unknown, BufferBarrier, BeginRenderPass, Execute, EndRenderPass, ClearAttachments,
 		BindPipeline, BindDescriptorSets, PushConstants, SetViewport, SetScissor, SetViewportScissor, 
-		SetDepthBias, Draw, DrawIndexed, DrawIndirect, DrawIndexedIndirect, DrawFullscreen, DrawBarrier,
-		Dispatch, FillBuffer, CopyBuffer, ClearImage, CopyImage, CopyBufferImage, BlitImage,
+		SetDepthBias, SetBlendConstants, Draw, DrawIndexed, DrawIndirect, DrawIndexedIndirect, DrawFullscreen, 
+		DrawBarrier, Dispatch, FillBuffer, CopyBuffer, ClearImage, CopyImage, CopyBufferImage, BlitImage,
 		BuildAccelerationStructure, CopyAccelerationStructure, TraceRays, Custom,
 
 		#if GARDEN_DEBUG
@@ -175,6 +175,13 @@ struct SetDepthBiasCommand final : public Command
 	float slopeFactor = 0.0f;
 	float clamp = 0.0f;
 	SetDepthBiasCommand() noexcept : Command(Type::SetDepthBias) { }
+};
+struct SetBlendConstantsCommand final : public Command
+{
+	uint8 _alignment0 = 0;
+	uint16 _alignment1 = 0;
+	float4 constants = float4::zero;
+	SetBlendConstantsCommand() noexcept : Command(Type::SetBlendConstants) { }
 };
 
 //**********************************************************************************************************************
@@ -522,6 +529,7 @@ protected:
 	virtual void processCommand(const SetScissorCommand& command) = 0;
 	virtual void processCommand(const SetViewportScissorCommand& command) = 0;
 	virtual void processCommand(const SetDepthBiasCommand& command) = 0;
+	virtual void processCommand(const SetBlendConstantsCommand& command) = 0;
 	virtual void processCommand(const DrawCommand& command) = 0;
 	virtual void processCommand(const DrawIndexedCommand& command) = 0;
 	virtual void processCommand(const DrawFullscreenCommand& command) = 0;
@@ -679,6 +687,11 @@ public:
 		allocateCommand(command);
 	}
 	void addCommand(const SetDepthBiasCommand& command)
+	{
+		GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Graphics);
+		allocateCommand(command);
+	}
+	void addCommand(const SetBlendConstantsCommand& command)
 	{
 		GARDEN_ASSERT(type == CommandBufferType::Frame || type == CommandBufferType::Graphics);
 		allocateCommand(command);

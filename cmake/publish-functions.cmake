@@ -19,13 +19,14 @@ function(stripExecutable STRIP_TARGET)
 			COMMAND ${CMAKE_COMMAND} -E echo "Stripping $<TARGET_FILE_NAME:${STRIP_TARGET}> executable..."
 			COMMAND objcopy --only-keep-debug "$<TARGET_FILE:${STRIP_TARGET}>" 
 				"$<TARGET_FILE_NAME:${STRIP_TARGET}>.debug"
-			COMMAND strip ARGS --strip-all "$<TARGET_FILE:${STRIP_TARGET}>")
-			# TODO: objcopy --add-gnu-debuglink=myprogram.debug myprogram
+			COMMAND strip --strip-all "$<TARGET_FILE:${STRIP_TARGET}>"
+			COMMAND objcopy --add-gnu-debuglink="$<TARGET_FILE_NAME:${STRIP_TARGET}>.debug" 
+				"$<TARGET_FILE:${STRIP_TARGET}>")
 	elseif(APPLE)
 		add_custom_command(TARGET ${STRIP_TARGET} POST_BUILD VERBATIM
 			COMMAND ${CMAKE_COMMAND} -E echo "Stripping $<TARGET_FILE_NAME:${STRIP_TARGET}> executable..."
-			COMMAND strip ARGS "$<TARGET_FILE:${STRIP_TARGET}>")
-			# TODO: objcopy alternative on arm
+			COMMAND dsymutil "$<TARGET_FILE:${STRIP_TARGET}>"
+			COMMAND strip "$<TARGET_FILE:${STRIP_TARGET}>")
 	endif()
 endfunction()
 

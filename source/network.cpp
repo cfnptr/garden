@@ -80,18 +80,18 @@ void* ClientSession::createEncContext(uint8*& encKey, void*& cipher) noexcept
 	encKey = new uint8[keySize]; // Note: key is allocated for memory safety.
 	if (!RAND_bytes(encKey, keySize))
 	{
-		EVP_CIPHER_CTX_free(encContext); free(encKey);
+		EVP_CIPHER_CTX_free(encContext); delete[] encKey;
 		return nullptr;
 	}
 
-	if (!EVP_EncryptInit_ex(encContext, (EVP_CIPHER*)cipher, nullptr, encKey, nullptr))
-	{
-		EVP_CIPHER_CTX_free(encContext); free(encKey);
-		return nullptr;
-	}
 	if (!EVP_CIPHER_CTX_ctrl(encContext, EVP_CTRL_GCM_SET_IVLEN, ivSize, nullptr))
 	{
-		EVP_CIPHER_CTX_free(encContext); free(encKey);
+		EVP_CIPHER_CTX_free(encContext); delete[] encKey;
+		return nullptr;
+	}
+	if (!EVP_EncryptInit_ex(encContext, (EVP_CIPHER*)cipher, nullptr, encKey, nullptr))
+	{
+		EVP_CIPHER_CTX_free(encContext); delete[] encKey;
 		return nullptr;
 	}
 	return encContext;
@@ -113,12 +113,12 @@ void* ClientSession::createDecContext(const uint8* decKey, void*& cipher) noexce
 	if (!encContext)
 		return nullptr;
 
-	if (!EVP_DecryptInit_ex(encContext, (EVP_CIPHER*)cipher, nullptr, decKey, nullptr))
+	if (!EVP_CIPHER_CTX_ctrl(encContext, EVP_CTRL_GCM_SET_IVLEN, ivSize, nullptr))
 	{
 		EVP_CIPHER_CTX_free(encContext);
 		return nullptr;
 	}
-	if (!EVP_CIPHER_CTX_ctrl(encContext, EVP_CTRL_GCM_SET_IVLEN, ivSize, nullptr))
+	if (!EVP_DecryptInit_ex(encContext, (EVP_CIPHER*)cipher, nullptr, decKey, nullptr))
 	{
 		EVP_CIPHER_CTX_free(encContext);
 		return nullptr;

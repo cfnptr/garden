@@ -18,6 +18,9 @@ pipelineState
 {
 	depthTesting = on;
 	depthWriting = on;
+	stencilTesting = on;
+	stencilPass = replace;
+	stencilReference = 0x01;
 }
 
 out float4 fb.color;

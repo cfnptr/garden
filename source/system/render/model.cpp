@@ -310,7 +310,7 @@ void ModelRenderSystem::setInstanceData(ModelRenderComponent* modelRenderView, v
 	const f32x4x4& viewProj, const f32x4x4& model, uint32 instanceIndex, int32 taskIndex)
 {
 	BaseInstanceData modelData;
-	modelData.currModel = (float3x4)transpose4x4(model * scaleAndTranslate(
+	modelData.currModel = (float3x4)transpose4x4(model * scaleThenTranslate(
 		modelRenderView->aabb.getSize(), modelRenderView->aabb.getMin()));
 	modelData.uvSize = modelRenderView->getUvSize();
 	modelData.uvOffset = modelRenderView->getUvOffset();
@@ -496,6 +496,7 @@ static int32 getModelFilePath(const fs::path& modelPath, fs::path& filePath, Mod
 }
 
 #if GARDEN_USE_ASSIMP
+//**********************************************************************************************************************
 template<typename I = uint32>
 static void optimizeMeshData(const aiMesh* mesh, raw_vector<uint8>& indices, raw_vector<uint8>& positions, 
 	raw_vector<uint8>& attributes, raw_vector<uint8>& tmp0, raw_vector<uint8>& tmp1)
@@ -844,7 +845,7 @@ ID<Entity> ModelRenderSystem::loadModel(const fs::path& path, const ModelCompone
 	ID<Entity> rootEntity = {};
 
 	#if GARDEN_USE_ASSIMP
-	constexpr uint32 processFlags = aiProcess_JoinIdenticalVertices | aiProcess_Triangulate | 
+	constexpr uint32 processFlags = aiProcess_JoinIdenticalVertices | aiProcess_MakeLeftHanded | aiProcess_Triangulate | 
 		aiProcess_GenNormals | aiProcess_PopulateArmatureData | aiProcess_SortByPType | aiProcess_GenBoundingBoxes;
 
 	Assimp::Importer importer;

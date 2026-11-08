@@ -1675,6 +1675,11 @@ void VulkanCommandBuffer::processCommand(const SetDepthBiasCommand& command)
 	SET_CPU_ZONE_SCOPED("SetDepthBias Command Process");
 	instance.setDepthBias(command.constantFactor, command.clamp, command.slopeFactor);
 }
+void VulkanCommandBuffer::processCommand(const SetBlendConstantsCommand& command)
+{
+	SET_CPU_ZONE_SCOPED("SetDepthBias Command Process");
+	instance.setBlendConstants((const float*)&command.constants);
+}
 
 //**********************************************************************************************************************
 void VulkanCommandBuffer::processCommand(const BuildAccelerationStructureCommand& command)

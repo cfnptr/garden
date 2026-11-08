@@ -26,6 +26,7 @@
 #pragma clang diagnostic ignored "-Wnullability-completeness"
 #endif
 
+#define VMA_VULKAN_HEADERS_ALREADY_INCLUDED
 #include "vk_mem_alloc.h"
 
 #if __clang__

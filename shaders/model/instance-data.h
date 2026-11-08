@@ -46,9 +46,29 @@ struct ShadowInstanceData
 };
 
 #if defined(GRAPHICS_GSL)
-void decodeNormalTangent()
-{
+#include "common/normal-mapping.gsl"
 
+float4x4 decodeModelMatrix(float3x4 model) { return float4x4(transpose(model)); }
+float3 decodeModelNormal(uint32 flags, float2 encNormal)
+{
+	return decodeNormalOct3(float3(encNormal, flags & MODEL_VERT_FLAG_NORM_SIGN));
+}
+float3 decodeModelTangent(uint32 flags, float2 encTangent)
+{
+	return decodeNormalOct3(float3(encTangent, flags & MODEL_VERT_FLAG_TAN_SIGN));
+}
+float decodeModelBitanSign(uint32 flags)
+{
+	return (flags & MODEL_VERT_FLAG_BITAN_SIGN) > 0 ? 1.0f : -1.0f;
+}
+float3 decodeModelBitangent(float3 normal, float3 tangent, float bitanSign)
+{
+	return cross(normal, tangent) * bitanSign;
+}
+float3x3 decodeModelTBN(float3 normal, float3 tangent, float bitanSign)
+{
+	float3 bitangent = decodeModelBitangent(normal, tangent, bitanSign);
+	return createTBN(normal, tangent, bitangent);
 }
 #endif
 

@@ -136,9 +136,9 @@ namespace garden::graphics
 	};
 	struct GraphicsLineData final : public LineData
 	{
-		int8 isIn = 0, isOut = 0, isTopology = 0, isPolygonMode = 0, isDiscarding = 0, 
-			isDepthTesting = 0, isDepthWriting = 0, isDepthClamping = 0, isDepthBiasing = 0, 
-			isDepthCompare = 0, isDepthOverride = 0, isDepthBounding = 0, 
+		int8 isIn = 0, isOut = 0, isTopology = 0, isPolygonMode = 0, isDiscarding = 0, isDepthTesting = 0, 
+			isDepthWriting = 0, isDepthClamping = 0, isDepthBiasing = 0, isDepthCompare = 0, isDepthOverride = 0, 
+			isDepthBounding = 0, isDepthBoundsMin = 0, isDepthBoundsMax = 0, isDynamicDepthBias = 0, 
 			isDepthBiasConst = 0, isDepthBiasSlope = 0, isDepthBiasClamp = 0, 
 			isStencilTesting = 0, isStencilFail = 0, isStencilFailFF = 0, isStencilFailBF = 0, 
 			isStencilPass = 0, isStencilPassFF = 0, isStencilPassBF = 0, isStencilDepthFail = 0, 
@@ -147,8 +147,8 @@ namespace garden::graphics
 			isStencilCompareMaskFF = 0, isStencilCompareMaskBF = 0, isStencilWriteMask = 0,
 			isStencilWriteMaskFF = 0, isStencilWriteMaskBF = 0, isStencilReference = 0,
 			isStencilReferenceFF = 0, isStencilReferenceBF = 0, isCullFace = 0, isFrontFace = 0, 
-			isBlending = 0, isColorMask = 0, isBlendFactor = 0, isSrcBlendFactor = 0, 
-			isDstBlendFactor = 0, isSrcColorFactor = 0,isDstColorFactor = 0, 
+			isDynamicBlendConsts = 0, isBlendConstants = 0, isColorMask = 0, isBlending = 0, isBlendFactor = 0, 
+			isSrcBlendFactor = 0, isDstBlendFactor = 0, isSrcColorFactor = 0, isDstColorFactor = 0, 
 			isSrcAlphaFactor = 0, isDstAlphaFactor = 0, isBlendOperation = 0, 
 			isColorOperation = 0, isAlphaOperation = 0;
 		bool isFlat = false, isNoperspective = false;
@@ -211,6 +211,13 @@ static float toFloatValue(string_view value, uint32 lineIndex)
 	try { return stof(string(value)); }
 	catch (const exception&)
 	{ throw CompileError("invalid floating point value", lineIndex, string(value)); }
+}
+static Color toColorValue(string_view value, uint32 lineIndex)
+{
+	if (value == "white") return Color::white;
+	if (value == "black") return Color::black;
+	if (value == "transparent") return Color::transparent;
+	return Color(value);
 }
 
 static GraphicsPipeline::ColorComponent toColorComponents(string_view colorComponents) noexcept
@@ -1042,6 +1049,8 @@ static void onShaderPipelineState(GraphicsFileData& fileData, GraphicsLineData& 
 	{
 		if (lineData.word == "}")
 		{
+			if (!state.isValid())
+				throw CompileError("invalid pipeline state", fileData.lineIndex);
 			fileData.fileOutputStream << "// }"; fileData.isPipelineState = 0;
 		}
 		else
@@ -1055,6 +1064,7 @@ static void onShaderPipelineState(GraphicsFileData& fileData, GraphicsLineData& 
 			else if (lineData.word == "depthBiasing") lineData.isDepthBiasing = 1;
 			else if (lineData.word == "depthCompare") lineData.isDepthCompare = 1;
 			else if (lineData.word == "depthBounding") lineData.isDepthBounding = 1;
+			else if (lineData.word == "dynamicDepthBias") lineData.isDynamicDepthBias = 1;
 			else if (lineData.word == "depthBiasConst") lineData.isDepthBiasConst = 1;
 			else if (lineData.word == "depthBiasSlope") lineData.isDepthBiasSlope = 1;
 			else if (lineData.word == "depthBiasClamp") lineData.isDepthBiasClamp = 1;
@@ -1082,6 +1092,8 @@ static void onShaderPipelineState(GraphicsFileData& fileData, GraphicsLineData& 
 			else if (lineData.word == "stencilReferenceBF") lineData.isStencilReference = 1;
 			else if (lineData.word == "cullFace") lineData.isCullFace = 1;
 			else if (lineData.word == "frontFace") lineData.isFrontFace = 1;
+			else if (lineData.word == "dynamicBlendConsts") lineData.isDynamicBlendConsts = 1;
+			else if (lineData.word == "blendConstants") lineData.isBlendConstants = 1;
 			else if (lineData.word.length() >= 9 && memcmp(lineData.word.c_str(), "colorMask", 9) == 0)
 			{
 				parseBlendStateIndex(fileData, lineData, 9);
@@ -1163,13 +1175,7 @@ static void onShaderPipelineState(GraphicsFileData& fileData, GraphicsLineData& 
 			throw CompileError("no ';' after pipeline state property name", fileData.lineIndex, lineData.word);
 		auto name = string_view(lineData.word.c_str(), charPos);
 
-		if (lineData.isTopology)
-		{ state.topology = toTopology(name, fileData.lineIndex); lineData.isTopology = 0; }
-		else if (lineData.isPolygonMode)
-		{ state.polygonMode = toPolygonMode(name, fileData.lineIndex); lineData.isPolygonMode = 0; }
-		else if (lineData.isDiscarding)
-		{ state.discarding = toBoolState(name, fileData.lineIndex); lineData.isDiscarding = 0; }
-		else if (lineData.isDepthTesting)
+		if (lineData.isDepthTesting)
 		{ state.depthTesting = toBoolState(name, fileData.lineIndex); lineData.isDepthTesting = 0; }
 		else if (lineData.isDepthWriting)
 		{ state.depthWriting = toBoolState(name, fileData.lineIndex); lineData.isDepthWriting = 0; }
@@ -1177,18 +1183,38 @@ static void onShaderPipelineState(GraphicsFileData& fileData, GraphicsLineData& 
 		{ state.depthClamping = toBoolState(name, fileData.lineIndex); lineData.isDepthClamping = 0; }
 		else if (lineData.isDepthBiasing)
 		{ state.depthBiasing = toBoolState(name, fileData.lineIndex); lineData.isDepthBiasing = 0; }
-		else if (lineData.isDepthCompare)
-		{ state.depthCompare = toCompareOp(name, fileData.lineIndex); lineData.isDepthCompare = 0; }
 		else if (lineData.isDepthBounding)
 		{ state.depthBounding = toBoolState(name, fileData.lineIndex); lineData.isDepthBounding = 0; }
-		else if (lineData.isDepthBiasConst)
-		{ state.depthBiasConst = toFloatValue(name, fileData.lineIndex); lineData.isDepthBiasConst = 0; }
-		else if (lineData.isDepthBiasSlope)
-		{ state.depthBiasSlope = toFloatValue(name, fileData.lineIndex); lineData.isDepthBiasSlope = 0; }
-		else if (lineData.isDepthBiasClamp)
-		{ state.depthBiasClamp = toFloatValue(name, fileData.lineIndex); lineData.isDepthBiasClamp = 0; }
+		else if (lineData.isDepthBoundsMin)
+		{ state.depthBounds.x = toFloatValue(name, fileData.lineIndex); lineData.isDepthBoundsMin = 0; }
+		else if (lineData.isDepthBoundsMax)
+		{ state.depthBounds.y = toFloatValue(name, fileData.lineIndex); lineData.isDepthBoundsMax = 0; }
+		else if (lineData.isDiscarding)
+		{ state.discarding = toBoolState(name, fileData.lineIndex); lineData.isDiscarding = 0; }
+		else if (lineData.isDynamicDepthBias)
+		{ state.dynamicDepthBias = toBoolState(name, fileData.lineIndex); lineData.isDynamicDepthBias = 0; }
+		else if (lineData.isTopology)
+		{ state.topology = toTopology(name, fileData.lineIndex); lineData.isTopology = 0; }
 		else if (lineData.isStencilTesting)
 		{ state.stencilTesting = toBoolState(name, fileData.lineIndex); lineData.isStencilTesting = 0; }
+		else if (lineData.isCullFace)
+		{ state.cullFace = toCullFace(name, fileData.lineIndex); lineData.isCullFace = 0; }
+		else if (lineData.isFrontFace)
+		{ state.frontFace = toFrontFace(name, fileData.lineIndex); lineData.isFrontFace = 0; }
+		else if (lineData.isDynamicBlendConsts)
+		{ state.dynamicBlendConsts = toBoolState(name, fileData.lineIndex); lineData.isDynamicBlendConsts = 0; }
+		else if (lineData.isBlendConstants)
+		{ state.blendConstants = (float4)toColorValue(name, fileData.lineIndex); lineData.isBlendConstants = 0; }
+		else if (lineData.isPolygonMode)
+		{ state.polygonMode = toPolygonMode(name, fileData.lineIndex); lineData.isPolygonMode = 0; }
+		else if (lineData.isDepthCompare)
+		{ state.depthCompare = toCompareOp(name, fileData.lineIndex); lineData.isDepthCompare = 0; }
+		else if (lineData.isDepthBiasConst)
+		{ state.depthBiasConst = toFloatValue(name, fileData.lineIndex); lineData.isDepthBiasConst = 0; }
+		else if (lineData.isDepthBiasClamp)
+		{ state.depthBiasClamp = toFloatValue(name, fileData.lineIndex); lineData.isDepthBiasClamp = 0; }
+		else if (lineData.isDepthBiasSlope)
+		{ state.depthBiasSlope = toFloatValue(name, fileData.lineIndex); lineData.isDepthBiasSlope = 0; }
 		else if (lineData.isStencilFail)
 		{
 			state.frontFaceStencil.failOperation = state.backFaceStencil.failOperation =
@@ -1301,10 +1327,6 @@ static void onShaderPipelineState(GraphicsFileData& fileData, GraphicsLineData& 
 			state.backFaceStencil.reference = (uint8)toUintValue(name, fileData.lineIndex);
 			lineData.isStencilReferenceBF = 0;
 		}
-		else if (lineData.isCullFace)
-		{ state.cullFace = toCullFace(name, fileData.lineIndex); lineData.isCullFace = 0; }
-		else if (lineData.isFrontFace)
-		{ state.frontFace = toFrontFace(name, fileData.lineIndex); lineData.isFrontFace = 0; }
 		else if (lineData.isColorMask)
 		{
 			if (fileData.blendStateIndex + 1 > blendStates.size())

@@ -223,27 +223,13 @@ void GraphicsPipeline::createVkInstance(GraphicsCreateData& createData)
 		nullptr, nullptr, &viewportInfo, nullptr, &multisampleInfo, nullptr, nullptr, nullptr, 
 		(VkPipelineLayout)pipelineLayout, nullptr, 0, nullptr, -1, &dynamicRenderingInfo);
 
-	// TODO: pass dynamic states as argument.
-	// Also allow to specify static viewport and scissor.
-	vector<vk::DynamicState> dynamicStates(3);
-	dynamicStates[0] = vk::DynamicState::eViewport;
-	dynamicStates[1] = vk::DynamicState::eScissor;
-	dynamicStates[2] = vk::DynamicState::eDepthBias;
-	vk::PipelineDynamicStateCreateInfo dynamicInfo;
-
-	if (!dynamicStates.empty())
-	{
-		dynamicInfo.dynamicStateCount = (uint32)dynamicStates.size();
-		dynamicInfo.pDynamicStates = dynamicStates.data();
-		pipelineInfo.pDynamicState = &dynamicInfo;
-	}
-
 	auto vulkanAPI = VulkanAPI::get();
 	const auto& vertexAttribOverrides = createData.vertexAttribOverrides;
 	const auto& pipelineStateOverrides = createData.pipelineStateOverrides;
 	const auto& blendStateOverrides = createData.blendStateOverrides;
 	vector<vk::VertexInputBindingDescription> bindingDescriptions;
 	vector<vk::VertexInputAttributeDescription> inputAttributes;
+	vector<vk::DynamicState> dynamicStates;
 
 	for (uint8 i = 0; i < variantCount; i++)
 	{
@@ -360,20 +346,28 @@ void GraphicsPipeline::createVkInstance(GraphicsCreateData& createData)
 			blendAttachments[j] = blendAttachment;
 		}
 
-		array<float, 4> blendConstant =
+		array<float, 4> blendConstants =
 		{
-			pipelineState.blendConstant.x, pipelineState.blendConstant.y,
-			pipelineState.blendConstant.z, pipelineState.blendConstant.w
+			pipelineState.blendConstants.x, pipelineState.blendConstants.y,
+			pipelineState.blendConstants.z, pipelineState.blendConstants.w
 		};
 
 		vk::PipelineColorBlendStateCreateInfo colorBlendInfo({}, VK_FALSE, {},
-			(uint32)blendAttachments.size(), blendAttachments.data(), blendConstant); // TODO: logical operations
+			(uint32)blendAttachments.size(), blendAttachments.data(), blendConstants);
+
+		dynamicStates.resize(2);
+		dynamicStates[0] = vk::DynamicState::eViewport;
+		dynamicStates[1] = vk::DynamicState::eScissor;
+		if (pipelineState.dynamicDepthBias) dynamicStates.push_back(vk::DynamicState::eDepthBias);
+		if (pipelineState.dynamicBlendConst) dynamicStates.push_back(vk::DynamicState::eBlendConstants);
+		vk::PipelineDynamicStateCreateInfo dynamicInfo({}, (uint32)dynamicStates.size(), dynamicStates.data());
 
 		pipelineInfo.pVertexInputState = &vertexInputInfo;
 		pipelineInfo.pInputAssemblyState = &inputAssemblyInfo;
 		pipelineInfo.pRasterizationState = &rasterizationInfo;
 		pipelineInfo.pDepthStencilState = &depthStencilInfo;
 		pipelineInfo.pColorBlendState = &colorBlendInfo;
+		pipelineInfo.pDynamicState = &dynamicInfo;
 
 		auto result = vulkanAPI->device.createGraphicsPipeline(vulkanAPI->pipelineCache, pipelineInfo);
 		vk::detail::resultCheck(result.result, "vk::Device::createGraphicsPipeline");
@@ -414,12 +408,9 @@ void GraphicsPipeline::setViewport(float4 viewport)
 {
 	auto graphicsAPI = GraphicsAPI::get();
 	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
-	GARDEN_ASSERT_MSG(currentCommandBuffer, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(graphicsAPI->renderPassFramebuffer, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(!graphicsAPI->isRenderPassAsync, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(ID<Pipeline>(graphicsAPI->graphicsPipelinePool.getID(this)) == 
-		graphicsAPI->currentPipelines.front(), "Assert " + debugName);
-	GARDEN_ASSERT_MSG(isLoaded(), "Graphics pipeline [" + debugName + "] is not loaded");
+	GARDEN_ASSERT(currentCommandBuffer);
+	GARDEN_ASSERT(graphicsAPI->renderPassFramebuffer);
+	GARDEN_ASSERT(!graphicsAPI->isRenderPassAsync);
 	auto framebufferView = graphicsAPI->framebufferPool.get(graphicsAPI->renderPassFramebuffer);
 
 	// TODO: support multiple viewport/scissor count. MacBook intel viewport max count is 16.
@@ -434,14 +425,11 @@ void GraphicsPipeline::setViewport(float4 viewport)
 void GraphicsPipeline::setViewportAsync(float4 viewport, int32 threadIndex)
 {
 	auto graphicsAPI = GraphicsAPI::get();
-	GARDEN_ASSERT_MSG(graphicsAPI->currentCommandBuffer, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(graphicsAPI->renderPassFramebuffer, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(graphicsAPI->isRenderPassAsync, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(isLoaded(), "Graphics pipeline [" + debugName + "] is not loaded");
+	GARDEN_ASSERT(graphicsAPI->currentCommandBuffer);
+	GARDEN_ASSERT(graphicsAPI->renderPassFramebuffer);
+	GARDEN_ASSERT(graphicsAPI->isRenderPassAsync);
 
 	auto autoThreadCount = graphicsAPI->calcAutoThreadCount(threadIndex);
-	GARDEN_ASSERT_MSG(ID<Pipeline>(graphicsAPI->graphicsPipelinePool.getID(this)) == 
-		graphicsAPI->currentPipelines[threadIndex], "Assert " + debugName);
 	auto graphicsBackend = graphicsAPI->getBackendType();
 
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
@@ -470,12 +458,9 @@ void GraphicsPipeline::setScissor(int4 scissor)
 {
 	auto graphicsAPI = GraphicsAPI::get();
 	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
-	GARDEN_ASSERT_MSG(currentCommandBuffer, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(graphicsAPI->renderPassFramebuffer, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(!graphicsAPI->isRenderPassAsync, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(ID<Pipeline>(graphicsAPI->graphicsPipelinePool.getID(this)) == 
-		graphicsAPI->currentPipelines.front(), "Assert " + debugName);
-	GARDEN_ASSERT_MSG(isLoaded(), "Graphics pipeline [" + debugName + "] is not loaded");
+	GARDEN_ASSERT(currentCommandBuffer);
+	GARDEN_ASSERT(graphicsAPI->renderPassFramebuffer);
+	GARDEN_ASSERT(!graphicsAPI->isRenderPassAsync);
 	auto framebufferView = graphicsAPI->framebufferPool.get(graphicsAPI->renderPassFramebuffer);
 
 	SetScissorCommand command;
@@ -489,14 +474,11 @@ void GraphicsPipeline::setScissor(int4 scissor)
 void GraphicsPipeline::setScissorAsync(int4 scissor, int32 threadIndex)
 {
 	auto graphicsAPI = GraphicsAPI::get();
-	GARDEN_ASSERT_MSG(graphicsAPI->currentCommandBuffer, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(graphicsAPI->renderPassFramebuffer, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(graphicsAPI->isRenderPassAsync, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(isLoaded(), "Graphics pipeline [" + debugName + "] is not loaded");
+	GARDEN_ASSERT(graphicsAPI->currentCommandBuffer);
+	GARDEN_ASSERT(graphicsAPI->renderPassFramebuffer);
+	GARDEN_ASSERT(graphicsAPI->isRenderPassAsync);
 
 	auto autoThreadCount = graphicsAPI->calcAutoThreadCount(threadIndex);
-	GARDEN_ASSERT_MSG(ID<Pipeline>(graphicsAPI->graphicsPipelinePool.getID(this)) == 
-		graphicsAPI->currentPipelines[threadIndex], "Assert " + debugName);
 	auto graphicsBackend = graphicsAPI->getBackendType();
 
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
@@ -526,12 +508,9 @@ void GraphicsPipeline::setViewportScissor(float4 viewportScissor)
 {
 	auto graphicsAPI = GraphicsAPI::get();
 	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
-	GARDEN_ASSERT_MSG(currentCommandBuffer, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(graphicsAPI->renderPassFramebuffer, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(!graphicsAPI->isRenderPassAsync, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(ID<Pipeline>(graphicsAPI->graphicsPipelinePool.getID(this)) == 
-		graphicsAPI->currentPipelines.front(), "Assert " + debugName);
-	GARDEN_ASSERT_MSG(isLoaded(), "Graphics pipeline [" + debugName + "] is not loaded");
+	GARDEN_ASSERT(currentCommandBuffer);
+	GARDEN_ASSERT(graphicsAPI->renderPassFramebuffer);
+	GARDEN_ASSERT(!graphicsAPI->isRenderPassAsync);
 	auto framebufferView = graphicsAPI->framebufferPool.get(graphicsAPI->renderPassFramebuffer);
 
 	SetViewportScissorCommand command;
@@ -545,14 +524,11 @@ void GraphicsPipeline::setViewportScissor(float4 viewportScissor)
 void GraphicsPipeline::setViewportScissorAsync(float4 viewportScissor, int32 threadIndex)
 {
 	auto graphicsAPI = GraphicsAPI::get();
-	GARDEN_ASSERT_MSG(graphicsAPI->currentCommandBuffer, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(graphicsAPI->renderPassFramebuffer, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(graphicsAPI->isRenderPassAsync, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(isLoaded(), "Graphics pipeline [" + debugName + "] is not loaded");
+	GARDEN_ASSERT(graphicsAPI->currentCommandBuffer);
+	GARDEN_ASSERT(graphicsAPI->renderPassFramebuffer);
+	GARDEN_ASSERT(graphicsAPI->isRenderPassAsync);
 
 	auto autoThreadCount = graphicsAPI->calcAutoThreadCount(threadIndex);
-	GARDEN_ASSERT_MSG(ID<Pipeline>(graphicsAPI->graphicsPipelinePool.getID(this)) == 
-		graphicsAPI->currentPipelines[threadIndex], "Assert " + debugName);
 	auto graphicsBackend = graphicsAPI->getBackendType();
 
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
@@ -855,6 +831,7 @@ void GraphicsPipeline::drawFullscreenAsync(int32 threadIndex)
 	else abort();
 }
 
+//**********************************************************************************************************************
 void GraphicsPipeline::setDepthBias(float constantFactor, float slopeFactor, float clamp)
 {
 	auto graphicsAPI = GraphicsAPI::get();
@@ -885,6 +862,38 @@ void GraphicsPipeline::setDepthBiasAsync(float constantFactor, float slopeFactor
 		auto& secondaryCommandBuffers = vulkanAPI->secondaryCommandBuffers;
 		while (threadIndex < autoThreadCount)
 			secondaryCommandBuffers[threadIndex++].setDepthBias(constantFactor, clamp, slopeFactor);
+	}
+	else abort();
+}
+
+void GraphicsPipeline::setBlendConstants(float4 constants)
+{
+	auto graphicsAPI = GraphicsAPI::get();
+	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
+	GARDEN_ASSERT(currentCommandBuffer);
+	GARDEN_ASSERT(graphicsAPI->renderPassFramebuffer);
+	GARDEN_ASSERT(!graphicsAPI->isRenderPassAsync);
+
+	SetBlendConstantsCommand command;
+	command.constants = constants;
+	currentCommandBuffer->addCommand(command);
+}
+void GraphicsPipeline::setBlendConstants(float4 constants, int32 threadIndex)
+{
+	auto graphicsAPI = GraphicsAPI::get();
+	GARDEN_ASSERT(graphicsAPI->currentCommandBuffer);
+	GARDEN_ASSERT(graphicsAPI->renderPassFramebuffer);
+	GARDEN_ASSERT(graphicsAPI->isRenderPassAsync);
+
+	auto autoThreadCount = graphicsAPI->calcAutoThreadCount(threadIndex);
+	auto graphicsBackend = graphicsAPI->getBackendType();
+
+	if (graphicsBackend == GraphicsBackend::VulkanAPI)
+	{
+		auto vulkanAPI = VulkanAPI::get();
+		auto& secondaryCommandBuffers = vulkanAPI->secondaryCommandBuffers;
+		while (threadIndex < autoThreadCount)
+			secondaryCommandBuffers[threadIndex++].setBlendConstants((const float*)&constants);
 	}
 	else abort();
 }

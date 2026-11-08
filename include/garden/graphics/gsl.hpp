@@ -508,7 +508,7 @@ static constexpr psize toBinarySize(GslDataType dataType) noexcept
 		case GslDataType::Uint16: return sizeof(uint16);
 		case GslDataType::Uint32: return sizeof(uint32);
 		case GslDataType::Uint64: return sizeof(uint64);
-		case GslDataType::Half: return sizeof(uint16); // TODO: half format?
+		case GslDataType::Half: return sizeof(half);
 		case GslDataType::Float: return sizeof(float);
 
 		case GslDataType::Bool2: return sizeof(uint32) * 2;
@@ -538,22 +538,22 @@ static constexpr psize toBinarySize(GslDataType dataType) noexcept
 		case GslDataType::Ulong2: return sizeof(uint64) * 2;
 		case GslDataType::Ulong3: return sizeof(uint64) * 3;
 		case GslDataType::Ulong4: return sizeof(uint64) * 4;
-		case GslDataType::Half2: return sizeof(uint16) * 2;
-		case GslDataType::Half3: return sizeof(uint16) * 3;
-		case GslDataType::Half4: return sizeof(uint16) * 4;
+		case GslDataType::Half2: return sizeof(half) * 2;
+		case GslDataType::Half3: return sizeof(half) * 3;
+		case GslDataType::Half4: return sizeof(half) * 4;
 		case GslDataType::Float2: return sizeof(float) * 2;
 		case GslDataType::Float3: return sizeof(float) * 3;
 		case GslDataType::Float4: return sizeof(float) * 4;
 
-		case GslDataType::Half2x2: return sizeof(uint16) * 2 * 2;
-		case GslDataType::Half3x3: return sizeof(uint16) * 3 * 3;
-		case GslDataType::Half4x4: return sizeof(uint16) * 4 * 4;
-		case GslDataType::Half2x3: return sizeof(uint16) * 2 * 3;
-		case GslDataType::Half3x2: return sizeof(uint16) * 3 * 2;
-		case GslDataType::Half2x4: return sizeof(uint16) * 2 * 4;
-		case GslDataType::Half4x2: return sizeof(uint16) * 4 * 2;
-		case GslDataType::Half3x4: return sizeof(uint16) * 3 * 4;
-		case GslDataType::Half4x3: return sizeof(uint16) * 4 * 3;
+		case GslDataType::Half2x2: return sizeof(half) * 2 * 2;
+		case GslDataType::Half3x3: return sizeof(half) * 3 * 3;
+		case GslDataType::Half4x4: return sizeof(half) * 4 * 4;
+		case GslDataType::Half2x3: return sizeof(half) * 2 * 3;
+		case GslDataType::Half3x2: return sizeof(half) * 3 * 2;
+		case GslDataType::Half2x4: return sizeof(half) * 2 * 4;
+		case GslDataType::Half4x2: return sizeof(half) * 4 * 2;
+		case GslDataType::Half3x4: return sizeof(half) * 3 * 4;
+		case GslDataType::Half4x3: return sizeof(half) * 4 * 3;
 		case GslDataType::Float2x2: return sizeof(float) * 2 * 2;
 		case GslDataType::Float3x3: return sizeof(float) * 3 * 3;
 		case GslDataType::Float4x4: return sizeof(float) * 4 * 4;

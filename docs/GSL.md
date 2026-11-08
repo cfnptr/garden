@@ -50,8 +50,6 @@ pipelineState
 }
 ```
 
-* **discarding** [ on | off ] - Controls whether primitives are discarded immediately before the rasterization stage. (off)
-
 ### Input assembly
 
 * **topology** [ triangleList | triangleStrip | lineList | lineStrip | pointList ] -
@@ -62,6 +60,7 @@ pipelineState
 
 * **cullFace** [ none, front | back | frontBack ] - Specify whether front or back-facing polygons can be culled. (back)
 * **frontFace** [ clockwise | counterClockwise ] - Define front and back-facing polygons. (counterClockwise)
+* **discarding** [ on | off ] - Controls whether primitives are discarded immediately before the rasterization stage. (off)
 
 ### Depth
 
@@ -72,6 +71,9 @@ pipelineState
 * **depthCompare** [ never | less | equal | lessOrEqual | greater | notEqual | greaterOrEqual | always ] -
 	Specify the value used for depth buffer comparisons. (greater)
 * **depthBounding** [ on | off ] - If enabled, do depth bounds comparison and discard fragments. (off)
+* **depthBoundsMin** - Minimum depth bounds comparison value. (0.0)
+* **depthBoundsMax** - Maximum depth bounds comparison value. (1.0)
+* **dynamicDepthBias** [ on | off ] - If enabled, use dynamic depth bias value from the code. (off)
 * **depthBiasConst** - Scalar added to every fragment's depth. (0.0)
 * **depthBiasSlope** - Scales the bias based on the angle of the polygon. (0.0)
 * **depthBiasClamp** - Acts as a safety ceiling or floor for the total bias applied. (0.0)
@@ -94,6 +96,11 @@ pipelineState
 
 ### Blending
 
+* **dynamicBlendConsts** [ on | off ] - If enabled, use dynamic blend constant value from the code. (off)
+* **blendConstants** [ #FFFFFFFF | #00000000 | ... ] - Blending operations constant value. (#00000000)
+
+#### Per framebuffer attachment blending states (Where X is index)
+
 * **colorMaskX** [ all | none | r | rg | rb | rgba | ... ] - Enable and disable writing of framebuffer color components. (all)
 * **blendingX** [ on | off ] - If enabled, blend the computed fragment color values with the values in the color buffers. (off)
 * **blendOperationX** [ add | sub | revSub | min | max ] - Specify the RGB color and alpha blend equation. (add)
@@ -107,7 +114,7 @@ pipelineState
 * **srcAlphaFactorX** [FACTOR] - Specify pixel arithmetic for source alpha. (one)
 * **dstAlphaFactorX** [FACTOR] - Specify pixel arithmetic for destination alpha. (zero)
 
-> Where [X] is index of the framebuffer attachment.
+#### Blending operations and factors
 
 * **add** - Adds the source to the destination. [O = dS + sD]
 * **sub** - Subtracts the destination from the source. [O = dS - sD].
@@ -121,8 +128,6 @@ pipelineState
 
 Color blending example: Orgb = srgb * Srgb + drgb * Drgb.</br>
 Alpha blending example: Oa = sa * Sa + da * Da.
-
-// TODO: blending constant color.
 
 ## Push Constants
 

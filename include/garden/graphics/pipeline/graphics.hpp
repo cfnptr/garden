@@ -273,7 +273,8 @@ public:
 				depthFailOperation < StencilOp::Count && compareOperator < CompareOp::Count;
 		}
 	};
-	/**
+
+	/*******************************************************************************************************************
 	 * @brief Graphics pipeline state.
 	 * 
 	 * @details
@@ -285,33 +286,36 @@ public:
 	 */
 	struct State final
 	{
-		uint8 depthTesting : 1;                            /**< Is depth value testing enabled. */
-		uint8 depthWriting : 1;                            /**< Is depth value writing enabled. */
-		uint8 depthClamping : 1;                           /**< Is depth value clamping enabled. */
-		uint8 depthBiasing : 1;                            /**< Is depth value biasing enabled. */
-		uint8 depthBounding : 1;                           /**< Is depth bounds testing enabled. */
-		uint8 stencilTesting : 1;                          /**< Is stencil value testing enabled. */
-		uint8 discarding : 1;                              /**< Is fragment discarding enabled. */
-		uint8 _reserved0 : 1;                              /**< [reserved for future use] */
+		uint16 depthTesting : 1;                           /**< Is depth value testing enabled. */
+		uint16 depthWriting : 1;                           /**< Is depth value writing enabled. */
+		uint16 depthClamping : 1;                          /**< Is depth value clamping enabled. */
+		uint16 depthBiasing : 1;                           /**< Is depth value biasing enabled. */
+		uint16 depthBounding : 1;                          /**< Is depth bounds testing enabled. */
+		uint16 stencilTesting : 1;                         /**< Is stencil value testing enabled. */
+		uint16 discarding : 1;                             /**< Is fragment discarding enabled. */
+		uint16 dynamicDepthBias : 1;                       /**< Use dynamic depth bias value. */
+		uint16 dynamicBlendConsts : 1;                     /**< Use dynamic blend constant value. */
+		uint16 _reserved0 : 7;                             /**< [reserved for future use] */
+		uint8 _reserved1 = 0;                              /**< [reserved for future use] */
 		Topology topology = Topology::TriangleList;        /**< Primitive topology type. */
+		CullFace cullFace = CullFace::Back;                /**< Triangle culling mode. */
+		FrontFace frontFace = FrontFace::CounterClockwise; /**< Polygon front-facing orientation. */
 		PolygonMode polygonMode = PolygonMode::Fill;       /**< Polygon rasterization mode. */
-		CompareOp depthCompare = CompareOp::Greater;       /**< Depth compare operator. */
-		float depthBiasConst = 0.0f;                       /**< Depth bias constant value. */
-		float depthBiasClamp = 0.0f;                       /**< Depth bias clamp value. */
-		float depthBiasSlope = 0.0f;                       /**< Depth bias slope value. */
-		float4 blendConstant = float4::zero;               /**< Blending operations constant color. */
+		CompareOp depthCompare = CompareOp::Greater;       /**< Depth buffer comparison operator. */
+		float depthBiasConst = 0.0f;                       /**< Scalar added to every fragment's depth. */
+		float depthBiasClamp = 0.0f;                       /**< Scales depth bias based on the polygon angle. */
+		float depthBiasSlope = 0.0f;                       /**< Depth bias value safety ceiling or floor. */
+		float4 blendConstants = float4::zero;              /**< Blending operations constant value. */
 		float2 depthBounds = float2(0.0f, 1.0f);           /**< Minimum and maximum depth bounds. */
 		StencilState frontFaceStencil = {};                /**< Front-facing polygons stencil state. */
 		StencilState backFaceStencil = {};                 /**< Back-facing polygons stencil state. */
-		CullFace cullFace = CullFace::Back;                /**< Triangle culling mode. */
-		FrontFace frontFace = FrontFace::CounterClockwise; /**< Polygon front-facing orientation. */
-		uint16 _reserved1 = 0;                             /**< [reserved for future use] */
 
 		/**
 		 * @brief Creates a new graphics pipeline state.
 		 */
 		constexpr State() noexcept : depthTesting(false), depthWriting(false), depthClamping(false), 
-			depthBiasing(false), depthBounding(false), stencilTesting(false), discarding(false), _reserved0(0) { }
+			depthBiasing(false), depthBounding(false), stencilTesting(false), discarding(false), 
+			dynamicDepthBias(false), dynamicBlendConsts(false), _reserved0(0) { }
 
 		/**
 		 * @brief Sets front and back facing polygons stencil state.
@@ -464,7 +468,7 @@ public:
 	 * @brief Specifies the region of the framebuffer where the rendering will occur.
 	 * @param viewport target viewport (xy = position, zw = size)
 	 */
-	void setViewport(float4 viewport = float4::zero);
+	static void setViewport(float4 viewport = float4::zero);
 	/**
 	 * @brief Specifies the region of the framebuffer where the rendering will occur. (MT-Safe)
 	 * @details See the @ref GraphicsPipeline::setViewport()
@@ -472,7 +476,7 @@ public:
 	 * @param viewport target viewport value (xy = position, zw = size)
 	 * @param threadIndex thread index in the pool (-1 = all threads)
 	 */
-	void setViewportAsync(float4 viewport = float4::zero, int32 threadIndex = -1);
+	static void setViewportAsync(float4 viewport = float4::zero, int32 threadIndex = -1);
 
 	/**
 	 * @brief Defines a scissor rectangle, where rendering is allowed to occur.
@@ -483,7 +487,7 @@ public:
 	 * This command is used in conjunction with the viewport setting to further restrict rendering to a specific 
 	 * region of the screen, enabling more precise control over where graphics are drawn.
 	 */
-	void setScissor(int4 scissor = int4::zero);
+	static void setScissor(int4 scissor = int4::zero);
 	/**
 	 * @brief Defines a scissor rectangle, where rendering is allowed to occur. (MT-Safe)
 	 * @details See the @ref GraphicsPipeline::setScissor()
@@ -491,7 +495,7 @@ public:
 	 * @param scissor target scissor value (xy = offset, zw = extent)
 	 * @param threadIndex thread index in the pool (-1 = all threads)
 	 */
-	void setScissorAsync(int4 scissor = int4::zero, int32 threadIndex = -1);
+	static void setScissorAsync(int4 scissor = int4::zero, int32 threadIndex = -1);
 
 	/**
 	 * @brief Specifies a viewport and scissor rendering regions.
@@ -499,7 +503,7 @@ public:
 	 * 
 	 * @param viewportScissor target viewport and scissor value (xy = position, zw = size)
 	 */
-	void setViewportScissor(float4 viewportScissor = float4::zero);
+	static void setViewportScissor(float4 viewportScissor = float4::zero);
 	/**
 	 * @brief Specifies a viewport and scissor rendering regions. (MT-Safe)
 	 * @details See the @ref GraphicsPipeline::setViewport() and @ref GraphicsPipeline::setScissor()
@@ -507,7 +511,7 @@ public:
 	 * @param viewportScissor target viewport and scissor value (xy = position, zw = size)
 	 * @param threadIndex thread index in the pool (-1 = all threads)
 	 */
-	void setViewportScissorAsync(float4 viewportScissor = float4::zero, int32 threadIndex = -1);
+	static void setViewportScissorAsync(float4 viewportScissor = float4::zero, int32 threadIndex = -1);
 
 	/*******************************************************************************************************************
 	 * @brief Renders primitives to the framebuffer.
@@ -561,17 +565,17 @@ public:
 	void drawFullscreenAsync(int32 threadIndex);
 
 	/*******************************************************************************************************************
-	 * @brief Set depth bias factors and clamp dynamically.
-	 * @details Useful for shadow mapping.
+	 * @brief Sets depth bias factors and clamp dynamically.
+	 * @details Useful for fixing shadow map acne.
+	 * @note It needs dynamicDepthBias inside pipeline state!
 	 * 
 	 * @param constantFactor scalar factor controlling the constant depth value added to each fragment
 	 * @param slopeFactor scalar factor applied to a fragment’s slope in depth bias calculations
 	 * @param clamp maximum (or minimum) depth bias of a fragment
 	 */
 	static void setDepthBias(float constantFactor, float slopeFactor, float clamp = 0.0f);
-
 	/**
-	 * @brief Set depth bias factors and clamp dynamically.
+	 * @brief Sets depth bias factors and clamp dynamically.
 	 * @details See the @ref GraphicsPipeline::setDepthBias()
 	 * 
 	 * @param constantFactor scalar factor controlling the constant depth value added to each fragment
@@ -581,8 +585,18 @@ public:
 	 */
 	static void setDepthBiasAsync(float constantFactor, float slopeFactor, float clamp = 0.0f, int32 threadIndex = -1);
 
-	// TODO: Also allow to override blendStates, vertexAttributes separately.
-	// TODO: Add dynamic and dynamic/static states (viewport/scissor).
+	/**
+	 * @brief Sets blend constants dynamically.
+	 * @note It needs dynamicBlendConsts inside pipeline state!
+	 * @param constants target constants value
+	 */
+	static void setBlendConstants(float4 color);
+	/**
+	 * @brief Sets blend constants dynamically.
+	 * @details See the @ref GraphicsPipeline::setBlendConstants()
+	 * @param constants target constants value
+	 */
+	static void setBlendConstants(float4 constants, int32 threadIndex = -1);
 };
 
 DECLARE_ENUM_CLASS_FLAG_OPERATORS(GraphicsPipeline::ColorComponent)
