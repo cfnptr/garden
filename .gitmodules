@@ -52,9 +52,9 @@
 [submodule "libraries/xxhash"]
 	path = libraries/xxhash
 	url = https://github.com/Cyan4973/xxHash
-[submodule "resources"]
-	path = resources
-	url = https://github.com/cfnptr/garden-resources-v2
 [submodule "libraries/meshopt"]
 	path = libraries/meshopt
 	url = https://github.com/zeux/meshoptimizer
+[submodule "resources"]
+	path = resources
+	url = https://github.com/cfnptr/garden-resources-v2

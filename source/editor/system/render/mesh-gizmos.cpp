@@ -30,8 +30,6 @@
 
 using namespace garden;
 
-// TODO: rewrite with winding arrow order CCW
-
 //**********************************************************************************************************************
 constexpr array<float3, 18> arrowVertices =
 {
@@ -189,8 +187,12 @@ void MeshGizmosEditorSystem::render()
 		return;
 
 	auto inputSystem = InputSystem::getInstance();
-	if (!inputSystem->getMouseState(MouseButton::Left))
+	if (dragMode != 0 && !inputSystem->getMouseState(MouseButton::Left) &&
+		!inputSystem->getMouseState(MouseButton::Right))
+	{
+		inputSystem->cursorCapturers--;
 		dragMode = 0;
+	}
 	
 	auto manager = Manager::getInstance();
 	auto uiTransformSystem = UiTriggerSystem::tryGetInstance();
@@ -200,8 +202,6 @@ void MeshGizmosEditorSystem::render()
 	auto cubeVertexBuffer = graphicsSystem->getCubeVertexBuffer();
 	auto cubeVertexView = graphicsSystem->get(cubeVertexBuffer);
 	auto arrowVertexView = graphicsSystem->get(arrowVertexBuffer);
-
-	// TODO: check for selection freeze problem.
 
 	if (!transformView || transformView->hasStaticWithDescendants() || !frontPipelineView->isReady() ||
 		!backPipelineView->isReady() || !cubeVertexView->isReady() || !arrowVertexView->isReady())
@@ -220,7 +220,7 @@ void MeshGizmosEditorSystem::render()
 		quat::identity : extractQuat(extractRotation(model));
 	auto translation = getTranslation(model);
 
-	auto modelScale = 0.25f;
+	auto modelScale = (200.0f / windowSize.y) * frameSizeFactor;
 	auto cameraView = manager->tryGet<CameraComponent>(graphicsSystem->camera);
 	if (cameraView)
 	{
@@ -239,7 +239,6 @@ void MeshGizmosEditorSystem::render()
 
 	addGizmosMeshes(gizmosMeshes, model, cubeVertexBuffer, arrowVertexBuffer,
 		handleColor, axisColorX, axisColorY, axisColorZ);
-	// TODO: scale and rotation gizmos.
 	
 	if (inputSystem->cursorCapturers == 0 && inputSystem->getCursorMode() == CursorMode::Normal &&
 		(!uiTransformSystem || (uiTransformSystem && !uiTransformSystem->getHovered())))
@@ -269,12 +268,48 @@ void MeshGizmosEditorSystem::render()
 
 		if (newDistSq != FLT_MAX)
 		{
-			auto& mesh = gizmosMeshData[meshIndex];
-			mesh.model = scale(mesh.model, f32x4(1.25f));
-			mesh.color = Color((float4)mesh.color * highlightFactor);
-
-			if (inputSystem->isMousePressed(MouseButton::Left))
+			if (inputSystem->isMousePressed(MouseButton::Left) ||
+				inputSystem->isMousePressed(MouseButton::Right))
+			{
+				inputSystem->cursorCapturers++;
 				dragMode = meshIndex + 1;
+			}
+			else if (inputSystem->isMouseReleased(MouseButton::Middle))
+			{
+				auto rotation = transformView->getRotation();
+				auto scale = transformView->getScale();
+				switch (meshIndex)
+				{
+					default: rotation = quat::identity; scale = f32x4::one; break;
+					case 1: rotation.setX(0.0f); scale.setX(1.0f); break;
+					case 2: rotation.setY(0.0f); scale.setY(1.0f); break;
+					case 3: rotation.setZ(0.0f); scale.setZ(1.0f); break;
+				}
+				transformView->setRotation(normalize(rotation));
+				transformView->setScale(scale);
+			}
+
+			auto mouseScroll = inputSystem->getMouseScroll().y * 1.2f;
+			if (mouseScroll != 0.0f)
+			{
+				mouseScroll = mouseScroll < 0.0f ? -1.0f / mouseScroll : mouseScroll;
+				auto scale = f32x4::one;
+				switch (meshIndex)
+				{
+					default: scale = f32x4(mouseScroll); break;
+					case 1: scale.setY(mouseScroll); break;
+					case 2: scale.setY(mouseScroll); break;
+					case 3: scale.setZ(mouseScroll); break;
+				}
+				transformView->scale(scale);
+			}
+
+			if (dragMode == 0)
+			{
+				auto& mesh = gizmosMeshData[meshIndex];
+				mesh.model = scale(mesh.model, f32x4(1.25f));
+				mesh.color = Color((float4)mesh.color * highlightFactor);
+			}
 		}
 	}
 
@@ -283,6 +318,10 @@ void MeshGizmosEditorSystem::render()
 
 	if (dragMode != 0)
 	{
+		auto& mesh = gizmosMeshes[dragMode - 1];
+		mesh.model = scale(mesh.model, f32x4(1.25f));
+		mesh.color = Color((float4)mesh.color * highlightFactor);
+
 		auto cursorPosition = inputSystem->getCursorPosition();
 		auto ndcPosition = ((cursorPosition + 0.5f) / windowSize) * 2.0f - 1.0f;
 		auto globalLastPos = cc.invViewProj * f32x4(ndcPosition.x, -ndcPosition.y, 0.0f, 1.0f);
@@ -297,44 +336,60 @@ void MeshGizmosEditorSystem::render()
 			globalNewPos = dot3x3(invModel, globalNewPos);
 		}
 
-		auto cursorTrans = (globalNewPos - globalLastPos); 
-		switch (dragMode)
+		if (inputSystem->getMouseState(MouseButton::Left))
 		{
-			case 2: cursorTrans.setY(0.0f); cursorTrans.setZ(0.0f); break;
-			case 3: cursorTrans.setX(0.0f); cursorTrans.setZ(0.0f); break;
-			case 4: cursorTrans.setX(0.0f); cursorTrans.setY(0.0f); break;
-		}
-
-		if (dragMode != 1 && !inputSystem->getKeyState(KeyboardButton::LeftShift) &&
-			!inputSystem->getKeyState(KeyboardButton::RightShift))
-		{
-			cursorTrans = dot3x3(rotate(transformView->getRotation()), cursorTrans);
-		}
-
-		// TODO: Fix non-uniform transformation in perspective projection,
-		//       take into account perspective distortion if possible.
-		if (cameraView->type == ProjectionType::Perspective)
-			cursorTrans *= length3(translation);
-		transformView->translate(cursorTrans);
-
-		auto rigidbodyView = manager->tryGet<RigidbodyComponent>(selectedEntity);
-		if (rigidbodyView && rigidbodyView->getShape())
-		{
-			// Note: We can also move Dynamic body with moveKinematic, but no need here.
-			if (rigidbodyView->getMotionType() == MotionType::Kinematic)
+			auto cursorTrans = (globalNewPos - globalLastPos);
+			switch (dragMode)
 			{
-				rigidbodyView->moveKinematic(rigidbodyView->getPosition() + cursorTrans,
-					rigidbodyView->getRotation(), (float)inputSystem->getDeltaTime());
+				case 2: cursorTrans.setY(0.0f); cursorTrans.setZ(0.0f); break;
+				case 3: cursorTrans.setX(0.0f); cursorTrans.setZ(0.0f); break;
+				case 4: cursorTrans.setX(0.0f); cursorTrans.setY(0.0f); break;
 			}
-			else
-			{
-				rigidbodyView->setPosition(rigidbodyView->getPosition() + cursorTrans, false);
-			}
-		}
 
-		auto characterView = manager->tryGet<CharacterComponent>(selectedEntity);
-		if (characterView && characterView->getShape())
-			characterView->setPosition(characterView->getPosition() + cursorTrans);
+			if (dragMode != 1 && !inputSystem->getKeyState(KeyboardButton::LeftShift) &&
+				!inputSystem->getKeyState(KeyboardButton::RightShift))
+			{
+				cursorTrans = dot3x3(rotate(transformView->getRotation()), cursorTrans);
+			}
+
+			if (cameraView->type == ProjectionType::Perspective)
+				cursorTrans *= length3(translation);
+			transformView->translate(cursorTrans);
+
+			auto rigidbodyView = manager->tryGet<RigidbodyComponent>(selectedEntity);
+			if (rigidbodyView && rigidbodyView->getShape())
+			{
+				// Note: We can also move Dynamic body with moveKinematic, but no need here.
+				if (rigidbodyView->getMotionType() == MotionType::Kinematic)
+				{
+					rigidbodyView->moveKinematic(rigidbodyView->getPosition() + cursorTrans,
+						rigidbodyView->getRotation(), (float)inputSystem->getDeltaTime());
+				}
+				else
+				{
+					rigidbodyView->setPosition(rigidbodyView->getPosition() + cursorTrans, false);
+				}
+			}
+
+			auto characterView = manager->tryGet<CharacterComponent>(selectedEntity);
+			if (characterView && characterView->getShape())
+				characterView->setPosition(characterView->getPosition() + cursorTrans);
+		}
+		else
+		{
+			auto cursorDelta = inputSystem->getCursorDelta();
+			auto rotationDelta = (cursorDelta.x + cursorDelta.y) * 0.01f;
+
+			f32x4 cursorTrans;
+			switch (dragMode)
+			{
+				case 2: cursorTrans = f32x4(rotationDelta, 0.0, 0.0f); break;
+				case 3: cursorTrans = f32x4(0.0f, rotationDelta, 0.0f); break;
+				case 4: cursorTrans = f32x4(0.0f, 0.0f, rotationDelta); break;
+				default: cursorTrans = f32x4(cursorDelta.x, cursorDelta.y, 0.0f) * 0.01f; break;
+			}
+			transformView->rotate(fromEulerAngles(cursorTrans));
+		}
 
 		auto meshSelector = manager->tryGet<MeshSelectorEditorSystem>();
 		if (meshSelector)
@@ -377,6 +432,16 @@ void MeshGizmosEditorSystem::editorSettings()
 		{
 			if (settingsSystem)
 				settingsSystem->setColor("meshGizmos.axisColorZ", axisColorZ);
+		}
+		if (ImGui::DragFloat("Move Step Size", &moveStepSize, 0.01f))
+		{
+			if (settingsSystem)
+				settingsSystem->setFloat("meshGizmos.moveStepSize", moveStepSize);
+		}
+		if (ImGui::DragFloat("Highlight Factor", &frameSizeFactor, 0.1f))
+		{
+			if (settingsSystem)
+				settingsSystem->setFloat("meshGizmos.frameSizeFactor", frameSizeFactor);
 		}
 		if (ImGui::DragFloat("Highlight Factor", &highlightFactor, 0.1f))
 		{

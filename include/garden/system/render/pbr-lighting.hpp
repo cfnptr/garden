@@ -396,7 +396,7 @@ public:
 
 	/**
 	 * @brief Loads cubemap rendering data from the resource pack.
-	 * @note Loads from the scenes directory in debug build.
+	 * @note Loads from the "scenes" directory in debug build.
 	 * 
 	 * @param[in] path target cubemap resource path
 	 * @param format required image data format

@@ -519,12 +519,18 @@ static void optimizeMeshData(const aiMesh* mesh, raw_vector<uint8>& indices, raw
 		data[2] = (I)face.mIndices[2];
 		faceIndexCount += 3;
 	}
-	meshopt_optimizeVertexCache(indexData, indexData, indexCount, vertexCount);
 	GARDEN_ASSERT(indexCount == faceIndexCount);
 
+	const auto meshVertices = mesh->mVertices;
+	indexCount = meshopt_filterIndexBuffer(indexData, indexData, indexCount, 
+		&meshVertices[0].x, vertexCount, sizeof(aiVector3D), sizeof(aiVector3D));
+	meshopt_optimizeVertexCache(indexData, indexData, indexCount, vertexCount);
+	meshopt_optimizeOverdraw(indexData, indexData, indexCount, 
+		&meshVertices[0].x, vertexCount, sizeof(aiVector3D), 1.05f);
 	positions.resize(vertexCount * sizeof(MeshOptVertex));
+
 	auto vertexData = (MeshOptVertex*)positions.data();
-	const auto meshVertices = mesh->mVertices, meshNormals = mesh->mNormals;
+	const auto meshNormals = mesh->mNormals;
 	const auto meshTexCoords = mesh->mTextureCoords[0];
 	const auto meshColors = mesh->HasVertexColors(0) ? mesh->mColors[0] : nullptr;
 
@@ -536,8 +542,7 @@ static void optimizeMeshData(const aiMesh* mesh, raw_vector<uint8>& indices, raw
 		vertex.texCoords = repeat(*(const float2*)(meshTexCoords));
 	}
 
-	meshopt_optimizeOverdraw(indexData, indexData, indexCount, 
-		&vertexData[0].position.x, vertexCount, sizeof(MeshOptVertex), 1.05f);
+	
 	vertexCount = meshopt_optimizeVertexFetch(vertexData, indexData, 
 		indexCount, vertexData, vertexCount, sizeof(MeshOptVertex));
 	tmp0.resize(indexCount * sizeof(float4));
@@ -613,8 +618,7 @@ static void optimizeMeshData(const aiMesh* mesh, raw_vector<uint8>& indices, raw
 }
 
 //**********************************************************************************************************************
-static void processMeshData(
-	const fs::path& filePath, const aiMesh* mesh, uint32 meshID, uint32& indexCount, raw_vector<uint8>& indices, 
+static void processMeshData(const fs::path& filePath, const aiMesh* mesh, uint32& indexCount, raw_vector<uint8>& indices, 
 	raw_vector<uint8>& positions, raw_vector<uint8>& attributes, raw_vector<uint8>& tmp0, raw_vector<uint8>& tmp1)
 {
 	auto indexType = toIndexType(mesh->mNumFaces * 3);
@@ -696,6 +700,87 @@ static void processMeshData(
 }
 
 //**********************************************************************************************************************
+static Ref<Image> loadMaterialTexture(const fs::path& path, const aiScene* scene, 
+	const aiMaterial* material, aiTextureType type, uint32 index = 0)
+{
+	aiString texturePath;
+	if (material->GetTexture(type, index, &texturePath) != aiReturn_SUCCESS)
+		return {};
+
+	auto resourceSystem = ResourceSystem::getInstance();
+	auto sharedImage = resourceSystem->getSharedImage(texturePath.C_Str());
+	if (!sharedImage)
+		return sharedImage;
+
+	auto embTexture = scene->GetEmbeddedTexture(texturePath.C_Str());
+	if (!embTexture)
+	{
+		return resourceSystem->loadSharedImage(texturePath.C_Str());
+	}
+
+	Image::Mips mips = { { nullptr } };
+	raw_vector<uint8> tmpData; uint4 imageSize;
+	auto imageType = Image::Type::Texture2D;
+
+	Image::Format imageFormat;
+	switch (type)
+	{
+		case aiTextureType_BASE_COLOR: imageFormat = Image::Format::SrgbR8G8B8A8; break;
+		default: imageFormat = Image::Format::UnormR8G8B8A8; break;
+	}
+
+	if (embTexture->mHeight == 0)
+	{
+		Image::FileType fileType;
+		if (memcmp(embTexture->achFormatHint, "webp", 4)) fileType = Image::FileType::WebP;
+		else if (memcmp(embTexture->achFormatHint, "png", 3)) fileType = Image::FileType::PNG;
+		else if (memcmp(embTexture->achFormatHint, "jpg", 3)) fileType = Image::FileType::JPEG;
+		else if (memcmp(embTexture->achFormatHint, "exr", 3)) fileType = Image::FileType::EXR;
+		else if (memcmp(embTexture->achFormatHint, "hdr", 3)) fileType = Image::FileType::HDR;
+		else if (memcmp(embTexture->achFormatHint, "bmp", 3)) fileType = Image::FileType::BMP;
+		else if (memcmp(embTexture->achFormatHint, "tga", 3)) fileType = Image::FileType::TGA;
+		else if (memcmp(embTexture->achFormatHint, "gif", 3)) fileType = Image::FileType::GIF;
+		else
+		{
+			GARDEN_LOG_ERROR("Unknown Assimp embedded texture type. ("
+				"texture: " + string(texturePath.C_Str()) + ", "
+				"fileType: " + string(embTexture->achFormatHint) + ", " +
+				"path: " + path.generic_string() + ")");
+			return {};
+		}
+
+		Image::loadFileData(embTexture->pcData, embTexture->mWidth,
+			fileType, tmpData, imageSize, imageType, imageFormat);
+	}
+	else
+	{
+		imageSize = uint4(embTexture->mWidth, embTexture->mHeight, 1, 1);
+		if (memcmp(embTexture->achFormatHint, "rgba8888", 8) != 0)
+		{
+			auto texelCount = (psize)imageSize.x * imageSize.y;
+			tmpData.resize(texelCount * sizeof(aiTexel));
+			auto dstData = (aiTexel*)tmpData.data();
+			const auto srcData = embTexture->pcData;
+
+			for (psize i = 0; i < texelCount; i++)
+			{
+				auto texel = srcData[i];
+				dstData[i] = { texel.r, texel.g, texel.b, texel.a };
+			}
+			mips[0][0] = tmpData.data();
+		}
+		else mips[0][0] = embTexture->pcData;
+	}
+
+	// TODO: !!! store this image to the images cache !!! <<<---
+		
+	auto texture = GraphicsSystem::getInstance()->createImage(imageType, imageFormat, 
+		Image::Usage::Sampled | Image::Usage::TransferDst, mips, (uint3)imageSize, Image::Strategy::Size);
+	SET_RESOURCE_DEBUG_NAME(texture, "image." + string(texturePath.C_Str()));
+	return resourceSystem->addSharedImage(texturePath.C_Str(), texture);
+}
+
+//**********************************************************************************************************************
 static bool loadNodeMeshes(const fs::path& path, const ModelRenderSystem::ModelComponents* components, 
 	const aiScene* scene, absl::flat_hash_map<uint32, MeshLOD>& sharedLods, 
 	raw_vector<uint8>& indices, raw_vector<uint8>& positions, raw_vector<uint8>& attributes, 
@@ -704,16 +789,17 @@ static bool loadNodeMeshes(const fs::path& path, const ModelRenderSystem::ModelC
 	auto lodStr = strstr(node->mName.C_Str(), "_LOD");
 	auto lodStrLength = lodStr ? strlen(lodStr) : 0;
 
-	if (lodStrLength < 5)
-		return false;
-
-	uint8 lodIndex = 0; lodStr += 4;
-	if (from_chars(lodStr, lodStr + lodStrLength, lodIndex).ec != errc())
+	uint8 lodIndex = 0;
+	if (lodStrLength > 5)
 	{
-		GARDEN_LOG_ERROR("Invalid Assimp 3D model LOD format. ("
-			"node: " + string(node->mName.C_Str()) + ", "
-			"path: " + path.generic_string() + ")");
-		return true;
+		lodStr += 4;
+		if (from_chars(lodStr, lodStr + lodStrLength, lodIndex).ec != errc())
+		{
+			GARDEN_LOG_ERROR("Invalid Assimp 3D model LOD format. ("
+				"node: " + string(node->mName.C_Str()) + ", "
+				"path: " + path.generic_string() + ")");
+			return true;
+		}
 	}
 
 	auto manager = Manager::getInstance();
@@ -721,9 +807,9 @@ static bool loadNodeMeshes(const fs::path& path, const ModelRenderSystem::ModelC
 	auto meshes = scene->mMeshes; auto materials = scene->mMaterials;
 	auto meshIds = node->mMeshes; auto meshIdCount = node->mNumMeshes;
 
-	for (uint32 j = 0; j < meshIdCount; j++)
+	for (uint32 i = 0; i < meshIdCount; i++)
 	{
-		auto meshID = meshIds[j]; auto mesh = meshes[meshID];
+		auto meshID = meshIds[i]; auto mesh = meshes[meshID];
 		if (mesh->mPrimitiveTypes != aiPrimitiveType_TRIANGLE)
 			continue; // Note: skipping non triangle primitives.
 
@@ -762,6 +848,10 @@ static bool loadNodeMeshes(const fs::path& path, const ModelRenderSystem::ModelC
 			// TODO: get and set material params
 		}
 
+		modelRenderView->colorMap = loadMaterialTexture(path, scene, material, aiTextureType_BASE_COLOR);
+		modelRenderView->normalMap = loadMaterialTexture(path, scene, material, aiTextureType_NORMAL_CAMERA);
+		// TODO: modelRenderView->ormMap = ...
+
 		auto lodResult = sharedLods.find(meshID);
 		if (lodResult != sharedLods.end())
 		{
@@ -771,7 +861,7 @@ static bool loadNodeMeshes(const fs::path& path, const ModelRenderSystem::ModelC
 
 		auto filePath = path; filePath.replace_extension(); uint32 indexCount;
 		filePath = "models" / filePath / to_string(meshID); filePath.replace_extension(".gmc");
-		processMeshData(filePath, mesh, meshID, indexCount, indices, positions, attributes, tmp0, tmp1);
+		processMeshData(filePath, mesh, indexCount, indices, positions, attributes, tmp0, tmp1);
 
 		auto pfBinarySize = positions.size();
 		positions.resize(pfBinarySize + attributes.size());

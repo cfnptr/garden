@@ -107,7 +107,7 @@ protected:
 		Buffer buffer;
 		Buffer staging;
 		fs::path path = "";
-		ID<Buffer> bufferInstance = {};
+		ID<Buffer> instance = {};
 	};
 	struct ImageQueueItem final
 	{
@@ -193,7 +193,7 @@ public:
 
 	/**
 	 * @brief Loads image pixels from the resource pack.
-	 * @note Loads from the images directory in debug build.
+	 * @note Loads from the "images" directory in debug build.
 	 * 
 	 * @param[in] path target image resource path
 	 * @param[out] pixels loaded image pixel data
@@ -208,7 +208,7 @@ public:
 		Image::Type& type, Image::Format& format, int32 threadIndex = -1) const noexcept;
 	/**
 	 * @brief Loads image pixels from the resource pack.
-	 * @note Loads from the images directory in debug build.
+	 * @note Loads from the "images" directory in debug build.
 	 * 
 	 * @param[in] paths target image resource path array
 	 * @param pathCount image resource path array size
@@ -225,7 +225,7 @@ public:
 
 	/**
 	 * @brief Loads cubemap image pixels the resource pack.
-	 * @note Loads from the images directory in debug build.
+	 * @note Loads from the "images" directory in debug build.
 	 * 
 	 * @param[in] path target cubemap image resource path
 	 * @param[out] nx negative X side image pixel data container
@@ -244,9 +244,21 @@ public:
 		raw_vector<uint8>& ny, raw_vector<uint8>& py, raw_vector<uint8>& nz, raw_vector<uint8>& pz, 
 		uint2& size, Image::Format& format, int32 threadIndex = -1) const noexcept;
 
+	/**
+	 * @brief Loads buffer data from the resource pack.
+	 * @note Loads from the "resources" directory in debug build.
+	 * 
+	 * @param[in] path target buffer resource path
+	 * @param[out] data loaded buffer binary data
+	 * @param threadIndex thread index in the pool (-1 = single threaded)
+	 *
+	 * @return True on success, otherwise false and missing buffer data.
+	 */
+	bool loadBufferData(const fs::path& path, raw_vector<uint8>& data, int32 threadIndex = -1) const noexcept;
+
 	/*******************************************************************************************************************
 	 * @brief Loads image from the resource pack.
-	 * @note Loads from the images directory in debug build.
+	 * @note Loads from the "images" directory in debug build.
 	 *
 	 * @param[in] paths target image resource path array
 	 * @param pathCount image resource path array size
@@ -255,7 +267,7 @@ public:
 	ID<Image> loadImage(const fs::path* paths, psize pathCount, bool loadAsync = true);
 	/**
 	 * @brief Loads image from the resource pack.
-	 * @note Loads from the images directory in debug build.
+	 * @note Loads from the "images" directory in debug build.
 	 *
 	 * @param[in] path target image resource path
 	 * @param loadAsync load image asynchronously without blocking
@@ -264,7 +276,7 @@ public:
 
 	/**
 	 * @brief Loads shared image from the resource pack.
-	 * @note Loads from the images directory in debug build.
+	 * @note Loads from the "images" directory in debug build.
 	 *
 	 * @param[in] paths target image resource path array
 	 * @param pathCount image resource path array size
@@ -273,7 +285,7 @@ public:
 	Ref<Image> loadSharedImage(const fs::path* paths, psize pathCount, bool loadAsync = true);
 	/**
 	 * @brief Loads shared image from the resource pack.
-	 * @note Loads from the images directory in debug build.
+	 * @note Loads from the "images" directory in debug build.
 	 *
 	 * @param[in] path target image resource path
 	 * @param loadAsync load image asynchronously without blocking
@@ -282,13 +294,43 @@ public:
 	{
 		return loadSharedImage(&path, 1, loadAsync);
 	}
+
+	/**
+	 * @brief Returns shared image instance if exist.
+	 *
+	 * @param[in] paths target image resource path array
+	 * @param pathCount image resource path array size
+	 */
+	Ref<Image> getSharedImage(const fs::path* paths, psize pathCount);
+	/**
+	 * @brief Returns shared image instance if exist.
+	 * @param[in] path target image resource path
+	 */
+	Ref<Image> getSharedImage(const fs::path& path) { return getSharedImage(&path, 1); }
+
+	/**
+	 * @brief Shares specified image instance.
+	 *
+	 * @param[in] paths image resource path array
+	 * @param pathCount image resource path array size
+	 * @param image target image instance to share
+	 */
+	Ref<Image> addSharedImage(const fs::path* paths, psize pathCount, ID<Image> image);
+	/**
+	 * @brief Returns shared image instance if exist.
+	 *
+	 * @param[in] path image resource path
+	 * @param image target image instance to share
+	 */
+	Ref<Image> addSharedImage(const fs::path& path, ID<Image> image) { return addSharedImage(&path, 1, image); }
+
 	/**
 	 * @brief Destroys shared image if it's the last one.
 	 * @param[in] image target shared image reference
 	 */
 	void destroyShared(Ref<Image>& image);
 
-	/**
+	/*******************************************************************************************************************
 	 * @brief Stores specified image to the images directory.
 	 * 
 	 * @param[in] path target image resource path
@@ -364,23 +406,42 @@ public:
 
 	/*******************************************************************************************************************
 	 * @brief Loads buffer from the resource pack.
-	 * @note Loads from the resources directory in debug build.
+	 * @note Loads from the "resources" directory in debug build.
 	 *
 	 * @param[in] path target buffer resource path
+	 * @param usage buffer usage flags
 	 * @param taskPriority thread pool buffer load task priority
 	 * @param loadAsync load buffer asynchronously without blocking
 	 */
-	ID<Buffer> loadBuffer(const fs::path& path, float taskPriority = TaskPriority::normal, bool loadAsync = true);
+	ID<Buffer> loadBuffer(const fs::path& path, Buffer::Usage usage, 
+		float taskPriority = TaskPriority::normal, bool loadAsync = true);
 
 	/**
 	 * @brief Loads shared buffer from the resource pack.
-	 * @note Loads from the resources directory in debug build.
+	 * @note Loads from the "resources" directory in debug build.
 	 *
 	 * @param[in] path target buffer resource path
+	 * @param usage buffer usage flags
 	 * @param taskPriority thread pool buffer load task priority
 	 * @param loadAsync load buffer asynchronously without blocking
 	 */
-	Ref<Buffer> loadSharedBuffer(const fs::path& path, float taskPriority = TaskPriority::normal, bool loadAsync = true);
+	Ref<Buffer> loadSharedBuffer(const fs::path& path, Buffer::Usage usage, 
+		float taskPriority = TaskPriority::normal, bool loadAsync = true);
+	/**
+	 * @brief Returns shared buffer instance if exist.
+	 *
+	 * @param usage buffer usage flags
+	 * @param[in] path target buffer resource path
+	 */
+	Ref<Buffer> getSharedBuffer(const fs::path& path, Buffer::Usage usage);
+	/**
+	 * @brief Returns shared buffer instance if exist.
+	 *
+	 * @param[in] path buffer resource path
+	 * @param usage buffer usage flags
+	 * @param buffer target buffer instance to share
+	 */
+	Ref<Buffer> addSharedBuffer(const fs::path& path, ID<Buffer> buffer, Buffer::Usage usage);
 	/**
 	 * @brief Destroys shared buffer if it's the last one.
 	 * @param[in] buffer target shared buffer reference
@@ -451,7 +512,7 @@ public:
 
 	/*******************************************************************************************************************
 	 * @brief Loads graphics pipeline from the resource pack shaders.
-	 * @note Loads from the shaders directory in debug build.
+	 * @note Loads from the "shaders" directory in debug build.
 	 * 
 	 * @param[in] path target graphics pipeline resource path
 	 * @param framebuffer parent pipeline framebuffer
@@ -463,7 +524,7 @@ public:
 		ID<Framebuffer> framebuffer, const GraphicsLoadOptions* options = nullptr);
 	/**
 	 * @brief Loads compute pipeline from the resource pack shaders.
-	 * @note Loads from the shaders directory in debug build.
+	 * @note Loads from the "shaders" directory in debug build.
 	 * 
 	 * @param[in] path target compute pipeline resource path
 	 * @param[in] options compute pipeline load options or null
@@ -473,7 +534,7 @@ public:
 	ID<ComputePipeline> loadComputePipeline(const fs::path& path, const ComputeLoadOptions* options = nullptr);
 	/**
 	 * @brief Loads ray tracing pipeline from the resource pack shaders.
-	 * @note Loads from the shaders directory in debug build.
+	 * @note Loads from the "shaders" directory in debug build.
 	 * 
 	 * @param[in] path target ray tracing pipeline resource path
 	 * @param[in] options ray tracing pipeline load options or null
@@ -484,7 +545,7 @@ public:
 
 	/*******************************************************************************************************************
 	 * @brief Loads scene from the resource pack.
-	 * @note Loads from the scenes directory in debug build.
+	 * @note Loads from the "scenes" directory in debug build.
 	 * @return Null entity on scene loading error.
 	 * 
 	 * @param[in] path target scene resource path
@@ -507,16 +568,28 @@ public:
 
 	/*******************************************************************************************************************
 	 * @brief Loads animation from the resource pack.
-	 * @note Loads from the animations directory in debug build.
+	 * @note Loads from the "animations" directory in debug build.
 	 * @param[in] path target animation resource path
 	 */
 	ID<Animation> loadAnimation(const fs::path& path);
 	/**
 	 * @brief Loads shared animation from the resource pack.
-	 * @note Loads from the animations directory in debug build.
+	 * @note Loads from the "animations" directory in debug build.
 	 * @param[in] path target animation resource path
 	 */
 	Ref<Animation> loadSharedAnimation(const fs::path& path);
+	/**
+	 * @brief Returns shared animation instance if exist.
+	 * @param[in] path target animation resource path
+	 */
+	Ref<Animation> getSharedAnimation(const fs::path& path);
+	/**
+	 * @brief Returns shared animation instance if exist.
+	 *
+	 * @param[in] path animation resource path
+	 * @param animation target animation instance to share
+	 */
+	Ref<Animation> addSharedAnimation(const fs::path& path, ID<Animation> animation);
 	/**
 	 * @brief Destroys shared animation if it's the last one.
 	 * @param[in] animation target shared animation reference

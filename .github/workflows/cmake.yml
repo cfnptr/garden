@@ -2,6 +2,9 @@ name: CMake
 
 on: [push, pull_request]
 
+permissions:
+  contents: write
+
 env:
   BUILD_TYPE: Release
   VCPKG_CACHE: windows-vcpkg-v2

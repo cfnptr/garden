@@ -47,6 +47,13 @@ namespace garden::graphics
 		vector<fs::path> paths;
 		ID<Image> instance = {};
 	};
+	struct BufferLoadData final
+	{
+		uint64 bufferVersion = 0;
+		fs::path path = {};
+		ID<Buffer> instance = {};
+		Buffer::Usage usage = {};
+	};
 
 	struct PipelineLoadData
 	{
@@ -307,8 +314,8 @@ void ResourceSystem::dequeueBuffers()
 	while (!loadedBufferQueue.empty())
 	{
 		auto& item = loadedBufferQueue.front(); // Note: getOccupancy() required, do not optimize!
-		auto buffer = *item.bufferInstance <= graphicsAPI->bufferPool.getOccupancy() ? 
-			&graphicsAPI->bufferPool.getData()[*item.bufferInstance - 1] : nullptr;
+		auto buffer = *item.instance <= graphicsAPI->bufferPool.getOccupancy() ? 
+			&graphicsAPI->bufferPool.getData()[*item.instance - 1] : nullptr;
 
 		if (!buffer || MemoryExt::getVersion(*buffer) != MemoryExt::getVersion(item.buffer))
 		{
@@ -324,18 +331,18 @@ void ResourceSystem::dequeueBuffers()
 		buffer->setDebugName(buffer->getDebugName());
 		#endif
 
-		auto stagingBuffer = graphicsAPI->bufferPool.create(Buffer::Usage::TransferSrc,
+		auto stagingBuffer = graphicsAPI->bufferPool.create(Buffer::Usage::TransferSrc | Buffer::Usage::TransferQ,
 			Buffer::CpuAccess::SequentialWrite, Buffer::Location::Auto, Buffer::Strategy::Speed, 0);
 		SET_RESOURCE_DEBUG_NAME(stagingBuffer, "buffer.staging.loaded" + to_string(*stagingBuffer));
 
 		auto stagingView = graphicsAPI->bufferPool.get(stagingBuffer);
 		BufferExt::moveInternalObjects(item.staging, **stagingView);
 		graphicsSystem->startRecording(CommandBufferType::TransferOnly);
-		Buffer::copy(stagingBuffer, item.bufferInstance);
+		Buffer::copy(stagingBuffer, item.instance);
 		graphicsSystem->stopRecording();
 		graphicsAPI->bufferPool.destroy(stagingBuffer);
 
-		loadedBuffer = item.bufferInstance;
+		loadedBuffer = item.instance;
 		loadedBufferPath = std::move(item.path);
 		manager->runEvent("BufferLoaded");
 
@@ -814,6 +821,13 @@ static void loadMissingImage(raw_vector<uint8>& nx, raw_vector<uint8>& px, raw_v
 	loadMissingImage(pz, missingSize, missingType, format);
 	size = (uint2)missingSize;
 }
+static void loadMissingBuffer(raw_vector<uint8>& data)
+{
+	data.resize(sizeof(uint32) * 4);
+	auto missingData = (uint32*)data.data();
+	for (uint32 i = 0; i < 4; i++)
+		missingData[i] = 0xDEADBEEF;
+}
 
 #if !GARDEN_PACK_RESOURCES
 //**********************************************************************************************************************
@@ -876,7 +890,7 @@ bool ResourceSystem::loadImageData(const fs::path& path, raw_vector<uint8>& pixe
 
 	if (fileType == Image::FileType::Count)
 	{
-		GARDEN_LOG_ERROR("Image does not exist. (path: " + path.generic_string() + ")");
+		GARDEN_LOG_ERROR("Image resource does not exist. (path: " + path.generic_string() + ")");
 		loadMissingImage(pixels, size, type, format);
 		return false;
 	}
@@ -1201,8 +1215,51 @@ bool ResourceSystem::loadCubemapData(const fs::path& path, raw_vector<uint8>& nx
 }
 
 //**********************************************************************************************************************
+bool ResourceSystem::loadBufferData(const fs::path& path, raw_vector<uint8>& data, int32 threadIndex) const noexcept
+{
+	GARDEN_ASSERT(!path.empty());
+	GARDEN_ASSERT_MSG(threadIndex < (int32)thread::hardware_concurrency(), "Assert " + path.generic_string());
+
+	#if GARDEN_PACK_RESOURCES
+	if (threadIndex < 0)
+		threadIndex = 0;
+	else threadIndex++;
+
+	uint64 itemIndex = 0;
+	if (!packReader.getItemIndex(path, itemIndex))
+	{
+		GARDEN_LOG_ERROR("Buffer resource does not exist. (path: " + path.generic_string() + ")");
+		loadMissingBuffer(data);
+		return false;
+	}
+
+	packReader.readItemData(itemIndex, data, threadIndex);
+	#else
+	auto filePath = appResourcesPath / path;
+	if (!fs::exists(filePath))
+	{
+		GARDEN_LOG_ERROR("Buffer file does not exist. (path: " + path.generic_string() + ")");
+		loadMissingBuffer(data);
+		return false;
+	}
+
+	try
+	{
+		File::loadBinary(filePath, data);
+	}
+	catch (const exception& e)
+	{
+		GARDEN_LOG_ERROR(string(e.what()));
+		loadMissingBuffer(data);
+		return false;
+	}
+	#endif
+
+	return true;
+}
+
+//**********************************************************************************************************************
 static constexpr Image::Usage loadedImageUsage = Image::Usage::Sampled | Image::Usage::TransferDst;
-static constexpr Image::Strategy loadedImageStrategy = Image::Strategy::Size;
 
 static void copyLoadedImageData(const vector<raw_vector<uint8>>& pixelArrays, 
 	uint8* stagingMap, const uint8* stagingMapEnd, Image::Type imageType) noexcept
@@ -1228,7 +1285,7 @@ ID<Image> ResourceSystem::loadImage(const fs::path* paths, psize pathCount, bool
 	auto imageVersion = graphicsAPI->imageVersion++;
 
 	auto image = graphicsAPI->imagePool.create(loadedImageUsage | 
-		Image::Usage::TransferQ, loadedImageStrategy, imageVersion);
+		Image::Usage::TransferQ, Image::Strategy::Size, imageVersion);
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	auto imageView = graphicsAPI->imagePool.get(image);
@@ -1238,16 +1295,16 @@ ID<Image> ResourceSystem::loadImage(const fs::path* paths, psize pathCount, bool
 	auto threadSystem = ThreadSystem::tryGetInstance();
 	if (loadAsync && threadSystem)
 	{
-		auto data = new ImageLoadData();
-		data->imageVersion = imageVersion;
-		data->paths.assign(paths, paths + pathCount);
-		data->instance = image;
+		auto loadData = new ImageLoadData();
+		loadData->imageVersion = imageVersion;
+		loadData->paths.assign(paths, paths + pathCount);
+		loadData->instance = image;
 
-		threadSystem->getBackgroundPool().addTask([this, data](const ThreadPool::Task& task)
+		threadSystem->getBackgroundPool().addTask([this, loadData](const ThreadPool::Task& task)
 		{
 			SET_CPU_ZONE_SCOPED("Image Load");
 
-			auto& filePaths = data->paths; Image::Type type; Image::Format format;
+			auto& filePaths = loadData->paths; Image::Type type; Image::Format format;
 			vector<raw_vector<uint8>> pixelArrays(filePaths.size()); uint4 size;
 	
 			auto p = filePaths[0].generic_string();
@@ -1271,10 +1328,11 @@ ID<Image> ResourceSystem::loadImage(const fs::path* paths, psize pathCount, bool
 
 			ImageQueueItem item =
 			{
-				ImageExt::create(type, format, loadedImageUsage, loadedImageStrategy, (u32x4)size, data->imageVersion),
+				ImageExt::create(type, format, loadedImageUsage, 
+					Image::Strategy::Size, (u32x4)size, loadData->imageVersion),
 				BufferExt::create(Buffer::Usage::TransferSrc, Buffer::CpuAccess::SequentialWrite, 
 					Buffer::Location::Auto, Buffer::Strategy::Speed, imageBinarySize * filePaths.size(), 0),
-				std::move(filePaths), data->instance // Note: Staging does not need TransferQ flag.
+				std::move(filePaths), loadData->instance // Note: Staging does not need TransferQ flag.
 			};
 
 			auto stagingMap = item.staging.getMap();
@@ -1286,7 +1344,7 @@ ID<Image> ResourceSystem::loadImage(const fs::path* paths, psize pathCount, bool
 			loadedImageQueue.push(std::move(item));
 			queueLocker.unlock();
 
-			delete data;
+			delete loadData;
 		},
 		TaskPriority::image);
 	}
@@ -1318,7 +1376,7 @@ ID<Image> ResourceSystem::loadImage(const fs::path* paths, psize pathCount, bool
 		GARDEN_ASSERT_MSG(imageBinarySize > 0, "Assert " + paths[0].generic_string());
 
 		auto imageInstance = ImageExt::create(type, format, 
-			loadedImageUsage, loadedImageStrategy, (u32x4)size, 0);
+			loadedImageUsage, Image::Strategy::Size, (u32x4)size, 0);
 		auto imageView = graphicsAPI->imagePool.get(image);
 		ImageExt::moveInternalObjects(imageInstance, **imageView);
 
@@ -1348,19 +1406,22 @@ ID<Image> ResourceSystem::loadImage(const fs::path* paths, psize pathCount, bool
 }
 
 //**********************************************************************************************************************
-Ref<Image> ResourceSystem::loadSharedImage(const fs::path* paths, psize pathCount, bool loadAsync)
+static Hash128 hashSharedImage(const fs::path* paths, psize pathCount)
 {
-	GARDEN_ASSERT(paths);
-	GARDEN_ASSERT(pathCount > 0);
-
 	auto hashState = Hash128::getState();
 	Hash128::resetState(hashState);
 	for (psize i = 0; i < pathCount; i++)
 	{
-		auto path = paths[i].generic_string();
+		const auto path = paths[i].generic_string();
 		Hash128::updateState(hashState, path.c_str(), path.length());
 	}
-	auto hash = Hash128::digestState(hashState);
+	return Hash128::digestState(hashState);
+}
+Ref<Image> ResourceSystem::loadSharedImage(const fs::path* paths, psize pathCount, bool loadAsync)
+{
+	GARDEN_ASSERT(paths);
+	GARDEN_ASSERT(pathCount > 0);
+	auto hash = hashSharedImage(paths, pathCount);
 
 	auto searchResult = sharedImages.find(hash);
 	if (searchResult != sharedImages.end())
@@ -1380,6 +1441,24 @@ Ref<Image> ResourceSystem::loadSharedImage(const fs::path* paths, psize pathCoun
 	auto result = sharedImages.emplace(hash, image);
 	GARDEN_ASSERT_MSG(result.second, "Detected memory corruption");
 	return image;
+}
+Ref<Image> ResourceSystem::getSharedImage(const fs::path* paths, psize pathCount)
+{
+	GARDEN_ASSERT(paths);
+	GARDEN_ASSERT(pathCount > 0);
+	auto searchResult = sharedImages.find(hashSharedImage(paths, pathCount));
+	return searchResult != sharedImages.end() ? searchResult->second : Ref<Image>();
+}
+Ref<Image> ResourceSystem::addSharedImage(const fs::path* paths, psize pathCount, ID<Image> image)
+{
+	GARDEN_ASSERT(paths);
+	GARDEN_ASSERT(pathCount > 0);
+	GARDEN_ASSERT_MSG(image, "Assert " + paths[0].generic_string());
+
+	auto sharedImage = Ref<Image>(image);
+	auto result = sharedImages.emplace(hashSharedImage(paths, pathCount), sharedImage);
+	GARDEN_ASSERT_MSG(result.second, "Image is already shared");
+	return sharedImage;
 }
 void ResourceSystem::destroyShared(Ref<Image>& image)
 {
@@ -1527,20 +1606,101 @@ void ResourceSystem::renormalizeImage(const fs::path& path,
 }
 
 //**********************************************************************************************************************
-ID<Buffer> ResourceSystem::loadBuffer(const fs::path& path, float taskPriority, bool loadAsync)
+ID<Buffer> ResourceSystem::loadBuffer(const fs::path& path, Buffer::Usage usage, float taskPriority, bool loadAsync)
 {
 	GARDEN_ASSERT(!path.empty());
-	abort(); // TODO: load plain buffer binary data.
-}
-Ref<Buffer> ResourceSystem::loadSharedBuffer(const fs::path& path, float taskPriority, bool loadAsync)
-{
-	GARDEN_ASSERT(!path.empty());
+	
+	auto graphicsAPI = GraphicsAPI::get();
+	auto bufferVersion = graphicsAPI->bufferVersion++;
 
+	auto buffer = graphicsAPI->bufferPool.create(usage | Buffer::Usage::TransferDst | Buffer::Usage::TransferQ, 
+		Buffer::CpuAccess::None, Buffer::Location::PreferGPU, Buffer::Strategy::Size, bufferVersion);
+
+	#if GARDEN_DEBUG || GARDEN_EDITOR
+	auto bufferView = graphicsAPI->bufferPool.get(buffer);
+	bufferView->setDebugName("buffer." + path.generic_string());
+	#endif
+
+	auto threadSystem = ThreadSystem::tryGetInstance();
+	if (loadAsync && threadSystem)
+	{
+		auto loadData = new BufferLoadData();
+		loadData->bufferVersion = bufferVersion;
+		loadData->path = path;
+		loadData->instance = buffer;
+		loadData->usage = usage;
+
+		threadSystem->getBackgroundPool().addTask([this, loadData](const ThreadPool::Task& task)
+		{
+			SET_CPU_ZONE_SCOPED("Buffer Load");
+
+			raw_vector<uint8> binaryData;
+			loadBufferData(loadData->path, binaryData, task.getThreadIndex());
+
+			BufferQueueItem item =
+			{
+				BufferExt::create(loadData->usage | Buffer::Usage::TransferDst, Buffer::CpuAccess::None, 
+					Buffer::Location::PreferGPU, Buffer::Strategy::Size, loadData->bufferVersion),
+				BufferExt::create(Buffer::Usage::TransferSrc, Buffer::CpuAccess::SequentialWrite, 
+					Buffer::Location::Auto, Buffer::Strategy::Speed, binaryData.size(), 0),
+				std::move(loadData->path), loadData->instance // Note: Staging does not need TransferQ flag.
+			};
+
+			memcpy(item.staging.getMap(), binaryData.data(), binaryData.size());
+			item.staging.flush();
+
+			queueLocker.lock();
+			loadedBufferQueue.push(std::move(item));
+			queueLocker.unlock();
+
+			delete loadData;
+		},
+		taskPriority);
+	}
+	else
+	{
+		SET_CPU_ZONE_SCOPED("Buffer Load");
+
+		raw_vector<uint8> binaryData;
+		loadBufferData(path, binaryData, -1);
+
+		auto bufferInstance = BufferExt::create(usage | Buffer::Usage::TransferDst, 
+			Buffer::CpuAccess::None, Buffer::Location::PreferGPU, Buffer::Strategy::Size, 0);
+		auto bufferView = graphicsAPI->bufferPool.get(buffer);
+		BufferExt::moveInternalObjects(bufferInstance, **bufferView);
+
+		auto graphicsSystem = GraphicsSystem::getInstance();
+		auto stagingBuffer =  graphicsSystem->createStagingBuffer(
+			Buffer::CpuAccess::SequentialWrite, binaryData.size());
+		SET_RESOURCE_DEBUG_NAME(stagingBuffer, "buffer.staging.loadedBuffer" + to_string(*stagingBuffer));
+
+		auto stagingView = graphicsAPI->bufferPool.get(stagingBuffer);
+		memcpy(stagingView->getMap(), binaryData.data(), binaryData.size());
+		stagingView->flush();
+		graphicsAPI->bufferPool.destroy(stagingBuffer);
+
+		LoadedBufferItem item;
+		item.path = path;
+		item.instance = buffer;
+		loadedBufferArray.push_back(std::move(item));
+	}
+	return buffer;
+}
+
+//**********************************************************************************************************************
+static Hash128 hashSharedBuffer(const fs::path& path, Buffer::Usage usage)
+{
 	auto hashState = Hash128::getState();
 	Hash128::resetState(hashState);
 	auto pathString = path.generic_string();
 	Hash128::updateState(hashState, pathString.c_str(), pathString.length());
-	auto hash = Hash128::digestState(hashState);
+	Hash128::updateState(hashState, &usage, sizeof(Buffer::Usage));
+	return Hash128::digestState(hashState);
+}
+Ref<Buffer> ResourceSystem::loadSharedBuffer(const fs::path& path, Buffer::Usage usage, float taskPriority, bool loadAsync)
+{
+	GARDEN_ASSERT(!path.empty());
+	auto hash = hashSharedBuffer(path, usage);
 
 	auto searchResult = sharedBuffers.find(hash);
 	if (searchResult != sharedBuffers.end())
@@ -1556,12 +1716,26 @@ Ref<Buffer> ResourceSystem::loadSharedBuffer(const fs::path& path, float taskPri
 		return searchResult->second;
 	}
 
-	auto buffer = Ref<Buffer>(loadBuffer(path, taskPriority, loadAsync)); 
+	auto buffer = Ref<Buffer>(loadBuffer(path, usage, taskPriority, loadAsync)); 
 	auto result = sharedBuffers.emplace(hash, buffer);
 	GARDEN_ASSERT_MSG(result.second, "Detected memory corruption");
 	return buffer;
 }
-
+Ref<Buffer> ResourceSystem::getSharedBuffer(const fs::path& path, Buffer::Usage usage)
+{
+	GARDEN_ASSERT(!path.empty());
+	auto searchResult = sharedBuffers.find(hashSharedBuffer(path, usage));
+	return searchResult != sharedBuffers.end() ? searchResult->second : Ref<Buffer>();
+}
+Ref<Buffer> ResourceSystem::addSharedBuffer(const fs::path& path, ID<Buffer> buffer, Buffer::Usage usage)
+{
+	GARDEN_ASSERT(!path.empty());
+	GARDEN_ASSERT_MSG(buffer, "Assert " + path.generic_string());
+	auto sharedBuffer = Ref<Buffer>(buffer);
+	auto result = sharedBuffers.emplace(hashSharedBuffer(path, usage), sharedBuffer);
+	GARDEN_ASSERT_MSG(result.second, "Buffer is already shared");
+	return sharedBuffer;
+}
 void ResourceSystem::destroyShared(Ref<Buffer>& buffer)
 {
 	if (!buffer || buffer.getRefCount() > 2)
@@ -1805,68 +1979,68 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 	{
 		GARDEN_ASSERT_MSG(!loadOptions.shaderOverrides, "Nothing to load asynchronously");
 	
-		auto data = new GraphicsPipelineLoadData();
-		data->shaderPath = path;
-		data->pipelineVersion = pipelineVersion;
-		data->colorFormats = std::move(colorFormats);
+		auto loadData = new GraphicsPipelineLoadData();
+		loadData->shaderPath = path;
+		loadData->pipelineVersion = pipelineVersion;
+		loadData->colorFormats = std::move(colorFormats);
 		if (loadOptions.specConstValues)
-			data->specConstValues = std::move(*loadOptions.specConstValues);
+			loadData->specConstValues = std::move(*loadOptions.specConstValues);
 		if (loadOptions.samplerStateOverrides)
-			data->samplerStateOverrides = std::move(*loadOptions.samplerStateOverrides);
+			loadData->samplerStateOverrides = std::move(*loadOptions.samplerStateOverrides);
 		if (loadOptions.vertexAttribOverrides)
-			data->vertexAttribOverrides = std::move(*loadOptions.vertexAttribOverrides);
+			loadData->vertexAttribOverrides = std::move(*loadOptions.vertexAttribOverrides);
 		if (loadOptions.pipelineStateOverrides)
-			data->pipelineStateOverrides = std::move(*loadOptions.pipelineStateOverrides);
+			loadData->pipelineStateOverrides = std::move(*loadOptions.pipelineStateOverrides);
 		if (loadOptions.blendStateOverrides)
-			data->blendStateOverrides = std::move(*loadOptions.blendStateOverrides);
-		data->instance = pipeline;
-		data->maxBindlessCount = loadOptions.maxBindlessCount;
-		data->depthStencilFormat = depthStencilFormat;
+			loadData->blendStateOverrides = std::move(*loadOptions.blendStateOverrides);
+		loadData->instance = pipeline;
+		loadData->maxBindlessCount = loadOptions.maxBindlessCount;
+		loadData->depthStencilFormat = depthStencilFormat;
 		#if !GARDEN_PACK_RESOURCES
-		data->resourcesPath = appResourcesPath;
-		data->cachePath = appCachePath;
+		loadData->resourcesPath = appResourcesPath;
+		loadData->cachePath = appCachePath;
 		#endif
 		
-		threadSystem->getBackgroundPool().addTask([this, data](const ThreadPool::Task& task)
+		threadSystem->getBackgroundPool().addTask([this, loadData](const ThreadPool::Task& task)
 		{
 			SET_CPU_ZONE_SCOPED("Graphics Pipeline Load");
 
 			GslCompiler::GraphicsData pipelineData;
-			pipelineData.shaderPath = std::move(data->shaderPath);
-			pipelineData.specConstValues = std::move(data->specConstValues);
-			pipelineData.samplerStateOverrides = std::move(data->samplerStateOverrides);
-			pipelineData.pipelineVersion = data->pipelineVersion;
-			pipelineData.maxBindlessCount = data->maxBindlessCount;
-			pipelineData.colorFormats = std::move(data->colorFormats);
-			pipelineData.vertexAttribOverrides = std::move(data->vertexAttribOverrides);
-			pipelineData.pipelineStateOverrides = std::move(data->pipelineStateOverrides);
-			pipelineData.blendStateOverrides = std::move(data->blendStateOverrides);
-			pipelineData.depthStencilFormat = data->depthStencilFormat;
+			pipelineData.shaderPath = std::move(loadData->shaderPath);
+			pipelineData.specConstValues = std::move(loadData->specConstValues);
+			pipelineData.samplerStateOverrides = std::move(loadData->samplerStateOverrides);
+			pipelineData.pipelineVersion = loadData->pipelineVersion;
+			pipelineData.maxBindlessCount = loadData->maxBindlessCount;
+			pipelineData.colorFormats = std::move(loadData->colorFormats);
+			pipelineData.vertexAttribOverrides = std::move(loadData->vertexAttribOverrides);
+			pipelineData.pipelineStateOverrides = std::move(loadData->pipelineStateOverrides);
+			pipelineData.blendStateOverrides = std::move(loadData->blendStateOverrides);
+			pipelineData.depthStencilFormat = loadData->depthStencilFormat;
 			#if GARDEN_PACK_RESOURCES
 			pipelineData.packReader = &packReader;
 			pipelineData.threadIndex = task.getThreadIndex();
 			#else
-			pipelineData.resourcesPath = std::move(data->resourcesPath);
-			pipelineData.cachePath = std::move(data->cachePath);
+			pipelineData.resourcesPath = std::move(loadData->resourcesPath);
+			pipelineData.cachePath = std::move(loadData->cachePath);
 			#endif
 
 			if (!loadOrCompileGraphics(pipelineData))
 			{
-				delete data;
+				delete loadData;
 				return;
 			}
 
 			GraphicsQueueItem item =
 			{
 				GraphicsPipelineExt::create(pipelineData),
-				data->instance
+				loadData->instance
 			};
 
 			queueLocker.lock();
 			loadedGraphicsQueue.push(std::move(item));
 			queueLocker.unlock();
 
-			delete data;
+			delete loadData;
 		},
 		loadOptions.taskPriority);
 	}
@@ -2004,55 +2178,55 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(const fs::path& path, co
 	{
 		GARDEN_ASSERT_MSG(!loadOptions.shaderOverrides, "Nothing to load asynchronously");
 
-		auto data = new ComputePipelineLoadData();
-		data->pipelineVersion = pipelineVersion;
-		data->shaderPath = path;
+		auto loadData = new ComputePipelineLoadData();
+		loadData->pipelineVersion = pipelineVersion;
+		loadData->shaderPath = path;
 		if (loadOptions.specConstValues)
-			data->specConstValues = std::move(*loadOptions.specConstValues);
+			loadData->specConstValues = std::move(*loadOptions.specConstValues);
 		if (loadOptions.samplerStateOverrides)
-			data->samplerStateOverrides = std::move(*loadOptions.samplerStateOverrides);
-		data->maxBindlessCount = loadOptions.maxBindlessCount;
-		data->instance = pipeline;
+			loadData->samplerStateOverrides = std::move(*loadOptions.samplerStateOverrides);
+		loadData->maxBindlessCount = loadOptions.maxBindlessCount;
+		loadData->instance = pipeline;
 		#if !GARDEN_PACK_RESOURCES
-		data->resourcesPath = appResourcesPath;
-		data->cachePath = appCachePath;
+		loadData->resourcesPath = appResourcesPath;
+		loadData->cachePath = appCachePath;
 		#endif
 
-		threadSystem->getBackgroundPool().addTask([this, data](const ThreadPool::Task& task)
+		threadSystem->getBackgroundPool().addTask([this, loadData](const ThreadPool::Task& task)
 		{
 			SET_CPU_ZONE_SCOPED("Compute Pipeline Load");
 
 			GslCompiler::ComputeData pipelineData;
-			pipelineData.shaderPath = std::move(data->shaderPath);
-			pipelineData.specConstValues = std::move(data->specConstValues);
-			pipelineData.samplerStateOverrides = std::move(data->samplerStateOverrides);
-			pipelineData.pipelineVersion = data->pipelineVersion;
-			pipelineData.maxBindlessCount = data->maxBindlessCount;
+			pipelineData.shaderPath = std::move(loadData->shaderPath);
+			pipelineData.specConstValues = std::move(loadData->specConstValues);
+			pipelineData.samplerStateOverrides = std::move(loadData->samplerStateOverrides);
+			pipelineData.pipelineVersion = loadData->pipelineVersion;
+			pipelineData.maxBindlessCount = loadData->maxBindlessCount;
 			#if GARDEN_PACK_RESOURCES
 			pipelineData.packReader = &packReader;
 			pipelineData.threadIndex = task.getThreadIndex();
 			#else
-			pipelineData.resourcesPath = std::move(data->resourcesPath);
-			pipelineData.cachePath = std::move(data->cachePath);
+			pipelineData.resourcesPath = std::move(loadData->resourcesPath);
+			pipelineData.cachePath = std::move(loadData->cachePath);
 			#endif
 			
 			if (!loadOrCompileCompute(pipelineData))
 			{
-				delete data;
+				delete loadData;
 				return;
 			}
 
 			ComputeQueueItem item = 
 			{
 				ComputePipelineExt::create(pipelineData),
-				data->instance
+				loadData->instance
 			};
 
 			queueLocker.lock();
 			loadedComputeQueue.push(std::move(item));
 			queueLocker.unlock();
 
-			delete data;
+			delete loadData;
 		},
 		loadOptions.taskPriority);
 	}
@@ -2212,55 +2386,55 @@ ID<RayTracingPipeline> ResourceSystem::loadRayTracingPipeline(
 	{
 		GARDEN_ASSERT_MSG(!loadOptions.shaderOverrides, "Nothing to load asynchronously");
 	
-		auto data = new RayTracingPipelineLoadData();
-		data->pipelineVersion = pipelineVersion;
-		data->shaderPath = path;
+		auto loadData = new RayTracingPipelineLoadData();
+		loadData->pipelineVersion = pipelineVersion;
+		loadData->shaderPath = path;
 		if (loadOptions.specConstValues)
-			data->specConstValues = std::move(*loadOptions.specConstValues);
+			loadData->specConstValues = std::move(*loadOptions.specConstValues);
 		if (loadOptions.samplerStateOverrides)
-			data->samplerStateOverrides = std::move(*loadOptions.samplerStateOverrides);
-		data->maxBindlessCount = loadOptions.maxBindlessCount;
-		data->instance = pipeline;
+			loadData->samplerStateOverrides = std::move(*loadOptions.samplerStateOverrides);
+		loadData->maxBindlessCount = loadOptions.maxBindlessCount;
+		loadData->instance = pipeline;
 		#if !GARDEN_PACK_RESOURCES
-		data->resourcesPath = appResourcesPath;
-		data->cachePath = appCachePath;
+		loadData->resourcesPath = appResourcesPath;
+		loadData->cachePath = appCachePath;
 		#endif
 
-		threadSystem->getBackgroundPool().addTask([this, data](const ThreadPool::Task& task)
+		threadSystem->getBackgroundPool().addTask([this, loadData](const ThreadPool::Task& task)
 		{
 			SET_CPU_ZONE_SCOPED("Ray Tracing Pipeline Load");
 
 			GslCompiler::RayTracingData pipelineData;
-			pipelineData.shaderPath = std::move(data->shaderPath);
-			pipelineData.specConstValues = std::move(data->specConstValues);
-			pipelineData.samplerStateOverrides = std::move(data->samplerStateOverrides);
-			pipelineData.pipelineVersion = data->pipelineVersion;
-			pipelineData.maxBindlessCount = data->maxBindlessCount;
+			pipelineData.shaderPath = std::move(loadData->shaderPath);
+			pipelineData.specConstValues = std::move(loadData->specConstValues);
+			pipelineData.samplerStateOverrides = std::move(loadData->samplerStateOverrides);
+			pipelineData.pipelineVersion = loadData->pipelineVersion;
+			pipelineData.maxBindlessCount = loadData->maxBindlessCount;
 			#if GARDEN_PACK_RESOURCES
 			pipelineData.packReader = &packReader;
 			pipelineData.threadIndex = task.getThreadIndex();
 			#else
-			pipelineData.resourcesPath = std::move(data->resourcesPath);
-			pipelineData.cachePath = std::move(data->cachePath);
+			pipelineData.resourcesPath = std::move(loadData->resourcesPath);
+			pipelineData.cachePath = std::move(loadData->cachePath);
 			#endif
 			
 			if (!loadOrCompileRayTracing(pipelineData))
 			{
-				delete data;
+				delete loadData;
 				return;
 			}
 
 			RayTracingQueueItem item = 
 			{
 				RayTracingPipelineExt::create(pipelineData),
-				data->instance
+				loadData->instance
 			};
 
 			queueLocker.lock();
 			loadedRayTracingQueue.push(std::move(item));
 			queueLocker.unlock();
 
-			delete data;
+			delete loadData;
 		},
 		loadOptions.taskPriority);
 	}
@@ -2828,14 +3002,20 @@ ID<Animation> ResourceSystem::loadAnimation(const fs::path& path)
 	GARDEN_LOG_TRACE("Loaded animation. (path: " + path.generic_string() + ")");
 	return animation;
 }
+
+//**********************************************************************************************************************
+static Hash128 hashSharedAnimation(const fs::path& path)
+{
+	auto hashState = Hash128::getState();
+	Hash128::resetState(hashState);
+	auto pathString = path.generic_string();
+	Hash128::updateState(hashState, pathString.c_str(), pathString.length());
+	return Hash128::digestState(hashState);
+}
 Ref<Animation> ResourceSystem::loadSharedAnimation(const fs::path& path)
 {
 	GARDEN_ASSERT(!path.empty());
-	auto pathString = path.generic_string();
-	auto hashState = Hash128::getState();
-	Hash128::resetState(hashState);
-	Hash128::updateState(hashState, pathString.c_str(), pathString.length());
-	auto hash = Hash128::digestState(hashState);
+	auto hash = hashSharedAnimation(path);
 
 	auto searchResult = sharedAnimations.find(hash);
 	if (searchResult != sharedAnimations.end())
@@ -2845,6 +3025,21 @@ Ref<Animation> ResourceSystem::loadSharedAnimation(const fs::path& path)
 	auto result = sharedAnimations.emplace(hash, animation);
 	GARDEN_ASSERT_MSG(result.second, "Detected memory corruption");
 	return animation;
+}
+Ref<Animation> ResourceSystem::getSharedAnimation(const fs::path& path)
+{
+	GARDEN_ASSERT(!path.empty());
+	auto searchResult = sharedAnimations.find(hashSharedAnimation(path));
+	return searchResult != sharedAnimations.end() ? searchResult->second : Ref<Animation>();
+}
+Ref<Animation> ResourceSystem::addSharedAnimation(const fs::path& path, ID<Animation> animation)
+{
+	GARDEN_ASSERT(!path.empty());
+	GARDEN_ASSERT_MSG(animation, "Assert " + path.generic_string());
+	auto sharedAnimation = Ref<Animation>(animation);
+	auto result = sharedAnimations.emplace(hashSharedAnimation(path), sharedAnimation);
+	GARDEN_ASSERT_MSG(result.second, "Animation is already shared");
+	return sharedAnimation;
 }
 void ResourceSystem::destroyShared(Ref<Animation>& animation)
 {

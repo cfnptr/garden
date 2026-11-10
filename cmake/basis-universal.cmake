@@ -27,7 +27,7 @@ endif()
 message(STATUS "Fetching Binomial Basis Universal, please wait...")
 FetchContent_Declare(basis-universal GIT_REPOSITORY https://github.com/binomialLLC/basis_universal 
 	GIT_TAG 9bebe16726b3a61c8c213eeee3b7cffb462ef34e GIT_SHALLOW TRUE)
-set(BASIS_UNIVERSAL_VERSION "2.5")
+set(BASIS_UNIVERSAL_VERSION "2.50")
 
 FetchContent_MakeAvailable(basis-universal)
 FetchContent_GetProperties(basis-universal)

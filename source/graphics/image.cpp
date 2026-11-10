@@ -242,7 +242,7 @@ static void createVkImage(Image::Type type, Image::Format format, Image::Usage u
 
 //**********************************************************************************************************************
 Image::Image(Type type, Format format, Usage usage, Strategy strategy, u32x4 size, uint64 version) :
-	Memory(0, CpuAccess::None, Location::Auto, strategy, version), barrierStates(size.getZ() * size.getW())
+	Memory(0, CpuAccess::None, Location::PreferGPU, strategy, version), barrierStates(size.getZ() * size.getW())
 {
 	GARDEN_ASSERT(areAllTrue(size > u32x4::zero));
 
@@ -272,7 +272,7 @@ Image::Image(Type type, Format format, Usage usage, Strategy strategy, u32x4 siz
 
 //**********************************************************************************************************************
 Image::Image(void* instance, Format format, Usage usage, Strategy strategy, uint2 size, uint8 backend) : Memory(
-	toBinarySize((psize)size.x * size.y, format), CpuAccess::None, Location::Auto, strategy, 0), barrierStates(1)
+	toBinarySize((psize)size.x * size.y, format), CpuAccess::None, Location::PreferGPU, strategy, 0), barrierStates(1)
 {
 	GARDEN_ASSERT(areAllTrue(size > uint2::zero));
 	GARDEN_ASSERT(binarySize > 0);

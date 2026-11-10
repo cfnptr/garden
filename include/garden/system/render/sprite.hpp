@@ -48,7 +48,7 @@ struct SpriteRenderComponent : public MeshRenderComponent
 	/**
 	 * @brief Returns sprite texture UV size.
 	 */
-	half2 getUvSize() const noexcept { return *((const half2*)&colorMap.unused); }
+	half2 getUvSize() const noexcept { return *((const half2*)&colorMap.metadata); }
 	/**
 	 * @brief Sets sprite texture UV size.
 	 * @param size target texture UV size
@@ -58,7 +58,7 @@ struct SpriteRenderComponent : public MeshRenderComponent
 	/**
 	 * @brief Returns sprite texture UV offset.
 	 */
-	half2 getUvOffset() const noexcept { return *((const half2*)&descriptorSet.unused); }
+	half2 getUvOffset() const noexcept { return *((const half2*)&descriptorSet.metadata); }
 	/**
 	 * @brief Sets sprite texture UV offset.
 	 * @param offset target texture UV offset
@@ -68,7 +68,7 @@ struct SpriteRenderComponent : public MeshRenderComponent
 	/**
 	 * @brief Returns sprite color map layer.
 	 */
-	float getColorMapLayer() const noexcept { return *((const float*)&unused0); }
+	float getColorMapLayer() const noexcept { return *((const float*)&reserved0); }
 	/**
 	 * @brief Sets sprite color map layer.
 	 * @param layer target color map layer
@@ -76,9 +76,9 @@ struct SpriteRenderComponent : public MeshRenderComponent
 	void setColorMapLayer(float layer) noexcept { _colorMapLayer() = layer; }
 
 protected:
-	half2& _uvSize() noexcept { return *((half2*)&colorMap.unused); }
-	half2& _uvOffset() noexcept { return *((half2*)&descriptorSet.unused); }
-	float& _colorMapLayer() noexcept { return *((float*)&unused0); }
+	half2& _uvSize() noexcept { return *((half2*)&colorMap.metadata); }
+	half2& _uvOffset() noexcept { return *((half2*)&descriptorSet.metadata); }
+	float& _colorMapLayer() noexcept { return *((float*)&reserved0); }
 
 	friend class SpriteRenderSystem;
 };
@@ -119,10 +119,10 @@ public:
 			animateColorMul | animateColorMapLayer | animateColorMap;
 	}
 
-	half2& uvSize() noexcept { return *((half2*)&colorMap.unused); }
-	half2 uvSize() const noexcept { return *((const half2*)&colorMap.unused); }
-	half2& uvOffset() noexcept { return *((half2*)&descriptorSet.unused); }
-	half2 uvOffset() const noexcept { return *((const half2*)&descriptorSet.unused); }
+	half2& uvSize() noexcept { return *((half2*)&colorMap.metadata); }
+	half2 uvSize() const noexcept { return *((const half2*)&colorMap.metadata); }
+	half2& uvOffset() noexcept { return *((half2*)&descriptorSet.metadata); }
+	half2 uvOffset() const noexcept { return *((const half2*)&descriptorSet.metadata); }
 };
 
 /***********************************************************************************************************************

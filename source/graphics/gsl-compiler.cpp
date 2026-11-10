@@ -2734,15 +2734,14 @@ void GslCompiler::loadRayTracingShaders(RayTracingData& data)
 				data.rayGenGroups.push_back({});
 				data.packReader->readItemData(itemIndex, data.rayGenGroups[i], threadIndex);
 			}
-			else break;
 			#else
 			if (fs::exists(data.cachePath / rayGenerationPath))
 			{
 				data.rayGenGroups.push_back({});
 				File::loadBinary(data.cachePath / rayGenerationPath, data.rayGenGroups[i]);
 			}
-			else break;
 			#endif
+			else break;
 		}
 		for (uint8 i = 1; i < UINT8_MAX - 1; i++)
 		{
@@ -2754,15 +2753,14 @@ void GslCompiler::loadRayTracingShaders(RayTracingData& data)
 				data.missGroups.push_back({});
 				data.packReader->readItemData(itemIndex, data.missGroups[i], threadIndex);
 			}
-			else break;
 			#else
 			if (fs::exists(data.cachePath / missPath))
 			{
 				data.missGroups.push_back({});
 				File::loadBinary(data.cachePath / missPath, data.missGroups[i]);
 			}
-			else break;
 			#endif
+			else break;
 		}
 		for (uint8 i = 0; i < UINT8_MAX - 1; i++)
 		{
@@ -2772,15 +2770,14 @@ void GslCompiler::loadRayTracingShaders(RayTracingData& data)
 				data.callGroups.push_back({});
 				data.packReader->readItemData(itemIndex, data.callGroups[i], threadIndex);
 			}
-			else break;
 			#else
 			if (fs::exists(data.cachePath / callablePath))
 			{
 				data.callGroups.push_back({});
 				File::loadBinary(data.cachePath / callablePath, data.callGroups[i]);
 			}
-			else break;
 			#endif
+			else break;
 
 			callablePath = shadersPath; callablePath += "." + to_string(i + 1) + ".rcall.spv";
 		}

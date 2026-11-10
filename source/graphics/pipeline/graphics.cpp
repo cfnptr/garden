@@ -359,7 +359,7 @@ void GraphicsPipeline::createVkInstance(GraphicsCreateData& createData)
 		dynamicStates[0] = vk::DynamicState::eViewport;
 		dynamicStates[1] = vk::DynamicState::eScissor;
 		if (pipelineState.dynamicDepthBias) dynamicStates.push_back(vk::DynamicState::eDepthBias);
-		if (pipelineState.dynamicBlendConst) dynamicStates.push_back(vk::DynamicState::eBlendConstants);
+		if (pipelineState.dynamicBlendConsts) dynamicStates.push_back(vk::DynamicState::eBlendConstants);
 		vk::PipelineDynamicStateCreateInfo dynamicInfo({}, (uint32)dynamicStates.size(), dynamicStates.data());
 
 		pipelineInfo.pVertexInputState = &vertexInputInfo;

@@ -70,22 +70,22 @@ struct MeshLOD
 	/**
 	 * @brief Return mesh vertex count.
 	 */
-	uint32 getVertexCount() const noexcept { return vertexBuffer.unused; }
+	uint32 getVertexCount() const noexcept { return vertexBuffer.metadata; }
 	/**
 	 * @brief Sets mesh vertex count.
 	 * @param vertexCount target vertex count
 	 */
-	void setVertexCount(uint32 vertexCount) { vertexBuffer.unused = vertexCount; }
+	void setVertexCount(uint32 vertexCount) { vertexBuffer.metadata = vertexCount; }
 
 	/**
 	 * @brief Return mesh index count.
 	 */
-	uint32 getIndexCount() const noexcept { return indexBuffer.unused; }
+	uint32 getIndexCount() const noexcept { return indexBuffer.metadata; }
 	/**
 	 * @brief Sets mesh index count.
 	 * @param indexCount target index count
 	 */
-	void setIndexCount(uint32 indexCount) { indexBuffer.unused = indexCount; }
+	void setIndexCount(uint32 indexCount) { indexBuffer.metadata = indexCount; }
 
 	static constexpr uint8 maxCount = UINT8_MAX; /**< Maximal mesh LOD count. */
 };
@@ -124,9 +124,9 @@ struct MeshVertex
 struct MeshRenderComponent : public Component
 {
 protected:
-	uint32 unused0 = 0; /**< Can be used by the inheriting structs. */
-	uint32 unused1 = 0; /**< Can be used by the inheriting structs. */
-	uint16 unused2 = 0; /**< Can be used by the inheriting structs. */
+	uint32 reserved0 = 0; /**< Can be used by the inheriting structs. */
+	uint32 reserved1 = 0; /**< Can be used by the inheriting structs. */
+	uint16 reserved2 = 0; /**< Can be used by the inheriting structs. */
 public:
 	volatile bool isEnabled = true;  /**< Is mesh should be rendered. */
 	volatile bool isVisible = false; /**< Is mesh visible on camera after last frustum culling. */

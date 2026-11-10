@@ -25,8 +25,8 @@ set(ASSIMP_BUILD_ASSIMP_VIEW OFF CACHE BOOL "" FORCE)
 
 message(STATUS "Fetching Assimp, please wait...")
 FetchContent_Declare(assimp GIT_REPOSITORY https://github.com/assimp/assimp
-	GIT_TAG 392a658f9c271be965271f45e7521a1b80ea4392 GIT_SHALLOW TRUE)
-set(ASSIMP_VERSION "6.0.5")
+	GIT_TAG a79ff6bbce54d3e01186a918dc6374ed55317426 GIT_SHALLOW TRUE)
+set(ASSIMP_VERSION "6.0.6")
 
 FetchContent_MakeAvailable(assimp)
 FetchContent_GetProperties(assimp)

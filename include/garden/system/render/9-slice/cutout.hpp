@@ -38,12 +38,12 @@ struct Cutout9SliceComponent final : public NineSliceComponent
 	/**
 	 * @brief Returns 9-slice sprite alpha cutoff threshold.
 	 */
-	float getAlphaCutoff() const noexcept { return *((const float*)&unused1); }
+	float getAlphaCutoff() const noexcept { return *((const float*)&reserved1); }
 	/**
 	 * @brief Sets 9-slice sprite alpha cutoff threshold.
 	 * @param threshold target alpha cutoff threshold
 	 */
-	void setAlphaCutoff(float threshold) noexcept { *((float*)&unused1) = threshold; }
+	void setAlphaCutoff(float threshold) noexcept { *((float*)&reserved1) = threshold; }
 };
 /**
  * @brief Cutout 9-slice sprite animation frame container.

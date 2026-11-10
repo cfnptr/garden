@@ -54,6 +54,8 @@ public:
 	Color axisColorX = rgba(255, 16, 16, 1);
 	Color axisColorY = rgba(16, 255, 16, 1);
 	Color axisColorZ = rgba(6, 16, 255, 1);
+	float moveStepSize = 0.1f;
+	float frameSizeFactor = 1.0f;
 	float highlightFactor = 5.0f;
 	float patternScale = 0.25f;
 	bool isEnabled = true;

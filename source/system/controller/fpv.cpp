@@ -100,31 +100,25 @@ void FpvControllerSystem::swapchainRecreate()
 void FpvControllerSystem::updateMouseLock()
 {
 	auto inputSystem = InputSystem::getInstance();
-
+	
 	// TODO: && get the exact button from the input system
-	if (inputSystem->cursorCapturers == 0 && inputSystem->isKeyPressed(KeyboardButton::Tab)) 
-		isMouseLocked = !isMouseLocked;
+	if (!inputSystem->isKeyPressed(KeyboardButton::Tab) || inputSystem->cursorCapturers != 0) 
+		return;
 
-	if (isMouseLocked)
+	if (inputSystem->getCursorMode() != CursorMode::Normal)
 	{
-		if (inputSystem->getCursorMode() != CursorMode::Locked)
-		{
-			#if GARDEN_EDITOR
-			ImGui::SetWindowFocus(nullptr);
-			ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NoMouse;
-			#endif
-			inputSystem->setCursorMode(CursorMode::Locked);
-		}
+		#if GARDEN_EDITOR
+		ImGui::GetIO().ConfigFlags &= ~ImGuiConfigFlags_NoMouse;
+		#endif
+		inputSystem->setCursorMode(CursorMode::Normal);
 	}
 	else
 	{
-		if (inputSystem->getCursorMode() != CursorMode::Normal)
-		{
-			#if GARDEN_EDITOR
-			ImGui::GetIO().ConfigFlags &= ~ImGuiConfigFlags_NoMouse;
-			#endif
-			inputSystem->setCursorMode(CursorMode::Normal);
-		}
+		#if GARDEN_EDITOR
+		ImGui::SetWindowFocus(nullptr);
+		ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NoMouse;
+		#endif
+		inputSystem->setCursorMode(CursorMode::Locked);
 	}
 }
 
@@ -138,7 +132,7 @@ quat FpvControllerSystem::updateCameraRotation()
 	auto inputSystem = InputSystem::getInstance();	
 	auto deltaTime = (float)inputSystem->getDeltaTime();
 
-	if (isMouseLocked)
+	if (inputSystem->getCursorMode() == CursorMode::Locked && inputSystem->cursorCapturers == 0)
 	{
 		auto cursorDelta = inputSystem->getCursorDelta();
 		rotation += cursorDelta * mouseSensitivity * radians(0.1f);
@@ -168,7 +162,7 @@ void FpvControllerSystem::updateCameraControl(quat cameraRotation)
 	auto deltaTime = (float)inputSystem->getDeltaTime();
 	auto flyVector = f32x4::zero;
 
-	if (isMouseLocked)
+	if (inputSystem->getCursorMode() == CursorMode::Locked && inputSystem->cursorCapturers == 0)
 	{
 		float boost = 1.0f;
 		if (inputSystem->getKeyState(KeyboardButton::LeftShift))

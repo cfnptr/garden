@@ -58,7 +58,7 @@ public:
 	/**
 	 * @brief Returns 3D model texture UV size.
 	 */
-	half2 getUvSize() const noexcept { return *((const half2*)&colorMap.unused); }
+	half2 getUvSize() const noexcept { return *((const half2*)&colorMap.metadata); }
 	/**
 	 * @brief Sets 3D model texture UV size.
 	 * @param size target texture UV size
@@ -68,7 +68,7 @@ public:
 	/**
 	 * @brief Returns 3D model texture UV offset.
 	 */
-	half2 getUvOffset() const noexcept { return *((const half2*)&normalMap.unused); }
+	half2 getUvOffset() const noexcept { return *((const half2*)&normalMap.metadata); }
 	/**
 	 * @brief Sets 3D model texture UV offset.
 	 * @param offset target texture UV offset
@@ -87,11 +87,11 @@ public:
 	/**
 	 * @brief Returns 3D model mesh LOD array size.
 	 */
-	uint8 getLodCount() const noexcept { return unused2 & 0xFFu; }
+	uint8 getLodCount() const noexcept { return reserved2 & 0xFFu; }
 	/**
 	 * @brief Returns 3D model mesh LOD array capacity.
 	 */
-	uint8 getLodCapacity() const noexcept { return (unused2 >> 8u) & 0xFFu; }
+	uint8 getLodCapacity() const noexcept { return (reserved2 >> 8u) & 0xFFu; }
 
 	/**
 	 * @brief Returns 3D model mesh LOD at specified index. (Level of detail)
@@ -169,15 +169,15 @@ public:
 		getLod(index) = std::move(lod);
 	}
 protected:
-	uint32& _colorMapID() noexcept { return unused0; }
-	uint32& _normalMapID() noexcept { return unused1; }
-	uint32& _ormMapID() noexcept { return ormMap.unused; }
+	uint32& _colorMapID() noexcept { return reserved0; }
+	uint32& _normalMapID() noexcept { return reserved1; }
+	uint32& _ormMapID() noexcept { return ormMap.metadata; }
 
-	half2& _uvSize() noexcept { return *((half2*)&colorMap.unused); }
-	half2& _uvOffset() noexcept { return *((half2*)&normalMap.unused); }
+	half2& _uvSize() noexcept { return *((half2*)&colorMap.metadata); }
+	half2& _uvOffset() noexcept { return *((half2*)&normalMap.metadata); }
 
-	void _setLodCount(uint8 value) noexcept { unused2 = (unused2 & 0xFF00u) | value; }
-	void _setLodCapacity(uint8 value) noexcept { unused2 = (unused2 & 0xFFu) | (value << 8u); }
+	void _setLodCount(uint8 value) noexcept { reserved2 = (reserved2 & 0xFF00u) | value; }
+	void _setLodCapacity(uint8 value) noexcept { reserved2 = (reserved2 & 0xFFu) | (value << 8u); }
 
 	friend class ModelRenderSystem;
 };
