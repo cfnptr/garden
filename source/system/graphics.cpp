@@ -703,25 +703,20 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 	if (dataFormat == Image::Format::Undefined)
 		dataFormat = format;
 
-	auto mipSize = (uint3)size;
+	auto mipSize = (uint3)size, minMipSize = uint3(toFormatBlockSize(format), 1);
 	uint64 stagingSize = 0; uint32 stagingCount = 0;
 
 	for (uint8 mip = 0; mip < mipCount; mip++)
 	{
 		const auto& mipData = data[mip];
-		auto mipBinarySize = toBinarySize((psize)mipSize.x * 
-			mipSize.y * mipSize.z, dataFormat);
-		GARDEN_ASSERT(mipBinarySize > 0);
-
+		auto mipBinarySize = toBinarySize((psize)mipSize.x * mipSize.y * mipSize.z, dataFormat);
 		for (auto layerData : mipData)
 		{
-			if (!layerData)
-				continue;
+			if (!layerData) continue;
 			stagingSize += mipBinarySize;
 			stagingCount++;
 		}
-
-		mipSize = max(mipSize / 2u, uint3::one);
+		mipSize = max(mipSize / 2u, minMipSize);
 	}
 
 	auto imageSize = u32x4(u32x4(size), mipCount);
@@ -734,6 +729,7 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 
 	if (stagingCount > 0)
 	{
+		GARDEN_ASSERT(stagingSize > 0);
 		GARDEN_ASSERT(hasAnyFlag(usage, Image::Usage::TransferDst));
 		auto stagingBuffer = createStagingBuffer(Buffer::CpuAccess::SequentialWrite, stagingSize);
 		SET_RESOURCE_DEBUG_NAME(stagingBuffer, "buffer.imageStaging" + to_string(*stagingBuffer));
@@ -765,9 +761,7 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 		{
 			const auto& mipData = data[mip].data();
 			auto mipLayerCount = (uint32)data[mip].size();
-			auto mipBinarySize = toBinarySize((psize)mipSize.x * 
-				mipSize.y * mipSize.z, dataFormat);
-			GARDEN_ASSERT(mipBinarySize > 0);
+			auto mipBinarySize = toBinarySize((psize)mipSize.x * mipSize.y * mipSize.z, dataFormat);
 
 			for (uint32 layer = 0; layer < mipLayerCount; layer++)
 			{
@@ -775,19 +769,18 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 				if (!layerData)
 					continue;
 
-				Image::CopyBufferRegion region;
+				auto& region = regions[copyIndex++];
 				region.bufferOffset = stagingOffset;
 				region.imageExtent = mipSize;
 				region.imageBaseLayer = layer;
 				region.imageLayerCount = 1;
 				region.imageMipLevel = mip;
-				regions[copyIndex++] = region;
 
 				memcpy(stagingMap + stagingOffset, layerData, mipBinarySize);
 				stagingOffset += mipBinarySize;
 			}
 
-			mipSize = max(mipSize / 2u, uint3::one);
+			mipSize = max(mipSize / 2u, minMipSize);
 		}
 
 		GARDEN_ASSERT(stagingCount == copyIndex);
@@ -797,6 +790,8 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 
 		if (format != dataFormat)
 		{
+			GARDEN_ASSERT(!isFormatCompressed(format));
+
 			auto shouldEnd = false;
 			if (!isRecording())
 			{
@@ -812,13 +807,10 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 
 			for (uint8 i = 0; i < mipCount; i++)
 			{
-				Image::BlitRegion region;
-				region.srcExtent = mipSize;
-				region.dstExtent = mipSize;
+				auto& region = blitRegionData[i];
 				region.layerCount = layerCount;
 				region.srcMipLevel = i;
 				region.dstMipLevel = i;
-				blitRegionData[i] = region;
 				mipSize = max(mipSize / 2u, uint3::one);
 			}
 

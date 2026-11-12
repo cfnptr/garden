@@ -411,15 +411,16 @@ public:
 	 * @note Use it on "FileDrop" event.
 	 */
 	const fs::path& getCurrentFileDropPath() const noexcept { return *currFileDropPath; }
+
 	/**
 	 * @brief Returns relative resource path from a full file path.
 	 * @returns True on success, otherwise false if invalid paths.
 	 *
 	 * @param directory base resource directory
-	 * @param filePath target full file path
+	 * @param[in] filePath target full file path
 	 * @param[out] resourcePath relative resource path
 	 */
-	static bool getResourcePath(string_view directory, string_view filePath, string_view& resourcePath);
+	static bool getResourcePath(string_view directory, const fs::path& filePath, string& resourcePath);
 
 	/**
 	 * @brief Creates and starts separate render thread.

@@ -918,6 +918,7 @@ public:
 
 	/*******************************************************************************************************************
 	 * @brief Loads image pixels from the specified file data.
+	 * @warning If pixel array size is less than a image binary size, you should generate mips!
 	 * @throw GardenError on image data loading error.
 	 * 
 	 * @param[in] data image file binary data
@@ -1066,7 +1067,7 @@ public:
  * @brief Is the image data format a color.
  * @param formatType target image format
  */
-static constexpr bool isFormatColor(Image::Format formatType)
+static constexpr bool isFormatColor(Image::Format formatType) noexcept
 {
 	return Image::Format::Undefined < formatType && formatType < Image::Format::UnormD16;
 }
@@ -1074,7 +1075,7 @@ static constexpr bool isFormatColor(Image::Format formatType)
  * @brief Is the image data format a depth only.
  * @param formatType target image format
  */
-static constexpr bool isFormatDepthOnly(Image::Format formatType)
+static constexpr bool isFormatDepthOnly(Image::Format formatType) noexcept
 {
 	return Image::Format::UnormD16 <= formatType && formatType <= Image::Format::SfloatD32;
 }
@@ -1082,7 +1083,7 @@ static constexpr bool isFormatDepthOnly(Image::Format formatType)
  * @brief Is the image data format a stencil only.
  * @param formatType target image format
  */
-static constexpr bool isFormatStencilOnly(Image::Format formatType)
+static constexpr bool isFormatStencilOnly(Image::Format formatType) noexcept
 {
 	return formatType == Image::Format::UintS8;
 }
@@ -1090,7 +1091,7 @@ static constexpr bool isFormatStencilOnly(Image::Format formatType)
  * @brief Is the image data format a combined depth/stencil.
  * @param formatType target image format
  */
-static constexpr bool isFormatDepthAndStencil(Image::Format formatType)
+static constexpr bool isFormatDepthAndStencil(Image::Format formatType) noexcept
 {
 	return Image::Format::UnormD24UintS8 <= formatType && formatType <= Image::Format::SfloatD32UintS8;
 }
@@ -1098,15 +1099,15 @@ static constexpr bool isFormatDepthAndStencil(Image::Format formatType)
  * @brief Is the image data format a depth or stencil.
  * @param formatType target image format
  */
-static constexpr bool isFormatDepthOrStencil(Image::Format formatType)
+static constexpr bool isFormatDepthOrStencil(Image::Format formatType) noexcept
 {
 	return Image::Format::UnormD16 <= formatType && formatType <= Image::Format::SfloatD32UintS8;
 }
-/**
+/***********************************************************************************************************************
  * @brief Is the image data format an unsigned integer.
  * @param formatType target image format
  */
-static constexpr bool isFormatUint(Image::Format formatType)
+static constexpr bool isFormatUint(Image::Format formatType) noexcept
 {
 	return Image::Format::UintR8 <= formatType && formatType <= Image::Format::UintA2B10G10R10;
 }
@@ -1114,7 +1115,7 @@ static constexpr bool isFormatUint(Image::Format formatType)
  * @brief Is the image data format a signed integer.
  * @param formatType target image format
  */
-static constexpr bool isFormatSint(Image::Format formatType)
+static constexpr bool isFormatSint(Image::Format formatType) noexcept
 {
 	return Image::Format::SintR8 <= formatType && formatType <= Image::Format::SintR32G32B32A32;
 }
@@ -1122,7 +1123,7 @@ static constexpr bool isFormatSint(Image::Format formatType)
  * @brief Is the image data format a signed or unsigned integer.
  * @param formatType target image format
  */
-static constexpr bool isFormatInt(Image::Format formatType)
+static constexpr bool isFormatInt(Image::Format formatType) noexcept
 {
 	return Image::Format::UintR8 <= formatType && formatType <= Image::Format::SintR32G32B32A32;
 }
@@ -1130,7 +1131,7 @@ static constexpr bool isFormatInt(Image::Format formatType)
  * @brief Is the image data format a normalized unsigned integer.
  * @param formatType target image format
  */
-static constexpr bool isFormatUnorm(Image::Format formatType)
+static constexpr bool isFormatUnorm(Image::Format formatType) noexcept
 {
 	return Image::Format::UnormR8 <= formatType && formatType <= Image::Format::UnormAstc4x4;
 }
@@ -1138,7 +1139,7 @@ static constexpr bool isFormatUnorm(Image::Format formatType)
  * @brief Is the image data format a normalized signed integer.
  * @param formatType target image format
  */
-static constexpr bool isFormatSnorm(Image::Format formatType)
+static constexpr bool isFormatSnorm(Image::Format formatType) noexcept
 {
 	return Image::Format::SnormR8 <= formatType && formatType <= Image::Format::SnormBC5;
 }
@@ -1146,15 +1147,15 @@ static constexpr bool isFormatSnorm(Image::Format formatType)
  * @brief Is the image data format a normalized signed or unsigned integer.
  * @param formatType target image format
  */
-static constexpr bool isFormatNorm(Image::Format formatType)
+static constexpr bool isFormatNorm(Image::Format formatType) noexcept
 {
 	return Image::Format::UnormR8 <= formatType && formatType <= Image::Format::SnormBC5;
 }
-/**
+/***********************************************************************************************************************
  * @brief Is the image data format an unsigned floating point.
  * @param formatType target image format
  */
-static constexpr bool isFormatUfloat(Image::Format formatType)
+static constexpr bool isFormatUfloat(Image::Format formatType) noexcept
 {
 	return Image::Format::UfloatB10G11R11 <= formatType && formatType <= Image::Format::UfloatBC6H;
 }
@@ -1162,7 +1163,7 @@ static constexpr bool isFormatUfloat(Image::Format formatType)
  * @brief Is the image data format an unsigned floating point.
  * @param formatType target image format
  */
-static constexpr bool isFormatSfloat(Image::Format formatType)
+static constexpr bool isFormatSfloat(Image::Format formatType) noexcept
 {
 	return Image::Format::SfloatR16 <= formatType && formatType <= Image::Format::SfloatAstc4x4;
 }
@@ -1170,7 +1171,7 @@ static constexpr bool isFormatSfloat(Image::Format formatType)
  * @brief Is the image data format a floating point.
  * @param formatType target image format
  */
-static constexpr bool isFormatFloat(Image::Format formatType)
+static constexpr bool isFormatFloat(Image::Format formatType) noexcept
 {
 	return Image::Format::SfloatR16 <= formatType && formatType <= Image::Format::UfloatBC6H;
 }
@@ -1178,7 +1179,7 @@ static constexpr bool isFormatFloat(Image::Format formatType)
  * @brief Is the image data format a 32-bit floating point.
  * @param formatType target image format
  */
-static constexpr bool isFormatFloat32(Image::Format formatType)
+static constexpr bool isFormatFloat32(Image::Format formatType) noexcept
 {
 	return Image::Format::SfloatR32 <= formatType && formatType <= Image::Format::SfloatR32G32B32A32;
 }
@@ -1186,17 +1187,55 @@ static constexpr bool isFormatFloat32(Image::Format formatType)
  * @brief Is the image data format a 16-bit floating point.
  * @param formatType target image format
  */
-static constexpr bool isFormatFloat16(Image::Format formatType)
+static constexpr bool isFormatFloat16(Image::Format formatType) noexcept
 {
 	return Image::Format::SfloatR16 <= formatType && formatType <= Image::Format::SfloatR16G16B16A16;
 }
+/***********************************************************************************************************************
+ * @brief Is the image data format a sRGB encoded.
+ * @param formatType target image format
+ */
+static constexpr bool isFormatSrgb(Image::Format formatType) noexcept
+{
+	return Image::Format::SrgbR8 <= formatType && formatType <= Image::Format::SrgbAstc4x4;
+}
+
 /**
  * @brief Is the image data format a sRGB encoded.
  * @param formatType target image format
  */
-static constexpr bool isFormatSrgb(Image::Format formatType)
+static constexpr bool isFormatCompressed(Image::Format formatType) noexcept
 {
-	return Image::Format::SrgbR8 <= formatType && formatType <= Image::Format::SrgbAstc4x4;
+	switch (formatType)
+	{
+		case Image::Format::UnormRgbBC1: case Image::Format::UnormRgbaBC1: case Image::Format::UnormBC3: 
+		case Image::Format::UnormBC4: case Image::Format::UnormBC5: case Image::Format::UnormBC7:
+		case Image::Format::UnormAstc4x4: case Image::Format::SnormBC4: case Image::Format::SnormBC5:
+		case Image::Format::SfloatBC6H: case Image::Format::SfloatAstc4x4: case Image::Format::UfloatBC6H:
+		case Image::Format::SrgbRgbBC1: case Image::Format::SrgbRgbaBC1: case Image::Format::SrgbBC3:
+		case Image::Format::SrgbBC7: case Image::Format::SrgbAstc4x4:
+			return true;
+		default: return false;
+	}
+}
+
+/**
+ * @brief Returns image format block size
+ * @param formatType target image format
+ */
+static constexpr uint2 toFormatBlockSize(Image::Format formatType) noexcept
+{
+	switch (formatType)
+	{
+		case Image::Format::UnormRgbBC1: case Image::Format::UnormRgbaBC1: case Image::Format::UnormBC3: 
+		case Image::Format::UnormBC4: case Image::Format::UnormBC5: case Image::Format::UnormBC7:
+		case Image::Format::UnormAstc4x4: case Image::Format::SnormBC4: case Image::Format::SnormBC5:
+		case Image::Format::SfloatBC6H: case Image::Format::SfloatAstc4x4: case Image::Format::UfloatBC6H:
+		case Image::Format::SrgbRgbBC1: case Image::Format::SrgbRgbaBC1: case Image::Format::SrgbBC3:
+		case Image::Format::SrgbBC7: case Image::Format::SrgbAstc4x4:
+			return uint2(4, 4);
+		default: return uint2::one;
+	}
 }
 
 /***********************************************************************************************************************
@@ -1206,7 +1245,7 @@ static constexpr bool isFormatSrgb(Image::Format formatType)
  * @param texelCount image total texel (pixel) count
  * @param imageFormat target image data format
  */
-static constexpr psize toBinarySize(psize texelCount, Image::Format imageFormat) noexcept
+static constexpr psize toBinarySize(psize texelCount, Image::Format imageFormat)
 {
 	switch (imageFormat)
 	{
@@ -1248,10 +1287,10 @@ static constexpr psize toBinarySize(psize texelCount, Image::Format imageFormat)
 		case Image::Format::UnormB4G4R4A4: return texelCount * 2;
 		case Image::Format::UnormA2R10G10B10: return texelCount * 4;
 		case Image::Format::UnormA2B10G10R10: return texelCount * 4;
-		case Image::Format::UnormRgbBC1: return texelCount / 16 * 8;
-		case Image::Format::UnormRgbaBC1: return texelCount / 16 * 8;
+		case Image::Format::UnormRgbBC1: return max(texelCount / 16 * 8, (psize)1);
+		case Image::Format::UnormRgbaBC1: return max(texelCount / 16 * 8, (psize)1);
 		case Image::Format::UnormBC3: return texelCount;
-		case Image::Format::UnormBC4: return texelCount / 16 * 8;
+		case Image::Format::UnormBC4: return max(texelCount / 16 * 8, (psize)1);
 		case Image::Format::UnormBC5: return texelCount;
 		case Image::Format::UnormBC7: return texelCount;
 		case Image::Format::UnormAstc4x4: return texelCount;
@@ -1262,7 +1301,7 @@ static constexpr psize toBinarySize(psize texelCount, Image::Format imageFormat)
 		case Image::Format::SnormR16: return texelCount * 2;
 		case Image::Format::SnormR16G16: return texelCount * 4;
 		case Image::Format::SnormR16G16B16A16: return texelCount * 8;
-		case Image::Format::SnormBC4: return texelCount / 16 * 8;
+		case Image::Format::SnormBC4: return max(texelCount / 16 * 8, (psize)1);
 		case Image::Format::SnormBC5: return texelCount;
 
 		case Image::Format::SfloatR16: return texelCount * 2;
@@ -1283,27 +1322,46 @@ static constexpr psize toBinarySize(psize texelCount, Image::Format imageFormat)
 		case Image::Format::SrgbR8G8B8A8: return texelCount * 4;
 		case Image::Format::SrgbB8G8R8A8: return texelCount * 4;
 		case Image::Format::SrgbA8B8G8R8: return texelCount * 4;
-		case Image::Format::SrgbRgbBC1: return texelCount * 8;
-		case Image::Format::SrgbRgbaBC1: return texelCount * 8;
-		case Image::Format::SrgbBC3: return texelCount * 16;
-		case Image::Format::SrgbBC7: return texelCount * 16;
-		case Image::Format::SrgbAstc4x4: return texelCount * 16;
+		case Image::Format::SrgbRgbBC1: return max(texelCount / 16 * 8, (psize)1);
+		case Image::Format::SrgbRgbaBC1: return max(texelCount / 16 * 8, (psize)1);
+		case Image::Format::SrgbBC3: return texelCount;
+		case Image::Format::SrgbBC7: return texelCount;
+		case Image::Format::SrgbAstc4x4: return texelCount;
 
 		case Image::Format::UnormD16: return texelCount * 2;
 		case Image::Format::SfloatD32: return texelCount * 4;
-		case Image::Format::UintS8: return texelCount * 1;
+		case Image::Format::UintS8: return texelCount;
 		case Image::Format::UnormD24UintS8: return texelCount * 4;
 		case Image::Format::SfloatD32UintS8: return texelCount * 5;
-
-		default: return 0;
+		default: throw GardenError("Undeclared image format type.");
 	}
+}
+/**
+ * @brief Returns image data format binary size in bytes of all mips.
+ * @warning Same size is not guaranteed on the GPU!
+ *
+ * @param imageSize image size in texels (pixels)
+ * @param imageFormat target image data format
+ */
+static constexpr psize toMipBinarySize(uint4 imageSize, Image::Format imageFormat)
+{
+	auto binarySize = toBinarySize((psize)imageSize.x * imageSize.y * imageSize.z, imageFormat);
+	auto minMipSize = uint3(toFormatBlockSize(imageFormat), 1);
+	auto mipSize = max((uint3)imageSize / 2u, minMipSize);
+
+	for (uint32 mip = 1; mip < imageSize.w; mip++)
+	{
+		binarySize += toBinarySize((psize)mipSize.x * mipSize.y * mipSize.z, imageFormat);
+		mipSize = max(mipSize / 2u, minMipSize);
+	}
+	return binarySize;
 }
 
 /***********************************************************************************************************************
  * @brief Returns image data format component count.
  * @param imageFormat target image data format
  */
-static constexpr uint8 toComponentCount(Image::Format imageFormat) noexcept
+static constexpr uint8 toComponentCount(Image::Format imageFormat)
 {
 	switch (imageFormat)
 	{
@@ -1386,7 +1444,7 @@ static constexpr uint8 toComponentCount(Image::Format imageFormat) noexcept
 		case Image::Format::SrgbBC7:
 		case Image::Format::SrgbAstc4x4:
 			return 4;
-		default: return 0;
+		default: throw GardenError("Undeclared image format type.");
 	}
 }
 
@@ -1395,7 +1453,7 @@ static constexpr uint8 toComponentCount(Image::Format imageFormat) noexcept
  * @param componentCount target channel count
  * @throw GardenError on unsupported component count.
  */
-static Image::Format toSrgbFormat(int componentCount)
+static constexpr Image::Format toSrgbFormat(int componentCount)
 {
 	switch (componentCount)
 	{
@@ -1410,7 +1468,7 @@ static Image::Format toSrgbFormat(int componentCount)
  * @param componentCount target channel count
  * @throw GardenError on unsupported component count.
  */
-static Image::Format toUnormFormat(int componentCount)
+static constexpr Image::Format toUnormFormat(int componentCount)
 {
 	switch (componentCount)
 	{
@@ -1425,7 +1483,7 @@ static Image::Format toUnormFormat(int componentCount)
  * @param componentCount target channel count
  * @throw GardenError on unsupported component count.
  */
-static Image::Format toFloatFormat16(int componentCount)
+static constexpr Image::Format toFloatFormat16(int componentCount)
 {
 	switch (componentCount)
 	{
@@ -1440,7 +1498,7 @@ static Image::Format toFloatFormat16(int componentCount)
  * @param componentCount target channel count
  * @throw GardenError on unsupported component count.
  */
-static Image::Format toFloatFormat32(int componentCount)
+static constexpr Image::Format toFloatFormat32(int componentCount)
 {
 	switch (componentCount)
 	{
@@ -1456,7 +1514,7 @@ static Image::Format toFloatFormat32(int componentCount)
  * @param uniformType target uniform type
  * @throw GardenError on unsupported uniform type.
  */
-static Image::Type toImageType(GslUniformType uniformType)
+static constexpr Image::Type toImageType(GslUniformType uniformType)
 {
 	switch (uniformType)
 	{
@@ -1516,7 +1574,7 @@ static Image::Type toImageType(GslUniformType uniformType)
  * @brief Returns image usage name string.
  * @param imageUsage target image usage flag
  */
-static string_view toString(Image::Usage imageUsage) noexcept
+static constexpr string_view toString(Image::Usage imageUsage) noexcept
 {
 	if (hasOneFlag(imageUsage, Image::Usage::TransferQ)) return "TransferSrc";
 	if (hasOneFlag(imageUsage, Image::Usage::ComputeQ)) return "ComputeQ";
@@ -1613,7 +1671,7 @@ static string_view toString(Image::Format imageFormat) noexcept
  * @param extension target file type extension
  * @throw GardenError on unknown image file type.
  */
-static Image::FileType toImageFileType(string_view extension)
+static constexpr Image::FileType toImageFileType(string_view extension)
 {
 	if (extension == ".gic") return Image::FileType::GIC;
 	if (extension == ".webp") return Image::FileType::WebP;

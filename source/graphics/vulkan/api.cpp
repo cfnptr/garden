@@ -484,14 +484,14 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 			graphicsQueueCount, graphicsQueuePriorities.data())
 	};
 
-	vector<float> transferQueuePriorities(graphicsQueueCount, 0.9f);
+	vector<float> transferQueuePriorities(transferQueueCount, 0.9f);
 	if (transferQueueCount > 0)
 	{
 		queueInfos.push_back(vk::DeviceQueueCreateInfo({}, transferQueueFamilyIndex, 
 			transferQueueCount, transferQueuePriorities.data()));
 	}
 
-	vector<float> computeQueuePriorities(graphicsQueueCount, 1.0f);
+	vector<float> computeQueuePriorities(computeQueueCount, 1.0f);
 	if (computeQueueCount > 0)
 	{
 		queueInfos.push_back(vk::DeviceQueueCreateInfo({}, computeQueueFamilyIndex, 

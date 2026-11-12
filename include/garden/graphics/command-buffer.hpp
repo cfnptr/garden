@@ -731,12 +731,15 @@ public:
 	}
 	void addCommand(const DrawBarrierCommand& command, int32 threadIndex, ID<Buffer> addBuffer = {})
 	{
-		auto buffersBinarySize = (command.bufferCount + (addBuffer ? 1 : 0)) * sizeof(ID<Buffer>);
-		auto commandSize = sizeof(DrawBarrierCommandBase) + buffersBinarySize;
+		auto buffersBinarySize = command.bufferCount * sizeof(ID<Buffer>);
+		auto commandSize = sizeof(DrawBarrierCommandBase) + buffersBinarySize + (addBuffer ? sizeof(ID<Buffer>) : 0);
 		auto allocation = allocateCommand<DrawBarrierCommandBase>(command, (uint32)commandSize, threadIndex);
-		memcpy(allocation + 1, command.buffers, buffersBinarySize);
+		memcpy(allocation + 1, command.buffers, buffersBinarySize); 
 		if (addBuffer)
-			*(ID<Buffer>*)((uint8*)allocation + (buffersBinarySize - sizeof(ID<Buffer>))) = addBuffer;
+		{
+			*(ID<Buffer>*)((uint8*)(allocation + 1) + buffersBinarySize) = addBuffer;
+			allocation->bufferCount++;
+		}
 	}
 	void addCommand(const DispatchCommand& command)
 	{

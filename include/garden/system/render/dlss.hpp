@@ -100,7 +100,7 @@ constexpr const char* dlssQualityNames[(psize)DlssQuality::Count] =
  * @param dlssQuality target DLSS quality mode
  * @throw GardenError on unknown DLSS quality mode.
  */
-static DlssQuality toDlssQuality(string_view dlssQuality)
+static constexpr DlssQuality toDlssQuality(string_view dlssQuality)
 {
 	if (dlssQuality == "Off") return DlssQuality::Off;
 	if (dlssQuality == "UltraPerformance") return DlssQuality::UltraPerformance;

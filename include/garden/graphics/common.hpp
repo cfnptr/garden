@@ -134,20 +134,20 @@ DECLARE_ENUM_CLASS_FLAG_OPERATORS(PipelineStage)
  * @brief Returns index buffer indices type size in bytes.
  * @param indexType target index buffer indices type
  */
-static constexpr psize toBinarySize(IndexType indexType) noexcept
+static constexpr psize toBinarySize(IndexType indexType)
 {
 	switch (indexType)
 	{
 		case IndexType::Uint16: return sizeof(uint16);
 		case IndexType::Uint32: return sizeof(uint32);
-		default: return 0;
+		default: throw GardenError("Undeclared index type.");
 	}
 }
 /**
  * @brief Returns best index type based on index count.
  * @param indexCount target index count
  */
-static constexpr IndexType toIndexType(uint32 indexCount)
+static constexpr IndexType toIndexType(uint32 indexCount) noexcept
 {
 	return indexCount > UINT16_MAX ? IndexType::Uint32 : IndexType::Uint16;
 }
@@ -164,7 +164,7 @@ constexpr const char* pipelineTypeNames[(psize)PipelineType::Count] =
  * @param pipelineType target pipeline type name (camelCase)
  * @throw GardenError on unknown pipeline type.
  */
-static PipelineType toPipelineType(string_view pipelineType)
+static constexpr PipelineType toPipelineType(string_view pipelineType)
 {
 	if (pipelineType == "graphics") return PipelineType::Graphics;
 	if (pipelineType == "compute") return PipelineType::Compute;
@@ -185,7 +185,7 @@ static string_view toString(PipelineType pipelineType) noexcept
  * @brief Returns pipeline stage name string.
  * @param pipelineStage target pipeline stage type
  */
-static string_view toString(PipelineStage pipelineStage) noexcept
+static constexpr string_view toString(PipelineStage pipelineStage) noexcept
 {
 	if (hasOneFlag(pipelineStage, PipelineStage::Transfer)) return "Transfer";
 	if (hasOneFlag(pipelineStage, PipelineStage::Vertex)) return "Vertex";
@@ -229,7 +229,7 @@ static string toStringList(PipelineStage pipelineStage) noexcept
  * @brief Returns pipeline stage file extension.
  * @param pipelineStage target pipeline stage
  */
-static string_view toPipelineStageExt(PipelineStage pipelineStage)
+static constexpr string_view toPipelineStageExt(PipelineStage pipelineStage)
 {
 	switch (pipelineStage)
 	{
@@ -260,7 +260,7 @@ constexpr const char* compareOperatorNames[(psize)CompareOp::Count] =
  * @param compareOperator target comparison operator name string (camelCase)
  * @throw GardenError on unknown comparison operator type.
  */
-static CompareOp toCompareOp(string_view compareOperator)
+static constexpr CompareOp toCompareOp(string_view compareOperator)
 {
 	if (compareOperator == "never") return CompareOp::Never;
 	if (compareOperator == "less") return CompareOp::Less;

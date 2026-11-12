@@ -57,7 +57,7 @@ static string_view toString(SpawnMode spawnMode) noexcept
  * @param name target spawn mode name string
  * @param[out] spawnMode spawn mode
  */
-static bool toSpawnMode(string_view name, SpawnMode& spawnMode) noexcept
+static constexpr bool toSpawnMode(string_view name, SpawnMode& spawnMode) noexcept
 {
 	if (name == "OneShot") { spawnMode = SpawnMode::OneShot; return true; }
 	if (name == "Manual") { spawnMode = SpawnMode::Manual; return true; }

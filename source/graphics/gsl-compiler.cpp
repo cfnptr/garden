@@ -182,13 +182,13 @@ namespace garden::graphics
 }
 
 //******************************************************************************************************************
-static bool toBoolState(string_view state, uint32 lineIndex)
+static constexpr bool toBoolState(string_view state, uint32 lineIndex)
 {
 	if (state == "on") return true;
 	if (state == "off") return false;
 	throw CompileError("unrecognized boolean state", lineIndex, string(state));
 }
-static string_view toStringState(bool state) noexcept
+static constexpr string_view toStringState(bool state) noexcept
 {
 	return state ? "on" : "off";
 }
@@ -212,7 +212,7 @@ static float toFloatValue(string_view value, uint32 lineIndex)
 	catch (const exception&)
 	{ throw CompileError("invalid floating point value", lineIndex, string(value)); }
 }
-static Color toColorValue(string_view value, uint32 lineIndex)
+static constexpr Color toColorValue(string_view value, uint32 lineIndex)
 {
 	if (value == "white") return Color::white;
 	if (value == "black") return Color::black;
@@ -220,7 +220,7 @@ static Color toColorValue(string_view value, uint32 lineIndex)
 	return Color(value);
 }
 
-static GraphicsPipeline::ColorComponent toColorComponents(string_view colorComponents) noexcept
+static constexpr GraphicsPipeline::ColorComponent toColorComponents(string_view colorComponents) noexcept
 {
 	if (colorComponents == "all") return GraphicsPipeline::ColorComponent::All;
 	if (colorComponents == "none") return GraphicsPipeline::ColorComponent::None;
@@ -236,7 +236,7 @@ static GraphicsPipeline::ColorComponent toColorComponents(string_view colorCompo
 	return components;
 }
 
-static Image::Format toImageFormat(string_view gslImageFormat)
+static constexpr Image::Format toImageFormat(string_view gslImageFormat)
 {
 	if (gslImageFormat == "uintR8") return Image::Format::UintR8;
 	if (gslImageFormat == "uintR8G8") return Image::Format::UintR8G8;
@@ -282,12 +282,11 @@ static Image::Format toImageFormat(string_view gslImageFormat)
 	if (gslImageFormat == "sfloatR32G32B32A32") return Image::Format::SfloatR32G32B32A32;
 
 	if (gslImageFormat == "ufloatB10G11R11") return Image::Format::UfloatB10G11R11;
-
 	return Image::Format::Undefined;
 }
 
 //******************************************************************************************************************
-static string_view toGlslString(Image::Format imageFormat)
+static constexpr string_view toGlslString(Image::Format imageFormat)
 {
 	switch (imageFormat)
 	{
@@ -335,8 +334,7 @@ static string_view toGlslString(Image::Format imageFormat)
 		case Image::Format::SfloatR32G32B32A32: return "rgba32f";
 
 		case Image::Format::UfloatB10G11R11: return "r11f_g11f_b10f"; // Yeah, it's inverted.
-
-		default: abort();
+		default: throw GardenError("Undeclare image format type.");
 	}
 }
 

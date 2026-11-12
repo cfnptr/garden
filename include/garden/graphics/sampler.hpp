@@ -183,7 +183,7 @@ public:
  * @param addressMode target sampler address mode name string (camelCase)
  * @throw GardenError on unknown sampler address mode.
  */
-static Sampler::AddressMode toAddressMode(string_view addressMode)
+static constexpr Sampler::AddressMode toAddressMode(string_view addressMode)
 {
 	if (addressMode == "repeat") return Sampler::AddressMode::Repeat;
 	if (addressMode == "mirroredRepeat") return Sampler::AddressMode::MirroredRepeat;
@@ -197,7 +197,7 @@ static Sampler::AddressMode toAddressMode(string_view addressMode)
  * @param borderColor target border color name string (camelCase)
  * @throw GardenError on unknown border color type.
  */
-static Sampler::BorderColor toBorderColor(string_view borderColor)
+static constexpr Sampler::BorderColor toBorderColor(string_view borderColor)
 {
 	if (borderColor == "floatTransparentBlack") return Sampler::BorderColor::FloatTransparentBlack;
 	if (borderColor == "intTransparentBlack") return Sampler::BorderColor::IntTransparentBlack;
@@ -231,13 +231,12 @@ constexpr const char* borderColorNames[(psize)Sampler::BorderColor::Count] =
 	"IntOpaqueBlack", "FloatOpaqueWhite", "IntOpaqueWhite"
 };
 
-
 /**
  * @brief Returns sampler filter type.
  * @param samplerFilter target sampler filter name (camelCase)
  * @throw GardenError on unknown sampler filter type.
  */
-static Sampler::Filter toSamplerFilter(string_view samplerFilter)
+static constexpr Sampler::Filter toSamplerFilter(string_view samplerFilter)
 {
 	if (samplerFilter == "nearest") return Sampler::Filter::Nearest;
 	if (samplerFilter == "linear") return Sampler::Filter::Linear;

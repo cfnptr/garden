@@ -164,7 +164,7 @@ void GraphicsAPI::initialize(GraphicsBackend backendType, const string& appName,
 
 	glfwSetErrorCallback([](int error_code, const char* description)
 	{
-		std::cerr << "GLFW::ERROR: " + string(description) + " (code: " + to_string(error_code) + ")";
+		std::cerr << "GLFW::ERROR: " + string(description) + " (code: " + to_string(error_code) + ")\n";
 	});
 
 	GARDEN_ASSERT_MSG(!apiInstance, "Graphics API is already initialized");

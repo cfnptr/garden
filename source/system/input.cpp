@@ -357,15 +357,16 @@ void InputSystem::setWindowIcon(const vector<string>& paths)
 	newWindowIconPaths = paths;
 }
 
-bool InputSystem::getResourcePath(string_view directory, string_view filePath, string_view& resourcePath)
+bool InputSystem::getResourcePath(string_view directory, const fs::path& filePath, string& resourcePath)
 {
-	auto searchResult = filePath.find(directory);
+	auto pathString = filePath.generic_string();
+	auto searchResult = pathString.find(directory);
 	if (searchResult == string::npos)
 		return false;
 
 	searchResult += directory.length();
-	resourcePath = string_view(filePath.data() + 
-		searchResult, filePath.length() - searchResult);
+	resourcePath = pathString.substr(
+		searchResult, pathString.length() - searchResult);
 	return true;
 }
 

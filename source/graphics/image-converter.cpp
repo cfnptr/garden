@@ -89,7 +89,6 @@ bool ImageConverter::compress(const fs::path& filePath, const fs::path& inputPat
 
 	auto metadataPath = path; metadataPath.replace_extension(".meta");
 	float effort = GARDEN_DEBUG ? 0.0f : 0.7f; auto storeFlags = Image::StoreFlag::None;
-	if (size.w > 1) storeFlags |= Image::StoreFlag::GenerateMips;
 
 	if (fs::exists(metadataPath))
 		Image::loadFileMetadata(metadataPath, pixels, size, type, format, effort, storeFlags);
@@ -130,10 +129,9 @@ bool ImageConverter::equi2cube(const fs::path& filePath, const fs::path& inputPa
 
 	auto invDim = 1.0f / cubemapSize; auto equiSizeMinus1 = (uint2)equiSize - 1u;
 	auto faceBinarySize = toBinarySize((psize)cubemapSize * cubemapSize, imageFormat);
-	GARDEN_ASSERT_MSG(faceBinarySize > 0, "Assert " + filePath.generic_string());
-
 	raw_vector<uint8> nx(faceBinarySize), px(faceBinarySize), ny(faceBinarySize), 
 		py(faceBinarySize), nz(faceBinarySize), pz(faceBinarySize);
+
 	if (imageFormat == Image::Format::SfloatR16G16B16A16)
 	{
 		half4* cubeFaces[Image::cubemapFaceCount] =

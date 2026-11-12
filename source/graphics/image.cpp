@@ -251,23 +251,12 @@ Image::Image(Type type, Format format, Usage usage, Strategy strategy, u32x4 siz
 		createVkImage(type, format, usage, strategy, size, instance, allocation, aspectFlags);
 	else abort();
 
-	this->binarySize = 0;
 	this->type = type;
 	this->format = format;
 	this->usage = usage;
 	this->swapchain = false;
 	this->size = size;
-
-	auto mipSize = size;
-	for (uint8 mip = 0, mipCount = getMipCount(); mip < mipCount; mip++)
-	{
-		auto mipBinarySize = toBinarySize((psize)mipSize.getX() * 
-			mipSize.getY() * mipSize.getZ(), format);
-		GARDEN_ASSERT(mipBinarySize > 0);
-
-		this->binarySize += mipBinarySize;
-		mipSize = max(mipSize / 2u, u32x4::one);
-	}
+	this->binarySize = toMipBinarySize((uint4)size, format);
 }
 
 //**********************************************************************************************************************
@@ -275,7 +264,6 @@ Image::Image(void* instance, Format format, Usage usage, Strategy strategy, uint
 	toBinarySize((psize)size.x * size.y, format), CpuAccess::None, Location::PreferGPU, strategy, 0), barrierStates(1)
 {
 	GARDEN_ASSERT(areAllTrue(size > uint2::zero));
-	GARDEN_ASSERT(binarySize > 0);
 
 	this->instance = instance;
 	this->type = Image::Type::Texture2D;
@@ -445,6 +433,7 @@ void Image::generateMips(Sampler::Filter filter)
 {
 	auto graphicsAPI = GraphicsAPI::get();
 	GARDEN_ASSERT_MSG(!graphicsAPI->renderPassFramebuffer, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(!isFormatCompressed(format), "Assert " + debugName);
 	GARDEN_ASSERT_MSG(isLoaded(), "Image [" + debugName + "] is not loaded");
 
 	#if GARDEN_DEBUG
@@ -463,26 +452,19 @@ void Image::generateMips(Sampler::Filter filter)
 
 	SET_GPU_DEBUG_LABEL("Generate Mips");
 
+	auto layerCount = getLayerCount(); auto mipCount = getMipCount();
 	auto image = graphicsAPI->imagePool.getID(this);
-	auto layerCount = getLayerCount();
-	auto mipSize = size;
 
-	for (uint8 mip = 1, mipCount = getMipCount(); mip < mipCount; mip++)
+	Image::BlitRegion region;
+	region.layerCount = 1;
+
+	for (uint8 mip = 1; mip < mipCount; mip++)
 	{
-		Image::BlitRegion region;
-		region.srcExtent = (uint3)mipSize;
-		mipSize = max(mipSize / 2u, u32x4::one);
-		region.dstExtent = (uint3)mipSize;
-		region.layerCount = 1;
 		region.srcMipLevel = mip - 1;
 		region.dstMipLevel = mip;
 
-		if (type != Image::Type::Texture3D)
-			region.srcExtent.z = region.dstExtent.z = 1;
-
 		// Note: We should not blit all layers in one mip,
 		//       because result differs across GPUs.
-		
 		for (uint8 layer = 0; layer < layerCount; layer++)
 		{
 			region.srcBaseLayer = region.dstBaseLayer = layer;
@@ -1119,8 +1101,6 @@ const void* Image::convertFormat(const void* src, uint3 size, raw_vector<uint8>&
 	{
 		auto pixelCount = (psize)size.x * size.y * size.z;
 		auto srcBinarySize = toBinarySize(pixelCount, srcFormat) / pixelCount;
-		GARDEN_ASSERT(srcBinarySize > 0);
-
 		auto compBinarySize = srcBinarySize / srcCompCount;
 		auto dstBinarySize = dstCompCount * compBinarySize;
 		tmpBuffer.resize(pixelCount * dstBinarySize);
@@ -1717,8 +1697,8 @@ static basist::transcoder_texture_format toTranscoderFormat(Image::Format imageF
 #endif
 
 //**********************************************************************************************************************
-static void loadImageDataPNG(const void* data, psize dataSize, raw_vector<uint8>& pixels, 
-	uint4& imageSize, Image::Format& imageFormat, Image::Type imageType, bool linearAsSrgb)
+static void loadImageDataPNG(const void* data, psize dataSize, raw_vector<uint8>& pixels, uint4& imageSize, 
+	Image::Format& imageFormat, Image::Type imageType, bool generateMips, bool linearAsSrgb)
 {
 	png_image image; memset(&image, 0, sizeof(png_image));
 	image.version = PNG_IMAGE_VERSION;
@@ -1744,10 +1724,11 @@ static void loadImageDataPNG(const void* data, psize dataSize, raw_vector<uint8>
 	}
 	else imageSize = uint4(image.width, image.height, 1, 1);
 
+	if (generateMips) imageSize.w = calcMipCount((uint3)imageSize); // Note: we are not resizing the pixels array!
 	imageFormat = linearAsSrgb ? toUnormFormat(componentCount) : toSrgbFormat(componentCount);
 }
 static void loadImageDataWebP(const void* data, psize dataSize, 
-	raw_vector<uint8>& pixels, uint4& imageSize, Image::Format& imageFormat)
+raw_vector<uint8>& pixels, uint4& imageSize, Image::Format& imageFormat)
 {
 	int sizeX = 0, sizeY = 0;
 	if (!WebPGetInfo((const uint8_t*)data, dataSize, &sizeX, &sizeY))
@@ -1781,7 +1762,7 @@ static Imf::FrameBuffer createExrFramebuffer(char* pixels, psize pixelBinarySize
 #endif
 
 static void loadImageDataEXR(const void* data, psize dataSize, raw_vector<uint8>& pixels, 
-	uint4& imageSize, Image::Format& imageFormat, Image::Type imageType)
+	uint4& imageSize, Image::Format& imageFormat, Image::Type imageType, bool generateMips)
 {
 	#if GARDEN_USE_OPENEXR
 	ExrMemoryStream exrStream((const uint8*)data, dataSize);
@@ -1801,8 +1782,6 @@ static void loadImageDataEXR(const void* data, psize dataSize, raw_vector<uint8>
 	auto floatSize = pixelBinarySize / componentCount;
 	auto strideY = pixelBinarySize * imageSize.x;
 	auto pixelType = channelR->type;
-
-	GARDEN_ASSERT(imageBinarySize > 0);
 	pixels.resize(imageBinarySize);
 
 	char* exrPixels;
@@ -1828,6 +1807,7 @@ static void loadImageDataEXR(const void* data, psize dataSize, raw_vector<uint8>
 		auto size3D = Image::unpack3D(pixels, (uint2)imageSize, pixelBinarySize);
 		imageSize = uint4(size3D, 1);
 	}
+	if (generateMips) imageSize.w = calcMipCount((uint3)imageSize);
 	#else
 	throw GardenError("No OpenEXR image support.");
 	#endif
@@ -1897,12 +1877,14 @@ static void loadImageDataGIC(const void* data, psize dataSize, raw_vector<uint8>
 
 	if (gicHeader.containerType == (uint8)GicType::PNG)
 	{
-		loadImageDataPNG(data, dataSize, pixels, imageSize, imageFormat, imageType, gicHeader.linearAsSrgb);
+		loadImageDataPNG(data, dataSize, pixels, imageSize, imageFormat, 
+			imageType, gicHeader.generateMips, gicHeader.linearAsSrgb);
 		return;
 	}
 	if (gicHeader.containerType == (uint8)GicType::EXR)
 	{
-		loadImageDataEXR(data, dataSize, pixels, imageSize, imageFormat, imageType);
+		loadImageDataEXR(data, dataSize, pixels, imageSize, 
+			imageFormat, imageType, gicHeader.generateMips);
 		return;
 	}
 
@@ -1916,35 +1898,29 @@ static void loadImageDataGIC(const void* data, psize dataSize, raw_vector<uint8>
 		if (!transcoder.init(data, (uint32_t)dataSize))
 			throw GardenError("Invalid KTX2 basis universal file data.");
 
-		imageSize = uint4(transcoder.get_width(), 
-			transcoder.get_height(), max(transcoder.get_layers(), 1u), 1);
+		imageSize = uint4(transcoder.get_width(), transcoder.get_height(), 
+			max(transcoder.get_layers(), 1u), transcoder.get_levels());
 		imageFormat = ::toImageFormat(transcoder.get_basis_tex_format(), 
 			gicHeader.channelCount, transcoder.is_srgb());
 		imageType = (Image::Type)gicHeader.imageType;
 
+		auto minMipSize = uint3(toFormatBlockSize(imageFormat), 1);
+		if (imageSize.x % minMipSize.x != 0 || imageSize.y % minMipSize.y != 0)
+			throw GardenError("Image size is not divisible by the basisu block size.");
+
 		auto transcoderFormat = toTranscoderFormat(imageFormat);
-		auto blockSize = basist::basis_transcoder_format_is_uncompressed(transcoderFormat) ? 1 : 
-			basist::basis_get_block_width(transcoderFormat) * basist::basis_get_block_height(transcoderFormat);
-		auto sizeInBlocks = ((psize)imageSize.x * imageSize.y) / blockSize;
-
-		auto mipSize = (uint3)imageSize; psize imageBinarySize = 0;
-		for (uint32 mip = 0; mip < imageSize.w; mip++)
-		{
-			auto mipBinarySize = toBinarySize((psize)
-				mipSize.x * mipSize.y * mipSize.z, imageFormat);
-			GARDEN_ASSERT(mipBinarySize > 0);
-			imageBinarySize += mipBinarySize;
-			mipSize = max(mipSize / 2u, uint3::one);
-		}
+		auto blockSize = (psize)minMipSize.x * minMipSize.y;
+		auto imageBinarySize = toMipBinarySize(imageSize, imageFormat);
 		pixels.resize(imageBinarySize); auto pixelData = pixels.data();
-
 		constexpr auto decodeFlags = basist::basisu_decode_flags::cDecodeFlagsHighQuality;
 		transcoder.start_transcoding();
 
-		mipSize = (uint3)imageSize;
+		auto mipSize = (uint3)imageSize;
 		for (uint32 mip = 0; mip < imageSize.w; mip++)
 		{
+			auto sizeInBlocks = ((psize)mipSize.x * mipSize.y) / blockSize;
 			auto layerBinarySize = toBinarySize((psize)mipSize.x * mipSize.y, imageFormat);
+
 			for (uint32 level = 0; level < mipSize.z; level++)
 			{
 				if (!transcoder.transcode_image_level(mip, level, 0, 
@@ -1954,13 +1930,14 @@ static void loadImageDataGIC(const void* data, psize dataSize, raw_vector<uint8>
 				}
 				pixelData += layerBinarySize;
 			}
-			mipSize = max(mipSize / 2u, uint3::one);
+			mipSize = max(mipSize / 2u, minMipSize);
 		}
 		return;
 		#else
 		throw GardenError("No basis universal image support.");
 		#endif
 	}
+	else throw GardenError("Unknown GIC file container type.");
 }
 
 void Image::loadFileData(const void* data, psize dataSize, FileType fileType, 
@@ -1973,9 +1950,9 @@ void Image::loadFileData(const void* data, psize dataSize, FileType fileType,
 	switch (fileType)
 	{
 		case FileType::GIC: loadImageDataGIC(data, dataSize, pixels, imageSize, imageType, imageFormat); return;
-		case FileType::PNG: loadImageDataPNG(data, dataSize, pixels, imageSize, imageFormat, imageType, false); return;
+		case FileType::PNG: loadImageDataPNG(data, dataSize, pixels, imageSize, imageFormat, imageType, false, false); return;
 		case FileType::WebP: loadImageDataWebP(data, dataSize, pixels, imageSize, imageFormat); return;
-		case FileType::EXR: loadImageDataEXR(data, dataSize, pixels, imageSize, imageFormat, imageType); return;
+		case FileType::EXR: loadImageDataEXR(data, dataSize, pixels, imageSize, imageFormat, imageType, false); return;
 		case FileType::HDR: loadImageDataHDR(data, dataSize, pixels, imageSize, imageFormat); return;
 		case FileType::JPEG: case FileType::BMP: case FileType::PSD: 
 		case FileType::TGA: case FileType::PIC: case FileType::GIF:
@@ -2283,9 +2260,8 @@ static void storeImageDataEXR(const fs::path& filePath, const void* pixels, uint
 	auto pixelBinarySize = imageBinarySize / pixelCount;
 	auto floatSize = pixelBinarySize / componentCount;
 	auto strideY = pixelBinarySize * size.x;
-	GARDEN_ASSERT_MSG(imageBinarySize > 0, "Assert " + filePath.generic_string());
-
 	auto compression = Imf::ZIP_COMPRESSION;
+
 	if (effort == 0.0f) compression = Imf::NO_COMPRESSION;
 	else
 	{
@@ -2377,7 +2353,6 @@ static void storeImageDataGIC(const fs::path& filePath, const void* pixels, uint
 	auto formatBinarySize = toBinarySize((psize)size.x * size.y * size.z, imageFormat);
 	auto isLessThan64k = formatBinarySize <= optimalTiling;
 	constexpr auto noBasisUniversal = GARDEN_USE_BASIS_UNIVERSAL ? false : true;
-	GARDEN_ASSERT_MSG(formatBinarySize > 0, "Assert " + filePath.generic_string());
 
 	GicHeader gicHeader = {};
 	gicHeader.containerType = 
@@ -2502,7 +2477,14 @@ static void storeImageDataGIC(const fs::path& filePath, const void* pixels, uint
 			throw GardenError("Unsupported basis universal format conversion.");
 	}
 
-	auto layerPixelCount = (psize)size.x * size.y, imagePixelCount = layerPixelCount * size.z;
+	if (size.x % basist::basis_tex_format_get_block_width(basisFormat) != 0 ||
+		size.y % basist::basis_tex_format_get_block_height(basisFormat) != 0)
+	{
+		throw GardenError("Image size is not divisible by the format block size.");
+	}
+
+	auto layerPixelCount = (psize)size.x * size.y;
+	auto imagePixelCount = layerPixelCount * size.z;
 	auto basisQuality = (int)std::fma(quality, 100.0f, 0.5f);
 	auto basisEffort = (int)std::fma(effort, 10.0f, 0.5f);
 		

@@ -106,25 +106,25 @@ protected:
 	{
 		Buffer buffer;
 		Buffer staging;
-		fs::path path = "";
+		fs::path path;
 		ID<Buffer> instance = {};
 	};
 	struct ImageQueueItem final
 	{
 		Image image;
 		Buffer staging;
-		vector<fs::path> paths = {};
+		vector<fs::path> paths;
 		ID<Image> instance = {};
 	};
 
 	struct LoadedBufferItem final
 	{
-		fs::path path = "";
+		fs::path path;
 		ID<Buffer> instance = {};
 	};
 	struct LoadedImageItem final
 	{
-		vector<fs::path> paths = {};
+		vector<fs::path> paths;
 		ID<Image> instance = {};
 	};
 	
@@ -194,6 +194,7 @@ public:
 	/**
 	 * @brief Loads image pixels from the resource pack.
 	 * @note Loads from the "images" directory in debug build.
+	 * @warning If pixel array size is less than a image binary size, you should generate mips!
 	 * 
 	 * @param[in] path target image resource path
 	 * @param[out] pixels loaded image pixel data

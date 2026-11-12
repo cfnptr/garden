@@ -305,7 +305,7 @@ DECLARE_ENUM_CLASS_FLAG_OPERATORS(Buffer::Usage)
  * @brief Returns buffer usage name string.
  * @param imageUsage target buffer usage flag
  */
-static string_view toString(Buffer::Usage bufferUsage)
+static constexpr string_view toString(Buffer::Usage bufferUsage)
 {
 	if (hasOneFlag(bufferUsage, Buffer::Usage::TransferQ)) return "TransferQ";
 	if (hasOneFlag(bufferUsage, Buffer::Usage::ComputeQ)) return "ComputeQ";

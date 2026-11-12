@@ -177,25 +177,25 @@ public:
  */
 static string toBinarySizeString(uint64 size)
 {
-	if (size > (uint64)1024 * 1024 * 1024 * 1024)
+	if (size >= (uint64)1024 * 1024 * 1024 * 1024)
 	{
 		auto floatSize = (double)size / (double)((uint64)1024 * 1024 * 1024 * 1024);
 		return to_string((uint64)floatSize) + "." + to_string((uint64)(
 			(double)(floatSize - (uint64)floatSize) * 10.0)) + " TiB";
 	}
-	if (size > (uint64)1024 * 1024 * 1024)
+	if (size >= (uint64)1024 * 1024 * 1024)
 	{
 		auto floatSize = (double)size / (double)(1024 * 1024 * 1024);
 		return to_string((uint64)floatSize) + "." + to_string((uint64)(
 			(double)(floatSize - (uint64)floatSize) * 10.0)) + " GiB";
 	}
-	if (size > (uint64)1024 * 1024)
+	if (size >= (uint64)1024 * 1024)
 	{
 		auto floatSize = (double)size / (double)(1024 * 1024);
 		return to_string((uint64)floatSize) + "." + to_string((uint64)(
 			(double)(floatSize - (uint64)floatSize) * 10.0)) + " MiB";
 	}
-	if (size > (uint64)1024)
+	if (size >= (uint64)1024)
 	{
 		auto floatSize = (double)size / (double)(1024);
 		return to_string((uint64)floatSize) + "." + to_string((uint64)(

@@ -405,7 +405,7 @@ class ModelMatrixSystem : public ComponentSystem<ModelMatrixComponent, false>, p
  * @brief Returns mesh attribute binary size in bytes.
  * @param attribute target mesh attribute
  */
-static psize toBinarySize(MeshAttribute attribute) noexcept
+static constexpr psize toBinarySize(MeshAttribute attribute)
 {
 	switch (attribute)
 	{
@@ -415,7 +415,7 @@ static psize toBinarySize(MeshAttribute attribute) noexcept
 		case MeshAttribute::Bitangent: return sizeof(float3);
 		case MeshAttribute::TextureCoord: return sizeof(float2);
 		case MeshAttribute::VertexColor: return sizeof(float4);
-		default: abort();
+		default: throw GardenError("Undeclared mesh attribute type.");
 	}
 }
 

@@ -130,7 +130,7 @@ DECLARE_ENUM_CLASS_FLAG_OPERATORS(Tlas::InstanceFlags)
  * @brief Returns TLAS instance flag name string.
  * @param tlasInstanceFlag target TLAS instance flag
  */
-static string_view toString(Tlas::InstanceFlags tlasInstanceFlag)
+static constexpr string_view toString(Tlas::InstanceFlags tlasInstanceFlag)
 {
 	if (hasOneFlag(tlasInstanceFlag, Tlas::InstanceFlags::DisableCulling)) return "DisableCulling";
 	if (hasOneFlag(tlasInstanceFlag, Tlas::InstanceFlags::FlipFacing)) return "FlipFacing";

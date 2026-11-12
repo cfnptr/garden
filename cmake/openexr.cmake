@@ -24,8 +24,8 @@ set(OPENEXR_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 
 message(STATUS "Fetching OpenEXR, please wait...")
 FetchContent_Declare(OpenEXR GIT_REPOSITORY https://github.com/AcademySoftwareFoundation/openexr
-	GIT_TAG 3950290530c4fd4776667d0dc4d65a9d003eb936 GIT_SHALLOW TRUE)
-set(OPENEXR_VERSION "3.5.3 ")
+	GIT_TAG 86687e5f34e3a164820c5e280259550e3ca87c92 GIT_SHALLOW TRUE)
+set(OPENEXR_VERSION "3.5.4 ")
 
 FetchContent_MakeAvailable(OpenEXR)
 FetchContent_GetProperties(OpenEXR)

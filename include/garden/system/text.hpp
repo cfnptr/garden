@@ -261,7 +261,7 @@ static string_view toString(Text::Alignment textAlignment) noexcept
  * @param name target text alignment name string
  * @param[out] textAlignment text alignment type
  */
-static bool toTextAlignment(string_view name, Text::Alignment& textAlignment) noexcept
+static constexpr bool toTextAlignment(string_view name, Text::Alignment& textAlignment) noexcept
 {
 	if (name == "Center") { textAlignment = Text::Alignment::Center; return true; }
 	if (name == "Left") { textAlignment = Text::Alignment::Left; return true; }

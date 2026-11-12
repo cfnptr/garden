@@ -12,16 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#***********************************************************************************************************************
 function(stripExecutable STRIP_TARGET)
-    if(LINUX)
+	if(LINUX)
 		add_custom_command(TARGET ${STRIP_TARGET} POST_BUILD VERBATIM
 			COMMAND ${CMAKE_COMMAND} -E echo "Stripping $<TARGET_FILE_NAME:${STRIP_TARGET}> executable..."
-			COMMAND objcopy --only-keep-debug "$<TARGET_FILE:${STRIP_TARGET}>" 
-				"$<TARGET_FILE_NAME:${STRIP_TARGET}>.debug"
-			COMMAND strip --strip-all "$<TARGET_FILE:${STRIP_TARGET}>"
-			COMMAND objcopy --add-gnu-debuglink="$<TARGET_FILE_NAME:${STRIP_TARGET}>.debug" 
-				"$<TARGET_FILE:${STRIP_TARGET}>")
+			COMMAND objcopy --only-keep-debug "$<TARGET_FILE:${STRIP_TARGET}>" "$<TARGET_FILE:${STRIP_TARGET}>.debug"
+			COMMAND strip --strip-all "$<TARGET_FILE:${STRIP_TARGET}>")
+		set_property(TARGET ${STRIP_TARGET} APPEND PROPERTY ADDITIONAL_CLEAN_FILES "$<TARGET_FILE:${STRIP_TARGET}>.debug")
 	elseif(APPLE)
 		add_custom_command(TARGET ${STRIP_TARGET} POST_BUILD VERBATIM
 			COMMAND ${CMAKE_COMMAND} -E echo "Stripping $<TARGET_FILE_NAME:${STRIP_TARGET}> executable..."
@@ -109,7 +106,6 @@ macro(collectPackModels PACK_CACHE_DIR PACK_RESOURCES_DIR
 	message(FATAL_ERROR "Not implemented yet")
 endmacro()
 
-#***********************************************************************************************************************
 macro(collectPackJson2bsons PACK_CACHE_DIR PACK_RESOURCES_DIR
 	INCLUDE_EDITOR INCLUDE_DEBUG PACK_JSONS PACK_RESOURCES)
 

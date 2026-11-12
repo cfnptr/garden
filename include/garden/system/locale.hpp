@@ -66,7 +66,7 @@ static string_view toString(Language language) noexcept
  * @param name target language name string
  * @param[out] language converted language
  */
-static bool getCodeLanguage(string_view name, Language& language) noexcept
+static constexpr bool getCodeLanguage(string_view name, Language& language) noexcept
 {
 	for (uint8 i = 0; i < (uint8)Language::Count; i++)
 	{
@@ -82,7 +82,7 @@ static bool getCodeLanguage(string_view name, Language& language) noexcept
  * @brief Returns true if specified language requires increased font size.
  * @param language target spoken language
  */
-static bool isBigFontSize(Language language) noexcept
+static constexpr bool isBigFontSize(Language language) noexcept
 {
 	switch (language)
 	{

@@ -181,7 +181,7 @@ static string_view toString(ConstraintType constraintType) noexcept
  * @param name target constraint type name string
  * @param[out] constraintType constraint type
  */
-static bool toConstraintType(string_view name, ConstraintType& constraintType) noexcept
+static constexpr bool toConstraintType(string_view name, ConstraintType& constraintType) noexcept
 {
 	if (name == "Fixed") { constraintType = ConstraintType::Fixed; return true; }
 	if (name == "Point") { constraintType = ConstraintType::Point; return true; }

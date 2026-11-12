@@ -226,7 +226,7 @@ constexpr const char* gslUniformTypeNames[(psize)GslUniformType::Count] =
  * @param dataType target GSL data type name string (camelCase)
  * @throw GardenError on unknown GSL data type.
  */
-static GslDataType toGslDataType(string_view dataType)
+static constexpr GslDataType toGslDataType(string_view dataType)
 {
 	if (dataType == "bool") return GslDataType::Bool;
 	if (dataType == "int8") return GslDataType::Int8;
@@ -301,7 +301,7 @@ static GslDataType toGslDataType(string_view dataType)
  * @param dataFormat target GSL data format name string (camelCase)
  * @throw GardenError on unknown GSL data format type.
  */
-static GslDataFormat toGslDataFormat(string_view dataFormat)
+static constexpr GslDataFormat toGslDataFormat(string_view dataFormat)
 {
 	if (dataFormat == "f16") return GslDataFormat::F16;
 	if (dataFormat == "f32") return GslDataFormat::F32;
@@ -326,7 +326,7 @@ static GslDataFormat toGslDataFormat(string_view dataFormat)
  * @param uniformType target GSL uniform type name string (camelCase)
  * @throw GardenError on unknown GSL uniform type.
  */
-static GslUniformType toGslUniformType(string_view uniformType)
+static constexpr GslUniformType toGslUniformType(string_view uniformType)
 {
 	if (uniformType == "sampler1D") return GslUniformType::Sampler1D;
 	if (uniformType == "sampler2D") return GslUniformType::Sampler2D;
@@ -381,7 +381,6 @@ static GslUniformType toGslUniformType(string_view uniformType)
 	if (uniformType == "pushConstants") return GslUniformType::PushConstants;
 	if (uniformType == "subpassInput") return GslUniformType::SubpassInput;
 	if (uniformType == "accelerationStructure") return GslUniformType::AccelerationStructure;
-	
 	throw GardenError("Unknown GSL uniform type. (" + string(uniformType) + ")");
 }
 
@@ -417,7 +416,7 @@ static string_view toString(GslUniformType uniformType) noexcept
  * @brief Returns GSL data type component count. (1D, 2D, 3D, 2x2, 3x3...)
  * @param dataType target GSL data type
  */
-static uint8 toComponentCount(GslDataType dataType) noexcept
+static constexpr uint8 toComponentCount(GslDataType dataType)
 {
 	switch (dataType)
 	{
@@ -450,7 +449,7 @@ static uint8 toComponentCount(GslDataType dataType) noexcept
 		case GslDataType::Half4x2: case GslDataType::Float4x2: return 8;
 		case GslDataType::Half3x4: case GslDataType::Float3x4: return 12;
 		case GslDataType::Half4x3: case GslDataType::Float4x3: return 12;
-		default: abort();
+		default: throw GardenError("Undeclared GSL data format.");
 	}
 }
 
@@ -458,7 +457,7 @@ static uint8 toComponentCount(GslDataType dataType) noexcept
  * @brief Returns GSL data type location offset.
  * @param dataType target GSL data type
  */
-static uint8 toLocationOffset(GslDataType dataType) noexcept
+static constexpr uint8 toLocationOffset(GslDataType dataType)
 {
 	switch (dataType)
 	{
@@ -487,7 +486,7 @@ static uint8 toLocationOffset(GslDataType dataType) noexcept
 		case GslDataType::Half4x2: case GslDataType::Float4x2: return 2;
 		case GslDataType::Half3x4: case GslDataType::Float3x4: return 4;
 		case GslDataType::Half4x3: case GslDataType::Float4x3: return 3;
-		default: abort();
+		default: throw GardenError("Undeclared GSL data type.");
 	}
 }
 
@@ -495,7 +494,7 @@ static uint8 toLocationOffset(GslDataType dataType) noexcept
  * @brief Returns GSL data type binary size in bytes.
  * @param dataType target GSL data type
  */
-static constexpr psize toBinarySize(GslDataType dataType) noexcept
+static constexpr psize toBinarySize(GslDataType dataType)
 {
 	switch (dataType)
 	{
@@ -563,14 +562,14 @@ static constexpr psize toBinarySize(GslDataType dataType) noexcept
 		case GslDataType::Float4x2: return sizeof(float) * 4 * 2;
 		case GslDataType::Float3x4: return sizeof(float) * 3 * 4;
 		case GslDataType::Float4x3: return sizeof(float) * 4 * 3;
-		default: return 0;
+		default: throw GardenError("Undeclared GSL data type.");
 	}
 }
 /**
  * @brief Returns GSL data format binary size in bytes.
  * @param dataFormat target GSL data format
  */
-static constexpr psize toBinarySize(GslDataFormat dataFormat) noexcept
+static constexpr psize toBinarySize(GslDataFormat dataFormat)
 {
 	switch (dataFormat)
 	{
@@ -589,7 +588,7 @@ static constexpr psize toBinarySize(GslDataFormat dataFormat) noexcept
 		case GslDataFormat::Snorm16: return sizeof(int16);
 		case GslDataFormat::Unorm8: return sizeof(uint8);
 		case GslDataFormat::Unorm16: return sizeof(uint16);
-		default: return 0;
+		default: throw GardenError("Undeclared GSL data format.");
 	}
 }
 

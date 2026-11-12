@@ -235,8 +235,8 @@ void ModelRenderSystem::fileDrop()
 	if (!isModelFormat)
 		return;
 
-	string_view resourcePath;
-	if (InputSystem::getResourcePath("models/", filePath.generic_string(), resourcePath))
+	string resourcePath;
+	if (InputSystem::getResourcePath("models/", filePath, resourcePath))
 		loadModel(resourcePath);
 	#endif
 }
@@ -542,7 +542,6 @@ static void optimizeMeshData(const aiMesh* mesh, raw_vector<uint8>& indices, raw
 		vertex.texCoords = repeat(*(const float2*)(meshTexCoords));
 	}
 
-	
 	vertexCount = meshopt_optimizeVertexFetch(vertexData, indexData, 
 		indexCount, vertexData, vertexCount, sizeof(MeshOptVertex));
 	tmp0.resize(indexCount * sizeof(float4));
@@ -700,32 +699,43 @@ static void processMeshData(const fs::path& filePath, const aiMesh* mesh, uint32
 }
 
 //**********************************************************************************************************************
+template<int T>
 static Ref<Image> loadMaterialTexture(const fs::path& path, const aiScene* scene, 
-	const aiMaterial* material, aiTextureType type, uint32 index = 0)
+	const aiMaterial* material, const array<aiTextureType, T>& types, uint32 index = 0)
 {
-	aiString texturePath;
-	if (material->GetTexture(type, index, &texturePath) != aiReturn_SUCCESS)
+	aiString texturePath; aiTextureType type;
+	for (int i = 0; i < T; i++)
+	{
+		type = types[i];
+		if (material->GetTexture(type, index, &texturePath) == aiReturn_SUCCESS)
+			break;
+	}
+	
+	if (texturePath.Empty())
 		return {};
 
 	auto resourceSystem = ResourceSystem::getInstance();
 	auto sharedImage = resourceSystem->getSharedImage(texturePath.C_Str());
-	if (!sharedImage)
+	if (sharedImage)
 		return sharedImage;
 
 	auto embTexture = scene->GetEmbeddedTexture(texturePath.C_Str());
 	if (!embTexture)
 	{
-		return resourceSystem->loadSharedImage(texturePath.C_Str());
+		auto filePath = path; filePath.replace_filename(texturePath.C_Str());
+		return resourceSystem->loadSharedImage(filePath.replace_extension());
 	}
 
 	Image::Mips mips = { { nullptr } };
-	raw_vector<uint8> tmpData; uint4 imageSize;
+	raw_vector<uint8> pixels; uint4 imageSize;
 	auto imageType = Image::Type::Texture2D;
 
 	Image::Format imageFormat;
 	switch (type)
 	{
-		case aiTextureType_BASE_COLOR: imageFormat = Image::Format::SrgbR8G8B8A8; break;
+		case aiTextureType_DIFFUSE:
+		case aiTextureType_BASE_COLOR:
+			imageFormat = Image::Format::SrgbR8G8B8A8; break;
 		default: imageFormat = Image::Format::UnormR8G8B8A8; break;
 	}
 
@@ -750,7 +760,7 @@ static Ref<Image> loadMaterialTexture(const fs::path& path, const aiScene* scene
 		}
 
 		Image::loadFileData(embTexture->pcData, embTexture->mWidth,
-			fileType, tmpData, imageSize, imageType, imageFormat);
+			fileType, pixels, imageSize, imageType, imageFormat);
 	}
 	else
 	{
@@ -758,8 +768,8 @@ static Ref<Image> loadMaterialTexture(const fs::path& path, const aiScene* scene
 		if (memcmp(embTexture->achFormatHint, "rgba8888", 8) != 0)
 		{
 			auto texelCount = (psize)imageSize.x * imageSize.y;
-			tmpData.resize(texelCount * sizeof(aiTexel));
-			auto dstData = (aiTexel*)tmpData.data();
+			pixels.resize(texelCount * sizeof(aiTexel));
+			auto dstData = (aiTexel*)pixels.data();
 			const auto srcData = embTexture->pcData;
 
 			for (psize i = 0; i < texelCount; i++)
@@ -767,12 +777,13 @@ static Ref<Image> loadMaterialTexture(const fs::path& path, const aiScene* scene
 				auto texel = srcData[i];
 				dstData[i] = { texel.r, texel.g, texel.b, texel.a };
 			}
-			mips[0][0] = tmpData.data();
+			mips[0][0] = pixels.data();
 		}
 		else mips[0][0] = embTexture->pcData;
 	}
 
-	// TODO: !!! store this image to the images cache !!! <<<---
+	GARDEN_LOG_WARN("Loaded embedded Assimp texture, use external instead! It won't be exported on release build! "
+		"(texture: " + string(texturePath.C_Str()) + ", path: " + path.generic_string() + ")");
 		
 	auto texture = GraphicsSystem::getInstance()->createImage(imageType, imageFormat, 
 		Image::Usage::Sampled | Image::Usage::TransferDst, mips, (uint3)imageSize, Image::Strategy::Size);
@@ -848,8 +859,10 @@ static bool loadNodeMeshes(const fs::path& path, const ModelRenderSystem::ModelC
 			// TODO: get and set material params
 		}
 
-		modelRenderView->colorMap = loadMaterialTexture(path, scene, material, aiTextureType_BASE_COLOR);
-		modelRenderView->normalMap = loadMaterialTexture(path, scene, material, aiTextureType_NORMAL_CAMERA);
+		modelRenderView->colorMap = loadMaterialTexture<2>(path, scene, material, 
+			{ aiTextureType_DIFFUSE, aiTextureType_BASE_COLOR });
+		modelRenderView->normalMap = loadMaterialTexture<2>(path, scene, material, 
+			{ aiTextureType_NORMALS, aiTextureType_NORMAL_CAMERA });
 		// TODO: modelRenderView->ormMap = ...
 
 		auto lodResult = sharedLods.find(meshID);

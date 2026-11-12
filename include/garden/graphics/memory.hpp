@@ -142,7 +142,7 @@ DECLARE_ENUM_CLASS_FLAG_OPERATORS(Memory::AccessFlags)
  * @brief Returns memory access flag name string.
  * @param accessFlag target memory access flag
  */
-static string_view toString(Memory::AccessFlags accessFlag)
+static constexpr string_view toString(Memory::AccessFlags accessFlag)
 {
 	if (hasOneFlag(accessFlag, Memory::AccessFlags::ShaderUniformRead)) return "ShaderUniformRead";
 	if (hasOneFlag(accessFlag, Memory::AccessFlags::ShaderSampledRead)) return "ShaderSampledRead";

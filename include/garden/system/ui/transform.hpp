@@ -66,7 +66,7 @@ static string_view toString(UiAnchor uiAnchor) noexcept
  * @param name target UI anchor name string
  * @param[out] uiAnchor UI anchor type
  */
-static bool toUiAnchor(string_view name, UiAnchor& uiAnchor) noexcept
+static constexpr bool toUiAnchor(string_view name, UiAnchor& uiAnchor) noexcept
 {
 	if (name == "Center") { uiAnchor = UiAnchor::Center; return true; }
 	if (name == "Left") { uiAnchor = UiAnchor::Left; return true; }

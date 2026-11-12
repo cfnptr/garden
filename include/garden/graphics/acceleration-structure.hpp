@@ -165,7 +165,7 @@ DECLARE_ENUM_CLASS_FLAG_OPERATORS(BuildFlagsAS)
  * @brief Returns ray tracing acceleration structure build flags name string.
  * @param asBuildFlags target ray tracing acceleration structure build flag
  */
-static string_view toString(BuildFlagsAS asBuildFlags)
+static constexpr string_view toString(BuildFlagsAS asBuildFlags)
 {
 	if (hasOneFlag(asBuildFlags, BuildFlagsAS::AllowUpdate)) return "AllowUpdate";
 	if (hasOneFlag(asBuildFlags, BuildFlagsAS::AllowCompaction)) return "AllowCompaction";

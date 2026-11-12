@@ -1482,7 +1482,7 @@ constexpr const char* graphicsQualityNames[(psize)GraphicsQuality::Count] =
  * @param graphicsQuality target graphics quality level
  * @throw GardenError on unknown graphics quality level.
  */
-static GraphicsQuality toGraphicsQuality(string_view graphicsQuality)
+static constexpr GraphicsQuality toGraphicsQuality(string_view graphicsQuality)
 {
 	if (graphicsQuality == "PotatoPC") return GraphicsQuality::PotatoPC;
 	if (graphicsQuality == "Low") return GraphicsQuality::Low;
