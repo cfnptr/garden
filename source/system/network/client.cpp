@@ -257,7 +257,7 @@ ClientNetworkSystem::ClientNetworkSystem(psize receiveBufferSize, psize messageB
 	else if (messageBufferSize <= UINT16_MAX) serverLengthSize = sizeof(uint16);
 	else if (messageBufferSize <= UINT32_MAX) serverLengthSize = sizeof(uint32);
 	else if (messageBufferSize <= UINT64_MAX) serverLengthSize = sizeof(uint64);
-	else abort();
+	else GARDEN_UNREACHABLE();
 
 	this->messageBufferSize = messageBufferSize + serverLengthSize;
 	GARDEN_ASSERT(this->messageBufferSize <= receiveBufferSize);

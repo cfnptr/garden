@@ -28,7 +28,7 @@ Memory::BarrierState Memory::toBarrierState(AccessFlags accessFlags, PipelineSta
 		state.access = (uint64)toVkAccessFlags(accessFlags);
 		state.stage = (uint64)toVkPipelineStages(pipelineStages);
 	}
-	else abort();
+	else GARDEN_UNREACHABLE();
 
 	return state;
 }

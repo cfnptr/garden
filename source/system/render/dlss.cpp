@@ -52,7 +52,7 @@ static NVSDK_NGX_PerfQuality_Value toNgxPerfQuality(DlssQuality quality)
 		case DlssQuality::Quality: return NVSDK_NGX_PerfQuality_Value_MaxQuality;
 		case DlssQuality::UltraQuality: return NVSDK_NGX_PerfQuality_Value_UltraPerformance;
 		case DlssQuality::DLAA: return NVSDK_NGX_PerfQuality_Value_DLAA;
-		default: abort();
+		default: GARDEN_UNREACHABLE();
 	}
 }
 
@@ -104,7 +104,7 @@ static void terminateDlss(NVSDK_NGX_Parameter* ngxParameters)
 		result = NVSDK_NGX_VULKAN_Shutdown1(VulkanAPI::get()->device);
 		GARDEN_ASSERT_MSG(result == NVSDK_NGX_Result_Success, "Failed to shutdown Nvidia DLSS");
 	}
-	else abort();
+	else GARDEN_UNREACHABLE();
 }
 static NVSDK_NGX_Parameter* initializeDlss(const wstring& nvidiaDlssPath)
 {
@@ -144,7 +144,7 @@ static NVSDK_NGX_Parameter* initializeDlss(const wstring& nvidiaDlssPath)
 
 		ngxResult = NVSDK_NGX_VULKAN_GetCapabilityParameters(&ngxParameters);
 	}
-	else abort();
+	else GARDEN_UNREACHABLE();
 
 	if (ngxResult != NVSDK_NGX_Result_Success)
 	{
@@ -224,7 +224,7 @@ static NVSDK_NGX_Handle* createDlssFeature(CommandBuffer* commandBuffer, NVSDK_N
 		ngxResult = NGX_VULKAN_CREATE_DLSS_EXT(vkCommandBuffer->instance, 
 			1, 1, &ngxFeature, ngxParameters, &createParams);
 	}
-	else abort();
+	else GARDEN_UNREACHABLE();
 
 	if (ngxResult != NVSDK_NGX_Result_Success)
 	{
@@ -250,7 +250,7 @@ static void destroyDlssFeature(NVSDK_NGX_Handle* ngxFeature)
 		auto result = NVSDK_NGX_VULKAN_ReleaseFeature(ngxFeature);
 		GARDEN_ASSERT_MSG(result == NVSDK_NGX_Result_Success, "Failed to release Nvidia DLSS feature");
 	}
-	else abort();
+	else GARDEN_UNREACHABLE();
 }
 
 //**********************************************************************************************************************
@@ -314,7 +314,7 @@ void DlssRenderSystem::preInit()
 		ngxResult = NVSDK_NGX_VULKAN_GetFeatureRequirements(vulkanAPI->instance, 
 			vulkanAPI->physicalDevice, &discoveryInfo, &featureRequirement);
 	}
-	else abort();
+	else GARDEN_UNREACHABLE();
 
 	if (ngxResult != NVSDK_NGX_Result_Success)
 	{
@@ -396,7 +396,7 @@ void DlssRenderSystem::evaluateDlssCommand(void* commandBuffer, void* argument)
 			vkCommandBuffer->instance, (NVSDK_NGX_Handle*)dlssSystem->feature, 
 			(NVSDK_NGX_Parameter*)dlssSystem->parameters, &evalParams);
 	}
-	else abort();
+	else GARDEN_UNREACHABLE();
 
 	if (ngxResult != NVSDK_NGX_Result_Success)
 	{

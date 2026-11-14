@@ -23,14 +23,8 @@ Ui9SliceSystem::Ui9SliceSystem(bool setSingleton) :
 	Manager::getInstance()->addGroupSystem<IMeshRenderSystem>(this);
 }
 
-string_view Ui9SliceSystem::getComponentName() const
-{
-	return "9-Slice UI";
-}
-MeshRenderType Ui9SliceSystem::getMeshRenderType() const
-{
-	return MeshRenderType::UI;
-}
+string_view Ui9SliceSystem::getComponentName() const { return "9-Slice UI"; }
+MeshRenderType Ui9SliceSystem::getMeshRenderType() const { return MeshRenderType::UI; }
 
 void Ui9SliceSystem::beginDrawAsync(int32 taskIndex)
 {

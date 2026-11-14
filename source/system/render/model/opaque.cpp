@@ -23,11 +23,16 @@ OpaqueModelSystem::OpaqueModelSystem(bool setSingleton) :
 	Manager::getInstance()->addGroupSystem<IMeshRenderSystem>(this);
 }
 
-string_view OpaqueModelSystem::getComponentName() const
+string_view OpaqueModelSystem::getComponentName() const { return "Opaque Model"; }
+MeshRenderType OpaqueModelSystem::getMeshRenderType() const { return MeshRenderType::Opaque; }
+
+DescriptorSet::Uniforms OpaqueModelSystem::getBindlessUniforms()
 {
-	return "Opaque Model";
-}
-MeshRenderType OpaqueModelSystem::getMeshRenderType() const
-{
-	return MeshRenderType::Opaque;
+	auto graphicsSystem = GraphicsSystem::getInstance();
+	auto whiteView = graphicsSystem->getWhiteTexture();
+
+	return
+	{
+
+	};
 }

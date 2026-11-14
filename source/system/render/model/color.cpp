@@ -23,11 +23,5 @@ ColorModelSystem::ColorModelSystem(bool setSingleton) :
 	Manager::getInstance()->addGroupSystem<IMeshRenderSystem>(this);
 }
 
-string_view ColorModelSystem::getComponentName() const
-{
-	return "Color Model";
-}
-MeshRenderType ColorModelSystem::getMeshRenderType() const
-{
-	return MeshRenderType::Color;
-}
+string_view ColorModelSystem::getComponentName() const { return "Color Model"; }
+MeshRenderType ColorModelSystem::getMeshRenderType() const { return MeshRenderType::Color; }

@@ -18,6 +18,7 @@
  */
 
 #pragma once
+#include "garden/graphics/bindless-pool.hpp"
 #include "garden/system/render/instance.hpp"
 
 namespace garden
@@ -231,14 +232,19 @@ public:
 
 	using ModelFramePool = LinearPool<ModelAnimFrame>;
 protected:
+	BindlessPool bindlessPool;
 	fs::path pipelinePath = "";
 	string valueStringCache;
+	uint32 maxBindlessCount = 0;
 
 	/**
 	 * @brief Creates a new 3D model rendering system instance.
+	 *
 	 * @param[in] pipelinePath target rendering pipeline path
+	 * @param maxBindlessCount maximum bindless resource count in the array
 	 */
-	ModelRenderSystem(const fs::path& pipelinePath) : pipelinePath(pipelinePath) { }
+	ModelRenderSystem(const fs::path& pipelinePath, uint32 maxBindlessCount = 1024) : 
+		pipelinePath(pipelinePath), maxBindlessCount(maxBindlessCount) { }
 
 	void init() override;
 	virtual void imageLoaded();
@@ -246,12 +252,14 @@ protected:
 
 	static void resetComponent(View<Component> component);
 
+	bool isDrawReady(int8 shadowPass) override;
 	uint32 getReadyMeshesAsync(MeshRenderComponent* meshRenderView, 
 		const f32x4& cameraPosition, const Frustum& frustum, f32x4x4& model) override;
+	void beginDrawAsync(int32 taskIndex) override;
 	void drawAsync(MeshRenderComponent* meshRenderView, const f32x4x4& viewProj,
 		const f32x4x4& model, uint32 instanceIndex, int32 taskIndex) override;
 
-	uint64 getBaseInstanceDataSize() override;
+	psize getBaseInstanceDataSize() override;
 	virtual void setInstanceData(ModelRenderComponent* modelRenderView, void* instanceData,
 		const f32x4x4& viewProj, const f32x4x4& model, uint32 instanceIndex, int32 taskIndex);
 	virtual void setPushConstants(ModelRenderComponent* modelRenderView, PushConstants* pushConstants,
@@ -276,6 +284,19 @@ public:
 	 * @brief Returns 3D model system animation frame size in bytes.
 	 */
 	virtual psize getModelFrameSize() const = 0;
+
+	/**
+	 * @brief Returns base pipeline bindless descriptor set uniforms.
+	 */
+	virtual DescriptorSet::Uniforms getBindlessUniforms() { return {}; }
+	/**
+	 * @brief Returns base pipeline bindless descriptor set samplers.
+	 */
+	virtual DescriptorSet::Samplers getBindlessSamplers() { return {}; }
+	/**
+	 * @brief Returns base pipeline bindless descriptor index.
+	 */
+	virtual uint8 getBindlessIndex() { return 1; }
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR || defined(GARDEN_MODEL_CONVERTER)
 	using ModelComponents = absl::flat_hash_map<string, type_index>;

@@ -23,11 +23,5 @@ Trans9SliceSystem::Trans9SliceSystem(bool setSingleton) :
 	Manager::getInstance()->addGroupSystem<IMeshRenderSystem>(this);
 }
 
-string_view Trans9SliceSystem::getComponentName() const
-{
-	return "Translucent 9-Slice";
-}
-MeshRenderType Trans9SliceSystem::getMeshRenderType() const
-{
-	return MeshRenderType::Translucent;
-}
+string_view Trans9SliceSystem::getComponentName() const { return "Translucent 9-Slice"; }
+MeshRenderType Trans9SliceSystem::getMeshRenderType() const { return MeshRenderType::Translucent; }

@@ -50,7 +50,7 @@ static ID<GraphicsPipeline> createPipeline(ID<Framebuffer> framebuffer, Graphics
 		case GraphicsQuality::Medium: edgeThrMax = 0.166; edgeThrMin = 0.0625f; break;
 		case GraphicsQuality::High: edgeThrMax = 0.125f; edgeThrMin = 0.0312f; break;
 		case GraphicsQuality::Ultra: edgeThrMax = 0.063f; edgeThrMin = 0.0312f; break;
-		default: abort();
+		default: GARDEN_UNREACHABLE();
 	}
 
 	Pipeline::SpecConstValues specConstValues =

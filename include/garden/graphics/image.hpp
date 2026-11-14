@@ -1245,7 +1245,7 @@ static constexpr uint2 toFormatBlockSize(Image::Format formatType) noexcept
  * @param texelCount image total texel (pixel) count
  * @param imageFormat target image data format
  */
-static constexpr psize toBinarySize(psize texelCount, Image::Format imageFormat)
+static constexpr uint64 toBinarySize(uint64 texelCount, Image::Format imageFormat)
 {
 	switch (imageFormat)
 	{
@@ -1287,10 +1287,10 @@ static constexpr psize toBinarySize(psize texelCount, Image::Format imageFormat)
 		case Image::Format::UnormB4G4R4A4: return texelCount * 2;
 		case Image::Format::UnormA2R10G10B10: return texelCount * 4;
 		case Image::Format::UnormA2B10G10R10: return texelCount * 4;
-		case Image::Format::UnormRgbBC1: return max(texelCount / 16 * 8, (psize)1);
-		case Image::Format::UnormRgbaBC1: return max(texelCount / 16 * 8, (psize)1);
+		case Image::Format::UnormRgbBC1: return max(texelCount / 16 * 8, (uint64)1);
+		case Image::Format::UnormRgbaBC1: return max(texelCount / 16 * 8, (uint64)1);
 		case Image::Format::UnormBC3: return texelCount;
-		case Image::Format::UnormBC4: return max(texelCount / 16 * 8, (psize)1);
+		case Image::Format::UnormBC4: return max(texelCount / 16 * 8, (uint64)1);
 		case Image::Format::UnormBC5: return texelCount;
 		case Image::Format::UnormBC7: return texelCount;
 		case Image::Format::UnormAstc4x4: return texelCount;
@@ -1301,7 +1301,7 @@ static constexpr psize toBinarySize(psize texelCount, Image::Format imageFormat)
 		case Image::Format::SnormR16: return texelCount * 2;
 		case Image::Format::SnormR16G16: return texelCount * 4;
 		case Image::Format::SnormR16G16B16A16: return texelCount * 8;
-		case Image::Format::SnormBC4: return max(texelCount / 16 * 8, (psize)1);
+		case Image::Format::SnormBC4: return max(texelCount / 16 * 8, (uint64)1);
 		case Image::Format::SnormBC5: return texelCount;
 
 		case Image::Format::SfloatR16: return texelCount * 2;
@@ -1322,8 +1322,8 @@ static constexpr psize toBinarySize(psize texelCount, Image::Format imageFormat)
 		case Image::Format::SrgbR8G8B8A8: return texelCount * 4;
 		case Image::Format::SrgbB8G8R8A8: return texelCount * 4;
 		case Image::Format::SrgbA8B8G8R8: return texelCount * 4;
-		case Image::Format::SrgbRgbBC1: return max(texelCount / 16 * 8, (psize)1);
-		case Image::Format::SrgbRgbaBC1: return max(texelCount / 16 * 8, (psize)1);
+		case Image::Format::SrgbRgbBC1: return max(texelCount / 16 * 8, (uint64)1);
+		case Image::Format::SrgbRgbaBC1: return max(texelCount / 16 * 8, (uint64)1);
 		case Image::Format::SrgbBC3: return texelCount;
 		case Image::Format::SrgbBC7: return texelCount;
 		case Image::Format::SrgbAstc4x4: return texelCount;
@@ -1336,23 +1336,88 @@ static constexpr psize toBinarySize(psize texelCount, Image::Format imageFormat)
 		default: throw GardenError("Undeclared image format type.");
 	}
 }
-/**
+
+/***********************************************************************************************************************
  * @brief Returns image data format binary size in bytes of all mips.
  * @warning Same size is not guaranteed on the GPU!
  *
  * @param imageSize image size in texels (pixels)
  * @param imageFormat target image data format
  */
-static constexpr psize toMipBinarySize(uint4 imageSize, Image::Format imageFormat)
+static constexpr uint64 toMipBinarySize(uint4 imageSize, Image::Format imageFormat)
 {
-	auto binarySize = toBinarySize((psize)imageSize.x * imageSize.y * imageSize.z, imageFormat);
-	auto minMipSize = uint3(toFormatBlockSize(imageFormat), 1);
-	auto mipSize = max((uint3)imageSize / 2u, minMipSize);
+	auto blockSize = toFormatBlockSize(imageFormat);
+	if (blockSize == uint2::one)
+	{
+		auto binarySize = toBinarySize((uint64)imageSize.x * imageSize.y * imageSize.z, imageFormat);
+		auto mipSize = max((uint3)imageSize >> 1u, uint3::one);
+		for (uint32 mip = 1; mip < imageSize.w; mip++)
+		{
+			binarySize += toBinarySize((uint64)mipSize.x * mipSize.y * mipSize.z, imageFormat);
+			mipSize = max(mipSize >> 1u, uint3::one);
+		}
+		return binarySize;
+	}
+
+	auto blockSizeMinOne = blockSize - 1;
+	auto realSize = ((uint2)imageSize + blockSizeMinOne) / blockSize * blockSize;
+	auto binarySize = toBinarySize((uint64)realSize.x * realSize.y * imageSize.z, imageFormat);
+	auto mipSize = max((uint3)imageSize >> 1u, uint3::one);
 
 	for (uint32 mip = 1; mip < imageSize.w; mip++)
 	{
-		binarySize += toBinarySize((psize)mipSize.x * mipSize.y * mipSize.z, imageFormat);
-		mipSize = max(mipSize / 2u, minMipSize);
+		auto realSize = ((uint2)mipSize + blockSizeMinOne) / blockSize * blockSize;
+		binarySize += toBinarySize((uint64)realSize.x * realSize.y * mipSize.z, imageFormat);
+		mipSize = max(mipSize >> 1u, uint3::one);
+	}
+	return binarySize;
+}
+
+/**
+ * @brief On image data format binary size mip.
+ */
+typedef std::function<void(uint3 mipSize, uint32 level, uint64 binarySize)> OnMipBinarySize;
+
+/**
+ * @brief Iterates over image data format binary size mips.
+ * @details See the @ref toMipBinarySize().
+ *
+ * @param imageSize image size in texels (pixels)
+ * @param imageFormat target image data format
+ * @param[in] onMip function to execute on each mip level
+ */
+static uint64 iterMipBinarySize(uint4 imageSize, Image::Format imageFormat, const OnMipBinarySize& onMip)
+{
+	GARDEN_ASSERT(onMip);
+
+	auto blockSize = toFormatBlockSize(imageFormat);
+	if (blockSize == uint2::one)
+	{
+		onMip((uint3)imageSize, 0, 0);
+
+		auto binarySize = toBinarySize((uint64)imageSize.x * imageSize.y * imageSize.z, imageFormat);
+		auto mipSize = max((uint3)imageSize >> 1u, uint3::one);
+		for (uint32 mip = 1; mip < imageSize.w; mip++)
+		{
+			onMip((uint3)imageSize, mip, binarySize);
+			binarySize += toBinarySize((uint64)mipSize.x * mipSize.y * mipSize.z, imageFormat);
+			mipSize = max(mipSize >> 1u, uint3::one);
+		}
+		return binarySize;
+	}
+
+	auto blockSizeMinOne = blockSize - 1;
+	auto realSize = ((uint2)imageSize + blockSizeMinOne) / blockSize * blockSize;
+	onMip(uint3(realSize, imageSize.z), 0, 0);
+
+	auto binarySize = toBinarySize((uint64)realSize.x * realSize.y * imageSize.z, imageFormat);
+	auto mipSize = max((uint3)imageSize >> 1u, uint3::one);
+	for (uint32 mip = 1; mip < imageSize.w; mip++)
+	{
+		auto realSize = ((uint2)mipSize + blockSizeMinOne) / blockSize * blockSize;
+		onMip(uint3(realSize, imageSize.z), mip, binarySize);
+		binarySize += toBinarySize((uint64)realSize.x * realSize.y * mipSize.z, imageFormat);
+		mipSize = max(mipSize >> 1u, uint3::one);
 	}
 	return binarySize;
 }

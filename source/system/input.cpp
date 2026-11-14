@@ -230,7 +230,7 @@ void InputSystem::input()
 			}
 		}
 	}
-	else abort();
+	else GARDEN_UNREACHABLE();
 
 	#if GARDEN_OS_WINDOWS
 		#if GARDEN_DEBUG
@@ -257,7 +257,7 @@ void InputSystem::input()
 				newWindowSize = (uint2)((float2)newFramebufferSize * pixelRatio);
 			}
 		}
-		else abort();
+		else GARDEN_UNREACHABLE();
 	}
 
 	if (newCursorInWindow && !currCursorInWindow)

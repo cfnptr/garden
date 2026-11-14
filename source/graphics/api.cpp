@@ -86,7 +86,7 @@ GraphicsAPI::GraphicsAPI(const string& appName, const string& appID, uint2 windo
 	{
 		case GLFW_PLATFORM_X11: displayProtocol = DisplayProtocol::X11; break;
 		case GLFW_PLATFORM_WAYLAND: displayProtocol = DisplayProtocol::Wayland; break;
-		default: abort();
+		default: throw GardenError("Unsupported GLFW Linux platform.");
 	}
 	// TODO: android
 	#elif GARDEN_OS_APPLE
@@ -173,7 +173,7 @@ void GraphicsAPI::initialize(GraphicsBackend backendType, const string& appName,
 		apiInstance = new VulkanAPI(appName, appID, appDataName, appVersion, windowSize, 
 			threadPool, useVsync, useTripleBuffering, isFullscreen, isDecorated);
 	}
-	else abort();
+	else GARDEN_UNREACHABLE();
 }
 void GraphicsAPI::terminate()
 {

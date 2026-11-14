@@ -217,25 +217,20 @@ void ResourceSystem::dequeuePipelines()
 	}
 }
 
-//**********************************************************************************************************************
-vector<Image::CopyBufferRegion> calcLoadedRegions(uint4 imageSize, Image::Format format, bool generateMips)
+vector<Image::CopyBufferRegion> calcLoadedRegions(uint4 imageSize, Image::Format imageFormat, bool generateMips)
 {
 	if (generateMips)
 		return vector<Image::CopyBufferRegion>(1);
 
-	vector<Image::CopyBufferRegion> regions(imageSize.w); auto regionData = regions.data();
-	auto mipSize = (uint3)imageSize, minMipSize = uint3(toFormatBlockSize(format), 1);
-	uint64 bufferOffset = 0;
+	vector<Image::CopyBufferRegion> regions(imageSize.w);
+	auto regionData = regions.data();
 
-	for (uint32 mip = 0; mip < imageSize.w; mip++)
+	iterMipBinarySize((uint4)imageSize, imageFormat, [&](uint3 mipSize, uint32 level, uint64 binarySize)
 	{
-		auto& region = regionData[mip];
-		region.bufferOffset = bufferOffset;
-		region.imageMipLevel = mip;
-
-		bufferOffset += toBinarySize((psize)mipSize.x * mipSize.y * mipSize.z, format);
-		mipSize = max(mipSize / 2u, minMipSize);
-	}
+		auto& region = regionData[level];
+		region.bufferOffset = binarySize;
+		region.imageMipLevel = level;
+	});
 	return regions;
 }
 
@@ -734,7 +729,7 @@ static void loadMissingImage(raw_vector<uint8>& data, uint4& size, Image::Type& 
 	if (imageBinarySize == 0 || componentCount == 0)
 	{
 		data.resize(256); memset(data.data(), UINT8_MAX, 256);
-		size = uint4(1);
+		size = uint4::one;
 		return;
 	}
 
@@ -768,7 +763,7 @@ static void loadMissingImage(raw_vector<uint8>& data, uint4& size, Image::Type& 
 			pixels[8] = 1.0f;  pixels[9] = 0.0f;  pixels[10] = 1.0f; pixels[11] = 0.0f;
 			pixels[12] = 0.0f; pixels[13] = 1.0f; pixels[14] = 0.0f; pixels[15] = 1.0f;
 		}
-		else abort();
+		else GARDEN_UNREACHABLE();
 	}
 	else if (compBinarySize == 2)
 	{
@@ -801,7 +796,7 @@ static void loadMissingImage(raw_vector<uint8>& data, uint4& size, Image::Type& 
 			pixels[8] = white;  pixels[9] = black;  pixels[10] = white; pixels[11] = black;
 			pixels[12] = black; pixels[13] = white; pixels[14] = black; pixels[15] = white;
 		}
-		else abort();
+		else GARDEN_UNREACHABLE();
 	}
 	else if (compBinarySize == 1)
 	{
@@ -833,7 +828,7 @@ static void loadMissingImage(raw_vector<uint8>& data, uint4& size, Image::Type& 
 			pixels[8] = UINT8_MAX; pixels[9] = 0;          pixels[10] = UINT8_MAX; pixels[11] = 0;
 			pixels[12] = 0;        pixels[13] = UINT8_MAX; pixels[14] = 0;         pixels[15] = UINT8_MAX;
 		}
-		else abort();
+		else GARDEN_UNREACHABLE();
 	}
 	else memset(data.data(), UINT8_MAX, data.size());
 
@@ -1117,7 +1112,7 @@ bool ResourceSystem::loadImageData(const fs::path* paths, psize pathCount, vecto
 
 	pixelArrays.resize(pathCount); auto pixelArrayData = pixelArrays.data();
 	auto result = loadOrConvertImage(paths[0], pixelArrayData[0], size, type, format, threadIndex);
-	auto imageBinarySize2D = toBinarySize((psize)size.x * size.y, format);
+	auto imageBinarySize2D = toBinarySize((uint64)size.x * size.y, format);
 
 	if (pathCount > 1 && pixelArrayData[0].size() != imageBinarySize2D)
 	{
@@ -1215,7 +1210,7 @@ bool ResourceSystem::loadCubemapData(const fs::path& path, raw_vector<uint8>& nx
 					nz, nzSize, nzType, nzFormat, threadIndex) ? 1 : 0; break;
 				case 5: loadResult += loadImageData(filePath + "-pz", 
 					pz, pzSize, pzType, pzFormat, threadIndex) ? 1 : 0; break;
-				default: abort();
+				default: GARDEN_UNREACHABLE();
 			}
 		}, Image::cubemapFaceCount);
 		threadPool.wait();
@@ -1577,7 +1572,7 @@ void ResourceSystem::combineImages(const vector<fs::path>& inputPaths, const fs:
 	}
 
 	auto pathCount = (uint32)inputPaths.size();
-	auto pixelCount = (psize)inSize.x * inSize.y;
+	auto pixelCount = (uint64)inSize.x * inSize.y;
 	auto imageBinarySize = toBinarySize(pixelCount, imageFormat);
 	auto pixelBinarySize = imageBinarySize / pixelCount;
 	auto inBinSizeX = pixelBinarySize * inSize.x, inBinSizeY = pixelBinarySize * inSize.y;
@@ -1636,19 +1631,19 @@ void ResourceSystem::renormalizeImage(const fs::path& path,
 	if (imageFormat == Image::Format::SrgbR8G8B8A8 || imageFormat == Image::Format::UnormR8G8B8A8)
 	{
 		auto pixelData = (Color*)dataBuffer.data();
-		for (psize i = 0; i < 0; i++)
+		for (psize i = 0; i < pixelCount; i++)
 			pixelData[i] = (Color)normalize3((f32x4)pixelData[i]);
 	}
 	else if (imageFormat == Image::Format::SfloatR32G32B32A32)
 	{
 		auto pixelData = (f32x4*)dataBuffer.data();
-		for (psize i = 0; i < 0; i++)
+		for (psize i = 0; i < pixelCount; i++)
 			pixelData[i] = normalize3(pixelData[i]);
 	}
 	else if (imageFormat == Image::Format::SfloatR16G16B16A16)
 	{
 		auto pixelData = (half4*)dataBuffer.data();
-		for (psize i = 0; i < 0; i++)
+		for (psize i = 0; i < pixelCount; i++)
 			pixelData[i] = (half4)normalize3((f32x4)pixelData[i]);
 	}
 	else

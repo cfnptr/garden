@@ -33,14 +33,8 @@ void Cutout9SliceSystem::setPushConstants(SpriteRenderComponent* spriteRenderVie
 	cutoutPushConstants->alphaCutoff = cutout9SliceView->getAlphaCutoff();
 }
 
-string_view Cutout9SliceSystem::getComponentName() const
-{
-	return "Cutout 9-Slice";
-}
-MeshRenderType Cutout9SliceSystem::getMeshRenderType() const
-{
-	return MeshRenderType::Opaque;
-}
+string_view Cutout9SliceSystem::getComponentName() const { return "Cutout 9-Slice"; }
+MeshRenderType Cutout9SliceSystem::getMeshRenderType() const { return MeshRenderType::Opaque; }
 
 void Cutout9SliceSystem::serialize(ISerializer& serializer, const View<Component> component)
 {

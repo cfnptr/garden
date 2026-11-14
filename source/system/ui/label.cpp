@@ -247,16 +247,11 @@ void UiLabelSystem::copyComponent(View<Component> source, View<Component> destin
 		destinationView->descriptorSet = createDescriptorSet(textData);
 	}
 }
-string_view UiLabelSystem::getComponentName() const
-{
-	return "Label UI";
-}
+
+string_view UiLabelSystem::getComponentName() const { return "Label UI"; }
+MeshRenderType UiLabelSystem::getMeshRenderType() const { return MeshRenderType::UI; }
 
 //**********************************************************************************************************************
-MeshRenderType UiLabelSystem::getMeshRenderType() const
-{
-	return MeshRenderType::UI;
-}
 bool UiLabelSystem::isDrawReady(int8 shadowPass)
 {
 	if (shadowPass >= 0)

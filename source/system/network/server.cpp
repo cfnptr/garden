@@ -36,7 +36,7 @@ StreamServerHandle::StreamServerHandle(ServerNetworkSystem* serverSystem, Socket
 	else if (messageBufferSize <= UINT16_MAX) clientLengthSize = sizeof(uint16);
 	else if (messageBufferSize <= UINT32_MAX) clientLengthSize = sizeof(uint32);
 	else if (messageBufferSize <= UINT64_MAX) clientLengthSize = sizeof(uint64);
-	else abort();
+	else GARDEN_UNREACHABLE();
 
 	this->messageBufferSize = messageBufferSize + clientLengthSize;
 	GARDEN_ASSERT(this->messageBufferSize <= receiveBufferSize);
@@ -398,7 +398,7 @@ void ServerNetworkSystem::preDeinit()
 }
 
 //**********************************************************************************************************************
-static void updateSessions(StreamServerHandle* streamServer, std::function<int(ClientSession*)> onSessionUpdate)
+static void updateSessions(StreamServerHandle* streamServer, const std::function<int(ClientSession*)>& onSessionUpdate)
 {
 	auto threadSystem = ThreadSystem::tryGetInstance();
 	streamServer->lockSessions();

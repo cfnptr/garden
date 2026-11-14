@@ -168,7 +168,7 @@ void CommandBuffer::lockResource(ResourceType type, ID<Resource> resource, int32
 		graphicsAPI->rayTracingPipelinePool.get(ID<RayTracingPipeline>(key.resource))->lock(); break;
 	case ResourceType::DescriptorSet:
 		graphicsAPI->descriptorSetPool.get(ID<DescriptorSet>(key.resource))->lock(); break;
-	default: abort();
+	default: GARDEN_UNREACHABLE();
 	}
 }
 
@@ -202,7 +202,7 @@ void CommandBuffer::flushLockedResources(LockedResources& lockedResources)
 			graphicsAPI->rayTracingPipelinePool.get(ID<RayTracingPipeline>(key.resource))->unlock(); break;
 		case ResourceType::DescriptorSet:
 			graphicsAPI->descriptorSetPool.get(ID<DescriptorSet>(key.resource))->unlock(); break;
-		default: abort();
+		default: GARDEN_UNREACHABLE();
 		}
 	}
 	lockedResources.clear();

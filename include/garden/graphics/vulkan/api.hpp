@@ -215,7 +215,7 @@ public:
  * @brief Returns Vulkan format type from the image data format.
  * @param formatType target image data format type
  */
-static vk::Format toVkFormat(Image::Format formatType) noexcept
+static constexpr vk::Format toVkFormat(Image::Format formatType) noexcept
 {
 	switch (formatType)
 	{
@@ -305,7 +305,7 @@ static vk::Format toVkFormat(Image::Format formatType) noexcept
 		case Image::Format::UnormD24UintS8: return vk::Format::eD24UnormS8Uint;
 		case Image::Format::SfloatD32UintS8: return vk::Format::eD32SfloatS8Uint;
 
-		default: abort();
+		default: GARDEN_UNREACHABLE();
 	}
 }
 
@@ -313,7 +313,7 @@ static vk::Format toVkFormat(Image::Format formatType) noexcept
  * @brief Returns image data format type from the Vulkan format.
  * @param formatType target Vulkan format type
  */
-static Image::Format toImageFormat(vk::Format formatType) noexcept
+static constexpr Image::Format toImageFormat(vk::Format formatType) noexcept
 {
 	switch (formatType)
 	{
@@ -401,7 +401,7 @@ static Image::Format toImageFormat(vk::Format formatType) noexcept
 		case vk::Format::eD24UnormS8Uint: return Image::Format::UnormD24UintS8;
 		case vk::Format::eD32SfloatS8Uint: return Image::Format::SfloatD32UintS8;
 
-		default: abort();
+		default: GARDEN_UNREACHABLE();
 	}
 }
 
@@ -411,10 +411,9 @@ static Image::Format toImageFormat(vk::Format formatType) noexcept
  * @param type GSL data type
  * @param format GSL data format
  */
-static vk::Format toVkFormat(GslDataType type, GslDataFormat format) noexcept
+static constexpr vk::Format toVkFormat(GslDataType type, GslDataFormat format) noexcept
 {
 	auto componentCount = toComponentCount(type);
-
 	switch (componentCount)
 	{
 	case 1:
@@ -435,7 +434,7 @@ static vk::Format toVkFormat(GslDataType type, GslDataFormat format) noexcept
 			case GslDataFormat::Snorm16: return vk::Format::eR16Snorm;
 			case GslDataFormat::Unorm8: return vk::Format::eR8Unorm;
 			case GslDataFormat::Unorm16: return vk::Format::eR16Unorm;
-			default: abort();
+			default: GARDEN_UNREACHABLE();
 		}
 		break;
 	case 2:
@@ -456,7 +455,7 @@ static vk::Format toVkFormat(GslDataType type, GslDataFormat format) noexcept
 			case GslDataFormat::Snorm16: return vk::Format::eR16G16Snorm;
 			case GslDataFormat::Unorm8: return vk::Format::eR8G8Unorm;
 			case GslDataFormat::Unorm16: return vk::Format::eR16G16Unorm;
-			default: abort();
+			default: GARDEN_UNREACHABLE();
 		}
 		break;
 	case 3:
@@ -477,7 +476,7 @@ static vk::Format toVkFormat(GslDataType type, GslDataFormat format) noexcept
 			case GslDataFormat::Snorm16: return vk::Format::eR16G16B16Snorm;
 			case GslDataFormat::Unorm8: return vk::Format::eR8G8B8Unorm;
 			case GslDataFormat::Unorm16: return vk::Format::eR16G16B16Unorm;
-			default: abort();
+			default: GARDEN_UNREACHABLE();
 		}
 		break;
 	case 4:
@@ -498,10 +497,10 @@ static vk::Format toVkFormat(GslDataType type, GslDataFormat format) noexcept
 			case GslDataFormat::Snorm16: return vk::Format::eR16G16B16A16Snorm;
 			case GslDataFormat::Unorm8: return vk::Format::eR8G8B8A8Unorm;
 			case GslDataFormat::Unorm16: return vk::Format::eR16G16B16A16Unorm;
-			default: abort();
+			default: GARDEN_UNREACHABLE();
 		}
 		break;
-	default: abort();
+	default: GARDEN_UNREACHABLE();
 	}
 }
 
@@ -509,33 +508,33 @@ static vk::Format toVkFormat(GslDataType type, GslDataFormat format) noexcept
  * @brief Returns Vulkan sampler filter type.
  * @param filterType target sampler filter type
  */
-static vk::Filter toVkFilter(Sampler::Filter filterType) noexcept
+static constexpr vk::Filter toVkFilter(Sampler::Filter filterType) noexcept
 {
 	switch (filterType)
 	{
 		case Sampler::Filter::Nearest: return vk::Filter::eNearest;
 		case Sampler::Filter::Linear: return vk::Filter::eLinear;
-		default: abort();
+		default: GARDEN_UNREACHABLE();
 	}
 }
 /**
  * @brief Returns Vulkan sampler mipmap mode.
  * @param filterType target sampler filter type
  */
-static vk::SamplerMipmapMode toVkSamplerMipmapMode(Sampler::Filter filterType) noexcept
+static constexpr vk::SamplerMipmapMode toVkSamplerMipmapMode(Sampler::Filter filterType) noexcept
 {
 	switch (filterType)
 	{
 		case Sampler::Filter::Nearest: return vk::SamplerMipmapMode::eNearest;
 		case Sampler::Filter::Linear: return vk::SamplerMipmapMode::eLinear;
-		default: abort();
+		default: GARDEN_UNREACHABLE();
 	}
 }
 /**
  * @brief Returns Vulkan sampler address mode.
  * @param addressMode target sampler address mode
  */
-static vk::SamplerAddressMode toVkSamplerAddressMode(Sampler::AddressMode addressMode) noexcept
+static constexpr vk::SamplerAddressMode toVkSamplerAddressMode(Sampler::AddressMode addressMode) noexcept
 {
 	switch (addressMode)
 	{
@@ -544,14 +543,14 @@ static vk::SamplerAddressMode toVkSamplerAddressMode(Sampler::AddressMode addres
 		case Sampler::AddressMode::ClampToEdge: return vk::SamplerAddressMode::eClampToEdge;
 		case Sampler::AddressMode::ClampToBorder: return vk::SamplerAddressMode::eClampToBorder;
 		case Sampler::AddressMode::MirrorClampToEdge: return vk::SamplerAddressMode::eMirrorClampToEdge;
-		default: abort();
+		default: GARDEN_UNREACHABLE();
 	}
 }
 /**
  * @brief Returns Vulkan sampler border color.
  * @param borderColor target sampler border color
  */
-static vk::BorderColor toVkBorderColor(Sampler::BorderColor borderColor) noexcept
+static constexpr vk::BorderColor toVkBorderColor(Sampler::BorderColor borderColor) noexcept
 {
 	switch (borderColor)
 	{
@@ -561,14 +560,14 @@ static vk::BorderColor toVkBorderColor(Sampler::BorderColor borderColor) noexcep
 		case Sampler::BorderColor::IntOpaqueBlack: return vk::BorderColor::eIntOpaqueBlack;
 		case Sampler::BorderColor::FloatOpaqueWhite: return vk::BorderColor::eFloatOpaqueWhite;
 		case Sampler::BorderColor::IntOpaqueWhite: return vk::BorderColor::eIntOpaqueWhite;
-		default: abort();
+		default: GARDEN_UNREACHABLE();
 	}
 }
 /**
  * @brief Returns Vulkan sampler comparison operation.
  * @param compareOperator target sampler compare operator
  */
-static vk::CompareOp toVkCompareOp(CompareOp compareOperator) noexcept
+static constexpr vk::CompareOp toVkCompareOp(CompareOp compareOperator) noexcept
 {
 	switch (compareOperator)
 	{
@@ -580,7 +579,7 @@ static vk::CompareOp toVkCompareOp(CompareOp compareOperator) noexcept
 		case CompareOp::NotEqual: return vk::CompareOp::eNotEqual;
 		case CompareOp::GreaterOrEqual: return vk::CompareOp::eGreaterOrEqual;
 		case CompareOp::Always: return vk::CompareOp::eAlways;
-		default: abort();
+		default: GARDEN_UNREACHABLE();
 	}
 }
 
@@ -588,7 +587,7 @@ static vk::CompareOp toVkCompareOp(CompareOp compareOperator) noexcept
  * @brief Returns Vulkan shader stage flag bits from the pipeline stage.
  * @param pipelineStage target shader stage
  */
-static vk::ShaderStageFlagBits toVkShaderStage(PipelineStage pipelineStage)
+static constexpr vk::ShaderStageFlagBits toVkShaderStage(PipelineStage pipelineStage)
 {
 	if (hasOneFlag(pipelineStage, PipelineStage::Vertex))
 		return vk::ShaderStageFlagBits::eVertex;
@@ -676,14 +675,14 @@ static constexpr vk::PipelineStageFlags2 toVkPipelineStages(PipelineStage pipeli
  * @brief Returns Vulkan pipeline bind point from the rendering pipeline type.
  * @param pipelineType target rendering pipeline type
  */
-static vk::PipelineBindPoint toVkPipelineBindPoint(PipelineType pipelineType) noexcept
+static constexpr vk::PipelineBindPoint toVkPipelineBindPoint(PipelineType pipelineType) noexcept
 {
 	switch (pipelineType)
 	{
 		case PipelineType::Graphics: return vk::PipelineBindPoint::eGraphics;
 		case PipelineType::Compute: return vk::PipelineBindPoint::eCompute;
 		case PipelineType::RayTracing: return vk::PipelineBindPoint::eRayTracingKHR;
-		default: abort();
+		default: GARDEN_UNREACHABLE();
 	}
 }
 
@@ -703,7 +702,7 @@ static constexpr vk::ImageAspectFlags toVkImageAspectFlags(Image::Format imageFo
  * @brief Returns Vulkan access flags from the memory access flags.
  * @param accessFlags target memory access flags
  */
-static vk::AccessFlags2 toVkAccessFlags(Memory::AccessFlags accessFlags) noexcept
+static constexpr vk::AccessFlags2 toVkAccessFlags(Memory::AccessFlags accessFlags) noexcept
 {
 	vk::AccessFlags2 flags;
 	if (hasAnyFlag(accessFlags, Memory::AccessFlags::ShaderUniformRead))
@@ -721,7 +720,7 @@ static vk::AccessFlags2 toVkAccessFlags(Memory::AccessFlags accessFlags) noexcep
  * @brief Returns Vulkan descriptor type from the GSL uniform type.
  * @param uniformType target GSL uniform type
  */
-static vk::DescriptorType toVkDescriptorType(GslUniformType uniformType) noexcept
+static constexpr vk::DescriptorType toVkDescriptorType(GslUniformType uniformType) noexcept
 {
 	switch (uniformType)
 	{
@@ -776,7 +775,7 @@ static vk::DescriptorType toVkDescriptorType(GslUniformType uniformType) noexcep
 			return vk::DescriptorType::eInputAttachment;
 		case GslUniformType::AccelerationStructure:
 			return vk::DescriptorType::eAccelerationStructureKHR;
-		default: abort();
+		default: GARDEN_UNREACHABLE();
 	}
 }
 
@@ -784,13 +783,13 @@ static vk::DescriptorType toVkDescriptorType(GslUniformType uniformType) noexcep
  * @brief Returns Vulkan index type from the index type.
  * @param indexType target index type
  */
-static vk::IndexType toVkIndexType(IndexType indexType) noexcept
+static constexpr vk::IndexType toVkIndexType(IndexType indexType) noexcept
 {
 	switch (indexType)
 	{
 		case IndexType::Uint16: return vk::IndexType::eUint16;
 		case IndexType::Uint32: return vk::IndexType::eUint32;
-		default: abort();
+		default: GARDEN_UNREACHABLE();
 	}
 }
 
@@ -818,7 +817,7 @@ static constexpr vk::BuildAccelerationStructureFlagsKHR toVkBuildFlagsAS(BuildFl
  * @brief Returns Vulkan sampler create info container.
  * @param[in] state target sampler state data
  */
-static vk::SamplerCreateInfo getVkSamplerCreateInfo(const Sampler::State& state) noexcept
+static constexpr vk::SamplerCreateInfo getVkSamplerCreateInfo(const Sampler::State& state) noexcept
 {
 	return vk::SamplerCreateInfo({}, toVkFilter(state.magFilter), toVkFilter(state.minFilter), 
 		toVkSamplerMipmapMode(state.mipmapFilter), toVkSamplerAddressMode(state.addressModeX), 

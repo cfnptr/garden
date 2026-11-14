@@ -103,7 +103,7 @@ void CameraEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 			ImGui::EndPopup();
 		}
 	}
-	else abort();
+	else GARDEN_UNREACHABLE();
 
 	if (ImGui::Combo("Type", &cameraView->type, projectionTypeNames, (int)ProjectionType::Count))
 	{
@@ -111,7 +111,7 @@ void CameraEditorSystem::onEntityInspector(ID<Entity> entity, bool isOpened)
 			cameraView->p.perspective = PerspectiveProjection();
 		else if (cameraView->type == ProjectionType::Orthographic)
 			cameraView->p.orthographic = OrthographicProjection();
-		else abort();
+		else GARDEN_UNREACHABLE();
 	}
 }
 #endif

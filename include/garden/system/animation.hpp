@@ -161,12 +161,11 @@ public:
 	 */
 	void destroy(Ref<Animation>& animation)
 	{
-		if (animation.isLastRef())
+		animation.destroy([&]()
 		{
 			auto item = ID<Animation>(animation);
 			animations.destroy(item);
-		}
-		animation = {};
+		});
 	}
 };
 

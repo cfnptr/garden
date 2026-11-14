@@ -103,7 +103,7 @@ static void loadMeshDataGMC(const void* data, psize dataSize, raw_vector<uint8>&
 			result = meshopt_decodeIndexBuffer((uint16*)indices.data(), 
 				gmcHeader.indexCount, meshData, gmcHeader.indexEncSize);
 		}
-		else abort();
+		else GARDEN_UNREACHABLE();
 
 		if (result != 0)
 			throw GardenError("Failed to decode meshopt indices. (result: " + to_string(result) + ")");
@@ -257,6 +257,18 @@ void ModelRenderSystem::resetComponent(View<Component> component)
 }
 
 //**********************************************************************************************************************
+bool ModelRenderSystem::isDrawReady(int8 shadowPass)
+{
+	if (!InstanceRenderSystem::isDrawReady(shadowPass))
+		return false;
+	if (!bindlessPool.getDescriptorSet())
+	{
+		auto uniforms = getBindlessUniforms();
+		if (!uniforms.empty())
+			bindlessPool = BindlessPool(basePipeline, std::move(uniforms), getBindlessSamplers(), getBindlessIndex());
+	}
+	return true;
+}
 uint32 ModelRenderSystem::getReadyMeshesAsync(MeshRenderComponent* meshRenderView, 
 	const f32x4& cameraPosition, const Frustum& frustum, f32x4x4& model)
 {
@@ -274,6 +286,18 @@ uint32 ModelRenderSystem::getReadyMeshesAsync(MeshRenderComponent* meshRenderVie
 
 	return 1;
 }
+
+//**********************************************************************************************************************
+void ModelRenderSystem::beginDrawAsync(int32 taskIndex)
+{
+	InstanceRenderSystem::beginDrawAsync(taskIndex);
+
+	DescriptorSet::Range dsRanges[2]; uint32 dsRangeCount = 1;
+	dsRanges[0] = DescriptorSet::Range(descriptorSet, 1, inFlightIndex);
+	if (bindlessPool.getDescriptorSet())
+		dsRanges[dsRangeCount++] = DescriptorSet::Range(bindlessPool.getDescriptorSet());
+	pipelineView->bindDescriptorSetsAsync(dsRanges, dsRangeCount, taskIndex);
+}
 void ModelRenderSystem::drawAsync(MeshRenderComponent* meshRenderView,
 	const f32x4x4& viewProj, const f32x4x4& model, uint32 instanceIndex, int32 taskIndex)
 {
@@ -283,8 +307,6 @@ void ModelRenderSystem::drawAsync(MeshRenderComponent* meshRenderView,
 
 	PushConstants pc;
 	setPushConstants(modelRenderView, &pc, viewProj, model, instanceIndex, taskIndex);
-
-	pipelineView->bindDescriptorSetAsync(descriptorSet, inFlightIndex, taskIndex);
 	pipelineView->pushConstantsAsync(&pc, taskIndex);
 
 	// TODO: select lod based on resolution and distance.
@@ -302,9 +324,9 @@ void ModelRenderSystem::drawAsync(MeshRenderComponent* meshRenderView,
 	pipelineView->drawIndexedAsync(drawIndexedData, taskIndex);
 }
 
-uint64 ModelRenderSystem::getBaseInstanceDataSize()
+psize ModelRenderSystem::getBaseInstanceDataSize()
 {
-	return (uint64)sizeof(BaseInstanceData);
+	return sizeof(BaseInstanceData);
 }
 void ModelRenderSystem::setInstanceData(ModelRenderComponent* modelRenderView, void* instanceData,
 	const f32x4x4& viewProj, const f32x4x4& model, uint32 instanceIndex, int32 taskIndex)
@@ -345,6 +367,7 @@ ID<GraphicsPipeline> ModelRenderSystem::createBasePipeline()
 
 	ResourceSystem::GraphicsLoadOptions options;
 	options.specConstValues = &specConsts;
+	options.maxBindlessCount = maxBindlessCount;
 	options.loadAsync = false; // We can't load async due to imageLoaded() usage.
 	return ResourceSystem::getInstance()->loadGraphicsPipeline(pipelinePath, framebuffer, &options);
 }
@@ -637,7 +660,7 @@ static void processMeshData(const fs::path& filePath, const aiMesh* mesh, uint32
 		tmp1.resize(meshopt_encodeIndexBufferBound(indexCount, vertexCount));
 		encSize = meshopt_encodeIndexBuffer(tmp1.data(), tmp1.size(), (const uint16*)indices.data(), indexCount);
 	}
-	else abort();
+	else GARDEN_UNREACHABLE();
 	GARDEN_ASSERT(vertexCount == attributes.size() / sizeof(MeshVertexAttr));
 
 	tmp0.resize(sizeof(GmcHeader));

@@ -115,7 +115,7 @@ bool AccelerationStructure::destroy()
 		}
 		free(buildData);
 	}
-	else abort();
+	else GARDEN_UNREACHABLE();
 
 	return true;
 }
@@ -219,7 +219,7 @@ void AccelerationStructure::setDebugName(const string& name)
 		vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo);
 		#endif
 	}
-	else abort();
+	else GARDEN_UNREACHABLE();
 }
 #endif
 

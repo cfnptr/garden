@@ -60,7 +60,7 @@ static void transformUiComponent(Manager* manager, float2 uiHalfSize, UiTransfor
 			scale *= uiHalfSize.x / uiHalfSize.y > scale.x / scale.y ?
 				(uiHalfSize.x * 2.0f) / scale.x : (uiHalfSize.y * 2.0f) / scale.y;
 			break;
-		default: abort();
+		default: GARDEN_UNREACHABLE();
 	}
 
 	transformView->setPosition(float3(position, uiTransformComp.position.getZ()));

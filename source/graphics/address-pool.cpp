@@ -255,7 +255,7 @@ void AddressPool::addBufferBarriers(Buffer::BarrierState newState)
 			barriers[barrierCount++] = buffers[i];
 		}
 	}
-	else abort();
+	else GARDEN_UNREACHABLE();
 
 	BufferBarrierCommand command;
 	command.sameNewState = true;

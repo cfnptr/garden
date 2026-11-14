@@ -23,14 +23,8 @@ UiSpriteSystem::UiSpriteSystem(bool setSingleton) :
 	Manager::getInstance()->addGroupSystem<IMeshRenderSystem>(this);
 }
 
-string_view UiSpriteSystem::getComponentName() const
-{
-	return "Sprite UI";
-}
-MeshRenderType UiSpriteSystem::getMeshRenderType() const
-{
-	return MeshRenderType::UI;
-}
+string_view UiSpriteSystem::getComponentName() const { return "Sprite UI"; }
+MeshRenderType UiSpriteSystem::getMeshRenderType() const { return MeshRenderType::UI; }
 
 void UiSpriteSystem::beginDrawAsync(int32 taskIndex)
 {

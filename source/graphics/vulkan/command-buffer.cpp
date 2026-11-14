@@ -41,7 +41,7 @@ VulkanCommandBuffer::VulkanCommandBuffer(VulkanAPI* vulkanAPI, CommandBufferType
 	case CommandBufferType::Compute:
 		instance = createVkCommandBuffer(vulkanAPI->device, vulkanAPI->computeCommandPool); break;
 	case CommandBufferType::Frame: break;
-	default: abort();
+	default: GARDEN_UNREACHABLE();
 	}
 
 	#if GARDEN_USE_GAPI_VALIDATIONS
@@ -55,7 +55,7 @@ VulkanCommandBuffer::VulkanCommandBuffer(VulkanAPI* vulkanAPI, CommandBufferType
 			case CommandBufferType::Compute: name = "commandBuffer.compute"; break;
 			case CommandBufferType::AsyncCompute: name = "commandBuffer.asyncCompute"; break;
 			case CommandBufferType::Frame: break; // Note: Instance is dynamic for a frame.
-			default: abort();
+			default: GARDEN_UNREACHABLE();
 		}
 
 		if (name)
@@ -263,15 +263,15 @@ static void addImageBarriers(VulkanAPI* vulkanAPI, Image::LayoutState& newImageS
 	else
 	{
 		mipCount += baseMip; layerCount += baseLayer;
-		for (uint8 mip = baseMip; mip < mipCount; mip++)
+		for (uint8 level = baseMip; level < mipCount; level++)
 		{
 			for (uint32 layer = baseLayer; layer < layerCount; layer++)
 			{
-				auto& oldImageState = vulkanAPI->getImageState(image, layer, mip);
+				auto& oldImageState = vulkanAPI->getImageState(image, layer, level);
 				if (VulkanCommandBuffer::isDifferentState(oldImageState, newImageState))
 				{
 					addImageBarrier(vulkanAPI, oldImageState, newImageState, 
-						vkImage, mip, 1, layer, 1, aspectFlags, doNotCare);
+						vkImage, level, 1, layer, 1, aspectFlags, doNotCare);
 				}
 
 				auto imageView = oldImageState.view;
@@ -770,7 +770,7 @@ void VulkanCommandBuffer::processCommand(const BeginRenderPassCommand& command)
 		case Framebuffer::LoadOp::None:
 			loadOperation = vk::AttachmentLoadOp::eNone;
 			break;
-		default: abort();
+		default: GARDEN_UNREACHABLE();
 		}
 
 		vk::AttachmentStoreOp storeOperation;
@@ -787,7 +787,7 @@ void VulkanCommandBuffer::processCommand(const BeginRenderPassCommand& command)
 		case Framebuffer::StoreOp::None:
 			storeOperation = vk::AttachmentStoreOp::eNone;
 			break;
-		default: abort();
+		default: GARDEN_UNREACHABLE();
 		}
 
 		auto imageView = vulkanAPI->imageViewPool.get(colorAttachment.imageView);
@@ -831,7 +831,7 @@ void VulkanCommandBuffer::processCommand(const BeginRenderPassCommand& command)
 		case Framebuffer::LoadOp::None:
 			loadOperation = vk::AttachmentLoadOp::eNone;
 			break;
-		default: abort();
+		default: GARDEN_UNREACHABLE();
 		}
 
 		vk::AttachmentStoreOp storeOperation;
@@ -850,7 +850,7 @@ void VulkanCommandBuffer::processCommand(const BeginRenderPassCommand& command)
 		case Framebuffer::StoreOp::None:
 			storeOperation = vk::AttachmentStoreOp::eNone;
 			break;
-		default: abort();
+		default: GARDEN_UNREACHABLE();
 		}
 
 		auto imageView = vulkanAPI->imageViewPool.get(depthStencilAttachment.imageView);
@@ -1357,7 +1357,7 @@ void VulkanCommandBuffer::processCommand(const ClearImageCommand& command)
 			case 1: memcpy(clearValue.float32.data(), &command.color, sizeof(float) * 4); break;
 			case 2: memcpy(clearValue.int32.data(), &command.color, sizeof(int32) * 4); break;
 			case 3: memcpy(clearValue.uint32.data(), &command.color, sizeof(uint32) * 4); break;
-			default: abort();
+			default: GARDEN_UNREACHABLE();
 		}
 
 		instance.clearColorImage(vkImage, (vk::ImageLayout)

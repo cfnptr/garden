@@ -102,7 +102,7 @@ Tlas::Tlas(vector<InstanceData>&& instances, ID<Buffer> instanceBuffer, BuildFla
 	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 		createVkTlas(instanceBuffer, flags, storageBuffer, instance, deviceAddress, buildData);
-	else abort();
+	else GARDEN_UNREACHABLE();
 }
 
 uint32 Tlas::getInstanceSize() noexcept
@@ -110,7 +110,7 @@ uint32 Tlas::getInstanceSize() noexcept
 	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 		return sizeof(vk::AccelerationStructureInstanceKHR);
-	else abort();
+	else GARDEN_UNREACHABLE();
 }
 void Tlas::fillInstanceData(const InstanceData* instanceArray, uint32 instanceCount, uint8* data) noexcept
 {
@@ -139,7 +139,7 @@ void Tlas::fillInstanceData(const InstanceData* instanceArray, uint32 instanceCo
 			instances[i] = vkInstance;
 		}
 	}
-	else abort();
+	else GARDEN_UNREACHABLE();
 }
 
 void Tlas::build(ID<Buffer> scratchBuffer)

@@ -153,7 +153,7 @@ RayTracingPipeline::RayTracingPipeline(RayTracingCreateData& createData) : Pipel
 	
 	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
 		createVkInstance(createData);
-	else abort();
+	else GARDEN_UNREACHABLE();
 }
 
 RayTracingPipeline::SBT RayTracingPipeline::createSBT(Buffer::Usage flags)
@@ -281,7 +281,7 @@ RayTracingPipeline::SBT RayTracingPipeline::createSBT(Buffer::Usage flags)
 		Buffer::copy(stagingBuffer, sbt.buffer);
 		vulkanAPI->bufferPool.destroy(stagingBuffer);
 	}
-	else abort();
+	else GARDEN_UNREACHABLE();
 
 	return sbt;
 }

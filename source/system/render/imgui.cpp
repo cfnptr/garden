@@ -603,7 +603,7 @@ static void updateImGuiTextures(ImVector<ImTextureData*>& textures,
 		{
 			auto updateRect = texture->UpdateRect;
 			auto uploadPitch = (psize)updateRect.w * texture->BytesPerPixel;
-			auto binarySize = (uint64)updateRect.h * uploadPitch;
+			auto binarySize = (psize)updateRect.h * uploadPitch;
 			auto stagingBuffer = graphicsSystem->createStagingBuffer(Buffer::CpuAccess::SequentialWrite, binarySize);
 			SET_RESOURCE_DEBUG_NAME(stagingBuffer, "buffer.staging.imgui.image" + to_string(*stagingBuffer));
 
@@ -636,7 +636,8 @@ static void updateImGuiTextures(ImVector<ImTextureData*>& textures,
 			texture->SetTexID(0); texture->BackendUserData = nullptr;
 			texture->SetStatus(ImTextureStatus_Destroyed);
 		}
-		else if (texture->Status != ImTextureStatus_Destroyed) abort();
+		else if (texture->Status != ImTextureStatus_Destroyed)
+			throw GardenError("Invalid ImGui texture status.");
 	}
 
 	graphicsSystem->stopRecording();

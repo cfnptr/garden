@@ -83,7 +83,7 @@ namespace garden::graphics
 };
 
 //**********************************************************************************************************************
-static vk::ImageType toVkImageType(Image::Type imageType) noexcept
+static constexpr vk::ImageType toVkImageType(Image::Type imageType) noexcept
 {
 	switch (imageType)
 	{
@@ -96,10 +96,10 @@ static vk::ImageType toVkImageType(Image::Type imageType) noexcept
 			return vk::ImageType::e2D;
 		case Image::Type::Texture3D:
 			return vk::ImageType::e3D;
-		default: abort();
+		default: GARDEN_UNREACHABLE();
 	}
 }
-static vk::ImageViewType toVkImageViewType(Image::Type imageType) noexcept
+static constexpr vk::ImageViewType toVkImageViewType(Image::Type imageType) noexcept
 {
 	switch (imageType)
 	{
@@ -109,7 +109,7 @@ static vk::ImageViewType toVkImageViewType(Image::Type imageType) noexcept
 		case Image::Type::Texture1DArray: return vk::ImageViewType::e1DArray;
 		case Image::Type::Texture2DArray: return vk::ImageViewType::e2DArray;
 		case Image::Type::Cubemap: return vk::ImageViewType::eCube;
-		default: abort();
+		default: GARDEN_UNREACHABLE();
 	}
 }
 static constexpr vk::ImageUsageFlags toVkImageUsages(Image::Usage imageUsage) noexcept
@@ -129,14 +129,14 @@ static constexpr vk::ImageUsageFlags toVkImageUsages(Image::Usage imageUsage) no
 		flags |= vk::ImageUsageFlagBits::eDepthStencilAttachment;
 	return flags;
 }
-static VmaAllocationCreateFlagBits toVmaMemoryStrategy(Image::Strategy memoryUsage) noexcept
+static constexpr VmaAllocationCreateFlagBits toVmaMemoryStrategy(Image::Strategy memoryUsage) noexcept
 {
 	switch (memoryUsage)
 	{
 		case Image::Strategy::Default: return {};
 		case Image::Strategy::Size: return VMA_ALLOCATION_CREATE_STRATEGY_MIN_MEMORY_BIT;
 		case Image::Strategy::Speed: return VMA_ALLOCATION_CREATE_STRATEGY_MIN_TIME_BIT;
-		default: abort();
+		default: GARDEN_UNREACHABLE();
 	}
 }
 
@@ -249,7 +249,7 @@ Image::Image(Type type, Format format, Usage usage, Strategy strategy, u32x4 siz
 	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 		createVkImage(type, format, usage, strategy, size, instance, allocation, aspectFlags);
-	else abort();
+	else GARDEN_UNREACHABLE();
 
 	this->type = type;
 	this->format = format;
@@ -261,7 +261,7 @@ Image::Image(Type type, Format format, Usage usage, Strategy strategy, u32x4 siz
 
 //**********************************************************************************************************************
 Image::Image(void* instance, Format format, Usage usage, Strategy strategy, uint2 size, uint8 backend) : Memory(
-	toBinarySize((psize)size.x * size.y, format), CpuAccess::None, Location::PreferGPU, strategy, 0), barrierStates(1)
+	toBinarySize((uint64)size.x * size.y, format), CpuAccess::None, Location::PreferGPU, strategy, 0), barrierStates(1)
 {
 	GARDEN_ASSERT(areAllTrue(size > uint2::zero));
 
@@ -277,7 +277,7 @@ Image::Image(void* instance, Format format, Usage usage, Strategy strategy, uint
 		barrierStates.front().stage = (uint64)vk::PipelineStageFlagBits2::eColorAttachmentOutput;
 		aspectFlags = (uint32)toVkImageAspectFlags(format);
 	}
-	else abort();
+	else GARDEN_UNREACHABLE();
 }
 bool Image::destroy()
 {
@@ -312,7 +312,7 @@ bool Image::destroy()
 			else vulkanAPI->destroyResource(GraphicsAPI::DestroyResourceType::Image, instance, allocation);
 		}
 	}
-	else abort();
+	else GARDEN_UNREACHABLE();
 
 	return true;
 }
@@ -325,7 +325,7 @@ uint32 Image::calcApiLayerIndex(Type type, uint32 layerIndex) noexcept
 		auto graphicsBackend = GraphicsAPI::get()->getBackendType();
 		if (graphicsBackend == GraphicsBackend::VulkanAPI)
 			return layerIndex ^ 1; // Note: remapping Vulkan API cubemap face indices.
-		else abort();
+		else GARDEN_UNREACHABLE();
 	}
 	return layerIndex;
 }
@@ -426,7 +426,7 @@ bool Image::isSupported(Type type, Format format, Usage usage, uint3 size, uint8
 			mipCount <= imageFormatProperties.imageFormatProperties.maxMipLevels &&
 			layerCount <= imageFormatProperties.imageFormatProperties.maxArrayLayers;
 	}
-	else abort();
+	else GARDEN_UNREACHABLE();
 }
 
 void Image::generateMips(Sampler::Filter filter)
@@ -456,18 +456,27 @@ void Image::generateMips(Sampler::Filter filter)
 	auto image = graphicsAPI->imagePool.getID(this);
 
 	Image::BlitRegion region;
-	region.layerCount = 1;
-
-	for (uint8 mip = 1; mip < mipCount; mip++)
+	if (type == Image::Type::Texture2DArray)
 	{
-		region.srcMipLevel = mip - 1;
-		region.dstMipLevel = mip;
-
-		// Note: We should not blit all layers in one mip,
-		//       because result differs across GPUs.
-		for (uint8 layer = 0; layer < layerCount; layer++)
+		region.layerCount = 1;
+		for (uint8 mip = 1; mip < mipCount; mip++)
 		{
-			region.srcBaseLayer = region.dstBaseLayer = layer;
+			region.srcMipLevel = mip - 1;
+			region.dstMipLevel = mip;
+
+			for (uint8 layer = 0; layer < layerCount; layer++)
+			{
+				region.srcBaseLayer = region.dstBaseLayer = layer;
+				Image::blit(image, image, region, filter);
+			}
+		}
+	}
+	else
+	{
+		for (uint8 mip = 1; mip < mipCount; mip++)
+		{
+			region.srcMipLevel = mip - 1;
+			region.dstMipLevel = mip;
 			Image::blit(image, image, region, filter);
 		}
 	}
@@ -748,7 +757,7 @@ void Image::copy(ID<Buffer> source, ID<Image> destination, const CopyBufferRegio
 		}
 		if (region.bufferRowLength == 0 && region.bufferImageHeight == 0)
 		{
-			auto regionBinarySize = toBinarySize((psize)region.imageExtent.x * 
+			auto regionBinarySize = toBinarySize((uint64)region.imageExtent.x * 
 				region.imageExtent.y * region.imageExtent.z, imageView->format);
 			GARDEN_ASSERT_MSG(region.bufferOffset < bufferView->getBinarySize(), 
 				"Assert " + imageView->getDebugName());
@@ -840,7 +849,7 @@ void Image::copy(ID<Image> source, ID<Buffer> destination, const CopyBufferRegio
 		}
 		if (region.bufferRowLength == 0 && region.bufferImageHeight == 0)
 		{
-			auto regionBinarySize = toBinarySize((psize)region.imageExtent.x * 
+			auto regionBinarySize = toBinarySize((uint64)region.imageExtent.x * 
 				region.imageExtent.y * region.imageExtent.z, imageView->format);
 			GARDEN_ASSERT_MSG(region.bufferOffset < bufferView->getBinarySize(), 
 				"Assert " + bufferView->getDebugName());
@@ -968,7 +977,7 @@ void Image::setDebugName(const string& name)
 		vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo);
 		#endif
 	}
-	else abort();
+	else GARDEN_UNREACHABLE();
 }
 #endif
 
@@ -1099,7 +1108,7 @@ const void* Image::convertFormat(const void* src, uint3 size, raw_vector<uint8>&
 	raw_vector<uint8> tmpBuffer;
 	if (srcCompCount < dstCompCount)
 	{
-		auto pixelCount = (psize)size.x * size.y * size.z;
+		auto pixelCount = (uint64)size.x * size.y * size.z;
 		auto srcBinarySize = toBinarySize(pixelCount, srcFormat) / pixelCount;
 		auto compBinarySize = srcBinarySize / srcCompCount;
 		auto dstBinarySize = dstCompCount * compBinarySize;
@@ -1483,8 +1492,7 @@ uint2 Image::pack3D(raw_vector<uint8>& pixels, uint3 size, uint32 stride, raw_ve
 	if (!tmpBuffer) tmpBuffer = &tmpLocal;
 
 	auto size2D = uint2(size.y * size.x, size.y);
-	auto rowSize3D = (psize)stride * size.x;
-	auto rowSize2D = (psize)stride * size2D.x;
+	auto rowSize3D = (psize)stride * size.x, rowSize2D = (psize)stride * size2D.x;
 	tmpBuffer->resize((psize)size2D.x * size2D.y * stride);
 	auto dstPixels = tmpBuffer->data(), srcPixels = pixels.data();
 
@@ -1526,7 +1534,7 @@ uint3 Image::unpack3D(raw_vector<uint8>& pixels, uint2 size, uint32 stride, raw_
 	tmpBuffer->resize((psize)size.x * size.y * stride);
 	auto dstPixels = tmpBuffer->data(); auto const srcPixels = pixels.data();
 	auto size3D = uint3(size.y, size.y, size.x / size.y);
-	auto rowSize2D = stride * size.x, rowSize3D = stride * size3D.x;
+	auto rowSize2D = (psize)stride * size.x, rowSize3D = (psize)stride * size3D.x;
 
 	for (uint32 y = 0; y < size3D.y; y++)
 	{
@@ -1689,9 +1697,8 @@ static basist::transcoder_texture_format toTranscoderFormat(Image::Format imageF
 		case Image::Format::SfloatR16G16B16A16: return basist::transcoder_texture_format::cTFRGBA_HALF;
 		case Image::Format::UfloatE5B9G9R9: return basist::transcoder_texture_format::cTFRGB_9E5;
 
-		default:
-			throw GardenError("Unsupported basis universal transcoder format. ("
-				"format: " + string(toString(imageFormat)) + ")");
+		default: throw GardenError("Unsupported basis universal transcoder format. ("
+					"format: " + string(toString(imageFormat)) + ")");
 	}
 }
 #endif
@@ -1775,7 +1782,7 @@ static void loadImageDataEXR(const void* data, psize dataSize, raw_vector<uint8>
 	if (!channelR)
 		throw GardenError("Invalid EXR image channels.");
 
-	auto pixelCount = (psize)imageSize.x * imageSize.y;
+	auto pixelCount = (uint64)imageSize.x * imageSize.y;
 	auto componentCount = channels.findChannel("B") ? 4 : (channels.findChannel("G") ? 2 : 1);
 	auto imageBinarySize = toBinarySize(pixelCount, imageFormat);
 	auto pixelBinarySize = imageBinarySize / pixelCount;
@@ -1904,34 +1911,29 @@ static void loadImageDataGIC(const void* data, psize dataSize, raw_vector<uint8>
 			gicHeader.channelCount, transcoder.is_srgb());
 		imageType = (Image::Type)gicHeader.imageType;
 
-		auto minMipSize = uint3(toFormatBlockSize(imageFormat), 1);
-		if (imageSize.x % minMipSize.x != 0 || imageSize.y % minMipSize.y != 0)
-			throw GardenError("Image size is not divisible by the basisu block size.");
-
 		auto transcoderFormat = toTranscoderFormat(imageFormat);
-		auto blockSize = (psize)minMipSize.x * minMipSize.y;
+		auto formatBlockSize = toFormatBlockSize(imageFormat);
+		auto blockSize = (uint64)formatBlockSize.x * formatBlockSize.y;
 		auto imageBinarySize = toMipBinarySize(imageSize, imageFormat);
 		pixels.resize(imageBinarySize); auto pixelData = pixels.data();
 		constexpr auto decodeFlags = basist::basisu_decode_flags::cDecodeFlagsHighQuality;
 		transcoder.start_transcoding();
 
-		auto mipSize = (uint3)imageSize;
-		for (uint32 mip = 0; mip < imageSize.w; mip++)
+		iterMipBinarySize(imageSize, imageFormat, [&](uint3 mipSize, uint32 level, uint64 binarySize)
 		{
-			auto sizeInBlocks = ((psize)mipSize.x * mipSize.y) / blockSize;
-			auto layerBinarySize = toBinarySize((psize)mipSize.x * mipSize.y, imageFormat);
+			auto pixelSize = (uint64)mipSize.x * mipSize.y;
+			auto layerBinarySize = toBinarySize(pixelSize, imageFormat);
 
-			for (uint32 level = 0; level < mipSize.z; level++)
+			for (uint32 layer = 0; layer < mipSize.z; layer++)
 			{
-				if (!transcoder.transcode_image_level(mip, level, 0, 
-					pixelData, sizeInBlocks, transcoderFormat, decodeFlags))
+				if (!transcoder.transcode_image_level(level, layer, 0, pixelData, 
+					pixelSize / blockSize, transcoderFormat, decodeFlags))
 				{
 					throw GardenError("Failed to transcode basis universal image.");
 				}
 				pixelData += layerBinarySize;
 			}
-			mipSize = max(mipSize / 2u, minMipSize);
-		}
+		});
 		return;
 		#else
 		throw GardenError("No basis universal image support.");
@@ -1957,7 +1959,7 @@ void Image::loadFileData(const void* data, psize dataSize, FileType fileType,
 		case FileType::JPEG: case FileType::BMP: case FileType::PSD: 
 		case FileType::TGA: case FileType::PIC: case FileType::GIF:
 			loadImageDataSTB(data, dataSize, pixels, imageSize, imageFormat); return;
-		default: abort();
+		default: GARDEN_UNREACHABLE();
 	}
 }
 
@@ -2039,7 +2041,7 @@ void Image::loadFileMetadata(const fs::path& path, raw_vector<uint8>& pixels, ui
 
 	if (imageType == Image::Type::Texture3D || imageType == Image::Type::Texture2DArray)
 	{
-		auto pixelCount = (psize)size.x * size.y * size.z;
+		auto pixelCount = (uint64)size.x * size.y * size.z;
 		auto imageBinarySize = toBinarySize(pixelCount, imageFormat);
 		auto pixelBinarySize = imageBinarySize / pixelCount;
 		auto size3D = Image::unpack3D(pixels, (uint2)size, pixelBinarySize);
@@ -2105,7 +2107,7 @@ static void storeImageDataPNG(const fs::path& filePath, const void* pixels, uint
 
 	if (size.z > 1)
 	{
-		auto pixelCount = (psize)size.x * size.y * size.z;
+		auto pixelCount = (uint64)size.x * size.y * size.z;
 		auto imageBinarySize = toBinarySize(pixelCount, imageFormat);
 		if (dstPixels != tmpPixels.data())
 			tmpPixels.assign((const uint8*)dstPixels, (const uint8*)dstPixels + imageBinarySize);
@@ -2246,7 +2248,7 @@ static void storeImageDataEXR(const fs::path& filePath, const void* pixels, uint
 
 	if (size.z > 1)
 	{
-		auto pixelCount = (psize)size.x * size.y * size.z;
+		auto pixelCount = (uint64)size.x * size.y * size.z;
 		auto imageBinarySize = toBinarySize(pixelCount, imageFormat);
 		if (dstPixels != tmpPixels.data())
 			tmpPixels.assign((const uint8*)dstPixels, (const uint8*)dstPixels + imageBinarySize);
@@ -2254,7 +2256,7 @@ static void storeImageDataEXR(const fs::path& filePath, const void* pixels, uint
 		size = uint3(size2D, 1); dstPixels = tmpPixels.data();
 	}
 
-	auto pixelCount = (psize)size.x * size.y * size.z;
+	auto pixelCount = (uint64)size.x * size.y * size.z;
 	auto componentCount = toComponentCount(imageFormat);
 	auto imageBinarySize = toBinarySize(pixelCount, imageFormat);
 	auto pixelBinarySize = imageBinarySize / pixelCount;
@@ -2350,7 +2352,7 @@ static void storeImageDataGIC(const fs::path& filePath, const void* pixels, uint
 	Image::Type imageType, Image::Format imageFormat, float quality, float effort, Image::StoreFlag flags)
 {
 	constexpr auto optimalTiling = (UINT16_MAX + 1); // Common VRAM 64kb alignment.
-	auto formatBinarySize = toBinarySize((psize)size.x * size.y * size.z, imageFormat);
+	auto formatBinarySize = toBinarySize((uint64)size.x * size.y * size.z, imageFormat);
 	auto isLessThan64k = formatBinarySize <= optimalTiling;
 	constexpr auto noBasisUniversal = GARDEN_USE_BASIS_UNIVERSAL ? false : true;
 
@@ -2477,13 +2479,7 @@ static void storeImageDataGIC(const fs::path& filePath, const void* pixels, uint
 			throw GardenError("Unsupported basis universal format conversion.");
 	}
 
-	if (size.x % basist::basis_tex_format_get_block_width(basisFormat) != 0 ||
-		size.y % basist::basis_tex_format_get_block_height(basisFormat) != 0)
-	{
-		throw GardenError("Image size is not divisible by the format block size.");
-	}
-
-	auto layerPixelCount = (psize)size.x * size.y;
+	auto layerPixelCount = (uint64)size.x * size.y;
 	auto imagePixelCount = layerPixelCount * size.z;
 	auto basisQuality = (int)std::fma(quality, 100.0f, 0.5f);
 	auto basisEffort = (int)std::fma(effort, 10.0f, 0.5f);
@@ -2656,7 +2652,7 @@ ImageView::ImageView(bool isDefault, ID<Image> image, Image::Type type,
 		this->instance = createVkImageView(imageView, type, format, 
 			baseLayer, layerCount, baseMip, mipCount, apiFormat, aspectFlags);
 	}
-	else abort();
+	else GARDEN_UNREACHABLE();
 
 	this->image = image;
 	this->baseLayer = baseLayer;
@@ -2740,7 +2736,7 @@ bool ImageView::destroy()
 			vulkanAPI->device.destroyImageView((VkImageView)instance);
 		else vulkanAPI->destroyResource(GraphicsAPI::DestroyResourceType::ImageView, instance);
 	}
-	else abort();
+	else GARDEN_UNREACHABLE();
 
 	return true;
 }
@@ -2775,6 +2771,6 @@ void ImageView::setDebugName(const string& name)
 		vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo);
 		#endif
 	}
-	else abort();
+	else GARDEN_UNREACHABLE();
 }
 #endif

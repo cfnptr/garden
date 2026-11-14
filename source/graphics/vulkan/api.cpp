@@ -1069,8 +1069,8 @@ static vk::PipelineCache createPipelineCache(const string& appDataName, Version 
 				targetHeader.appVersion = VK_MAKE_API_VERSION(0,
 					appVersion.major, appVersion.minor, appVersion.patch);
 				targetHeader.dataSize = (uint32)(fileSize - cacheHeaderSize);
-				targetHeader.dataHash = Hash128(fileData.data() + cacheHeaderSize,
-					(psize)fileSize - cacheHeaderSize);
+				targetHeader.dataHash = Hash128(fileData.data() + 
+					cacheHeaderSize, (psize)fileSize - cacheHeaderSize);
 				targetHeader.driverVersion = deviceProperties.properties.driverVersion;
 				targetHeader.driverABI = sizeof(void*);
 				targetHeader.cache.headerSize = sizeof(VkPipelineCacheHeaderVersionOne);
@@ -1324,7 +1324,7 @@ void VulkanAPI::flushDestroyBuffer()
 		case GraphicsAPI::DestroyResourceType::QueryPool:
 			device.destroyQueryPool((VkQueryPool)resource.data0);
 			break;
-		default: abort();
+		default: GARDEN_UNREACHABLE();
 		}
 	}
 

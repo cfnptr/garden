@@ -651,7 +651,7 @@ void MeshRenderSystem::renderSorted(const f32x4x4& viewProj, MeshRenderType rend
 		combinedSortedMeshes = uiSortedMeshes.data();
 		totalDrawCount = uiDrawIndex.load();
 	}
-	else abort();
+	else GARDEN_UNREACHABLE();
 
 	if (totalDrawCount == 0)
 		return;

@@ -22,6 +22,8 @@
 #include "garden/arch.hpp"
 #include "garden/simd.hpp"
 #include "garden/malloc.hpp"
+
+#include "ecsm-opt.hpp"
 #include "math/version.hpp"
 
 #include <filesystem>
@@ -89,7 +91,7 @@ namespace garden
 #define __PRETTY_FUNCTION__ __FUNCSIG__
 #endif
 
-/**
+/*******************************************************************************************************************
  * @brief Prints error and aborts program if statement is not true.
  *
  * @param statement target statement
@@ -97,7 +99,7 @@ namespace garden
  */
 #define GARDEN_ASSERT_MSG(statement, message)                                \
 {                                                                            \
-	if (!(statement))                                                        \
+	if (UNLIKELY(!(statement)))                                              \
 	{                                                                        \
 		std::string msg = message;                                           \
 		printf("%s: (%s), function: %s, file: %s, line: %d.\n", msg.c_str(), \
@@ -108,16 +110,31 @@ namespace garden
 } (void)0
 #else
 /**
- * @brief Prints error and aborts program if statement is not true.
- *
- * @param statement target statement
- * @param[in] message error message
+ * @brief Only for debugging, does nothing in release build.
  */
 #define GARDEN_ASSERT_MSG(statement, message) (void)0
 #endif
 
 /**
  * @brief Prints error and aborts program if statement is not true.
+ * @note Only for debugging, does nothing in release build.
  * @param statement target statement
  */
 #define GARDEN_ASSERT(statement) GARDEN_ASSERT_MSG(statement, "Assertion failed")
+
+#if defined(__clang__) || defined(__GNUC__)
+/**
+ * @brief Compiler assumes that this code path is unreachable.
+ */
+#define GARDEN_UNREACHABLE() { assert(!"Unreachable"); __builtin_unreachable(); }
+#elif defined(_MSC_VER)
+/**
+ * @brief Compiler assumes that this code path is unreachable.
+ */
+#define GARDEN_UNREACHABLE() { assert(!"Unreachable"); __assume(false) }
+#else
+/**
+ * @brief No support in current compiler.
+ */
+#define GARDEN_UNREACHABLE() assert(!"Unreachable")
+#endif

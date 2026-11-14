@@ -95,7 +95,7 @@ static void* createVkDescriptorSet(ID<Pipeline> pipeline, PipelineType pipelineT
 			DescriptorSet::accelStructureCount += allocateInfo.descriptorSetCount;
 			GARDEN_ASSERT(DescriptorSet::accelStructureCount < GARDEN_DS_POOL_ACCEL_STRUCTURE_COUNT);
 			break;
-		default: abort();
+		default: GARDEN_UNREACHABLE();
 		}
 	}
 	#endif
@@ -155,7 +155,7 @@ static void destroyVkDescriptorSet(void* instance, ID<Pipeline> pipeline, Pipeli
 			case vk::DescriptorType::eStorageBuffer: DescriptorSet::storageBufferCount -= setCount; break;
 			case vk::DescriptorType::eInputAttachment: DescriptorSet::inputAttachmentCount -= setCount; break;
 			case vk::DescriptorType::eAccelerationStructureKHR: DescriptorSet::accelStructureCount -= setCount; break;
-			default: abort();
+			default: GARDEN_UNREACHABLE();
 		}
 	}
 	#endif
@@ -274,7 +274,7 @@ static void recreateVkDescriptorSet(const DescriptorSet::Uniforms& oldUniforms,
 				asInfoCount += (uint32)resourceSetData[i].size();
 			tlasCount += newSetCount;
 		}
-		else abort();
+		else throw GardenError("Invalid pipeline uniform. (name: " + uniformPair.first + ")");
 	}
 
 	if (vulkanAPI->descriptorImageInfos.size() < imageInfoCount)
@@ -481,7 +481,7 @@ static void updateVkDescriptorSetResources(void* instance, const DescriptorSet::
 		if (vulkanAPI->asDescriptorInfos.size() < elementCount)
 			vulkanAPI->asDescriptorInfos.resize(elementCount);
 	}
-	else abort();
+	else throw GardenError("Invalid pipeline uniform.");
 
 	vk::WriteDescriptorSet writeDescriptorSet((VkDescriptorSet)instance, pipelineUniform.bindingIndex, 
 		elementOffset, elementCount, toVkDescriptorType(pipelineUniform.type));
@@ -598,7 +598,7 @@ DescriptorSet::DescriptorSet(ID<Pipeline> pipeline, PipelineType pipelineType, U
 	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 		this->instance = createVkDescriptorSet(pipeline, pipelineType, uniforms, setCount, index);
-	else abort();
+	else GARDEN_UNREACHABLE();
 
 	barriers.resize(uniforms.begin()->second.resourceSets.size());
 	recreate(std::move(uniforms), std::move(samplers));
@@ -612,7 +612,7 @@ bool DescriptorSet::destroy()
 	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 		destroyVkDescriptorSet(instance, pipeline, pipelineType, uniforms, setCount, index);
-	else abort();
+	else GARDEN_UNREACHABLE();
 
 	return true;
 }
@@ -650,12 +650,12 @@ void DescriptorSet::recreate(Uniforms&& uniforms, Samplers&& samplers)
 		if (uniforms.find(pair.first) == uniforms.end())
 			throw GardenError("Missing required pipeline uniform. (" + pair.first + ")");
 
+		auto pipelineUniform = pair.second;
+		const auto& dsUniform = uniforms.at(pair.first);
+
 		for (uint32 i = 0; i < setCount; i++)
 		{
-			auto pipelineUniform = pair.second;
-			const auto& dsUniform = uniforms.at(pair.first);
 			const auto& resourceArray = dsUniform.resourceSets[i];
-
 			if (pipelineUniform.arraySize > 0)
 			{
 				GARDEN_ASSERT_MSG(resourceArray.size() == pipelineUniform.arraySize, "Different descriptor set [" +
@@ -713,7 +713,7 @@ void DescriptorSet::recreate(Uniforms&& uniforms, Samplers&& samplers)
 					GARDEN_ASSERT_MSG(hasAnyFlag(bufferView->getUsage(), Buffer::Usage::StorageAS), "Missing "
 						"descriptor set [" + debugName + "] pipeline uniform [" + pair.first + "] flag");
 				}
-				else abort();
+				else throw GardenError("Invalid pipeline uniform. (name: " + pair.first + ")");
 			}
 		}
 	}
@@ -729,7 +729,7 @@ void DescriptorSet::recreate(Uniforms&& uniforms, Samplers&& samplers)
 		recreateVkDescriptorSet(this->uniforms, uniforms, samplers, pipelineUniforms, 
 			descriptorPool, descriptorSetLayout, framebufferView, barriers, instance, index);
 	}
-	else abort();
+	else GARDEN_UNREACHABLE();
 
 	this->uniforms = std::move(uniforms);
 }
@@ -793,7 +793,7 @@ void DescriptorSet::updateUniform(string_view name,
 		GARDEN_ASSERT_MSG(hasAnyFlag(bufferView->getUsage(), Buffer::Usage::StorageAS), "Missing "
 			"descriptor set [" + debugName + "] pipeline uniform [" + string(name) + "] flag");
 	}
-	else abort();
+	else throw GardenError("Invalid pipeline uniform. (name: " + string(name) + ")");
 	#endif
 
 	dsUniform->second.resourceSets[setIndex][elementIndex] = uniform.resource;
@@ -829,7 +829,7 @@ void DescriptorSet::updateResources(string_view name, uint32 elementCount, uint3
 		updateVkDescriptorSetResources(instance, dsUniform->second, pipelineUniform->second, 
 			framebufferView, barriers[setIndex], elementCount, elementOffset, setIndex);
 	}
-	else abort();
+	else GARDEN_UNREACHABLE();
 }
 
 #if GARDEN_DEBUG || GARDEN_EDITOR
@@ -866,6 +866,6 @@ void DescriptorSet::setDebugName(const string& name)
 		}
 		#endif
 	}
-	else abort();
+	else GARDEN_UNREACHABLE();
 }
 #endif

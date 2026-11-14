@@ -62,7 +62,7 @@ ComputePipeline::ComputePipeline(ComputeCreateData& createData) :
 	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 		createVkInstance(createData);
-	else abort();
+	else GARDEN_UNREACHABLE();
 }
 
 void ComputePipeline::dispatch(uint3 count, bool isGlobalCount)

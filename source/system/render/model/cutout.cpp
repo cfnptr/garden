@@ -23,11 +23,5 @@ CutoutModelSystem::CutoutModelSystem(bool setSingleton) :
 	Manager::getInstance()->addGroupSystem<IMeshRenderSystem>(this);
 }
 
-string_view CutoutModelSystem::getComponentName() const
-{
-	return "Cutout Model";
-}
-MeshRenderType CutoutModelSystem::getMeshRenderType() const
-{
-	return MeshRenderType::Opaque;
-}
+string_view CutoutModelSystem::getComponentName() const { return "Cutout Model"; }
+MeshRenderType CutoutModelSystem::getMeshRenderType() const { return MeshRenderType::Opaque; }

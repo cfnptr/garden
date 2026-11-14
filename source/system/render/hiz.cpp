@@ -43,15 +43,15 @@ static void createHizFramebuffers(GraphicsSystem* graphicsSystem,
 	auto mipCount = hisBufferView->getMipCount();
 	framebuffers.reserve(mipCount);
 
-	for (uint8 i = 0; i < mipCount; i++)
+	for (uint8 level = 0; level < mipCount; level++)
 	{
 		vector<Framebuffer::Attachment> colorAttachments =
 		{
-			Framebuffer::Attachment(hisBufferView->getView(0, i), 
+			Framebuffer::Attachment(hisBufferView->getView(0, level), 
 				Framebuffer::LoadOp::DontCare, Framebuffer::StoreOp::Store)
 		};
 		auto framebuffer = graphicsSystem->createFramebuffer(frameSize, std::move(colorAttachments));
-		SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.hiz" + to_string(i));
+		SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.hiz" + to_string(level));
 		framebuffers.push_back(framebuffer); frameSize = max(frameSize / 2u, uint2::one);
 	}
 }
@@ -73,11 +73,11 @@ static void createHizDescriptorSets(GraphicsSystem* graphicsSystem, ID<GraphicsP
 	SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.hiz0");
 	descriptorSets.push_back(descriptorSet);
 
-	for (uint8 i = 1; i < mipCount; i++)
+	for (uint8 level = 1; level < mipCount; level++)
 	{
-		uniforms = getUniforms(hisBufferView->getView(0, i - 1));
+		uniforms = getUniforms(hisBufferView->getView(0, level - 1));
 		descriptorSet = graphicsSystem->createDescriptorSet(pipeline, std::move(uniforms));
-		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.hiz" + to_string(i));
+		SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.hiz" + to_string(level));
 		descriptorSets.push_back(descriptorSet);
 	}
 }
@@ -151,14 +151,14 @@ void HizRenderSystem::downsampleHiz(uint8 mipCount)
 			pipelineView->drawFullscreen();
 		}
 		
-		for (uint8 i = 1; i < mipCount; i++)
+		for (uint8 level = 1; level < mipCount; level++)
 		{
-			pipelineView->updateFramebuffer(framebufferData[i]);
+			pipelineView->updateFramebuffer(framebufferData[level]);
 
-			RenderPass renderPass(framebufferData[i], float4::zero);
+			RenderPass renderPass(framebufferData[level], float4::zero);
 			pipelineView->bind(HIZ_VARIANT_BASE);
 			pipelineView->setViewportScissor();
-			pipelineView->bindDescriptorSet(descriptorSetData[i]);
+			pipelineView->bindDescriptorSet(descriptorSetData[level]);
 			pipelineView->drawFullscreen();
 		}
 	}

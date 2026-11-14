@@ -795,7 +795,7 @@ void PhysicsEditorSystem::onRigidbodyInspector(ID<Entity> entity, bool isOpened)
 			ImGui::Text("Motion type: Kinematic");
 		else if (motionType == MotionType::Dynamic)
 			ImGui::Text("Motion type: Dynamic");
-		else abort();
+		else GARDEN_UNREACHABLE();
 		ImGui::EndTooltip();
 	}
 
@@ -1132,7 +1132,7 @@ static void renderAdvancedProperties(View<CharacterComponent> characterView)
 			stateString = "NotSupported";
 		else if (groundState == CharacterGround::InAir)
 			stateString = "InAir";
-		else abort();
+		else GARDEN_UNREACHABLE();
 	}
 	
 	ImGui::InputText("State", &stateString, ImGuiInputTextFlags_ReadOnly);

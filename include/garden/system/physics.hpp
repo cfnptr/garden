@@ -319,11 +319,7 @@ public:
 	/**
 	 * @brief Returns current shape reference count.
 	 */
-	uint64 getRefCount() const;
-	/**
-	 * @brief Is this the last shape reference.
-	 */
-	bool isLastRef() const;
+	uint32 getRefCount() const;
 
 	/**
 	 * @brief Retruns shape internal instance.

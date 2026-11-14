@@ -23,11 +23,5 @@ TransModelSystem::TransModelSystem(bool setSingleton) :
 	Manager::getInstance()->addGroupSystem<IMeshRenderSystem>(this);
 }
 
-string_view TransModelSystem::getComponentName() const
-{
-	return "Translucent Model";
-}
-MeshRenderType TransModelSystem::getMeshRenderType() const
-{
-	return MeshRenderType::OIT;
-}
+string_view TransModelSystem::getComponentName() const { return "Translucent Model"; }
+MeshRenderType TransModelSystem::getMeshRenderType() const { return MeshRenderType::OIT; }

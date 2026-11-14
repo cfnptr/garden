@@ -23,11 +23,5 @@ Opaque9SliceSystem::Opaque9SliceSystem(bool setSingleton) :
 	Manager::getInstance()->addGroupSystem<IMeshRenderSystem>(this);
 }
 
-string_view Opaque9SliceSystem::getComponentName() const
-{
-	return "Opaque 9-Slice";
-}
-MeshRenderType Opaque9SliceSystem::getMeshRenderType() const
-{
-	return MeshRenderType::Opaque;
-}
+string_view Opaque9SliceSystem::getComponentName() const { return "Opaque 9-Slice"; }
+MeshRenderType Opaque9SliceSystem::getMeshRenderType() const { return MeshRenderType::Opaque; }

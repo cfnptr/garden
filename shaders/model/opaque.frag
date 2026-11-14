@@ -62,6 +62,14 @@ buffer readonly Instance
 	BaseInstanceData data[];
 } instance;
 
+uniform set1 sampler2D
+{
+	filter = linear;
+	filterMipmap = linear;
+	anisoFiltering = on;
+	maxAnisotropy = 16;
+} colorMaps[];
+
 earlyFragmentTests in;
 
 void main()

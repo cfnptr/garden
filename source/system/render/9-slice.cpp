@@ -18,9 +18,9 @@
 using namespace garden;
 
 //**********************************************************************************************************************
-uint64 NineSliceRenderSystem::getBaseInstanceDataSize()
+psize NineSliceRenderSystem::getBaseInstanceDataSize()
 {
-	return (uint64)sizeof(NineSliceInstanceData);
+	return sizeof(NineSliceInstanceData);
 }
 void NineSliceRenderSystem::setInstanceData(SpriteRenderComponent* spriteRenderView, void* instanceData,
 	const f32x4x4& viewProj, const f32x4x4& model, uint32 instanceIndex, int32 threadIndex)

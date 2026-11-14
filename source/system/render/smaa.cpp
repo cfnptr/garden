@@ -101,7 +101,7 @@ static ID<GraphicsPipeline> createEdgesPipeline(ID<Framebuffer> edgesFramebuffer
 		case GraphicsQuality::Medium: threshold = 0.1; break;
 		case GraphicsQuality::High: threshold = 0.05f; break;
 		case GraphicsQuality::Ultra: threshold = 0.025f; break;
-		default: abort();
+		default: GARDEN_UNREACHABLE();
 	}
 	Pipeline::SpecConstValues specConstValues = { { "THRESHOLD", Pipeline::SpecConstValue(threshold) } };
 
@@ -120,7 +120,7 @@ static ID<GraphicsPipeline> createWeightsPipeline(ID<Framebuffer> weightsFramebu
 		case GraphicsQuality::Medium: maxSearchSteps = 8.0f; maxSearchStepsDiag = 4; break;
 		case GraphicsQuality::High: maxSearchSteps = 16.0f; maxSearchStepsDiag = 8; break;
 		case GraphicsQuality::Ultra: maxSearchSteps = 32.0f; maxSearchStepsDiag = 16; break;
-		default: abort();
+		default: GARDEN_UNREACHABLE();
 	}
 
 	if (quality < GraphicsQuality::Medium)

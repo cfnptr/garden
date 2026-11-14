@@ -175,7 +175,7 @@ protected:
 			debugName = "computePipeline." + path.generic_string();
 		else if (type == PipelineType::RayTracing)
 			debugName = "rayTracingPipeline." + path.generic_string();
-		else abort();
+		else GARDEN_UNREACHABLE();
 		#endif
 	}
 	bool destroy() override;
@@ -222,7 +222,7 @@ public:
 	 */
 	uint8 getPushConstantsSize() const noexcept { return pushConstantsSize; }
 	/**
-	 * @brief Returns pipeline maximum bindless descriptor count in the array.
+	 * @brief Returns pipeline maximum bindless resource count in the array.
 	 * @details Used to preallocate required space in the descriptor set.
 	 */
 	uint32 getMaxBindlessCount() const noexcept { return maxBindlessCount; }
@@ -431,7 +431,7 @@ public:
 	 */
 	static uint64& getVersion(Pipeline& pipeline) noexcept { return pipeline.pipelineVersion; }
 	/**
-	 * @brief Returns pipeline maximum bindless descriptor count in the array.
+	 * @brief Returns pipeline maximum bindless resource count in the array.
 	 * @warning In most cases you should use @ref Pipeline functions.
 	 * @param[in] pipeline target pipeline instance
 	 */

@@ -34,7 +34,7 @@ BindlessPool::BindlessPool(ID<Pipeline> pipeline, PipelineType pipelineType,
 	for (auto i = uniforms.begin(); i != uniforms.end(); i++)
 	{
 		GARDEN_ASSERT_MSG(i->second.resourceSets.empty(), 
-			"No resource set for uniform [" + i->first + "]");
+			"No resource set for bindless uniform [" + i->first + "]");
 		auto& resourceSets = i->second.resourceSets;
 		resourceSets.resize(1); resourceSets.front().resize(maxBindlessCount);
 

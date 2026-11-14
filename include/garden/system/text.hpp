@@ -381,12 +381,11 @@ public:
 	 */
 	void destroy(Ref<FontAtlas>& fontAtlas)
 	{
-		if (fontAtlas.isLastRef())
+		fontAtlas.destroy([&]()
 		{
 			auto item = ID<FontAtlas>(fontAtlas);
 			destroy(item);
-		}
-		fontAtlas = {};
+		});
 	}
 	
 	/*******************************************************************************************************************
@@ -477,12 +476,11 @@ public:
 	 */
 	void destroy(Ref<Text>& text)
 	{
-		if (text.isLastRef())
+		text.destroy([&]()
 		{
 			auto item = ID<Text>(text);
 			destroy(item);
-		}
-		text = {};
+		});
 	}
 };
 

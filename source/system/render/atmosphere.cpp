@@ -139,7 +139,7 @@ static void createSkyboxFramebuffers(GraphicsSystem* graphicsSystem, ID<Framebuf
 		{
 			Framebuffer::Attachment({}, Framebuffer::LoadOp::DontCare, Framebuffer::StoreOp::Store)
 		};
-		auto framebuffer = graphicsSystem->createFramebuffer(uint2(1), std::move(colorAttachments));
+		auto framebuffer = graphicsSystem->createFramebuffer(uint2::one, std::move(colorAttachments));
 		SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer.atmosphere.skybox" + to_string(i));
 		framebuffers[i] = framebuffer;
 	}
@@ -215,7 +215,7 @@ static ID<GraphicsPipeline> createSkyViewLutPipeline(ID<Framebuffer> skyViewLutF
 		case GraphicsQuality::Medium: rayMarchSppMin = 4.0f; rayMarchSppMax = 64.0f; break;
 		case GraphicsQuality::High: rayMarchSppMin = 4.0f; rayMarchSppMax = 128.0f; break;
 		case GraphicsQuality::Ultra: rayMarchSppMin = 4.0f; rayMarchSppMax = 256.0f; break;
-		default: abort();
+		default: GARDEN_UNREACHABLE();
 	}
 
 	Pipeline::SpecConstValues specConstValues =

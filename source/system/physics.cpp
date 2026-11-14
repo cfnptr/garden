@@ -324,17 +324,11 @@ void Shape::getPosAndRot(f32x4& position, quat& rotation) const
 	rotation = toQuat(rotTransInstance->GetRotation());
 }
 
-uint64 Shape::getRefCount() const
+uint32 Shape::getRefCount() const
 {
 	GARDEN_ASSERT(instance);
 	auto instance = (const JPH::Shape*)this->instance;
 	return instance->GetRefCount();
-}
-bool Shape::isLastRef() const
-{
-	GARDEN_ASSERT(instance);
-	auto instance = (const JPH::Shape*)this->instance;
-	return instance->GetRefCount() == 1;
 }
 
 //**********************************************************************************************************************
@@ -775,7 +769,7 @@ void RigidbodyComponent::createConstraint(ID<Entity> otherBody,
 		}
 		instance = settings.Create(*thisBody, *targetBody);
 	}
-	else abort();
+	else GARDEN_UNREACHABLE();
 	
 	instance->AddRef();
 	auto physicsInstance = (JPH::PhysicsSystem*)PhysicsSystem::getInstance()->physicsInstance;
@@ -1050,7 +1044,7 @@ static void toEventName(string& eventName, string_view eventListener, BodyEvent 
 		case BodyEvent::Entered: eventName += ".Entered"; break;
 		case BodyEvent::Stayed: eventName += ".Stayed"; break;
 		case BodyEvent::Exited: eventName += ".Exited"; break;
-		default: abort();
+		default: GARDEN_UNREACHABLE();
 	}
 }
 
@@ -2043,7 +2037,7 @@ void PhysicsSystem::destroyShared(ID<Shape>& shape)
 		}
 	}
 
-	if (shapeView->isLastRef())
+	if (shapeView->getRefCount() == 1) // TODO: this is not actually thread safe! Use Ref<>::destroy() approach.
 		destroy(shape);
 }
 

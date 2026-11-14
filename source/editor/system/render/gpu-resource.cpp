@@ -175,7 +175,7 @@ static void renderBuffers(uint32& selectedItem, string& searchString,
 		getVkAllocationInfo(allocationInfo, memoryType, memoryHeap, buffer);
 		renderVkMemoryDetails(allocationInfo, memoryType, memoryHeap, buffer);
 	}
-	else abort();
+	else GARDEN_UNREACHABLE();
 	ImGui::Spacing();
 
 	if (ImGui::CollapsingHeader("Using Descriptor Sets"))
@@ -322,7 +322,7 @@ static void renderImages(uint32& selectedItem, string& searchString, bool& searc
 		getVkAllocationInfo(allocationInfo, memoryType, memoryHeap, image);
 		renderVkMemoryDetails(allocationInfo, memoryType, memoryHeap, image);
 	}
-	else abort();
+	else GARDEN_UNREACHABLE();
 	
 	auto isSwapchain = image.isSwapchain();
 	ImGui::Checkbox("Swapchain", &isSwapchain);

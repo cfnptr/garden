@@ -128,7 +128,7 @@ bool ImageConverter::equi2cube(const fs::path& filePath, const fs::path& inputPa
 		throw GardenError("Image is not a cubemap.");
 
 	auto invDim = 1.0f / cubemapSize; auto equiSizeMinus1 = (uint2)equiSize - 1u;
-	auto faceBinarySize = toBinarySize((psize)cubemapSize * cubemapSize, imageFormat);
+	auto faceBinarySize = toBinarySize((uint64)cubemapSize * cubemapSize, imageFormat);
 	raw_vector<uint8> nx(faceBinarySize), px(faceBinarySize), ny(faceBinarySize), 
 		py(faceBinarySize), nz(faceBinarySize), pz(faceBinarySize);
 
@@ -188,7 +188,7 @@ bool ImageConverter::equi2cube(const fs::path& filePath, const fs::path& inputPa
 					imageSize, fileType, imageType, imageFormat, 1.0f, effort); break;
 				case 5: Image::storeFileData(gicFilePath + "-pz.gic", pz.data(), 
 					imageSize, fileType, imageType, imageFormat, 1.0f, effort); break;
-				default: abort();
+				default: GARDEN_UNREACHABLE();
 			}
 		}, Image::cubemapFaceCount);
 		threadPool->wait();

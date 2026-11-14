@@ -36,7 +36,7 @@ Sampler::Sampler(const State& state) : state(state)
 		auto samplerInfo = getVkSamplerCreateInfo(state);
 		this->instance = VulkanAPI::get()->device.createSampler(samplerInfo);
 	}
-	else abort();
+	else GARDEN_UNREACHABLE();
 }
 
 bool Sampler::destroy()
@@ -47,7 +47,7 @@ bool Sampler::destroy()
 	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 		destroyVkSampler(instance);
-	else abort();
+	else GARDEN_UNREACHABLE();
 
 	return true;
 }
@@ -70,6 +70,6 @@ void Sampler::setDebugName(const string& name)
 		vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo);
 		#endif
 	}
-	else abort();
+	else GARDEN_UNREACHABLE();
 }
 #endif

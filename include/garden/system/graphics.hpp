@@ -479,12 +479,11 @@ public:
 	 */
 	void destroy(Ref<Buffer>& buffer)
 	{
-		if (buffer.isLastRef())
+		buffer.destroy([&]()
 		{
 			auto item = ID<Buffer>(buffer);
 			destroy(item);
-		}
-		buffer = {};
+		});
 	}
 	/**
 	 * @brief Destroys array of buffer instances. (Does not free pointer!)
@@ -646,12 +645,11 @@ public:
 	 */
 	void destroy(Ref<Image>& image)
 	{
-		if (image.isLastRef())
+		image.destroy([&]()
 		{
 			auto item = ID<Image>(image);
 			destroy(item);
-		}
-		image = {};
+		});
 	}
 	/**
 	 * @brief Destroys array of image instances. (Does not free pointer!)
@@ -712,12 +710,11 @@ public:
 	 */
 	void destroy(Ref<ImageView>& imageView)
 	{
-		if (imageView.isLastRef())
+		imageView.destroy([&]()
 		{
 			auto item = ID<ImageView>(imageView);
 			destroy(item);
-		}
-		imageView = {};
+		});
 	}
 	/**
 	 * @brief Destroys array of image view instances. (Does not free pointer!)
@@ -739,6 +736,7 @@ public:
 	{
 		for (auto& imageView : imageViews)
 			destroy(imageView);
+		imageViews.clear();
 	}
 
 	/**
@@ -773,12 +771,11 @@ public:
 	 */
 	void destroy(Ref<Framebuffer>& framebuffer)
 	{
-		if (framebuffer.isLastRef())
+		framebuffer.destroy([&]()
 		{
 			auto item = ID<Framebuffer>(framebuffer);
 			destroy(item);
-		}
-		framebuffer = {};
+		});
 	}
 	/**
 	 * @brief Destroys array of framebuffer instances. (Does not free pointer!)
@@ -833,12 +830,11 @@ public:
 	 */
 	void destroy(Ref<Sampler>& sampler)
 	{
-		if (sampler.isLastRef())
+		sampler.destroy([&]()
 		{
 			auto item = ID<Sampler>(sampler);
 			destroy(item);
-		}
-		sampler = {};
+		});
 	}
 	/**
 	 * @brief Destroys array of sampler instances. (Does not free pointer!)
@@ -885,12 +881,11 @@ public:
 	 */
 	void destroy(Ref<GraphicsPipeline>& graphicsPipeline)
 	{
-		if (graphicsPipeline.isLastRef())
+		graphicsPipeline.destroy([&]()
 		{
 			auto item = ID<GraphicsPipeline>(graphicsPipeline);
 			destroy(item);
-		}
-		graphicsPipeline = {};
+		});
 	}
 	/**
 	 * @brief Destroys array of graphics pipeline instances. (Does not free pointer!)
@@ -940,12 +935,11 @@ public:
 	 */
 	void destroy(Ref<ComputePipeline>& computePipeline)
 	{
-		if (computePipeline.isLastRef())
+		computePipeline.destroy([&]()
 		{
 			auto item = ID<ComputePipeline>(computePipeline);
 			destroy(item);
-		}
-		commonConstants = {};
+		});
 	}
 	/**
 	 * @brief Destroys array of compute pipeline instances. (Does not free pointer!)
@@ -995,12 +989,11 @@ public:
 	 */
 	void destroy(Ref<RayTracingPipeline>& rayTracingPipeline)
 	{
-		if (rayTracingPipeline.isLastRef())
+		rayTracingPipeline.destroy([&]()
 		{
 			auto item = ID<RayTracingPipeline>(rayTracingPipeline);
 			destroy(item);
-		}
-		rayTracingPipeline = {};
+		});
 	}
 	/**
 	 * @brief Destroys array of ray tracing pipeline instances. (Does not free pointer!)
@@ -1081,12 +1074,11 @@ public:
 	 */
 	void destroy(Ref<DescriptorSet>& descriptorSet)
 	{
-		if (descriptorSet.isLastRef())
+		descriptorSet.destroy([&]()
 		{
 			auto item = ID<DescriptorSet>(descriptorSet);
 			destroy(item);
-		}
-		descriptorSet = {};
+		});
 	}
 	/**
 	 * @brief Destroys array of descriptor set instances. (Does not free pointer!)
@@ -1153,12 +1145,11 @@ public:
 	 */
 	void destroy(Ref<Blas>& blas)
 	{
-		if (blas.isLastRef())
+		blas.destroy([&]()
 		{
 			auto item = ID<Blas>(blas);
 			destroy(item);
-		}
-		blas = {};
+		});
 	}
 	/**
 	 * @brief Destroys array of BLAS instances. (Does not free pointer!)
@@ -1214,12 +1205,11 @@ public:
 	 */
 	void destroy(Ref<Tlas>& tlas)
 	{
-		if (tlas.isLastRef())
+		tlas.destroy([&]()
 		{
 			auto item = ID<Tlas>(tlas);
 			destroy(item);
-		}
-		tlas = {};
+		});
 	}
 	/**
 	 * @brief Destroys array of TLAS instances. (Does not free pointer!)

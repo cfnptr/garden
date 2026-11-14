@@ -436,7 +436,7 @@ static uint32 getCubemapSize(GraphicsQuality quality) noexcept
 		case GraphicsQuality::Medium: return 256;
 		case GraphicsQuality::High: return 256;
 		case GraphicsQuality::Ultra: return 512;
-		default: abort();
+		default: GARDEN_UNREACHABLE();
 	}
 }
 static uint32 getSpecularSampleCount(GraphicsQuality quality)
@@ -448,7 +448,7 @@ static uint32 getSpecularSampleCount(GraphicsQuality quality)
 		case GraphicsQuality::Medium: return 128;
 		case GraphicsQuality::High: return 256;
 		case GraphicsQuality::Ultra: return 512;
-		default: abort();
+		default: GARDEN_UNREACHABLE();
 	}
 }
 
@@ -807,9 +807,9 @@ void PbrLightingSystem::preHdrRender()
 			event->run();
 	}
 
-	DescriptorSet::Range ranges[2];
-	ranges[0] = DescriptorSet::Range(pbrLightingDS);
-	ranges[1] = DescriptorSet::Range(ID<DescriptorSet>(pbrLightingView->descriptorSet));
+	DescriptorSet::Range dsRanges[2];
+	dsRanges[0] = DescriptorSet::Range(pbrLightingDS);
+	dsRanges[1] = DescriptorSet::Range(ID<DescriptorSet>(pbrLightingView->descriptorSet));
 
 	pipelineView = graphicsSystem->get(pbrLightingPipeline);
 	const auto& cc = graphicsSystem->getCommonConstants();
@@ -827,7 +827,7 @@ void PbrLightingSystem::preHdrRender()
 		RenderPass renderPass(pbrLightingFB, float4::zero);
 		pipelineView->bind();
 		pipelineView->setViewportScissor();
-		pipelineView->bindDescriptorSets(ranges, 2);
+		pipelineView->bindDescriptorSets(dsRanges, 2);
 		pipelineView->pushConstants(&pc);
 		pipelineView->drawFullscreen();
 	}
@@ -1386,6 +1386,7 @@ void PbrLightingSystem::createIblDescriptorSets(ID<Image> skybox, ID<Buffer> spe
 
 	for (uint8 i = 0; i < specularViewCount; i++)
 	{
+		GARDEN_ASSERT(specularViewData[i]);
 		DescriptorSet::Uniforms uniforms =
 		{
 			{ "skybox", skyboxView },
@@ -1519,8 +1520,8 @@ void PbrLightingSystem::loadCubemap(const fs::path& path, Image::Format& format,
 	Image::Mips mips(mipCount);
 	mips[0] = { nx.data(), px.data(), ny.data(), py.data(), nz.data(), pz.data() };
 
-	for (uint8 i = 1; i < mipCount; i++)
-		mips[i].resize(Image::cubemapFaceCount);
+	for (uint8 level = 1; level < mipCount; level++)
+		mips[level].resize(Image::cubemapFaceCount);
 
 	auto graphicsSystem = GraphicsSystem::getInstance();
 	graphicsSystem->startRecording(CommandBufferType::Graphics);
@@ -1633,7 +1634,7 @@ Ref<DescriptorSet> PbrLightingSystem::createDescriptorSet(ID<Entity> entity,
 			descriptorSet = graphicsSystem->createDescriptorSet(
 				ID<RayTracingPipeline>(pipeline), std::move(uniforms), {}, index);
 		}
-		else abort();
+		else GARDEN_UNREACHABLE();
 	}
 	return Ref<DescriptorSet>(descriptorSet);
 }

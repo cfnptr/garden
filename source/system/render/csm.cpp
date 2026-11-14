@@ -355,7 +355,7 @@ bool CsmRenderSystem::beginShadowRender(uint32 passIndex, MeshRenderType renderT
 		clearColors = &float4::one;
 		clearColorCount = 1;
 	}
-	else abort();
+	else GARDEN_UNREACHABLE();
 
 	auto asyncRecording = MeshRenderSystem::getInstance()->useAsyncRecording();
 	auto framebufferView = GraphicsSystem::getInstance()->get(framebuffer);
@@ -372,7 +372,7 @@ void CsmRenderSystem::endShadowRender(uint32 passIndex, MeshRenderType renderTyp
 		framebuffer = shadowFramebuffers[passIndex];
 	else if (renderType == MeshRenderType::Translucent)
 		framebuffer = transFramebuffers[passIndex];
-	else abort();
+	else GARDEN_UNREACHABLE();
 
 	auto framebufferView = GraphicsSystem::getInstance()->get(framebuffer);
 	framebufferView->endRenderPass();

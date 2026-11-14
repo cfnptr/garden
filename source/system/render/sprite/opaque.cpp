@@ -23,11 +23,5 @@ OpaqueSpriteSystem::OpaqueSpriteSystem(bool setSingleton) :
 	Manager::getInstance()->addGroupSystem<IMeshRenderSystem>(this);
 }
 
-string_view OpaqueSpriteSystem::getComponentName() const
-{
-	return "Opaque Sprite";
-}
-MeshRenderType OpaqueSpriteSystem::getMeshRenderType() const
-{
-	return MeshRenderType::Color;
-}
+string_view OpaqueSpriteSystem::getComponentName() const { return "Opaque Sprite"; }
+MeshRenderType OpaqueSpriteSystem::getMeshRenderType() const { return MeshRenderType::Color; }

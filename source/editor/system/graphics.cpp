@@ -140,7 +140,7 @@ void GraphicsEditorSystem::showPerformanceStats()
 				updateHistogram("GPU", gpuFpsBuffer, gpuSortedBuffer, (float)difference);
 			}
 		}
-		else abort();
+		else GARDEN_UNREACHABLE();
 
 		ImGui::SeparatorText("GPU Information");
 		if (graphicsBackend == GraphicsBackend::VulkanAPI)
@@ -151,7 +151,7 @@ void GraphicsEditorSystem::showPerformanceStats()
 				(unsigned long)vulkanAPI->transferQueueFamilyIndex,
 				(unsigned long)vulkanAPI->computeQueueFamilyIndex);
 		}
-		else abort();
+		else GARDEN_UNREACHABLE();
 
 		auto isIntegrated = !graphicsAPI->isDeviceIntegrated();
 		ImGui::Checkbox("Discrete |", &isIntegrated); ImGui::SameLine();
@@ -229,7 +229,7 @@ void GraphicsEditorSystem::showMemoryStats()
 			fraction = hostBlockBytes > 0 ? (double)usage / (double)budget : 0.0;
 			ImGui::ProgressBar((float)fraction, ImVec2(144.0f, 0.0f), gpuInfo.c_str());
 		}
-		else abort();
+		else GARDEN_UNREACHABLE();
 
 		ImGui::SeparatorText("OS Memory");
 		ImGui::Text("RAM:       "); ImGui::SameLine();

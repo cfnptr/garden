@@ -71,7 +71,7 @@ protected:
 	 */
 	NineSliceRenderSystem(const fs::path& pipelinePath) : SpriteRenderSystem(pipelinePath) { }
 
-	uint64 getBaseInstanceDataSize() override;
+	psize getBaseInstanceDataSize() override;
 	void setInstanceData(SpriteRenderComponent* spriteRenderView, void* instanceData,
 		const f32x4x4& viewProj, const f32x4x4& model, uint32 instanceIndex, int32 threadIndex) override;
 

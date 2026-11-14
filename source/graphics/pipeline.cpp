@@ -136,7 +136,7 @@ static void createVkDescriptorSetLayouts(vector<void*>& descriptorSetLayouts, ve
 					descriptorPoolSizes[3].descriptorCount += maxBindlessCount; break;
 				case vk::DescriptorType::eAccelerationStructureKHR:
 					descriptorPoolSizes[4].descriptorCount += maxBindlessCount; break;
-				default: abort();
+				default: GARDEN_UNREACHABLE();
 				}
 
 				if (!pipelineUniform.isMutable && pipelineUniform.isSamplerType)
@@ -376,7 +376,7 @@ Pipeline::Pipeline(CreateData& createData)
 		this->pipelineLayout = createVkPipelineLayout(pushConstantsSize,
 			createData.pushConstantStages, descriptorSetLayouts, createData.shaderPath);
 	}
-	else abort();
+	else GARDEN_UNREACHABLE();
 }
 
 bool Pipeline::destroy()
@@ -406,7 +406,7 @@ bool Pipeline::destroy()
 		destroyVkPipeline(instance, pipelineLayout, 
 			samplers, descriptorSetLayouts, descriptorPools, variantCount);
 	}
-	else abort();
+	else GARDEN_UNREACHABLE();
 
 	return true;
 }
@@ -416,7 +416,7 @@ vector<void*> Pipeline::createShaders(const raw_vector<uint8>* codeArray, uint8 
 	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 		return createVkShaders(codeArray, shaderCount, pipelinePath);
-	else abort();
+	else GARDEN_UNREACHABLE();
 }
 void Pipeline::destroyShaders(const vector<void*>& shaders)
 {
@@ -427,7 +427,7 @@ void Pipeline::destroyShaders(const vector<void*>& shaders)
 		for (auto shader : shaders)
 			vulkanAPI->device.destroyShaderModule((VkShaderModule)shader);
 	}
-	else abort();
+	else GARDEN_UNREACHABLE();
 }
 
 //**********************************************************************************************************************
@@ -615,7 +615,7 @@ void Pipeline::updateDescriptorsLock(const DescriptorSet::Range* ranges, uint8 r
 					}
 				}
 			}
-			else abort();
+			else throw GardenError("Invalid pipeline uniform. (name: " + dsUniform.first + ")");
 		}
 	}
 }
@@ -654,7 +654,7 @@ void Pipeline::bind(uint8 variant)
 			GARDEN_ASSERT_MSG(!graphicsAPI->renderPassFramebuffer, "Assert " + debugName);
 			currentCommandBuffer->lockResource(ID<RayTracingPipeline>(pipeline));
 		}
-		else abort();
+		else GARDEN_UNREACHABLE();
 	}
 
 	BindPipelineCommand command;
@@ -698,7 +698,7 @@ void Pipeline::bindAsync(uint8 variant, int32 threadIndex)
 					currentCommandBuffer->lockResource(ID<ComputePipeline>(pipeline));
 				else if (type == PipelineType::RayTracing)
 					currentCommandBuffer->lockResource(ID<RayTracingPipeline>(pipeline));
-				else abort();
+				else GARDEN_UNREACHABLE();
 			}
 
 			if (pipeline != graphicsAPI->currentPipelines[threadIndex] ||
@@ -716,7 +716,7 @@ void Pipeline::bindAsync(uint8 variant, int32 threadIndex)
 			threadIndex++;
 		}
 	}
-	else abort();
+	else GARDEN_UNREACHABLE();
 }
 
 //**********************************************************************************************************************
@@ -825,7 +825,7 @@ void Pipeline::bindDescriptorSetsAsync(const DescriptorSet::Range* ranges, uint8
 		}
 		bindDescriptorSets.clear();
 	}
-	else abort();
+	else GARDEN_UNREACHABLE();
 }
 
 //**********************************************************************************************************************
@@ -865,5 +865,5 @@ void Pipeline::pushConstantsAsync(const void* data, int32 threadIndex)
 			vk::PipelineLayout((VkPipelineLayout)pipelineLayout), 
 			toVkShaderStages(pushConstantStages), 0, pushConstantsSize, data);
 	}
-	else abort();
+	else GARDEN_UNREACHABLE();
 }

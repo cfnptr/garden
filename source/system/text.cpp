@@ -319,7 +319,7 @@ static void updateTextNewLine(TextInstanceData* instances, uint32 fontSize, floa
 		case Text::Alignment::LeftBottom:
 		case Text::Alignment::LeftTop:
 			offset = 0.0f; break;
-		default: abort();
+		default: GARDEN_UNREACHABLE();
 	}
 
 	if (offset != 0.0f)
@@ -525,7 +525,7 @@ static bool fillTextInstances(u32string_view value, Text::Properties properties,
 			instances[i].position += offset4;
 		break;
 	case Text::Alignment::LeftTop: break;
-	default: abort();
+	default: GARDEN_UNREACHABLE();
 	}
 
 	instanceCount = instanceIndex;
@@ -722,8 +722,6 @@ float2 Text::calcCaretAdvance(u32string_view value, psize charIndex)
 
 	switch (properties.alignment)
 	{
-	default:
-		abort();
 	case Text::Alignment::Center:
 		advance.x += lineSizeX * -0.5f;
 		advance.y += (size.y - (newLineAdvance * 0.5f + newLineAdvance * 0.25f)) * 0.5f;
@@ -757,6 +755,7 @@ float2 Text::calcCaretAdvance(u32string_view value, psize charIndex)
 		advance.x += -lineSizeX;
 		advance.y += newLineAdvance * -0.25f;
 		break;
+	default: GARDEN_UNREACHABLE();
 	}
 
 	return advance;

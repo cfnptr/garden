@@ -48,34 +48,34 @@ static constexpr vk::BufferUsageFlags toVkBufferUsages(Buffer::Usage bufferUsage
 		flags |= vk::BufferUsageFlagBits::eShaderBindingTableKHR;
 	return flags;
 }
-static VmaAllocationCreateFlagBits toVmaMemoryAccess(Buffer::CpuAccess memoryCpuAccess) noexcept
+static constexpr VmaAllocationCreateFlagBits toVmaMemoryAccess(Buffer::CpuAccess memoryCpuAccess) noexcept
 {
 	switch (memoryCpuAccess)
 	{
 		case Buffer::CpuAccess::None: return {};
 		case Buffer::CpuAccess::SequentialWrite: return VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
 		case Buffer::CpuAccess::RandomReadWrite: return VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
-		default: abort();
+		default: GARDEN_UNREACHABLE();
 	}
 }
-static VmaMemoryUsage toVmaMemoryUsage(Buffer::Location memoryLocation) noexcept
+static constexpr VmaMemoryUsage toVmaMemoryUsage(Buffer::Location memoryLocation) noexcept
 {
 	switch (memoryLocation)
 	{
 		case Buffer::Location::Auto: return VMA_MEMORY_USAGE_AUTO;
 		case Buffer::Location::PreferGPU: return VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
 		case Buffer::Location::PreferCPU: return VMA_MEMORY_USAGE_AUTO_PREFER_HOST;
-		default: abort();
+		default: GARDEN_UNREACHABLE();
 	}
 }
-static VmaAllocationCreateFlagBits toVmaMemoryStrategy(Buffer::Strategy memoryUsage) noexcept
+static constexpr VmaAllocationCreateFlagBits toVmaMemoryStrategy(Buffer::Strategy memoryUsage) noexcept
 {
 	switch (memoryUsage)
 	{
 		case Buffer::Strategy::Default: return {};
 		case Buffer::Strategy::Size: return VMA_ALLOCATION_CREATE_STRATEGY_MIN_MEMORY_BIT;
 		case Buffer::Strategy::Speed: return VMA_ALLOCATION_CREATE_STRATEGY_MIN_TIME_BIT;
-		default: abort();
+		default: GARDEN_UNREACHABLE();
 	}
 }
 
@@ -166,7 +166,7 @@ Buffer::Buffer(Usage usage, CpuAccess cpuAccess, Location location, Strategy str
 	auto graphicsBackend = graphicsAPI->getBackendType();
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 		createVkBuffer(usage, cpuAccess, location, strategy, size, instance, allocation, map, deviceAddress);
-	else abort();
+	else GARDEN_UNREACHABLE();
 
 	this->usage = usage;
 }
@@ -227,7 +227,7 @@ bool Buffer::destroy()
 			vmaDestroyBuffer(vulkanAPI->memoryAllocator, (VkBuffer)instance, (VmaAllocation)allocation);
 		else vulkanAPI->destroyResource(GraphicsAPI::DestroyResourceType::Buffer, instance, allocation);
 	}
-	else abort();
+	else GARDEN_UNREACHABLE();
 
 	return true;
 }
@@ -247,7 +247,7 @@ void Buffer::invalidate(uint64 size, uint64 offset)
 		if (result != VK_SUCCESS)
 			throw GardenError("Failed to invalidate buffer memory. (error: " + to_string(result) + ")");
 	}
-	else abort();
+	else GARDEN_UNREACHABLE();
 }
 void Buffer::flush(uint64 size, uint64 offset)
 {
@@ -263,9 +263,9 @@ void Buffer::flush(uint64 size, uint64 offset)
 		if (result != VK_SUCCESS)
 			throw GardenError("Failed to flush buffer memory. (error: " + to_string(result) + ")");
 	}
-	else abort();
+	else GARDEN_UNREACHABLE();
 }
-void Buffer::writeData(const void* data, uint64 size, uint64 offset)
+void Buffer::writeData(const void* data, psize size, psize offset)
 {
 	GARDEN_ASSERT_MSG(data, "Assert " + debugName);
 	GARDEN_ASSERT_MSG((size == 0 && offset == 0) || size + offset <= binarySize, "Assert " + debugName);
@@ -292,7 +292,7 @@ void Buffer::writeData(const void* data, uint64 size, uint64 offset)
 		flush(size, offset);
 		vmaUnmapMemory(vulkanAPI->memoryAllocator, (VmaAllocation)allocation);
 	}
-	else abort();
+	else GARDEN_UNREACHABLE();
 }
 
 //**********************************************************************************************************************
@@ -422,6 +422,6 @@ void Buffer::setDebugName(const string& name)
 		vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo);
 		#endif
 	}
-	else abort();
+	else GARDEN_UNREACHABLE();
 }
 #endif

@@ -163,7 +163,7 @@ protected:
 	void drawAsync(MeshRenderComponent* meshRenderView, const f32x4x4& viewProj,
 		const f32x4x4& model, uint32 instanceIndex, int32 taskIndex) override;
 
-	uint64 getBaseInstanceDataSize() override;
+	psize getBaseInstanceDataSize() override;
 	virtual void setInstanceData(SpriteRenderComponent* spriteRenderView, void* instanceData,
 		const f32x4x4& viewProj, const f32x4x4& model, uint32 instanceIndex, int32 taskIndex);
 	virtual void setPushConstants(SpriteRenderComponent* spriteRenderView, PushConstants* pushConstants,

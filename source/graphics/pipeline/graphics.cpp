@@ -19,7 +19,7 @@ using namespace garden;
 using namespace garden::graphics;
 
 //**********************************************************************************************************************
-static vk::PrimitiveTopology toVkPrimitiveTopology(GraphicsPipeline::Topology topology) noexcept
+static constexpr vk::PrimitiveTopology toVkPrimitiveTopology(GraphicsPipeline::Topology topology) noexcept
 {
 	switch (topology)
 	{
@@ -28,20 +28,20 @@ static vk::PrimitiveTopology toVkPrimitiveTopology(GraphicsPipeline::Topology to
 		case GraphicsPipeline::Topology::LineList: return vk::PrimitiveTopology::eLineList;
 		case GraphicsPipeline::Topology::LineStrip: return vk::PrimitiveTopology::eLineStrip;
 		case GraphicsPipeline::Topology::PointList: return vk::PrimitiveTopology::ePointList;
-		default: abort();
+		default: GARDEN_UNREACHABLE();
 	}
 }
-static vk::PolygonMode toVkPolygonMode(GraphicsPipeline::PolygonMode polygonMode) noexcept
+static constexpr vk::PolygonMode toVkPolygonMode(GraphicsPipeline::PolygonMode polygonMode) noexcept
 {
 	switch (polygonMode)
 	{
 		case GraphicsPipeline::PolygonMode::Fill: return vk::PolygonMode::eFill;
 		case GraphicsPipeline::PolygonMode::Line: return vk::PolygonMode::eLine;
 		case GraphicsPipeline::PolygonMode::Point: return vk::PolygonMode::ePoint;
-		default: abort();
+		default: GARDEN_UNREACHABLE();
 	}
 }
-static vk::CullModeFlags toVkCullMode(GraphicsPipeline::CullFace cullFace) noexcept
+static constexpr vk::CullModeFlags toVkCullMode(GraphicsPipeline::CullFace cullFace) noexcept
 {
 	switch (cullFace)
 	{
@@ -49,21 +49,21 @@ static vk::CullModeFlags toVkCullMode(GraphicsPipeline::CullFace cullFace) noexc
 		case GraphicsPipeline::CullFace::Front: return vk::CullModeFlagBits::eFront;
 		case GraphicsPipeline::CullFace::Back: return vk::CullModeFlagBits::eBack;
 		case GraphicsPipeline::CullFace::FrontBack: return vk::CullModeFlagBits::eFrontAndBack;
-		default: abort();
+		default: GARDEN_UNREACHABLE();
 	}
 }
-static vk::FrontFace toVkFrontFace(GraphicsPipeline::FrontFace frontFace) noexcept
+static constexpr vk::FrontFace toVkFrontFace(GraphicsPipeline::FrontFace frontFace) noexcept
 {
 	switch (frontFace)
 	{
 		case GraphicsPipeline::FrontFace::Clockwise: return vk::FrontFace::eClockwise;
 		case GraphicsPipeline::FrontFace::CounterClockwise: return vk::FrontFace::eCounterClockwise;
-		default: abort();
+		default: GARDEN_UNREACHABLE();
 	}
 }
 
 //**********************************************************************************************************************
-static vk::BlendFactor toVkBlendFactor(GraphicsPipeline::BlendFactor blendFactor) noexcept
+static constexpr vk::BlendFactor toVkBlendFactor(GraphicsPipeline::BlendFactor blendFactor) noexcept
 {
 	switch (blendFactor)
 	{
@@ -85,10 +85,10 @@ static vk::BlendFactor toVkBlendFactor(GraphicsPipeline::BlendFactor blendFactor
 		case GraphicsPipeline::BlendFactor::OneMinusSrc1Color: return vk::BlendFactor::eOneMinusSrc1Color;
 		case GraphicsPipeline::BlendFactor::Src1Alpha: return vk::BlendFactor::eSrc1Alpha;
 		case GraphicsPipeline::BlendFactor::SrcAlphaSaturate: return vk::BlendFactor::eSrcAlphaSaturate;
-		default: abort();
+		default: GARDEN_UNREACHABLE();
 	}
 }
-static vk::BlendOp toVkBlendOp(GraphicsPipeline::BlendOp blendOperation) noexcept
+static constexpr vk::BlendOp toVkBlendOp(GraphicsPipeline::BlendOp blendOperation) noexcept
 {
 	switch (blendOperation)
 	{
@@ -97,10 +97,10 @@ static vk::BlendOp toVkBlendOp(GraphicsPipeline::BlendOp blendOperation) noexcep
 		case GraphicsPipeline::BlendOp::RevSubtract: return vk::BlendOp::eReverseSubtract;
 		case GraphicsPipeline::BlendOp::Minimum: return vk::BlendOp::eMin;
 		case GraphicsPipeline::BlendOp::Maximum: return vk::BlendOp::eMax;
-		default: abort();
+		default: GARDEN_UNREACHABLE();
 	}
 }
-static vk::StencilOp toVkStencilOp(GraphicsPipeline::StencilOp stencilOperation) noexcept
+static constexpr vk::StencilOp toVkStencilOp(GraphicsPipeline::StencilOp stencilOperation) noexcept
 {
 	switch (stencilOperation)
 	{
@@ -112,7 +112,7 @@ static vk::StencilOp toVkStencilOp(GraphicsPipeline::StencilOp stencilOperation)
 		case GraphicsPipeline::StencilOp::Invert: return vk::StencilOp::eInvert;
 		case GraphicsPipeline::StencilOp::IncrWrap: return vk::StencilOp::eIncrementAndWrap;
 		case GraphicsPipeline::StencilOp::DecrWrap: return vk::StencilOp::eDecrementAndWrap;
-		default: abort();
+		default: GARDEN_UNREACHABLE();
 	}
 }
 static constexpr vk::ColorComponentFlags toVkColorComponents(GraphicsPipeline::ColorComponent colorComponents) noexcept
@@ -390,7 +390,7 @@ GraphicsPipeline::GraphicsPipeline(GraphicsCreateData& createData) : Pipeline(cr
 	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 		createVkInstance(createData);
-	else abort();
+	else GARDEN_UNREACHABLE();
 }
 
 void GraphicsPipeline::updateFramebuffer(ID<Framebuffer> framebuffer)
@@ -450,7 +450,7 @@ void GraphicsPipeline::setViewportAsync(float4 viewport, int32 threadIndex)
 		while (threadIndex < autoThreadCount)
 			secondaryCommandBuffers[threadIndex++].setViewport(0, 1, &vkViewport);
 	}
-	else abort();
+	else GARDEN_UNREACHABLE();
 }
 
 //**********************************************************************************************************************
@@ -500,7 +500,7 @@ void GraphicsPipeline::setScissorAsync(int4 scissor, int32 threadIndex)
 		while (threadIndex < autoThreadCount)
 			secondaryCommandBuffers[threadIndex++].setScissor(0, 1, &vkScissor);
 	}
-	else abort();
+	else GARDEN_UNREACHABLE();
 }
 
 //**********************************************************************************************************************
@@ -562,7 +562,7 @@ void GraphicsPipeline::setViewportScissorAsync(float4 viewportScissor, int32 thr
 			secondaryCommandBuffer.setScissor(0, 1, &vkScissor);
 		}
 	}
-	else abort();
+	else GARDEN_UNREACHABLE();
 }
 
 //**********************************************************************************************************************
@@ -674,7 +674,7 @@ void GraphicsPipeline::drawAsync(const DrawData& data, int32 threadIndex)
 		secondaryCommandBuffer.draw(data.vertexCount, data.instanceCount, data.vertexOffset, data.instanceOffset);
 		vulkanAPI->secondaryCommandStates[threadIndex]->store(true);
 	}
-	else abort();
+	else GARDEN_UNREACHABLE();
 
 	if (vertexBufferCount > 0)
 	{
@@ -782,7 +782,7 @@ void GraphicsPipeline::drawIndexedAsync(const DrawIndexedData& data, int32 threa
 			data.indexOffset, data.vertexOffset, data.instanceOffset);
 		vulkanAPI->secondaryCommandStates[threadIndex]->store(true);
 	}
-	else abort();
+	else GARDEN_UNREACHABLE();
 
 	DrawBarrierCommand command;
 	command.bufferCount = data.vertexBufferCount;
@@ -828,7 +828,7 @@ void GraphicsPipeline::drawFullscreenAsync(int32 threadIndex)
 		secondaryCommandBuffer.draw(3, 1, 0, 0);
 		vulkanAPI->secondaryCommandStates[threadIndex]->store(true);
 	}
-	else abort();
+	else GARDEN_UNREACHABLE();
 }
 
 //**********************************************************************************************************************
@@ -863,7 +863,7 @@ void GraphicsPipeline::setDepthBiasAsync(float constantFactor, float slopeFactor
 		while (threadIndex < autoThreadCount)
 			secondaryCommandBuffers[threadIndex++].setDepthBias(constantFactor, clamp, slopeFactor);
 	}
-	else abort();
+	else GARDEN_UNREACHABLE();
 }
 
 void GraphicsPipeline::setBlendConstants(float4 constants)
@@ -895,5 +895,5 @@ void GraphicsPipeline::setBlendConstants(float4 constants, int32 threadIndex)
 		while (threadIndex < autoThreadCount)
 			secondaryCommandBuffers[threadIndex++].setBlendConstants((const float*)&constants);
 	}
-	else abort();
+	else GARDEN_UNREACHABLE();
 }

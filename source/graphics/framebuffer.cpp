@@ -102,7 +102,7 @@ static uint32 getDepthStencilLayout(Framebuffer::Attachment depthStencilAttachme
 				vk::ImageLayout::eDepthStencilAttachmentOptimal : vk::ImageLayout::eDepthStencilReadOnlyOptimal);
 		}
 	}
-	else abort();
+	else GARDEN_UNREACHABLE();
 }
 
 Framebuffer::Framebuffer(uint2 size, vector<Attachment>&& colorAttachments, Attachment depthStencilAttachment)
@@ -118,7 +118,7 @@ Framebuffer::Framebuffer(uint2 size, vector<Attachment>&& colorAttachments, Atta
 		if (!VulkanAPI::get()->features.dynamicRendering)
 			throw GardenError("Dynamic rendering is not supported on this GPU.");
 	}
-	else abort();
+	else GARDEN_UNREACHABLE();
 
 	this->colorAttachments = std::move(colorAttachments);
 	this->depthStencilAttachment = depthStencilAttachment;
@@ -312,7 +312,7 @@ void Framebuffer::beginRenderPass(const float4* clearColors, uint8 clearColorCou
 			VulkanAPI::get()->vulkanSwapchain->beginSecondaryCommandBuffers(
 				colorAttachments, depthStencilAttachment, name);
 		}
-		else abort();
+		else GARDEN_UNREACHABLE();
 
 		auto threadCount = graphicsAPI->getThreadPool()->getThreadCount();
 		graphicsAPI->currentPipelines.assign(threadCount, {});
@@ -355,7 +355,7 @@ void Framebuffer::endRenderPass()
 	auto graphicsBackend = graphicsAPI->getBackendType();
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 		VulkanAPI::get()->vulkanSwapchain->endSecondaryCommandBuffers();
-	else abort();
+	else GARDEN_UNREACHABLE();
 
 	EndRenderPassCommand command;
 	currentCommandBuffer->addCommand(command);

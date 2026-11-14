@@ -184,7 +184,7 @@ Blas::Blas(const Blas::TrianglesBuffer* geometryArray, uint32 geometryCount, Bui
 	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 		createVkBlas(geometryArray, geometryCount, 2, flags, storageBuffer, instance, deviceAddress, buildData);
-	else abort();
+	else GARDEN_UNREACHABLE();
 }
 Blas::Blas(const Blas::AabbsBuffer* geometryArray, uint32 geometryCount, BuildFlagsAS flags) :
 	AccelerationStructure(geometryCount, flags, Type::Blas)
@@ -195,7 +195,7 @@ Blas::Blas(const Blas::AabbsBuffer* geometryArray, uint32 geometryCount, BuildFl
 	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
 	if (graphicsBackend== GraphicsBackend::VulkanAPI)
 		createVkBlas(geometryArray, geometryCount, 1, flags, storageBuffer, instance, deviceAddress, buildData);
-	else abort();
+	else GARDEN_UNREACHABLE();
 }
 Blas::Blas(uint64 size, BuildFlagsAS flags)
 {
@@ -207,7 +207,7 @@ Blas::Blas(uint64 size, BuildFlagsAS flags)
 		AccelerationStructure::_createVkInstance(size, (uint8)vk::AccelerationStructureTypeKHR::eBottomLevel, 
 			flags, storageBuffer, instance, deviceAddress);
 	}
-	else abort();
+	else GARDEN_UNREACHABLE();
 }
 
 //**********************************************************************************************************************
@@ -248,7 +248,7 @@ ID<Blas> Blas::compact()
 		}
 		else data->queryPoolRef--;
 	}
-	else abort();
+	else GARDEN_UNREACHABLE();
 
 	free(buildData);
 	buildData = nullptr;

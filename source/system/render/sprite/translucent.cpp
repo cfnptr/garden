@@ -23,11 +23,5 @@ TransSpriteSystem::TransSpriteSystem(bool setSingleton) :
 	Manager::getInstance()->addGroupSystem<IMeshRenderSystem>(this);
 }
 
-string_view TransSpriteSystem::getComponentName() const
-{
-	return "Translucent Sprite";
-}
-MeshRenderType TransSpriteSystem::getMeshRenderType() const
-{
-	return MeshRenderType::Translucent;
-}
+string_view TransSpriteSystem::getComponentName() const { return "Translucent Sprite"; }
+MeshRenderType TransSpriteSystem::getMeshRenderType() const { return MeshRenderType::Translucent; }

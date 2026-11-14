@@ -192,7 +192,7 @@ public:
 			return ID<Pipeline>(computePipelinePool.getID((const ComputePipeline*)pipeline));
 		case PipelineType::RayTracing:
 			return ID<Pipeline>(rayTracingPipelinePool.getID((const RayTracingPipeline*)pipeline));
-		default: abort();
+		default: GARDEN_UNREACHABLE();
 		}
 	}
 	/**
@@ -211,7 +211,7 @@ public:
 			return View<Pipeline>(computePipelinePool.get(ID<ComputePipeline>(pipeline)));
 		case PipelineType::RayTracing:
 			return View<Pipeline>(rayTracingPipelinePool.get(ID<RayTracingPipeline>(pipeline)));
-		default: abort();
+		default: GARDEN_UNREACHABLE();
 		}
 	}
 

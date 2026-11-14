@@ -48,7 +48,7 @@ void DebugLabel::begin(const string& name, Color color, int32 threadIndex)
 			vk::DebugUtilsLabelEXT debugLabel(name.c_str(), values);
 			VulkanAPI::get()->secondaryCommandBuffers[threadIndex].beginDebugUtilsLabelEXT(debugLabel);
 		}
-		else abort();
+		else GARDEN_UNREACHABLE();
 	}
 }
 void DebugLabel::end(int32 threadIndex)
@@ -70,7 +70,7 @@ void DebugLabel::end(int32 threadIndex)
 
 		if (graphicsBackend == GraphicsBackend::VulkanAPI)
 			VulkanAPI::get()->secondaryCommandBuffers[threadIndex].endDebugUtilsLabelEXT();
-		else abort();
+		else GARDEN_UNREACHABLE();
 	}
 }
 void DebugLabel::insert(const string& name, Color color, int32 threadIndex)
@@ -100,7 +100,7 @@ void DebugLabel::insert(const string& name, Color color, int32 threadIndex)
 			vk::DebugUtilsLabelEXT debugLabel(name.c_str(), values);
 			VulkanAPI::get()->secondaryCommandBuffers[threadIndex].insertDebugUtilsLabelEXT(debugLabel);
 		}
-		else abort();
+		else GARDEN_UNREACHABLE();
 	}	
 }
 #endif

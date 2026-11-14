@@ -33,14 +33,8 @@ void CutoutSpriteSystem::setPushConstants(SpriteRenderComponent* spriteRenderVie
 	cutoutPushConstants->alphaCutoff = cutoutSpriteView->getAlphaCutoff();
 }
 
-string_view CutoutSpriteSystem::getComponentName() const
-{
-	return "Cutout Sprite";
-}
-MeshRenderType CutoutSpriteSystem::getMeshRenderType() const
-{
-	return MeshRenderType::Color;
-}
+string_view CutoutSpriteSystem::getComponentName() const { return "Cutout Sprite"; }
+MeshRenderType CutoutSpriteSystem::getMeshRenderType() const { return MeshRenderType::Color; }
 
 //**********************************************************************************************************************
 void CutoutSpriteSystem::serialize(ISerializer& serializer, const View<Component> component)

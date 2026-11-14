@@ -34,7 +34,7 @@ static const uint32 bayerIndices4x4[16] =
 
 static ID<Image> createCloudsCamView(GraphicsSystem* graphicsSystem)
 {
-	auto frameSize = max(graphicsSystem->getScaledFrameSize() / 2, uint2::one);
+	auto frameSize = max(graphicsSystem->getScaledFrameSize() / 2u, uint2::one);
 	auto image = graphicsSystem->createImage(CloudsRenderSystem::cloudsColorFormat, 
 		Image::Usage::Sampled | Image::Usage::ColorAttachment | Image::Usage::TransferDst, 
 		{ { nullptr, nullptr } }, frameSize, Image::Strategy::Size);
@@ -55,7 +55,7 @@ static ID<Image> createCloudsSkybox(GraphicsSystem* graphicsSystem, ID<Image> sk
 }
 static ID<Image> createCloudsCamViewDepth(GraphicsSystem* graphicsSystem)
 {
-	auto frameSize = max(graphicsSystem->getScaledFrameSize() / 2, uint2::one);
+	auto frameSize = max(graphicsSystem->getScaledFrameSize() / 2u, uint2::one);
 	auto image = graphicsSystem->createImage(CloudsRenderSystem::cloudsDepthFormat, Image::Usage::Sampled | 
 		Image::Usage::ColorAttachment, { { nullptr, nullptr } }, frameSize, Image::Strategy::Size);
 	SET_RESOURCE_DEBUG_NAME(image, "image.clouds.camViewDepth");
@@ -136,7 +136,7 @@ static void getCloudsQuality(GraphicsQuality cloudsQuality, float& stepSizeFacto
 		case GraphicsQuality::Medium: stepSizeFactor = 1.5f; break;
 		case GraphicsQuality::High: stepSizeFactor = 1.0f; break;
 		case GraphicsQuality::Ultra: stepSizeFactor = 0.5f; break;
-		default: abort();
+		default: GARDEN_UNREACHABLE();
 	}
 }
 

@@ -386,7 +386,7 @@ struct CustomRenderCommand final : public Command
 	CustomRenderCommand() noexcept : Command(Type::Custom) { }
 };
 
-#if GARDEN_DEBUG
+#if GARDEN_USE_GAPI_VALIDATIONS
 //**********************************************************************************************************************
 struct BeginLabelCommandBase : public Command
 {

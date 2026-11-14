@@ -167,7 +167,7 @@ public:
 	 * 
 	 * @throw GardenError if failed to map buffer memory.
 	 */
-	void writeData(const void* data, uint64 size = 0, uint64 offset = 0);
+	void writeData(const void* data, psize size = 0, psize offset = 0);
 	/**
 	 * @brief Writes data to the buffer. (Not MT-Safe!)
 	 * 
@@ -180,12 +180,12 @@ public:
 	 * @throw GardenError if failed to map buffer memory.
 	 */
 	template<typename T = float, class A = allocator<T>>
-	void writeData(const vector<T, A>& data, psize count = 0, psize arrayOffset = 0, uint64 bufferOffset = 0)
+	void writeData(const vector<T, A>& data, psize count = 0, psize arrayOffset = 0, psize bufferOffset = 0)
 	{
 		if (count == 0)
 		{
-			return writeData(data.data() + arrayOffset,
-				(data.size() - arrayOffset) * sizeof(T), bufferOffset * sizeof(T));
+			return writeData(data.data() + arrayOffset, (data.size() - 
+				arrayOffset) * sizeof(T), bufferOffset * sizeof(T));
 		}
 		else
 		{
@@ -206,14 +206,17 @@ public:
 	 * @throw GardenError if failed to map buffer memory.
 	 */
 	template<typename T = float, psize S>
-	void writeData(const array<T, S>& data, psize count = 0, psize arrayOffset = 0, uint64 bufferOffset = 0)
+	void writeData(const array<T, S>& data, psize count = 0, psize arrayOffset = 0, psize bufferOffset = 0)
 	{
 		if (count == 0)
-			return writeData(data.data() + arrayOffset, (data.size() - arrayOffset) * sizeof(T));
+		{
+			return writeData(data.data() + arrayOffset, (data.size() - 
+				arrayOffset) * sizeof(T), bufferOffset * sizeof(T));
+		}
 		else
 		{
 			GARDEN_ASSERT_MSG(count + arrayOffset <= data.size(), "Assert " + debugName);
-			return writeData(data.data() + arrayOffset, count * sizeof(T));
+			return writeData(data.data() + arrayOffset, count * sizeof(T), bufferOffset * sizeof(T));
 		}
 	}
 

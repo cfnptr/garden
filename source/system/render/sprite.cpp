@@ -115,9 +115,9 @@ void SpriteRenderSystem::drawAsync(MeshRenderComponent* meshRenderView,
 	pipelineView->drawAsync(drawData, taskIndex);
 }
 
-uint64 SpriteRenderSystem::getBaseInstanceDataSize()
+psize SpriteRenderSystem::getBaseInstanceDataSize()
 {
-	return (uint64)sizeof(BaseInstanceData);
+	return sizeof(BaseInstanceData);
 }
 void SpriteRenderSystem::setInstanceData(SpriteRenderComponent* spriteRenderView, void* instanceData,
 	const f32x4x4& viewProj, const f32x4x4& model, uint32 instanceIndex, int32 taskIndex)

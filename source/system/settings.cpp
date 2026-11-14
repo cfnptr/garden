@@ -82,7 +82,7 @@ void SettingsSystem::postDeinit()
 				case Type::Bool: settings[pair.first] = *((bool*)&pair.second.data); break;
 				case Type::String: settings[pair.first] = *((const char**)&pair.second.data); break;
 				case Type::Color: settings[pair.first] = Color((uint32)pair.second.data).toHex4(); break;
-				default: abort();
+				default: GARDEN_UNREACHABLE();
 			}
 		}
 

@@ -141,7 +141,7 @@ void GraphicsSystem::preInit()
 
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 		logVkGpuInfo();
-	else abort();
+	else GARDEN_UNREACHABLE();
 
 	auto inputSystem = InputSystem::getInstance();
 	auto displayRefreshRate = inputSystem->getDisplayRefreshRate();
@@ -357,7 +357,7 @@ void GraphicsSystem::update()
 			nvLowLatency = useLowLatency; nvMaxFrameRate = maxFrameRate; 
 		}
 	}
-	else abort();
+	else GARDEN_UNREACHABLE();
 
 	if (isFramebufferSizeValid)
 	{
@@ -697,31 +697,28 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 		GARDEN_ASSERT(size.z == 1);
 		GARDEN_ASSERT(layerCount == Image::cubemapFaceCount);
 	}
-	else abort();
+	else GARDEN_UNREACHABLE();
 	#endif
-
-	if (dataFormat == Image::Format::Undefined)
-		dataFormat = format;
-
-	auto mipSize = (uint3)size, minMipSize = uint3(toFormatBlockSize(format), 1);
-	uint64 stagingSize = 0; uint32 stagingCount = 0;
-
-	for (uint8 mip = 0; mip < mipCount; mip++)
-	{
-		const auto& mipData = data[mip];
-		auto mipBinarySize = toBinarySize((psize)mipSize.x * mipSize.y * mipSize.z, dataFormat);
-		for (auto layerData : mipData)
-		{
-			if (!layerData) continue;
-			stagingSize += mipBinarySize;
-			stagingCount++;
-		}
-		mipSize = max(mipSize / 2u, minMipSize);
-	}
 
 	auto imageSize = u32x4(u32x4(size), mipCount);
 	if (type != Image::Type::Texture3D)
 		imageSize.setZ(layerCount);
+	if (dataFormat == Image::Format::Undefined)
+		dataFormat = format;
+
+	uint64 stagingSize = 0; uint32 stagingCount = 0;
+	iterMipBinarySize((uint4)imageSize, dataFormat, [&](uint3 mipSize, uint32 level, uint64 binarySize)
+	{
+		const auto& mipData = data[level];
+		auto layerBinarySize = toBinarySize((uint64)mipSize.x * mipSize.y, dataFormat);
+
+		for (auto layerData : mipData)
+		{
+			if (!layerData) continue;
+			stagingSize += layerBinarySize;
+			stagingCount++;
+		}
+	});
 
 	auto graphicsAPI = GraphicsAPI::get();
 	auto image = graphicsAPI->imagePool.create(type, format, usage, strategy, imageSize, 0);
@@ -755,15 +752,14 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 		auto stagingMap = stagingView->getMap();
 		vector<Image::CopyBufferRegion> regions(stagingCount);
 		uint64 stagingOffset = 0; uint32 copyIndex = 0;
-		mipSize = (uint3)size;
 
-		for (uint8 mip = 0; mip < mipCount; mip++)
+		iterMipBinarySize((uint4)imageSize, dataFormat, [&](uint3 mipSize, uint32 level, uint64 binarySize)
 		{
-			const auto& mipData = data[mip].data();
-			auto mipLayerCount = (uint32)data[mip].size();
-			auto mipBinarySize = toBinarySize((psize)mipSize.x * mipSize.y * mipSize.z, dataFormat);
+			const auto& mip = data[level]; auto mipData = mip.data();
+			auto layerBinarySize = toBinarySize((uint64)mipSize.x * mipSize.y, dataFormat);
+			auto layerCount = (uint32)mip.size();
 
-			for (uint32 layer = 0; layer < mipLayerCount; layer++)
+			for (uint32 layer = 0; layer < layerCount; layer++)
 			{
 				auto layerData = mipData[Image::calcApiLayerIndex(type, layer)];
 				if (!layerData)
@@ -771,17 +767,14 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 
 				auto& region = regions[copyIndex++];
 				region.bufferOffset = stagingOffset;
-				region.imageExtent = mipSize;
 				region.imageBaseLayer = layer;
 				region.imageLayerCount = 1;
-				region.imageMipLevel = mip;
+				region.imageMipLevel = level;
 
-				memcpy(stagingMap + stagingOffset, layerData, mipBinarySize);
-				stagingOffset += mipBinarySize;
+				memcpy(stagingMap + stagingOffset, layerData, layerBinarySize);
+				stagingOffset += layerBinarySize;
 			}
-
-			mipSize = max(mipSize / 2u, minMipSize);
-		}
+		});
 
 		GARDEN_ASSERT(stagingCount == copyIndex);
 		GARDEN_ASSERT(stagingSize == stagingOffset);
@@ -803,15 +796,15 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 			graphicsAPI->bufferPool.destroy(stagingBuffer);
 
 			vector<Image::BlitRegion> blitRegions(mipCount);
-			mipSize = (uint3)size; auto blitRegionData = blitRegions.data();
+			auto mipSize = (uint3)size; auto blitRegionData = blitRegions.data();
 
-			for (uint8 i = 0; i < mipCount; i++)
+			for (uint8 level = 0; level < mipCount; level++)
 			{
-				auto& region = blitRegionData[i];
+				auto& region = blitRegionData[level];
 				region.layerCount = layerCount;
-				region.srcMipLevel = i;
-				region.dstMipLevel = i;
-				mipSize = max(mipSize / 2u, uint3::one);
+				region.srcMipLevel = level;
+				region.dstMipLevel = level;
+				mipSize = max(mipSize >> 1u, uint3::one);
 			}
 
 			Image::blit(targetImage, image, blitRegions, Sampler::Filter::Nearest);
@@ -1123,7 +1116,7 @@ void GraphicsSystem::startRecording(CommandBufferType commandBufferType) noexcep
 		graphicsAPI->currentCommandBuffer = graphicsAPI->transferCommandBuffer; break;
 	case CommandBufferType::Compute:
 		graphicsAPI->currentCommandBuffer = graphicsAPI->computeCommandBuffer; break;
-	default: abort();
+	default: GARDEN_UNREACHABLE();
 	}
 }
 bool GraphicsSystem::tryStartRecording(CommandBufferType commandBufferType) noexcept
@@ -1147,7 +1140,7 @@ bool GraphicsSystem::isBusy(CommandBufferType commandBufferType)
 		case CommandBufferType::Graphics: return GraphicsAPI::get()->graphicsCommandBuffer->isBusy();
 		case CommandBufferType::TransferOnly: return GraphicsAPI::get()->transferCommandBuffer->isBusy();
 		case CommandBufferType::Compute: return GraphicsAPI::get()->computeCommandBuffer->isBusy();
-		default: abort();
+		default: GARDEN_UNREACHABLE();
 	}
 }
 
@@ -1219,7 +1212,7 @@ void GraphicsSystem::addBarriers(const Buffer::BarrierState* newStates, const ID
 				barrierBuffers.push_back(buffers[i]);
 		}
 	}
-	else abort();
+	else GARDEN_UNREACHABLE();
 
 	BufferBarrierCommand command;
 	command.sameNewState = false;
@@ -1248,7 +1241,7 @@ void GraphicsSystem::addBarriers(Buffer::BarrierState newState, const ID<Buffer>
 				barrierBuffers.push_back(buffers[i]);
 		}
 	}
-	else abort();
+	else GARDEN_UNREACHABLE();
 
 	BufferBarrierCommand command;
 	command.sameNewState = true;
