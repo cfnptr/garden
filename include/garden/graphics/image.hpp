@@ -279,7 +279,7 @@ public:
 	/**
 	 * @brief Image layout memory barrier state.
 	 */
-	struct LayoutState final : BarrierState
+	struct LayoutState final : public BarrierState
 	{
 		uint32 layout = 0;       /**< Image data layout type. (Internal API format) */
 		ID<ImageView> view = {}; /**< Specific image layer/mip image view. */
@@ -865,7 +865,7 @@ public:
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	/**
-	 * @brief Sets image debug name. (Debug Only)
+	 * @brief Sets image debug name. (Debug Only!)
 	 * @param[in] name target debug name
 	 */
 	void setDebugName(const string& name) override;
@@ -1056,7 +1056,7 @@ public:
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	/**
-	 * @brief Sets image view debug name. (Debug Only)
+	 * @brief Sets image view debug name. (Debug Only!)
 	 * @param[in] name target debug name
 	 */
 	void setDebugName(const string& name) override;

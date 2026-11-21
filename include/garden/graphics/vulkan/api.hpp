@@ -204,7 +204,7 @@ public:
 	/**
 	 * @brief Returns Vulkan graphics API instance.
 	 */
-	inline static VulkanAPI* get() noexcept
+	inline static VulkanAPI* getInstance() noexcept
 	{
 		GARDEN_ASSERT_MSG(vulkanInstance, "Graphics API is not initialized");
 		return vulkanInstance;

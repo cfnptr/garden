@@ -17,7 +17,6 @@
  */
 
 #pragma once
-#include "garden/hash.hpp"
 #include "garden/font.hpp"
 #include "garden/animate.hpp"
 #include "garden/system/thread.hpp"
@@ -57,7 +56,7 @@ public:
 	{
 		Pipeline::SpecConstValues* specConstValues = nullptr;     /**< Specialization constants array or null. */
 		Pipeline::SamplerStates* samplerStateOverrides = nullptr; /**< Pipeline sampler state overrides or null. */
-		uint32 maxBindlessCount = 0;                 /**< Maximum pipeline bindless descriptor array size. */
+		uint32 maxBindlessCount = 0;                 /**< Maximum pipeline bindless descriptor set array size. */
 		float taskPriority = TaskPriority::pipeline; /**< Thread pool pipeline load task priority. */
 		bool loadAsync = true; /**< Load pipeline asynchronously without blocking. [See isReady() func] */
 	};

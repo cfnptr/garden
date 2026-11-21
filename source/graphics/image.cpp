@@ -14,7 +14,7 @@
 
 #include "garden/graphics/image.hpp"
 #include "garden/graphics/vulkan/api.hpp"
-#include "garden/hash.hpp"
+
 #include "garden/file.hpp"
 
 #include "png.h"
@@ -156,7 +156,7 @@ static void createVkImage(Image::Type type, Image::Format format, Image::Usage u
 	imageInfo.pQueueFamilyIndices = nullptr;
 	imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-	auto vulkanAPI = VulkanAPI::get();
+	auto vulkanAPI = VulkanAPI::getInstance();
 
 	uint32 queueFamilyIndices[3];
 	if (hasAnyFlag(usage, Image::Usage::TransferQ | Image::Usage::ComputeQ))
@@ -246,7 +246,7 @@ Image::Image(Type type, Format format, Usage usage, Strategy strategy, u32x4 siz
 {
 	GARDEN_ASSERT(areAllTrue(size > u32x4::zero));
 
-	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
+	auto graphicsBackend = GraphicsAPI::getInstance()->getBackendType();
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 		createVkImage(type, format, usage, strategy, size, instance, allocation, aspectFlags);
 	else GARDEN_UNREACHABLE();
@@ -284,7 +284,7 @@ bool Image::destroy()
 	if (!instance || isLocked())
 		return false;
 
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 
 	#if GARDEN_DEBUG
 	if (!graphicsAPI->forceResourceDestroy)
@@ -304,7 +304,7 @@ bool Image::destroy()
 	auto graphicsBackend = graphicsAPI->getBackendType();
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
-		auto vulkanAPI = VulkanAPI::get();
+		auto vulkanAPI = VulkanAPI::getInstance();
 		if (!this->swapchain)
 		{
 			if (vulkanAPI->forceResourceDestroy)
@@ -322,7 +322,7 @@ uint32 Image::calcApiLayerIndex(Type type, uint32 layerIndex) noexcept
 	if (type == Image::Type::Cubemap)
 	{
 		GARDEN_ASSERT(layerIndex < Image::cubemapFaceCount);
-		auto graphicsBackend = GraphicsAPI::get()->getBackendType();
+		auto graphicsBackend = GraphicsAPI::getInstance()->getBackendType();
 		if (graphicsBackend == GraphicsBackend::VulkanAPI)
 			return layerIndex ^ 1; // Note: remapping Vulkan API cubemap face indices.
 		else GARDEN_UNREACHABLE();
@@ -337,7 +337,7 @@ ID<ImageView> Image::getView()
 	{
 		GARDEN_ASSERT_MSG(instance, "Image [" + debugName + "] is not ready yet");
 
-		auto graphicsAPI = GraphicsAPI::get();
+		auto graphicsAPI = GraphicsAPI::getInstance();
 		auto image = graphicsAPI->imagePool.getID(this);
 		imageView = graphicsAPI->imageViewPool.create(true, image, 
 			type, format, 0, getLayerCount(), 0, getMipCount());
@@ -351,7 +351,7 @@ ID<ImageView> Image::getView()
 }
 void Image::freeView()
 {
-	GraphicsAPI::get()->imageViewPool.destroy(imageView);
+	GraphicsAPI::getInstance()->imageViewPool.destroy(imageView);
 }
 
 ID<ImageView> Image::getView(uint32 layer, uint8 mip)
@@ -372,7 +372,7 @@ ID<ImageView> Image::getView(uint32 layer, uint8 mip)
 			viewType = Image::Type::Texture1D;
 		else viewType = type;
 
-		auto graphicsAPI = GraphicsAPI::get();
+		auto graphicsAPI = GraphicsAPI::getInstance();
 		auto image = graphicsAPI->imagePool.getID(this);
 		view = graphicsAPI->imageViewPool.create(true, image, viewType, format, layer, 1, mip, 1);
 		barrierStates[index].view = view;
@@ -389,12 +389,12 @@ void Image::freeView(uint32 layer, uint8 mip)
 	GARDEN_ASSERT_MSG(layer < getLayerCount(), "Assert " + debugName);
 	GARDEN_ASSERT_MSG(mip < getMipCount(), "Assert " + debugName);
 	auto index = getLayerCount() * mip + layer;
-	GraphicsAPI::get()->imageViewPool.destroy(barrierStates[index].view);
+	GraphicsAPI::getInstance()->imageViewPool.destroy(barrierStates[index].view);
 }
 
 void Image::freeSpecificViews()
 {
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	for (auto& barrierState : barrierStates)
 		graphicsAPI->imageViewPool.destroy(barrierState.view);
 }
@@ -402,7 +402,7 @@ void Image::freeSpecificViews()
 //**********************************************************************************************************************
 bool Image::isSupported(Type type, Format format, Usage usage, uint3 size, uint8 mipCount, uint32 layerCount) noexcept
 {
-	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
+	auto graphicsBackend = GraphicsAPI::getInstance()->getBackendType();
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
 		vk::PhysicalDeviceImageFormatInfo2 imageFormatInfo;
@@ -414,7 +414,7 @@ bool Image::isSupported(Type type, Format format, Usage usage, uint3 size, uint8
 			imageFormatInfo.flags |= vk::ImageCreateFlagBits::eCubeCompatible;
 
 		vk::ImageFormatProperties2 imageFormatProperties;
-		if (VulkanAPI::get()->physicalDevice.getImageFormatProperties2(
+		if (VulkanAPI::getInstance()->physicalDevice.getImageFormatProperties2(
 			&imageFormatInfo, &imageFormatProperties) != vk::Result::eSuccess)
 		{
 			return false;
@@ -431,7 +431,7 @@ bool Image::isSupported(Type type, Format format, Usage usage, uint3 size, uint8
 
 void Image::generateMips(Sampler::Filter filter)
 {
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	GARDEN_ASSERT_MSG(!graphicsAPI->renderPassFramebuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(!isFormatCompressed(format), "Assert " + debugName);
 	GARDEN_ASSERT_MSG(isLoaded(), "Image [" + debugName + "] is not loaded");
@@ -485,7 +485,7 @@ void Image::generateMips(Sampler::Filter filter)
 //**********************************************************************************************************************
 void Image::clear(float4 color, const ClearRegion* regions, uint32 count)
 {
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
 	GARDEN_ASSERT_MSG(regions, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(count > 0, "Assert " + debugName);
@@ -517,7 +517,7 @@ void Image::clear(float4 color, const ClearRegion* regions, uint32 count)
 }
 void Image::clear(int4 color, const ClearRegion* regions, uint32 count)
 {
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
 	GARDEN_ASSERT_MSG(regions, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(count > 0, "Assert " + debugName);
@@ -549,7 +549,7 @@ void Image::clear(int4 color, const ClearRegion* regions, uint32 count)
 }
 void Image::clear(uint4 color, const ClearRegion* regions, uint32 count)
 {
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
 	GARDEN_ASSERT_MSG(regions, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(count > 0, "Assert " + debugName);
@@ -581,7 +581,7 @@ void Image::clear(uint4 color, const ClearRegion* regions, uint32 count)
 }
 void Image::clear(float depth, uint32 stencil, const ClearRegion* regions, uint32 count)
 {
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
 	GARDEN_ASSERT_MSG(regions, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(count > 0, "Assert " + debugName);
@@ -615,7 +615,7 @@ void Image::clear(float depth, uint32 stencil, const ClearRegion* regions, uint3
 //**********************************************************************************************************************
 void Image::copy(ID<Image> source, ID<Image> destination, const CopyImageRegion* regions, uint32 count)
 {
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
 	GARDEN_ASSERT(source);
 	GARDEN_ASSERT(destination);
@@ -697,7 +697,7 @@ void Image::copy(ID<Image> source, ID<Image> destination, const CopyImageRegion*
 //**********************************************************************************************************************
 void Image::copy(ID<Buffer> source, ID<Image> destination, const CopyBufferRegion* regions, uint32 count)
 {
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
 	GARDEN_ASSERT(source);
 	GARDEN_ASSERT(destination);
@@ -791,7 +791,7 @@ void Image::copy(ID<Buffer> source, ID<Image> destination, const CopyBufferRegio
 //**********************************************************************************************************************
 void Image::copy(ID<Image> source, ID<Buffer> destination, const CopyBufferRegion* regions, uint32 count)
 {
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
 	GARDEN_ASSERT(source);
 	GARDEN_ASSERT(destination);
@@ -884,7 +884,7 @@ void Image::copy(ID<Image> source, ID<Buffer> destination, const CopyBufferRegio
 void Image::blit(ID<Image> source, ID<Image> destination, 
 	const BlitRegion* regions, uint32 count, Sampler::Filter filter)
 {
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
 	GARDEN_ASSERT(source);
 	GARDEN_ASSERT(destination);
@@ -965,11 +965,11 @@ void Image::setDebugName(const string& name)
 {
 	Resource::setDebugName(name);
 
-	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
+	auto graphicsBackend = GraphicsAPI::getInstance()->getBackendType();
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
 		#if GARDEN_USE_GAPI_VALIDATIONS
-		auto vulkanAPI = VulkanAPI::get();
+		auto vulkanAPI = VulkanAPI::getInstance();
 		if (!vulkanAPI->features.debugUtils || !instance)
 			return;
 
@@ -1643,7 +1643,7 @@ static Image::Format toImageFormat(basist::basis_tex_format texFormat, int chann
 	bool hasASTC_LDR, hasASTC_HDR, hasBCn;
 	if (GraphicsAPI::isInitialized())
 	{
-		auto graphicsAPI = GraphicsAPI::get();
+		auto graphicsAPI = GraphicsAPI::getInstance();
 		hasASTC_LDR = graphicsAPI->hasASTC_LDR();
 		hasASTC_HDR = graphicsAPI->hasASTC_HDR();
 		hasBCn = graphicsAPI->hasBCn();
@@ -1802,7 +1802,7 @@ static void loadImageDataEXR(const void* data, psize dataSize, raw_vector<uint8>
 		imageFormat = toFloatFormat32(componentCount);
 		exrPixels = (char*)((float*)pixels.data() - dw.min.x - dw.min.y * imageSize.x);
 	}
-	else throw GardenError("Unsupported EXR image pixel type.");
+	else throw GardenError("Unsupported EXR image pixel type. (" + to_string(pixelType) + ")");
 
 	auto exrFramebuffer = createExrFramebuffer(exrPixels, 
 		pixelBinarySize, floatSize, strideY, componentCount, pixelType);
@@ -2004,7 +2004,7 @@ void Image::loadFileMetadata(const fs::path& path, raw_vector<uint8>& pixels, ui
 			imageType = Image::Type::Texture2DArray;
 		else if (typeString == "1DArray")
 			imageType = Image::Type::Texture1DArray;
-		else throw GardenError("Unknown image type. (type: " + typeString + ")");
+		else throw GardenError("Unknown image type. (" + typeString + ")");
 
 		if ((imageType == Image::Type::Texture2D || imageType == Image::Type::Texture1DArray) && size.z > 1)
 			throw GardenError("Texture 2D/1DArray type and size mismatch.");
@@ -2469,7 +2469,7 @@ static void storeImageDataGIC(const fs::path& filePath, const void* pixels, uint
 			else if (hasAnyFlag(flags, Image::StoreFlag::BlockSize8x8))
 			{
 				fclose(outputFile);
-				throw GardenError("Unsupported UASTC HDR block size.");
+				throw GardenError("Unsupported UASTC HDR 8x8 block size.");
 			}
 			else basisFormat = basist::basis_tex_format::cUASTC_HDR_4x4;
 			isHDR = true;
@@ -2633,16 +2633,16 @@ static void* createVkImageView(View<Image> imageView, Image::Type type, Image::F
 		// TODO: utilize component swizzle
 		vk::ImageSubresourceRange(toVkImageAspectFlags(format), baseMip, mipCount, baseLayer, layerCount));
 	apiFormat = (uint32)imageViewInfo.format; aspectFlags = (uint32)imageViewInfo.subresourceRange.aspectMask;
-	return (VkImageView)VulkanAPI::get()->device.createImageView(imageViewInfo);
+	return (VkImageView)VulkanAPI::getInstance()->device.createImageView(imageViewInfo);
 }
 
 ImageView::ImageView(bool isDefault, ID<Image> image, Image::Type type,
 	Image::Format format, uint32 baseLayer, uint32 layerCount, uint8 baseMip, uint8 mipCount)
 {
-	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
+	auto graphicsBackend = GraphicsAPI::getInstance()->getBackendType();
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
-		auto imageView = VulkanAPI::get()->imagePool.get(image);
+		auto imageView = VulkanAPI::getInstance()->imagePool.get(image);
 		if (imageView->getType() == Image::Type::Cubemap && layerCount == 1)
 		{
 			GARDEN_ASSERT(baseLayer < Image::cubemapFaceCount);
@@ -2668,7 +2668,7 @@ bool ImageView::destroy()
 	if (!instance || isLocked())
 		return false;
 
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 
 	#if GARDEN_DEBUG
 	if (!graphicsAPI->forceResourceDestroy)
@@ -2679,14 +2679,10 @@ bool ImageView::destroy()
 			if (!ResourceExt::getInstance(descriptorSet))
 				continue;
 
-			const auto& descriptorUniforms = descriptorSet.getUniforms();
-			auto pipelineView = graphicsAPI->getPipelineView(
-				descriptorSet.getPipelineType(), descriptorSet.getPipeline());
-			if (pipelineView->isBindless())
-				continue;
+			const auto& dsUniforms = descriptorSet.getUniforms();
+			const auto& pipelineUniforms = descriptorSet.getPipelineUniforms();
 
-			const auto& pipelineUniforms = pipelineView->getUniforms();
-			for (const auto& pair : descriptorUniforms)
+			for (const auto& pair : dsUniforms)
 			{
 				const auto uniformPair = pipelineUniforms.find(pair.first);
 				if (uniformPair == pipelineUniforms.end() || (!uniformPair->second.isSamplerType && 
@@ -2731,7 +2727,7 @@ bool ImageView::destroy()
 	auto graphicsBackend = graphicsAPI->getBackendType();
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
-		auto vulkanAPI = VulkanAPI::get();
+		auto vulkanAPI = VulkanAPI::getInstance();
 		if (vulkanAPI->forceResourceDestroy)
 			vulkanAPI->device.destroyImageView((VkImageView)instance);
 		else vulkanAPI->destroyResource(GraphicsAPI::DestroyResourceType::ImageView, instance);
@@ -2744,13 +2740,13 @@ bool ImageView::destroy()
 uint2 ImageView::calcSize(uint8 mipOffset) const noexcept
 {
 	GARDEN_ASSERT_MSG(mipOffset < mipCount, "Assert " + debugName);
-	auto imageView = GraphicsAPI::get()->imagePool.get(image);
+	auto imageView = GraphicsAPI::getInstance()->imagePool.get(image);
 	return calcSizeAtMip((uint2)imageView->getSize(), baseMip + mipOffset);
 }
 u32x4 ImageView::calcSize3(uint8 mipOffset) const noexcept
 {
 	GARDEN_ASSERT_MSG(mipOffset < mipCount, "Assert " + debugName);
-	auto imageView = GraphicsAPI::get()->imagePool.get(image);
+	auto imageView = GraphicsAPI::getInstance()->imagePool.get(image);
 	return calcSizeAtMip3(imageView->getSize(), baseMip + mipOffset);
 }
 
@@ -2759,11 +2755,11 @@ void ImageView::setDebugName(const string& name)
 {
 	Resource::setDebugName(name);
 
-	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
+	auto graphicsBackend = GraphicsAPI::getInstance()->getBackendType();
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
 		#if GARDEN_USE_GAPI_VALIDATIONS
-		auto vulkanAPI = VulkanAPI::get();
+		auto vulkanAPI = VulkanAPI::getInstance();
 		if (!vulkanAPI->features.debugUtils)
 			return;
 

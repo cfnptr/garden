@@ -22,26 +22,26 @@ using namespace garden::graphics;
 void RayTracingPipeline::createVkInstance(RayTracingCreateData& createData)
 {
 	if (variantCount > 1)
-		this->instance = malloc<vk::Pipeline>(variantCount);
+		this->instance = new vk::Pipeline[variantCount];
 
 	auto groupCount = rayGenGroupCount + missGroupCount + callGroupCount + hitGroupCount;
-	vector<vk::RayTracingShaderGroupCreateInfoKHR> shaderGroupInfos(groupCount);
-	uint32 groupIndex = 0, stageIndex = 0;
+	vector<vk::RayTracingShaderGroupCreateInfoKHR> shaderGroupInfos;
+	shaderGroupInfos.reserve(groupCount); uint32 stageIndex = 0;
 
 	for (uint8 i = 0; i < rayGenGroupCount; i++)
 	{
-		shaderGroupInfos[groupIndex++] = vk::RayTracingShaderGroupCreateInfoKHR(
-			vk::RayTracingShaderGroupTypeKHR::eGeneral, stageIndex++);
+		shaderGroupInfos.push_back(vk::RayTracingShaderGroupCreateInfoKHR(
+			vk::RayTracingShaderGroupTypeKHR::eGeneral, stageIndex++));
 	}
 	for (uint8 i = 0; i < missGroupCount; i++)
 	{
-		shaderGroupInfos[groupIndex++] = vk::RayTracingShaderGroupCreateInfoKHR(
-			vk::RayTracingShaderGroupTypeKHR::eGeneral, stageIndex++);
+		shaderGroupInfos.push_back(vk::RayTracingShaderGroupCreateInfoKHR(
+			vk::RayTracingShaderGroupTypeKHR::eGeneral, stageIndex++));
 	}
 	for (uint8 i = 0; i < callGroupCount; i++)
 	{
-		shaderGroupInfos[groupIndex++] = vk::RayTracingShaderGroupCreateInfoKHR(
-			vk::RayTracingShaderGroupTypeKHR::eGeneral, stageIndex++);
+		shaderGroupInfos.push_back(vk::RayTracingShaderGroupCreateInfoKHR(
+			vk::RayTracingShaderGroupTypeKHR::eGeneral, stageIndex++));
 	}
 	for (const auto& hitGroup : createData.hitGroups)
 	{
@@ -56,7 +56,7 @@ void RayTracingPipeline::createVkInstance(RayTracingCreateData& createData)
 			groupInfo.anyHitShader = stageIndex++;
 		if (!hitGroup.intersectionCode.empty())
 			groupInfo.intersectionShader = stageIndex++;
-		shaderGroupInfos[groupIndex++] = groupInfo;
+		shaderGroupInfos.push_back(groupInfo);
 	}
 
 	vector<PipelineStage> pipelineStages; vector<raw_vector<uint8>> codeArray;
@@ -96,9 +96,9 @@ void RayTracingPipeline::createVkInstance(RayTracingCreateData& createData)
 
 	auto stageCount = (uint8)pipelineStages.size();
 	auto shaders = createShaders(codeArray.data(), stageCount, createData.shaderPath);
-	vector<vk::PipelineShaderStageCreateInfo> stageInfos(stageCount);
+	vector<vk::PipelineShaderStageCreateInfo> stageInfos; stageInfos.reserve(stageCount);
 	vector<vk::SpecializationInfo> specializationInfos(stageCount);
-	auto stageInfoData = stageInfos.data(); auto specInfoData = specializationInfos.data();
+	auto specInfoData = specializationInfos.data();
 	
 	for (uint8 i = 0; i < stageCount; i++)
 	{
@@ -107,18 +107,18 @@ void RayTracingPipeline::createVkInstance(RayTracingCreateData& createData)
 			createData.specConsts, createData.specConstValues, pipelineStage, variantCount);
 		vk::PipelineShaderStageCreateInfo stageInfo({}, toVkShaderStage(pipelineStage), (VkShaderModule)shaders[i], 
 			"main", specializationInfo->mapEntryCount > 0 ? specializationInfo : nullptr);
-		stageInfoData[i] = stageInfo;
+		stageInfos.push_back(stageInfo);
 	}
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	this->specConstValues = std::move(createData.specConstValues);
 	#endif
 
-	auto vulkanAPI = VulkanAPI::get();
+	auto vulkanAPI = VulkanAPI::getInstance();
 	GARDEN_ASSERT(createData.rayRecursionDepth > 0);
 	GARDEN_ASSERT(createData.rayRecursionDepth <= vulkanAPI->rtProperties.maxRayRecursionDepth);
 
-	vk::RayTracingPipelineCreateInfoKHR pipelineInfo({}, stageCount, stageInfoData, groupCount, 
+	vk::RayTracingPipelineCreateInfoKHR pipelineInfo({}, stageCount, stageInfos.data(), groupCount, 
 		shaderGroupInfos.data(), createData.rayRecursionDepth, nullptr, nullptr, nullptr, 
 		(VkPipelineLayout)pipelineLayout, nullptr, -1);
 
@@ -151,14 +151,14 @@ RayTracingPipeline::RayTracingPipeline(RayTracingCreateData& createData) : Pipel
 	this->callGroupCount = (uint32)createData.callGroups.size();
 	this->hitGroupCount = (uint32)createData.hitGroups.size();
 	
-	if (GraphicsAPI::get()->getBackendType() == GraphicsBackend::VulkanAPI)
+	if (GraphicsAPI::getInstance()->getBackendType() == GraphicsBackend::VulkanAPI)
 		createVkInstance(createData);
 	else GARDEN_UNREACHABLE();
 }
 
 RayTracingPipeline::SBT RayTracingPipeline::createSBT(Buffer::Usage flags)
 {
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
 	GARDEN_ASSERT_MSG(currentCommandBuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(currentCommandBuffer->getType() != CommandBufferType::Frame, "Assert " + debugName);
@@ -171,7 +171,7 @@ RayTracingPipeline::SBT RayTracingPipeline::createSBT(Buffer::Usage flags)
 
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
-		auto vulkanAPI = VulkanAPI::get();
+		auto vulkanAPI = VulkanAPI::getInstance();
 		auto handleSize = vulkanAPI->rtProperties.shaderGroupHandleSize;
 		auto handleAlignment = vulkanAPI->rtProperties.shaderGroupHandleAlignment;
 		auto baseAlignment = vulkanAPI->rtProperties.shaderGroupBaseAlignment;
@@ -289,7 +289,7 @@ RayTracingPipeline::SBT RayTracingPipeline::createSBT(Buffer::Usage flags)
 //**********************************************************************************************************************
 void RayTracingPipeline::traceRays(const SBT& sbt, uint3 count)
 {
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
 	GARDEN_ASSERT_MSG(sbt.buffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(!sbt.groupRegions.empty(), "Assert " + debugName);

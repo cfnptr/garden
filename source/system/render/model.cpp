@@ -257,18 +257,6 @@ void ModelRenderSystem::resetComponent(View<Component> component)
 }
 
 //**********************************************************************************************************************
-bool ModelRenderSystem::isDrawReady(int8 shadowPass)
-{
-	if (!InstanceRenderSystem::isDrawReady(shadowPass))
-		return false;
-	if (!bindlessPool.getDescriptorSet())
-	{
-		auto uniforms = getBindlessUniforms();
-		if (!uniforms.empty())
-			bindlessPool = BindlessPool(basePipeline, std::move(uniforms), getBindlessSamplers(), getBindlessIndex());
-	}
-	return true;
-}
 uint32 ModelRenderSystem::getReadyMeshesAsync(MeshRenderComponent* meshRenderView, 
 	const f32x4& cameraPosition, const Frustum& frustum, f32x4x4& model)
 {
@@ -291,12 +279,12 @@ uint32 ModelRenderSystem::getReadyMeshesAsync(MeshRenderComponent* meshRenderVie
 void ModelRenderSystem::beginDrawAsync(int32 taskIndex)
 {
 	InstanceRenderSystem::beginDrawAsync(taskIndex);
+	const auto& bindlessPool = ModelBindlessSystem::getInstance()->getBindlessPool();
 
-	DescriptorSet::Range dsRanges[2]; uint32 dsRangeCount = 1;
+	DescriptorSet::Range dsRanges[2];
 	dsRanges[0] = DescriptorSet::Range(descriptorSet, 1, inFlightIndex);
-	if (bindlessPool.getDescriptorSet())
-		dsRanges[dsRangeCount++] = DescriptorSet::Range(bindlessPool.getDescriptorSet());
-	pipelineView->bindDescriptorSetsAsync(dsRanges, dsRangeCount, taskIndex);
+	dsRanges[1] = DescriptorSet::Range(bindlessPool.getDescriptorSet());
+	pipelineView->bindDescriptorSetsAsync(dsRanges, 2, taskIndex);
 }
 void ModelRenderSystem::drawAsync(MeshRenderComponent* meshRenderView,
 	const f32x4x4& viewProj, const f32x4x4& model, uint32 instanceIndex, int32 taskIndex)
@@ -367,7 +355,6 @@ ID<GraphicsPipeline> ModelRenderSystem::createBasePipeline()
 
 	ResourceSystem::GraphicsLoadOptions options;
 	options.specConstValues = &specConsts;
-	options.maxBindlessCount = maxBindlessCount;
 	options.loadAsync = false; // We can't load async due to imageLoaded() usage.
 	return ResourceSystem::getInstance()->loadGraphicsPipeline(pipelinePath, framebuffer, &options);
 }
@@ -528,7 +515,7 @@ static void optimizeMeshData(const aiMesh* mesh, raw_vector<uint8>& indices, raw
 	auto indexCount = faceCount * 3;
 	auto vertexCount = mesh->mNumVertices;
 	const auto meshFaces = mesh->mFaces;
-	indices.resize(indexCount * sizeof(I));
+	indices.resize(indexCount * (sizeof(I) * 2));
 	auto indexData = (I*)indices.data();
 	uint32 faceIndexCount = 0;
 
@@ -567,6 +554,12 @@ static void optimizeMeshData(const aiMesh* mesh, raw_vector<uint8>& indices, raw
 
 	vertexCount = meshopt_optimizeVertexFetch(vertexData, indexData, 
 		indexCount, vertexData, vertexCount, sizeof(MeshOptVertex));
+
+	auto shadowIndexData = indexData + indexCount;
+	meshopt_generateShadowIndexBuffer(shadowIndexData, indexData, indexCount, 
+		&vertexData[0].position.x, vertexCount, sizeof(float3), sizeof(MeshOptVertex));
+	meshopt_optimizeVertexCache(shadowIndexData, shadowIndexData, indexCount, vertexCount);
+
 	tmp0.resize(indexCount * sizeof(float4));
 	meshopt_generateTangents((float*)tmp0.data(), indexData, indexCount, 
 		&vertexData->position.x, vertexCount, sizeof(MeshOptVertex), &vertexData->normal.x, 
@@ -920,7 +913,7 @@ static bool loadNodeMeshes(const fs::path& path, const ModelRenderSystem::ModelC
 		lod.indexBuffer = Ref<Buffer>(indexBuffer);
 		lod.bufferPath = std::move(filePath);
 		lod.setVertexCount(pfBinarySize / sizeof(MeshVertexPF));
-		lod.setIndexCount(indexCount);
+		lod.setIndexCount(indexCount / 2); // Note: contains both base and shadow indices.
 
 		auto emplaceResult = sharedLods.emplace(meshID, lod);
 		GARDEN_ASSERT_MSG(emplaceResult.second, "Detected memory corruption");
@@ -1033,3 +1026,22 @@ ID<Entity> ModelRenderSystem::loadModel(const fs::path& path, const ModelCompone
 	return rootEntity;
 }
 #endif
+
+//**********************************************************************************************************************
+ModelBindlessSystem::ModelBindlessSystem(uint32 maxBindlessCount, uint8 dsIndex)
+{
+	GARDEN_ASSERT(maxBindlessCount > 0);
+
+	Pipeline::Uniforms pipelineUniforms =
+	{
+		{ "colorMaps", PipelineUniform() },
+	};
+	DescriptorSet::Uniforms dsUniforms =
+	{
+		{ }
+	};
+
+	bindlessDS = GraphicsSystem::getInstance()->createDescriptorSet(
+		std::move(pipelineUniforms), std::move(dsUniforms), maxBindlessCount, {}, dsIndex);
+	SET_RESOURCE_DEBUG_NAME(bindlessDS, "descriptorSet.bindlessModel" + to_string(*bindlessDS));
+}

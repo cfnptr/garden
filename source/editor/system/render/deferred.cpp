@@ -189,7 +189,6 @@ void DeferredRenderEditorSystem::preLdrRender()
 		{
 			ImGui::TextDisabled("Disocclusion buffer is disabled in deferred system!");
 		}
-		
 		else if (drawMode > G_BUFFER_DRAW_MODE_OFF)
 		{
 			ImGui::SeparatorText("Channels");

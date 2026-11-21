@@ -171,7 +171,7 @@ public:
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	/**
-	 * @brief Sets sampler debug name. (Debug Only)
+	 * @brief Sets sampler debug name. (Debug Only!)
 	 * @param[in] name target debug name
 	 */
 	void setDebugName(const string& name) override;

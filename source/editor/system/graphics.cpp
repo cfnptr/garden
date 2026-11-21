@@ -115,12 +115,12 @@ void GraphicsEditorSystem::showPerformanceStats()
 		updateHistogram("CPU", cpuFpsBuffer, cpuSortedBuffer, deltaTime);
 		ImGui::Spacing();
 
-		auto graphicsAPI = GraphicsAPI::get();
+		auto graphicsAPI = GraphicsAPI::getInstance();
 		auto graphicsBackend = graphicsAPI->getBackendType();
 
 		if (graphicsBackend == GraphicsBackend::VulkanAPI)
 		{
-			auto vulkanAPI = VulkanAPI::get();
+			auto vulkanAPI = VulkanAPI::getInstance();
 			auto& inFlightFrame = vulkanAPI->vulkanSwapchain->getInFlightFrame();
 			uint64 timestamps[2]; timestamps[0] = 0; timestamps[1] = 0;
 
@@ -145,7 +145,7 @@ void GraphicsEditorSystem::showPerformanceStats()
 		ImGui::SeparatorText("GPU Information");
 		if (graphicsBackend == GraphicsBackend::VulkanAPI)
 		{
-			auto vulkanAPI = VulkanAPI::get();
+			auto vulkanAPI = VulkanAPI::getInstance();
 			ImGui::Text("Queues: %lu, %lu, %lu. (Graphics, Transfer, Compute)",
 				(unsigned long)vulkanAPI->graphicsQueueFamilyIndex,
 				(unsigned long)vulkanAPI->transferQueueFamilyIndex,
@@ -161,7 +161,7 @@ void GraphicsEditorSystem::showPerformanceStats()
 	}
 	else
 	{
-		GraphicsAPI::get()->recordGpuTime = false;
+		GraphicsAPI::getInstance()->recordGpuTime = false;
 	}
 	ImGui::End();
 }
@@ -171,10 +171,10 @@ void GraphicsEditorSystem::showMemoryStats()
 {
 	if (ImGui::Begin("Memory Stats", &memoryStats, ImGuiWindowFlags_AlwaysAutoResize))
 	{
-		auto graphicsBackend = GraphicsAPI::get()->getBackendType();
+		auto graphicsBackend = GraphicsAPI::getInstance()->getBackendType();
 		if (graphicsBackend == GraphicsBackend::VulkanAPI)
 		{
-			auto vulkanAPI = VulkanAPI::get();
+			auto vulkanAPI = VulkanAPI::getInstance();
 			VmaBudget heapBudgets[VK_MAX_MEMORY_HEAPS];
 			vmaGetHeapBudgets(vulkanAPI->memoryAllocator, heapBudgets);
 			const VkPhysicalDeviceMemoryProperties* memoryProperties;
@@ -208,26 +208,26 @@ void GraphicsEditorSystem::showMemoryStats()
 			auto fraction = deviceBlockBytes + hostBlockBytes > 0 ?
 				(double)(deviceAllocationBytes + hostAllocationBytes) /
 				(double)(deviceBlockBytes + hostBlockBytes) : 0.0;
-			ImGui::ProgressBar((float)fraction, ImVec2(144.0f, 0.0f), gpuInfo.c_str());
+			ImGui::ProgressBar((float)fraction, ImVec2(160.0f, 0.0f), gpuInfo.c_str());
 
 			ImGui::Text("Device:    "); ImGui::SameLine();
 			gpuInfo = toBinarySizeString(deviceAllocationBytes) +
 				" / " + toBinarySizeString(deviceBlockBytes);
 			fraction = deviceBlockBytes > 0 ?
 				(double)deviceAllocationBytes / (double)deviceBlockBytes : 0.0;
-			ImGui::ProgressBar((float)fraction, ImVec2(144.0f, 0.0f), gpuInfo.c_str());
+			ImGui::ProgressBar((float)fraction, ImVec2(160.0f, 0.0f), gpuInfo.c_str());
 
 			ImGui::Text("Host:      "); ImGui::SameLine();
 			gpuInfo = toBinarySizeString(hostAllocationBytes) +
 				" / " + toBinarySizeString(hostBlockBytes);
 			fraction = hostBlockBytes > 0 ?
 				(double)hostAllocationBytes / (double)hostBlockBytes : 0.0;
-			ImGui::ProgressBar((float)fraction, ImVec2(144.0f, 0.0f), gpuInfo.c_str());
+			ImGui::ProgressBar((float)fraction, ImVec2(160.0f, 0.0f), gpuInfo.c_str());
 
 			ImGui::Text("Real Usage:"); ImGui::SameLine();
 			gpuInfo = toBinarySizeString(usage) + " / " + toBinarySizeString(budget);
 			fraction = hostBlockBytes > 0 ? (double)usage / (double)budget : 0.0;
-			ImGui::ProgressBar((float)fraction, ImVec2(144.0f, 0.0f), gpuInfo.c_str());
+			ImGui::ProgressBar((float)fraction, ImVec2(160.0f, 0.0f), gpuInfo.c_str());
 		}
 		else GARDEN_UNREACHABLE();
 
@@ -237,7 +237,7 @@ void GraphicsEditorSystem::showMemoryStats()
 		auto usedRamSize = totalRamSize - freeRamSize;
 		auto gpuInfo = toBinarySizeString(usedRamSize) + " / " + toBinarySizeString(totalRamSize);
 		auto fraction = totalRamSize > 0 ? (double)usedRamSize / (double)totalRamSize : 0.0;
-		ImGui::ProgressBar((float)fraction, ImVec2(144.0f, 0.0f), gpuInfo.c_str());
+		ImGui::ProgressBar((float)fraction, ImVec2(160.0f, 0.0f), gpuInfo.c_str());
 		ImGui::Spacing();
 
 		if (ImGui::CollapsingHeader("Descriptor Pool Usage"))

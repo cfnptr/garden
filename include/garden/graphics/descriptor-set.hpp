@@ -20,12 +20,15 @@
 #pragma once
 #include "garden/graphics/image.hpp"
 #include "garden/graphics/acceleration-structure/tlas.hpp"
+
+#include "garden/hash.hpp"
 #include "absl/container/flat_hash_map.h"
 
 namespace garden::graphics
 {
 
 class Pipeline;
+struct PipelineUniform;
 class DescriptorSetExt;
 
 /***********************************************************************************************************************
@@ -169,19 +172,42 @@ public:
 		constexpr Range() noexcept = default;
 	};
 
+	using PipelineUniforms = absl::flat_hash_map<string, PipelineUniform>;
+
+	/**
+	 * @brief Bindless descriptor set data container.
+	 */
+	struct BindlessData final
+	{
+		PipelineUniforms pipelineUniforms;
+		void* descriptorPool = nullptr;
+		void* descriptorSetLayout = nullptr;
+	};
+
+	static constexpr uint32 bufferBarrierLayout = 0; /**< Marks that barrier state is buffer. */
+	static constexpr uint32 asBarrierLayout = UINT32_MAX; /**< Marks that barrier state is acceleration structure. */
+
 	using Uniforms = absl::flat_hash_map<string, Uniform>;
 	using Samplers = absl::flat_hash_map<string, ID<Sampler>>;
 	using Barriers = vector<vector<Image::LayoutState>>;
 private:
 	ID<Pipeline> pipeline = {};
 	Uniforms uniforms;
+	Samplers samplers;
 	Barriers barriers;
+	BindlessData* bindless = nullptr;
 	PipelineType pipelineType = {};
 	uint8 index = 0;
 	uint8 setCount = 0;
 
+	#if GARDEN_DEBUG || GARDEN_EDITOR
+	Hash128 layoutHash;
+	#endif
+
 	DescriptorSet(ID<Pipeline> pipeline, PipelineType pipelineType,
 		Uniforms&& uniforms, Samplers&& samplers, uint8 index);
+	DescriptorSet(PipelineUniforms&& pipelineUniforms, Uniforms&& dsUniforms, 
+		Samplers&& samplers, uint32 maxBindlessCount, uint8 index);
 	bool destroy() override;
 
 	friend class DescriptorSetExt;
@@ -209,32 +235,38 @@ public:
 	 */
 	uint8 getIndex() const noexcept { return index; }
 	/**
+	 * @brief Returns internal descriptor set instance count.
+	 * @details Internally single descriptor set can contain multiple instances.
+	 */
+	uint32 getSetCount() const noexcept { return setCount; }
+	/**
+	 * @brief Is this descriptor set bindless.
+	 * @details Can be used to store huge global unsized resource arrays.
+	 */
+	bool isBindless() const noexcept { return bindless; }
+	/**
 	 * @brief Returns descriptor set uniform map. (resources)
 	 * @details Can be used to access descriptor set resources.
 	 */
 	const Uniforms& getUniforms() const noexcept { return uniforms; }
 	/**
-	 * @brief Returns descriptor set uniform map. (resources)
+	 * @brief Returns descriptor set pipeline uniforms.
+	 */
+	const PipelineUniforms& getPipelineUniforms() const;
+	/**
+	 * @brief Returns descriptor set sampler map.
 	 * @details Can be used to access descriptor set resources.
 	 */
-	Uniforms& getUniforms() noexcept { return uniforms; }
-	/**
-	 * @brief Returns internal descriptor set instance count.
-	 * @details Internally single descriptor set can contain multiple instances.
-	 */
-	uint32 getSetCount() const noexcept { return setCount; }
+	const Samplers& getSamplers() const noexcept { return samplers; }
 
 	/**
-	 * @brief Recreates descriptor set with a new resources.
+	 * @brief Updates descriptor set with a new resources.
+	 * @warning Use only when required, this operation impacts performance!
 	 *
 	 * @param[in] uniforms new resource sets
 	 * @param[in] samplers dynamic samplers (mutable uniforms)
-	 *
-	 * @warning Use only when required, this operation impacts performance!
 	 */
-	void recreate(Uniforms&& uniforms, Samplers&& samplers = {});
-
-	// TODO: void copy(ID<DescriptorSet> descriptorSet);
+	void update(Uniforms&& uniforms, Samplers&& samplers = {});
 
 	/**
 	 * @brief Updates specific descriptor set uniform resource.
@@ -260,7 +292,11 @@ public:
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	/**
-	 * @brief Sets descriptor set debug name. (Debug Only)
+	 * @brief Returns descriptor set layout hash value. (Debug Only!)
+	 */
+	const Hash128& getLayoutHash() const noexcept { return layoutHash; }
+	/**
+	 * @brief Sets descriptor set debug name. (Debug Only!)
 	 * @param[in] name target debug name
 	 */
 	void setDebugName(const string& name) override;
@@ -294,11 +330,23 @@ public:
 	 */
 	static DescriptorSet::Uniforms& getUniforms(DescriptorSet& descriptorSet) noexcept { return descriptorSet.uniforms; }
 	/**
+	 * @brief Returns descriptor set sampler map.
+	 * @warning In most cases you should use @ref DescriptorSet functions.
+	 * @param[in] descriptorSet target descriptor set instance
+	 */
+	static DescriptorSet::Samplers& getSamplers(DescriptorSet& descriptorSet) noexcept { return descriptorSet.samplers; }
+	/**
 	 * @brief Returns descriptor set barriers.
 	 * @warning In most cases you should use @ref DescriptorSet functions.
 	 * @param[in] descriptorSet target descriptor set instance
 	 */
 	static DescriptorSet::Barriers& getBarriers(DescriptorSet& descriptorSet) noexcept { return descriptorSet.barriers; }
+	/**
+	 * @brief Returns descriptor set bindless data.
+	 * @warning In most cases you should use @ref DescriptorSet functions.
+	 * @param[in] descriptorSet target descriptor set instance
+	 */
+	static DescriptorSet::BindlessData* getBindless(DescriptorSet& descriptorSet) noexcept { return descriptorSet.bindless; }
 	/**
 	 * @brief Returns descriptor set parent pipeline type.
 	 * @warning In most cases you should use @ref DescriptorSet functions.
@@ -311,6 +359,15 @@ public:
 	 * @param[in] descriptorSet target descriptor set instance
 	 */
 	static uint8& getIndex(DescriptorSet& descriptorSet) noexcept { return descriptorSet.index; }
+
+	#if GARDEN_DEBUG || GARDEN_EDITOR
+	/**
+	 * @brief Returns descriptor set layout hash. (Debug Only!)
+	 * @warning In most cases you should use @ref DescriptorSet functions.
+	 * @param[in] descriptorSet target descriptor set instance
+	 */
+	static Hash128& getLayoutHash(DescriptorSet& descriptorSet) noexcept { return descriptorSet.layoutHash; }
+	#endif
 };
 
 } // namespace garden::graphics

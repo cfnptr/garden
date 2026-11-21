@@ -117,7 +117,7 @@ static void getVkAllocationInfo(VmaAllocationInfo& allocationInfo,
 	auto allocation = (VmaAllocation)MemoryExt::getAllocation(memory);
 	if (allocation)
 	{
-		auto vulkanAPI = VulkanAPI::get();
+		auto vulkanAPI = VulkanAPI::getInstance();
 		vmaGetAllocationInfo(vulkanAPI->memoryAllocator, allocation, &allocationInfo);
 		auto memoryProperties = vulkanAPI->physicalDevice.getMemoryProperties2();
 		memoryType = memoryProperties.memoryProperties.memoryTypes[allocationInfo.memoryType];
@@ -144,7 +144,7 @@ static void renderVkMemoryDetails(const VmaAllocationInfo& allocationInfo,
 static void renderBuffers(uint32& selectedItem, string& searchString, 
 	bool& searchCaseSensitive, GpuResourceEditorSystem::TabType& openNextTab)
 {
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	auto buffers = graphicsAPI->bufferPool.getData();
 
 	string bufferName;
@@ -182,7 +182,7 @@ static void renderBuffers(uint32& selectedItem, string& searchString,
 	{
 		ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyle().Colors[ImGuiCol_Button]);
 
-		auto graphicsAPI = GraphicsAPI::get();
+		auto graphicsAPI = GraphicsAPI::getInstance();
 		const auto descriptorSets = graphicsAPI->descriptorSetPool.getData();
 		auto occupancy = graphicsAPI->descriptorSetPool.getOccupancy();
 		auto selectedBuffer = graphicsAPI->bufferPool.getID(&buffer);
@@ -195,9 +195,7 @@ static void renderBuffers(uint32& selectedItem, string& searchString,
 				continue;
 
 			const auto& dsUniforms = descriptorSet.getUniforms();
-			auto pipelineView = graphicsAPI->getPipelineView(
-				descriptorSet.getPipelineType(), descriptorSet.getPipeline());
-			const auto& pipelineUniforms = pipelineView->getUniforms();
+			const auto& pipelineUniforms = descriptorSet.getPipelineUniforms();
 			auto isFound = false;
 
 			for (const auto& dsUniform : dsUniforms)
@@ -267,7 +265,7 @@ static void renderBuffers(uint32& selectedItem, string& searchString,
 static void renderImages(uint32& selectedItem, string& searchString, bool& searchCaseSensitive, 
 	GpuResourceEditorSystem::TabType& openNextTab, int& imageMip, int& imageLayer)
 {
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	auto images = graphicsAPI->imagePool.getData();
 
 	string imageName;
@@ -382,7 +380,7 @@ static void renderImages(uint32& selectedItem, string& searchString, bool& searc
 static void renderImageViews(uint32& selectedItem, string& searchString,
 	bool& searchCaseSensitive, GpuResourceEditorSystem::TabType& openNextTab)
 {
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	const auto imageViews = graphicsAPI->imageViewPool.getData();
 
 	string imageViewName;
@@ -503,7 +501,7 @@ static void renderImageViews(uint32& selectedItem, string& searchString,
 	{
 		ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyle().Colors[ImGuiCol_Button]);
 
-		auto graphicsAPI = GraphicsAPI::get();
+		auto graphicsAPI = GraphicsAPI::getInstance();
 		const auto descriptorSets = graphicsAPI->descriptorSetPool.getData();
 		auto occupancy = graphicsAPI->descriptorSetPool.getOccupancy();
 		auto selectedImageView = graphicsAPI->imageViewPool.getID(&imageView);
@@ -516,9 +514,7 @@ static void renderImageViews(uint32& selectedItem, string& searchString,
 				continue;
 
 			const auto& dsUniforms = descriptorSet.getUniforms();
-			auto pipelineView = graphicsAPI->getPipelineView(
-				descriptorSet.getPipelineType(), descriptorSet.getPipeline());
-			const auto& pipelineUniforms = pipelineView->getUniforms();
+			const auto& pipelineUniforms = descriptorSet.getPipelineUniforms();
 			auto isFound = false;
 
 			for (const auto& dsUniform : dsUniforms)
@@ -599,7 +595,7 @@ static void renderImageViews(uint32& selectedItem, string& searchString,
 static void renderFramebuffers(uint32& selectedItem, string& searchString,
 	bool& searchCaseSensitive, GpuResourceEditorSystem::TabType& openNextTab)
 {
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	auto framebuffers = graphicsAPI->framebufferPool.getData();
 	auto count = graphicsAPI->framebufferPool.getCount();
 	auto occupancy = graphicsAPI->framebufferPool.getOccupancy();
@@ -765,7 +761,7 @@ static void renderFramebuffers(uint32& selectedItem, string& searchString,
 static void renderSamplers(uint32& selectedItem, string& searchString,
 	bool& searchCaseSensitive, GpuResourceEditorSystem::TabType& openNextTab)
 {
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	auto samplers = graphicsAPI->samplerPool.getData();
 
 	string descriptorSetName;
@@ -816,7 +812,7 @@ static void renderSamplers(uint32& selectedItem, string& searchString,
 static void renderDescriptorSets(uint32& selectedItem, string& searchString,
 	bool& searchCaseSensitive, GpuResourceEditorSystem::TabType& openNextTab)
 {
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	auto descriptorSets = graphicsAPI->descriptorSetPool.getData();
 
 	string descriptorSetName;
@@ -835,14 +831,15 @@ static void renderDescriptorSets(uint32& selectedItem, string& searchString,
 	}
 
 	auto& descriptorSet = descriptorSets[selectedItem];
-	const Pipeline::Uniforms* pipelineUniforms = nullptr; string pipelineName;
+	const auto& pipelineUniforms = descriptorSet.getPipelineUniforms();
+
+	string pipelineName;
 	if (descriptorSet.getPipeline())
 	{
 		auto pipelineView = graphicsAPI->getPipelineView(
-			descriptorSet.getPipelineType(), descriptorSet.getPipeline());
+			descriptorSet.getPipeline(), descriptorSet.getPipelineType());
 		pipelineName = pipelineView->getDebugName().empty() ? "Pipeline " +
 			to_string(*descriptorSet.getPipeline()) : pipelineView->getDebugName();
-		pipelineUniforms = &pipelineView->getUniforms();
 	}
 
 	ImGui::SeparatorText(descriptorSetName.c_str());
@@ -858,11 +855,11 @@ static void renderDescriptorSets(uint32& selectedItem, string& searchString,
 	{
 		ImGui::Indent();
 
-		const auto& descriptorUniforms = descriptorSet.getUniforms();
-		for (const auto& pair : descriptorUniforms)
+		const auto& dsUniforms = descriptorSet.getUniforms();
+		for (const auto& pair : dsUniforms)
 		{
-			const auto uniformPair = pipelineUniforms->find(pair.first);
-			if (uniformPair == pipelineUniforms->end() ||
+			const auto uniformPair = pipelineUniforms.find(pair.first);
+			if (uniformPair == pipelineUniforms.end() ||
 				uniformPair->second.descriptorSetIndex != descriptorSet.getIndex())
 			{
 				continue;
@@ -877,11 +874,11 @@ static void renderDescriptorSets(uint32& selectedItem, string& searchString,
 
 			if (pipelineUniform.isBufferType)
 			{
-				for (uint32 i = 0; i < resourceSetCount; i++)
+				for (uint32 set = 0; set < resourceSetCount; set++)
 				{
-					if (ImGui::TreeNodeEx(to_string(i).c_str()))
+					if (ImGui::TreeNodeEx(to_string(set).c_str()))
 					{
-						const auto& resourceArray = resourceSets[i];
+						const auto& resourceArray = resourceSets[set];
 						for (auto resource : resourceArray)
 						{
 							if (!resource)
@@ -893,7 +890,7 @@ static void renderDescriptorSets(uint32& selectedItem, string& searchString,
 							auto bufferView = graphicsAPI->bufferPool.get(ID<Buffer>(resource));
 							auto imageViewName = bufferView->getDebugName().empty() ? "Buffer " +
 								to_string(*resource) : bufferView->getDebugName();
-							ImGui::PushID(to_string(i + 1).c_str());
+							ImGui::PushID(to_string(*resource).c_str());
 							if (ImGui::TreeNodeEx(imageViewName.c_str(), ImGuiTreeNodeFlags_Leaf))
 							{
 								if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
@@ -914,11 +911,11 @@ static void renderDescriptorSets(uint32& selectedItem, string& searchString,
 			}
 			else if (pipelineUniform.isSamplerType | pipelineUniform.isImageType)
 			{
-				for (uint32 i = 0; i < resourceSetCount; i++)
+				for (uint32 set = 0; set < resourceSetCount; set++)
 				{
-					if (ImGui::TreeNodeEx(to_string(i).c_str()))
+					if (ImGui::TreeNodeEx(to_string(set).c_str()))
 					{
-						const auto& resourceArray = resourceSets[i];
+						const auto& resourceArray = resourceSets[set];
 						for (auto resource : resourceArray)
 						{
 							if (!resource)
@@ -951,11 +948,11 @@ static void renderDescriptorSets(uint32& selectedItem, string& searchString,
 			}
 			else if (pipelineUniform.type == GslUniformType::AccelerationStructure)
 			{
-				for (uint32 i = 0; i < resourceSetCount; i++)
+				for (uint32 set = 0; set < resourceSetCount; set++)
 				{
-					if (ImGui::TreeNodeEx(to_string(i).c_str()))
+					if (ImGui::TreeNodeEx(to_string(set).c_str()))
 					{
-						const auto& resourceArray = resourceSets[i];
+						const auto& resourceArray = resourceSets[set];
 						for (auto resource : resourceArray)
 						{
 							if (!resource)
@@ -990,7 +987,7 @@ static void renderDescriptorSets(uint32& selectedItem, string& searchString,
 			ImGui::PopID();
 		}
 
-		if (descriptorUniforms.empty())
+		if (dsUniforms.empty())
 			ImGui::TextDisabled("None");
 
 		ImGui::Unindent();
@@ -1001,11 +998,14 @@ static void renderDescriptorSets(uint32& selectedItem, string& searchString,
 
 	if (ImGui::Button("Select parent pipeline", ImVec2(-FLT_MIN, 0.0f)))
 	{
-		if (descriptorSet.getPipelineType() == PipelineType::Graphics)
+		auto pipelineType = descriptorSet.getPipelineType();
+		if (pipelineType == PipelineType::Graphics)
 			openNextTab = GpuResourceEditorSystem::TabType::GraphicsPipelines;
-		else if (descriptorSet.getPipelineType() == PipelineType::Compute)
+		else if (pipelineType == PipelineType::Compute)
 			openNextTab = GpuResourceEditorSystem::TabType::ComputePipelines;
-		else openNextTab = GpuResourceEditorSystem::TabType::RayTracingPipelines;
+		else if (pipelineType == PipelineType::RayTracing)
+			openNextTab = GpuResourceEditorSystem::TabType::RayTracingPipelines;
+		else GARDEN_UNREACHABLE();
 		selectedItem = *descriptorSet.getPipeline() - 1;
 	}
 
@@ -1017,12 +1017,9 @@ static void renderDescriptorSets(uint32& selectedItem, string& searchString,
 static void renderPipelineDetails(const Pipeline& pipeline, ID<Pipeline> instance,
 	GpuResourceEditorSystem::TabType& openNextTab, uint32& selectedItem)
 {
-	auto isBindless = pipeline.isBindless();
 	ImGui::TextWrapped("Path: %s", pipeline.getPath().generic_string().c_str());
 	ImGui::TextWrapped("Variant count: %lu", (unsigned long)pipeline.getVariantCount());
 	ImGui::TextWrapped("Push constants size: %s", toBinarySizeString(pipeline.getPushConstantsSize()).c_str());
-	ImGui::TextWrapped("Max bindless count: %lu", (unsigned long)pipeline.getMaxBindlessCount());
-	ImGui::Checkbox("Bindless", &isBindless);
 	ImGui::Spacing();
 
 	if (ImGui::CollapsingHeader("Uniforms"))
@@ -1067,7 +1064,7 @@ static void renderPipelineDetails(const Pipeline& pipeline, ID<Pipeline> instanc
 	{
 		ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyle().Colors[ImGuiCol_Button]);
 
-		auto graphicsAPI = GraphicsAPI::get();
+		auto graphicsAPI = GraphicsAPI::getInstance();
 		const auto descriptorSets = graphicsAPI->descriptorSetPool.getData();
 		auto occupancy = graphicsAPI->descriptorSetPool.getOccupancy();
 
@@ -1117,7 +1114,7 @@ static void renderPipelineDetails(const Pipeline& pipeline, ID<Pipeline> instanc
 static void renderGraphicsPipelines(uint32& selectedItem, string& searchString,
 	bool& searchCaseSensitive, GpuResourceEditorSystem::TabType& openNextTab)
 {
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	auto graphicsPipelines = graphicsAPI->graphicsPipelinePool.getData();
 
 	string graphicsPipelineName;
@@ -1160,7 +1157,7 @@ static void renderGraphicsPipelines(uint32& selectedItem, string& searchString,
 static void renderComputePipelines(uint32& selectedItem, string& searchString,
 	bool& searchCaseSensitive, GpuResourceEditorSystem::TabType& openNextTab)
 {
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	auto computePipelines = graphicsAPI->computePipelinePool.getData();
 
 	string computePipelineName;
@@ -1198,7 +1195,7 @@ static void renderComputePipelines(uint32& selectedItem, string& searchString,
 static void renderRayTracingPipelines(uint32& selectedItem, string& searchString,
 	bool& searchCaseSensitive, GpuResourceEditorSystem::TabType& openNextTab)
 {
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	auto rayTracingPipelines = graphicsAPI->rayTracingPipelinePool.getData();
 
 	string rayTracingPipelineName;
@@ -1251,7 +1248,7 @@ static void renderDetailsAS(const AccelerationStructure& as, ID<AccelerationStru
 	{
 		ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyle().Colors[ImGuiCol_Button]);
 
-		auto graphicsAPI = GraphicsAPI::get();
+		auto graphicsAPI = GraphicsAPI::getInstance();
 		const auto descriptorSets = graphicsAPI->descriptorSetPool.getData();
 		auto occupancy = graphicsAPI->descriptorSetPool.getOccupancy();
 
@@ -1263,9 +1260,7 @@ static void renderDetailsAS(const AccelerationStructure& as, ID<AccelerationStru
 				continue;
 
 			const auto& dsUniforms = descriptorSet.getUniforms();
-			auto pipelineView = graphicsAPI->getPipelineView(
-				descriptorSet.getPipelineType(), descriptorSet.getPipeline());
-			const auto& pipelineUniforms = pipelineView->getUniforms();
+			const auto& pipelineUniforms = descriptorSet.getPipelineUniforms();
 			auto isFound = false;
 
 			for (const auto& dsUniform : dsUniforms)
@@ -1335,7 +1330,7 @@ static void renderDetailsAS(const AccelerationStructure& as, ID<AccelerationStru
 static void renderBlases(uint32& selectedItem, string& searchString,
 	bool& searchCaseSensitive, GpuResourceEditorSystem::TabType& openNextTab)
 {
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	auto blases = graphicsAPI->blasPool.getData();
 
 	string blasName;
@@ -1365,7 +1360,7 @@ static void renderBlases(uint32& selectedItem, string& searchString,
 static void renderTlases(uint32& selectedItem, string& searchString,
 	bool& searchCaseSensitive, GpuResourceEditorSystem::TabType& openNextTab)
 {
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	auto tlases = graphicsAPI->tlasPool.getData();
 
 	string tlasName;

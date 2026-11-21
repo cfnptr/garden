@@ -520,7 +520,7 @@ void VulkanSwapchain::beginSecondaryCommandBuffers(const vector<Framebuffer::Att
 			inheritanceRenderingInfo.depthAttachmentFormat = vk::Format::eUndefined;
 			inheritanceRenderingInfo.stencilAttachmentFormat = vkFormat;
 		}
-		else
+		else // Note: depth/stencil combined format.
 		{
 			inheritanceRenderingInfo.depthAttachmentFormat = 
 				inheritanceRenderingInfo.stencilAttachmentFormat = vkFormat;

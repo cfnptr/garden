@@ -18,8 +18,8 @@
  */
 
 #pragma once
-#include "garden/serialize.hpp"
 #include "garden/hash.hpp"
+#include "garden/serialize.hpp"
 #include "ecsm.hpp"
 
 namespace garden

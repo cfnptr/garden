@@ -177,12 +177,12 @@ public:
 	Swapchain* getSwapchain() const noexcept { return swapchain; }
 
 	/**
-	 * @brief Returns pipeline pool instance from it pointer.
+	 * @brief Returns pipeline pool instance from it pointer and type.
 	 *
-	 * @param type target pipeline type
 	 * @param[in] pipeline pointer to the pipeline
+	 * @param type target pipeline type
 	 */
-	ID<Pipeline> getPipeline(PipelineType type, const Pipeline* pipeline) const noexcept
+	ID<Pipeline> getPipeline(const Pipeline* pipeline, PipelineType type) const noexcept
 	{
 		switch (type)
 		{
@@ -196,12 +196,12 @@ public:
 		}
 	}
 	/**
-	 * @brief Returns pipeline pool view from it ID.
+	 * @brief Returns pipeline pool view from it ID and type.
 	 *
-	 * @param type target pipeline type
 	 * @param pipeline target pipeline instance
+	 * @param type target pipeline type
 	 */
-	View<Pipeline> getPipelineView(PipelineType type, ID<Pipeline> pipeline) const noexcept
+	View<Pipeline> getPipelineView(ID<Pipeline> pipeline, PipelineType type) const noexcept
 	{
 		switch (type)
 		{
@@ -340,7 +340,7 @@ public:
 	/**
 	 * @brief Returns graphics API instance.
 	 */
-	inline static GraphicsAPI* get() noexcept
+	inline static GraphicsAPI* getInstance() noexcept
 	{
 		GARDEN_ASSERT_MSG(apiInstance, "Graphics API is not initialized");
 		return apiInstance;

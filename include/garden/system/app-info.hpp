@@ -122,12 +122,12 @@ public:
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR || !GARDEN_PACK_RESOURCES
 	/**
-	 * @brief Returns application cache path. (Debug Only)
+	 * @brief Returns application cache path. (Debug Only!)
 	 * @details See the GARDEN_APP_CACHE_DIR.
 	 */
 	const fs::path& getCachePath() const noexcept { return cachePath; }
 	/**
-	 * @brief Returns application resources path. (Debug Only)
+	 * @brief Returns application resources path. (Debug Only!)
 	 * @details See the GARDEN_APP_RESOURCES_DIR.
 	 */
 	const fs::path& getResourcesPath() const noexcept { return resourcesPath; }

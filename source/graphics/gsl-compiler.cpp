@@ -130,7 +130,7 @@ namespace garden::graphics
 			isFilterMin = false, isFilterMag = false, isFilterMipmap = false, isBorderColor = false, 
 			isAddressMode = false, isAddressModeX = false, isAddressModeY = false, isAddressModeZ = false, 
 			isVariantCount = false, isReference = false;
-		uint8 arraySize = 1, offset = 0;
+		uint8 arraySize = 0, offset = 0;
 		GslDataType dataType = {}; Image::Format imageFormat = {};
 		bool isNewLine = true;
 	};
@@ -467,24 +467,24 @@ static void onShaderUniform(FileData& fileData, LineData& lineData,
 	{
 		if (lineData.word.find_first_of(';') != string::npos)
 			throw CompileError("no uniform image format after name", fileData.lineIndex, lineData.word);
-		lineData.uniformName = lineData.word;
 
-		auto arrayOpenPos = lineData.uniformName.find_first_of('[');
+		auto arrayOpenPos = lineData.word.find_first_of('[');
 		if (arrayOpenPos != string::npos)
 		{
-			if (from_chars(lineData.uniformName.c_str() + (arrayOpenPos + 1), lineData.uniformName.c_str() + 
-				(lineData.uniformName.length() - 1), lineData.arraySize).ec == errc())
+			if (from_chars(lineData.word.c_str() + (arrayOpenPos + 1), lineData.word.c_str() + 
+				(lineData.word.length() - 1), lineData.arraySize).ec == errc())
 			{
-				auto arrayClosePos = lineData.uniformName.find_first_of(']', arrayOpenPos);
-				if (arrayClosePos == string::npos)
-					throw CompileError("no ']' after uniform array size", fileData.lineIndex, lineData.uniformName);
-				if (arrayClosePos - arrayOpenPos != 1)
-					throw CompileError("invalid uniform array size", fileData.lineIndex, lineData.uniformName);
+				throw CompileError("invalid uniform array size", fileData.lineIndex, lineData.word);
 			}
-			if (lineData.arraySize == 0)
-				throw CompileError("invalid uniform array size", fileData.lineIndex, lineData.uniformName);
-			lineData.uniformName.resize(arrayOpenPos);
+			auto arrayClosePos = lineData.word.find_first_of(']', arrayOpenPos);
+			if (arrayClosePos == string::npos)
+				throw CompileError("no ']' after uniform array size", fileData.lineIndex, lineData.word);
+			if (lineData.arraySize == 0 && arrayClosePos - arrayOpenPos != 1)
+				throw CompileError("invalid uniform array size", fileData.lineIndex, lineData.word);
+			lineData.uniformName = string(lineData.word, 0, arrayOpenPos);
 		}
+		else lineData.uniformName = lineData.word;
+
 		fileData.isUniform = 6;
 		return;
 	}
@@ -511,23 +511,26 @@ static void onShaderUniform(FileData& fileData, LineData& lineData,
 		auto charPos = lineData.word.find_first_of(';');
 		if (charPos == string::npos)
 			throw CompileError("no ';' after uniform name", fileData.lineIndex, lineData.word);
-		lineData.uniformName = string(lineData.word, 0, charPos);
 
-		auto arrayOpenPos = lineData.uniformName.find_first_of('[');
+		auto arrayOpenPos = lineData.word.find_first_of('[');
 		if (arrayOpenPos != string::npos)
 		{
-			if (from_chars(lineData.uniformName.c_str() + (arrayOpenPos + 1), 
-				lineData.uniformName.c_str() + charPos, lineData.arraySize).ec == errc())
+			if (from_chars(lineData.word.c_str() + (arrayOpenPos + 1), 
+				lineData.word.c_str() + charPos, lineData.arraySize).ec == errc())
 			{
-				auto arrayClosePos = lineData.uniformName.find_first_of(']', arrayOpenPos);
-				if (arrayClosePos == string::npos)
-					throw CompileError("no ']' after uniform array size", fileData.lineIndex, lineData.uniformName);
-				if (arrayClosePos - arrayOpenPos != 1)
-					throw CompileError("invalid uniform array size", fileData.lineIndex, lineData.uniformName);
+				throw CompileError("invalid uniform array size", fileData.lineIndex, lineData.word);
 			}
-			if (lineData.arraySize == 0)
-				throw CompileError("invalid uniform array size", fileData.lineIndex, lineData.uniformName);
-			lineData.uniformName.resize(arrayOpenPos);
+			auto arrayClosePos = lineData.word.find_first_of(']', arrayOpenPos);
+			if (arrayClosePos == string::npos)
+				throw CompileError("no ']' after uniform array size", fileData.lineIndex, lineData.word);
+			if (lineData.arraySize == 0 && arrayClosePos - arrayOpenPos != 1)
+				throw CompileError("invalid uniform array size", fileData.lineIndex, lineData.word);
+			lineData.uniformName = string(lineData.word, 0, arrayOpenPos);
+		}
+		else
+		{
+			lineData.uniformName = string(lineData.word, 0, lineData.word.length() - 1);
+			lineData.arraySize = 1;
 		}
 	}
 
@@ -544,7 +547,7 @@ static void onShaderUniform(FileData& fileData, LineData& lineData,
 	uint8 binding;
 	if (uniforms.find(lineData.uniformName) == uniforms.end())
 	{
-		Pipeline::Uniform uniform;
+		PipelineUniform uniform;
 		uniform.type = fileData.uniformType;
 		uniform.pipelineStages = pipelineStage;
 		uniform.bindingIndex = binding = bindingIndex++;
@@ -1971,7 +1974,7 @@ bool GslCompiler::compileGraphicsShaders(const fs::path& inputPath,
 			values.blendStateCount * sizeof(GraphicsPipeline::BlendState));
 	}
 	
-	writeGslHeaderArray<Pipeline::Uniform>(headerStream, data.uniforms);
+	writeGslHeaderArray<PipelineUniform>(headerStream, data.uniforms);
 	writeGslHeaderArray<Sampler::State>(headerStream, data.samplerStates);
 	writeGslHeaderArray<Pipeline::SpecConst>(headerStream, data.specConsts);
 	return true;
@@ -2136,7 +2139,7 @@ bool GslCompiler::compileComputeShader(const fs::path& inputPath,
 	ofstream headerStream;
 	auto headerFilePath = outputPath / data.shaderPath; headerFilePath += ".gslh";
 	writeGslHeaderValues(headerFilePath, computeGslMagic, headerStream, values);
-	writeGslHeaderArray<Pipeline::Uniform>(headerStream, data.uniforms);
+	writeGslHeaderArray<PipelineUniform>(headerStream, data.uniforms);
 	writeGslHeaderArray<Sampler::State>(headerStream, data.samplerStates);
 	writeGslHeaderArray<Pipeline::SpecConst>(headerStream, data.specConsts);
 	headerStream.close();
@@ -2496,7 +2499,7 @@ bool GslCompiler::compileRayTracingShaders(const fs::path& inputPath,
 	auto headerFilePath = outputPath / data.shaderPath; headerFilePath += ".gslh";
 	writeGslHeaderValues(headerFilePath, rayTracingGslMagic, headerStream, values);
 	
-	writeGslHeaderArray<Pipeline::Uniform>(headerStream, data.uniforms);
+	writeGslHeaderArray<PipelineUniform>(headerStream, data.uniforms);
 	writeGslHeaderArray<Sampler::State>(headerStream, data.samplerStates);
 	writeGslHeaderArray<Pipeline::SpecConst>(headerStream, data.specConsts);
 	return true;
@@ -2619,7 +2622,7 @@ void GslCompiler::loadGraphicsShaders(GraphicsData& data)
 		}
 	}
 
-	readGslHeaderArray<Pipeline::Uniform>(headerData, dataSize, 
+	readGslHeaderArray<PipelineUniform>(headerData, dataSize, 
 		dataOffset, values.uniformCount, data.uniforms);
 	for (const auto& uniform : data.uniforms)
 	{
@@ -2680,7 +2683,7 @@ void GslCompiler::loadComputeShader(ComputeData& data)
 	auto headerData = data.headerData.data(); auto dataSize = (uint32)data.headerData.size();
 	readGslHeaderValues(headerData, dataSize, dataOffset, computeGslMagic, values);
 
-	readGslHeaderArray<Pipeline::Uniform>(headerData, dataSize, 
+	readGslHeaderArray<PipelineUniform>(headerData, dataSize, 
 		dataOffset, values.uniformCount, data.uniforms);
 	readGslHeaderArray<Sampler::State>(headerData, dataSize, 
 		dataOffset, values.samplerStateCount, data.samplerStates);
@@ -2846,7 +2849,7 @@ void GslCompiler::loadRayTracingShaders(RayTracingData& data)
 	auto headerData = data.headerData.data(); auto dataSize = (uint32)data.headerData.size();
 	readGslHeaderValues(headerData, dataSize, dataOffset, rayTracingGslMagic, values);
 
-	readGslHeaderArray<Pipeline::Uniform>(headerData, dataSize, 
+	readGslHeaderArray<PipelineUniform>(headerData, dataSize, 
 		dataOffset, values.uniformCount, data.uniforms);
 	readGslHeaderArray<Sampler::State>(headerData, dataSize, 
 		dataOffset, values.samplerStateCount, data.samplerStates);

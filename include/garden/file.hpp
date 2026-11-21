@@ -158,7 +158,7 @@ public:
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR || !GARDEN_PACK_RESOURCES
 	/**
-	 * @brief Returns resource file path in the system. (Debug Only)
+	 * @brief Returns resource file path in the system. (Debug Only!)
 	 * @details The resource is searched inside the engine resources folder and the application resources folder.
 	 * 
 	 * @param[in] appResourcesPath application resources directory path

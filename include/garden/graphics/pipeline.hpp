@@ -18,13 +18,56 @@
  */
 
 #pragma once
-#include "garden/graphics/gsl.hpp"
 #include "garden/graphics/descriptor-set.hpp"
 
 namespace garden::graphics
 {
 
 class PipelineExt;
+
+/**
+ * @brief Shader uniform variable description.
+ * 
+ * @details
+ * Uniform is a type of variable used in shader programs to represent data that remains constant for an entire 
+ * render pass, drawing or compute call, in contrast to other types of shader variables that may change per vertex 
+ * or per fragment. Uniforms are commonly used to pass data from the CPU-side application to the GPU-side shaders 
+ * without having to resend this data for each vertex or fragment processed. This makes uniforms extremely 
+ * efficient for data that applies globally to a scene or a rendering operation, such as transformation 
+ * matrices, material properties, lighting information, and global settings.
+ */
+struct PipelineUniform final
+{
+	PipelineStage pipelineStages = {}; /**< Pipeline stages where uniform is used. */
+	GslUniformType type = {};          /**< Shader uniform variable type. */
+	uint8 bindingIndex = 0;            /**< Binding index inside the descriptor set. */
+	uint8 descriptorSetIndex = 0;      /**< Index of the descriptor set. */
+	uint8 arraySize = 0;               /**< Number of descriptors contained in the binding. */
+	uint8 readAccess : 1;              /**< Is shader variable read access allowed. */
+	uint8 writeAccess : 1;             /**< Is shader variable write access allowed. */
+	uint8 isMutable : 1;               /**< Is uniform resource can be assigned dynamically. */
+	uint8 isNoncoherent : 1;           /**< Does shaders access different memory parts. */
+	uint8 isSamplerType : 1;           /**< Does shader variable have sampler type. */
+	uint8 isImageType : 1;             /**< Does shader variable have image type. */
+	uint8 isBufferType : 1;            /**< Does shader variable have buffer type. */
+	uint8 _reserved0 : 1;              /**< [reserved for future use] */
+	uint8 _reserved1 = 0;              /**< [reserved for future use] */
+		
+	/**
+	 * @brief Creates a new pipeline uniform.
+	 */
+	constexpr PipelineUniform() noexcept : readAccess(true), writeAccess(true), isMutable(false), 
+		isNoncoherent(false), isSamplerType(false), isImageType(false), isBufferType(false), _reserved0(0) { }
+
+	/**
+	 * @brief Returns true if pipeline uniform is valid.
+	 */
+	constexpr bool isValid() const noexcept
+	{
+		return type < GslUniformType::Count && (readAccess | writeAccess) &&
+			(isSamplerType + isImageType + isBufferType == 1); // TODO: other possible checks.
+	}
+};
 
 /**
  * @brief Rendering stages container.
@@ -36,50 +79,6 @@ class PipelineExt;
 class Pipeline : public Resource
 {
 public:
-	/**
-	 * @brief Shader uniform variable description.
-	 * 
-	 * @details
-	 * Uniform is a type of variable used in shader programs to represent data that remains constant for an entire 
-	 * render pass, drawing or compute call, in contrast to other types of shader variables that may change per vertex 
-	 * or per fragment. Uniforms are commonly used to pass data from the CPU-side application to the GPU-side shaders 
-	 * without having to resend this data for each vertex or fragment processed. This makes uniforms extremely 
-	 * efficient for data that applies globally to a scene or a rendering operation, such as transformation 
-	 * matrices, material properties, lighting information, and global settings.
-	 */
-	struct Uniform final
-	{
-		PipelineStage pipelineStages = {}; /**< Pipeline stages where uniform is used. */
-		GslUniformType type = {};          /**< Shader uniform variable type. */
-		uint8 bindingIndex = 0;            /**< Binding index inside the descriptor set. */
-		uint8 descriptorSetIndex = 0;      /**< Index of the descriptor set. */
-		uint8 arraySize = 0;               /**< Number of descriptors contained in the binding. */
-		uint8 readAccess : 1;             /**< Is shader variable read access allowed. */
-		uint8 writeAccess : 1;            /**< Is shader variable write access allowed. */
-		uint8 isMutable : 1;              /**< Is uniform resource can be assigned dynamically. */
-		uint8 isNoncoherent : 1;          /**< Does shaders access different memory parts. */
-		uint8 isSamplerType : 1;          /**< Does shader variable have sampler type. */
-		uint8 isImageType : 1;            /**< Does shader variable have image type. */
-		uint8 isBufferType : 1;           /**< Does shader variable have buffer type. */
-		uint8 _reserved0 : 1;             /**< [reserved for future use] */
-		uint8 _reserved1 = 0;             /**< [reserved for future use] */
-		
-		/**
-		 * @brief Creates a new pipeline uniform.
-		 */
-		constexpr Uniform() noexcept : readAccess(true), writeAccess(true), isMutable(false), isNoncoherent(false), 
-			isSamplerType(false), isImageType(false), isBufferType(false), _reserved0(0) { }
-
-		/**
-		 * @brief Returns true if pipeline uniform is valid.
-		 */
-		constexpr bool isValid() const noexcept
-		{
-			return type < GslUniformType::Count && (readAccess | writeAccess) &&
-				(isSamplerType + isImageType + isBufferType == 1); // TODO: other possible checks.
-		}
-	};
-
 	/**
 	 * @brief Specialization constant variable description.
 	 * 
@@ -122,7 +121,7 @@ public:
 	};
 
 	using SamplerStates = absl::flat_hash_map<string, Sampler::State>;
-	using Uniforms = absl::flat_hash_map<string, Uniform>;
+	using Uniforms = absl::flat_hash_map<string, PipelineUniform>;
 	using SpecConsts = absl::flat_hash_map<string, SpecConst>;
 	using SpecConstValues = absl::flat_hash_map<string, SpecConstValue>;
 
@@ -147,21 +146,21 @@ public:
 		uint8 variantCount = 0;
 	};
 protected:
-	uint32 maxBindlessCount = 0;
+	PipelineStage pushConstantStages = {};
+	uint8 pushConstantsSize = 0;
+	PipelineType type = {};
 	Uniforms uniforms;
 	vector<void*> samplers;
 	vector<void*> descriptorSetLayouts;
-	vector<void*> descriptorPools;
 	fs::path pipelinePath;
 	void* pipelineLayout = nullptr; 
 	uint64 pipelineVersion = 0;
-	PipelineStage pushConstantStages = {};
-	PipelineType type = {};
-	uint8 pushConstantsSize = 0;
+	uint32 maxBindlessCount = 0;
 	uint8 variantCount = 0;
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
-	Pipeline::SpecConstValues specConstValues;
+	SpecConstValues specConstValues;
+	vector<Hash128> layoutHashes;
 	#endif
 
 	Pipeline(CreateData& createData);
@@ -232,16 +231,20 @@ public:
 	 */
 	uint8 getVariantCount() const noexcept { return variantCount; }
 	/**
-	 * @brief Is pipeline can be used for bindless descriptor set creation.
-	 * @details Helps to reduce overhead associated with binding and switching resources like textures, buffers.
+	 * @brief Returns total pipeline descriptor set count
+	 * @details Specified in the shader with "setX".
 	 */
-	bool isBindless() const noexcept { return maxBindlessCount > 0; }
+	uint8 getDescriptorSetCount() const noexcept { return (uint8)descriptorSetLayouts.size(); }
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	/**
 	 * @brief Returns pipeline specialization constant variables. (Debug only!)
 	 */
-	const Pipeline::SpecConstValues& getSpecConstValues() const noexcept { return specConstValues; }
+	const SpecConstValues& getSpecConstValues() const noexcept { return specConstValues; }
+	/**
+	 * @brief Returns pipeline layout hash array. (Debug only!)
+	 */
+	const vector<Hash128>& getLayoutHashes() const noexcept { return layoutHashes; }
 	#endif
 
 	//******************************************************************************************************************
@@ -407,12 +410,6 @@ public:
 	 */
 	static vector<void*>& getDescriptorSetLayouts(Pipeline& pipeline) noexcept { return pipeline.descriptorSetLayouts; }
 	/**
-	 * @brief Returns pipeline descriptor set pool array.
-	 * @warning In most cases you should use @ref Pipeline functions.
-	 * @param[in] pipeline target pipeline instance
-	 */
-	static vector<void*>& getDescriptorPools(Pipeline& pipeline) noexcept { return pipeline.descriptorPools; }
-	/**
 	 * @brief Returns pipeline resource path.
 	 * @warning In most cases you should use @ref Pipeline functions.
 	 * @param[in] pipeline target pipeline instance
@@ -468,6 +465,12 @@ public:
 	 * @param[in] pipeline target pipeline instance
 	 */
 	static Pipeline::SpecConstValues& getSpecConstValues(Pipeline& pipeline) noexcept { return pipeline.specConstValues; }
+	/**
+	 * @brief Returns pipeline layout hash array. (Debug only!)
+	 * @warning In most cases you should use @ref Pipeline functions.
+	 * @param[in] pipeline target pipeline instance
+	 */
+	static vector<Hash128>& getLayoutHashes(Pipeline& pipeline) noexcept { return pipeline.layoutHashes; }
 	#endif
 	
 	/*******************************************************************************************************************
@@ -482,13 +485,13 @@ public:
 		PipelineExt::getUniforms(destination) = std::move(PipelineExt::getUniforms(source));
 		PipelineExt::getSamplers(destination) = std::move(PipelineExt::getSamplers(source));
 		PipelineExt::getDescriptorSetLayouts(destination) = std::move(PipelineExt::getDescriptorSetLayouts(source));
-		PipelineExt::getDescriptorPools(destination) = std::move(PipelineExt::getDescriptorPools(source));
 		PipelineExt::getLayout(destination) = PipelineExt::getLayout(source);
 		PipelineExt::getPushConstantStages(destination) = PipelineExt::getPushConstantStages(source);
 		PipelineExt::getPushConstantsSize(destination) = PipelineExt::getPushConstantsSize(source);
 		PipelineExt::getVariantCount(destination) = PipelineExt::getVariantCount(source);
 		#if GARDEN_DEBUG || GARDEN_EDITOR
 		PipelineExt::getSpecConstValues(destination) = PipelineExt::getSpecConstValues(source);
+		PipelineExt::getLayoutHashes(destination) = PipelineExt::getLayoutHashes(source);
 		#endif
 		ResourceExt::getInstance(destination) = ResourceExt::getInstance(source);
 		ResourceExt::getInstance(source) = nullptr;

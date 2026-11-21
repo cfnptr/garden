@@ -146,7 +146,7 @@ void ResourceSystem::dequeuePipelines()
 {
 	SET_CPU_ZONE_SCOPED("Loaded Pipelines Dequeue");
 
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	auto graphicsPipelines = graphicsAPI->graphicsPipelinePool.getData();
 	auto graphicsOccupancy = graphicsAPI->graphicsPipelinePool.getOccupancy();
 
@@ -239,7 +239,7 @@ void ResourceSystem::dequeueImages()
 {
 	SET_CPU_ZONE_SCOPED("Loaded Images Dequeue");
 
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	auto manager = Manager::getInstance();
 	auto graphicsSystem = GraphicsSystem::getInstance();
 
@@ -322,7 +322,7 @@ void ResourceSystem::dequeueBuffers()
 {
 	SET_CPU_ZONE_SCOPED("Loaded Buffers Dequeue");
 
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	auto manager = Manager::getInstance();
 	auto graphicsSystem = GraphicsSystem::getInstance();
 
@@ -439,7 +439,7 @@ static void collectChangedPipelines(const string& shaderPath, const fs::path& fi
 		auto resourcePath = string_view(shaderPath.c_str() + 
 			searchResult, shaderPath.length() - searchResult);
 
-		auto graphicsAPI = GraphicsAPI::get();
+		auto graphicsAPI = GraphicsAPI::getInstance();
 		if (isGraphicsShader)
 		{
 			auto& graphicsPipelinePool = graphicsAPI->graphicsPipelinePool;
@@ -582,7 +582,7 @@ static void recompilePipelines(ResourceSystem* resourceSystem,
 	const absl::flat_hash_map<fs::path, ID<ComputePipeline>>& computePipelines,
 	const absl::flat_hash_map<fs::path, ID<RayTracingPipeline>>& rayTracingPipelines)
 {
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	if (!graphicsPipelines.empty())
 	{
 		for (const auto& pair : graphicsPipelines)
@@ -593,7 +593,6 @@ static void recompilePipelines(ResourceSystem* resourceSystem,
 
 			ResourceSystem::GraphicsLoadOptions options;
 			options.specConstValues = &specConstValues;
-			options.maxBindlessCount = pipelineView->getMaxBindlessCount();
 			options.loadAsync = false;
 			// TODO: store and load overrides?
 
@@ -624,7 +623,6 @@ static void recompilePipelines(ResourceSystem* resourceSystem,
 
 			ResourceSystem::ComputeLoadOptions options;
 			options.specConstValues = &specConstValues;
-			options.maxBindlessCount = pipelineView->getMaxBindlessCount();
 			options.loadAsync = false;
 
 			try
@@ -650,7 +648,6 @@ static void recompilePipelines(ResourceSystem* resourceSystem,
 
 			ResourceSystem::RayTracingLoadOptions options;
 			options.specConstValues = &specConstValues;
-			options.maxBindlessCount = pipelineView->getMaxBindlessCount();
 			options.loadAsync = false;
 
 			try
@@ -1333,7 +1330,7 @@ ID<Image> ResourceSystem::loadImage(const fs::path* paths, psize pathCount, bool
 	GARDEN_ASSERT(paths);
 	GARDEN_ASSERT(pathCount > 0);
 	
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	auto imageVersion = graphicsAPI->imageVersion++;
 
 	auto image = graphicsAPI->imagePool.create(loadedImageUsage | 
@@ -1660,7 +1657,7 @@ ID<Buffer> ResourceSystem::loadBuffer(const fs::path& path, Buffer::Usage usage,
 {
 	GARDEN_ASSERT(!path.empty());
 	
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	auto bufferVersion = graphicsAPI->bufferVersion++;
 
 	auto buffer = graphicsAPI->bufferPool.create(usage | Buffer::Usage::TransferDst | Buffer::Usage::TransferQ, 
@@ -1990,7 +1987,7 @@ ID<GraphicsPipeline> ResourceSystem::loadGraphicsPipeline(const fs::path& path,
 	GARDEN_ASSERT_MSG(framebuffer, "Assert " + path.generic_string());
 	// TODO: validate specConstValues and stateOverrides
 
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	auto pipelineVersion = graphicsAPI->graphicsPipelineVersion++;
 	auto loadOptions = options ? *options : GraphicsLoadOptions();
 
@@ -2216,7 +2213,7 @@ ID<ComputePipeline> ResourceSystem::loadComputePipeline(const fs::path& path, co
 	GARDEN_ASSERT(!path.empty());
 	// TODO: validate specConstValues and samplerStateOverrides
 
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	auto pipelineVersion = graphicsAPI->computePipelineVersion++;
 	auto loadOptions = options ? *options : ComputeLoadOptions();
 
@@ -2424,7 +2421,7 @@ ID<RayTracingPipeline> ResourceSystem::loadRayTracingPipeline(
 	GARDEN_ASSERT(!path.empty());
 	// TODO: validate specConstValues and samplerStateOverrides
 
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	auto pipelineVersion = graphicsAPI->rayTracingPipelineVersion++;
 	auto loadOptions = options ? *options : RayTracingLoadOptions();
 

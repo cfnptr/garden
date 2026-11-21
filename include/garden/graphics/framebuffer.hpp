@@ -442,11 +442,11 @@ public:
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	/**
-	 * @brief Returns framebuffer debug name. (Debug Only)
+	 * @brief Returns framebuffer debug name. (Debug Only!)
 	 */
 	const string& getDebugName() const noexcept { return debugName; }
 	/**
-	 * @brief Sets framebuffer debug name. (Debug Only)
+	 * @brief Sets framebuffer debug name. (Debug Only!)
 	 * @param[in] name target debug name
 	 */
 	void setDebugName(const string& name)

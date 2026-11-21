@@ -149,7 +149,7 @@ protected:
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	/**
-	 * @brief Sets acceleration structure debug name. (Debug Only)
+	 * @brief Sets acceleration structure debug name. (Debug Only!)
 	 * @param[in] name target debug name
 	 */
 	void setDebugName(const string& name) override;

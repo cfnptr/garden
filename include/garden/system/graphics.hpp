@@ -1062,6 +1062,17 @@ public:
 	 */
 	ID<DescriptorSet> createDescriptorSet(ID<RayTracingPipeline> rayTracingPipeline,
 		DescriptorSet::Uniforms&& uniforms, DescriptorSet::Samplers&& samplers = {}, uint8 index = 0);
+	/**
+	 * @brief Creates a new bindless descriptor set instance.
+	 * 
+	 * @param[in] pipelineUniforms pipeline uniform array
+	 * @param[in] dsUniforms shader uniform array
+	 * @param maxBindlessCount max bindless resource array size
+	 * @param[in] samplers dynamic sampler array (mutable uniforms)
+	 * @param index index of descriptor set in the shader
+	 */
+	ID<DescriptorSet> createDescriptorSet(Pipeline::Uniforms&& pipelineUniforms, DescriptorSet::Uniforms&& dsUniforms, 
+		uint32 maxBindlessCount, DescriptorSet::Samplers&& samplers = {}, uint8 index = 0);
 
 	/**
 	 * @brief Destroys descriptor set instance.
@@ -1329,7 +1340,7 @@ public:
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	/**
-	 * @brief Draws line wireframe. (Debug Only)
+	 * @brief Draws line wireframe. (Debug Only!)
 	 * 
 	 * @param[in] mvp line model view projection matrix
 	 * @param startPoint line beginning point
@@ -1338,7 +1349,7 @@ public:
 	 */
 	void drawLine(const f32x4x4& mvp, f32x4 startPoint, f32x4 endPoint, f32x4 color = f32x4::one);
 	/**
-	 * @brief Draws axis aligned bounding box wireframe. (Debug Only)
+	 * @brief Draws axis aligned bounding box wireframe. (Debug Only!)
 	 * 
 	 * @param[in] mvp box model view projection matrix
 	 * @param color box wireframe color

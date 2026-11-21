@@ -217,7 +217,7 @@ public:
 };
 
 /***********************************************************************************************************************
- * @brief 3D model rendering system.
+ * @brief Base 3D model mesh rendering system.
  */
 class ModelRenderSystem : public InstanceRenderSystem, public ISerializable
 {
@@ -232,19 +232,14 @@ public:
 
 	using ModelFramePool = LinearPool<ModelAnimFrame>;
 protected:
-	BindlessPool bindlessPool;
 	fs::path pipelinePath = "";
 	string valueStringCache;
-	uint32 maxBindlessCount = 0;
 
 	/**
 	 * @brief Creates a new 3D model rendering system instance.
-	 *
 	 * @param[in] pipelinePath target rendering pipeline path
-	 * @param maxBindlessCount maximum bindless resource count in the array
 	 */
-	ModelRenderSystem(const fs::path& pipelinePath, uint32 maxBindlessCount = 1024) : 
-		pipelinePath(pipelinePath), maxBindlessCount(maxBindlessCount) { }
+	ModelRenderSystem(const fs::path& pipelinePath) : pipelinePath(pipelinePath) { }
 
 	void init() override;
 	virtual void imageLoaded();
@@ -252,7 +247,6 @@ protected:
 
 	static void resetComponent(View<Component> component);
 
-	bool isDrawReady(int8 shadowPass) override;
 	uint32 getReadyMeshesAsync(MeshRenderComponent* meshRenderView, 
 		const f32x4& cameraPosition, const Frustum& frustum, f32x4x4& model) override;
 	void beginDrawAsync(int32 taskIndex) override;
@@ -285,26 +279,13 @@ public:
 	 */
 	virtual psize getModelFrameSize() const = 0;
 
-	/**
-	 * @brief Returns base pipeline bindless descriptor set uniforms.
-	 */
-	virtual DescriptorSet::Uniforms getBindlessUniforms() { return {}; }
-	/**
-	 * @brief Returns base pipeline bindless descriptor set samplers.
-	 */
-	virtual DescriptorSet::Samplers getBindlessSamplers() { return {}; }
-	/**
-	 * @brief Returns base pipeline bindless descriptor index.
-	 */
-	virtual uint8 getBindlessIndex() { return 1; }
-
 	#if GARDEN_DEBUG || GARDEN_EDITOR || defined(GARDEN_MODEL_CONVERTER)
 	using ModelComponents = absl::flat_hash_map<string, type_index>;
 	/**
 	 * @brief Loads 3D model from the specified file.
 	 * @return Null entity on model loading error.
 	 * 
-	 * @param[in] path target 3d model file path
+	 * @param[in] path target 3D model file path
 	 * @param[in] components model rendering component types or null
 	 * @param attributes required 3D model mesh attributes
 	 */
@@ -313,7 +294,29 @@ public:
 };
 
 /***********************************************************************************************************************
- * @brief Base 3d model mesh rendering system with components and animation frames.
+ * @brief Global 3D model mesh rendering systems bindless pool container.
+ */
+class ModelBindlessSystem : public System, public Singleton<ModelBindlessSystem>
+{
+protected:
+	ID<DescriptorSet> bindlessDS = {};
+public:
+	/**
+	 * @brief Creates a new 3D model bindless system instance.
+	 *
+	 * @param maxBindlessCount maximum bindless resource array size
+	 * @param dsIndex bindless descriptor set index inside shaders
+	 */
+	ModelBindlessSystem(uint32 maxBindlessCount = 1024, uint8 dsIndex = 1);
+
+	/**
+	 * @brief Returns 3D model bindless descriptor set instance.
+	 */
+	ID<DescriptorSet> getBindlessDS() const noexcept { return bindlessDS; }
+};
+
+/**
+ * @brief Base 3D model mesh rendering system with components and animation frames.
  * @details See the @ref ModelRenderSystem.
  *
  * @tparam C type of the system component
@@ -329,7 +332,7 @@ class ModelCompAnimSystem : public CompAnimSystem<C, F,
 {
 protected:
 	/**
-	 * @brief Creates a new 3d model mesh render system instance.
+	 * @brief Creates a new 3D model mesh render system instance.
 	 * @param[in] pipelinePath target rendering pipeline path
 	 */
 	ModelCompAnimSystem(const fs::path& pipelinePath) : ModelRenderSystem(pipelinePath) { }

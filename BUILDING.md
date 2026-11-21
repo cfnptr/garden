@@ -3,7 +3,7 @@
 * [Window](BUILDING.md#windows)
 * [macOS](BUILDING.md#macos)
 * [Linux](BUILDING.md#linux)
-
+* [Build](BUILDING.md#build-project-compile)
 
 # Windows
 
@@ -91,7 +91,7 @@ To build the project you will only need The **Vulkan SDK Core** components.
 
 Or 
 
-1. Download and install from [vscodium.com](https://vscodium.com/) or from built-in store (Non-flatpack version!)
+1. Download and install from [vscodium.com](https://vscodium.com/) or from built-in store (Non-flatpak version!)
 2. Install "[clangd](https://open-vsx.org/extension/llvm-vs-code-extensions/vscode-clangd)", "[CodeLLDB](https://open-vsx.org/extension/vadimcn/vscode-lldb)" an "[CMake Tools](https://open-vsx.org/extension/ms-vscode/cmake-tools)" extensions inside the **VSCodium**
 
 
@@ -100,6 +100,18 @@ Alternatively you can install and use [CLion](https://www.jetbrains.com/clion/) 
 ### 2. Install required packages
 
 * Run [scripts/install-packages.sh](scripts/install-packages.sh) script
+
+### VSCodium (Flatpak version)
+
+1. Enable [Flathub](https://flathub.org) flatpaks support in your linux distro and DE
+2. Install the [VSCodium](https://flathub.org/en/apps/com.vscodium.codium) IDE flatpak version
+3. Manually install the flatpak LLVM extension instead of using GCC or system Clang binaries:
+
+```
+flatpak info com.vscodium.codium | grep Runtime:
+flatpak install flathub org.freedesktop.Sdk.Extension.llvm23
+flatpak override --user --env=FLATPAK_ENABLE_SDK_EXT=llvm23 com.vscodium.codium
+```
 
 # Build project (Compile)
 

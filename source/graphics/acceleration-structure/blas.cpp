@@ -125,10 +125,10 @@ static void prepareVkBlas(VulkanAPI* vulkanAPI,
 static void createVkBlas(const void* geometryArray, uint32 geometryCount, uint8 geometryType,
 	BuildFlagsAS flags, ID<Buffer>& storageBuffer, void*& instance, uint64& deviceAddress, void*& _buildData)
 {
-	auto vulkanAPI = VulkanAPI::get();
-	auto buildData = malloc<uint8>(
+	auto vulkanAPI = VulkanAPI::getInstance();
+	auto buildData = new uint8[
 		sizeof(AccelerationStructure::BuildDataHeader) + geometryCount * (geometryType * sizeof(ID<Buffer>) +
-		sizeof(vk::AccelerationStructureGeometryKHR) + sizeof(vk::AccelerationStructureBuildRangeInfoKHR)));
+		sizeof(vk::AccelerationStructureGeometryKHR) + sizeof(vk::AccelerationStructureBuildRangeInfoKHR))];
 	_buildData = buildData;
 
 	auto buildDataHeader = (AccelerationStructure::BuildDataHeader*)buildData;
@@ -181,7 +181,7 @@ Blas::Blas(const Blas::TrianglesBuffer* geometryArray, uint32 geometryCount, Bui
 	GARDEN_ASSERT(geometryArray);
 	GARDEN_ASSERT(geometryCount > 0);
 
-	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
+	auto graphicsBackend = GraphicsAPI::getInstance()->getBackendType();
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 		createVkBlas(geometryArray, geometryCount, 2, flags, storageBuffer, instance, deviceAddress, buildData);
 	else GARDEN_UNREACHABLE();
@@ -192,7 +192,7 @@ Blas::Blas(const Blas::AabbsBuffer* geometryArray, uint32 geometryCount, BuildFl
 	GARDEN_ASSERT(geometryArray);
 	GARDEN_ASSERT(geometryCount > 0);
 
-	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
+	auto graphicsBackend = GraphicsAPI::getInstance()->getBackendType();
 	if (graphicsBackend== GraphicsBackend::VulkanAPI)
 		createVkBlas(geometryArray, geometryCount, 1, flags, storageBuffer, instance, deviceAddress, buildData);
 	else GARDEN_UNREACHABLE();
@@ -201,7 +201,7 @@ Blas::Blas(uint64 size, BuildFlagsAS flags)
 {
 	GARDEN_ASSERT(size > 0);
 
-	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
+	auto graphicsBackend = GraphicsAPI::getInstance()->getBackendType();
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
 		AccelerationStructure::_createVkInstance(size, (uint8)vk::AccelerationStructureTypeKHR::eBottomLevel, 
@@ -213,7 +213,7 @@ Blas::Blas(uint64 size, BuildFlagsAS flags)
 //**********************************************************************************************************************
 ID<Blas> Blas::compact()
 {
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
 	GARDEN_ASSERT_MSG(currentCommandBuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(currentCommandBuffer->getType() != CommandBufferType::Frame, "Assert " + debugName);
@@ -230,7 +230,7 @@ ID<Blas> Blas::compact()
 	uint64 compactSize;
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
-		auto vulkanAPI = VulkanAPI::get();
+		auto vulkanAPI = VulkanAPI::getInstance();
 		if (!data->queryResults.front())
 		{
 			auto vkResult = vulkanAPI->device.getQueryPoolResults((VkQueryPool)data->queryPool, 
@@ -250,7 +250,7 @@ ID<Blas> Blas::compact()
 	}
 	else GARDEN_UNREACHABLE();
 
-	free(buildData);
+	delete[] (uint8*)buildData;
 	buildData = nullptr;
 
 	auto thisBlas = graphicsAPI->blasPool.getID((const Blas*)this);

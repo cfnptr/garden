@@ -295,7 +295,7 @@ public:
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	/**
-	 * @brief Sets buffer debug name. (Debug Only)
+	 * @brief Sets buffer debug name. (Debug Only!)
 	 * @param[in] name target debug name
 	 */
 	void setDebugName(const string& name) override;

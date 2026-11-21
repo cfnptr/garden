@@ -19,7 +19,6 @@
 #include "garden/graphics/vulkan/command-buffer.hpp"
 #include "garden/graphics/glfw.hpp" // Note: Do not move it.
 #include "garden/file.hpp"
-#include "garden/hash.hpp"
 
 #include "mpio/directory.hpp"
 #include "nlohmann/json.hpp"
@@ -204,7 +203,7 @@ static vk::Instance createVkInstance(const string& appName, Version appVersion,
 		instanceInfoNext = &debugUtilsInfo;
 	}
 
-	#if 0
+	#if 0 // Note: forces validation settings.
 	vk::LayerSettingsCreateInfoEXT layerSettingsInfo;
 	vector<vk::LayerSettingEXT> layerSettings;
 	if (features.layerSettings)
@@ -477,12 +476,12 @@ static vk::Device createVkDevice(vk::Instance instance, vk::PhysicalDevice physi
 		computeQueueIndex = 0;
 	}
 
+	vector<vk::DeviceQueueCreateInfo> queueInfos;
+	queueInfos.reserve(3);
+
 	vector<float> graphicsQueuePriorities(graphicsQueueCount, 1.0f);
-	vector<vk::DeviceQueueCreateInfo> queueInfos =
-	{
-		vk::DeviceQueueCreateInfo({}, graphicsQueueFamilyIndex, 
-			graphicsQueueCount, graphicsQueuePriorities.data())
-	};
+	queueInfos.push_back(vk::DeviceQueueCreateInfo({}, graphicsQueueFamilyIndex, 
+		graphicsQueueCount, graphicsQueuePriorities.data()));
 
 	vector<float> transferQueuePriorities(transferQueueCount, 0.9f);
 	if (transferQueueCount > 0)
@@ -986,6 +985,8 @@ static vk::CommandPool createVkCommandPool(vk::Device device, uint32 queueFamily
 static vk::DescriptorPool createVkDescriptorPool(vk::Device device, const VulkanAPI::Features& features)
 {
 	vector<vk::DescriptorPoolSize> sizes;
+	sizes.reserve(GARDEN_DS_POOL_SIZE_COUNT);
+
 	if (GARDEN_DS_POOL_COMBINED_SAMPLER_COUNT > 0)
 	{
 		sizes.push_back(vk::DescriptorPoolSize(vk::DescriptorType::eCombinedImageSampler,
@@ -1273,16 +1274,26 @@ void VulkanAPI::flushDestroyBuffer()
 		switch (resource.type)
 		{
 		case GraphicsAPI::DestroyResourceType::DescriptorSet:
-			if (resource.count > 0)
+			if (resource.data1)
 			{
-				auto result = device.freeDescriptorSets(descriptorPool,
-					resource.count, (vk::DescriptorSet*)resource.data0);
-				vk::detail::resultCheck(result, "vk::Device::freeDescriptorSets");
-				free(resource.data0);
+				auto bindless = (DescriptorSet::BindlessData*)resource.data1;
+				device.destroyDescriptorSetLayout((VkDescriptorSetLayout)bindless->descriptorSetLayout);
+				device.destroyDescriptorPool((VkDescriptorPool)bindless->descriptorPool);
+				delete bindless;
 			}
 			else
 			{
-				auto result = device.freeDescriptorSets(descriptorPool, 1, (vk::DescriptorSet*)&resource.data0);
+				vk::Result result;
+				if (resource.count > 0)
+				{
+					result = device.freeDescriptorSets(descriptorPool,
+						resource.count, (vk::DescriptorSet*)resource.data0);
+					free(resource.data0);
+				}
+				else
+				{
+					result = device.freeDescriptorSets(descriptorPool, 1, (vk::DescriptorSet*)&resource.data0);
+				}
 				vk::detail::resultCheck(result, "vk::Device::freeDescriptorSets");
 			}
 			break;
@@ -1291,7 +1302,7 @@ void VulkanAPI::flushDestroyBuffer()
 			{
 				for (uint32 i = 0; i < resource.count; i++)
 					device.destroyPipeline(((VkPipeline*)resource.data0)[i]);
-				free(resource.data0);
+				delete[] (vk::Pipeline*)resource.data0;
 			}
 			else
 			{
@@ -1380,20 +1391,22 @@ void VulkanAPI::throwDeviceFault(string_view atFunc)
 
 		if (result == vk::Result::eSuccess)
 		{
-			auto addressInfos = faultCounts.addressInfoCount > 0 ? 
-				malloc<vk::DeviceFaultAddressInfoEXT>(faultCounts.addressInfoCount) : nullptr;
-			auto vendorInfos = faultCounts.vendorInfoCount > 0 ? 
-				malloc<vk::DeviceFaultVendorInfoEXT>(faultCounts.vendorInfoCount) : nullptr;
-			auto vendorDump = faultCounts.vendorBinarySize > 0 ? malloc<uint8>(faultCounts.vendorBinarySize) : nullptr;
-			vk::DeviceFaultInfoEXT faultInfo({}, addressInfos, vendorInfos, vendorDump);
-
+			vector<vk::DeviceFaultAddressInfoEXT> addressInfos(faultCounts.addressInfoCount);
+			vector<vk::DeviceFaultVendorInfoEXT> vendorInfos(faultCounts.vendorInfoCount);
+			vector<uint8> vendorDump(faultCounts.vendorBinarySize);
+		
+			vk::DeviceFaultInfoEXT faultInfo({}, 
+				faultCounts.addressInfoCount > 0 ? addressInfos.data() : nullptr, 
+				faultCounts.vendorInfoCount > 0 ? vendorInfos.data() : nullptr, 
+				faultCounts.vendorBinarySize > 0 ? vendorDump.data() : nullptr);
 			result = device.getFaultInfoEXT(&faultCounts, nullptr);
+
 			if (result == vk::Result::eSuccess)
 			{
 				if (faultCounts.vendorBinarySize > 0)
 				{
 					auto crashDumpPath = mpio::Directory::getAppDataPath(appDataName) / "gpu-crash-dump";
-					File::tryStoreBinary(crashDumpPath, vendorDump, faultCounts.vendorBinarySize);
+					File::tryStoreBinary(crashDumpPath, vendorDump.data(), faultCounts.vendorBinarySize);
 				}
 
 				json crashInfo;

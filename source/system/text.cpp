@@ -91,10 +91,7 @@ static bool fillFontAtlas(const LinearPool<Font>& fontPool, FT_Library ftLibrary
 				{
 					coords[i] = axes[i].maximum;
 				}
-				else
-				{
-					coords[i] = axes[i].def;
-				}
+				else coords[i] = axes[i].def;
 			}
 
 			result = FT_Set_Var_Design_Coordinates(fontFace, master->num_axis, coords.data());

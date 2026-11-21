@@ -38,9 +38,9 @@ static constexpr VkGeometryInstanceFlagsKHR toVkInstanceFlagsAS(Tlas::InstanceFl
 static void createVkTlas(ID<Buffer> instanceBuffer, BuildFlagsAS flags, 
 	ID<Buffer>& storageBuffer, void*& instance, uint64& deviceAddress, void*& _buildData)
 {
-	auto vulkanAPI = VulkanAPI::get();
-	auto buildData = malloc<uint8>(sizeof(AccelerationStructure::BuildDataHeader) + sizeof(ID<Buffer>) +
-		sizeof(vk::AccelerationStructureGeometryKHR) + sizeof(vk::AccelerationStructureBuildRangeInfoKHR));
+	auto vulkanAPI = VulkanAPI::getInstance();
+	auto buildData = new uint8[sizeof(AccelerationStructure::BuildDataHeader) + sizeof(ID<Buffer>) +
+		sizeof(vk::AccelerationStructureGeometryKHR) + sizeof(vk::AccelerationStructureBuildRangeInfoKHR)];
 	_buildData = buildData;
 
 	auto buildDataHeader = (AccelerationStructure::BuildDataHeader*)buildData;
@@ -99,7 +99,7 @@ Tlas::Tlas(vector<InstanceData>&& instances, ID<Buffer> instanceBuffer, BuildFla
 	GARDEN_ASSERT(!this->instances.empty());
 	GARDEN_ASSERT(instanceBuffer);
 
-	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
+	auto graphicsBackend = GraphicsAPI::getInstance()->getBackendType();
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 		createVkTlas(instanceBuffer, flags, storageBuffer, instance, deviceAddress, buildData);
 	else GARDEN_UNREACHABLE();
@@ -107,7 +107,7 @@ Tlas::Tlas(vector<InstanceData>&& instances, ID<Buffer> instanceBuffer, BuildFla
 
 uint32 Tlas::getInstanceSize() noexcept
 {
-	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
+	auto graphicsBackend = GraphicsAPI::getInstance()->getBackendType();
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 		return sizeof(vk::AccelerationStructureInstanceKHR);
 	else GARDEN_UNREACHABLE();
@@ -118,10 +118,10 @@ void Tlas::fillInstanceData(const InstanceData* instanceArray, uint32 instanceCo
 	GARDEN_ASSERT(instanceCount > 0);
 	GARDEN_ASSERT(data);
 
-	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
+	auto graphicsBackend = GraphicsAPI::getInstance()->getBackendType();
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
-		auto vulkanAPI = VulkanAPI::get();
+		auto vulkanAPI = VulkanAPI::getInstance();
 		auto instances = (vk::AccelerationStructureInstanceKHR*)data;
 
 		for (uint32 i = 0; i < instanceCount; i++)
@@ -146,7 +146,7 @@ void Tlas::build(ID<Buffer> scratchBuffer)
 {
 	AccelerationStructure::build(scratchBuffer);
 
-	auto currentCommandBuffer = GraphicsAPI::get()->currentCommandBuffer;
+	auto currentCommandBuffer = GraphicsAPI::getInstance()->currentCommandBuffer;
 	for (const auto& instance : instances)
 		currentCommandBuffer->lockResource(instance.blas);
 }

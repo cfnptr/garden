@@ -46,7 +46,6 @@ class OpaqueModelSystem final : public ModelCompAnimSystem<
 
 	string_view getComponentName() const override;
 	MeshRenderType getMeshRenderType() const override;
-	DescriptorSet::Uniforms getBindlessUniforms() override;
 	
 	friend class ecsm::Manager;
 };

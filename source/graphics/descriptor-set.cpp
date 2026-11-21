@@ -19,7 +19,6 @@ using namespace math;
 using namespace garden;
 using namespace garden::graphics;
 
-//**********************************************************************************************************************
 #if GARDEN_DEBUG || GARDEN_EDITOR
 uint32 DescriptorSet::combinedSamplerCount = 0;
 uint32 DescriptorSet::uniformBufferCount = 0;
@@ -29,20 +28,17 @@ uint32 DescriptorSet::inputAttachmentCount = 0;
 uint32 DescriptorSet::accelStructureCount = 0;
 #endif
 
+//**********************************************************************************************************************
 static void* createVkDescriptorSet(ID<Pipeline> pipeline, PipelineType pipelineType, 
 	const DescriptorSet::Uniforms& uniforms, uint8& setCount, uint8 setIndex)
 {
-	auto vulkanAPI = VulkanAPI::get();
-	auto pipelineView = vulkanAPI->getPipelineView(pipelineType, pipeline);
+	auto vulkanAPI = VulkanAPI::getInstance();
+	auto pipelineView = vulkanAPI->getPipelineView(pipeline, pipelineType);
 	const auto& descriptorSetLayouts = PipelineExt::getDescriptorSetLayouts(**pipelineView);
-	GARDEN_ASSERT_MSG(setIndex < descriptorSetLayouts.size(), "Out of pipeline [" + pipelineView->getDebugName() + 
-		"] descriptor set count [" + to_string(descriptorSetLayouts.size()) + "]");
-	GARDEN_ASSERT_MSG(descriptorSetLayouts[setIndex], "Assert " + pipelineView->getDebugName());
-
 	vk::DescriptorSetLayout descriptorSetLayout = (VkDescriptorSetLayout)descriptorSetLayouts[setIndex];
-	vk::DescriptorPool descriptorPool = (VkDescriptorPool)PipelineExt::getDescriptorPools(**pipelineView)[setIndex];
-	vk::DescriptorSetAllocateInfo allocateInfo(descriptorPool ? descriptorPool : 
-		vulkanAPI->descriptorPool, (uint32)uniforms.begin()->second.resourceSets.size());
+
+	vk::DescriptorSetAllocateInfo allocateInfo(vulkanAPI->descriptorPool, 
+		(uint32)uniforms.begin()->second.resourceSets.size());
 
 	void* instance = nullptr;
 	if (allocateInfo.descriptorSetCount > 1)
@@ -104,43 +100,135 @@ static void* createVkDescriptorSet(ID<Pipeline> pipeline, PipelineType pipelineT
 	return instance;
 }
 
-static void destroyVkDescriptorSet(void* instance, ID<Pipeline> pipeline, PipelineType pipelineType, 
-	const DescriptorSet::Uniforms& uniforms, uint8 setCount, uint8 setIndex)
+//**********************************************************************************************************************
+static void* createVkDescriptorSet(Pipeline::Uniforms&& pipelineUniforms, 
+	DescriptorSet::BindlessData* bindless, uint32 maxBindlessCount, uint8 index)
 {
-	auto vulkanAPI = VulkanAPI::get();
-	auto pipelineView = vulkanAPI->getPipelineView(pipelineType, pipeline);
-	auto isBindless = PipelineExt::getDescriptorPools(**pipelineView)[setIndex];
+	auto vulkanAPI = VulkanAPI::getInstance();
+	vector<vk::DescriptorSetLayoutBinding> layoutBindings;
+	layoutBindings.reserve(pipelineUniforms.size());
 
+	vk::DescriptorPoolSize combineSamplerPoolSize(vk::DescriptorType::eCombinedImageSampler, 0);
+	vk::DescriptorPoolSize uniformBufferPoolSize(vk::DescriptorType::eUniformBuffer, 0);
+	vk::DescriptorPoolSize storageImagePoolSize(vk::DescriptorType::eStorageImage, 0);
+	vk::DescriptorPoolSize storageBufferPoolSize(vk::DescriptorType::eStorageBuffer, 0);
+	vk::DescriptorPoolSize inputAttachmentPoolSize(vk::DescriptorType::eInputAttachment, 0);
+	vk::DescriptorPoolSize accelStructurePoolsSize(vk::DescriptorType::eAccelerationStructureKHR, 0);
+
+	for	(const auto& uniformPair : pipelineUniforms)
+	{
+		auto pipelineUniform = uniformPair.second;
+		GARDEN_ASSERT_MSG(pipelineUniform.descriptorSetIndex == index && pipelineUniform.arraySize == 0, 
+			"Use separated descriptor set for non-bindless resources, instead of combined one.");
+		if (!pipelineUniform.isMutable && pipelineUniform.isSamplerType) // TODO: do we need support?
+			throw GardenError("Immutable samplers are not supported for bindless descriptor sets.");
+
+		vk::DescriptorSetLayoutBinding layoutBinding((uint32)pipelineUniform.bindingIndex, toVkDescriptorType(
+			pipelineUniform.type), maxBindlessCount, toVkShaderStages(pipelineUniform.pipelineStages));
+
+		switch (layoutBinding.descriptorType)
+		{
+			case vk::DescriptorType::eCombinedImageSampler:
+				combineSamplerPoolSize.descriptorCount += maxBindlessCount; break;
+			case vk::DescriptorType::eUniformBuffer:
+				uniformBufferPoolSize.descriptorCount += maxBindlessCount; break;
+			case vk::DescriptorType::eStorageImage:
+				storageImagePoolSize.descriptorCount += maxBindlessCount; break;
+			case vk::DescriptorType::eStorageBuffer:
+				storageBufferPoolSize.descriptorCount += maxBindlessCount; break;
+			case vk::DescriptorType::eInputAttachment:
+				inputAttachmentPoolSize.descriptorCount += maxBindlessCount; break;
+			case vk::DescriptorType::eAccelerationStructureKHR:
+				accelStructurePoolsSize.descriptorCount += maxBindlessCount; break;
+			default: GARDEN_UNREACHABLE();
+		}
+	}
+
+	vector<vk::DescriptorPoolSize> descriptorPoolSizes;
+	descriptorPoolSizes.reserve(GARDEN_DS_POOL_SIZE_COUNT);
+	if (combineSamplerPoolSize.descriptorCount > 0)
+		descriptorPoolSizes.push_back(combineSamplerPoolSize);
+	if (uniformBufferPoolSize.descriptorCount > 0)
+		descriptorPoolSizes.push_back(uniformBufferPoolSize);
+	if (storageImagePoolSize.descriptorCount > 0)
+		descriptorPoolSizes.push_back(storageImagePoolSize);
+	if (storageBufferPoolSize.descriptorCount > 0)
+		descriptorPoolSizes.push_back(storageBufferPoolSize);
+	if (inputAttachmentPoolSize.descriptorCount > 0)
+		descriptorPoolSizes.push_back(inputAttachmentPoolSize);
+	if (accelStructurePoolsSize.descriptorCount > 0)
+		descriptorPoolSizes.push_back(accelStructurePoolsSize);
+	GARDEN_ASSERT(!descriptorPoolSizes.empty());
+
+	vk::DescriptorPoolCreateInfo descriptorPoolInfo(vk::DescriptorPoolCreateFlagBits::eUpdateAfterBind, 
+		1, (uint32)descriptorPoolSizes.size(), descriptorPoolSizes.data());
+	auto descriptorPool = vulkanAPI->device.createDescriptorPool(descriptorPoolInfo);
+	bindless->descriptorPool = descriptorPool;
+
+	vector<vk::DescriptorBindingFlags> descriptorBindingFlags(pipelineUniforms.size(),
+		vk::DescriptorBindingFlagBits::eUpdateAfterBind | vk::DescriptorBindingFlagBits::ePartiallyBound);
+	vk::DescriptorSetLayoutBindingFlagsCreateInfo layoutBindingFlagsInfo(
+		(uint32)descriptorBindingFlags.size(), descriptorBindingFlags.data());
+	vk::DescriptorSetLayoutCreateInfo descriptorSetLayoutInfo(vk::DescriptorSetLayoutCreateFlagBits::eUpdateAfterBindPool, 
+		(uint32)layoutBindings.size(), layoutBindings.data(), &layoutBindingFlagsInfo);
+	auto descriptorSetLayout = vulkanAPI->device.createDescriptorSetLayout(descriptorSetLayoutInfo);
+	bindless->descriptorSetLayout = descriptorSetLayout;
+
+	#if GARDEN_USE_GAPI_VALIDATIONS
+	if (vulkanAPI->features.debugUtils)
+	{
+		vk::DebugUtilsObjectNameInfoEXT nameInfo(vk::ObjectType::eDescriptorPool,
+			(uint64)(VkDescriptorPool)descriptorPool, "descriptorPool.bindless");
+		vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo);
+	}
+	#endif
+
+	void* instance = nullptr;
+	vk::DescriptorSetAllocateInfo allocateInfo(descriptorPool, 1, &descriptorSetLayout);
+	auto allocateResult = vulkanAPI->device.allocateDescriptorSets(&allocateInfo, (vk::DescriptorSet*)&instance);
+	vk::detail::resultCheck(allocateResult, "vk::Device::allocateDescriptorSets");
+
+	bindless->pipelineUniforms = std::move(pipelineUniforms);
+	return instance;
+}
+
+//**********************************************************************************************************************
+static void destroyVkDescriptorSet(const Pipeline::Uniforms& pipelineUniforms, 
+	void* instance, DescriptorSet::BindlessData* bindless, uint8 setCount, uint8 setIndex)
+{
+	auto vulkanAPI = VulkanAPI::getInstance();
 	if (vulkanAPI->forceResourceDestroy)
 	{
-		if (isBindless)
+		if (bindless)
 		{
-			if (setCount > 1)
-				free(instance);
+			vulkanAPI->device.destroyDescriptorSetLayout((VkDescriptorSetLayout)bindless->descriptorSetLayout);
+			vulkanAPI->device.destroyDescriptorPool((VkDescriptorPool)bindless->descriptorPool);
+			delete bindless;
 		}
 		else
 		{
-			auto result = vulkanAPI->device.freeDescriptorSets(vulkanAPI->descriptorPool, setCount, 
-				setCount > 1 ? (vk::DescriptorSet*)instance : (vk::DescriptorSet*)&instance);
+			vk::Result result;
+			if (setCount > 0)
+			{
+				result = vulkanAPI->device.freeDescriptorSets(
+					vulkanAPI->descriptorPool, setCount, (vk::DescriptorSet*)instance);
+				free(instance);
+			}
+			else
+			{
+				result = vulkanAPI->device.freeDescriptorSets(
+					vulkanAPI->descriptorPool, 1, (vk::DescriptorSet*)&instance);
+			}
 			vk::detail::resultCheck(result, "vk::Device::freeDescriptorSets");
 		}
 	}
 	else
 	{
-		if (isBindless)
-		{
-			if (setCount > 1)
-				free(instance);
-		}
-		else
-		{
-			vulkanAPI->destroyResource(GraphicsAPI::DestroyResourceType::DescriptorSet,
-				instance, nullptr, setCount > 1 ? setCount : 0);
-		}
+		vulkanAPI->destroyResource(GraphicsAPI::DestroyResourceType::DescriptorSet,
+			instance, bindless, setCount > 1 ? setCount : 0);
 	}
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
-	const auto& pipelineUniforms = pipelineView->getUniforms();
 	for	(const auto& pair : pipelineUniforms)
 	{
 		if (pair.second.descriptorSetIndex != setIndex)
@@ -187,302 +275,12 @@ static vk::ImageLayout getVkDsImageLayout(VulkanAPI* vulkanAPI, View<ImageView> 
 }
 
 //**********************************************************************************************************************
-static void recreateVkDescriptorSet(const DescriptorSet::Uniforms& oldUniforms, 
-	const DescriptorSet::Uniforms& newUniforms, const DescriptorSet::Samplers& samplers, 
-	const Pipeline::Uniforms& pipelineUniforms, vk::DescriptorPool descriptorPool, 
-	vk::DescriptorSetLayout descriptorSetLayout, OptView<Framebuffer> framebufferView, 
-	DescriptorSet::Barriers& barriers, void*& instance, uint8 setIndex)
-{
-	auto vulkanAPI = VulkanAPI::get();
-	#if GARDEN_DEBUG
-	if (!descriptorPool)
-	{
-		for (const auto& pair : newUniforms)
-		{
-			for (const auto& resourceArray : pair.second.resourceSets)
-			{
-				for (auto resource : resourceArray)
-					GARDEN_ASSERT_MSG(resource, "New descriptor set uniform [" + pair.first + "] resource is null");
-			}
-		}
-	}
-	#endif
-
-	// Note: Checks if descriptor set is just now created. 
-	auto oldSetCount = !oldUniforms.empty() ? (uint32)oldUniforms.begin()->second.resourceSets.size() : (uint32)0;
-	auto newSetCount = (uint32)newUniforms.begin()->second.resourceSets.size();
-
-	if (oldSetCount != 0 && newSetCount != oldSetCount)
-	{
-		vk::DescriptorSetAllocateInfo allocateInfo(descriptorPool ?
-			descriptorPool : vulkanAPI->descriptorPool, newSetCount);
-
-		// TODO: We can only allocate or free required array part.
-		// 		 But I'm not sure if it faster or better.
-		if (oldSetCount > 1)
-		{
-			auto result = vulkanAPI->device.freeDescriptorSets(descriptorPool ? descriptorPool : 
-				vulkanAPI->descriptorPool, oldSetCount, (vk::DescriptorSet*)instance);
-			vk::detail::resultCheck(result, "vk::Device::freeDescriptorSets");
-			instance = realloc((vk::DescriptorSet*)instance, newSetCount);
-
-			vulkanAPI->descriptorSetLayouts.assign(newSetCount, descriptorSetLayout);
-			allocateInfo.pSetLayouts = vulkanAPI->descriptorSetLayouts.data();
-			auto allocateResult = vulkanAPI->device.allocateDescriptorSets(
-				&allocateInfo, (vk::DescriptorSet*)instance);
-			vk::detail::resultCheck(allocateResult, "vk::Device::allocateDescriptorSets");
-		}
-		else
-		{
-			auto result = vulkanAPI->device.freeDescriptorSets(descriptorPool ?
-				descriptorPool : vulkanAPI->descriptorPool, 1, (vk::DescriptorSet*)&instance);
-			vk::detail::resultCheck(result, "vk::Device::freeDescriptorSets");
-
-			allocateInfo.pSetLayouts = &descriptorSetLayout;
-			auto allocateResult = vulkanAPI->device.allocateDescriptorSets(
-				&allocateInfo, (vk::DescriptorSet*)&instance);
-			vk::detail::resultCheck(allocateResult, "vk::Device::allocateDescriptorSets");
-		}
-	}
-
-	vk::WriteDescriptorSet writeDescriptorSet;
-	auto instances = newSetCount > 1 ? (vk::DescriptorSet*)instance : (vk::DescriptorSet*)&instance;
-	uint32 imageInfoCount = 0, bufferInfoCount = 0, asInfoCount = 0, tlasCount = 0;
-
-	for	(const auto& uniformPair : pipelineUniforms)
-	{
-		if (uniformPair.second.descriptorSetIndex != setIndex)
-			continue;
-
-		const auto& dsUniform = newUniforms.at(uniformPair.first);
-		auto resourceSetData = dsUniform.resourceSets.data();
-		auto pipelineUniform = uniformPair.second;
-
-		if (pipelineUniform.isSamplerType | pipelineUniform.isImageType)
-		{
-			for (uint32 i = 0; i < newSetCount; i++)
-				imageInfoCount += (uint32)resourceSetData[i].size();
-		}
-		else if (pipelineUniform.isBufferType)
-		{
-			for (uint32 i = 0; i < newSetCount; i++)
-				bufferInfoCount += (uint32)resourceSetData[i].size();
-		}
-		else if (pipelineUniform.type == GslUniformType::AccelerationStructure)
-		{
-			for (uint32 i = 0; i < newSetCount; i++)
-				asInfoCount += (uint32)resourceSetData[i].size();
-			tlasCount += newSetCount;
-		}
-		else throw GardenError("Invalid pipeline uniform. (name: " + uniformPair.first + ")");
-	}
-
-	if (vulkanAPI->descriptorImageInfos.size() < imageInfoCount)
-		vulkanAPI->descriptorImageInfos.resize(imageInfoCount);
-	if (vulkanAPI->descriptorBufferInfos.size() < bufferInfoCount)
-		vulkanAPI->descriptorBufferInfos.resize(bufferInfoCount);
-	if (vulkanAPI->asDescriptorInfos.size() < asInfoCount)
-		vulkanAPI->asDescriptorInfos.resize(asInfoCount);
-	if (vulkanAPI->asWriteDescriptorSets.size() < tlasCount)
-		vulkanAPI->asWriteDescriptorSets.resize(tlasCount);
-
-	for (auto& setBarriers : barriers)
-		setBarriers.clear();
-
-	imageInfoCount = 0, bufferInfoCount = 0, asInfoCount = 0, tlasCount = 0;
-	for	(const auto& uniformPair : pipelineUniforms)
-	{
-		if (uniformPair.second.descriptorSetIndex != setIndex)
-			continue;
-
-		auto pipelineUniform = uniformPair.second;
-		const auto& dsUniform = newUniforms.at(uniformPair.first);
-		writeDescriptorSet.dstBinding = (uint32)pipelineUniform.bindingIndex;
-		writeDescriptorSet.descriptorType = toVkDescriptorType(pipelineUniform.type);
-
-		Image::LayoutState newResourceState;
-		newResourceState.stage = (uint64)toVkPipelineStages(pipelineUniform.pipelineStages);
-		if (pipelineUniform.isSamplerType)
-			newResourceState.access = (uint64)vk::AccessFlagBits2::eShaderSampledRead;
-		else
-		{
-			if (pipelineUniform.readAccess)
-				newResourceState.access = (uint64)vk::AccessFlagBits2::eShaderStorageRead;
-			if (pipelineUniform.writeAccess)
-				newResourceState.access |= (uint64)vk::AccessFlagBits2::eShaderStorageWrite;
-		}
-
-		if (pipelineUniform.isSamplerType | pipelineUniform.isImageType)
-		{
-			vk::DescriptorImageInfo imageInfo;
-			if (pipelineUniform.isMutable)
-			{
-				auto sampler = samplers.at(uniformPair.first);
-				auto samplerView = vulkanAPI->samplerPool.get(sampler);
-				imageInfo.sampler = (VkSampler)ResourceExt::getInstance(**samplerView);
-			}
-			else
-			{
-				GARDEN_ASSERT_MSG(samplers.find(uniformPair.first) == samplers.end(), 
-					"Shader uniform [" + uniformPair.first + "] is not marked as 'mutable'");
-			}
-
-			for (uint32 i = 0; i < newSetCount; i++)
-			{
-				auto& setBarriers = barriers[i];
-				const auto& resourceArray = dsUniform.resourceSets[i];
-				auto resourceArraySize = (uint32)resourceArray.size();
-				auto resourceArrayData = resourceArray.data();
-
-				auto hasAnyResource = false;
-				for (uint32 j = 0; j < resourceArraySize; j++)
-				{
-					auto resource = resourceArrayData[j];
-					if (resource)
-					{
-						auto imageView = vulkanAPI->imageViewPool.get(ID<ImageView>(resource));
-						imageInfo.imageView = (VkImageView)ResourceExt::getInstance(**imageView);
-						imageInfo.imageLayout = getVkDsImageLayout(vulkanAPI, 
-							imageView, framebufferView, pipelineUniform.isImageType);
-						newResourceState.layout = (uint32)imageInfo.imageLayout;
-						newResourceState.view = ID<ImageView>(resource);
-						setBarriers.push_back(newResourceState);
-						hasAnyResource = true;
-					}
-					else imageInfo.imageView = nullptr;
-					vulkanAPI->descriptorImageInfos[imageInfoCount + j] = imageInfo;
-				}
-
-				if (!hasAnyResource)
-					continue;
-
-				writeDescriptorSet.dstSet = instances[i];
-				writeDescriptorSet.descriptorCount = resourceArraySize;
-				writeDescriptorSet.pImageInfo = &vulkanAPI->descriptorImageInfos[imageInfoCount];
-				vulkanAPI->writeDescriptorSets.push_back(writeDescriptorSet);
-				imageInfoCount += writeDescriptorSet.descriptorCount;
-			}
-		}
-		else if (pipelineUniform.isBufferType)
-		{
-			vk::DescriptorBufferInfo bufferInfo;
-			for (uint32 i = 0; i < newSetCount; i++)
-			{
-				auto& setBarriers = barriers[i];
-				const auto& resourceArray = dsUniform.resourceSets[i];
-				auto resourceArraySize = (uint32)resourceArray.size();
-				auto resourceArrayData = resourceArray.data();
-
-				auto hasAnyResource = false;
-				for (uint32 j = 0; j < resourceArraySize; j++)
-				{
-					auto resource = resourceArrayData[j];
-					if (resource)
-					{
-						auto buffer = vulkanAPI->bufferPool.get(ID<Buffer>(resource));
-						bufferInfo.buffer = (VkBuffer)ResourceExt::getInstance(**buffer);
-						bufferInfo.range = buffer->getBinarySize(); // TODO: support part of the buffer mapping?
-						newResourceState.layout = 0; // Marking that this is a buffer.
-						newResourceState.view = ID<ImageView>(resource);
-						setBarriers.push_back(newResourceState);
-						hasAnyResource = true;
-					}
-					else
-					{
-						bufferInfo.buffer = nullptr; bufferInfo.range = 0;
-					}
-					vulkanAPI->descriptorBufferInfos[bufferInfoCount + j] = bufferInfo;
-				}
-				
-				if (!hasAnyResource)
-					continue;
-
-				writeDescriptorSet.dstSet = instances[i];
-				writeDescriptorSet.descriptorCount = resourceArraySize;
-				writeDescriptorSet.pBufferInfo = &vulkanAPI->descriptorBufferInfos[bufferInfoCount];
-				vulkanAPI->writeDescriptorSets.push_back(writeDescriptorSet);
-				bufferInfoCount += writeDescriptorSet.descriptorCount;
-			}
-		}
-		else if (pipelineUniform.type == GslUniformType::AccelerationStructure)
-		{
-			writeDescriptorSet.pImageInfo = nullptr;
-			writeDescriptorSet.pBufferInfo = nullptr;
-
-			vk::WriteDescriptorSetAccelerationStructureKHR asWriteDescriptorSet;
-			for (uint32 i = 0; i < newSetCount; i++)
-			{
-				auto& setBarriers = barriers[i];
-				const auto& resourceArray = dsUniform.resourceSets[i];
-				auto resourceArraySize = (uint32)resourceArray.size();
-				auto resourceArrayData = resourceArray.data();
-
-				auto hasAnyResource = false;
-				for (uint32 j = 0; j < resourceArraySize; j++)
-				{
-					auto resource = resourceArrayData[j];
-					vk::AccelerationStructureKHR accelerationStructure;
-					if (resource)
-					{
-						auto tlas = vulkanAPI->tlasPool.get(ID<Tlas>(resource));
-						accelerationStructure = (VkAccelerationStructureKHR)ResourceExt::getInstance(**tlas);
-						// Marking that this is just a memory.
-						newResourceState.layout = UINT32_MAX; // Marking that this is a TLAS.
-						newResourceState.view = ID<ImageView>(resource); 
-						setBarriers.push_back(newResourceState);
-						hasAnyResource = true;
-					}
-					else accelerationStructure = nullptr;
-					vulkanAPI->asDescriptorInfos[asInfoCount + j] = accelerationStructure;
-				}
-				
-				if (!hasAnyResource)
-					continue;
-
-				asWriteDescriptorSet.accelerationStructureCount = resourceArraySize;
-				asWriteDescriptorSet.pAccelerationStructures = &vulkanAPI->asDescriptorInfos[asInfoCount];
-				auto asWriteDescriptorSetPtr = &vulkanAPI->asWriteDescriptorSets[tlasCount++];
-				*asWriteDescriptorSetPtr = asWriteDescriptorSet;
-
-				writeDescriptorSet.dstSet = instances[i];
-				writeDescriptorSet.descriptorCount = asWriteDescriptorSet.accelerationStructureCount;
-				writeDescriptorSet.pNext = asWriteDescriptorSetPtr;
-				vulkanAPI->writeDescriptorSets.push_back(writeDescriptorSet);
-				asInfoCount += writeDescriptorSet.descriptorCount;
-			}
-		}
-	}
-
-	if (!vulkanAPI->writeDescriptorSets.empty())
-		vulkanAPI->device.updateDescriptorSets(vulkanAPI->writeDescriptorSets, {});
-	vulkanAPI->writeDescriptorSets.clear();
-}
-
-//**********************************************************************************************************************
-static void updateVkDescriptorSetResources(void* instance, const DescriptorSet::Uniform& dsUniform, 
-	Pipeline::Uniform pipelineUniform, OptView<Framebuffer> framebufferView, vector<Image::LayoutState>& setBarriers, 
+static vk::WriteDescriptorSet createVkWriteDescriptorSet(
+	VulkanAPI* vulkanAPI, void* instance, const DescriptorSet::Samplers& samplers, 
+	string_view uniformName, PipelineUniform pipelineUniform, OptView<Framebuffer> framebufferView, 
+	vector<Image::LayoutState>& setBarriers, const ID<Resource>* resourceArray, 
 	uint32 elementCount, uint32 elementOffset, uint8 setIndex)
 {
-	auto vulkanAPI = VulkanAPI::get();
-	auto resourceArrayData = dsUniform.resourceSets[setIndex].data();
-
-	if (pipelineUniform.isSamplerType | pipelineUniform.isImageType)
-	{
-		if (vulkanAPI->descriptorImageInfos.size() < elementCount)
-			vulkanAPI->descriptorImageInfos.resize(elementCount);
-	}
-	else if (pipelineUniform.isBufferType)
-	{
-		if (vulkanAPI->descriptorBufferInfos.size() < elementCount)
-			vulkanAPI->descriptorBufferInfos.resize(elementCount);
-	}
-	else if (pipelineUniform.type == GslUniformType::AccelerationStructure)
-	{
-		if (vulkanAPI->asDescriptorInfos.size() < elementCount)
-			vulkanAPI->asDescriptorInfos.resize(elementCount);
-	}
-	else throw GardenError("Invalid pipeline uniform.");
-
 	vk::WriteDescriptorSet writeDescriptorSet((VkDescriptorSet)instance, pipelineUniform.bindingIndex, 
 		elementOffset, elementCount, toVkDescriptorType(pipelineUniform.type));
 	auto count = elementOffset + elementCount;
@@ -504,11 +302,21 @@ static void updateVkDescriptorSetResources(void* instance, const DescriptorSet::
 	if (pipelineUniform.isSamplerType | pipelineUniform.isImageType)
 	{
 		vk::DescriptorImageInfo imageInfo;
-		auto imageInfoData = vulkanAPI->descriptorImageInfos.data();
-
-		for (uint32 i = 0, e = elementOffset; e < count; i++, e++)
+		if (pipelineUniform.isMutable)
 		{
-			auto resource = resourceArrayData[e];
+			auto sampler = samplers.at(uniformName);
+			auto samplerView = vulkanAPI->samplerPool.get(sampler);
+			imageInfo.sampler = (VkSampler)ResourceExt::getInstance(**samplerView);
+		}
+		else
+		{
+			GARDEN_ASSERT_MSG(samplers.find(uniformName) == samplers.end(), 
+				"Shader uniform [" + string(uniformName) + "] is not marked as 'mutable'");
+		}
+
+		for (uint32 i = elementOffset; i < count; i++)
+		{
+			auto resource = resourceArray[i];
 			if (resource)
 			{
 				auto imageView = vulkanAPI->imageViewPool.get(ID<ImageView>(resource));
@@ -520,72 +328,196 @@ static void updateVkDescriptorSetResources(void* instance, const DescriptorSet::
 				setBarriers.push_back(newResourceState);
 				hasAnyResource = true;
 			}
-			else imageInfo.imageView = nullptr;
-			imageInfoData[i] = imageInfo;
+			else { imageInfo.imageView = nullptr; imageInfo.imageLayout = {}; }
+			vulkanAPI->descriptorImageInfos.push_back(imageInfo);
 		}
 
 		if (hasAnyResource)
-			writeDescriptorSet.pImageInfo = imageInfoData;
+			writeDescriptorSet.pImageInfo = &vulkanAPI->descriptorImageInfos.back();
 	}
 	else if (pipelineUniform.isBufferType)
 	{
 		vk::DescriptorBufferInfo bufferInfo({}, 0, 0);
-		auto bufferInfoData = vulkanAPI->descriptorBufferInfos.data();
-
-		for (uint32 i = 0, e = elementOffset; e < count; i++, e++)
+		for (uint32 i = elementOffset; i < count; i++)
 		{
-			auto resource = resourceArrayData[e];
+			auto resource = resourceArray[i];
 			if (resource)
 			{
 				auto buffer = vulkanAPI->bufferPool.get(ID<Buffer>(resource));
 				bufferInfo.buffer = (VkBuffer)ResourceExt::getInstance(**buffer);
 				bufferInfo.range = buffer->getBinarySize();
-				newResourceState.layout = 0; // Marking that this is a buffer.
+				newResourceState.layout = DescriptorSet::bufferBarrierLayout;
 				newResourceState.view = ID<ImageView>(resource);
 				setBarriers.push_back(newResourceState);
 				hasAnyResource = true;
 			}
-			else
-			{
-				bufferInfo.buffer = nullptr; bufferInfo.range = 0;
-			}
-			bufferInfoData[i] = bufferInfo;
+			else { bufferInfo.buffer = nullptr; bufferInfo.range = 0; }
+			vulkanAPI->descriptorBufferInfos.push_back(bufferInfo);
 		}
 
 		if (hasAnyResource)
-			writeDescriptorSet.pBufferInfo = bufferInfoData;
+			writeDescriptorSet.pBufferInfo = &vulkanAPI->descriptorBufferInfos.back();
 	}
 	else if (pipelineUniform.type == GslUniformType::AccelerationStructure)
 	{
-		auto asInfoData = vulkanAPI->asDescriptorInfos.data();
-		for (uint32 i = 0, e = elementOffset; e < count; i++, e++)
+		for (uint32 i = elementOffset; i < count; i++)
 		{
-			auto resource = resourceArrayData[e];
+			auto resource = resourceArray[i];
 			vk::AccelerationStructureKHR accelerationStructure;
 			if (resource)
 			{
 				auto tlas = vulkanAPI->tlasPool.get(ID<Tlas>(resource));
 				accelerationStructure = (VkAccelerationStructureKHR)ResourceExt::getInstance(**tlas);
-				// Marking that this is just a memory.
-				newResourceState.layout = 0; newResourceState.view = {}; 
+				newResourceState.layout = DescriptorSet::asBarrierLayout;
+				newResourceState.view = ID<ImageView>(resource);
 				setBarriers.push_back(newResourceState);
 				hasAnyResource = true;
 			}
 			else accelerationStructure = nullptr;
-			asInfoData[i] = accelerationStructure;
+			vulkanAPI->asDescriptorInfos.push_back(accelerationStructure);
 		}
 
 		if (hasAnyResource)
 		{
-			vk::WriteDescriptorSetAccelerationStructureKHR asWriteDescriptorSet;
-			asWriteDescriptorSet.accelerationStructureCount = elementCount;
-			asWriteDescriptorSet.pAccelerationStructures = asInfoData;
-			writeDescriptorSet.pNext = &asWriteDescriptorSet;
+			vk::WriteDescriptorSetAccelerationStructureKHR asWriteDescriptorSet(
+				elementCount, &vulkanAPI->asDescriptorInfos.back());
+			vulkanAPI->asWriteDescriptorSets.push_back(asWriteDescriptorSet);
+			writeDescriptorSet.pNext = &vulkanAPI->asWriteDescriptorSets.back();
+		}
+	}
+	else throw GardenError("Invalid pipeline uniform.");
+
+	return writeDescriptorSet;
+}
+
+//**********************************************************************************************************************
+static void writeVkDescriptorSets(const DescriptorSet::Samplers& samplers, 
+	const DescriptorSet::Uniforms& dsUniforms, const Pipeline::Uniforms& pipelineUniforms, 
+	vk::DescriptorSetLayout descriptorSetLayout, OptView<Framebuffer> framebufferView, 
+	DescriptorSet::Barriers& barriers, void*& instance, uint8 setCount, uint8 setIndex)
+{
+	auto vulkanAPI = VulkanAPI::getInstance();
+	auto instances = setCount > 1 ? (vk::DescriptorSet*)instance : (vk::DescriptorSet*)&instance;
+	uint32 imageInfoCount = 0, bufferInfoCount = 0, asInfoCount = 0, tlasCount = 0;
+
+	for	(const auto& uniformPair : pipelineUniforms)
+	{
+		if (uniformPair.second.descriptorSetIndex != setIndex)
+			continue;
+
+		const auto& dsUniform = dsUniforms.at(uniformPair.first);
+		auto resourceSetData = dsUniform.resourceSets.data();
+		auto pipelineUniform = uniformPair.second;
+
+		if (pipelineUniform.isSamplerType | pipelineUniform.isImageType)
+		{
+			for (uint32 i = 0; i < setCount; i++)
+				imageInfoCount += (uint32)resourceSetData[i].size();
+		}
+		else if (pipelineUniform.isBufferType)
+		{
+			for (uint32 i = 0; i < setCount; i++)
+				bufferInfoCount += (uint32)resourceSetData[i].size();
+		}
+		else if (pipelineUniform.type == GslUniformType::AccelerationStructure)
+		{
+			for (uint32 i = 0; i < setCount; i++)
+				asInfoCount += (uint32)resourceSetData[i].size();
+			tlasCount += setCount;
+		}
+		else throw GardenError("Invalid pipeline uniform. (name: " + uniformPair.first + ")");
+	}
+
+	if (vulkanAPI->descriptorImageInfos.size() < imageInfoCount)
+		vulkanAPI->descriptorImageInfos.reserve(imageInfoCount);
+	if (vulkanAPI->descriptorBufferInfos.size() < bufferInfoCount)
+		vulkanAPI->descriptorBufferInfos.reserve(bufferInfoCount);
+	if (vulkanAPI->asDescriptorInfos.size() < asInfoCount)
+		vulkanAPI->asDescriptorInfos.reserve(asInfoCount);
+	if (vulkanAPI->asWriteDescriptorSets.size() < tlasCount)
+		vulkanAPI->asWriteDescriptorSets.reserve(tlasCount);
+
+	for (auto& setBarriers : barriers)
+		setBarriers.clear();
+	imageInfoCount = 0, bufferInfoCount = 0, asInfoCount = 0, tlasCount = 0;
+
+	for	(const auto& uniformPair : pipelineUniforms)
+	{
+		if (uniformPair.second.descriptorSetIndex != setIndex)
+			continue;
+
+		const auto& uniformName = uniformPair.first;
+		const auto& resourceSets = dsUniforms.at(uniformName).resourceSets;
+		auto pipelineUniform = uniformPair.second;
+
+		for (uint32 set = 0; set < setCount; set++)
+		{
+			const auto& resourceArray = resourceSets[set];
+			auto elementCount = resourceArray.size(); // TODO: use only used bindless DS element count.
+			auto writeDescriptorSet = createVkWriteDescriptorSet(vulkanAPI, instances[set], samplers, uniformName, 
+				pipelineUniform, framebufferView, barriers[set], resourceArray.data(), elementCount, 0, setIndex);
+			vulkanAPI->writeDescriptorSets.push_back(writeDescriptorSet);
 		}
 	}
 
 	if (!vulkanAPI->writeDescriptorSets.empty())
-		vulkanAPI->device.updateDescriptorSets(1, &writeDescriptorSet, 0, nullptr);
+	{
+		vulkanAPI->device.updateDescriptorSets(vulkanAPI->writeDescriptorSets, {});
+
+		vulkanAPI->writeDescriptorSets.clear();
+		vulkanAPI->descriptorImageInfos.clear();
+		vulkanAPI->descriptorBufferInfos.clear();
+		vulkanAPI->asDescriptorInfos.clear();
+	}
+}
+
+//**********************************************************************************************************************
+static void updateVkDescriptorSet(const DescriptorSet::Samplers& samplers, 
+	const DescriptorSet::Uniforms& oldUniforms, const DescriptorSet::Uniforms& newUniforms, 
+	const Pipeline::Uniforms& pipelineUniforms, vk::DescriptorSetLayout descriptorSetLayout, 
+	OptView<Framebuffer> framebufferView, DescriptorSet::Barriers& barriers, void*& instance, uint8 setIndex)
+{
+	auto vulkanAPI = VulkanAPI::getInstance();
+	auto newSetCount = (uint32)newUniforms.begin()->second.resourceSets.size();
+	auto oldSetCount = !oldUniforms.empty() ? (uint32)oldUniforms.begin()->second.resourceSets.size() : newSetCount;
+	// Note: Checks if descriptor set is just now created. 
+
+	if (newSetCount != oldSetCount)
+	{
+		vk::DescriptorSetAllocateInfo allocateInfo(vulkanAPI->descriptorPool, newSetCount);
+		if (oldSetCount > 1)
+		{
+			auto result = vulkanAPI->device.freeDescriptorSets(
+				vulkanAPI->descriptorPool, oldSetCount, (vk::DescriptorSet*)instance);
+			vk::detail::resultCheck(result, "vk::Device::freeDescriptorSets");
+			if (newSetCount == 1) free(instance);
+		}
+		else
+		{
+			auto result = vulkanAPI->device.freeDescriptorSets(
+				vulkanAPI->descriptorPool, 1, (vk::DescriptorSet*)&instance);
+			vk::detail::resultCheck(result, "vk::Device::freeDescriptorSets");
+		}
+		if (newSetCount > 1)
+		{
+			if (oldSetCount == 1) instance = malloc<vk::DescriptorSet>(newSetCount);
+			vulkanAPI->descriptorSetLayouts.assign(newSetCount, descriptorSetLayout);
+			allocateInfo.pSetLayouts = vulkanAPI->descriptorSetLayouts.data();
+			auto allocateResult = vulkanAPI->device.allocateDescriptorSets(
+				&allocateInfo, (vk::DescriptorSet*)instance);
+			vk::detail::resultCheck(allocateResult, "vk::Device::allocateDescriptorSets");
+		}
+		else
+		{
+			allocateInfo.pSetLayouts = &descriptorSetLayout;
+			auto allocateResult = vulkanAPI->device.allocateDescriptorSets(
+				&allocateInfo, (vk::DescriptorSet*)&instance);
+			vk::detail::resultCheck(allocateResult, "vk::Device::allocateDescriptorSets");
+		}
+	}
+
+	writeVkDescriptorSets(samplers, newUniforms, pipelineUniforms, descriptorSetLayout, 
+		framebufferView, barriers, instance, newSetCount, setIndex);
 }
 
 //**********************************************************************************************************************
@@ -594,14 +526,30 @@ DescriptorSet::DescriptorSet(ID<Pipeline> pipeline, PipelineType pipelineType, U
 {
 	GARDEN_ASSERT(pipeline);
 	GARDEN_ASSERT(!uniforms.empty());
+	barriers.resize(uniforms.begin()->second.resourceSets.size());
 
-	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
+	auto graphicsBackend = GraphicsAPI::getInstance()->getBackendType();
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 		this->instance = createVkDescriptorSet(pipeline, pipelineType, uniforms, setCount, index);
 	else GARDEN_UNREACHABLE();
 
+	update(std::move(uniforms), std::move(samplers));
+}
+DescriptorSet::DescriptorSet(PipelineUniforms&& pipelineUniforms, Uniforms&& dsUniforms, 
+	Samplers&& samplers, uint32 maxBindlessCount, uint8 index) : index(index)
+{
+	GARDEN_ASSERT(pipeline);
+	GARDEN_ASSERT(!uniforms.empty());
+
 	barriers.resize(uniforms.begin()->second.resourceSets.size());
-	recreate(std::move(uniforms), std::move(samplers));
+	bindless = new BindlessData();
+
+	auto graphicsBackend = GraphicsAPI::getInstance()->getBackendType();
+	if (graphicsBackend == GraphicsBackend::VulkanAPI)
+		this->instance = createVkDescriptorSet(std::move(pipelineUniforms), bindless, maxBindlessCount, index);
+	else GARDEN_UNREACHABLE();
+
+	update(std::move(uniforms), std::move(samplers));
 }
 
 bool DescriptorSet::destroy()
@@ -609,21 +557,79 @@ bool DescriptorSet::destroy()
 	if (!instance || isLocked())
 		return false;
 
-	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
+	auto graphicsBackend = GraphicsAPI::getInstance()->getBackendType();
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
-		destroyVkDescriptorSet(instance, pipeline, pipelineType, uniforms, setCount, index);
+		destroyVkDescriptorSet(getPipelineUniforms(), instance, bindless, setCount, index);
 	else GARDEN_UNREACHABLE();
 
 	return true;
 }
 
-void DescriptorSet::recreate(Uniforms&& uniforms, Samplers&& samplers)
+const DescriptorSet::PipelineUniforms& DescriptorSet::getPipelineUniforms() const
+{
+	if (bindless)
+		return bindless->pipelineUniforms;
+	auto pipelineView = GraphicsAPI::getInstance()->getPipelineView(pipeline, pipelineType);
+	return pipelineView->getUniforms();
+}
+
+#if GARDEN_DEBUG
+static void validatePipelineUniform(PipelineUniform pipelineUniform, 
+	ID<Resource> resource, string_view dsDebugName, string_view uniformName)
+{
+	auto graphicsAPI = GraphicsAPI::getInstance();
+	if (pipelineUniform.isSamplerType | pipelineUniform.isImageType)
+	{
+		auto imageView = graphicsAPI->imageViewPool.get(ID<ImageView>(resource));
+		GARDEN_ASSERT_MSG(imageView->getType() == toImageType(pipelineUniform.type), "Different image "
+			"[" + imageView->getDebugName() + "] and pipeline uniform [" + string(uniformName) + "] type");
+
+		auto image = graphicsAPI->imagePool.get(imageView->getImage());
+		if (pipelineUniform.isSamplerType)
+		{
+			GARDEN_ASSERT_MSG(hasAnyFlag(image->getUsage(), Image::Usage::Sampled), "Missing descriptor set "
+				"[" + string(dsDebugName) + "] pipeline uniform [" + string(uniformName) + "] flag");
+		}
+		else
+		{
+			GARDEN_ASSERT_MSG(hasAnyFlag(image->getUsage(), Image::Usage::Storage), "Missing descriptor set "
+				"[" + string(dsDebugName) + "] pipeline uniform [" + string(uniformName) + "] flag");
+		}
+	}
+	else if (pipelineUniform.isBufferType)
+	{
+		auto buffer = graphicsAPI->bufferPool.get(ID<Buffer>(resource));
+		if (pipelineUniform.type == GslUniformType::UniformBuffer)
+		{
+			GARDEN_ASSERT_MSG(hasAnyFlag(buffer->getUsage(), Buffer::Usage::Uniform), "Missing descriptor set "
+				"[" + string(dsDebugName) + "] pipeline uniform [" + string(uniformName) + "] flag");
+		}
+		else
+		{
+			GARDEN_ASSERT_MSG(hasAnyFlag(buffer->getUsage(), Buffer::Usage::Storage), "Missing descriptor set "
+				"[" + string(dsDebugName) + "] pipeline uniform [" + string(uniformName) + "] flag");
+		}
+	}
+	else if (pipelineUniform.type == GslUniformType::AccelerationStructure)
+	{
+		auto tlasView = graphicsAPI->tlasPool.get(ID<Tlas>(resource));
+		auto buffer = graphicsAPI->bufferPool.get(tlasView->getStorageBuffer());
+		GARDEN_ASSERT_MSG(hasAnyFlag(buffer->getUsage(), Buffer::Usage::StorageAS), "Missing descriptor set "
+			"[" + string(dsDebugName) + "] pipeline uniform [" + string(uniformName) + "] flag");
+	}
+	else throw GardenError("Invalid pipeline uniform. (name: " + string(uniformName) + ")");
+}
+#endif
+
+//**********************************************************************************************************************
+void DescriptorSet::update(Uniforms&& uniforms, Samplers&& samplers)
 {
 	GARDEN_ASSERT_MSG(this->uniforms.size() == 0 || 
 		uniforms.size() == this->uniforms.size(), "Assert " + debugName);
+	GARDEN_ASSERT_MSG(!bindless, "Assert " + debugName);
 
-	auto graphicsAPI = GraphicsAPI::get();
-	auto pipelineView = graphicsAPI->getPipelineView(pipelineType, pipeline);
+	auto graphicsAPI = GraphicsAPI::getInstance();
+	auto pipelineView = graphicsAPI->getPipelineView(pipeline, pipelineType);
 	const auto& pipelineUniforms = pipelineView->getUniforms();
 
 	OptView<Framebuffer> framebufferView = {};
@@ -633,7 +639,7 @@ void DescriptorSet::recreate(Uniforms&& uniforms, Samplers&& samplers)
 			View<GraphicsPipeline>(pipelineView)->getFramebuffer()));
 	}
 
-	#if GARDEN_DEBUG
+	#if GARDEN_DEBUG || GARDEN_EDITOR
 	for (const auto& pair : uniforms)
 	{
 		GARDEN_ASSERT_MSG(setCount == pair.second.resourceSets.size(), 
@@ -641,21 +647,25 @@ void DescriptorSet::recreate(Uniforms&& uniforms, Samplers&& samplers)
 		GARDEN_ASSERT_MSG(!pair.first.empty(), "Descriptor set [" + debugName + "] uniform name is empty");
 	}
 
-	auto maxBindlessCount = pipelineView->getMaxBindlessCount();
+	absl::btree_map<string_view, PipelineUniform> hashUniforms;
+	auto hashState = Hash128::getState();
+	Hash128::resetState(hashState);
+
 	for	(const auto& pair : pipelineUniforms)
 	{
 		if (pair.second.descriptorSetIndex != index)
 			continue;
 
-		if (uniforms.find(pair.first) == uniforms.end())
-			throw GardenError("Missing required pipeline uniform. (" + pair.first + ")");
+		const auto& uniformName = pair.first;
+		if (uniforms.find(uniformName) == uniforms.end())
+			throw GardenError("Missing required pipeline uniform. (" + uniformName + ")");
 
 		auto pipelineUniform = pair.second;
-		const auto& dsUniform = uniforms.at(pair.first);
+		const auto& dsUniform = uniforms.at(uniformName);
 
-		for (uint32 i = 0; i < setCount; i++)
+		for (uint32 set = 0; set < setCount; set++)
 		{
-			const auto& resourceArray = dsUniform.resourceSets[i];
+			const auto& resourceArray = dsUniform.resourceSets[set];
 			if (pipelineUniform.arraySize > 0)
 			{
 				GARDEN_ASSERT_MSG(resourceArray.size() == pipelineUniform.arraySize, "Different descriptor set [" +
@@ -663,89 +673,44 @@ void DescriptorSet::recreate(Uniforms&& uniforms, Samplers&& samplers)
 			}
 			else
 			{
-				GARDEN_ASSERT_MSG(resourceArray.size() == maxBindlessCount, "Descriptor set [" + debugName + "] resource "
-					"array size is different from pipeline [" + pipelineView->getDebugName() + "] maximum bindless size");
+				throw GardenError("You should use bindless pool for unsized arrays. ("
+					"pipeline: " + pipelineView->getDebugName() + ", uniform: " + uniformName + ")");
 			}
 
 			for (auto resource : resourceArray)
 			{
-				if (!resource)
-					continue;
-
-				if (pipelineUniform.isSamplerType | pipelineUniform.isImageType)
-				{
-					auto imageView = graphicsAPI->imageViewPool.get(ID<ImageView>(resource));
-					GARDEN_ASSERT_MSG(toImageType(pipelineUniform.type) == imageView->getType(), 
-						"Different descriptor set [" + debugName + "] and pipeline uniform [" + pair.first + "] types");
-					GARDEN_ASSERT_MSG(!isFormatDepthAndStencil(imageView->getFormat()), "Image view is both depth and "
-						"stencil format [" + debugName + "] at pipeline uniform [" + pair.first + "]");
-
-					auto image = graphicsAPI->imagePool.get(imageView->getImage());
-					if (pipelineUniform.isSamplerType)
-					{
-						GARDEN_ASSERT_MSG(hasAnyFlag(image->getUsage(), Image::Usage::Sampled), "Missing "
-							"descriptor set [" + debugName + "] pipeline uniform [" + pair.first + "] flag");
-					}
-					else
-					{
-						GARDEN_ASSERT_MSG(hasAnyFlag(image->getUsage(), Image::Usage::Storage), "Missing "
-							"descriptor set [" + debugName + "] pipeline uniform [" + pair.first + "] flag");
-					}
-				}
-				else if (pipelineUniform.isBufferType)
-				{
-					auto bufferView = graphicsAPI->bufferPool.get(ID<Buffer>(resource));
-					if (pipelineUniform.type == GslUniformType::UniformBuffer)
-					{
-						GARDEN_ASSERT_MSG(hasAnyFlag(bufferView->getUsage(), Buffer::Usage::Uniform), "Missing "
-							"descriptor set [" + debugName + "] pipeline uniform [" + pair.first + "] flag");
-					}
-					else
-					{
-						GARDEN_ASSERT_MSG(hasAnyFlag(bufferView->getUsage(), Buffer::Usage::Storage), "Missing "
-							"descriptor set [" + debugName + "] pipeline uniform [" + pair.first + "] flag");
-					}
-				}
-				else if (pipelineUniform.type == GslUniformType::AccelerationStructure)
-				{
-					auto tlasView = graphicsAPI->tlasPool.get(ID<Tlas>(resource));
-					auto bufferView = graphicsAPI->bufferPool.get(tlasView->getStorageBuffer());
-					GARDEN_ASSERT_MSG(hasAnyFlag(bufferView->getUsage(), Buffer::Usage::StorageAS), "Missing "
-						"descriptor set [" + debugName + "] pipeline uniform [" + pair.first + "] flag");
-				}
-				else throw GardenError("Invalid pipeline uniform. (name: " + pair.first + ")");
+				if (resource)
+					validatePipelineUniform(pipelineUniform, resource, debugName, uniformName);
 			}
 		}
+		hashUniforms.emplace(uniformName, pipelineUniform);
 	}
+	for	(const auto& pair : hashUniforms)
+		Hash128::updateState(hashState, &pair.second, sizeof(PipelineUniform));
+	layoutHash = Hash128::digestState(hashState);
 	#endif
 
 	auto graphicsBackend = graphicsAPI->getBackendType();
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
-		vk::DescriptorPool descriptorPool = (VkDescriptorPool)
-			PipelineExt::getDescriptorPools(**pipelineView)[index];
 		vk::DescriptorSetLayout descriptorSetLayout = (VkDescriptorSetLayout)
 			PipelineExt::getDescriptorSetLayouts(**pipelineView)[index];
-		recreateVkDescriptorSet(this->uniforms, uniforms, samplers, pipelineUniforms, 
-			descriptorPool, descriptorSetLayout, framebufferView, barriers, instance, index);
+		updateVkDescriptorSet(samplers, this->uniforms, uniforms, pipelineUniforms, 
+			descriptorSetLayout, framebufferView, barriers, instance, index);
 	}
 	else GARDEN_UNREACHABLE();
 
 	this->uniforms = std::move(uniforms);
+	this->samplers = std::move(samplers);
 }
 
 //**********************************************************************************************************************
-void DescriptorSet::updateUniform(string_view name, 
-	const UniformResource& uniform, uint32 elementIndex, uint8 setIndex)
+void DescriptorSet::updateUniform(string_view name, const UniformResource& uniform, uint32 elementIndex, uint8 setIndex)
 {
 	GARDEN_ASSERT_MSG(!name.empty(), "Assert " + debugName);
 	GARDEN_ASSERT_MSG(uniform.resource, "Assert " + debugName);
 
-	auto graphicsAPI = GraphicsAPI::get();
-	auto pipelineView = graphicsAPI->getPipelineView(pipelineType, pipeline);
-	GARDEN_ASSERT_MSG(elementIndex <= pipelineView->getMaxBindlessCount(), "Assert " + debugName);
-
-	const auto& pipelineUniforms = pipelineView->getUniforms();
+	const auto& pipelineUniforms = getPipelineUniforms();
 	auto uniformPair = pipelineUniforms.find(name);
 	if (uniformPair == pipelineUniforms.end())
 		throw GardenError("Missing required pipeline uniform. (" + string(name) + ")");
@@ -754,61 +719,17 @@ void DescriptorSet::updateUniform(string_view name,
 		throw GardenError("Missing required descriptor set uniform. (" + string(name) + ")");
 
 	#if GARDEN_DEBUG
-	auto pipelineUniform = uniformPair->second;
-	if (pipelineUniform.isSamplerType | pipelineUniform.isImageType)
-	{
-		auto imageView = graphicsAPI->imageViewPool.get(ID<ImageView>(uniform.resource));
-		GARDEN_ASSERT_MSG(toImageType(pipelineUniform.type) == imageView->getType(), "Assert " + debugName);
-
-		auto image = graphicsAPI->imagePool.get(imageView->getImage());
-		if (pipelineUniform.isSamplerType)
-		{
-			GARDEN_ASSERT_MSG(hasAnyFlag(image->getUsage(), Image::Usage::Sampled), "Missing "
-				"descriptor set [" + debugName + "] pipeline uniform [" + string(name) + "] flag");
-		}
-		else
-		{
-			GARDEN_ASSERT_MSG(hasAnyFlag(image->getUsage(), Image::Usage::Storage), "Missing "
-				"descriptor set [" + debugName + "] pipeline uniform [" + string(name) + "] flag");
-		}
-	}
-	else if (pipelineUniform.isBufferType)
-	{
-		auto bufferView = graphicsAPI->bufferPool.get(ID<Buffer>(uniform.resource));
-		if (pipelineUniform.type == GslUniformType::UniformBuffer)
-		{
-			GARDEN_ASSERT_MSG(hasAnyFlag(bufferView->getUsage(), Buffer::Usage::Uniform), "Missing "
-				"descriptor set [" + debugName + "] pipeline uniform [" + string(name) + "] flag");
-		}
-		else
-		{
-			GARDEN_ASSERT_MSG(hasAnyFlag(bufferView->getUsage(), Buffer::Usage::Storage), "Missing "
-				"descriptor set [" + debugName + "] pipeline uniform [" + string(name) + "] flag");
-		}
-	}
-	else if (pipelineUniform.type == GslUniformType::AccelerationStructure)
-	{
-		auto tlasView = graphicsAPI->tlasPool.get(ID<Tlas>(uniform.resource));
-		auto bufferView = graphicsAPI->bufferPool.get(tlasView->getStorageBuffer());
-		GARDEN_ASSERT_MSG(hasAnyFlag(bufferView->getUsage(), Buffer::Usage::StorageAS), "Missing "
-			"descriptor set [" + debugName + "] pipeline uniform [" + string(name) + "] flag");
-	}
-	else throw GardenError("Invalid pipeline uniform. (name: " + string(name) + ")");
+	validatePipelineUniform(uniformPair->second, uniform.resource, debugName, name);
 	#endif
 
 	dsUniform->second.resourceSets[setIndex][elementIndex] = uniform.resource;
 }
-
 void DescriptorSet::updateResources(string_view name, uint32 elementCount, uint32 elementOffset, uint8 setIndex)
 {
 	GARDEN_ASSERT_MSG(!name.empty(), "Assert " + debugName);
 	GARDEN_ASSERT_MSG(elementCount > 0, "Assert " + debugName);
 
-	auto graphicsAPI = GraphicsAPI::get();
-	auto pipelineView = graphicsAPI->getPipelineView(pipelineType, pipeline);
-	GARDEN_ASSERT_MSG(elementCount + elementOffset <= pipelineView->getMaxBindlessCount(), "Assert " + debugName);
-
-	const auto& pipelineUniforms = pipelineView->getUniforms();
+	const auto& pipelineUniforms = getPipelineUniforms();
 	auto pipelineUniform = pipelineUniforms.find(name);
 	if (pipelineUniform == pipelineUniforms.end())
 		throw GardenError("Missing required pipeline uniform. (" + string(name) + ")");
@@ -816,9 +737,17 @@ void DescriptorSet::updateResources(string_view name, uint32 elementCount, uint3
 	if (dsUniform == this->uniforms.end())
 		throw GardenError("Missing required descriptor set uniform. (" + string(name) + ")");
 
+	const auto& resourceSets = dsUniform->second.resourceSets;
+	GARDEN_ASSERT_MSG(setIndex < resourceSets.size(), "Assert " + debugName);
+	const auto& resourceArray = resourceSets[setIndex];
+	GARDEN_ASSERT_MSG(elementCount + elementOffset < resourceArray.size(), "Assert " + debugName);
+
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	OptView<Framebuffer> framebufferView = {};
-	if (pipelineType == PipelineType::Graphics)
+
+	if (pipeline && pipelineType == PipelineType::Graphics)
 	{
+		auto pipelineView = graphicsAPI->getPipelineView(pipeline, pipelineType);
 		framebufferView = OptView<Framebuffer>(graphicsAPI->framebufferPool.get(
 			View<GraphicsPipeline>(pipelineView)->getFramebuffer()));
 	}
@@ -826,8 +755,8 @@ void DescriptorSet::updateResources(string_view name, uint32 elementCount, uint3
 	auto graphicsBackend = graphicsAPI->getBackendType();
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
-		updateVkDescriptorSetResources(instance, dsUniform->second, pipelineUniform->second, 
-			framebufferView, barriers[setIndex], elementCount, elementOffset, setIndex);
+		createVkWriteDescriptorSet(VulkanAPI::getInstance(), instance, samplers, name, pipelineUniform->second, 
+			framebufferView, barriers[setIndex], resourceArray.data(), elementCount, elementOffset, setIndex);
 	}
 	else GARDEN_UNREACHABLE();
 }
@@ -838,22 +767,22 @@ void DescriptorSet::setDebugName(const string& name)
 {
 	Resource::setDebugName(name);
 
-	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
+	auto graphicsBackend = GraphicsAPI::getInstance()->getBackendType();
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
 		#if GARDEN_USE_GAPI_VALIDATIONS
-		auto vulkanAPI = VulkanAPI::get();
+		auto vulkanAPI = VulkanAPI::getInstance();
 		if (!vulkanAPI->features.debugUtils)
 			return;
 
 		vk::DebugUtilsObjectNameInfoEXT nameInfo(vk::ObjectType::eDescriptorSet, 0);
 		if (setCount > 1)
 		{
-			auto instances = (void**)instance;
-			for (uint32 i = 0; i < setCount; i++)
+			auto instances = (vk::DescriptorSet*)instance;
+			for (uint32 set = 0; set < setCount; set++)
 			{
-				nameInfo.objectHandle = (uint64)instances[i];
-				auto itemName = name + to_string(i);
+				nameInfo.objectHandle = (uint64)(VkDescriptorSet)instances[set];
+				auto itemName = name + to_string(set);
 				nameInfo.pObjectName = itemName.c_str();
 				vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo);
 			}

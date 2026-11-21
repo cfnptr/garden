@@ -134,6 +134,7 @@ static void entryPoint()
 	manager->createSystem<CloudsRenderSystem>();
 	manager->createSystem<MeshRenderSystem>();
 	manager->createSystem<ModelMatrixSystem>();
+	manager->createSystem<ModelBindlessSystem>();
 	manager->createSystem<OpaqueModelSystem>();
 	// manager->createSystem<OpaqueSpriteSystem>();
 	// manager->createSystem<CutoutSpriteSystem>();

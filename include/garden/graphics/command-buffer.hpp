@@ -38,7 +38,7 @@ struct Command
 		DrawBarrier, Dispatch, FillBuffer, CopyBuffer, ClearImage, CopyImage, CopyBufferImage, BlitImage,
 		BuildAccelerationStructure, CopyAccelerationStructure, TraceRays, Custom,
 
-		#if GARDEN_DEBUG
+		#if GARDEN_USE_GAPI_VALIDATIONS
 		BeginLabel, EndLabel, InsertLabel,
 		#endif
 

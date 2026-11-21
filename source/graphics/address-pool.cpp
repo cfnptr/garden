@@ -22,7 +22,7 @@ using namespace garden::graphics;
 static DescriptorSet::Buffers createAddressBuffers(uint32 capacity, 
 	uint32 inFlightCount, Buffer::Usage addressBufferUsage)
 {
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	DescriptorSet::Buffers addressBuffers(inFlightCount);
 
 	for (auto& addressBuffer : addressBuffers)
@@ -56,7 +56,7 @@ uint32 AddressPool::allocate(ID<Buffer> buffer)
 	uint64 deviceAddress = 0;
 	if (buffer)
 	{
-		auto bufferView = GraphicsAPI::get()->bufferPool.get(buffer);
+		auto bufferView = GraphicsAPI::getInstance()->bufferPool.get(buffer);
 		deviceAddress = bufferView->getDeviceAddress();
 	}
 
@@ -100,7 +100,7 @@ void AddressPool::update(uint32 allocation, ID<Buffer> newBuffer)
 	GARDEN_ASSERT(allocation < resources.size());
 	if (newBuffer)
 	{
-		auto bufferView = GraphicsAPI::get()->bufferPool.get(newBuffer);
+		auto bufferView = GraphicsAPI::getInstance()->bufferPool.get(newBuffer);
 		deviceAddresses[allocation] = bufferView->getDeviceAddress();
 		memset(isFlushed.data(), 0, inFlightCount);
 	}
@@ -133,7 +133,7 @@ void AddressPool::free(uint32 allocation)
 //**********************************************************************************************************************
 void AddressPool::recreate()
 {
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	destroyAddressBuffers(graphicsAPI, addressBuffers);
 	addressBuffers = createAddressBuffers(capacity, inFlightCount, addressBufferUsage);
 	memset(isFlushed.data(), 0, inFlightCount);
@@ -157,7 +157,7 @@ void AddressPool::flush(uint32 inFlightIndex, bool& newAddressBuffer)
 	if (isFlushed[inFlightIndex])
 		return;
 
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	newAddressBuffer = false;
 
 	if (!addressBuffers.empty())
@@ -200,14 +200,14 @@ void AddressPool::flush(uint32 inFlightIndex, bool& newAddressBuffer)
 
 void AddressPool::destroy()
 {
-	destroyAddressBuffers(GraphicsAPI::get(), addressBuffers);
+	destroyAddressBuffers(GraphicsAPI::getInstance(), addressBuffers);
 	resources.clear(); deviceAddresses.clear(); freeAllocs.clear(); addressBuffers.clear();
 }
 
 //**********************************************************************************************************************
 void AddressPool::addBufferBarriers(Buffer::BarrierState newState)
 {
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
 	GARDEN_ASSERT_MSG(currentCommandBuffer, "Assert " + debugName);
 

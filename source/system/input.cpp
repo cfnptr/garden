@@ -36,7 +36,7 @@ static void updateWindowMode()
 	if (!videoMode)
 		return;
 
-	auto window = (GLFWwindow*)GraphicsAPI::get()->getWindow();
+	auto window = (GLFWwindow*)GraphicsAPI::getInstance()->getWindow();
 	if (glfwGetWindowAttrib(window, GLFW_DECORATED) == GLFW_FALSE)
 	{
 		glfwSetWindowMonitor(window, nullptr, videoMode->width / 2 - InputSystem::defaultWindowWidth / 2, 
@@ -108,7 +108,7 @@ void InputSystem::preInit()
 	ECSM_SUBSCRIBE_TO_EVENT("Input", InputSystem::input);
 	ECSM_SUBSCRIBE_TO_EVENT("Output", InputSystem::output);
 
-	auto window = (GLFWwindow*)GraphicsAPI::get()->getWindow();
+	auto window = (GLFWwindow*)GraphicsAPI::getInstance()->getWindow();
 	glfwSetKeyCallback(window, (GLFWkeyfun)InputSystem::onKeyboardButton);
 	glfwSetScrollCallback(window, (GLFWscrollfun)InputSystem::onMouseScroll);
 	glfwSetDropCallback(window, (GLFWdropfun)InputSystem::onFileDrop);
@@ -204,12 +204,12 @@ void InputSystem::input()
 {
 	SET_CPU_ZONE_SCOPED("Input Update");
 
-	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
+	auto graphicsBackend = GraphicsAPI::getInstance()->getBackendType();
 	auto graphicsSystem = GraphicsSystem::getInstance();
 
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
-		auto vulkanAPI = VulkanAPI::get();
+		auto vulkanAPI = VulkanAPI::getInstance();
 		if (vulkanAPI->features.amdAntiLag)
 		{
 			vk::AntiLagDataAMD antiLagData;
@@ -242,10 +242,10 @@ void InputSystem::input()
 
 	if (graphicsSystem->isOutOfDateSwapchain())
 	{
-		auto graphicsBackend = GraphicsAPI::get()->getBackendType();
+		auto graphicsBackend = GraphicsAPI::getInstance()->getBackendType();
 		if (graphicsBackend == GraphicsBackend::VulkanAPI)
 		{
-			auto vulkanAPI = VulkanAPI::get();
+			auto vulkanAPI = VulkanAPI::getInstance();
 			auto surfaceCapabilities = vulkanAPI->physicalDevice.getSurfaceCapabilitiesKHR(vulkanAPI->surface);
 			if (surfaceCapabilities.currentExtent != UINT32_MAX &&
 				(surfaceCapabilities.currentExtent.width != newFramebufferSize.x ||
@@ -342,7 +342,7 @@ void InputSystem::output()
 		hasNewClipboard = false;
 	}
 
-	auto window = (GLFWwindow*)GraphicsAPI::get()->getWindow();
+	auto window = (GLFWwindow*)GraphicsAPI::getInstance()->getWindow();
 	if (glfwWindowShouldClose(window))
 		Manager::getInstance()->isRunning = false;
 
@@ -381,7 +381,7 @@ void InputSystem::startRenderThread()
 	#endif
 
 	auto inputSystem = InputSystem::getInstance();
-	auto window = (GLFWwindow*)GraphicsAPI::get()->getWindow();
+	auto window = (GLFWwindow*)GraphicsAPI::getInstance()->getWindow();
 
 	while (!glfwWindowShouldClose(window) && manager->isRunning)
 	{

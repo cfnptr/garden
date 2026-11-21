@@ -25,14 +25,3 @@ OpaqueModelSystem::OpaqueModelSystem(bool setSingleton) :
 
 string_view OpaqueModelSystem::getComponentName() const { return "Opaque Model"; }
 MeshRenderType OpaqueModelSystem::getMeshRenderType() const { return MeshRenderType::Opaque; }
-
-DescriptorSet::Uniforms OpaqueModelSystem::getBindlessUniforms()
-{
-	auto graphicsSystem = GraphicsSystem::getInstance();
-	auto whiteView = graphicsSystem->getWhiteTexture();
-
-	return
-	{
-
-	};
-}

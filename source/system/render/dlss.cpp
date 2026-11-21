@@ -98,17 +98,17 @@ static void terminateDlss(NVSDK_NGX_Parameter* ngxParameters)
 	auto result = NVSDK_NGX_VULKAN_DestroyParameters(ngxParameters);
 	GARDEN_ASSERT_MSG(result == NVSDK_NGX_Result_Success, "Failed to destroy Nvidia DLSS parameters");
 
-	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
+	auto graphicsBackend = GraphicsAPI::getInstance()->getBackendType();
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
-		result = NVSDK_NGX_VULKAN_Shutdown1(VulkanAPI::get()->device);
+		result = NVSDK_NGX_VULKAN_Shutdown1(VulkanAPI::getInstance()->device);
 		GARDEN_ASSERT_MSG(result == NVSDK_NGX_Result_Success, "Failed to shutdown Nvidia DLSS");
 	}
 	else GARDEN_UNREACHABLE();
 }
 static NVSDK_NGX_Parameter* initializeDlss(const wstring& nvidiaDlssPath)
 {
-	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
+	auto graphicsBackend = GraphicsAPI::getInstance()->getBackendType();
 	NVSDK_NGX_FeatureCommonInfo* featureCommonInfoPtr = nullptr;
 
 	#if 0 // Note: for DLSS debugging.
@@ -122,7 +122,7 @@ static NVSDK_NGX_Parameter* initializeDlss(const wstring& nvidiaDlssPath)
 	NVSDK_NGX_Result ngxResult; NVSDK_NGX_Parameter* ngxParameters = nullptr;
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
-		auto vulkanAPI = VulkanAPI::get();
+		auto vulkanAPI = VulkanAPI::getInstance();
 		#if defined(GARDEN_NVIDIA_DLSS_PROJECT_ID)
 		ngxResult = NVSDK_NGX_VULKAN_Init_with_ProjectID(GARDEN_NVIDIA_DLSS_PROJECT_ID,
 			NVSDK_NGX_ENGINE_TYPE_CUSTOM,  GARDEN_VERSION_STRING, nvidiaDlssPath.c_str(), 
@@ -152,9 +152,9 @@ static NVSDK_NGX_Parameter* initializeDlss(const wstring& nvidiaDlssPath)
 		GARDEN_LOG_WARN("Failed to get Nvidia DLSS parameters. ("
 			"result: " + string(ngxResStr.begin(), ngxResStr.end()) + ")");
 
-		auto graphicsBackend = GraphicsAPI::get()->getBackendType();
+		auto graphicsBackend = GraphicsAPI::getInstance()->getBackendType();
 		if (graphicsBackend == GraphicsBackend::VulkanAPI)
-			NVSDK_NGX_VULKAN_Shutdown1(VulkanAPI::get()->device);
+			NVSDK_NGX_VULKAN_Shutdown1(VulkanAPI::getInstance()->device);
 		return nullptr;
 	}
 
@@ -215,7 +215,7 @@ static NVSDK_NGX_Handle* createDlssFeature(CommandBuffer* commandBuffer, NVSDK_N
 	// NVSDK_NGX_Parameter_SetUI(ngxParameters, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Performance, renderPreset);
 	// NVSDK_NGX_Parameter_SetUI(ngxParameters, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_UltraPerformance, renderPreset);
 
-	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
+	auto graphicsBackend = GraphicsAPI::getInstance()->getBackendType();
 
 	NVSDK_NGX_Handle* ngxFeature = nullptr;
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
@@ -244,7 +244,7 @@ static void destroyDlssFeature(NVSDK_NGX_Handle* ngxFeature)
 	if (!ngxFeature)
 		return;
 
-	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
+	auto graphicsBackend = GraphicsAPI::getInstance()->getBackendType();
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
 		auto result = NVSDK_NGX_VULKAN_ReleaseFeature(ngxFeature);
@@ -256,7 +256,7 @@ static void destroyDlssFeature(NVSDK_NGX_Handle* ngxFeature)
 //**********************************************************************************************************************
 void DlssRenderSystem::preInit()
 {
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	if (graphicsAPI->getGpuVendor() != GpuVendor::Nvidia)
 		return;
 
@@ -307,7 +307,7 @@ void DlssRenderSystem::preInit()
 	NVSDK_NGX_Result ngxResult;
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
-		auto vulkanAPI = VulkanAPI::get();
+		auto vulkanAPI = VulkanAPI::getInstance();
 		if (!vulkanAPI->features.nvidiaDlss)
 			return;
 		
@@ -359,7 +359,7 @@ void DlssRenderSystem::evaluateDlssCommand(void* commandBuffer, void* argument)
 	if (gFramebufferView->getSize() != dlssSystem->optimalSize)
 		return;
 
-	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
+	auto graphicsBackend = GraphicsAPI::getInstance()->getBackendType();
 	auto& jitterOffsets = graphicsSystem->getJitterOffsets();
 	auto jitterOffset = jitterOffsets[graphicsSystem->getCurrentFrameIndex() % jitterOffsets.size()] * 0.5f;
 	auto velocityBufferView = gFramebufferView->getColorAttachments()[G_BUFFER_VELOCITY].imageView;
@@ -371,7 +371,7 @@ void DlssRenderSystem::evaluateDlssCommand(void* commandBuffer, void* argument)
 		NVSDK_NGX_VK_DLSS_Eval_Params evalParams;
 		memset(&evalParams, 0, sizeof(NVSDK_NGX_VK_DLSS_Eval_Params));
 
-		auto vulkanAPI = VulkanAPI::get();
+		auto vulkanAPI = VulkanAPI::getInstance();
 		auto vkCommandBuffer = (VulkanCommandBuffer*)commandBuffer;
 		auto inputResource = imageToNgxResource(vulkanAPI, vkCommandBuffer,	deferredSystem->getHdrImageView());
 		auto outputResource = imageToNgxResource(vulkanAPI, vkCommandBuffer, deferredSystem->getUpscaleHdrIV());
@@ -448,7 +448,7 @@ void DlssRenderSystem::setQuality(DlssQuality quality)
 {
 	if (feature)
 	{
-		GraphicsAPI::get()->waitIdle();
+		GraphicsAPI::getInstance()->waitIdle();
 		destroyDlssFeature((NVSDK_NGX_Handle*)feature);
 		feature = {};
 	}

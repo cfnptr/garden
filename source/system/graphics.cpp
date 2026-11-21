@@ -89,7 +89,7 @@ GraphicsSystem::GraphicsSystem(uint2 windowSize, bool isFullscreen, bool isDecor
 		appInfoSystem->getAppDataName(), appInfoSystem->getVersion(), windowSize, threadPool, useVsync, 
 		useTripleBuffering, isFullscreen, isDecorated);
 
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	auto swapchainImage = graphicsAPI->imagePool.get(graphicsAPI->getSwapchain()->getCurrentImage());
 	auto frameSize = (uint2)swapchainImage->getSize();
 	calcJitterOffsets(jitterOffsets, frameSize, frameSize);
@@ -115,7 +115,7 @@ GraphicsSystem::GraphicsSystem(uint2 windowSize, bool isFullscreen, bool isDecor
 //**********************************************************************************************************************
 static void logVkGpuInfo()
 {
-	auto vulkanAPI = VulkanAPI::get();
+	auto vulkanAPI = VulkanAPI::getInstance();
 	if (vulkanAPI->getGpuVendor() == GpuVendor::Unknown)
 		GARDEN_LOG_WARN("Unknown GPU vendor ID: " + to_string(vulkanAPI->deviceProperties.properties.vendorID));
 	GARDEN_LOG_INFO("GPU: " + string(vulkanAPI->deviceProperties.properties.deviceName.data()));
@@ -136,7 +136,7 @@ void GraphicsSystem::preInit()
 	ECSM_SUBSCRIBE_TO_EVENT("Input", GraphicsSystem::input);
 	ECSM_SUBSCRIBE_TO_EVENT("Output", GraphicsSystem::present);
 
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	auto graphicsBackend = graphicsAPI->getBackendType();
 
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
@@ -163,7 +163,7 @@ void GraphicsSystem::preInit()
 }
 void GraphicsSystem::preDeinit()
 {
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	graphicsAPI->waitIdle();
 	graphicsAPI->storeShaderCache();
 }
@@ -317,7 +317,7 @@ void GraphicsSystem::update()
 {
 	SET_CPU_ZONE_SCOPED("Graphics Update");
 
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	auto inputSystem = InputSystem::getInstance();
 	auto swapchain = graphicsAPI->getSwapchain();
 
@@ -348,7 +348,7 @@ void GraphicsSystem::update()
 	auto graphicsBackend = graphicsAPI->getBackendType();
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
-		auto vulkanAPI = VulkanAPI::get();
+		auto vulkanAPI = VulkanAPI::getInstance();
 		if (vulkanAPI->features.nvLowLatency && (nvLowLatency != useLowLatency || nvMaxFrameRate != maxFrameRate))
 		{
 			vk::LatencySleepModeInfoNV sleepModeInfo(useLowLatency, useLowLatency, 
@@ -385,7 +385,7 @@ void GraphicsSystem::update()
 		if (forceRecreateSwapchain)
 		{
 			GARDEN_LOG_INFO("Forced swapchain recreate.");
-			GraphicsAPI::get()->waitIdle();
+			GraphicsAPI::getInstance()->waitIdle();
 			forceRecreateSwapchain = false;
 		}
 
@@ -419,7 +419,7 @@ void GraphicsSystem::present()
 {
 	SET_CPU_ZONE_SCOPED("Frame Present");
 
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	if (isFramebufferSizeValid)
 	{
 		graphicsAPI->graphicsCommandBuffer->submit();
@@ -465,7 +465,7 @@ void GraphicsSystem::present()
 uint2 GraphicsSystem::getScaledFrameSize()
 {
 	if (scaledFrameSize == uint2::zero)
-		return GraphicsAPI::get()->getSwapchain()->getFramebufferSize();
+		return GraphicsAPI::getInstance()->getSwapchain()->getFramebufferSize();
 	return scaledFrameSize;
 }
 void GraphicsSystem::setScaledFrameSize(uint2 frameSize)
@@ -482,26 +482,26 @@ void GraphicsSystem::setScaledFrameSize(uint2 frameSize)
 
 uint2 GraphicsSystem::getFramebufferSize() const noexcept
 {
-	return GraphicsAPI::get()->getSwapchain()->getFramebufferSize();
+	return GraphicsAPI::getInstance()->getSwapchain()->getFramebufferSize();
 }
 
 ID<Framebuffer> GraphicsSystem::getRenderPassFB() const noexcept
 {
-	return GraphicsAPI::get()->renderPassFramebuffer;
+	return GraphicsAPI::getInstance()->renderPassFramebuffer;
 }
 bool GraphicsSystem::isRenderPassAsync() const noexcept
 {
-	return GraphicsAPI::get()->isRenderPassAsync;
+	return GraphicsAPI::getInstance()->isRenderPassAsync;
 }
 
-bool GraphicsSystem::hasRayTracing() const { return GraphicsAPI::get()->hasRayTracing(); }
-bool GraphicsSystem::hasRayQuery() const { return GraphicsAPI::get()->hasRayQuery(); }
-uint32 GraphicsSystem::getSubgroupSize() const { return GraphicsAPI::get()->getSubgroupSize(); }
+bool GraphicsSystem::hasRayTracing() const { return GraphicsAPI::getInstance()->hasRayTracing(); }
+bool GraphicsSystem::hasRayQuery() const { return GraphicsAPI::getInstance()->hasRayQuery(); }
+uint32 GraphicsSystem::getSubgroupSize() const { return GraphicsAPI::getInstance()->getSubgroupSize(); }
 
 uint32 GraphicsSystem::getInFlightCount() const noexcept { return inFlightCount; }
 uint32 GraphicsSystem::getInFlightIndex() const noexcept
 {
-	return GraphicsAPI::get()->getSwapchain()->getInFlightIndex();
+	return GraphicsAPI::getInstance()->getSwapchain()->getInFlightIndex();
 }
 
 //**********************************************************************************************************************
@@ -534,7 +534,7 @@ ID<ImageView> GraphicsSystem::getEmptyTexture()
 		auto texture = createImage(Image::Format::UnormR8G8B8A8, Image::Usage::Sampled | 
 			Image::Usage::TransferDst | Image::Usage::TransferQ, { { data } }, uint2::one);
 		SET_RESOURCE_DEBUG_NAME(texture, "image.emptyTexture");
-		emptyTexture = GraphicsAPI::get()->imagePool.get(texture)->getView();
+		emptyTexture = GraphicsAPI::getInstance()->imagePool.get(texture)->getView();
 	}
 	return emptyTexture;
 }
@@ -546,7 +546,7 @@ ID<ImageView> GraphicsSystem::getWhiteTexture()
 		auto texture = createImage(Image::Format::UnormR8G8B8A8, Image::Usage::Sampled | 
 			Image::Usage::TransferDst | Image::Usage::TransferQ, { { data } }, uint2::one);
 		SET_RESOURCE_DEBUG_NAME(texture, "image.whiteTexture");
-		whiteTexture = GraphicsAPI::get()->imagePool.get(texture)->getView();
+		whiteTexture = GraphicsAPI::getInstance()->imagePool.get(texture)->getView();
 	}
 	return whiteTexture;
 }
@@ -558,7 +558,7 @@ ID<ImageView> GraphicsSystem::getGreenTexture()
 		auto texture = createImage(Image::Format::UnormR8G8B8A8, Image::Usage::Sampled | 
 			Image::Usage::TransferDst | Image::Usage::TransferQ, { { data } }, uint2::one);
 		SET_RESOURCE_DEBUG_NAME(texture, "image.greenTexture");
-		greenTexture = GraphicsAPI::get()->imagePool.get(texture)->getView();
+		greenTexture = GraphicsAPI::getInstance()->imagePool.get(texture)->getView();
 	}
 	return greenTexture;
 }
@@ -570,7 +570,7 @@ ID<ImageView> GraphicsSystem::getNormalMapTexture()
 		auto texture = createImage(Image::Format::UnormR8G8B8A8, Image::Usage::Sampled | 
 			Image::Usage::TransferDst | Image::Usage::TransferQ, { { data } }, uint2::one);
 		SET_RESOURCE_DEBUG_NAME(texture, "image.normalMapTexture");
-		normalMapTexture = GraphicsAPI::get()->imagePool.get(texture)->getView();
+		normalMapTexture = GraphicsAPI::getInstance()->imagePool.get(texture)->getView();
 	}
 	return normalMapTexture;
 }
@@ -592,7 +592,7 @@ ID<Buffer> GraphicsSystem::createBuffer(Buffer::Usage usage, Buffer::CpuAccess c
 {
 	GARDEN_ASSERT(size > 0);
 
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	auto buffer = graphicsAPI->bufferPool.create(usage, cpuAccess, location, strategy, size, 0);
 	SET_RESOURCE_DEBUG_NAME(buffer, "buffer" + to_string(*buffer));
 
@@ -632,7 +632,7 @@ ID<Buffer> GraphicsSystem::createStagingBuffer(Buffer::CpuAccess cpuAccess, uint
 	GARDEN_ASSERT(size > 0);
 	GARDEN_ASSERT(cpuAccess != Buffer::CpuAccess::None);
 
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	auto stagingBuffer = graphicsAPI->bufferPool.create(Buffer::Usage::TransferSrc, 
 		cpuAccess, Buffer::Location::Auto, Buffer::Strategy::Speed, size, 0);
 	SET_RESOURCE_DEBUG_NAME(stagingBuffer, "buffer.staging" + to_string(*stagingBuffer));
@@ -646,11 +646,11 @@ ID<Buffer> GraphicsSystem::createStagingBuffer(Buffer::CpuAccess cpuAccess, uint
 
 void GraphicsSystem::destroy(ID<Buffer>& buffer)
 {
-	GraphicsAPI::get()->bufferPool.destroy(buffer);
+	GraphicsAPI::getInstance()->bufferPool.destroy(buffer);
 }
 View<Buffer> GraphicsSystem::get(ID<Buffer> buffer) const noexcept
 {
-	return GraphicsAPI::get()->bufferPool.get(buffer);
+	return GraphicsAPI::getInstance()->bufferPool.get(buffer);
 }
 
 //**********************************************************************************************************************
@@ -720,7 +720,7 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 		}
 	});
 
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	auto image = graphicsAPI->imagePool.create(type, format, usage, strategy, imageSize, 0);
 	SET_RESOURCE_DEBUG_NAME(image, "image" + to_string(*image));
 
@@ -832,7 +832,7 @@ ID<Image> GraphicsSystem::createImage(Image::Type type, Image::Format format, Im
 }
 void GraphicsSystem::destroy(ID<Image>& image)
 {
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	if (image)
 	{
 		auto imageView = graphicsAPI->imagePool.get(image);
@@ -843,7 +843,7 @@ void GraphicsSystem::destroy(ID<Image>& image)
 }
 View<Image> GraphicsSystem::get(ID<Image> image) const noexcept
 {
-	return GraphicsAPI::get()->imagePool.get(image);
+	return GraphicsAPI::getInstance()->imagePool.get(image);
 }
 
 //**********************************************************************************************************************
@@ -852,7 +852,7 @@ ID<ImageView> GraphicsSystem::createImageView(ID<Image> image, Image::Type type,
 {
 	GARDEN_ASSERT(image);
 
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	auto _image = graphicsAPI->imagePool.get(image);
 	GARDEN_ASSERT_MSG(_image->isLoaded(), "Image [" + _image->getDebugName() + "] is not loaded");
 	GARDEN_ASSERT(layerCount + baseLayer <= _image->getLayerCount());
@@ -878,16 +878,16 @@ void GraphicsSystem::destroy(ID<ImageView>& imageView)
 	#if GARDEN_DEBUG
 	if (imageView)
 	{
-		auto imageViewView = GraphicsAPI::get()->imageViewPool.get(imageView);
+		auto imageViewView = GraphicsAPI::getInstance()->imageViewPool.get(imageView);
 		GARDEN_ASSERT_MSG(!imageViewView->isDefault(), "Can't destroy "
 			"default image view [" + imageViewView->getDebugName() + "]");
 	}
 	#endif
-	GraphicsAPI::get()->imageViewPool.destroy(imageView);
+	GraphicsAPI::getInstance()->imageViewPool.destroy(imageView);
 }
 View<ImageView> GraphicsSystem::get(ID<ImageView> imageView) const noexcept
 {
-	return GraphicsAPI::get()->imageViewPool.get(imageView);
+	return GraphicsAPI::getInstance()->imageViewPool.get(imageView);
 }
 
 //**********************************************************************************************************************
@@ -897,7 +897,7 @@ ID<Framebuffer> GraphicsSystem::createFramebuffer(uint2 size,
 	GARDEN_ASSERT(areAllTrue(size > uint2::zero));
 	GARDEN_ASSERT(!colorAttachments.empty() || depthStencilAttachment.imageView);
 
-	auto framebuffer = GraphicsAPI::get()->framebufferPool.create(size,
+	auto framebuffer = GraphicsAPI::getInstance()->framebufferPool.create(size,
 		std::move(colorAttachments), depthStencilAttachment);
 	SET_RESOURCE_DEBUG_NAME(framebuffer, "framebuffer" + to_string(*framebuffer));
 	return framebuffer;
@@ -908,60 +908,60 @@ void GraphicsSystem::destroy(ID<Framebuffer>& framebuffer)
 	#if GARDEN_DEBUG
 	if (framebuffer)
 	{
-		auto framebufferView = GraphicsAPI::get()->framebufferPool.get(framebuffer);
+		auto framebufferView = GraphicsAPI::getInstance()->framebufferPool.get(framebuffer);
 		GARDEN_ASSERT_MSG(!framebufferView->isSwapchain(), "Can't destroy swapchain framebuffer");
 	}
 	#endif
-	GraphicsAPI::get()->framebufferPool.destroy(framebuffer);
+	GraphicsAPI::getInstance()->framebufferPool.destroy(framebuffer);
 }
 View<Framebuffer> GraphicsSystem::get(ID<Framebuffer> framebuffer) const noexcept
 {
-	return GraphicsAPI::get()->framebufferPool.get(framebuffer);
+	return GraphicsAPI::getInstance()->framebufferPool.get(framebuffer);
 }
 
 //**********************************************************************************************************************
 ID<Sampler> GraphicsSystem::createSampler(const Sampler::State& state)
 {
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	auto sampler = graphicsAPI->samplerPool.create(state);
 	SET_RESOURCE_DEBUG_NAME(sampler, "sampler" + to_string(*sampler));
 	return sampler;
 }
 void GraphicsSystem::destroy(ID<Sampler>& sampler)
 {
-	GraphicsAPI::get()->samplerPool.destroy(sampler);
+	GraphicsAPI::getInstance()->samplerPool.destroy(sampler);
 }
 
 View<Sampler> GraphicsSystem::get(ID<Sampler> sampler) const noexcept
 {
-	return GraphicsAPI::get()->samplerPool.get(sampler);
+	return GraphicsAPI::getInstance()->samplerPool.get(sampler);
 }
 
 void GraphicsSystem::destroy(ID<GraphicsPipeline>& graphicsPipeline)
 {
-	GraphicsAPI::get()->graphicsPipelinePool.destroy(graphicsPipeline);
+	GraphicsAPI::getInstance()->graphicsPipelinePool.destroy(graphicsPipeline);
 }
 View<GraphicsPipeline> GraphicsSystem::get(ID<GraphicsPipeline> graphicsPipeline) const noexcept
 {
-	return GraphicsAPI::get()->graphicsPipelinePool.get(graphicsPipeline);
+	return GraphicsAPI::getInstance()->graphicsPipelinePool.get(graphicsPipeline);
 }
 
 void GraphicsSystem::destroy(ID<ComputePipeline>& computePipeline)
 {
-	GraphicsAPI::get()->computePipelinePool.destroy(computePipeline);
+	GraphicsAPI::getInstance()->computePipelinePool.destroy(computePipeline);
 }
 View<ComputePipeline> GraphicsSystem::get(ID<ComputePipeline> computePipeline) const noexcept
 {
-	return GraphicsAPI::get()->computePipelinePool.get(computePipeline);
+	return GraphicsAPI::getInstance()->computePipelinePool.get(computePipeline);
 }
 
 void GraphicsSystem::destroy(ID<RayTracingPipeline>& rayTracingPipeline)
 {
-	GraphicsAPI::get()->rayTracingPipelinePool.destroy(rayTracingPipeline);
+	GraphicsAPI::getInstance()->rayTracingPipelinePool.destroy(rayTracingPipeline);
 }
 View<RayTracingPipeline> GraphicsSystem::get(ID<RayTracingPipeline> rayTracingPipeline) const noexcept
 {
-	return GraphicsAPI::get()->rayTracingPipelinePool.get(rayTracingPipeline);
+	return GraphicsAPI::getInstance()->rayTracingPipelinePool.get(rayTracingPipeline);
 }
 
 //**********************************************************************************************************************
@@ -972,15 +972,14 @@ ID<DescriptorSet> GraphicsSystem::createDescriptorSet(ID<GraphicsPipeline> graph
 	GARDEN_ASSERT(!uniforms.empty());
 
 	#if GARDEN_DEBUG
-	auto pipelineView = GraphicsAPI::get()->graphicsPipelinePool.get(graphicsPipeline);
-	GARDEN_ASSERT_MSG(pipelineView->isLoaded(), "Pipeline [" + pipelineView->getDebugName() + "] is not loaded");
-	auto layoutCount = PipelineExt::getDescriptorSetLayouts(**pipelineView).size();
-	GARDEN_ASSERT_MSG(index < layoutCount, "Out of pipeline [" + 
-		pipelineView->getDebugName() + "] descriptor set count bounds");
-	// TODO: check if all items initialized if not using bindless.
+	auto pipelineView = GraphicsAPI::getInstance()->graphicsPipelinePool.get(graphicsPipeline);
+	GARDEN_ASSERT_MSG(pipelineView->isLoaded(), "Graphics pipeline [" + 
+		pipelineView->getDebugName() + "] is not loaded");
+	GARDEN_ASSERT_MSG(index < pipelineView->getDescriptorSetCount(), "Out of graphics "
+		"pipeline [" + pipelineView->getDebugName() + "] descriptor set count bounds");
 	#endif
 
-	auto descriptorSet = GraphicsAPI::get()->descriptorSetPool.create(ID<Pipeline>(graphicsPipeline), 
+	auto descriptorSet = GraphicsAPI::getInstance()->descriptorSetPool.create(ID<Pipeline>(graphicsPipeline), 
 		PipelineType::Graphics, std::move(uniforms), std::move(samplers), index);
 
 	#if GARDEN_DEBUG
@@ -996,14 +995,14 @@ ID<DescriptorSet> GraphicsSystem::createDescriptorSet(ID<ComputePipeline> comput
 	GARDEN_ASSERT(!uniforms.empty());
 
 	#if GARDEN_DEBUG
-	auto pipelineView = GraphicsAPI::get()->computePipelinePool.get(computePipeline);
-	GARDEN_ASSERT_MSG(pipelineView->isLoaded(), "Pipeline [" + pipelineView->getDebugName() + "] is not loaded");
-	GARDEN_ASSERT_MSG(index < PipelineExt::getDescriptorSetLayouts(**pipelineView).size(),
-		"Out of pipeline [" + pipelineView->getDebugName() + "] descriptor set count bounds");
-	// TODO: check if all items initialized if not using bindless.
+	auto pipelineView = GraphicsAPI::getInstance()->computePipelinePool.get(computePipeline);
+	GARDEN_ASSERT_MSG(pipelineView->isLoaded(), "Compute pipeline [" + 
+		pipelineView->getDebugName() + "] is not loaded");
+	GARDEN_ASSERT_MSG(index < pipelineView->getDescriptorSetCount(), "Out of compute "
+		"pipeline [" + pipelineView->getDebugName() + "] descriptor set count bounds");
 	#endif
 
-	auto descriptorSet = GraphicsAPI::get()->descriptorSetPool.create(ID<Pipeline>(computePipeline), 
+	auto descriptorSet = GraphicsAPI::getInstance()->descriptorSetPool.create(ID<Pipeline>(computePipeline), 
 		PipelineType::Compute, std::move(uniforms), std::move(samplers), index);
 
 	#if GARDEN_DEBUG
@@ -1019,14 +1018,14 @@ ID<DescriptorSet> GraphicsSystem::createDescriptorSet(ID<RayTracingPipeline> ray
 	GARDEN_ASSERT(!uniforms.empty());
 
 	#if GARDEN_DEBUG
-	auto pipelineView = GraphicsAPI::get()->rayTracingPipelinePool.get(rayTracingPipeline);
-	GARDEN_ASSERT_MSG(pipelineView->isLoaded(), "Pipeline [" + pipelineView->getDebugName() + "] is not loaded");
-	GARDEN_ASSERT_MSG(index < PipelineExt::getDescriptorSetLayouts(**pipelineView).size(),
-		"Out of pipeline [" + pipelineView->getDebugName() + "] descriptor set count bounds");
-	// TODO: check if all items initialized if not using bindless.
+	auto pipelineView = GraphicsAPI::getInstance()->rayTracingPipelinePool.get(rayTracingPipeline);
+	GARDEN_ASSERT_MSG(pipelineView->isLoaded(), "Ray tracing pipeline [" + 
+		pipelineView->getDebugName() + "] is not loaded");
+	GARDEN_ASSERT_MSG(index < pipelineView->getDescriptorSetCount(), "Out of ray tracing "
+		"pipeline [" + pipelineView->getDebugName() + "] descriptor set count bounds");
 	#endif
 
-	auto descriptorSet = GraphicsAPI::get()->descriptorSetPool.create(ID<Pipeline>(rayTracingPipeline), 
+	auto descriptorSet = GraphicsAPI::getInstance()->descriptorSetPool.create(ID<Pipeline>(rayTracingPipeline), 
 		PipelineType::RayTracing, std::move(uniforms), std::move(samplers), index);
 
 	#if GARDEN_DEBUG
@@ -1035,13 +1034,28 @@ ID<DescriptorSet> GraphicsSystem::createDescriptorSet(ID<RayTracingPipeline> ray
 	#endif
 	return descriptorSet;
 }
+ID<DescriptorSet> GraphicsSystem::createDescriptorSet(Pipeline::Uniforms&& pipelineUniforms,
+	DescriptorSet::Uniforms&& dsUniforms, uint32 maxBindlessCount, DescriptorSet::Samplers&& samplers, uint8 index)
+{
+	GARDEN_ASSERT(!pipelineUniforms.empty());
+	GARDEN_ASSERT(!dsUniforms.empty());
+
+	auto descriptorSet = GraphicsAPI::getInstance()->descriptorSetPool.create(std::move(pipelineUniforms), 
+		std::move(dsUniforms), std::move(samplers), maxBindlessCount, index);
+	
+	#if GARDEN_DEBUG
+	SET_RESOURCE_DEBUG_NAME(descriptorSet, "descriptorSet.bindless" + to_string(*descriptorSet));
+	#endif
+	return descriptorSet;
+}
+
 void GraphicsSystem::destroy(ID<DescriptorSet>& descriptorSet)
 {
-	GraphicsAPI::get()->descriptorSetPool.destroy(descriptorSet);
+	GraphicsAPI::getInstance()->descriptorSetPool.destroy(descriptorSet);
 }
 View<DescriptorSet> GraphicsSystem::get(ID<DescriptorSet> descriptorSet) const noexcept
 {
-	return GraphicsAPI::get()->descriptorSetPool.get(descriptorSet);
+	return GraphicsAPI::getInstance()->descriptorSetPool.get(descriptorSet);
 }
 
 //**********************************************************************************************************************
@@ -1051,7 +1065,7 @@ ID<Blas> GraphicsSystem::createBlas(const Blas::TrianglesBuffer* geometryArray,
 	GARDEN_ASSERT(geometryArray);
 	GARDEN_ASSERT(geometryCount > 0);
 
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	auto blas = graphicsAPI->blasPool.create(geometryArray, geometryCount, flags);
 	SET_RESOURCE_DEBUG_NAME(blas, "blas" + to_string(*blas));
 	return blas;
@@ -1062,18 +1076,18 @@ ID<Blas> GraphicsSystem::createBlas(const Blas::AabbsBuffer* geometryArray,
 	GARDEN_ASSERT(geometryArray);
 	GARDEN_ASSERT(geometryCount > 0);
 
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	auto blas = graphicsAPI->blasPool.create(geometryArray, geometryCount, flags);
 	SET_RESOURCE_DEBUG_NAME(blas, "blas" + to_string(*blas));
 	return blas;
 }
 void GraphicsSystem::destroy(ID<Blas>& blas)
 {
-	GraphicsAPI::get()->blasPool.destroy(blas);
+	GraphicsAPI::getInstance()->blasPool.destroy(blas);
 }
 View<Blas> GraphicsSystem::get(ID<Blas> blas) const noexcept
 {
-	return GraphicsAPI::get()->blasPool.get(blas);
+	return GraphicsAPI::getInstance()->blasPool.get(blas);
 }
 
 ID<Tlas> GraphicsSystem::createTlas(vector<Tlas::InstanceData>&& instances, 
@@ -1082,28 +1096,28 @@ ID<Tlas> GraphicsSystem::createTlas(vector<Tlas::InstanceData>&& instances,
 	GARDEN_ASSERT(!instances.empty());
 	GARDEN_ASSERT(instanceBuffer);
 
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	auto tlas = graphicsAPI->tlasPool.create(std::move(instances), instanceBuffer, flags);
 	SET_RESOURCE_DEBUG_NAME(tlas, "tlas" + to_string(*tlas));
 	return tlas;
 }
 void GraphicsSystem::destroy(ID<Tlas>& tlas)
 {
-	return GraphicsAPI::get()->tlasPool.destroy(tlas);
+	return GraphicsAPI::getInstance()->tlasPool.destroy(tlas);
 }
 View<Tlas> GraphicsSystem::get(ID<Tlas> tlas) const noexcept
 {
-	return GraphicsAPI::get()->tlasPool.get(tlas);
+	return GraphicsAPI::getInstance()->tlasPool.get(tlas);
 }
 
 //**********************************************************************************************************************
 bool GraphicsSystem::isRecording() const noexcept
 {
-	return GraphicsAPI::get()->currentCommandBuffer;
+	return GraphicsAPI::getInstance()->currentCommandBuffer;
 }
 void GraphicsSystem::startRecording(CommandBufferType commandBufferType) noexcept
 {
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	GARDEN_ASSERT_MSG(!graphicsAPI->currentCommandBuffer, "Already recording");
 	
 	switch (commandBufferType)
@@ -1121,14 +1135,14 @@ void GraphicsSystem::startRecording(CommandBufferType commandBufferType) noexcep
 }
 bool GraphicsSystem::tryStartRecording(CommandBufferType commandBufferType) noexcept
 {
-	if (GraphicsAPI::get()->currentCommandBuffer)
+	if (GraphicsAPI::getInstance()->currentCommandBuffer)
 		return false;
 	startRecording(commandBufferType);
 	return true;
 }
 void GraphicsSystem::stopRecording() noexcept
 {
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	GARDEN_ASSERT_MSG(graphicsAPI->currentCommandBuffer, "Not recording");
 	graphicsAPI->currentCommandBuffer = nullptr;
 }
@@ -1137,16 +1151,16 @@ bool GraphicsSystem::isBusy(CommandBufferType commandBufferType)
 	switch (commandBufferType)
 	{
 		case CommandBufferType::Frame: return false;
-		case CommandBufferType::Graphics: return GraphicsAPI::get()->graphicsCommandBuffer->isBusy();
-		case CommandBufferType::TransferOnly: return GraphicsAPI::get()->transferCommandBuffer->isBusy();
-		case CommandBufferType::Compute: return GraphicsAPI::get()->computeCommandBuffer->isBusy();
+		case CommandBufferType::Graphics: return GraphicsAPI::getInstance()->graphicsCommandBuffer->isBusy();
+		case CommandBufferType::TransferOnly: return GraphicsAPI::getInstance()->transferCommandBuffer->isBusy();
+		case CommandBufferType::Compute: return GraphicsAPI::getInstance()->computeCommandBuffer->isBusy();
 		default: GARDEN_UNREACHABLE();
 	}
 }
 
 Buffer::Usage GraphicsSystem::getBufferQ() const noexcept
 {
-	auto currentCommandBuffer = GraphicsAPI::get()->currentCommandBuffer;
+	auto currentCommandBuffer = GraphicsAPI::getInstance()->currentCommandBuffer;
 	GARDEN_ASSERT_MSG(currentCommandBuffer, "Not recording");
 	auto commandBufferType = currentCommandBuffer->getType();
 	if (commandBufferType == CommandBufferType::TransferOnly)
@@ -1157,7 +1171,7 @@ Buffer::Usage GraphicsSystem::getBufferQ() const noexcept
 }
 Image::Usage GraphicsSystem::getImageQ() const noexcept
 {
-	auto currentCommandBuffer = GraphicsAPI::get()->currentCommandBuffer;
+	auto currentCommandBuffer = GraphicsAPI::getInstance()->currentCommandBuffer;
 	GARDEN_ASSERT_MSG(currentCommandBuffer, "Not recording");
 	auto commandBufferType = currentCommandBuffer->getType();
 	if (commandBufferType == CommandBufferType::TransferOnly)
@@ -1194,7 +1208,7 @@ static void validateAddBarriers(GraphicsAPI* graphicsAPI,
 }
 void GraphicsSystem::addBarriers(const Buffer::BarrierState* newStates, const ID<Buffer>* buffers, uint32 bufferCount)
 {
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
 	GARDEN_ASSERT(newStates);
 	GARDEN_ASSERT(buffers);
@@ -1224,7 +1238,7 @@ void GraphicsSystem::addBarriers(const Buffer::BarrierState* newStates, const ID
 }
 void GraphicsSystem::addBarriers(Buffer::BarrierState newState, const ID<Buffer>* buffers, uint32 bufferCount)
 {
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
 	GARDEN_ASSERT(buffers);
 	GARDEN_ASSERT(bufferCount > 0);
@@ -1254,7 +1268,7 @@ void GraphicsSystem::addBarriers(Buffer::BarrierState newState, const ID<Buffer>
 
 void GraphicsSystem::customCommand(void(*onCommand)(void*, void*), void* argument)
 {
-	auto currentCommandBuffer = GraphicsAPI::get()->currentCommandBuffer;
+	auto currentCommandBuffer = GraphicsAPI::getInstance()->currentCommandBuffer;
 	GARDEN_ASSERT(onCommand);
 	GARDEN_ASSERT(currentCommandBuffer);
 	
@@ -1277,8 +1291,8 @@ void GraphicsSystem::drawLine(const f32x4x4& mvp, f32x4 startPoint, f32x4 endPoi
 			"editor/wireframe-line", swapchainFramebuffer, &options);
 	}
 
-	auto pipelineView = GraphicsAPI::get()->graphicsPipelinePool.get(linePipeline);
-	pipelineView->updateFramebuffer(GraphicsAPI::get()->renderPassFramebuffer);
+	auto pipelineView = GraphicsAPI::getInstance()->graphicsPipelinePool.get(linePipeline);
+	pipelineView->updateFramebuffer(GraphicsAPI::getInstance()->renderPassFramebuffer);
 	pipelineView->bind();
 	pipelineView->setViewportScissor();
 
@@ -1301,11 +1315,11 @@ void GraphicsSystem::drawAabb(const f32x4x4& mvp, f32x4 color)
 		options.loadAsync = false;
 
 		aabbPipeline = ResourceSystem::getInstance()->loadGraphicsPipeline(
-			"editor/aabb-lines", GraphicsAPI::get()->renderPassFramebuffer, &options);
+			"editor/aabb-lines", GraphicsAPI::getInstance()->renderPassFramebuffer, &options);
 	}
 
-	auto pipelineView = GraphicsAPI::get()->graphicsPipelinePool.get(aabbPipeline);
-	pipelineView->updateFramebuffer(GraphicsAPI::get()->renderPassFramebuffer);
+	auto pipelineView = GraphicsAPI::getInstance()->graphicsPipelinePool.get(aabbPipeline);
+	pipelineView->updateFramebuffer(GraphicsAPI::getInstance()->renderPassFramebuffer);
 	pipelineView->bind();
 	pipelineView->setViewportScissor();
 
@@ -1322,42 +1336,42 @@ void GraphicsSystem::drawAabb(const f32x4x4& mvp, f32x4 color)
 //**********************************************************************************************************************
 void GraphicsSystem::setDebugName(ID<Buffer> buffer, const string& name)
 {
-	auto resource = GraphicsAPI::get()->bufferPool.get(buffer);
+	auto resource = GraphicsAPI::getInstance()->bufferPool.get(buffer);
 	resource->setDebugName(name);
 }
 void GraphicsSystem::setDebugName(ID<Image> image, const string& name)
 {
-	auto resource = GraphicsAPI::get()->imagePool.get(image);
+	auto resource = GraphicsAPI::getInstance()->imagePool.get(image);
 	resource->setDebugName(name);
 }
 void GraphicsSystem::setDebugName(ID<ImageView> imageView, const string& name)
 {
-	auto resource = GraphicsAPI::get()->imageViewPool.get(imageView);
+	auto resource = GraphicsAPI::getInstance()->imageViewPool.get(imageView);
 	resource->setDebugName(name);
 }
 void GraphicsSystem::setDebugName(ID<Framebuffer> framebuffer, const string& name)
 {
-	auto resource = GraphicsAPI::get()->framebufferPool.get(framebuffer);
+	auto resource = GraphicsAPI::getInstance()->framebufferPool.get(framebuffer);
 	resource->setDebugName(name);
 }
 void GraphicsSystem::setDebugName(ID<Sampler> sampler, const string& name)
 {
-	auto resource = GraphicsAPI::get()->samplerPool.get(sampler);
+	auto resource = GraphicsAPI::getInstance()->samplerPool.get(sampler);
 	resource->setDebugName(name);
 }
 void GraphicsSystem::setDebugName(ID<DescriptorSet> descriptorSet, const string& name)
 {
-	auto resource = GraphicsAPI::get()->descriptorSetPool.get(descriptorSet);
+	auto resource = GraphicsAPI::getInstance()->descriptorSetPool.get(descriptorSet);
 	resource->setDebugName(name);
 }
 void GraphicsSystem::setDebugName(ID<Blas> blas, const string& name)
 {
-	auto resource = GraphicsAPI::get()->blasPool.get(blas);
+	auto resource = GraphicsAPI::getInstance()->blasPool.get(blas);
 	resource->setDebugName(name);
 }
 void GraphicsSystem::setDebugName(ID<Tlas> tlas, const string& name)
 {
-	auto resource = GraphicsAPI::get()->tlasPool.get(tlas);
+	auto resource = GraphicsAPI::getInstance()->tlasPool.get(tlas);
 	resource->setDebugName(name);
 }
 #endif

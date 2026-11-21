@@ -1069,7 +1069,7 @@ public:
 
 	#if GARDEN_DEBUG
 	/**
-	 * @brief Sets rigidbody broad phase layer debug name. (Debug only)
+	 * @brief Sets rigidbody broad phase layer debug name. (Debug Only!)
 	 */
 	void setBroadPhaseLayerName(uint8 broadPhaseLayer, const string& debugName);
 	#endif

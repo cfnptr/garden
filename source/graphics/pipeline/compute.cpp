@@ -21,9 +21,9 @@ using namespace garden::graphics;
 void ComputePipeline::createVkInstance(ComputeCreateData& createData)
 {
 	if (variantCount > 1)
-		this->instance = malloc<vk::Pipeline>(createData.variantCount);
+		this->instance = new vk::Pipeline[createData.variantCount];
 
-	auto vulkanAPI = VulkanAPI::get();
+	auto vulkanAPI = VulkanAPI::getInstance();
 	auto shaderCode = std::move(createData.code);
 	auto shaders = createShaders(&shaderCode, 1, createData.shaderPath);
 
@@ -59,7 +59,7 @@ void ComputePipeline::createVkInstance(ComputeCreateData& createData)
 ComputePipeline::ComputePipeline(ComputeCreateData& createData) :
 	Pipeline(createData), localSize(createData.localSize)
 {
-	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
+	auto graphicsBackend = GraphicsAPI::getInstance()->getBackendType();
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 		createVkInstance(createData);
 	else GARDEN_UNREACHABLE();
@@ -67,7 +67,7 @@ ComputePipeline::ComputePipeline(ComputeCreateData& createData) :
 
 void ComputePipeline::dispatch(uint3 count, bool isGlobalCount)
 {
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
 	GARDEN_ASSERT_MSG(areAllTrue(count > uint3::zero), "Assert " + debugName);
 	GARDEN_ASSERT_MSG(currentCommandBuffer, "Assert " + debugName);

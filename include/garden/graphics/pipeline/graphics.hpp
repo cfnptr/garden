@@ -423,8 +423,8 @@ public:
 		State pipelineState = {};
 	};
 private:
-	ID<Framebuffer> framebuffer = {};
 	uint8 attachmentCount = 0;
+	ID<Framebuffer> framebuffer = {};
 
 	GraphicsPipeline(const fs::path& path, uint32 maxBindlessCount,
 		uint64 pipelineVersion, ID<Framebuffer> framebuffer) noexcept : 

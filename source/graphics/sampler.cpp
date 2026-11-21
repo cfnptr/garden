@@ -22,7 +22,7 @@ using namespace garden::graphics;
 //**********************************************************************************************************************
 static void destroyVkSampler(void* instance)
 {
-	auto vulkanAPI = VulkanAPI::get();
+	auto vulkanAPI = VulkanAPI::getInstance();
 	if (vulkanAPI->forceResourceDestroy)
 		vulkanAPI->device.destroySampler((VkSampler)instance);
 	else vulkanAPI->destroyResource(GraphicsAPI::DestroyResourceType::Sampler, instance);
@@ -30,11 +30,11 @@ static void destroyVkSampler(void* instance)
 
 Sampler::Sampler(const State& state) : state(state)
 {
-	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
+	auto graphicsBackend = GraphicsAPI::getInstance()->getBackendType();
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
 		auto samplerInfo = getVkSamplerCreateInfo(state);
-		this->instance = VulkanAPI::get()->device.createSampler(samplerInfo);
+		this->instance = VulkanAPI::getInstance()->device.createSampler(samplerInfo);
 	}
 	else GARDEN_UNREACHABLE();
 }
@@ -44,7 +44,7 @@ bool Sampler::destroy()
 	if (!instance || isLocked())
 		return false;
 
-	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
+	auto graphicsBackend = GraphicsAPI::getInstance()->getBackendType();
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 		destroyVkSampler(instance);
 	else GARDEN_UNREACHABLE();
@@ -58,11 +58,11 @@ void Sampler::setDebugName(const string& name)
 {
 	Resource::setDebugName(name);
 
-	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
+	auto graphicsBackend = GraphicsAPI::getInstance()->getBackendType();
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
 		#if GARDEN_USE_GAPI_VALIDATIONS
-		auto vulkanAPI = VulkanAPI::get();
+		auto vulkanAPI = VulkanAPI::getInstance();
 		if (!vulkanAPI->features.debugUtils)
 			return;
 

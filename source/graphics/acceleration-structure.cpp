@@ -26,7 +26,7 @@ bool AccelerationStructure::destroy()
 	if (!instance || isLocked())
 		return false;
 
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 
 	#if GARDEN_DEBUG
 	if (!graphicsAPI->forceResourceDestroy)
@@ -36,17 +36,13 @@ bool AccelerationStructure::destroy()
 			if (!ResourceExt::getInstance(descriptorSet))
 				continue;
 
-			const auto& descriptorUniforms = descriptorSet.getUniforms();
-			auto pipelineView = graphicsAPI->getPipelineView(
-				descriptorSet.getPipelineType(), descriptorSet.getPipeline());
-			if (pipelineView->isBindless())
-				continue;
+			const auto& dsUniforms = descriptorSet.getUniforms();
+			const auto& pipelineUniforms = descriptorSet.getPipelineUniforms();
 
-			const auto& uniforms = pipelineView->getUniforms();
-			for (const auto& pair : descriptorUniforms)
+			for (const auto& pair : dsUniforms)
 			{
-				const auto uniform = uniforms.find(pair.first);
-				if (uniform == uniforms.end() || !isBufferType(uniform->second.type) ||
+				const auto uniform = pipelineUniforms.find(pair.first);
+				if (uniform == pipelineUniforms.end() || !isBufferType(uniform->second.type) ||
 					uniform->second.descriptorSetIndex != descriptorSet.getIndex())
 				{
 					continue;
@@ -85,7 +81,7 @@ bool AccelerationStructure::destroy()
 	auto graphicsBackend = graphicsAPI->getBackendType();
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
-		auto vulkanAPI = VulkanAPI::get();
+		auto vulkanAPI = VulkanAPI::getInstance();
 		if (vulkanAPI->forceResourceDestroy)
 		{
 			vulkanAPI->device.destroyAccelerationStructureKHR((VkAccelerationStructureKHR)instance);
@@ -113,7 +109,7 @@ bool AccelerationStructure::destroy()
 				else data->queryPoolRef--;
 			}
 		}
-		free(buildData);
+		delete[] (uint8*)buildData;
 	}
 	else GARDEN_UNREACHABLE();
 
@@ -122,14 +118,14 @@ bool AccelerationStructure::destroy()
 
 bool AccelerationStructure::isStorageReady() const noexcept
 {
-	auto storageView = GraphicsAPI::get()->bufferPool.get(storageBuffer);
+	auto storageView = GraphicsAPI::getInstance()->bufferPool.get(storageBuffer);
 	return storageView->isReady();
 }
 
 //**********************************************************************************************************************
 void AccelerationStructure::build(ID<Buffer> scratchBuffer)
 {
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
 	GARDEN_ASSERT_MSG(currentCommandBuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(currentCommandBuffer->getType() != CommandBufferType::Frame, "Assert " + debugName);
@@ -202,7 +198,7 @@ void AccelerationStructure::setDebugName(const string& name)
 {
 	Resource::setDebugName(name);
 
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	auto storageView = graphicsAPI->bufferPool.get(storageBuffer);
 	storageView->setDebugName("asBuffer.storage." + name);
 
@@ -210,7 +206,7 @@ void AccelerationStructure::setDebugName(const string& name)
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
 		#if GARDEN_USE_GAPI_VALIDATIONS
-		auto vulkanAPI = VulkanAPI::get();
+		auto vulkanAPI = VulkanAPI::getInstance();
 		if (!vulkanAPI->features.debugUtils || !instance)
 			return;
 
@@ -227,7 +223,7 @@ void AccelerationStructure::setDebugName(const string& name)
 void AccelerationStructure::_createVkInstance(uint64 size, uint8 type, 
 	BuildFlagsAS flags, ID<Buffer>& storageBuffer, void*& instance, uint64& deviceAddress)
 {
-	auto vulkanAPI = VulkanAPI::get();
+	auto vulkanAPI = VulkanAPI::getInstance();
 	auto storageUsage = Buffer::Usage::StorageAS | Buffer::Usage::DeviceAddress;
 	if (hasAnyFlag(flags, BuildFlagsAS::ComputeQ))
 		storageUsage |= Buffer::Usage::ComputeQ;

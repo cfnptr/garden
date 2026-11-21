@@ -89,12 +89,12 @@ public:
 
 	#if GARDEN_DEBUG || GARDEN_EDITOR
 	/**
-	 * @brief Returns resource debug name. (Debug Only)
+	 * @brief Returns resource debug name. (Debug Only!)
 	 * @details Also visible inside GPU profilers. (RenderDoc, Nsight, RGP, Xcode...)
 	 */
 	const string& getDebugName() const noexcept { return debugName; }
 	/**
-	 * @brief Sets resource debug name. (Debug Only)
+	 * @brief Sets resource debug name. (Debug Only!)
 	 * @param[in] name debug resource name
 	 */
 	virtual void setDebugName(const string& name)

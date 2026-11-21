@@ -22,7 +22,7 @@ Memory::BarrierState Memory::toBarrierState(AccessFlags accessFlags, PipelineSta
 {
 	BarrierState state;
 
-	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
+	auto graphicsBackend = GraphicsAPI::getInstance()->getBackendType();
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
 		state.access = (uint64)toVkAccessFlags(accessFlags);

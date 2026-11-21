@@ -18,12 +18,14 @@
 using namespace garden;
 using namespace garden::graphics;
 
+typedef absl::flat_hash_map<string, vk::Sampler> ImmutableSamplers;
+
 //**********************************************************************************************************************
 static vector<void*> createVkPipelineSamplers(const Pipeline::Uniforms& uniforms, 
-	const Pipeline::SamplerStates& samplerStates, absl::flat_hash_map<string, vk::Sampler>& immutableSamplers, 
+	const Pipeline::SamplerStates& samplerStates, ImmutableSamplers& immutableSamplers, 
 	const fs::path& pipelinePath, const Pipeline::SamplerStates& samplerStateOverrides)
 {
-	auto vulkanAPI = VulkanAPI::get();
+	auto vulkanAPI = VulkanAPI::getInstance();
 	vector<void*> samplers(samplerStates.size());
 	auto samplerData = samplers.data();
 
@@ -51,8 +53,8 @@ static vector<void*> createVkPipelineSamplers(const Pipeline::Uniforms& uniforms
 		if (vulkanAPI->features.debugUtils)
 		{
 			auto name = "sampler." + pipelinePath.generic_string() + "." + it->first;
-			vk::DebugUtilsObjectNameInfoEXT nameInfo(
-				vk::ObjectType::eSampler, (uint64)(VkSampler)sampler, name.c_str());
+			vk::DebugUtilsObjectNameInfoEXT nameInfo(vk::ObjectType::eSampler, 
+				(uint64)(VkSampler)sampler, name.c_str());
 			vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo);
 		}
 		#endif
@@ -62,143 +64,75 @@ static vector<void*> createVkPipelineSamplers(const Pipeline::Uniforms& uniforms
 }
 
 //**********************************************************************************************************************
-static void createVkDescriptorSetLayouts(vector<void*>& descriptorSetLayouts, vector<void*>& descriptorPools,
-	const Pipeline::Uniforms& pipelineUniforms, const absl::flat_hash_map<string, vk::Sampler>& immutableSamplers,
+static void createVkDescriptorSetLayouts(vector<void*>& descriptorSetLayouts, vector<Hash128>* layoutHashes,
+	const Pipeline::Uniforms& pipelineUniforms, const ImmutableSamplers& immutableSamplers,
 	const fs::path& pipelinePath, uint32 maxBindlessCount, uint8 descriptorSetCount)
 {
-	auto vulkanAPI = VulkanAPI::get();
-	vector<vk::DescriptorSetLayoutBinding> descriptorSetBindings(pipelineUniforms.size());
-	vector<vk::DescriptorBindingFlags> descriptorBindingFlags;
+	auto vulkanAPI = VulkanAPI::getInstance();
+	vector<vk::DescriptorSetLayoutBinding> layoutBindings;
 	vector<vector<vk::Sampler>> samplerArrays;
-	vector<vk::DescriptorPoolSize> descriptorPoolSizes;
+	layoutBindings.reserve(pipelineUniforms.size());
 	descriptorSetLayouts.reserve(descriptorSetCount);
-	descriptorPools.reserve(descriptorSetCount);
+
+	#if GARDEN_DEBUG || GARDEN_EDITOR
+	layoutHashes->reserve(descriptorSetCount);
+	#endif
 
 	for (uint8 dsIndex = 0; dsIndex < descriptorSetCount; dsIndex++)
 	{
-		uint32 bindingIndex = 0; auto isBindless = false;
+		#if GARDEN_DEBUG || GARDEN_EDITOR
+		absl::btree_map<string_view, PipelineUniform> hashUniforms;
+		auto hashState = Hash128::createState(); // Note: because may be used async.
+		#endif
+
 		for	(const auto& uniformPair : pipelineUniforms)
 		{
 			auto pipelineUniform = uniformPair.second;
 			if (pipelineUniform.descriptorSetIndex != dsIndex)
 				continue;
 
-			auto& descriptorSetBinding = descriptorSetBindings[bindingIndex];
-			descriptorSetBinding.binding = (uint32)pipelineUniform.bindingIndex;
-			descriptorSetBinding.descriptorType = toVkDescriptorType(pipelineUniform.type);
-			descriptorSetBinding.stageFlags = toVkShaderStages(pipelineUniform.pipelineStages);
+			vk::DescriptorSetLayoutBinding layoutBinding((uint32)pipelineUniform.bindingIndex, 
+				toVkDescriptorType(pipelineUniform.type), 0, toVkShaderStages(pipelineUniform.pipelineStages));
 
+			const auto& uniformName = uniformPair.first;
 			if (pipelineUniform.arraySize > 0)
 			{
 				if (!pipelineUniform.isMutable && pipelineUniform.isSamplerType)
 				{
+					auto& immutableSampler = immutableSamplers.at(uniformName);
 					if (pipelineUniform.arraySize > 1)
 					{
 						// TODO: allow to specify sampler states for separate uniform array elements?
-						vector<vk::Sampler> samplers(pipelineUniform.arraySize, *&immutableSamplers.at(uniformPair.first));
+						vector<vk::Sampler> samplers(pipelineUniform.arraySize, immutableSampler);
 						samplerArrays.push_back(std::move(samplers));
-						descriptorSetBinding.pImmutableSamplers = samplerArrays[samplerArrays.size() - 1].data();
+						layoutBinding.pImmutableSamplers = samplerArrays.back().data();
 					}
-					else
-					{
-						descriptorSetBinding.pImmutableSamplers = &immutableSamplers.at(uniformPair.first);
-					}
+					else layoutBinding.pImmutableSamplers = &immutableSampler;
 				}
-				descriptorSetBinding.descriptorCount = pipelineUniform.arraySize;
+				layoutBinding.descriptorCount = pipelineUniform.arraySize;
 			}
 			else
 			{
-				GARDEN_ASSERT_MSG(maxBindlessCount > 0, "Can't use bindless uniforms inside non bindless pipeline");
-
-				if (descriptorBindingFlags.size() < pipelineUniforms.size())
-					descriptorBindingFlags.resize(pipelineUniforms.size());
-				if (descriptorPoolSizes.empty())
-				{
-					descriptorPoolSizes =
-					{
-						vk::DescriptorPoolSize(vk::DescriptorType::eCombinedImageSampler, 0),
-						vk::DescriptorPoolSize(vk::DescriptorType::eStorageImage, 0),
-						vk::DescriptorPoolSize(vk::DescriptorType::eUniformBuffer, 0),
-						vk::DescriptorPoolSize(vk::DescriptorType::eStorageBuffer, 0),
-						vk::DescriptorPoolSize(vk::DescriptorType::eAccelerationStructureKHR, 0),
-					};
-				}
-
-				switch (descriptorSetBinding.descriptorType)
-				{
-				case vk::DescriptorType::eCombinedImageSampler:
-					descriptorPoolSizes[0].descriptorCount += maxBindlessCount; break;
-				case vk::DescriptorType::eStorageImage:
-					descriptorPoolSizes[1].descriptorCount += maxBindlessCount; break;
-				case vk::DescriptorType::eUniformBuffer:
-					descriptorPoolSizes[2].descriptorCount += maxBindlessCount; break;
-				case vk::DescriptorType::eStorageBuffer:
-					descriptorPoolSizes[3].descriptorCount += maxBindlessCount; break;
-				case vk::DescriptorType::eAccelerationStructureKHR:
-					descriptorPoolSizes[4].descriptorCount += maxBindlessCount; break;
-				default: GARDEN_UNREACHABLE();
-				}
-
 				if (!pipelineUniform.isMutable && pipelineUniform.isSamplerType)
 				{
-					vector<vk::Sampler> samplers(maxBindlessCount, *&immutableSamplers.at(uniformPair.first));
+					auto& immutableSampler = immutableSamplers.at(uniformName);
+					vector<vk::Sampler> samplers(maxBindlessCount, immutableSampler);
 					samplerArrays.push_back(std::move(samplers));
-					descriptorSetBinding.pImmutableSamplers = samplerArrays[samplerArrays.size() - 1].data();
+					layoutBinding.pImmutableSamplers = samplerArrays.back().data();
 				}
-
-				descriptorBindingFlags[bindingIndex] = vk::DescriptorBindingFlagBits::eUpdateAfterBind | 
-					vk::DescriptorBindingFlagBits::ePartiallyBound;
-				descriptorSetBinding.descriptorCount = maxBindlessCount;
-				isBindless = true;
+				layoutBinding.descriptorCount = maxBindlessCount;
 			}
+			layoutBindings.push_back(layoutBinding);
 
-			bindingIndex++;
-		}
-
-		vk::DescriptorSetLayoutCreateInfo descriptorSetLayoutInfo({}, bindingIndex, descriptorSetBindings.data());
-		vk::DescriptorSetLayoutBindingFlagsCreateInfo descriptorSetFlagsInfo;
-
-		if (isBindless)
-		{
-			descriptorSetFlagsInfo.bindingCount = bindingIndex;
-			descriptorSetFlagsInfo.pBindingFlags = descriptorBindingFlags.data();
-			descriptorSetLayoutInfo.flags = vk::DescriptorSetLayoutCreateFlagBits::eUpdateAfterBindPool;
-			descriptorSetLayoutInfo.pNext = &descriptorSetFlagsInfo;
-	
-			uint32 maxSetCount = 0; 
-			for (auto i = descriptorPoolSizes.begin(); i != descriptorPoolSizes.end(); i++)
-			{
-				if (i->descriptorCount > 0)
-				{
-					maxSetCount += i->descriptorCount;
-					continue;
-				}
-
-				auto size = descriptorPoolSizes.size();
-				if (size > 0) i = descriptorPoolSizes.end() - 1;
-				descriptorPoolSizes.resize(size - 1);
-			}
-			GARDEN_ASSERT(maxSetCount > 0);
-
-			vk::DescriptorPoolCreateInfo descriptorPoolInfo(vk::DescriptorPoolCreateFlagBits::eUpdateAfterBind, 
-				maxSetCount, (uint32)descriptorPoolSizes.size(), descriptorPoolSizes.data());
-			descriptorPools.push_back(vulkanAPI->device.createDescriptorPool(descriptorPoolInfo));
-			descriptorPoolSizes.clear();
-
-			#if GARDEN_USE_GAPI_VALIDATIONS
-			if (vulkanAPI->features.debugUtils)
-			{
-				auto name = "descriptorPool." + pipelinePath.generic_string() + to_string(dsIndex);
-				vk::DebugUtilsObjectNameInfoEXT nameInfo(vk::ObjectType::eDescriptorPool,
-					(uint64)(VkSampler)descriptorPools[dsIndex], name.c_str());
-				vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo);
-			}
+			#if GARDEN_DEBUG
+			hashUniforms.emplace(uniformName, pipelineUniform);
 			#endif
 		}
-		else descriptorPools.push_back(nullptr);
 
+		vk::DescriptorSetLayoutCreateInfo descriptorSetLayoutInfo({}, 
+			(uint32)layoutBindings.size(), layoutBindings.data());
 		descriptorSetLayouts.push_back(vulkanAPI->device.createDescriptorSetLayout(descriptorSetLayoutInfo));
-		samplerArrays.clear();
+		layoutBindings.clear(); samplerArrays.clear();
 
 		#if GARDEN_USE_GAPI_VALIDATIONS
 		if (vulkanAPI->features.debugUtils)
@@ -209,6 +143,13 @@ static void createVkDescriptorSetLayouts(vector<void*>& descriptorSetLayouts, ve
 			vulkanAPI->device.setDebugUtilsObjectNameEXT(nameInfo);
 		}
 		#endif
+
+		#if GARDEN_DEBUG || GARDEN_EDITOR
+		for	(const auto& pair : hashUniforms)
+			Hash128::updateState(hashState, &pair.second, sizeof(PipelineUniform));
+		layoutHashes->push_back(Hash128::digestState(hashState));
+		Hash128::destroyState(hashState);
+		#endif
 	}
 }
 
@@ -217,6 +158,7 @@ static vk::PipelineLayout createVkPipelineLayout(uint16 pushConstantsSize, Pipel
 	const vector<void*>& descriptorSetLayouts, const fs::path& pipelinePath)
 {
 	vector<vk::PushConstantRange> pushConstantRanges;
+	pushConstantRanges.reserve(pipelineStageCount);
 
 	if (hasAnyFlag(pushConstantStages, PipelineStage::Vertex))
 		pushConstantRanges.emplace_back(vk::ShaderStageFlagBits::eVertex, 0, pushConstantsSize);
@@ -250,7 +192,7 @@ static vk::PipelineLayout createVkPipelineLayout(uint16 pushConstantsSize, Pipel
 		pipelineLayoutInfo.pSetLayouts = (const vk::DescriptorSetLayout*)descriptorSetLayouts.data();
 	}
 
-	auto vulkanAPI = VulkanAPI::get();
+	auto vulkanAPI = VulkanAPI::getInstance();
 	auto layout = vulkanAPI->device.createPipelineLayout(pipelineLayoutInfo);
 
 	#if GARDEN_USE_GAPI_VALIDATIONS
@@ -268,16 +210,16 @@ static vk::PipelineLayout createVkPipelineLayout(uint16 pushConstantsSize, Pipel
 
 //**********************************************************************************************************************
 static void destroyVkPipeline(void* instance, void* pipelineLayout, const vector<void*>& samplers,
-	const vector<void*>& descriptorSetLayouts, const vector<void*>& descriptorPools, uint8 variantCount)
+	const vector<void*>& descriptorSetLayouts, uint8 variantCount)
 {
-	auto vulkanAPI = VulkanAPI::get();
+	auto vulkanAPI = VulkanAPI::getInstance();
 	if (vulkanAPI->forceResourceDestroy)
 	{
 		if (variantCount > 1)
 		{
 			for (uint8 i = 0; i < variantCount; i++)
 				vulkanAPI->device.destroyPipeline(((VkPipeline*)instance)[i]);
-			free(instance);
+			delete[] (vk::Pipeline*)instance;
 		}
 		else
 		{
@@ -291,13 +233,6 @@ static void destroyVkPipeline(void* instance, void* pipelineLayout, const vector
 			vulkanAPI->device.destroyDescriptorSetLayout(vk::DescriptorSetLayout(
 				(VkDescriptorSetLayout)descriptorSetLayout));
 		}
-		for (auto descriptorPool : descriptorPools)
-		{
-			if (!descriptorPool)
-				continue;
-			vulkanAPI->device.destroyDescriptorPool(vk::DescriptorPool(
-				(VkDescriptorPool)descriptorPool));
-		}
 
 		for (auto sampler : samplers)
 			vulkanAPI->device.destroySampler((VkSampler)sampler);
@@ -309,14 +244,6 @@ static void destroyVkPipeline(void* instance, void* pipelineLayout, const vector
 
 		for (auto descriptorSetLayout : descriptorSetLayouts)
 			vulkanAPI->destroyResource(GraphicsAPI::DestroyResourceType::DescriptorSetLayout, descriptorSetLayout);
-
-		for (auto descriptorPool : descriptorPools)
-		{
-			if (!descriptorPool)
-				continue;
-			vulkanAPI->destroyResource(GraphicsAPI::DestroyResourceType::DescriptorPool, descriptorPool);
-		}
-
 		for (auto sampler : samplers)
 			vulkanAPI->destroyResource(GraphicsAPI::DestroyResourceType::Sampler, sampler);
 	}
@@ -325,7 +252,7 @@ static void destroyVkPipeline(void* instance, void* pipelineLayout, const vector
 //**********************************************************************************************************************
 static vector<void*> createVkShaders(const raw_vector<uint8>* codeArray, uint8 shaderCount, const fs::path& pipelinePath)
 {
-	auto vulkanAPI = VulkanAPI::get();
+	auto vulkanAPI = VulkanAPI::getInstance();
 	vector<void*> shaders(shaderCount);
 	auto shaderData = shaders.data();
 
@@ -356,23 +283,25 @@ Pipeline::Pipeline(CreateData& createData)
 	this->pipelineVersion = createData.pipelineVersion;
 	this->pushConstantStages = createData.pushConstantStages;
 	this->pushConstantsSize = createData.pushConstantsSize;
+	this->maxBindlessCount = createData.maxBindlessCount;
 	this->variantCount = createData.variantCount;
 
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	auto graphicsBackend = graphicsAPI->getBackendType();
 
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
-		absl::flat_hash_map<string, vk::Sampler> immutableSamplers;
+		ImmutableSamplers immutableSamplers;
 		this->samplers = createVkPipelineSamplers(uniforms, createData.samplerStates,
 			immutableSamplers, createData.shaderPath, createData.samplerStateOverrides);
 
 		if (createData.descriptorSetCount > 0)
 		{
-			createVkDescriptorSetLayouts(descriptorSetLayouts, descriptorPools, uniforms, immutableSamplers, 
+			vector<Hash128>* layoutHashes = GARDEN_DEBUG || GARDEN_EDITOR ? &this->layoutHashes : nullptr;
+			createVkDescriptorSetLayouts(descriptorSetLayouts, layoutHashes, uniforms, immutableSamplers, 
 				createData.shaderPath, createData.maxBindlessCount, createData.descriptorSetCount);
 		}
-		
+
 		this->pipelineLayout = createVkPipelineLayout(pushConstantsSize,
 			createData.pushConstantStages, descriptorSetLayouts, createData.shaderPath);
 	}
@@ -385,10 +314,10 @@ bool Pipeline::destroy()
 		return false;
 
 	#if GARDEN_DEBUG
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	if (!graphicsAPI->forceResourceDestroy)
 	{
-		auto pipelineInstance = graphicsAPI->getPipeline(type, this);
+		auto pipelineInstance = graphicsAPI->getPipeline(this, type);
 		for (auto& descriptorSet : graphicsAPI->descriptorSetPool)
 		{
 			if (!ResourceExt::getInstance(descriptorSet) || descriptorSet.getPipelineType() != type)
@@ -400,12 +329,9 @@ bool Pipeline::destroy()
 	}
 	#endif
 
-	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
+	auto graphicsBackend = GraphicsAPI::getInstance()->getBackendType();
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
-	{
-		destroyVkPipeline(instance, pipelineLayout, 
-			samplers, descriptorSetLayouts, descriptorPools, variantCount);
-	}
+		destroyVkPipeline(instance, pipelineLayout, samplers, descriptorSetLayouts, variantCount);
 	else GARDEN_UNREACHABLE();
 
 	return true;
@@ -413,17 +339,17 @@ bool Pipeline::destroy()
 
 vector<void*> Pipeline::createShaders(const raw_vector<uint8>* codeArray, uint8 shaderCount, const fs::path& pipelinePath)
 {
-	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
+	auto graphicsBackend = GraphicsAPI::getInstance()->getBackendType();
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 		return createVkShaders(codeArray, shaderCount, pipelinePath);
 	else GARDEN_UNREACHABLE();
 }
 void Pipeline::destroyShaders(const vector<void*>& shaders)
 {
-	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
+	auto graphicsBackend = GraphicsAPI::getInstance()->getBackendType();
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
-		auto vulkanAPI = VulkanAPI::get();
+		auto vulkanAPI = VulkanAPI::getInstance();
 		for (auto shader : shaders)
 			vulkanAPI->device.destroyShaderModule((VkShaderModule)shader);
 	}
@@ -454,8 +380,8 @@ void Pipeline::fillVkSpecConsts(const fs::path& path, void* specInfo, const Pipe
 	if (entryCount == 0)
 		return;
 
-	auto data = malloc<uint8>(dataSize);
-	auto entries = malloc<vk::SpecializationMapEntry>(entryCount);
+	auto data = new uint8[dataSize];
+	auto entries = new vk::SpecializationMapEntry[entryCount];
 
 	uint32 dataOffset = 0, itemIndex = 0;
 	if (variantCount > 1)
@@ -497,7 +423,7 @@ void Pipeline::fillVkSpecConsts(const fs::path& path, void* specInfo, const Pipe
 void Pipeline::freeVkSpecConsts(void* specInfo)
 {
 	auto info = (vk::SpecializationInfo*)specInfo;
-	free((void*)info->pData); free((void*)info->pMapEntries);
+	delete[] (uint8*)info->pData; delete[] info->pMapEntries;
 }
 void Pipeline::setVkVariantIndex(void* specInfo, uint8 variantIndex) noexcept
 {
@@ -508,7 +434,7 @@ void Pipeline::setVkVariantIndex(void* specInfo, uint8 variantIndex) noexcept
 //**********************************************************************************************************************
 void Pipeline::updateDescriptorsLock(const DescriptorSet::Range* ranges, uint8 rangeCount, int32 threadIndex)
 {
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
 	auto commandBufferType = currentCommandBuffer->getType();
 	if (commandBufferType == CommandBufferType::Frame)
@@ -520,8 +446,7 @@ void Pipeline::updateDescriptorsLock(const DescriptorSet::Range* ranges, uint8 r
 		currentCommandBuffer->lockResource(descriptorSet, threadIndex);
 
 		auto dsView = graphicsAPI->descriptorSetPool.get(descriptorSet);
-		auto dsPipelineView = graphicsAPI->getPipelineView(dsView->getPipelineType(), dsView->getPipeline());
-		const auto& pipelineUniforms = dsPipelineView->getUniforms();
+		const auto& pipelineUniforms = dsView->getPipelineUniforms();
 		const auto& dsUniforms = dsView->getUniforms();
 
 		for (const auto& dsUniform : dsUniforms)
@@ -623,14 +548,14 @@ void Pipeline::updateDescriptorsLock(const DescriptorSet::Range* ranges, uint8 r
 //**********************************************************************************************************************
 void Pipeline::bind(uint8 variant)
 {
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
 	GARDEN_ASSERT_MSG(variant < variantCount, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(!graphicsAPI->isRenderPassAsync, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(currentCommandBuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(isLoaded(), "Pipeline [" + debugName + "] is not loaded");
 
-	auto pipeline = graphicsAPI->getPipeline(type, this);
+	auto pipeline = graphicsAPI->getPipeline(this, type);
 	if (pipeline == graphicsAPI->currentPipelines.front() && type == graphicsAPI->currentPipelineTypes.front() &&
 		variant == graphicsAPI->currentPipelineVariants.front())
 	{
@@ -671,20 +596,20 @@ void Pipeline::bind(uint8 variant)
 //**********************************************************************************************************************
 void Pipeline::bindAsync(uint8 variant, int32 threadIndex)
 {
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
 	GARDEN_ASSERT_MSG(variant < variantCount, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(graphicsAPI->isRenderPassAsync, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(currentCommandBuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(isLoaded(), "Pipeline [" + debugName + "] is not loaded");
 
-	auto pipeline = graphicsAPI->getPipeline(type, this);
+	auto pipeline = graphicsAPI->getPipeline(this, type);
 	auto autoThreadCount = graphicsAPI->calcAutoThreadCount(threadIndex);
 	auto graphicsBackend = graphicsAPI->getBackendType();
 
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
-		auto vulkanAPI = VulkanAPI::get();
+		auto vulkanAPI = VulkanAPI::getInstance();
 		auto vkBindPoint = toVkPipelineBindPoint(type);
 		auto& secondaryCommandBuffers = vulkanAPI->secondaryCommandBuffers;
 	
@@ -722,13 +647,14 @@ void Pipeline::bindAsync(uint8 variant, int32 threadIndex)
 //**********************************************************************************************************************
 void Pipeline::bindDescriptorSets(const DescriptorSet::Range* ranges, uint8 rangeCount)
 {
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
 	GARDEN_ASSERT_MSG(ranges, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(rangeCount > 0, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(rangeCount <= getDescriptorSetCount(), "Assert " + debugName);
 	GARDEN_ASSERT_MSG(!graphicsAPI->isRenderPassAsync, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(currentCommandBuffer, "Assert " + debugName);
-	GARDEN_ASSERT_MSG(ID<Pipeline>(graphicsAPI->getPipeline(type, this)) == 
+	GARDEN_ASSERT_MSG(ID<Pipeline>(graphicsAPI->getPipeline(this, type)) == 
 		graphicsAPI->currentPipelines.front(), "Assert " + debugName);
 	GARDEN_ASSERT_MSG(isLoaded(), "Pipeline [" + debugName + "] is not loaded");
 
@@ -741,9 +667,8 @@ void Pipeline::bindDescriptorSets(const DescriptorSet::Range* ranges, uint8 rang
 		auto descriptorSetView = graphicsAPI->descriptorSetPool.get(descriptorSetRange.set);
 		GARDEN_ASSERT_MSG(descriptorSetRange.offset + descriptorSetRange.count <= descriptorSetView->getSetCount(), 
 			"Out of pipeline [" + debugName + "] descriptor set count range");
-		auto pipeline = graphicsAPI->getPipeline(descriptorSetView->getPipelineType(), this);
-		GARDEN_ASSERT_MSG(pipeline == descriptorSetView->getPipeline(), "Descriptor set [" + 
-			to_string(i) +  "] pipeline is different from this pipeline [" + debugName + "]");
+		GARDEN_ASSERT_MSG(descriptorSetView->getLayoutHash() == layoutHashes[i], "Descriptor set [" + 
+			descriptorSetView->getDebugName() +  "] layout hash is different from this pipeline [" + debugName + "]");
 	}
 	#endif
 	
@@ -757,10 +682,11 @@ void Pipeline::bindDescriptorSets(const DescriptorSet::Range* ranges, uint8 rang
 //**********************************************************************************************************************
 void Pipeline::bindDescriptorSetsAsync(const DescriptorSet::Range* ranges, uint8 rangeCount, int32 threadIndex)
 {
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
 	GARDEN_ASSERT_MSG(ranges, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(rangeCount > 0, "Assert " + debugName);
+	GARDEN_ASSERT_MSG(rangeCount <= getDescriptorSetCount(), "Assert " + debugName);
 	GARDEN_ASSERT_MSG(graphicsAPI->isRenderPassAsync, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(currentCommandBuffer, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(isLoaded(), "Pipeline [" + debugName + "] is not loaded");
@@ -769,14 +695,13 @@ void Pipeline::bindDescriptorSetsAsync(const DescriptorSet::Range* ranges, uint8
 	for (uint8 i = 0; i < rangeCount; i++)
 	{
 		auto descriptorSetRange = ranges[i];
-		GARDEN_ASSERT_MSG(descriptorSetRange.set,"Pipeline [" + debugName + "] "
+		GARDEN_ASSERT_MSG(descriptorSetRange.set, "Pipeline [" + debugName + "] "
 			"descriptor set [" + to_string(i) +  "] is null");
-		auto thisPipeline = graphicsAPI->getPipeline(type, this);
 		auto descriptorSetView = graphicsAPI->descriptorSetPool.get(descriptorSetRange.set);
-		GARDEN_ASSERT_MSG(thisPipeline == descriptorSetView->getPipeline(), "Descriptor set [" + 
-			to_string(i) +  "] pipeline is different from this pipeline [" + debugName + "]");
 		GARDEN_ASSERT_MSG(descriptorSetRange.offset + descriptorSetRange.count <= descriptorSetView->getSetCount(),
 			"Out of pipeline [" + debugName + "] descriptor set count range");
+		GARDEN_ASSERT_MSG(descriptorSetView->getLayoutHash() == layoutHashes[i], "Descriptor set [" + 
+			descriptorSetView->getDebugName() +  "] layout hash is different from this pipeline [" + debugName + "]");
 	}
 	#endif
 
@@ -785,13 +710,11 @@ void Pipeline::bindDescriptorSetsAsync(const DescriptorSet::Range* ranges, uint8
 	command.ranges = ranges;
 
 	auto autoThreadCount = graphicsAPI->calcAutoThreadCount(threadIndex);
-	GARDEN_ASSERT_MSG(ID<Pipeline>(graphicsAPI->getPipeline(type, this)) == 
-		graphicsAPI->currentPipelines[threadIndex], "Assert " + debugName);
 	auto graphicsBackend = graphicsAPI->getBackendType();
 
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
-		auto vulkanAPI = VulkanAPI::get();
+		auto vulkanAPI = VulkanAPI::getInstance();
 		auto& bindDescriptorSets = vulkanAPI->bindDescriptorSets[threadIndex];
 
 		for (uint8 i = 0; i < rangeCount; i++)
@@ -803,8 +726,8 @@ void Pipeline::bindDescriptorSetsAsync(const DescriptorSet::Range* ranges, uint8
 			if (descriptorSetView->getSetCount() > 1)
 			{
 				auto setCount = descriptorSetRange.offset + descriptorSetRange.count;
-				for (uint32 j = descriptorSetRange.offset; j < setCount; j++)
-					bindDescriptorSets.push_back(instance[j]);
+				for (uint32 set = descriptorSetRange.offset; set < setCount; set++)
+					bindDescriptorSets.push_back(instance[set]);
 			}
 			else bindDescriptorSets.push_back((VkDescriptorSet)instance);
 		}
@@ -814,9 +737,13 @@ void Pipeline::bindDescriptorSetsAsync(const DescriptorSet::Range* ranges, uint8
 		auto vkPipelineLayout = vk::PipelineLayout((VkPipelineLayout)pipelineLayout);
 		auto bindDescriptorSetData = bindDescriptorSets.data();
 		auto bindDescriptorSetCount = (uint32)bindDescriptorSets.size();
+		#if GARDEN_DEBUG
+		auto pipeline = ID<Pipeline>(graphicsAPI->getPipeline(this, type));
+		#endif
 
 		while (threadIndex < autoThreadCount)
 		{
+			GARDEN_ASSERT_MSG(pipeline == graphicsAPI->currentPipelines[threadIndex], "Assert " + debugName);
 			secondaryCommandBuffers[threadIndex].bindDescriptorSets(bindPoint, 
 				vkPipelineLayout, 0, bindDescriptorSetCount, bindDescriptorSetData, 0, nullptr);
 			currentCommandBuffer->addCommand(command, threadIndex);
@@ -831,7 +758,7 @@ void Pipeline::bindDescriptorSetsAsync(const DescriptorSet::Range* ranges, uint8
 //**********************************************************************************************************************
 void Pipeline::pushConstants(const void* data)
 {
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
 	GARDEN_ASSERT_MSG(data, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(pushConstantsSize > 0, "Assert " + debugName);
@@ -848,7 +775,7 @@ void Pipeline::pushConstants(const void* data)
 }
 void Pipeline::pushConstantsAsync(const void* data, int32 threadIndex)
 {
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	GARDEN_ASSERT_MSG(data, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(pushConstantsSize > 0, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(threadIndex >= 0, "Assert " + debugName);
@@ -861,7 +788,7 @@ void Pipeline::pushConstantsAsync(const void* data, int32 threadIndex)
 
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
-		VulkanAPI::get()->secondaryCommandBuffers[threadIndex].pushConstants(
+		VulkanAPI::getInstance()->secondaryCommandBuffers[threadIndex].pushConstants(
 			vk::PipelineLayout((VkPipelineLayout)pipelineLayout), 
 			toVkShaderStages(pushConstantStages), 0, pushConstantsSize, data);
 	}

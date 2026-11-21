@@ -23,6 +23,7 @@
 
 #include "math/brdf.hpp"
 #include "math/sh.hpp"
+#include <iostream>
 
 using namespace garden;
 using namespace math::sh;
@@ -40,14 +41,11 @@ namespace garden::graphics
 	};
 }
 
-#if 0 // Note: Used to precompute Ki coeffs.
-#include <iostream>
-
-static uint32 factorial(uint32 x) noexcept
+static constexpr uint32 factorial(uint32 x) noexcept
 {
 	return x == 0 ? 1 : x * factorial(x - 1);
 }
-static double factorial(int32 n, int32 d) noexcept
+static constexpr double factorial(int32 n, int32 d) noexcept
 {
 	d = max(1, d); n = max(1, n);
 
@@ -72,7 +70,7 @@ static double computeKml(int32 m, int32 l) noexcept
 	auto k = (l * 2 + 1) * factorial(l - m, l + m);
 	return sqrt(k) * (M_2_SQRTPI * 0.25);
 }
-static double computeTruncatedCosSh(uint32 l) noexcept
+static constexpr double computeTruncatedCosSh(uint32 l) noexcept
 {
 	if (l == 0) return M_PI;
 	else if (l == 1) return 2.0 * M_PI / 3.0;
@@ -112,7 +110,6 @@ static void computeKi(int32 bandCount) noexcept
 	for (uint32 i = 0; i < sh3Count; i++)
 		cout << i << ". " << setprecision(36) << ki[i] << "\n";
 }
-#endif
 
 //**********************************************************************************************************************
 static constexpr float pow5(float x) noexcept

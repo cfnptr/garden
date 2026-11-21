@@ -216,7 +216,7 @@ void ImGuiRenderSystem::preInit()
 	ECSM_SUBSCRIBE_TO_EVENT("Input", ImGuiRenderSystem::input);
 
 	auto& io = ImGui::GetIO();
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	auto inputSystem = InputSystem::getInstance();
 	auto graphicsSystem = GraphicsSystem::getInstance();
 	auto windowSize = inputSystem->getWindowSize();

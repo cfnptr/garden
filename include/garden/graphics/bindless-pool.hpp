@@ -14,7 +14,7 @@
 
 /***********************************************************************************************************************
  * @file
- * @brief Bindless graphics resource pool functions.
+ * @brief Bindless descriptor set resource pool functions.
  */
 
 #pragma once
@@ -26,7 +26,8 @@ namespace garden::graphics
 {
 
 /**
- * @brief Bindless graphics resource pool. 
+ * @brief Bindless descriptor set resource pool.
+ * @details Allows to create one huge global descriptor set with all scene images and buffers.
  */
 class BindlessPool final
 {
@@ -37,7 +38,7 @@ class BindlessPool final
 		FreeAllocs freeAllocs;
 		uint32 occupancy = 0;
 	};
-	
+
 	absl::flat_hash_map<string, UniformData> uniformData;
 	ID<DescriptorSet> descriptorSet = {};
 
@@ -88,7 +89,6 @@ public:
 	BindlessPool(ID<RayTracingPipeline> rayTracingPipeline, DescriptorSet::Uniforms&& uniforms = {}, 
 		DescriptorSet::Samplers&& samplers = {}, uint8 index = 0) : BindlessPool(ID<Pipeline>(rayTracingPipeline), 
 		PipelineType::RayTracing, std::move(uniforms), std::move(samplers), index) { }
-
 	/**
 	 * @brief Creates a new empty bindless pool instance.
 	 */

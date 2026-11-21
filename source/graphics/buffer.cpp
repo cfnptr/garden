@@ -90,7 +90,7 @@ static void createVkBuffer(Buffer::Usage usage, Buffer::CpuAccess cpuAccess, Buf
 	bufferInfo.queueFamilyIndexCount = 0;
 	bufferInfo.pQueueFamilyIndices = nullptr;
 
-	auto vulkanAPI = VulkanAPI::get();
+	auto vulkanAPI = VulkanAPI::getInstance();
 
 	uint32 queueFamilyIndices[3];
 	if (hasAnyFlag(usage, Buffer::Usage::TransferQ | Buffer::Usage::ComputeQ))
@@ -146,7 +146,7 @@ static void createVkBuffer(Buffer::Usage usage, Buffer::CpuAccess cpuAccess, Buf
 	if (hasAnyFlag(usage, Buffer::Usage::DeviceAddress))
 	{
 		vk::BufferDeviceAddressInfo info(vmaInstance);
-		deviceAddress = (uint64)VulkanAPI::get()->device.getBufferAddress(info);
+		deviceAddress = (uint64)VulkanAPI::getInstance()->device.getBufferAddress(info);
 	}
 }
 
@@ -156,7 +156,7 @@ Buffer::Buffer(Usage usage, CpuAccess cpuAccess, Location location, Strategy str
 {
 	GARDEN_ASSERT(size > 0);
 
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	if (!graphicsAPI->hasRayTracing() && hasAnyFlag(usage, Buffer::Usage::StorageAS | 
 		Buffer::Usage::BuildInputAS | Buffer::Usage::SBT))
 	{
@@ -177,7 +177,7 @@ bool Buffer::destroy()
 	if (!instance || isLocked())
 		return false;
 
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 
 	#if GARDEN_DEBUG
 	if (!graphicsAPI->forceResourceDestroy)
@@ -188,17 +188,13 @@ bool Buffer::destroy()
 			if (!ResourceExt::getInstance(descriptorSet))
 				continue;
 
-			const auto& descriptorUniforms = descriptorSet.getUniforms();
-			auto pipelineView = graphicsAPI->getPipelineView(
-				descriptorSet.getPipelineType(), descriptorSet.getPipeline());
-			if (pipelineView->isBindless())
-				continue;
+			const auto& dsUniforms = descriptorSet.getUniforms();
+			const auto& pipelineUniforms = descriptorSet.getPipelineUniforms();
 
-			const auto& uniforms = pipelineView->getUniforms();
-			for (const auto& pair : descriptorUniforms)
+			for (const auto& pair : dsUniforms)
 			{
-				const auto uniform = uniforms.find(pair.first);
-				if (uniform == uniforms.end() || !isBufferType(uniform->second.type) ||
+				const auto uniform = pipelineUniforms.find(pair.first);
+				if (uniform == pipelineUniforms.end() || !isBufferType(uniform->second.type) ||
 					uniform->second.descriptorSetIndex != descriptorSet.getIndex())
 				{
 					continue;
@@ -222,7 +218,7 @@ bool Buffer::destroy()
 	auto graphicsBackend = graphicsAPI->getBackendType();
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
-		auto vulkanAPI = VulkanAPI::get();
+		auto vulkanAPI = VulkanAPI::getInstance();
 		if (vulkanAPI->forceResourceDestroy)
 			vmaDestroyBuffer(vulkanAPI->memoryAllocator, (VkBuffer)instance, (VmaAllocation)allocation);
 		else vulkanAPI->destroyResource(GraphicsAPI::DestroyResourceType::Buffer, instance, allocation);
@@ -239,10 +235,10 @@ void Buffer::invalidate(uint64 size, uint64 offset)
 	GARDEN_ASSERT_MSG(map, "Buffer [" + debugName + "] is not mappable");
 	GARDEN_ASSERT_MSG(isLoaded(), "Buffer [" + debugName + "] is not loaded");
 
-	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
+	auto graphicsBackend = GraphicsAPI::getInstance()->getBackendType();
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
-		auto result = vmaInvalidateAllocation(VulkanAPI::get()->memoryAllocator,
+		auto result = vmaInvalidateAllocation(VulkanAPI::getInstance()->memoryAllocator,
 			(VmaAllocation)allocation, offset, size == 0 ? VK_WHOLE_SIZE : size);
 		if (result != VK_SUCCESS)
 			throw GardenError("Failed to invalidate buffer memory. (error: " + to_string(result) + ")");
@@ -255,10 +251,10 @@ void Buffer::flush(uint64 size, uint64 offset)
 	GARDEN_ASSERT_MSG(map, "Buffer [" + debugName + "] is not mappable");
 	GARDEN_ASSERT_MSG(isLoaded(), "Buffer [" + debugName + "] is not loaded");
 
-	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
+	auto graphicsBackend = GraphicsAPI::getInstance()->getBackendType();
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
-		auto result = vmaFlushAllocation(VulkanAPI::get()->memoryAllocator,
+		auto result = vmaFlushAllocation(VulkanAPI::getInstance()->memoryAllocator,
 			(VmaAllocation)allocation, offset, size == 0 ? VK_WHOLE_SIZE : size);
 		if (result != VK_SUCCESS)
 			throw GardenError("Failed to flush buffer memory. (error: " + to_string(result) + ")");
@@ -279,10 +275,10 @@ void Buffer::writeData(const void* data, psize size, psize offset)
 		return;
 	}
 
-	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
+	auto graphicsBackend = GraphicsAPI::getInstance()->getBackendType();
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
-		auto vulkanAPI = VulkanAPI::get();
+		auto vulkanAPI = VulkanAPI::getInstance();
 		uint8* map = nullptr;
 		auto result = vmaMapMemory(vulkanAPI->memoryAllocator,
 			(VmaAllocation)allocation, (void**)&map);
@@ -298,7 +294,7 @@ void Buffer::writeData(const void* data, psize size, psize offset)
 //**********************************************************************************************************************
 void Buffer::fill(uint32 data, uint64 size, uint64 offset)
 {
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
 	GARDEN_ASSERT_MSG(size == 0 || size % 4 == 0, "Assert " + debugName);
 	GARDEN_ASSERT_MSG(size == 0 || size + offset <= binarySize, "Assert " + debugName);
@@ -335,7 +331,7 @@ void Buffer::fill(uint32 data, uint64 size, uint64 offset)
 //**********************************************************************************************************************
 void Buffer::copy(ID<Buffer> source, ID<Buffer> destination, const CopyRegion* regions, uint32 count)
 {
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	auto currentCommandBuffer = graphicsAPI->currentCommandBuffer;
 	GARDEN_ASSERT(source);
 	GARDEN_ASSERT(destination);
@@ -410,11 +406,11 @@ void Buffer::setDebugName(const string& name)
 {
 	Resource::setDebugName(name);
 
-	auto graphicsBackend = GraphicsAPI::get()->getBackendType();
+	auto graphicsBackend = GraphicsAPI::getInstance()->getBackendType();
 	if (graphicsBackend == GraphicsBackend::VulkanAPI)
 	{
 		#if GARDEN_USE_GAPI_VALIDATIONS
-		auto vulkanAPI = VulkanAPI::get();
+		auto vulkanAPI = VulkanAPI::getInstance();
 		if (!vulkanAPI->features.debugUtils || !instance)
 			return;
 

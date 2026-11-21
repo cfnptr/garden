@@ -84,7 +84,7 @@ void EditorRenderSystem::showMainMenuBar()
 		if (ImGui::MenuItem("ImGui Demo"))
 			demoWindow = true;
 		if (ImGui::MenuItem("Exit"))
-			glfwSetWindowShouldClose((GLFWwindow*)GraphicsAPI::get()->getWindow(), GLFW_TRUE);
+			glfwSetWindowShouldClose((GLFWwindow*)GraphicsAPI::getInstance()->getWindow(), GLFW_TRUE);
 		ImGui::EndMenu();
 	}
 
@@ -287,13 +287,13 @@ void EditorRenderSystem::showOptionsWindow()
 		ImGui::SameLine();
 		ImGui::Checkbox("Triple Buffering", &graphicsSystem->useTripleBuffering);
 
-		ImGui::BeginDisabled(!GraphicsAPI::get()->hasLowLatency());
+		ImGui::BeginDisabled(!GraphicsAPI::getInstance()->hasLowLatency());
 		if (ImGui::Checkbox("Low Latency (Reflex, Anti-lag)", &graphicsSystem->useLowLatency))
 		{
 			if (settingsSystem)
 				settingsSystem->setBool("render.useLowLatency", graphicsSystem->useLowLatency);
 		}
-		if (!GraphicsAPI::get()->hasLowLatency())
+		if (!GraphicsAPI::getInstance()->hasLowLatency())
 		{
 			if (ImGui::BeginItemTooltip())
 			{
@@ -1291,67 +1291,67 @@ static void drawResource(OptView<T> resource, const char* label,
 }
 void EditorRenderSystem::drawResource(ID<Buffer> buffer, const char* label)
 {
-	auto bufferView = buffer ? OptView<Buffer>(GraphicsAPI::get()->bufferPool.get(buffer)) : OptView<Buffer>();
+	auto bufferView = buffer ? OptView<Buffer>(GraphicsAPI::getInstance()->bufferPool.get(buffer)) : OptView<Buffer>();
 	::drawResource(bufferView, label, ID<Resource>(buffer), GpuResourceEditorSystem::TabType::Buffers);
 }
 void EditorRenderSystem::drawResource(ID<Image> image, const char* label)
 {
-	auto imageView = image ? OptView<Image>(GraphicsAPI::get()->imagePool.get(image)) : OptView<Image>();
+	auto imageView = image ? OptView<Image>(GraphicsAPI::getInstance()->imagePool.get(image)) : OptView<Image>();
 	::drawResource(imageView, label, ID<Resource>(image), GpuResourceEditorSystem::TabType::Images);
 }
 void EditorRenderSystem::drawResource(ID<ImageView> imageView, const char* label)
 {
 	auto imageViewView = imageView ? OptView<ImageView>(
-		GraphicsAPI::get()->imageViewPool.get(imageView)) : OptView<ImageView>();
+		GraphicsAPI::getInstance()->imageViewPool.get(imageView)) : OptView<ImageView>();
 	::drawResource(imageViewView, label, ID<Resource>(imageView), GpuResourceEditorSystem::TabType::ImageViews);
 }
 void EditorRenderSystem::drawResource(ID<Framebuffer> framebuffer, const char* label)
 {
 	auto framebufferView = framebuffer ? OptView<Framebuffer>(
-		GraphicsAPI::get()->framebufferPool.get(framebuffer)) : OptView<Framebuffer>();
+		GraphicsAPI::getInstance()->framebufferPool.get(framebuffer)) : OptView<Framebuffer>();
 	::drawResource(framebufferView, label, ID<Resource>(framebuffer), 
 		GpuResourceEditorSystem::TabType::Framebuffers);
 }
 void EditorRenderSystem::drawResource(ID<Sampler> sampler, const char* label)
 {
-	auto samplerView = sampler ? OptView<Sampler>(GraphicsAPI::get()->samplerPool.get(sampler)) : OptView<Sampler>();
+	auto samplerView = sampler ? OptView<Sampler>(GraphicsAPI::getInstance()->samplerPool.get(sampler)) : OptView<Sampler>();
 	::drawResource(samplerView, label, ID<Resource>(sampler), GpuResourceEditorSystem::TabType::Samplers);
 }
 void EditorRenderSystem::drawResource(ID<Blas> blas, const char* label)
 {
-	auto blasView = blas ? OptView<Blas>(GraphicsAPI::get()->blasPool.get(blas)) : OptView<Blas>();
+	auto blasView = blas ? OptView<Blas>(GraphicsAPI::getInstance()->blasPool.get(blas)) : OptView<Blas>();
 	::drawResource(blasView, label, ID<Resource>(blas), GpuResourceEditorSystem::TabType::Blases);
 }
 void EditorRenderSystem::drawResource(ID<Tlas> tlas, const char* label)
 {
-	auto tlasView = tlas ? OptView<Tlas>(GraphicsAPI::get()->tlasPool.get(tlas)) : OptView<Tlas>();
+	auto tlasView = tlas ? OptView<Tlas>(GraphicsAPI::getInstance()->tlasPool.get(tlas)) : OptView<Tlas>();
 	::drawResource(tlasView, label, ID<Resource>(tlas), GpuResourceEditorSystem::TabType::Tlases);
 }
 void EditorRenderSystem::drawResource(ID<DescriptorSet> descriptorSet, const char* label)
 {
 	auto descriptorSetView = descriptorSet ? OptView<DescriptorSet>(
-		GraphicsAPI::get()->descriptorSetPool.get(descriptorSet)) : OptView<DescriptorSet>();
+		GraphicsAPI::getInstance()->descriptorSetPool.get(descriptorSet)) : OptView<DescriptorSet>();
 	::drawResource(descriptorSetView, label, ID<Resource>(descriptorSet),
 		GpuResourceEditorSystem::TabType::DescriptorSets);
 }
 void EditorRenderSystem::drawResource(ID<GraphicsPipeline> graphicsPipeline, const char* label)
 {
 	auto graphicsPipelineView = graphicsPipeline ? OptView<GraphicsPipeline>(
-		GraphicsAPI::get()->graphicsPipelinePool.get(graphicsPipeline)) : OptView<GraphicsPipeline>();
+		GraphicsAPI::getInstance()->graphicsPipelinePool.get(graphicsPipeline)) : OptView<GraphicsPipeline>();
 	::drawResource(graphicsPipelineView, label, ID<Resource>(graphicsPipeline),
 		GpuResourceEditorSystem::TabType::GraphicsPipelines);
 }
 void EditorRenderSystem::drawResource(ID<ComputePipeline> computePipeline, const char* label)
 {
 	auto computePipelineView = computePipeline ? OptView<ComputePipeline>(
-		GraphicsAPI::get()->computePipelinePool.get(computePipeline)) : OptView<ComputePipeline>();
+		GraphicsAPI::getInstance()->computePipelinePool.get(computePipeline)) : OptView<ComputePipeline>();
 	::drawResource(computePipelineView, label, ID<Resource>(computePipeline),
 		GpuResourceEditorSystem::TabType::ComputePipelines);
 }
 void EditorRenderSystem::drawResource(ID<RayTracingPipeline> rayTracingPipeline, const char* label)
 {
 	auto rayTracingPipelineView = rayTracingPipeline ? OptView<RayTracingPipeline>(
-		GraphicsAPI::get()->rayTracingPipelinePool.get(rayTracingPipeline)) : OptView<RayTracingPipeline>();
+		GraphicsAPI::getInstance()->rayTracingPipelinePool.get(rayTracingPipeline)) : OptView<RayTracingPipeline>();
 	::drawResource(rayTracingPipelineView, label, ID<Resource>(rayTracingPipeline),
 		GpuResourceEditorSystem::TabType::RayTracingPipelines);
 }

@@ -296,14 +296,14 @@ void VulkanCommandBuffer::addDescriptorSetBarriers(VulkanAPI* vulkanAPI,
 		auto descriptorSetView = vulkanAPI->descriptorSetPool.get(descriptorSetRange.set);
 		const auto barriers = DescriptorSetExt::getBarriers(**descriptorSetView).data();
 		
-		for (uint32 j = descriptorSetRange.offset; j < setCount; j++)
+		for (uint32 set = descriptorSetRange.offset; set < setCount; set++)
 		{
-			const auto& setBarriers = barriers[j];
+			const auto& setBarriers = barriers[set];
 			for (auto barrierState : setBarriers)
 			{
-				if (barrierState.layout == 0)
+				if (barrierState.layout == DescriptorSet::bufferBarrierLayout)
 					addBufferBarrier(vulkanAPI, barrierState, ID<Buffer>(barrierState.view));
-				else if (barrierState.layout == UINT32_MAX)
+				else if (barrierState.layout == DescriptorSet::asBarrierLayout)
 				{
 					auto tlasView = vulkanAPI->tlasPool.get(ID<Tlas>(barrierState.view));
 					auto& oldAsState = AccelerationStructureExt::getBarrierState(**tlasView);
@@ -420,7 +420,9 @@ void VulkanCommandBuffer::submit()
 			queue = vulkanAPI->transferQueue;
 		else if (type == CommandBufferType::Compute)
 			queue = vulkanAPI->computeQueue;
-		else queue = vulkanAPI->graphicsQueue;
+		else if (type == CommandBufferType::Graphics)
+			queue = vulkanAPI->graphicsQueue;
+		else GARDEN_UNREACHABLE();
 	}
 
 	vk::CommandBufferBeginInfo beginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
@@ -877,7 +879,7 @@ void VulkanCommandBuffer::processCommand(const BeginRenderPassCommand& command)
 			depthAttachmentInfoPtr = &depthStencilAttachmentInfo;
 		else if (isFormatStencilOnly(imageFormat))
 			stencilAttachmentInfoPtr = &depthStencilAttachmentInfo;
-		else
+		else // Note: depth/stencil combined format.
 		{
 			depthAttachmentInfoPtr = &depthStencilAttachmentInfo;
 			stencilAttachmentInfoPtr = &depthStencilAttachmentInfo;
@@ -1001,8 +1003,9 @@ void VulkanCommandBuffer::processCommand(const BindPipelineCommand& command)
 	SET_CPU_ZONE_SCOPED("BindPipeline Command Process");
 
 	auto pipelineType = command.pipelineType;
-	auto pipelineView = vulkanAPI->getPipelineView(pipelineType, command.pipeline);
+	auto pipelineView = vulkanAPI->getPipelineView(command.pipeline, pipelineType);
 	auto pipeline = ResourceExt::getInstance(**pipelineView);
+
 	instance.bindPipeline(toVkPipelineBindPoint(pipelineType), pipelineView->getVariantCount() > 1 ? 
 		((VkPipeline*)pipeline)[command.variant] : (VkPipeline)pipeline);
 }
@@ -1019,24 +1022,38 @@ void VulkanCommandBuffer::processCommand(const BindDescriptorSetsCommand& comman
 	for (uint8 i = 0; i < rangeCount; i++)
 	{
 		auto descriptorSetRange = ranges[i];
-		auto descriptorSet = vulkanAPI->descriptorSetPool.get(descriptorSetRange.set);
-		auto instance = (vk::DescriptorSet*)ResourceExt::getInstance(**descriptorSet);
+		auto descriptorSetView = vulkanAPI->descriptorSetPool.get(descriptorSetRange.set);
+		auto instance = (vk::DescriptorSet*)ResourceExt::getInstance(**descriptorSetView);
 
-		if (descriptorSet->getSetCount() > 1)
+		if (descriptorSetView->getSetCount() > 1)
 		{
 			auto setCount = descriptorSetRange.offset + descriptorSetRange.count;
-			for (uint32 j = descriptorSetRange.offset; j < setCount; j++)
-				descriptorSets.push_back(instance[j]);
+			for (uint32 set = descriptorSetRange.offset; set < setCount; set++)
+				descriptorSets.push_back(instance[set]);
 		}
 		else descriptorSets.push_back((VkDescriptorSet)instance);
 	}
 
-	auto descriptorSet = vulkanAPI->descriptorSetPool.get(ranges[0].set);
-	auto pipelineView = vulkanAPI->getPipelineView(descriptorSet->getPipelineType(), descriptorSet->getPipeline());
-	auto pipelineLayout = (VkPipelineLayout)PipelineExt::getLayout(**pipelineView);
+	auto descriptorSetView = vulkanAPI->descriptorSetPool.get(ranges[0].set);
+	ID<Pipeline> pipeline; PipelineType pipelineType;
 
-	instance.bindDescriptorSets(toVkPipelineBindPoint(descriptorSet->getPipelineType()),
-		pipelineLayout, 0, (uint32)descriptorSets.size(), descriptorSets.data(), 0, nullptr);
+	if (descriptorSetView->isBindless())
+	{
+		GARDEN_ASSERT_MSG(vulkanAPI->currentPipelines.front(), 
+			"You should bind pipeline before bindless descriptor set");
+		pipeline = vulkanAPI->currentPipelines.front();
+		pipelineType = vulkanAPI->currentPipelineTypes.front();
+	}
+	else
+	{
+		pipeline = descriptorSetView->getPipeline();
+		pipelineType = descriptorSetView->getPipelineType();
+	}
+
+	auto pipelineView = vulkanAPI->getPipelineView(descriptorSetView->getPipeline(), pipelineType);
+	auto pipelineLayout = (VkPipelineLayout)PipelineExt::getLayout(**pipelineView);
+	instance.bindDescriptorSets(toVkPipelineBindPoint(pipelineType), pipelineLayout, 0, 
+		(uint32)descriptorSets.size(), descriptorSets.data(), 0, nullptr);
 	descriptorSets.clear();
 }
 
@@ -1813,14 +1830,14 @@ void VulkanCommandBuffer::processCommand(const BuildAccelerationStructureCommand
 					buildDataHeader->compactData = compactData;
 					buildDataHeader->queryPoolIndex = queryPoolIndex++;
 				}
-				else free(buildData);
+				else delete[] (uint8*)buildData;
 			}
 			vulkanAPI->asWriteProperties.clear();
 		}
 		else
 		{
 			for (auto buildData : vulkanAPI->asBuildData)
-				free(buildData);
+				delete[] (uint8*)buildData;
 		}
 
 		vulkanAPI->asBuildData.clear();

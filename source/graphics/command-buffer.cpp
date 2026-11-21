@@ -145,7 +145,7 @@ void CommandBuffer::lockResource(ResourceType type, ID<Resource> resource, int32
 	auto emplaceResult = lockResources->emplace(key);
 	GARDEN_ASSERT_MSG(emplaceResult.second, "Detected memory corruption");
 
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	switch (key.type)
 	{
 	case ResourceType::Buffer:
@@ -177,7 +177,7 @@ void CommandBuffer::flushLockedResources(LockedResources& lockedResources)
 {
 	SET_CPU_ZONE_SCOPED("Locked Resources Flush");
 
-	auto graphicsAPI = GraphicsAPI::get();
+	auto graphicsAPI = GraphicsAPI::getInstance();
 	for (auto key : lockedResources)
 	{
 		switch (key.type)
