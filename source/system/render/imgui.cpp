@@ -521,6 +521,10 @@ void ImGuiRenderSystem::update()
 	auto& io = ImGui::GetIO();
 	auto inputSystem = InputSystem::getInstance();
 	auto windowSize = inputSystem->getWindowSize();
+	auto framebufferSize = inputSystem->getFramebufferSize();
+	if (windowSize.x == 0 || windowSize.y == 0 || framebufferSize.x == 0 || framebufferSize.y == 0)
+		return;
+
 	auto windowScale = inputSystem->getWindowScale();
 	io.DisplaySize = ImVec2(windowSize.x, windowSize.y);
 	io.DisplayFramebufferScale = ImVec2(windowScale.x, windowScale.y);

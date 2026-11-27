@@ -117,7 +117,7 @@ class GraphicsSystem final : public System, public Singleton<GraphicsSystem>
 	 * @param setSingleton set system singleton instance
 	 */
 	GraphicsSystem(uint2 windowSize = InputSystem::defaultWindowSize, 
-		bool isFullscreen = !GARDEN_DEBUG & !GARDEN_OS_LINUX, bool isDecorated = true,
+		bool isFullscreen = false, bool isDecorated = true,
 		bool useAsyncRecording = true, bool setSingleton = true);
 
 	void preInit();
